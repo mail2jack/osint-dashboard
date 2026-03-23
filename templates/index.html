@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSINT Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <div class="header-main">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 16v-4M12 8h.01"></path>
+                    </svg>
+                    <h1>OSINT Dashboard <span class="version" id="versionBadge">v1.0.0</span></h1>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-system" id="btnHistory" onclick="toggleHistory()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <span>History</span>
+                        <span class="badge-count" id="historyBadge" style="display:none">0</span>
+                    </button>
+                </div>
+            </div>
+            <p class="subtitle">Open Source Intelligence Gathering Tools</p>
+        </header>
+
+        <div id="historyPanel" class="history-panel hidden">
+            <div class="history-header">
+                <h3>Search History</h3>
+                <div class="history-controls">
+                    <input type="text" id="archiveSearch" placeholder="Search archive..." onkeyup="searchArchive()">
+                    <select id="toolFilter" onchange="searchArchive()">
+                        <option value="">All Tools</option>
+                        <option value="social">Social Media</option>
+                        <option value="email">Email</option>
+                        <option value="holehe">Holehe</option>
+                        <option value="maigret">Maigret</option>
+                        <option value="username">Username</option>
+                        <option value="person">People</option>
+                    </select>
+                </div>
+                <button class="btn-close" onclick="toggleHistory()">&times;</button>
+            </div>
+            <div class="history-content" id="historyContent">
+                <div class="history-section">
+                    <h4>Recent Searches</h4>
+                    <div id="recentHistory"></div>
+                </div>
+                <div class="history-section">
+                    <h4>Archive</h4>
+                    <button class="btn-mark-read" onclick="markAllRead()">Mark All Read</button>
+                    <div id="archiveContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Enter search query...">
+                <button id="searchBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    Search
+                </button>
+            </div>
+            <div class="site-selector" id="siteSelector">
+                <label for="siteCategory">Sites:</label>
+                <select id="siteCategory" onchange="updateSiteSelection()">
+                    <option value="all">All Sites (56)</option>
+                    <option value="social">Social Media (17)</option>
+                    <option value="developer">Developer (9)</option>
+                    <option value="gaming">Gaming (4)</option>
+                    <option value="creative">Creative (12)</option>
+                    <option value="messaging">Messaging (4)</option>
+                    <option value="linkinbio">Link-in-Bio (2)</option>
+                    <option value="other">Other (8)</option>
+                </select>
+                <div class="site-count" id="siteCount">56 sites</div>
+                <button class="btn-info" onclick="showSiteCategories()" title="Show site categories">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="site-info-modal" id="siteInfoModal">
+                <div class="site-info-content">
+                    <div class="site-info-header">
+                        <h3>Site Categories</h3>
+                        <button class="btn-close" onclick="closeSiteInfo()">&times;</button>
+                    </div>
+                    <div class="site-info-body" id="siteInfoBody">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tools-container">
+            <h2 class="section-title">People OSINT</h2>
+            <div class="tools-grid">
+                <div class="tool-card active" data-tool="social">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                        </svg>
+                    </div>
+                    <h3>Social Media</h3>
+                    <p>Check by username, email or phone</p>
+                </div>
+
+                <div class="tool-card" data-tool="person">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <h3>People Search</h3>
+                    <p>Search by full name</p>
+                </div>
+
+                <div class="tool-card" data-tool="email">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Email Lookup</h3>
+                    <p>Check email across 400+ sites</p>
+                    <button class="tool-info-btn" onclick="showToolInfo('email')" title="Show sites">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="tool-card" data-tool="holehe">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 16v-4"></path>
+                            <path d="M12 8h.01"></path>
+                        </svg>
+                    </div>
+                    <h3>Holehe Email</h3>
+                    <p>Deep email OSINT with recovery info</p>
+                    <button class="tool-info-btn" onclick="showToolInfo('holehe')" title="Show sites">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="tool-card" data-tool="maigret">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                            <polyline points="2 17 12 22 22 17"></polyline>
+                            <polyline points="2 12 12 17 22 12"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Maigret</h3>
+                    <p>Deep username search (3000+ sites)</p>
+                    <button class="tool-info-btn" onclick="showToolInfo('maigret')" title="Show info">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="tool-card" data-tool="username">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <h3>Username Search</h3>
+                    <p>Find accounts across platforms</p>
+                    <button class="tool-info-btn" onclick="showToolInfo('username')" title="Show info">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="tool-card" data-tool="whatsapp">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                    </div>
+                    <h3>WhatsApp Lookup</h3>
+                    <p>Check phone number on WhatsApp</p>
+                    <button class="tool-info-btn" onclick="showToolInfo('whatsapp')" title="Show info">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tech OSINT tools hidden temporarily
+            <h2 class="section-title">Tech OSINT</h2>
+            <div class="tools-grid">
+                <div class="tool-card" data-tool="ip">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                        </svg>
+                    </div>
+                    <h3>IP Lookup</h3>
+                    <p>Geolocation and reputation</p>
+                </div>
+
+                <div class="tool-card" data-tool="domain">
+                    <div class="tool-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                    </div>
+                    <h3>Domain Lookup</h3>
+                    <p>DNS records and SSL info</p>
+                </div>
+            </div>
+            -->
+        </div>
+
+        <div id="results" class="results-section hidden">
+            <div class="results-header">
+                <h2>Results</h2>
+                <button class="close-btn" onclick="closeResults()">×</button>
+            </div>
+            <div id="resultsContent" class="results-content"></div>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Searching...</p>
+        </div>
+    </div>
+
+    <script>
+        const toolCards = document.querySelectorAll('.tool-card');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsSection = document.getElementById('results');
+        const resultsContent = document.getElementById('resultsContent');
+        const loading = document.getElementById('loading');
+
+        let currentTool = 'social';
+
+        fetch('/api/version')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('versionBadge').textContent = 'v' + data.version;
+                document.title = `OSINT Dashboard v${data.version}`;
+            })
+            .catch(() => {});
+
+        const placeholders = {
+            social: 'Enter username, email or phone number',
+            email: 'Enter email address (e.g., user@example.com)',
+            holehe: 'Enter email address (e.g., user@example.com)',
+            maigret: 'Enter username to search (deep scan)',
+            ip: 'Enter IP address (e.g., 8.8.8.8)',
+            domain: 'Enter domain (e.g., google.com)',
+            username: 'Enter username to search',
+            person: 'Enter full name (e.g., John Smith)',
+            whatsapp: 'Enter phone number (e.g., +31612345678)'
+        };
+
+        toolCards.forEach(card => {
+            card.addEventListener('click', () => {
+                toolCards.forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                currentTool = card.dataset.tool;
+                searchInput.placeholder = placeholders[currentTool];
+                searchInput.value = '';
+                
+                const siteSelector = document.getElementById('siteSelector');
+                if (siteSelector) {
+                    siteSelector.style.display = currentTool === 'social' ? 'flex' : 'none';
+                }
+            });
+        });
+
+        function updateSiteSelection() {
+            const category = document.getElementById('siteCategory')?.value || 'all';
+            const counts = { all: 56, social: 17, developer: 9, gaming: 4, creative: 12, messaging: 4, linkinbio: 2, other: 8 };
+            const siteCount = document.getElementById('siteCount');
+            if (siteCount) {
+                siteCount.textContent = `${counts[category] || 55} sites`;
+            }
+        }
+
+        function showToolInfo(tool) {
+            const siteInfoBody = document.getElementById('siteInfoBody');
+            const siteInfoModal = document.getElementById('siteInfoModal');
+            
+            let content = '';
+            
+            if (tool === 'email') {
+                content = `
+                    <p style="color: #888; margin-bottom: 1rem;">Email Lookup checks 478 sites from the Sherlock database.</p>
+                    <p style="color: #888; margin-bottom: 1rem;">Sample sites include social networks, forums, dating sites, and more.</p>
+                    <p style="color: #888;">The tool checks if an email appears in data breaches and public profiles.</p>
+                `;
+            } else if (tool === 'holehe') {
+                content = `
+                    <p style="color: #888; margin-bottom: 1rem;">Holehe checks 121 sites for email registration.</p>
+                    <p style="color: #888; margin-bottom: 1rem;">It works by examining password reset flows to detect if an email is registered.</p>
+                    <p style="color: #888;">Additional info like recovery email and phone may be found on some sites.</p>
+                `;
+            } else if (tool === 'username') {
+                content = `
+                    <p style="color: #888; margin-bottom: 1rem;">Username Search checks 478 sites from the Sherlock database.</p>
+                    <p style="color: #888; margin-bottom: 1rem;">This is a faster alternative to Maigret.</p>
+                    <p style="color: #888;">Checks for username existence across social networks, forums, and other platforms.</p>
+                `;
+            } else if (tool === 'maigret') {
+                content = `
+                    <p style="color: #888; margin-bottom: 1rem;">Maigret checks over 3000 sites for username existence.</p>
+                    <p style="color: #888; margin-bottom: 1rem;">This is a much deeper search than the standard Username tool.</p>
+                    <p style="color: #888;">Warning: This search may take several minutes to complete.</p>
+                `;
+            } else if (tool === 'whatsapp') {
+                content = `
+                    <p style="color: #888; margin-bottom: 1rem;">WhatsApp Lookup checks if a phone number is registered on WhatsApp.</p>
+                    <p style="color: #888; margin-bottom: 1rem;">Enter phone number in international format (e.g., +31612345678 or 31612345678).</p>
+                    <p style="color: #f0a500;">Note: Detection is limited due to WhatsApp's client-side rendering.</p>
+                `;
+            } else if (tool === 'social') {
+                showSiteCategories();
+                return;
+            }
+            
+            siteInfoBody.innerHTML = content;
+            siteInfoModal.classList.add('active');
+        }
+
+        function showSiteCategories() {
+            const siteInfoBody = document.getElementById('siteInfoBody');
+            const siteInfoModal = document.getElementById('siteInfoModal');
+            
+            const categories = {
+                social: { name: 'Social Media', sites: ['Facebook', 'Instagram', 'Twitter/X', 'TikTok', 'YouTube', 'LinkedIn', 'Snapchat', 'Reddit', 'Pinterest', 'Tumblr', 'Medium', 'Quora', 'Threads', 'VK', 'Goodreads', 'MyAnimeList', 'Letterboxd'] },
+                developer: { name: 'Developer', sites: ['GitHub', 'GitLab', 'Bitbucket', 'Keybase', 'LeetCode', 'Replit', 'CodePen', 'StackOverflow', 'Kaggle'] },
+                gaming: { name: 'Gaming', sites: ['Twitch', 'Steam', 'PSN', 'Roblox'] },
+                creative: { name: 'Creative', sites: ['Spotify', 'SoundCloud', 'Vimeo', 'Flickr', 'Behance', 'Dribbble', 'DeviantArt', 'Imgur', 'Last.fm', 'ArtStation', 'VSCO', '500px'] },
+                messaging: { name: 'Messaging', sites: ['Discord', 'Mastodon', 'Telegram', 'WhatsApp'] },
+                linkinbio: { name: 'Link-in-Bio', sites: ['Linktree', 'Carrd'] },
+                other: { name: 'Other', sites: ['CashApp', 'Venmo', 'Patreon', 'Strava', 'Fiverr', 'Wix', 'WordPress', 'Blogger'] }
+            };
+            
+            let html = '';
+            for (const [key, cat] of Object.entries(categories)) {
+                html += `
+                    <div class="category-section">
+                        <div class="category-title" onclick="toggleCategory('${key}')">
+                            <h4>${cat.name} (${cat.sites.length})</h4>
+                            <span class="count">Click to expand</span>
+                        </div>
+                        <div class="category-sites" id="cat-${key}">
+                            ${cat.sites.map(site => `<span class="site-badge">${site}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            siteInfoBody.innerHTML = html;
+            siteInfoModal.classList.add('active');
+        }
+
+        function toggleCategory(key) {
+            const el = document.getElementById(`cat-${key}`);
+            if (el) {
+                el.classList.toggle('expanded');
+            }
+        }
+
+        function closeSiteInfo() {
+            const siteInfoModal = document.getElementById('siteInfoModal');
+            siteInfoModal.classList.remove('active');
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeSiteInfo();
+            }
+        });
+
+        function detectInputType(query) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+            
+            if (emailRegex.test(query)) return 'email';
+            if (phoneRegex.test(query)) return 'phone';
+            return 'username';
+        }
+
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+            
+            if (currentTool === 'social') {
+                const inputType = detectInputType(query);
+                const category = document.getElementById('siteCategory')?.value || 'all';
+                resultsSection.classList.add('hidden');
+                performStreamingSearch(query, 'social', inputType, category);
+            } else if (currentTool === 'username' || currentTool === 'email' || currentTool === 'person' || currentTool === 'holehe' || currentTool === 'maigret') {
+                resultsSection.classList.add('hidden');
+                performStreamingSearch(query, currentTool);
+            } else if (currentTool === 'whatsapp') {
+                resultsSection.classList.remove('hidden');
+                performWhatsAppSearch(query);
+            } else {
+                loading.classList.remove('hidden');
+                resultsSection.classList.add('hidden');
+
+                const endpoints = {
+                    ip: '/api/ip',
+                    domain: '/api/domain'
+                };
+
+                const fieldNames = {
+                    ip: 'ip',
+                    domain: 'domain'
+                };
+
+                try {
+                    const response = await fetch(endpoints[currentTool], {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ [fieldNames[currentTool]]: query })
+                    });
+
+                    const data = await response.json();
+                    displayResults(data);
+                } catch (error) {
+                    displayError(error.message);
+                } finally {
+                    loading.classList.add('hidden');
+                }
+            }
+        }
+        
+        async function performWhatsAppSearch(phone) {
+            loading.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/whatsapp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phone })
+                });
+                
+                const data = await response.json();
+                loading.classList.add('hidden');
+                resultsSection.classList.remove('hidden');
+                displayWhatsAppResults(data);
+            } catch (error) {
+                loading.classList.add('hidden');
+                displayError(error.message);
+            }
+        }
+        
+        function displayWhatsAppResults(data) {
+            if (data.error) {
+                resultsContent.innerHTML = `
+                    <div class="result-card error">
+                        <h3>Error</h3>
+                        <p>${data.error}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const statusIcon = data.exists === true 
+                ? '<span style="color: #00ff88; font-size: 2rem;">&#10003;</span>'
+                : data.exists === false
+                ? '<span style="color: #ff4444; font-size: 2rem;">&#10007;</span>'
+                : '<span style="color: #888; font-size: 2rem;">?</span>';
+            
+            const statusText = data.exists === true 
+                ? 'Found on WhatsApp'
+                : data.exists === false
+                ? 'Not found on WhatsApp'
+                : 'Unknown';
+            
+            const statusColor = data.exists === true 
+                ? '#00ff88'
+                : data.exists === false
+                ? '#ff4444'
+                : '#888';
+            
+            resultsContent.innerHTML = `
+                <div class="result-card">
+                    <h3>WhatsApp Lookup: ${data.phone}</h3>
+                    <div class="whatsapp-result">
+                        <div class="whatsapp-status">
+                            ${statusIcon}
+                            <span class="whatsapp-status-text" style="color: ${statusColor};">${statusText}</span>
+                        </div>
+                        <p class="whatsapp-message">${data.message || ''}</p>
+                        <div class="whatsapp-actions">
+                            <a href="${data.url}" target="_blank" class="btn-visit">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                </svg>
+                                Open in WhatsApp
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function performStreamingSearch(query, tool, extra = null, category = 'all') {
+            resultsSection.classList.remove('hidden');
+            
+            const toolNames = { email: 'Email', username: 'Username', person: 'Person', social: 'Social Media', holehe: 'Holehe', maigret: 'Maigret' };
+            const toolName = toolNames[tool] || tool;
+            
+            const endpoints = {
+                email: '/api/email/stream',
+                holehe: '/api/email/holehe',
+                maigret: '/api/username/maigret',
+                username: '/api/username/stream',
+                person: '/api/person/stream',
+                social: '/api/social/stream'
+            };
+            
+            const fieldNames = {
+                email: 'email',
+                holehe: 'email',
+                maigret: 'username',
+                username: 'username',
+                person: 'name',
+                social: 'query'
+            };
+            
+            let searchTypeInfo = '';
+            if (tool === 'social' && extra) {
+                const typeLabels = { email: 'Email', phone: 'Phone', username: 'Username' };
+                searchTypeInfo = `<span style="color: #00ff88;"> (${typeLabels[extra]})</span>`;
+            }
+            
+            const categoryNames = { all: 'All Sites', social: 'Social Media', developer: 'Developer', gaming: 'Gaming', creative: 'Creative', messaging: 'Messaging', linkinbio: 'Link-in-Bio', other: 'Other' };
+            const categoryInfo = tool === 'social' ? ` <span style="color: #888;">[${categoryNames[category] || category}]</span>` : '';
+            
+            resultsContent.innerHTML = `
+                <div class="result-card">
+                    <div class="searching-header">
+                        <div class="searching-spinner"></div>
+                        <h3>Searching ${toolName}: <span style="color: #00d9ff;">${query}</span>${searchTypeInfo}${categoryInfo}</h3>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill"></div>
+                        </div>
+                        <div id="progressText" class="progress-text">Initializing...</div>
+                        <div id="progressStats" class="progress-stats">
+                            <div class="progress-stat">
+                                <div id="foundCount" class="progress-stat-value">0</div>
+                                <div class="progress-stat-label">Found</div>
+                            </div>
+                            <div class="progress-stat">
+                                <div id="checkedCount" class="progress-stat-value">0</div>
+                                <div class="progress-stat-label">Checked</div>
+                            </div>
+                            <div class="progress-stat">
+                                <div id="totalCount" class="progress-stat-value">0</div>
+                                <div class="progress-stat-label">Total</div>
+                            </div>
+                        </div>
+                        <div id="currentSite" class="current-site"></div>
+                        <div id="stopButtonContainer" class="stop-button-container">
+                            <button id="stopSearchBtn" class="btn-stop" onclick="abortSearch()">
+                                <span class="stop-icon">STOP</span>
+                                Stop & Show Results
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            let searchAborted = false;
+            let accumulatedResults = null;
+            let currentJobId = null;
+            let readerRef = null;
+            
+            window.abortSearch = function() {
+                searchAborted = true;
+                const stopBtn = document.getElementById('stopSearchBtn');
+                if (stopBtn) {
+                    stopBtn.disabled = true;
+                    stopBtn.innerHTML = '<span class="stop-icon">SHOWING...</span>';
+                }
+                
+                if (readerRef) {
+                    readerRef.cancel();
+                }
+                
+                if (accumulatedResults) {
+                    displayResults(accumulatedResults);
+                } else {
+                    displayError('Search stopped - no results yet');
+                }
+            };
+            
+            let body;
+            if (tool === 'social') {
+                body = { [fieldNames[tool]]: query, type: extra || 'username', category: category };
+            } else {
+                body = { [fieldNames[tool]]: query };
+            }
+            
+            try {
+                const response = await fetch(endpoints[tool], {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Search request failed');
+                }
+                
+                const reader = response.body.getReader();
+                readerRef = reader;
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                while (true) {
+                    if (searchAborted) {
+                        break;
+                    }
+                    
+                    let readResult;
+                    try {
+                        readResult = await reader.read();
+                    } catch (e) {
+                        if (searchAborted && accumulatedResults) {
+                            displayResults(accumulatedResults);
+                        }
+                        break;
+                    }
+                    
+                    const { done, value } = readResult;
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.job_id && !currentJobId) {
+                                    currentJobId = data.job_id;
+                                }
+                                
+                                if (data.progress) {
+                                    const { checked, total, found, percent, current_site } = data.progress;
+                                    const progressFill = document.getElementById('progressFill');
+                                    const progressText = document.getElementById('progressText');
+                                    const foundCountEl = document.getElementById('foundCount');
+                                    const checkedCountEl = document.getElementById('checkedCount');
+                                    const totalCountEl = document.getElementById('totalCount');
+                                    const currentSiteEl = document.getElementById('currentSite');
+                                    
+                                    if (progressFill) progressFill.style.width = percent + '%';
+                                    if (progressText) progressText.textContent = current_site ? `Checking ${current_site}... ${percent}%` : `Searching... ${percent}% complete`;
+                                    if (foundCountEl) foundCountEl.textContent = found !== undefined ? found : 0;
+                                    if (checkedCountEl) checkedCountEl.textContent = checked;
+                                    if (totalCountEl) totalCountEl.textContent = total;
+                                    if (currentSiteEl) currentSiteEl.textContent = current_site || '';
+                                } else if (data.complete) {
+                                    accumulatedResults = data.result;
+                                    if (!searchAborted) {
+                                        displayResults(data.result);
+                                    }
+                                    return;
+                                } else if (data.error) {
+                                    if (!searchAborted) {
+                                        displayError(data.error);
+                                    }
+                                    return;
+                                } else if (data.stopped) {
+                                    accumulatedResults = data.result;
+                                    if (searchAborted) {
+                                        displayResults(accumulatedResults);
+                                    }
+                                    return;
+                                }
+                            } catch (e) {
+                                console.log('Parse error:', e);
+                            }
+                        }
+                    }
+                }
+                
+                if (searchAborted && accumulatedResults) {
+                    displayResults(accumulatedResults);
+                }
+            } catch (error) {
+                if (searchAborted && accumulatedResults) {
+                    displayResults(accumulatedResults);
+                } else if (!searchAborted) {
+                    displayError(error.message);
+                }
+            }
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        let lastResultsData = null;
+        let lastResultsQuery = '';
+
+        function displayResults(data) {
+            resultsSection.classList.remove('hidden');
+            lastResultsData = data;
+            lastResultsQuery = searchInput.value;
+            
+            let html = '';
+            
+            if (currentTool === 'email') {
+                html = renderEmailResults(data);
+            } else if (currentTool === 'holehe') {
+                html = renderHoleheResults(data);
+            } else if (currentTool === 'maigret') {
+                html = renderUsernameResults(data);
+            } else if (currentTool === 'ip') {
+                html = renderIPResults(data);
+            } else if (currentTool === 'domain') {
+                html = renderDomainResults(data);
+            } else if (currentTool === 'username') {
+                html = renderUsernameResults(data);
+            } else if (currentTool === 'person') {
+                html = renderPersonResults(data);
+            } else if (currentTool === 'social') {
+                html = renderSocialResults(data);
+            }
+            
+            html += `
+                <div class="download-section">
+                    <button id="downloadPdfBtn" class="btn-download">
+                        <span class="btn-icon">PDF</span>
+                        Download Report
+                    </button>
+                </div>
+            `;
+            
+            resultsContent.innerHTML = html;
+            
+            document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
+        }
+
+        async function downloadPdf() {
+            const btn = document.getElementById('downloadPdfBtn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            
+            try {
+                const response = await fetch('/api/generate-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        results: lastResultsData,
+                        type: currentTool,
+                        query: lastResultsQuery
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success && data.download_url) {
+                    window.open(data.download_url, '_blank');
+                } else {
+                    alert('Error generating PDF: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Error generating PDF: ' + e.message);
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Download Report';
+        }
+
+        function renderEmailResults(data) {
+            const foundAccounts = (data.account_checks || []).filter(c => c.exists === true);
+            
+            return `
+                <div class="result-card">
+                    <h3>Email Lookup: ${data.email}</h3>
+                    <div class="stats-row">
+                        <div class="stat">
+                            <span class="stat-value">${foundAccounts.length}</span>
+                            <span class="stat-label">Found</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.valid_format ? 'Yes' : 'No'}</span>
+                            <span class="stat-label">Valid</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.disposable ? 'Yes' : 'No'}</span>
+                            <span class="stat-label">Disposable</span>
+                        </div>
+                    </div>
+                    
+                    ${foundAccounts.length > 0 ? `
+                    <div class="info-section">
+                        <div class="results-header-row">
+                            <h4>Found Accounts (${foundAccounts.length})</h4>
+                            <div class="expand-controls">
+                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
+                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
+                            </div>
+                        </div>
+                        <div class="platform-list social-results">
+                            ${foundAccounts.map((a, idx) => `
+                                <div class="platform-item found social-result-item" data-index="em-${idx}" onclick="toggleSocialDetail('em-${idx}')">
+                                    <span class="platform-name">${a.site || a.name || 'Unknown'}</span>
+                                    <span class="expand-icon">+</span>
+                                </div>
+                                <div class="social-detail" id="social-detail-em-${idx}" style="display: none;">
+                                    <div class="detail-content">
+                                        <p><strong>Platform:</strong> ${a.site || a.name || 'Unknown'}</p>
+                                        <p><strong>Status:</strong> Found</p>
+                                        ${a.url ? `<p><strong>URL:</strong> <a href="${a.url}" target="_blank" class="platform-link">${a.url}</a></p>` : ''}
+                                        <div class="detail-actions">
+                                            ${a.url ? `<a href="${a.url}" target="_blank" class="btn-visit">Visit Profile</a>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : '<p class="search-tip">No accounts found on checked platforms.</p>'}
+                    
+                    ${data.search_links && data.search_links.length > 0 ? `
+                    <div class="info-section">
+                        <h4>External Search Tools</h4>
+                        <div class="platform-list">
+                            ${data.search_links.map(s => `
+                                <div class="platform-item">
+                                    <span class="platform-name">${s.name}</span>
+                                    <a href="${s.url}" target="_blank" class="platform-link">Search</a>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderHoleheResults(data) {
+            const foundAccounts = (data.found || []).filter(c => c.exists === true);
+            
+            return `
+                <div class="result-card">
+                    <h3>Holehe Email: ${data.email}</h3>
+                    <div class="stats-row">
+                        <div class="stat">
+                            <span class="stat-value">${foundAccounts.length}</span>
+                            <span class="stat-label">Found</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.total_checked || 0}</span>
+                            <span class="stat-label">Checked</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.rate_limited_count || 0}</span>
+                            <span class="stat-label">Rate Limited</span>
+                        </div>
+                    </div>
+                    
+                    ${foundAccounts.length > 0 ? `
+                    <div class="info-section">
+                        <div class="results-header-row">
+                            <h4>Found Accounts (${foundAccounts.length})</h4>
+                            <div class="expand-controls">
+                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
+                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
+                            </div>
+                        </div>
+                        <div class="platform-list social-results">
+                            ${foundAccounts.map((a, idx) => `
+                                <div class="platform-item found social-result-item" data-index="hh-${idx}" onclick="toggleSocialDetail('hh-${idx}')">
+                                    <span class="platform-name">${a.site || a.name || 'Unknown'}</span>
+                                    <span class="expand-icon">+</span>
+                                </div>
+                                <div class="social-detail" id="social-detail-hh-${idx}" style="display: none;">
+                                    <div class="detail-content">
+                                        <p><strong>Platform:</strong> ${a.site || a.name || 'Unknown'}</p>
+                                        <p><strong>Domain:</strong> ${a.domain || 'N/A'}</p>
+                                        ${a.emailrecovery ? `<p><strong>Recovery Email:</strong> ${a.emailrecovery}</p>` : ''}
+                                        ${a.phoneNumber ? `<p><strong>Phone:</strong> ${a.phoneNumber}</p>` : ''}
+                                        <div class="detail-actions">
+                                            <a href="https://${a.domain || ''}" target="_blank" class="btn-visit">Visit Site</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : '<p class="search-tip">No accounts found on the checked platforms.</p>'}
+                    
+                    <div class="info-section">
+                        <p class="search-tip">Holehe checks if an email is registered by examining password reset flows.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderIPResults(data) {
+            return `
+                <div class="result-card">
+                    <h3>IP Lookup: ${data.ip}</h3>
+                    <div class="stats-row">
+                        <div class="stat">
+                            <span class="stat-value">${data.geolocation?.country || 'N/A'}</span>
+                            <span class="stat-label">Country</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.geolocation?.region || 'N/A'}</span>
+                            <span class="stat-label">Region</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.ports?.length || 0}</span>
+                            <span class="stat-label">Open Ports</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.reputation_score}/100</span>
+                            <span class="stat-label">Reputation</span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="results-header-row">
+                            <h4>Details</h4>
+                            <div class="expand-controls">
+                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
+                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
+                            </div>
+                        </div>
+                        <div class="platform-list social-results">
+                            <div class="platform-item found social-result-item" data-index="ip-0" onclick="toggleSocialDetail('ip-0')">
+                                <span class="platform-name">Geolocation</span>
+                                <span class="expand-icon">+</span>
+                            </div>
+                            <div class="social-detail" id="social-detail-ip-0" style="display: none;">
+                                <div class="detail-content">
+                                    <p><strong>Country:</strong> ${data.geolocation?.country || 'N/A'}</p>
+                                    <p><strong>Region:</strong> ${data.geolocation?.region || 'N/A'}</p>
+                                    <p><strong>City:</strong> ${data.geolocation?.city || 'N/A'}</p>
+                                    <p><strong>ISP:</strong> ${data.geolocation?.isp || 'N/A'}</p>
+                                    <p><strong>Organization:</strong> ${data.geolocation?.org || 'N/A'}</p>
+                                    <p><strong>AS Number:</strong> ${data.geolocation?.as || 'N/A'}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="platform-item found social-result-item" data-index="ip-1" onclick="toggleSocialDetail('ip-1')">
+                                <span class="platform-name">Network Info</span>
+                                <span class="expand-icon">+</span>
+                            </div>
+                            <div class="social-detail" id="social-detail-ip-1" style="display: none;">
+                                <div class="detail-content">
+                                    <p><strong>IP Address:</strong> ${data.ip}</p>
+                                    <p><strong>Reverse DNS:</strong> ${data.reverse_dns || 'N/A'}</p>
+                                    <p><strong>Reputation Score:</strong> ${data.reputation_score}/100</p>
+                                </div>
+                            </div>
+                            
+                            <div class="platform-item found social-result-item" data-index="ip-2" onclick="toggleSocialDetail('ip-2')">
+                                <span class="platform-name">Open Ports (${data.ports?.length || 0})</span>
+                                <span class="expand-icon">+</span>
+                            </div>
+                            <div class="social-detail" id="social-detail-ip-2" style="display: none;">
+                                <div class="detail-content">
+                                    <p><strong>Detected Ports:</strong></p>
+                                    <div class="ports-list">
+                                        ${data.ports?.length > 0 ? data.ports.map(p => `<span class="port-badge">${p}</span>`).join(' ') : '<span>No common ports detected</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDomainResults(data) {
+            return `
+                <div class="result-card">
+                    <h3>Domain Lookup: ${data.domain}</h3>
+                    <div class="stats-row">
+                        <div class="stat">
+                            <span class="stat-value">${data.ip_addresses?.length || 0}</span>
+                            <span class="stat-label">IP Addresses</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.subdomains?.length || 0}</span>
+                            <span class="stat-label">Subdomains</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.valid ? 'Yes' : 'No'}</span>
+                            <span class="stat-label">Valid</span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <div class="results-header-row">
+                            <h4>Details</h4>
+                            <div class="expand-controls">
+                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
+                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
+                            </div>
+                        </div>
+                        <div class="platform-list social-results">
+                            <div class="platform-item found social-result-item" data-index="dn-0" onclick="toggleSocialDetail('dn-0')">
+                                <span class="platform-name">IP Addresses</span>
+                                <span class="expand-icon">+</span>
+                            </div>
+                            <div class="social-detail" id="social-detail-dn-0" style="display: none;">
+                                <div class="detail-content">
+                                    <p><strong>Resolved IPs:</strong></p>
+                                    ${data.ip_addresses?.length > 0 ? data.ip_addresses.map(ip => `<p>${ip}</p>`).join('') : '<p>N/A</p>'}
+                                </div>
+                            </div>
+                            
+                            <div class="platform-item found social-result-item" data-index="dn-1" onclick="toggleSocialDetail('dn-1')">
+                                <span class="platform-name">DNS Records</span>
+                                <span class="expand-icon">+</span>
+                            </div>
+                            <div class="social-detail" id="social-detail-dn-1" style="display: none;">
+                                <div class="detail-content">
+                                    <p><strong>DNS Records:</strong></p>
+                                    <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 0.75rem;">${JSON.stringify(data.dns_records || {}, null, 2)}</pre>
+                                </div>
+                            </div>
+                            
+                            <div class="platform-item found social-result-item" data-index="dn-2" onclick="toggleSocialDetail('dn-2')">
+                                <span class="platform-name">Subdomains (${data.subdomains?.length || 0})</span>
+                                <span class="expand-icon">+</span>
+                            </div>
+                            <div class="social-detail" id="social-detail-dn-2" style="display: none;">
+                                <div class="detail-content">
+                                    <p><strong>Found Subdomains:</strong></p>
+                                    <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 0.75rem;">${data.subdomains?.length > 0 ? data.subdomains.join('\n') : 'No common subdomains found'}</pre>
+                                </div>
+                            </div>
+                            
+                            ${data.ssl_info ? `
+                            <div class="platform-item found social-result-item" data-index="dn-3" onclick="toggleSocialDetail('dn-3')">
+                                <span class="platform-name">SSL Certificate</span>
+                                <span class="expand-icon">+</span>
+                            </div>
+                            <div class="social-detail" id="social-detail-dn-3" style="display: none;">
+                                <div class="detail-content">
+                                    <p><strong>SSL Certificate Info:</strong></p>
+                                    <p>Issuer: ${data.ssl_info.issuer?.commonName || 'N/A'}</p>
+                                    <p>Valid From: ${data.ssl_info.not_before || 'N/A'}</p>
+                                    <p>Valid Until: ${data.ssl_info.not_after || 'N/A'}</p>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderUsernameResults(data) {
+            if (data.error) {
+                return `
+                    <div class="result-card error">
+                        <h3>Error</h3>
+                        <p>${data.error}</p>
+                    </div>
+                `;
+            }
+            
+            const foundPlatforms = (data.findings || []).filter(f => f.exists === true);
+            const methodLabel = data.method === 'maigret' ? 'Maigret' : 'Username';
+            
+            return `
+                <div class="result-card">
+                    <h3>${methodLabel} Search: ${data.username}</h3>
+                    <div class="stats-row">
+                        <div class="stat">
+                            <span class="stat-value">${foundPlatforms.length}</span>
+                            <span class="stat-label">Found</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.platforms_checked || 0}</span>
+                            <span class="stat-label">Checked</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.total_sites_available || data.platforms_checked || 0}</span>
+                            <span class="stat-label">Total Sites</span>
+                        </div>
+                    </div>
+                    ${foundPlatforms.length > 0 ? `
+                    <div class="info-section">
+                        <div class="results-header-row">
+                            <h4>Found Accounts (${foundPlatforms.length})</h4>
+                            <div class="expand-controls">
+                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
+                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
+                            </div>
+                        </div>
+                        <div class="platform-list social-results">
+                            ${foundPlatforms.map((p, idx) => `
+                                <div class="platform-item found social-result-item" data-index="un-${idx}" onclick="toggleSocialDetail('un-${idx}')">
+                                    <span class="platform-name">${p.platform || p.site || 'Unknown'}</span>
+                                    <span class="expand-icon">+</span>
+                                </div>
+                                <div class="social-detail" id="social-detail-un-${idx}" style="display: none;">
+                                    <div class="detail-content">
+                                        <p><strong>Platform:</strong> ${p.platform || p.site || 'Unknown'}</p>
+                                        <p><strong>Status:</strong> ${p.status || 'found'}</p>
+                                        ${p.url ? `<p><strong>URL:</strong> <a href="${p.url}" target="_blank" class="platform-link">${p.url}</a></p>` : ''}
+                                        ${p.http_status ? `<p><strong>HTTP Status:</strong> ${p.http_status}</p>` : ''}
+                                        <div class="detail-actions">
+                                            ${p.url ? `<a href="${p.url}" target="_blank" class="btn-visit">Visit Profile</a>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : '<p class="search-tip">No accounts found on checked platforms.</p>'}
+                </div>
+            `;
+        }
+
+        function renderPersonResults(data) {
+            if (data.error) {
+                return `
+                    <div class="result-card error">
+                        <h3>Error</h3>
+                        <p>${data.error}</p>
+                    </div>
+                `;
+            }
+            
+            const searchLinks = data.search_links || [];
+            
+            return `
+                <div class="result-card">
+                    <h3>People Search: ${data.name}</h3>
+                    <div class="stats-row">
+                        <div class="stat">
+                            <span class="stat-value">${searchLinks.length}</span>
+                            <span class="stat-label">Search Links</span>
+                        </div>
+                    </div>
+                    
+                    ${searchLinks.length > 0 ? `
+                    <div class="info-section">
+                        <div class="results-header-row">
+                            <h4>Search Platforms (${searchLinks.length})</h4>
+                            <div class="expand-controls">
+                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
+                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
+                            </div>
+                        </div>
+                        <div class="platform-list social-results">
+                            ${searchLinks.map((link, idx) => `
+                                <div class="platform-item found social-result-item" data-index="ps-${idx}" onclick="toggleSocialDetail('ps-${idx}')">
+                                    <span class="platform-name">${link.engine}</span>
+                                    <span class="expand-icon">+</span>
+                                </div>
+                                <div class="social-detail" id="social-detail-ps-${idx}" style="display: none;">
+                                    <div class="detail-content">
+                                        <p><strong>Search Engine:</strong> ${link.engine}</p>
+                                        <p><strong>Query:</strong> ${link.query}</p>
+                                        <div class="detail-actions">
+                                            <a href="${link.url}" target="_blank" class="btn-visit">Search Now</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : '<p class="search-tip">No search links available.</p>'}
+                </div>
+            `;
+        }
+
+        function renderSocialResults(data) {
+            const found = data.found || [];
+            
+            return `
+                <div class="result-card">
+                    <h3>Social Media Search: ${data.query}</h3>
+                    <div class="stats-row">
+                        <div class="stat">
+                            <span class="stat-value">${found.length}</span>
+                            <span class="stat-label">Found</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${data.total_checked || 0}</span>
+                            <span class="stat-label">Checked</span>
+                        </div>
+                    </div>
+                    ${found.length > 0 ? `
+                    <div class="info-section">
+                        <div class="results-header-row">
+                            <h4>Found Accounts (${found.length})</h4>
+                            <div class="expand-controls">
+                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
+                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
+                            </div>
+                        </div>
+                        <div class="platform-list social-results">
+                            ${found.map((p, idx) => `
+                                <div class="platform-item found social-result-item" data-index="sm-${idx}" onclick="toggleSocialDetail('sm-${idx}')">
+                                    <span class="platform-name">${p.platform}</span>
+                                    <span class="expand-icon">+</span>
+                                </div>
+                                <div class="social-detail" id="social-detail-sm-${idx}" style="display: none;">
+                                    <div class="detail-content">
+                                        <p><strong>Platform:</strong> ${p.platform}</p>
+                                        <p><strong>Status:</strong> ${p.status || 'found'}</p>
+                                        <p><strong>URL:</strong> <a href="${p.url}" target="_blank" class="platform-link">${p.url}</a></p>
+                                        ${p.http_status ? `<p><strong>HTTP Status:</strong> ${p.http_status}</p>` : ''}
+                                        <div class="detail-actions">
+                                            <a href="${p.url}" target="_blank" class="btn-visit">Visit Profile</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : '<p class="search-tip">No accounts found.</p>'}
+                </div>
+            `;
+        }
+
+        function toggleSocialDetail(idx) {
+            const detail = document.getElementById(`social-detail-${idx}`);
+            if (!detail) return;
+            const item = document.querySelector(`.social-result-item[data-index="${idx}"]`);
+            if (!item) return;
+            const icon = item.querySelector('.expand-icon');
+            
+            if (detail.style.display === 'none') {
+                detail.style.display = 'block';
+                icon.textContent = '-';
+                item.classList.add('expanded');
+            } else {
+                detail.style.display = 'none';
+                icon.textContent = '+';
+                item.classList.remove('expanded');
+            }
+        }
+
+        function expandAllSocial() {
+            const resultCard = document.querySelector('.result-card:not(.hidden)');
+            if (!resultCard) return;
+            const details = resultCard.querySelectorAll('.social-detail');
+            const items = resultCard.querySelectorAll('.social-result-item');
+            details.forEach((detail, idx) => {
+                detail.style.display = 'block';
+                if (items[idx]) {
+                    items[idx].classList.add('expanded');
+                    const icon = items[idx].querySelector('.expand-icon');
+                    if (icon) icon.textContent = '-';
+                }
+            });
+        }
+
+        function collapseAllSocial() {
+            const resultCard = document.querySelector('.result-card:not(.hidden)');
+            if (!resultCard) return;
+            const details = resultCard.querySelectorAll('.social-detail');
+            const items = resultCard.querySelectorAll('.social-result-item');
+            details.forEach((detail, idx) => {
+                detail.style.display = 'none';
+                if (items[idx]) {
+                    items[idx].classList.remove('expanded');
+                    const icon = items[idx].querySelector('.expand-icon');
+                    if (icon) icon.textContent = '+';
+                }
+            });
+        }
+
+        function displayError(message) {
+            resultsSection.classList.remove('hidden');
+            resultsContent.innerHTML = `
+                <div class="result-card error">
+                    <h3>Error</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function closeResults() {
+            resultsSection.classList.add('hidden');
+        }
+
+        function toggleHistory() {
+            const panel = document.getElementById('historyPanel');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                loadHistory();
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+
+        function loadHistory() {
+            fetch('/api/history')
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('recentHistory');
+                    const badge = document.getElementById('historyBadge');
+                    
+                    const unreadCount = data.filter(h => h.status === 'unread').length;
+                    if (unreadCount > 0) {
+                        badge.textContent = unreadCount;
+                        badge.style.display = 'inline';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                    
+                    container.innerHTML = data.map(h => `
+                        <div class="history-item ${h.status}">
+                            <div class="history-item-main">
+                                <span class="history-tool">${h.tool}</span>
+                                <span class="history-query">${escapeHtml(h.query)}</span>
+                                <span class="history-results">${h.results_summary}</span>
+                            </div>
+                            <div class="history-item-meta">
+                                <span class="history-time">${formatTime(h.timestamp)}</span>
+                                <button class="btn-archive" onclick="archiveEntry('${h.id}')">Archive</button>
+                            </div>
+                        </div>
+                    `).join('') || '<p class="no-history">No recent searches</p>';
+                });
+            
+            searchArchive();
+        }
+
+        function searchArchive() {
+            const query = document.getElementById('archiveSearch').value;
+            const tool = document.getElementById('toolFilter').value;
+            
+            fetch(`/api/archive?q=${encodeURIComponent(query)}&tool=${encodeURIComponent(tool)}`)
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('archiveContent');
+                    container.innerHTML = data.map(a => `
+                        <div class="history-item archived">
+                            <div class="history-item-main">
+                                <span class="history-tool">${a.tool}</span>
+                                <span class="history-query">${escapeHtml(a.query)}</span>
+                                <span class="history-results">${a.results_summary}</span>
+                            </div>
+                            <div class="history-item-meta">
+                                <span class="history-time">${formatTime(a.timestamp)}</span>
+                                ${a.archived_at ? `<span class="history-archived">Archived: ${formatTime(a.archived_at)}</span>` : ''}
+                            </div>
+                        </div>
+                    `).join('') || '<p class="no-history">Archive is empty</p>';
+                });
+        }
+
+        function archiveEntry(id) {
+            fetch(`/api/history/archive/${id}`, { method: 'POST' })
+                .then(() => loadHistory());
+        }
+
+        function markAllRead() {
+            fetch('/api/history/mark-all-read', { method: 'POST' })
+                .then(() => loadHistory());
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+            return date.toLocaleDateString();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadHistory();
+        setInterval(loadHistory, 30000);
+    </script>
+</body>
+</html>
