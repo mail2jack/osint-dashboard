@@ -1,5 +1,25 @@
 [
   {
+    "id": "20260324163428_8148",
+    "timestamp": "2026-03-24T16:34:28.473762",
+    "tool": "social",
+    "query": "testuser",
+    "results_count": 31,
+    "results_summary": "31 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324163333_3153",
+    "timestamp": "2026-03-24T16:33:33.811677",
+    "tool": "phone",
+    "query": "+31612345678",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: KPN",
+    "status": "unread",
+    "archived": false
+  },
+  {
     "id": "20260324162808_4223",
     "timestamp": "2026-03-24T16:28:08.844331",
     "tool": "social",

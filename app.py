@@ -2626,7 +2626,7 @@ def name_search():
                 search_url = f"https://www.linkedin.com/search/results/people/?keywords={quote(first_name)}%20{quote(last_name)}"
                 response = await client.get(search_url, timeout=10, follow_redirects=True)
                 if response.status_code == 200:
-                    if 'login' in response.url.lower() or 'uas/login' in response.url.lower():
+                    if 'login' in str(response.url).lower() or 'uas/login' in str(response.url).lower():
                         return {'site': 'LinkedIn', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
                     text = response.text.lower()
                     if first_name.lower() in text or last_name.lower() in text:
@@ -2668,7 +2668,7 @@ def name_search():
                 search_url = f"https://www.instagram.com/web/search/topsearch/?search_term={quote(first_name)}%20{quote(last_name)}"
                 response = await client.get(search_url, timeout=10)
                 if response.status_code == 200:
-                    if 'login' in response.url.lower() or 'accounts/login' in response.text.lower():
+                    if 'login' in str(response.url).lower() or 'accounts/login' in response.text.lower():
                         return {'site': 'Instagram', 'exists': None, 'url': 'https://instagram.com/', 'status': 'login_required', 'note': 'Requires authentication'}
                     data = response.json()
                     users = data.get('users', [])
@@ -2707,9 +2707,12 @@ def name_search():
                 search_url = f"https://www.tiktok.com/api/search/general/full/?keyword={quote(first_name)}%20{quote(last_name)}"
                 response = await client.get(search_url, timeout=10)
                 if response.status_code == 200:
-                    data = response.json()
-                    if data.get('data'):
-                        return {'site': 'TikTok', 'exists': True, 'url': 'https://www.tiktok.com/', 'status': 'found', 'note': 'Found results'}
+                    try:
+                        data = response.json()
+                        if data.get('data'):
+                            return {'site': 'TikTok', 'exists': True, 'url': 'https://www.tiktok.com/', 'status': 'found', 'note': 'Found results'}
+                    except:
+                        pass
                 return {'site': 'TikTok', 'exists': False, 'url': 'https://www.tiktok.com/', 'status': 'not_found'}
             except Exception as e:
                 logger.debug(f"TikTok search error: {e}")
@@ -2771,7 +2774,7 @@ def name_search():
                     text = response.text.lower()
                     if first_name.lower() in text or last_name.lower() in text:
                         return {'site': 'Pinterest', 'exists': True, 'url': search_url, 'status': 'found'}
-                    if 'login' in response.url.lower():
+                    if 'login' in str(response.url).lower():
                         return {'site': 'Pinterest', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
                 return {'site': 'Pinterest', 'exists': False, 'url': search_url, 'status': 'not_found'}
             except Exception as e:
@@ -2786,7 +2789,7 @@ def name_search():
                     text = response.text.lower()
                     if first_name.lower() in text or last_name.lower() in text:
                         return {'site': 'Twitch', 'exists': True, 'url': search_url, 'status': 'found'}
-                    if 'login' in response.url.lower():
+                    if 'login' in str(response.url).lower():
                         return {'site': 'Twitch', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
                 return {'site': 'Twitch', 'exists': False, 'url': search_url, 'status': 'not_found'}
             except Exception as e:
@@ -2810,7 +2813,7 @@ def name_search():
             try:
                 search_url = f"https://discord.com/channels/@me"
                 response = await client.get(search_url, timeout=10)
-                if 'login' in response.url.lower() or response.status_code == 401:
+                if 'login' in str(response.url).lower() or response.status_code == 401:
                     return {'site': 'Discord', 'exists': None, 'url': 'https://discord.com/', 'status': 'login_required', 'note': 'Requires authentication to search'}
                 return {'site': 'Discord', 'exists': False, 'url': 'https://discord.com/', 'status': 'not_found'}
             except Exception as e:
@@ -2838,7 +2841,7 @@ def name_search():
                     text = response.text.lower()
                     if first_name.lower() in text or last_name.lower() in text:
                         return {'site': 'Threads', 'exists': True, 'url': search_url, 'status': 'found'}
-                    if 'login' in response.url.lower():
+                    if 'login' in str(response.url).lower():
                         return {'site': 'Threads', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
                 return {'site': 'Threads', 'exists': False, 'url': search_url, 'status': 'not_found'}
             except Exception as e:
@@ -2849,7 +2852,7 @@ def name_search():
             try:
                 search_url = "https://hinge.co"
                 response = await client.get(search_url, timeout=10)
-                if 'login' in response.url.lower():
+                if 'login' in str(response.url).lower():
                     return {'site': 'Hinge', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
                 return {'site': 'Hinge', 'exists': False, 'url': search_url, 'status': 'not_found'}
             except Exception as e:
@@ -2860,7 +2863,7 @@ def name_search():
             try:
                 search_url = "https://bumble.com"
                 response = await client.get(search_url, timeout=10)
-                if 'login' in response.url.lower() or 'auth' in response.url.lower():
+                if 'login' in str(response.url).lower() or 'auth' in str(response.url).lower():
                     return {'site': 'Bumble', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
                 return {'site': 'Bumble', 'exists': False, 'url': search_url, 'status': 'not_found'}
             except Exception as e:
@@ -2871,7 +2874,7 @@ def name_search():
             try:
                 search_url = "https://grindr.com"
                 response = await client.get(search_url, timeout=10)
-                if 'login' in response.url.lower():
+                if 'login' in str(response.url).lower():
                     return {'site': 'Grindr', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
                 return {'site': 'Grindr', 'exists': False, 'url': search_url, 'status': 'not_found'}
             except Exception as e:
