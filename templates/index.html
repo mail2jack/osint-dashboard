@@ -165,6 +165,26 @@
                 </button>
             </div>
             
+            <div class="site-selector" id="maigretSelector" style="display: none;">
+                <label for="maigretCategory">Platforms:</label>
+                <select id="maigretCategory" onchange="updateMaigretSelection()">
+                    <option value="top">Top 300 (default)</option>
+                    <option value="gaming">Gaming (92)</option>
+                    <option value="coding">Coding (41)</option>
+                    <option value="ru">Russian (791)</option>
+                    <option value="us">US (511)</option>
+                    <option value="forum">Forums (735)</option>
+                    <option value="photo">Photo (48)</option>
+                    <option value="music">Music (23)</option>
+                    <option value="tech">Tech (30)</option>
+                    <option value="news">News (29)</option>
+                    <option value="crypto">Crypto (18)</option>
+                    <option value="dating">Dating (10)</option>
+                    <option value="all">All (3143)</option>
+                </select>
+                <div class="site-count" id="maigretCount">300 sites</div>
+            </div>
+            
             <div class="site-info-modal" id="siteInfoModal" onclick="closeSiteInfoOnClickOutside(event)">
                 <div class="site-info-content" onclick="event.stopPropagation()">
                     <div class="site-info-header">
@@ -576,8 +596,12 @@
                 searchInput.value = '';
                 
                 const siteSelector = document.getElementById('siteSelector');
+                const maigretSelector = document.getElementById('maigretSelector');
                 if (siteSelector) {
                     siteSelector.style.display = currentTool === 'social' ? 'flex' : 'none';
+                }
+                if (maigretSelector) {
+                    maigretSelector.style.display = currentTool === 'maigret' ? 'flex' : 'none';
                 }
             });
         });
@@ -588,6 +612,15 @@
             const siteCount = document.getElementById('siteCount');
             if (siteCount) {
                 siteCount.textContent = `${counts[category] || 55} sites`;
+            }
+        }
+        
+        function updateMaigretSelection() {
+            const category = document.getElementById('maigretCategory')?.value || 'top';
+            const counts = { top: 300, gaming: 92, coding: 41, ru: 791, us: 511, forum: 735, photo: 48, music: 23, tech: 30, news: 29, crypto: 18, dating: 10, all: 3143 };
+            const maigretCount = document.getElementById('maigretCount');
+            if (maigretCount) {
+                maigretCount.textContent = `${counts[category] || 300} sites`;
             }
         }
 
@@ -1296,6 +1329,16 @@
             let body;
             if (tool === 'social') {
                 body = { [fieldNames[tool]]: query, type: extra || 'username', category: category };
+            } else if (tool === 'maigret') {
+                const maigretCategory = document.getElementById('maigretCategory')?.value || 'top';
+                const maigretLimits = { top: 300, gaming: 92, coding: 41, ru: 791, us: 511, forum: 735, photo: 48, music: 23, tech: 30, news: 29, crypto: 18, dating: 10, all: 3143 };
+                if (maigretCategory === 'top') {
+                    body = { [fieldNames[tool]]: query, limit: 300 };
+                } else if (maigretCategory === 'all') {
+                    body = { [fieldNames[tool]]: query, limit: 3143 };
+                } else {
+                    body = { [fieldNames[tool]]: query, tags: [maigretCategory], limit: maigretLimits[maigretCategory] || 300 };
+                }
             } else {
                 body = { [fieldNames[tool]]: query };
             }

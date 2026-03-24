@@ -2477,14 +2477,18 @@ def username_search_maigret():
             if selected_sites:
                 # Use only explicitly selected sites
                 limited_sites = {name: db.sites_dict[name] for name in selected_sites if name in db.sites_dict}
-            elif selected_tags:
-                # Filter by tags
-                filtered = {}
-                for name, site in db.sites_dict.items():
-                    site_tags = getattr(site, 'tags', []) or []
-                    if any(tag in site_tags for tag in selected_tags):
-                        filtered[name] = site
-                limited_sites = dict(list(filtered.items())[:max_sites])
+            elif selected_tags is not None:
+                if len(selected_tags) == 0:
+                    # Empty tags list means ALL sites
+                    limited_sites = dict(list(db.sites_dict.items())[:max_sites])
+                else:
+                    # Filter by tags
+                    filtered = {}
+                    for name, site in db.sites_dict.items():
+                        site_tags = getattr(site, 'tags', []) or []
+                        if any(tag in site_tags for tag in selected_tags):
+                            filtered[name] = site
+                    limited_sites = dict(list(filtered.items())[:max_sites])
             else:
                 # Default: use top sites
                 limited_sites = dict(list(db.sites_dict.items())[:max_sites])
