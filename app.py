@@ -2425,7 +2425,7 @@ def username_search_maigret():
                 def success(self, result):
                     pass
             
-            maigret_max_sites = 50
+            maigret_max_sites = 300
             limited_sites = dict(list(db.sites_dict.items())[:maigret_max_sites])
             
             notifier = ProgressNotifier(progress_callback, len(limited_sites))
