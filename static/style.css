@@ -178,6 +178,41 @@ header {
     text-transform: uppercase;
 }
 
+/* Header Actions */
+.header-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-system {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: inherit;
+    font-size: 0.75rem;
+}
+
+.btn-system:hover {
+    border-color: var(--cyber-green);
+    color: var(--cyber-green);
+    background: var(--cyber-green-subtle);
+}
+
+.btn-system.btn-danger:hover {
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    SEARCH SECTION
    ═══════════════════════════════════════════════════════════════════ */
