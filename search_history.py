@@ -101,6 +101,21 @@ class SearchHistory:
             entry['status'] = 'read'
         self._write_json(self.history_file, history)
     
+    def archive_all(self):
+        history = self._read_json(self.history_file)
+        archive = self._read_json(self.archive_file)
+        
+        for entry in history:
+            if not entry.get('archived'):
+                entry['archived'] = True
+                entry['archived_at'] = datetime.now().isoformat()
+                entry['status'] = 'archived'
+                archive.insert(0, entry)
+        
+        self._write_json(self.history_file, [])
+        self._write_json(self.archive_file, archive)
+        return len(archive)
+    
     def get_stats(self):
         history = self._read_json(self.history_file)
         archive = self._read_json(self.archive_file)

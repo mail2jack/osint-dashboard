@@ -118,6 +118,10 @@
             <div class="history-content" id="historyContent">
                 <div class="history-section">
                     <h4>Recent Searches</h4>
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <button class="btn-mark-read" onclick="markAllRead()">Mark All Read</button>
+                        <button class="btn-archive" onclick="archiveAllEntries()">Archive All</button>
+                    </div>
                     <div id="recentHistory"></div>
                 </div>
                 <div class="history-section">
@@ -2805,6 +2809,11 @@
 
         function archiveEntry(id) {
             fetch(`/api/history/archive/${id}`, { method: 'POST' })
+                .then(() => loadHistory());
+        }
+
+        function archiveAllEntries() {
+            fetch('/api/history/archive-all', { method: 'POST' })
                 .then(() => loadHistory());
         }
 

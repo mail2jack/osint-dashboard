@@ -553,6 +553,11 @@ def archive_entry(entry_id):
     search_history.archive_entry(entry_id)
     return jsonify({'success': True})
 
+@app.route('/api/history/archive-all', methods=['POST'])
+def archive_all():
+    count = search_history.archive_all()
+    return jsonify({'success': True, 'archived_count': count})
+
 @app.route('/api/history/mark-read/<entry_id>', methods=['POST'])
 def mark_read(entry_id):
     search_history.mark_read(entry_id)
