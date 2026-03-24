@@ -2944,6 +2944,11 @@ def name_search():
 @app.route('/api/person/dorks', methods=['POST'])
 def person_dorks_search():
     """Search using Google dorks to find person info across web"""
+    import os
+    from datetime import datetime
+    
+    dork_log_file = os.path.join(os.path.dirname(__file__), 'dorks_log.txt')
+    
     data = request.get_json()
     full_name = data.get('name', '').strip()
     if not full_name:
@@ -2955,6 +2960,11 @@ def person_dorks_search():
     
     first_name = parts[0]
     last_name = ' '.join(parts[1:])
+    
+    logger.info(f"Dorks search started for: {full_name}")
+    
+    with open(dork_log_file, 'a') as f:
+        f.write(f"\n=== {datetime.now().isoformat()} - Dorks search: {full_name} ===\n")
     
     dork_queries = [
         # Social media
@@ -2984,6 +2994,7 @@ def person_dorks_search():
         'first_name': first_name,
         'last_name': last_name,
         'total_results': 0,
+        'queries_run': [],
         'categories': {
             'social_media': [],
             'files': [],
@@ -2995,38 +3006,68 @@ def person_dorks_search():
     
     import httpx
     try:
-        client = httpx.Client(timeout=30.0, follow_redirects=True, headers=HEADERS)
+        client = httpx.Client(timeout=30.0, follow_redirects=True, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        })
         
-        google_search_url = "https://www.google.com/search"
+        # Using Bing instead of Google (less likely to block)
+        search_url = "https://www.bing.com/search"
         
         for query in dork_queries[:5]:  # Limit to first 5 to avoid rate limiting
+            results['queries_run'].append(query)
+            
+            with open(dork_log_file, 'a') as f:
+                f.write(f"Query: {query}\n")
+            
             try:
-                params = {'q': query, 'num': 10}
-                response = client.get(google_search_url, params=params)
+                params = {'q': query, 'count': 10, 'setlang': 'en'}
+                response = client.get(search_url, params=params)
+                
+                with open(dork_log_file, 'a') as f:
+                    f.write(f"  Status: {response.status_code}, Content-Length: {len(response.text)}\n")
                 
                 if response.status_code == 200:
+                    # Extract links from Bing results
                     import re
-                    links = re.findall(r'https?://[^\s<>"]+', response.text)
+                    # Look for actual result links
+                    links = re.findall(r'https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s<>"]*', response.text)
+                    with open(dork_log_file, 'a') as f:
+                        f.write(f"  Found {len(links)} raw links\n")
+                    
                     seen = set()
-                    for link in links[:5]:
-                        domain = re.sub(r'https?://(www\.)?', '', link).split('/')[0]
-                        if domain and domain not in seen and 'google' not in domain:
-                            seen.add(domain)
-                            category = 'general'
-                            if any(s in domain for s in ['linkedin', 'facebook', 'twitter', 'instagram', 'tiktok', 'youtube']):
-                                category = 'social_media'
-                            elif any(s in domain for s in ['pdf', 'doc', 'xls']):
-                                category = 'files'
-                            elif any(s in domain for s in ['news', 'medium']):
-                                category = 'news'
-                            
-                            results['categories'][category].append({
-                                'domain': domain,
-                                'url': link[:200]
-                            })
-                            results['total_results'] += 1
-                            
+                    exclude_domains = ['bing.com', 'google.com', 'microsoft.com', 'yahoo.com', 'duckduckgo.com', 'r.bing.com', 'www.bing.com', 'cc.bingj.com']
+                    for link in links[:10]:
+                        try:
+                            domain = re.sub(r'https?://(www\.)?', '', link).split('/')[0]
+                            if domain and domain not in seen and not any(ex in domain for ex in exclude_domains):
+                                seen.add(domain)
+                                category = 'general'
+                                if any(s in domain for s in ['linkedin', 'facebook', 'twitter', 'instagram', 'tiktok', 'youtube']):
+                                    category = 'social_media'
+                                elif any(s in domain for s in ['pdf', 'doc', 'xls', 'xlsx']):
+                                    category = 'files'
+                                elif any(s in domain for s in ['news', 'medium']):
+                                    category = 'news'
+                                
+                                results['categories'][category].append({
+                                    'domain': domain,
+                                    'url': link[:200]
+                                })
+                                results['total_results'] += 1
+                                
+                                with open(dork_log_file, 'a') as f:
+                                    f.write(f"  Added: {domain} ({category})\n")
+                        except Exception as le:
+                            pass
+                else:
+                    with open(dork_log_file, 'a') as f:
+                        f.write(f"  Non-200 status: {response.status_code}\n")
+                        
             except Exception as e:
+                with open(dork_log_file, 'a') as f:
+                    f.write(f"  ERROR: {str(e)}\n")
                 logger.debug(f"Dork query error: {e}")
                 continue
         
@@ -3034,7 +3075,12 @@ def person_dorks_search():
         
     except Exception as e:
         logger.error(f"Dorks search error: {e}")
+        with open(dork_log_file, 'a') as f:
+            f.write(f"CRITICAL ERROR: {str(e)}\n")
         return jsonify({'error': str(e)}), 500
+    
+    with open(dork_log_file, 'a') as f:
+        f.write(f"=== COMPLETE: {results['total_results']} results ===\n")
     
     return jsonify(results)
 

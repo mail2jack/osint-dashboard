@@ -1,0 +1,108 @@
+
+=== 2026-03-24T16:52:06.188181 - Dorks search: Elon Musk ===
+Query: "Elon Musk" site:linkedin.com
+  Status: 429, Content-Length: 3324
+  Non-200 status: 429
+Query: "Elon Musk" site:facebook.com
+  Status: 429, Content-Length: 3324
+  Non-200 status: 429
+Query: "Elon Musk" site:twitter.com OR site:x.com
+  Status: 429, Content-Length: 3369
+  Non-200 status: 429
+Query: "Elon Musk" site:instagram.com
+  Status: 429, Content-Length: 3327
+  Non-200 status: 429
+Query: "Elon Musk" site:tiktok.com
+  Status: 429, Content-Length: 3318
+  Non-200 status: 429
+=== COMPLETE: 0 results ===
+
+=== 2026-03-24T16:53:11.881565 - Dorks search: Elon Musk ===
+Query: "Elon Musk" site:linkedin.com
+  Status: 429, Content-Length: 3324
+  Non-200 status: 429
+Query: "Elon Musk" site:facebook.com
+  Status: 429, Content-Length: 3324
+  Non-200 status: 429
+Query: "Elon Musk" site:twitter.com OR site:x.com
+  Status: 429, Content-Length: 3369
+  Non-200 status: 429
+Query: "Elon Musk" site:instagram.com
+  Status: 429, Content-Length: 3327
+  Non-200 status: 429
+Query: "Elon Musk" site:tiktok.com
+  Status: 429, Content-Length: 3318
+  Non-200 status: 429
+=== COMPLETE: 0 results ===
+
+=== 2026-03-24T16:53:40.505718 - Dorks search: Test Name ===
+Query: "Test Name" site:linkedin.com
+  Status: 200, Content-Length: 69572
+  WARNING: Bing blocking detected!
+=== COMPLETE: 0 results ===
+
+=== 2026-03-24T16:54:33.183106 - Dorks search: Test Name ===
+Query: "Test Name" site:linkedin.com
+  Status: 200, Content-Length: 69864
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+  Added: bing.com (general)
+  Added: r.bing.com (general)
+Query: "Test Name" site:facebook.com
+  Status: 200, Content-Length: 69296
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+  Added: bing.com (general)
+  Added: r.bing.com (general)
+Query: "Test Name" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 69416
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+  Added: bing.com (general)
+  Added: r.bing.com (general)
+Query: "Test Name" site:instagram.com
+  Status: 200, Content-Length: 69303
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+  Added: bing.com (general)
+  Added: r.bing.com (general)
+Query: "Test Name" site:tiktok.com
+  Status: 200, Content-Length: 69280
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+  Added: bing.com (general)
+  Added: r.bing.com (general)
+=== COMPLETE: 20 results ===
+
+=== 2026-03-24T16:56:23.971351 - Dorks search: Elon Musk ===
+Query: "Elon Musk" site:linkedin.com
+  Status: 200, Content-Length: 69749
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+Query: "Elon Musk" site:facebook.com
+  Status: 200, Content-Length: 69058
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+Query: "Elon Musk" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 69178
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+Query: "Elon Musk" site:instagram.com
+  Status: 200, Content-Length: 69065
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+Query: "Elon Musk" site:tiktok.com
+  Status: 200, Content-Length: 69042
+  Found 69 raw links
+  Added: w3.org (general)
+  Added: schemas.live.com (general)
+=== COMPLETE: 10 results ===

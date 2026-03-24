@@ -6592,3 +6592,185 @@
 2026-03-24 16:46:08,388 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:46:08] "[33mPOST /api/person/dorks HTTP/1.1[0m" 404 -
 2026-03-24 16:46:11,781 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:46:11] "GET /api/history HTTP/1.1" 200 -
 2026-03-24 16:46:11,790 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:46:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:47:11,811 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:47:11,815 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:47:13,426 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:13] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-24 16:47:21,891 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:47:21,892 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:47:21,902 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:21] "GET / HTTP/1.1" 200 -
+2026-03-24 16:47:21,987 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:21] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-24 16:47:21,998 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:21] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 16:47:35,422 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22ivan+versteegh%22+site%3Alinkedin.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:35,780 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22ivan+versteegh%22+site%3Afacebook.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:36,045 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22ivan+versteegh%22+site%3Atwitter.com+OR+site%3Ax.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:36,412 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22ivan+versteegh%22+site%3Ainstagram.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:36,683 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22ivan+versteegh%22+site%3Atiktok.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:36,786 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:36] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:47:48,024 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:48] "[31m[1mPOST /api/person/dorks HTTP/1.1[0m" 400 -
+2026-03-24 16:47:53,834 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22versteegh+ivan%22+site%3Alinkedin.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:54,281 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22versteegh+ivan%22+site%3Afacebook.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:54,590 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22versteegh+ivan%22+site%3Atwitter.com+OR+site%3Ax.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:54,914 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22versteegh+ivan%22+site%3Ainstagram.com&num=10 "HTTP/1.1 200 OK"
+2026-03-24 16:47:55,497 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22versteegh+ivan%22+site%3Atiktok.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:47:55,730 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522versteegh%2Bivan%2522%2Bsite%253Atiktok.com%26num%3D10&q=EgSSRsYzGKvkis4GIjBWnGSABchq7DAl6IKjnE4k6z_1x093WA8exQaywxeaGDJR1Za3VXS6yUVJiURxdSUyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:47:55,831 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:47:55] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:48:07,525 - httpx - INFO - HTTP Request: GET https://map.snapchat.com/search?query=ivan%20versteegh "HTTP/1.1 308 Permanent Redirect"
+2026-03-24 16:48:07,566 - httpx - INFO - HTTP Request: GET https://twitter.com/search?q=ivan%20versteegh&src=sp "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:48:07,656 - httpx - INFO - HTTP Request: GET https://discord.com/channels/@me "HTTP/1.1 200 OK"
+2026-03-24 16:48:07,670 - httpx - INFO - HTTP Request: GET https://www.twitch.tv/search?term=ivan%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:07,679 - httpx - INFO - HTTP Request: GET https://www.youtube.com/results?search_query=ivan%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:07,681 - httpx - INFO - HTTP Request: GET https://api.github.com/search/users?q=ivan+versteegh+in:name "HTTP/1.1 200 OK"
+2026-03-24 16:48:07,721 - httpx - INFO - HTTP Request: GET https://www.pinterest.com/search/users/?q=ivan%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:07,729 - httpx - INFO - HTTP Request: GET https://medium.com/search?q=ivan%20versteegh "HTTP/1.1 403 Forbidden"
+2026-03-24 16:48:07,812 - httpx - INFO - HTTP Request: GET https://www.facebook.com/search/people/?q=ivan%20versteegh "HTTP/1.1 404 Not Found"
+2026-03-24 16:48:07,816 - httpx - INFO - HTTP Request: GET https://www.reddit.com/search/?q=ivan%20versteegh "HTTP/1.1 403 Blocked"
+2026-03-24 16:48:07,845 - httpx - INFO - HTTP Request: GET https://www.threads.net/search?q=ivan%20versteegh "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:48:07,883 - httpx - INFO - HTTP Request: GET https://bumble.com "HTTP/1.1 200 OK"
+2026-03-24 16:48:07,889 - httpx - INFO - HTTP Request: GET https://www.snapchat.com/ "HTTP/1.1 200 OK"
+2026-03-24 16:48:07,959 - httpx - INFO - HTTP Request: GET https://hinge.co "HTTP/1.1 200 OK"
+2026-03-24 16:48:08,051 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/v1/contacts "HTTP/1.1 404 Not Found"
+2026-03-24 16:48:08,083 - httpx - INFO - HTTP Request: GET https://www.tiktok.com/api/search/general/full/?keyword=ivan%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:08,154 - httpx - INFO - HTTP Request: GET https://x.com/search?q=ivan%20versteegh&src=sp "HTTP/1.1 200 OK"
+2026-03-24 16:48:08,160 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/search/results/people/?keywords=ivan%20versteegh "HTTP/1.1 307 Temporary Redirect"
+2026-03-24 16:48:08,402 - httpx - INFO - HTTP Request: GET https://www.threads.com/search?q=ivan+versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:08,430 - httpx - INFO - HTTP Request: GET https://www.last.fm/search?q=ivan%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:08,437 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/uas/login?session_redirect=%2Fsearch%2Fresults%2Fpeople%2F%3Fkeywords%3Divan%2520versteegh&skipRedirect=true "HTTP/1.1 200 OK"
+2026-03-24 16:48:08,822 - httpx - INFO - HTTP Request: GET https://grindr.com "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:48:09,533 - httpx - INFO - HTTP Request: GET https://www.grindr.com/ "HTTP/1.1 200 OK"
+2026-03-24 16:48:09,596 - httpx - INFO - HTTP Request: GET https://www.instagram.com/web/search/topsearch/?search_term=ivan%20versteegh "HTTP/1.1 302 Found"
+2026-03-24 16:48:09,819 - httpx - INFO - HTTP Request: GET https://www.instagram.com/accounts/login/?next=/web/search/topsearch/%3Fsearch_term%3Divan%2520versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:10,234 - __main__ - INFO - Name search for 'ivan versteegh': 4 platforms with results
+2026-03-24 16:48:10,235 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:48:10] "POST /api/name-search HTTP/1.1" 200 -
+2026-03-24 16:48:13,829 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:48:13] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:48:13,837 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:48:13] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:48:17,557 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:48:17] "[31m[1mPOST /api/name-search HTTP/1.1[0m" 400 -
+2026-03-24 16:48:29,347 - httpx - INFO - HTTP Request: GET https://www.twitch.tv/search?term=roy%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,391 - httpx - INFO - HTTP Request: GET https://map.snapchat.com/search?query=roy%20versteegh "HTTP/1.1 308 Permanent Redirect"
+2026-03-24 16:48:29,397 - httpx - INFO - HTTP Request: GET https://medium.com/search?q=roy%20versteegh "HTTP/1.1 403 Forbidden"
+2026-03-24 16:48:29,405 - httpx - INFO - HTTP Request: GET https://discord.com/channels/@me "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,430 - httpx - INFO - HTTP Request: GET https://twitter.com/search?q=roy%20versteegh&src=sp "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:48:29,437 - httpx - INFO - HTTP Request: GET https://hinge.co "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,439 - httpx - INFO - HTTP Request: GET https://grindr.com "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:48:29,448 - httpx - INFO - HTTP Request: GET https://www.youtube.com/results?search_query=roy%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,486 - httpx - INFO - HTTP Request: GET https://api.github.com/search/users?q=roy+versteegh+in:name "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,535 - httpx - INFO - HTTP Request: GET https://www.threads.net/search?q=roy%20versteegh "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:48:29,546 - httpx - INFO - HTTP Request: GET https://www.reddit.com/search/?q=roy%20versteegh "HTTP/1.1 302 Found"
+2026-03-24 16:48:29,564 - httpx - INFO - HTTP Request: GET https://www.pinterest.com/search/users/?q=roy%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,603 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/search/results/people/?keywords=roy%20versteegh "HTTP/1.1 307 Temporary Redirect"
+2026-03-24 16:48:29,608 - httpx - INFO - HTTP Request: GET https://bumble.com "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,670 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/v1/contacts "HTTP/1.1 404 Not Found"
+2026-03-24 16:48:29,749 - httpx - INFO - HTTP Request: GET https://www.snapchat.com/ "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,806 - httpx - INFO - HTTP Request: GET https://www.tiktok.com/api/search/general/full/?keyword=roy%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,896 - httpx - INFO - HTTP Request: GET https://www.facebook.com/search/people/?q=roy%20versteegh "HTTP/1.1 404 Not Found"
+2026-03-24 16:48:29,937 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/uas/login?session_redirect=%2Fsearch%2Fresults%2Fpeople%2F%3Fkeywords%3Droy%2520versteegh&skipRedirect=true "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,943 - httpx - INFO - HTTP Request: GET https://x.com/search?q=roy%20versteegh&src=sp "HTTP/1.1 200 OK"
+2026-03-24 16:48:29,951 - httpx - INFO - HTTP Request: GET https://www.grindr.com/ "HTTP/1.1 200 OK"
+2026-03-24 16:48:30,036 - httpx - INFO - HTTP Request: GET https://www.threads.com/search?q=roy+versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:30,132 - httpx - INFO - HTTP Request: GET https://www.reddit.com/search/?q=roy%20versteegh&rdt=49438 "HTTP/1.1 403 Blocked"
+2026-03-24 16:48:30,698 - httpx - INFO - HTTP Request: GET https://www.last.fm/search?q=roy%20versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:31,156 - httpx - INFO - HTTP Request: GET https://www.instagram.com/web/search/topsearch/?search_term=roy%20versteegh "HTTP/1.1 302 Found"
+2026-03-24 16:48:31,346 - httpx - INFO - HTTP Request: GET https://www.instagram.com/accounts/login/?next=/web/search/topsearch/%3Fsearch_term%3Droy%2520versteegh "HTTP/1.1 200 OK"
+2026-03-24 16:48:31,694 - __main__ - INFO - Name search for 'roy versteegh': 4 platforms with results
+2026-03-24 16:48:31,695 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:48:31] "POST /api/name-search HTTP/1.1" 200 -
+2026-03-24 16:48:44,569 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22roy+versteegh%22+site%3Alinkedin.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:48:44,798 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522roy%2Bversteegh%2522%2Bsite%253Alinkedin.com%26num%3D10&q=EgSSRsYzGNzkis4GIjCY05Irdyjf-mmVvyyOiL9Hp7FoCJNoNeB30jfZ2M5s2mbA5uVGPfODdfrCuqLVjLAyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:48:45,463 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22roy+versteegh%22+site%3Afacebook.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:48:45,644 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522roy%2Bversteegh%2522%2Bsite%253Afacebook.com%26num%3D10&q=EgSSRsYzGN3kis4GIjBbI1N3B6eBSqVhI_QjwrMXEXbQLUdXRqOipp_fdxfXNwW-M0X4PC0dwt8jbkSbu-MyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:48:46,180 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22roy+versteegh%22+site%3Atwitter.com+OR+site%3Ax.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:48:46,331 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522roy%2Bversteegh%2522%2Bsite%253Atwitter.com%2BOR%2Bsite%253Ax.com%26num%3D10&q=EgSSRsYzGN7kis4GIjCHT78Wezktc8ZzhdkKruIxj3Kbux3KMBASNc2IWEtsI55-AJ2i3C9K0zZypvdnZ7AyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:48:47,001 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22roy+versteegh%22+site%3Ainstagram.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:48:47,152 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522roy%2Bversteegh%2522%2Bsite%253Ainstagram.com%26num%3D10&q=EgSSRsYzGN7kis4GIjAIz9lY6QBxT3fFpDaiqcS0ZAE4BmsKAZ_H3RSSKNMOzFK36jiptjroLI90e-kNNp4yAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:48:47,717 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22roy+versteegh%22+site%3Atiktok.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:48:47,873 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522roy%2Bversteegh%2522%2Bsite%253Atiktok.com%26num%3D10&q=EgSSRsYzGN_kis4GIjBXMbMe4aCcKFW5gs1ZP2vFdH4omRUadueoevxkfFg8Jg1XNqrehxweSuymgN1JIFUyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:48:47,906 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:48:47] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:49:11,768 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:49:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:49:11,774 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:49:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:50:21,785 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:50:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:50:21,792 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:50:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:51:21,860 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:51:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:51:21,865 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:51:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:51:34,323 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22John+Doe%22+site%3Alinkedin.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:51:34,551 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522John%2BDoe%2522%2Bsite%253Alinkedin.com%26num%3D10&q=EgSSRsYzGIbmis4GIjAX0Y5ymi0gWM_EyPzr7iabfvIs7WMVMIzCjf6w5WAMQ9Y2wGinGr4Q99ny-0AgZqYyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:51:35,240 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22John+Doe%22+site%3Afacebook.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:51:35,472 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522John%2BDoe%2522%2Bsite%253Afacebook.com%26num%3D10&q=EgSSRsYzGIfmis4GIjDO60JsFMp0gjlBwZ2Mn_tu1OuCC1x1YxKwrSOrfXkWWrvWGE_5RJsN0KL8tgNYu_cyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:51:36,059 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22John+Doe%22+site%3Atwitter.com+OR+site%3Ax.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:51:36,289 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522John%2BDoe%2522%2Bsite%253Atwitter.com%2BOR%2Bsite%253Ax.com%26num%3D10&q=EgSSRsYzGIjmis4GIjDlfsQ2w1jiTxTg10WqCOABQqQsh7JHNlp1iP5C743bVlxl-5wGQggc96yRHtjXheIyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:51:36,981 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22John+Doe%22+site%3Ainstagram.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:51:37,174 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522John%2BDoe%2522%2Bsite%253Ainstagram.com%26num%3D10&q=EgSSRsYzGIjmis4GIjBItuEEw5u2td4xjRA5cgiFEtp3aRlf1qr0LJ9jFDMZi6gGJhBnkve0z8NM6LaitQIyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:51:37,800 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22John+Doe%22+site%3Atiktok.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:51:37,962 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522John%2BDoe%2522%2Bsite%253Atiktok.com%26num%3D10&q=EgSSRsYzGInmis4GIjDZkIDusPW0MSSMI7ziE-rAre2kxjWY9_Aq6UHGaW4jMLycWIBQKRt13pgHvxn2I34yAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:51:38,010 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:51:38] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:52:00,353 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:52:00,353 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:52:06,187 - __main__ - INFO - Dorks search started for: Elon Musk
+2026-03-24 16:52:07,290 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Alinkedin.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:52:07,520 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Alinkedin.com%26num%3D10&q=EgSSRsYzGKfmis4GIjDkQFpkox52UIeIXDYCdyKJTTlYTz5-93AOYQK72OSi0JkKdKa2n_sf9ZnjQZq9UfEyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:52:08,006 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Afacebook.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:52:08,239 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Afacebook.com%26num%3D10&q=EgSSRsYzGKjmis4GIjCTI0yMeS4rNBfpNvHk7NGi5oz4fwMJofX7VhzFkANC-Xr0W3NmozP4He-uFeU_CGQyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:52:08,825 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Atwitter.com+OR+site%3Ax.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:52:09,057 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Atwitter.com%2BOR%2Bsite%253Ax.com%26num%3D10&q=EgSSRsYzGKjmis4GIjA6RK9stNOGSvy8UUgpDeAVYiQnHpkBWMVmIkRKwl2T7QTAeSwSiXHMxSknm5LmIssyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:52:09,751 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Ainstagram.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:52:10,005 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Ainstagram.com%26num%3D10&q=EgSSRsYzGKnmis4GIjB4Caf1GHIoqPKpdu5wEwJg5PYF_tVUSc6Oz_KiP_70KvsdzIwg0VFqoouBy078gdUyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:52:10,463 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Atiktok.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:52:10,621 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Atiktok.com%26num%3D10&q=EgSSRsYzGKrmis4GIjD6J6fRspf8C1WSMuh9t2pq3YkVGT5OGI6367jRYEJ6-UM4dGkzH48aaZX59GwKSgUyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:52:10,677 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:52:10] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:52:21,773 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:52:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:52:21,780 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:52:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:53:11,880 - __main__ - INFO - Dorks search started for: Elon Musk
+2026-03-24 16:53:12,720 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Alinkedin.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:53:12,952 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Alinkedin.com%26num%3D10&q=EgSSRsYzGOjmis4GIjAWdC3WcOIXkroSihce-NFQ8qNagGQ34SZKRT2Yqx5GMonRl6oK-Spp3Zjd0g6eNFwyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:53:13,641 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Afacebook.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:53:13,871 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Afacebook.com%26num%3D10&q=EgSSRsYzGOnmis4GIjDH0_m_jWYDUkyeNU921iCPHv8nYLd2BHbMnAe2qKplKXHdUqYrFzAc4hdniN6rxVYyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:53:14,562 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Atwitter.com+OR+site%3Ax.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:53:14,791 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Atwitter.com%2BOR%2Bsite%253Ax.com%26num%3D10&q=EgSSRsYzGOrmis4GIjCqtgdL7wtcLBVYpIhkKRNXklL62B2b-1On-o0Dx_0LdeKyhBFQqgsCAjkcPnU6b_AyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:53:15,381 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Ainstagram.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:53:15,610 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Ainstagram.com%26num%3D10&q=EgSSRsYzGOvmis4GIjC0nmR315djjnmWxF2uVLAaHybwrYglfYcsGZXG7ECkTJg3kGAZurM56lMCHJ18hXYyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:53:16,303 - httpx - INFO - HTTP Request: GET https://www.google.com/search?q=%22Elon+Musk%22+site%3Atiktok.com&num=10 "HTTP/1.1 302 Found"
+2026-03-24 16:53:16,532 - httpx - INFO - HTTP Request: GET https://www.google.com/sorry/index?continue=https://www.google.com/search%3Fq%3D%2522Elon%2BMusk%2522%2Bsite%253Atiktok.com%26num%3D10&q=EgSSRsYzGOzmis4GIjCgYfQVPs4HQ85sjWO2FawWOkDnon8WMxV8OnQngq6esfiLfORpnVzJQjJkBxayc2EyAnJSWgFD "HTTP/1.1 429 Too Many Requests"
+2026-03-24 16:53:16,634 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:53:16] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:53:21,870 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:53:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:53:21,877 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:53:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:53:34,849 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:53:34,850 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:53:40,505 - __main__ - INFO - Dorks search started for: Test Name
+2026-03-24 16:53:41,705 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Test+Name%22+site%3Alinkedin.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:53:41,874 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:53:41] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:54:19,234 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:54:19] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:54:19,241 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:54:19] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:54:29,730 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:54:29,730 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:54:33,182 - __main__ - INFO - Dorks search started for: Test Name
+2026-03-24 16:54:34,647 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Test+Name%22+site%3Alinkedin.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:54:35,108 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Test+Name%22+site%3Afacebook.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:54:35,413 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Test+Name%22+site%3Atwitter.com+OR+site%3Ax.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:54:35,753 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Test+Name%22+site%3Ainstagram.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:54:36,156 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Test+Name%22+site%3Atiktok.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:54:36,279 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:54:36] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:55:11,819 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:55:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:55:11,827 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:55:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:56:20,663 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:56:20,664 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:56:23,969 - __main__ - INFO - Dorks search started for: Elon Musk
+2026-03-24 16:56:25,293 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Elon+Musk%22+site%3Alinkedin.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:56:25,731 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Elon+Musk%22+site%3Afacebook.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:56:26,072 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Elon+Musk%22+site%3Atwitter.com+OR+site%3Ax.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:56:26,415 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Elon+Musk%22+site%3Ainstagram.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:56:26,767 - httpx - INFO - HTTP Request: GET https://www.bing.com/search?q=%22Elon+Musk%22+site%3Atiktok.com&count=10&setlang=en "HTTP/1.1 200 OK"
+2026-03-24 16:56:26,885 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:56:26] "POST /api/person/dorks HTTP/1.1" 200 -
+2026-03-24 16:56:31,867 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:56:31] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:56:31,873 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:56:31] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
