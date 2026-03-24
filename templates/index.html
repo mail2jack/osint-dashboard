@@ -86,6 +86,9 @@
                 <p>Searching...</p>
                 <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
                 <p class="progress-text" id="progressText">Preparing...</p>
+                <div class="search-controls">
+                    <button class="btn-icon danger" onclick="stopSearch()">■ Stop</button>
+                </div>
             </div>
         </div>
     </div>
@@ -460,9 +463,18 @@
         }
 
         function closeResults() {
-            if (eventSource) eventSource.close();
+            stopSearch();
             resultsDiv.classList.add('hidden');
+        }
+
+        function stopSearch() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
             loadingDiv.classList.add('hidden');
+            searchBtn.disabled = false;
+            searchBtn.textContent = 'Search';
         }
 
         // Modals

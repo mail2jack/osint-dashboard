@@ -208,6 +208,13 @@ header {
     font-size: 0.85rem;
 }
 
+.search-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+}
+
 /* Results */
 .results {
     background: var(--bg2);

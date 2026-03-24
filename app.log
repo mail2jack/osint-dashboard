@@ -5030,3 +5030,60 @@
 2026-03-24 15:31:12,020 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:31:12] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
 2026-03-24 15:32:17,016 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:32:17] "GET /api/history HTTP/1.1" 200 -
 2026-03-24 15:32:17,023 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:32:17] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:33:13,292 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:33:13] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:33:13,300 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:33:13] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:33:50,739 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:33:50] "GET / HTTP/1.1" 200 -
+2026-03-24 15:33:50,798 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:33:50] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-24 15:33:50,814 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:33:50] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 15:33:58,209 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:33:58] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-24 15:34:06,706 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 15:34:06,707 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 15:34:06,717 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:34:06] "GET / HTTP/1.1" 200 -
+2026-03-24 15:34:06,787 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:34:06] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-24 15:34:06,800 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:34:06] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 15:34:22,016 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:34:22] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:34:22,026 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:34:22] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:35:12,019 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:35:12] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:35:12,036 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:35:12] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:36:05,409 - __main__ - WARNING - 404 Not Found: /api/stream
+2026-03-24 15:36:05,410 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:36:05] "[33mGET /api/stream?email=muziekantje@chello.nl HTTP/1.1[0m" 404 -
+2026-03-24 15:36:22,002 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:36:22] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:36:22,006 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:36:22] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:37:21,998 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:37:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:37:22,002 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:37:22] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:38:21,700 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/send?phone=31655344311 "HTTP/1.1 200 OK"
+2026-03-24 15:38:21,990 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:38:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:38:21,995 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:38:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:38:22,736 - httpx - INFO - HTTP Request: GET https://t.me/+31655344311 "HTTP/1.1 200 OK"
+2026-03-24 15:38:22,741 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:38:22] "POST /api/phone HTTP/1.1" 200 -
+2026-03-24 15:38:44,274 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/send?phone=31618175143 "HTTP/1.1 200 OK"
+2026-03-24 15:38:45,210 - httpx - INFO - HTTP Request: GET https://t.me/+31618175143 "HTTP/1.1 200 OK"
+2026-03-24 15:38:45,218 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:38:45] "POST /api/phone HTTP/1.1" 200 -
+2026-03-24 15:39:14,988 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:39:14] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:39:14,994 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:39:14] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:40:21,977 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:40:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:40:21,986 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:40:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:41:13,531 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:41:13] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:41:13,538 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:41:13] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:42:21,951 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:42:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:42:21,955 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:42:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:43:18,952 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:43:18] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:43:18,956 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:43:18] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:44:13,333 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:44:13] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:44:13,339 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:44:13] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:45:21,948 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:45:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:45:21,956 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:45:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:46:00,051 - __main__ - WARNING - 404 Not Found: /api/stream
+2026-03-24 15:46:00,053 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:46:00] "[33mGET /api/stream?username=muziekantje&type=username&category=all HTTP/1.1[0m" 404 -
+2026-03-24 15:46:16,089 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:46:16] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:46:16,095 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:46:16] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:47:11,935 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:47:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:47:11,944 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:47:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:48:22,308 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:48:22] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:48:22,315 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:48:22] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:48:55,695 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:48:55] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:49:21,923 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:49:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:49:21,925 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:49:21] "GET /api/history HTTP/1.1" 200 -
