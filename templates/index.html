@@ -195,6 +195,8 @@
             
             closeResults();
             loadingDiv.classList.remove('hidden');
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Searching...';
             
             // Route to appropriate search
             if (currentTool === 'social') {
@@ -230,23 +232,33 @@
         }
 
         async function searchPhone(query) {
-            const res = await fetch('/api/phone', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: query })
-            });
-            const data = await res.json();
-            showPhoneResults(data);
+            try {
+                const res = await fetch('/api/phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: query })
+                });
+                const data = await res.json();
+                showPhoneResults(data);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+            }
         }
 
         async function searchPerson(query) {
-            const res = await fetch('/api/name-search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: query })
-            });
-            const data = await res.json();
-            showPersonResults(data);
+            try {
+                const res = await fetch('/api/name-search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: query })
+                });
+                const data = await res.json();
+                showPersonResults(data);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+            }
         }
 
         async function searchMaigret(query) {
@@ -262,28 +274,41 @@
         }
 
         async function searchIP(query) {
-            const res = await fetch('/api/ip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ip: query })
-            });
-            const data = await res.json();
-            showIPResults(data);
+            try {
+                const res = await fetch('/api/ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: query })
+                });
+                const data = await res.json();
+                showIPResults(data);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+            }
         }
 
         async function searchDomain(query) {
-            const res = await fetch('/api/domain', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ domain: query })
-            });
-            const data = await res.json();
-            showDomainResults(data);
+            try {
+                const res = await fetch('/api/domain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain: query })
+                });
+                const data = await res.json();
+                showDomainResults(data);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+            }
         }
 
         // Streaming
         async function startStreaming(endpoint, body) {
             if (eventSource) eventSource.close();
+            
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Searching...';
             
             try {
                 const response = await fetch(endpoint, {
@@ -294,10 +319,11 @@
                 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
+                let finished = false;
                 
                 while (true) {
                     const { done, value } = await reader.read();
-                    if (done) break;
+                    if (done || finished) break;
                     
                     const chunk = decoder.decode(value);
                     const lines = chunk.split('\n');
@@ -312,16 +338,25 @@
                                 }
                                 if (data.complete) {
                                     showResults(data.result);
+                                    finished = true;
                                 }
                                 if (data.error) {
                                     showError(data.error);
+                                    finished = true;
                                 }
                             } catch (e) {}
                         }
                     }
                 }
+                
+                if (!finished) {
+                    loadingDiv.classList.add('hidden');
+                }
             } catch (e) {
                 showError(e.message);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
             }
         }
 

@@ -5344,3 +5344,23 @@
 2026-03-24 16:15:18,160 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:15:18] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
 2026-03-24 16:16:11,910 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:16:11] "GET /api/history HTTP/1.1" 200 -
 2026-03-24 16:16:11,918 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:16:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:17:21,894 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:17:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:17:21,901 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:17:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:17:48,006 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:17:48] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-24 16:17:56,542 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:17:56,542 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:17:56,555 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:17:56] "GET / HTTP/1.1" 200 -
+2026-03-24 16:17:56,616 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:17:56] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-24 16:17:56,630 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:17:56] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 16:18:14,598 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:18:14] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:18:21,887 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:18:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:18:21,893 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:18:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:19:21,880 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:19:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:19:21,888 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:19:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:20:22,632 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:20:22] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:20:22,638 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:20:22] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:21:22,239 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:21:22] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:21:22,243 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:21:22] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
