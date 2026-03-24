@@ -2941,6 +2941,104 @@ def name_search():
     return jsonify(results)
 
 
+@app.route('/api/person/dorks', methods=['POST'])
+def person_dorks_search():
+    """Search using Google dorks to find person info across web"""
+    data = request.get_json()
+    full_name = data.get('name', '').strip()
+    if not full_name:
+        return jsonify({'error': 'Name required'}), 400
+    
+    parts = full_name.split()
+    if len(parts) < 2:
+        return jsonify({'error': 'Please enter first and last name'}), 400
+    
+    first_name = parts[0]
+    last_name = ' '.join(parts[1:])
+    
+    dork_queries = [
+        # Social media
+        f'"{full_name}" site:linkedin.com',
+        f'"{full_name}" site:facebook.com',
+        f'"{full_name}" site:twitter.com OR site:x.com',
+        f'"{full_name}" site:instagram.com',
+        f'"{full_name}" site:tiktok.com',
+        f'"{full_name}" site:youtube.com',
+        # Files with name
+        f'"{full_name}" filetype:pdf',
+        f'"{full_name}" filetype:doc OR filetype:docx',
+        f'"{full_name}" filetype:xls OR filetype:xlsx',
+        # Public records
+        f'"{full_name}" "whitepages"',
+        f'"{full_name}" "public records"',
+        # Location based
+        f'"{full_name}" "{parts[-1]}" phone',
+        f'"{full_name}" email',
+        # News
+        f'"{full_name}" site:news.google.com',
+        f'"{full_name}" site:medium.com',
+    ]
+    
+    results = {
+        'name': full_name,
+        'first_name': first_name,
+        'last_name': last_name,
+        'total_results': 0,
+        'categories': {
+            'social_media': [],
+            'files': [],
+            'public_records': [],
+            'news': [],
+            'general': []
+        }
+    }
+    
+    import httpx
+    try:
+        client = httpx.Client(timeout=30.0, follow_redirects=True, headers=HEADERS)
+        
+        google_search_url = "https://www.google.com/search"
+        
+        for query in dork_queries[:5]:  # Limit to first 5 to avoid rate limiting
+            try:
+                params = {'q': query, 'num': 10}
+                response = client.get(google_search_url, params=params)
+                
+                if response.status_code == 200:
+                    import re
+                    links = re.findall(r'https?://[^\s<>"]+', response.text)
+                    seen = set()
+                    for link in links[:5]:
+                        domain = re.sub(r'https?://(www\.)?', '', link).split('/')[0]
+                        if domain and domain not in seen and 'google' not in domain:
+                            seen.add(domain)
+                            category = 'general'
+                            if any(s in domain for s in ['linkedin', 'facebook', 'twitter', 'instagram', 'tiktok', 'youtube']):
+                                category = 'social_media'
+                            elif any(s in domain for s in ['pdf', 'doc', 'xls']):
+                                category = 'files'
+                            elif any(s in domain for s in ['news', 'medium']):
+                                category = 'news'
+                            
+                            results['categories'][category].append({
+                                'domain': domain,
+                                'url': link[:200]
+                            })
+                            results['total_results'] += 1
+                            
+            except Exception as e:
+                logger.debug(f"Dork query error: {e}")
+                continue
+        
+        client.close()
+        
+    except Exception as e:
+        logger.error(f"Dorks search error: {e}")
+        return jsonify({'error': str(e)}), 500
+    
+    return jsonify(results)
+
+
 @app.route('/api/person/stream', methods=['POST'])
 def person_search_stream():
     from flask import Response, stream_with_context

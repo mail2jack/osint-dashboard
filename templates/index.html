@@ -35,6 +35,7 @@
         <div class="toolbar">
             <div class="toolbar-group">
                 <button class="toolbar-btn active" data-tool="person">People</button>
+                <button class="toolbar-btn" data-tool="dorks">Dorks</button>
                 <button class="toolbar-btn" data-tool="social">Social</button>
                 <button class="toolbar-btn" data-tool="email">Email</button>
                 <button class="toolbar-btn" data-tool="phone">Phone</button>
@@ -149,6 +150,7 @@
         const placeholders = {
             social: 'Enter username or email...',
             person: 'Enter full name (e.g., John Smith)',
+            dorks: 'Enter full name to search with Google dorks',
             email: 'Enter email address...',
             phone: 'Enter phone number (+31612345678)',
             whatsapp: 'Enter phone number...',
@@ -207,6 +209,8 @@
                 searchPhone(query);
             } else if (currentTool === 'person') {
                 searchPerson(query);
+            } else if (currentTool === 'dorks') {
+                searchDorks(query);
             } else if (currentTool === 'maigret') {
                 searchMaigret(query);
             } else if (currentTool === 'username') {
@@ -255,6 +259,21 @@
                 });
                 const data = await res.json();
                 showPersonResults(data);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+            }
+        }
+
+        async function searchDorks(query) {
+            try {
+                const res = await fetch('/api/person/dorks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: query })
+                });
+                const data = await res.json();
+                showDorksResults(data);
             } finally {
                 searchBtn.disabled = false;
                 searchBtn.textContent = 'Search';
@@ -435,6 +454,81 @@
                         </div>
                     </div>
                 `).join('') : '<div class="empty">No accounts found</div>'}
+            `;
+        }
+
+        function showDorksResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            if (data.error) {
+                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
+                return;
+            }
+            
+            const cats = data.categories || {};
+            const social = cats.social_media || [];
+            const files = cats.files || [];
+            const news = cats.news || [];
+            const general = cats.general || [];
+            
+            resultsContent.innerHTML = `
+                <div class="stats">
+                    <div class="stat"><div class="stat-value">${data.total_results || 0}</div><div class="stat-label">Links Found</div></div>
+                </div>
+                ${social.length ? `
+                    <div class="card">
+                        <h3>Social Media</h3>
+                        ${social.map(s => `
+                            <div class="result-item found">
+                                <div class="result-info">
+                                    <div class="result-name">${s.domain}</div>
+                                    <a href="${s.url}" target="_blank" class="result-url">${s.url}</a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                ${files.length ? `
+                    <div class="card">
+                        <h3>Files (PDF, DOC, etc)</h3>
+                        ${files.map(f => `
+                            <div class="result-item found">
+                                <div class="result-info">
+                                    <div class="result-name">${f.domain}</div>
+                                    <a href="${f.url}" target="_blank" class="result-url">${f.url}</a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                ${news.length ? `
+                    <div class="card">
+                        <h3>News</h3>
+                        ${news.map(n => `
+                            <div class="result-item found">
+                                <div class="result-info">
+                                    <div class="result-name">${n.domain}</div>
+                                    <a href="${n.url}" target="_blank" class="result-url">${n.url}</a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                ${general.length ? `
+                    <div class="card">
+                        <h3>Other Results</h3>
+                        ${general.map(g => `
+                            <div class="result-item found">
+                                <div class="result-info">
+                                    <div class="result-name">${g.domain}</div>
+                                    <a href="${g.url}" target="_blank" class="result-url">${g.url}</a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                ${!data.total_results ? '<div class="empty">No results found</div>' : ''}
             `;
         }
 
