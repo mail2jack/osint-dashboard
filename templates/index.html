@@ -24,6 +24,9 @@
                 <button class="btn-icon" onclick="toggleHealthModal()" title="Health">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                 </button>
+                <button class="btn-icon" onclick="restartApp()" title="Restart">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </button>
                 <button class="btn-icon" onclick="openChangelog()" title="Changelog">v<span id="versionBadge">2.0</span></button>
             </div>
         </header>
@@ -477,6 +480,13 @@
         function openChangelog() {
             const modal = document.getElementById('changelogModal');
             modal.classList.toggle('active');
+        }
+
+        function restartApp() {
+            if (confirm('Restart the application?')) {
+                fetch('/api/system/restart', { method: 'POST' })
+                    .then(() => setTimeout(() => window.location.reload(), 2000));
+            }
         }
 
         function loadHistory() {
