@@ -2445,47 +2445,6 @@ def username_search_maigret():
             logger = logging.getLogger('maigret')
             logger.setLevel(logging.ERROR)
             
-            # Set progress total to the actual number of sites being searched
-            progress_state['total'] = len(limited_sites)
-            
-            class ProgressNotifier:
-                def __init__(self, cb, total):
-                    self.callback = cb
-                    self.checked = 0
-                    self.total = total
-                    self.found = 0
-                    
-                def start(self, message, id_type):
-                    pass
-                    
-                def update(self, result, is_similar=False):
-                    self.checked += 1
-                    status = getattr(result, 'status', None)
-                    if status and hasattr(status, 'is_found'):
-                        if status.is_found():
-                            self.found += 1
-                    
-                    if self.callback:
-                        self.callback({
-                            'checked': self.checked,
-                            'total': self.total,
-                            'found': self.found,
-                            'percent': int((self.checked / self.total) * 100) if self.total > 0 else 0,
-                            'current_site': getattr(result, 'site_name', '') or ''
-                        })
-                
-                def finish(self):
-                    pass
-                
-                def info(self, msg):
-                    pass
-                
-                def warning(self, msg):
-                    pass
-                
-                def success(self, result):
-                    pass
-            
             # Build site dictionary based on selection
             if selected_sites:
                 # Use only explicitly selected sites
@@ -2508,6 +2467,9 @@ def username_search_maigret():
             else:
                 # Default: use top sites
                 limited_sites = dict(list(db.sites_dict.items())[:max_sites])
+            
+            # Set progress total to the actual number of sites being searched
+            progress_state['total'] = len(limited_sites)
             
             notifier = ProgressNotifier(progress_callback, len(limited_sites))
             
