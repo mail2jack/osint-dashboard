@@ -2355,6 +2355,50 @@ def username_search():
     return jsonify(search_username(username))
 
 
+@app.route('/api/maigret/platforms', methods=['GET'])
+def get_maigret_platforms():
+    from collections import Counter
+    
+    db = get_maigret_database()
+    if not db:
+        return jsonify({'error': 'Could not load Maigret database'}), 500
+    
+    tag = request.args.get('tag', '').lower()
+    search = request.args.get('search', '').lower()
+    limit = int(request.args.get('limit', 500))
+    
+    sites = []
+    for site in db.sites:
+        site_data = {
+            'name': site.name,
+            'pretty_name': getattr(site, 'pretty_name', site.name),
+            'url_main': getattr(site, 'url_main', ''),
+            'tags': list(getattr(site, 'tags', []) or []),
+            'country': getattr(site, 'alexa_rank', None)
+        }
+        
+        if tag and tag not in site_data['tags']:
+            continue
+        if search and search not in site.name.lower() and search not in (site_data.get('pretty_name') or '').lower():
+            continue
+        
+        sites.append(site_data)
+    
+    tag_counts = Counter()
+    for site in db.sites:
+        tags = getattr(site, 'tags', []) or []
+        for t in tags:
+            tag_counts[t] += 1
+    
+    popular_tags = [{'tag': t, 'count': c} for t, c in tag_counts.most_common(30)]
+    
+    return jsonify({
+        'total': len(sites),
+        'tags': popular_tags,
+        'sites': sites[:limit]
+    })
+
+
 @app.route('/api/username/maigret', methods=['POST'])
 def username_search_maigret():
     from flask import Response, stream_with_context
@@ -2366,6 +2410,10 @@ def username_search_maigret():
     username = data.get('username', '')
     if not username:
         return jsonify({'error': 'Username required'}), 400
+    
+    selected_sites = data.get('sites', [])  # List of site names to search
+    selected_tags = data.get('tags', [])     # List of tags to filter by
+    max_sites = data.get('limit', 300)
     
     result_queue = queue.Queue()
     progress_state = {'checked': 0, 'found': 0, 'current_site': '', 'total': 0}
@@ -2425,8 +2473,21 @@ def username_search_maigret():
                 def success(self, result):
                     pass
             
-            maigret_max_sites = 300
-            limited_sites = dict(list(db.sites_dict.items())[:maigret_max_sites])
+            # Build site dictionary based on selection
+            if selected_sites:
+                # Use only explicitly selected sites
+                limited_sites = {name: db.sites_dict[name] for name in selected_sites if name in db.sites_dict}
+            elif selected_tags:
+                # Filter by tags
+                filtered = {}
+                for name, site in db.sites_dict.items():
+                    site_tags = getattr(site, 'tags', []) or []
+                    if any(tag in site_tags for tag in selected_tags):
+                        filtered[name] = site
+                limited_sites = dict(list(filtered.items())[:max_sites])
+            else:
+                # Default: use top sites
+                limited_sites = dict(list(db.sites_dict.items())[:max_sites])
             
             notifier = ProgressNotifier(progress_callback, len(limited_sites))
             
