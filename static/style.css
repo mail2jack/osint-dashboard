@@ -214,6 +214,67 @@ header {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   TOOLBAR
+   ═══════════════════════════════════════════════════════════════════ */
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-terminal);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.toolbar-label {
+    color: var(--accent-cyan);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    margin-right: 0.25rem;
+}
+
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+    border-color: var(--cyber-green);
+    color: var(--cyber-green);
+    background: var(--cyber-green-subtle);
+}
+
+.toolbar-btn.active {
+    border-color: var(--cyber-green);
+    color: var(--cyber-green);
+    background: var(--cyber-green-subtle);
+    box-shadow: 0 0 8px var(--cyber-green-glow);
+}
+
+.toolbar-btn svg {
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    SEARCH SECTION
    ═══════════════════════════════════════════════════════════════════ */
 
