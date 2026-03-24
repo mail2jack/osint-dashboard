@@ -2527,11 +2527,21 @@ def username_search_maigret():
             
             for site_name, site_result in results.items():
                 exists = site_result.get('exists', False)
+                if exists is None:
+                    exists = False
+                
+                status = site_result.get('status', 'unknown')
+                if hasattr(status, 'name'):
+                    status = status.name
+                
+                url_user = site_result.get('url_user', '')
+                url_main = site_result.get('url_main', '')
+                
                 finding = {
                     'site': site_name,
-                    'url': site_result.get('url_user') or site_result.get('url_main', ''),
-                    'exists': exists,
-                    'status': site_result.get('status', 'unknown'),
+                    'url': url_user or url_main or '',
+                    'exists': bool(exists),
+                    'status': str(status),
                     'http_status': site_result.get('http_status')
                 }
                 if exists:
