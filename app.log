@@ -5174,3 +5174,153 @@
 2026-03-24 16:02:32,556 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:32] "POST /api/ip HTTP/1.1" 200 -
 2026-03-24 16:02:46,175 - __main__ - WARNING - 404 Not Found: /api/stream
 2026-03-24 16:02:46,181 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:46] "[33mGET /api/stream?email=muziekantje@chello.nl HTTP/1.1[0m" 404 -
+2026-03-24 16:03:12,614 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:03:12] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:03:12,621 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:03:12] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:03:32,370 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:03:32] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-24 16:03:40,775 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:03:40,776 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:03:40,788 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:03:40] "GET / HTTP/1.1" 200 -
+2026-03-24 16:03:40,837 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:03:40] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-24 16:03:40,850 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:03:40] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 16:03:47,947 - __main__ - WARNING - 404 Not Found: /api/username/holehe
+2026-03-24 16:03:47,947 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:03:47] "[33mPOST /api/username/holehe HTTP/1.1[0m" 404 -
+2026-03-24 16:04:16,304 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:04:16] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:04:20,807 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:04:20] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:04:20,813 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:04:20] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:05:06,364 - httpx - INFO - HTTP Request: GET https://www.youtube.com/results?search_query=patricia%20van%20sandwijk "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,424 - httpx - INFO - HTTP Request: GET https://map.snapchat.com/search?query=patricia%20van%20sandwijk "HTTP/1.1 308 Permanent Redirect"
+2026-03-24 16:05:06,437 - httpx - INFO - HTTP Request: GET https://medium.com/search?q=patricia%20van%20sandwijk "HTTP/1.1 403 Forbidden"
+2026-03-24 16:05:06,471 - httpx - INFO - HTTP Request: GET https://api.github.com/search/users?q=patricia+van%20sandwijk+in:name "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,482 - httpx - INFO - HTTP Request: GET https://twitter.com/search?q=patricia%20van%20sandwijk&src=sp "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:05:06,493 - httpx - INFO - HTTP Request: GET https://www.twitch.tv/search?term=patricia%20van%20sandwijk "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,497 - httpx - INFO - HTTP Request: GET https://www.facebook.com/search/people/?q=patricia%20van%20sandwijk "HTTP/1.1 404 Not Found"
+2026-03-24 16:05:06,562 - httpx - INFO - HTTP Request: GET https://hinge.co "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,569 - httpx - INFO - HTTP Request: GET https://www.tiktok.com/api/search/general/full/?keyword=patricia%20van%20sandwijk "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,589 - httpx - INFO - HTTP Request: GET https://www.reddit.com/search/?q=patricia%20van%20sandwijk "HTTP/1.1 403 Blocked"
+2026-03-24 16:05:06,594 - httpx - INFO - HTTP Request: GET https://www.threads.net/search?q=patricia%20van%20sandwijk "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:05:06,603 - httpx - INFO - HTTP Request: GET https://www.instagram.com/web/search/topsearch/?search_term=patricia%20van%20sandwijk "HTTP/1.1 302 Found"
+2026-03-24 16:05:06,654 - httpx - INFO - HTTP Request: GET https://bumble.com "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,658 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/search/results/people/?keywords=patricia%20van%20sandwijk "HTTP/1.1 307 Temporary Redirect"
+2026-03-24 16:05:06,683 - httpx - INFO - HTTP Request: GET https://discord.com/channels/@me "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,688 - httpx - INFO - HTTP Request: GET https://grindr.com "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:05:06,818 - httpx - INFO - HTTP Request: GET https://www.instagram.com/accounts/login/?next=/web/search/topsearch/%3Fsearch_term%3Dpatricia%2520van%2520sandwijk "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,872 - httpx - INFO - HTTP Request: GET https://www.snapchat.com/ "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,944 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/v1/contacts "HTTP/1.1 404 Not Found"
+2026-03-24 16:05:06,961 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/uas/login?session_redirect=%2Fsearch%2Fresults%2Fpeople%2F%3Fkeywords%3Dpatricia%2520van%2520sandwijk&skipRedirect=true "HTTP/1.1 200 OK"
+2026-03-24 16:05:06,990 - httpx - INFO - HTTP Request: GET https://www.pinterest.com/search/users/?q=patricia%20van%20sandwijk "HTTP/1.1 200 OK"
+2026-03-24 16:05:07,039 - httpx - INFO - HTTP Request: GET https://x.com/search?q=patricia%20van%20sandwijk&src=sp "HTTP/1.1 200 OK"
+2026-03-24 16:05:07,139 - httpx - INFO - HTTP Request: GET https://www.last.fm/search?q=patricia%20van%20sandwijk "HTTP/1.1 200 OK"
+2026-03-24 16:05:07,291 - httpx - INFO - HTTP Request: GET https://www.threads.com/search?q=patricia+van+sandwijk "HTTP/1.1 200 OK"
+2026-03-24 16:05:07,464 - httpx - INFO - HTTP Request: GET https://www.grindr.com/ "HTTP/1.1 200 OK"
+2026-03-24 16:05:07,619 - __main__ - INFO - Name search for 'patricia van sandwijk': 4 platforms with results
+2026-03-24 16:05:07,620 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:05:07] "POST /api/name-search HTTP/1.1" 200 -
+2026-03-24 16:05:11,951 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:05:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:05:11,958 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:05:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:05:55,620 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:05:55] "POST /api/email/stream HTTP/1.1" 200 -
+2026-03-24 16:05:56,479 - httpx - INFO - HTTP Request: HEAD https://www.1337x.to/user/muziekantje@chello.nl/ "HTTP/1.1 403 Forbidden"
+2026-03-24 16:05:57,888 - httpx - INFO - HTTP Request: HEAD https://www.1337x.to/user/muziekantje@chello.nl/ "HTTP/1.1 403 Forbidden"
+2026-03-24 16:05:59,045 - httpx - INFO - HTTP Request: HEAD https://2dimensions.com/a/muziekantje@chello.nl "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:05:59,386 - httpx - INFO - HTTP Request: HEAD http://rive.app/a/muziekantje@chello.nl "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:06:00,428 - httpx - INFO - HTTP Request: HEAD https://rive.app/a/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:01,560 - httpx - INFO - HTTP Request: HEAD https://www.7cups.com/@muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:02,528 - httpx - INFO - HTTP Request: HEAD https://apclips.com/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:03,655 - httpx - INFO - HTTP Request: HEAD https://apclips.com/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:04,390 - httpx - INFO - HTTP Request: HEAD https://about.me/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:04,946 - httpx - INFO - HTTP Request: HEAD https://independent.academia.edu/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:05,592 - httpx - INFO - HTTP Request: HEAD https://admireme.vip/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:06,576 - httpx - INFO - HTTP Request: HEAD https://airbit.com/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:09,439 - httpx - INFO - HTTP Request: HEAD https://www.airliners.net/user/muziekantje@chello.nl/profile/photos "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:09,963 - httpx - INFO - HTTP Request: HEAD https://www.allthingsworn.com/profile/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:11,364 - httpx - INFO - HTTP Request: HEAD https://www.allthingsworn.com/profile/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:11,942 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:06:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:06:11,948 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:06:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:06:12,193 - httpx - INFO - HTTP Request: HEAD https://allmylinks.com/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:13,044 - httpx - INFO - HTTP Request: HEAD https://aniworld.to/user/profil/muziekantje@chello.nl "HTTP/1.1 400 Bad Request"
+2026-03-24 16:06:13,669 - httpx - INFO - HTTP Request: HEAD https://anilist.co/user/muziekantje@chello.nl/ "HTTP/1.1 200 OK"
+2026-03-24 16:06:14,737 - httpx - INFO - HTTP Request: HEAD https://developer.apple.com/forums/profile/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:15,723 - httpx - INFO - HTTP Request: HEAD https://discussions.apple.com/profile/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:16,267 - httpx - INFO - HTTP Request: HEAD https://www.aparat.com/muziekantje@chello.nl/ "HTTP/1.0 504 Gateway Timeout"
+2026-03-24 16:06:16,866 - httpx - INFO - HTTP Request: HEAD https://archiveofourown.org/users/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:18,371 - httpx - INFO - HTTP Request: HEAD https://archiveofourown.org/users/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:20,245 - httpx - INFO - HTTP Request: HEAD https://archive.org/details/@muziekantje@chello.nl "HTTP/1.1 200 OK"
+2026-03-24 16:06:21,126 - httpx - INFO - HTTP Request: HEAD https://forum.arduino.cc/u/muziekantje@chello.nl/summary "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:21,738 - httpx - INFO - HTTP Request: HEAD https://www.artstation.com/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:23,159 - httpx - INFO - HTTP Request: HEAD https://www.artstation.com/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:24,592 - httpx - INFO - HTTP Request: HEAD https://asciinema.org/~muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:25,337 - httpx - INFO - HTTP Request: HEAD https://ask.fedoraproject.org/u/muziekantje@chello.nl "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:06:26,171 - httpx - INFO - HTTP Request: HEAD https://discussion.fedoraproject.org/askfedora/u/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:27,460 - httpx - INFO - HTTP Request: HEAD https://atcoder.jp/users/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:28,280 - httpx - INFO - HTTP Request: HEAD https://vjudge.net/user/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:28,924 - httpx - INFO - HTTP Request: HEAD https://audiojungle.net/user/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:29,835 - httpx - INFO - HTTP Request: HEAD https://www.autofrage.net/nutzer/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:31,054 - httpx - INFO - HTTP Request: HEAD https://www.avizo.cz/muziekantje@chello.nl/ "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:06:32,477 - httpx - INFO - HTTP Request: HEAD https://www.avizo.cz "HTTP/1.1 200 OK"
+2026-03-24 16:06:33,399 - httpx - INFO - HTTP Request: HEAD https://skillsprofile.skillbuilder.aws/user/muziekantje@chello.nl/ "HTTP/1.1 308 Permanent Redirect"
+2026-03-24 16:06:33,824 - httpx - INFO - HTTP Request: HEAD https://skillsprofile.skillbuilder.aws/user/muziekantje@chello.nl "HTTP/1.1 200 OK"
+2026-03-24 16:06:35,836 - httpx - INFO - HTTP Request: HEAD https://www.bandcamp.com/muziekantje@chello.nl "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:06:36,538 - httpx - INFO - HTTP Request: HEAD https://bandcamp.com/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:38,023 - httpx - INFO - HTTP Request: HEAD https://www.bazar.cz/muziekantje@chello.nl/ "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:38,801 - httpx - INFO - HTTP Request: HEAD https://www.behance.net/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:39,747 - httpx - INFO - HTTP Request: HEAD https://bezuzyteczna.pl/uzytkownicy/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:40,246 - httpx - INFO - HTTP Request: HEAD https://www.biggerpockets.com/users/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:41,371 - httpx - INFO - HTTP Request: HEAD https://www.biggerpockets.com/users/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:42,058 - httpx - INFO - HTTP Request: HEAD https://forum.dangerousthings.com/u/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:42,971 - httpx - INFO - HTTP Request: HEAD https://bitbucket.org/muziekantje@chello.nl/ "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:43,793 - httpx - INFO - HTTP Request: HEAD https://community.bitwarden.com/u/muziekantje@chello.nl/summary "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:44,784 - httpx - INFO - HTTP Request: HEAD https://www.blipfoto.com/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:45,619 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/send?phone=31655344311 "HTTP/1.1 200 OK"
+2026-03-24 16:06:45,873 - httpx - INFO - HTTP Request: HEAD https://blitztactics.com/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:46,672 - httpx - INFO - HTTP Request: GET https://t.me/+31655344311 "HTTP/1.1 200 OK"
+2026-03-24 16:06:46,678 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:06:46] "POST /api/phone HTTP/1.1" 200 -
+2026-03-24 16:06:47,062 - httpx - INFO - HTTP Request: HEAD https://bsky.app/profile/muziekantje@chello.nl.bsky.social "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:47,661 - httpx - INFO - HTTP Request: HEAD https://pt.bongacams.com/profile/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:49,043 - httpx - INFO - HTTP Request: HEAD https://pt.bongacams.com/profile/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:49,663 - httpx - INFO - HTTP Request: HEAD https://www.bookcrossing.com/mybookshelf/muziekantje@chello.nl/ "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:51,074 - httpx - INFO - HTTP Request: HEAD https://www.bookcrossing.com/mybookshelf/muziekantje@chello.nl/ "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:51,597 - httpx - INFO - HTTP Request: HEAD https://boardgamegeek.com/user/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:53,076 - httpx - INFO - HTTP Request: HEAD https://boardgamegeek.com/user/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:06:53,877 - httpx - INFO - HTTP Request: HEAD https://community.brave.com/u/muziekantje@chello.nl/ "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:06:54,753 - httpx - INFO - HTTP Request: HEAD https://community.brave.app/u/muziekantje@chello.nl/ "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:55,586 - httpx - INFO - HTTP Request: HEAD https://bugcrowd.com/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:56,508 - httpx - INFO - HTTP Request: HEAD https://buymeacoff.ee/muziekantje@chello.nl "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:06:57,179 - httpx - INFO - HTTP Request: HEAD https://buymeacoffee.com/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:57,607 - httpx - INFO - HTTP Request: HEAD https://buzzfeed.com/muziekantje@chello.nl "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:06:58,209 - httpx - INFO - HTTP Request: HEAD https://www.buzzfeed.com/muziekantje@chello.nl "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:59,184 - httpx - INFO - HTTP Request: HEAD https://forum.cfx.re/u/muziekantje@chello.nl/summary "HTTP/1.1 404 Not Found"
+2026-03-24 16:06:59,884 - httpx - INFO - HTTP Request: HEAD https://www.cgtrader.com/muziekantje@chello.nl "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:07:00,177 - httpx - INFO - HTTP Request: HEAD https://www.cgtrader.com/designers/muziekantje@chello "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:07:00,423 - httpx - INFO - HTTP Request: HEAD https://www.cgtrader.com/not_found "HTTP/1.1 404 Not Found"
+2026-03-24 16:07:02,580 - httpx - INFO - HTTP Request: HEAD https://www.cnet.com/profiles/muziekantje@chello.nl/ "HTTP/1.1 404 Not Found"
+2026-03-24 16:07:03,195 - httpx - INFO - HTTP Request: HEAD https://cssbattle.dev/player/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:07:04,320 - httpx - INFO - HTTP Request: HEAD https://cssbattle.dev/player/muziekantje@chello.nl "HTTP/1.1 403 Forbidden"
+2026-03-24 16:07:05,399 - httpx - INFO - HTTP Request: HEAD https://ctan.org/author/muziekantje@chello.nl "HTTP/1.1 404 404"
+2026-03-24 16:07:05,486 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/send?phone=31655344311 "HTTP/1.1 200 OK"
+2026-03-24 16:07:06,277 - httpx - INFO - HTTP Request: HEAD https://caddy.community/u/muziekantje@chello.nl/summary "HTTP/1.1 404 Not Found"
+2026-03-24 16:07:06,512 - httpx - INFO - HTTP Request: GET https://t.me/+31655344311 "HTTP/1.1 200 OK"
+2026-03-24 16:07:06,517 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:07:06] "POST /api/phone HTTP/1.1" 200 -
+2026-03-24 16:07:08,133 - httpx - INFO - HTTP Request: HEAD https://community.cartalk.com/u/muziekantje@chello.nl/summary "HTTP/1.1 404 Not Found"
+2026-03-24 16:07:13,246 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:07:13] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-24 16:07:21,535 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:07:21,535 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:07:21,543 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:07:21] "GET / HTTP/1.1" 200 -
+2026-03-24 16:07:21,590 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:07:21] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-24 16:07:21,603 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:07:21] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 16:07:29,293 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/send?phone=31655344311 "HTTP/1.1 200 OK"
+2026-03-24 16:07:30,223 - httpx - INFO - HTTP Request: GET https://t.me/+31655344311 "HTTP/1.1 200 OK"
+2026-03-24 16:07:30,230 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:07:30] "POST /api/phone HTTP/1.1" 200 -
+2026-03-24 16:07:48,254 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/send?phone=31655344311 "HTTP/1.1 200 OK"
+2026-03-24 16:07:49,262 - httpx - INFO - HTTP Request: GET https://t.me/+31655344311 "HTTP/1.1 200 OK"
+2026-03-24 16:07:49,267 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:07:49] "POST /api/phone HTTP/1.1" 200 -
+2026-03-24 16:08:03,178 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:08:03] "POST /api/hibp HTTP/1.1" 200 -
+2026-03-24 16:08:21,939 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:08:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:08:21,943 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:08:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:09:19,551 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:09:19] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:09:19,557 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:09:19] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:10:11,942 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:10:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:10:11,950 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:10:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -

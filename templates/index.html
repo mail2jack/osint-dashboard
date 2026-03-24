@@ -39,7 +39,6 @@
                 <button class="toolbar-btn" data-tool="email">Email</button>
                 <button class="toolbar-btn" data-tool="phone">Phone</button>
                 <button class="toolbar-btn" data-tool="whatsapp">WhatsApp</button>
-                <button class="toolbar-btn" data-tool="hibp">Breach</button>
             </div>
             <div class="toolbar-group">
                 <button class="toolbar-btn" data-tool="maigret">Maigret</button>
@@ -154,7 +153,7 @@
             email: 'Enter email address...',
             phone: 'Enter phone number (+31612345678)',
             whatsapp: 'Enter phone number...',
-            hibp: 'Enter email to check breaches...',
+
             maigret: 'Enter username (deep search)...',
             username: 'Enter username...',
             holehe: 'Enter email for deep search...',
@@ -199,8 +198,6 @@
                 searchEmail(query);
             } else if (currentTool === 'phone' || currentTool === 'whatsapp') {
                 searchPhone(query);
-            } else if (currentTool === 'hibp') {
-                searchBreach(query);
             } else if (currentTool === 'person') {
                 searchPerson(query);
             } else if (currentTool === 'maigret') {
@@ -234,16 +231,6 @@
             });
             const data = await res.json();
             showPhoneResults(data);
-        }
-
-        async function searchBreach(query) {
-            const res = await fetch('/api/hibp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: query })
-            });
-            const data = await res.json();
-            showBreachResults(data);
         }
 
         async function searchPerson(query) {
@@ -384,34 +371,6 @@
                         </div>
                     </div>
                 ` : ''}
-            `;
-        }
-
-        function showBreachResults(data) {
-            loadingDiv.classList.add('hidden');
-            resultsDiv.classList.remove('hidden');
-            
-            if (data.error) {
-                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
-                return;
-            }
-            
-            const breaches = data.breaches || [];
-            resultsContent.innerHTML = `
-                <div class="card">
-                    <h3>Breach Results for ${data.email}</h3>
-                    <div class="grid-2">
-                        <div class="grid-item"><div class="label">Breaches Found</div><div class="value">${breaches.length}</div></div>
-                    </div>
-                </div>
-                ${breaches.length ? breaches.map(b => `
-                    <div class="result-item found">
-                        <div class="result-info">
-                            <div class="result-name">${b.name}</div>
-                            <div style="font-size:0.8rem;color:var(--text2)">${b.date || ''}</div>
-                        </div>
-                    </div>
-                `).join('') : '<div class="empty">No breaches found</div>'}
             `;
         }
 
