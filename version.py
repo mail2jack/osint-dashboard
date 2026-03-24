@@ -18,9 +18,9 @@ Git integration (optional):
 
 from datetime import datetime
 
-VERSION = (1, 7, 0)
+VERSION = (2, 0, 0)
 VERSION_STRING = ".".join(map(str, VERSION))
-VERSION_NAME = "Name Search Enhancement"
+VERSION_NAME = "Cyber Terminal"
 
 CHANGELOG = {
     (1, 0, 0): "Initial Release - Core OSINT tools (Email, Username, Social Media, People Search)",
@@ -30,7 +30,8 @@ CHANGELOG = {
     (1, 4, 0): "Split email search into separate Sherlock (fast) and Holehe (deep) tools",
     (1, 5, 0): "Cross-validated email search with confidence scores (0-100%)",
     (1, 6, 0): "Result caching (24h TTL), retry logic (2 attempts), rate limit awareness with auto-recovery",
-    (1, 7, 0): "Skeletal loading animations, error logging, keyboard shortcuts (Ctrl+K, Ctrl+/), changelog modal, HIBP breach check, enhanced name-based search across 12 platforms (LinkedIn, Facebook, Twitter/X, Instagram, YouTube, TikTok, GitHub, Snapchat, Reddit, Pinterest, Twitch, Medium)",
+    (1, 7, 0): "Skeletal loading animations, error logging, keyboard shortcuts (Ctrl+K, Ctrl+/), changelog modal, HIBP breach check, enhanced name-based search across 12 platforms",
+    (2, 0, 0): "Major UI overhaul - Cyber/hacker terminal theme with green neon aesthetics, CRT scanline effects, terminal-style loading animations, modernized layout",
 }
 
 def get_version():
