@@ -4,3084 +4,513 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OSINT Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="grid-bg"></div>
-    <div class="dashboard">
+    <div class="container">
         <header>
             <div class="logo">
-                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="M12 16v-4M12 8h.01"></path>
-                    <path d="M9.5 9.5l5 5M14.5 9.5l-5 5"></path>
                 </svg>
-                <h1>OSINT<span>Terminal</span> <span class="version" id="versionBadge">v1.0.0</span></h1>
+                <h1>OSINT <span>Dashboard</span></h1>
             </div>
-            <p class="subtitle">▸ Open Source Intelligence Gathering System</p>
             <div class="header-actions">
-                <button class="btn-system" id="btnTheme" onclick="toggleTheme()" title="Toggle Theme">
-                    <svg id="themeIconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <svg id="themeIconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
+                <button class="btn-icon" onclick="toggleHistory()" title="History">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    History
                 </button>
-                <button class="btn-system" id="btnHealth" onclick="toggleHealthModal()" title="Platform Health">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                    </svg>
+                <button class="btn-icon" onclick="toggleHealthModal()" title="Health">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                 </button>
-                <button class="btn-system" id="btnAI" onclick="toggleAIPanel()" title="AI Features">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"></path>
-                        <path d="M16 11c0 3-2 5-4 7-2-2-4-4-4-7"></path>
-                    </svg>
-                </button>
-                <button class="btn-system" id="btnHistory" onclick="toggleHistory()" title="History">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                </button>
-                <button class="btn-system" id="btnCache" onclick="showCacheStatus()" title="Cache Status">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                    </svg>
-                </button>
-                <button class="btn-system" id="btnRestart" onclick="restartApp()" title="Restart App">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M23 4v6h-6M1 20v-6h6"></path>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                    </svg>
-                </button>
-                <button class="btn-system" id="btnChangelog" onclick="openChangelog()" title="Changelog (Ctrl+/)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                    </svg>
-                </button>
-                <button class="btn-system btn-danger" id="btnExit" onclick="exitApp()" title="Exit App">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16 17 21 12 16 7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                </button>
+                <button class="btn-icon" onclick="openChangelog()" title="Changelog">v<span id="versionBadge">2.0</span></button>
             </div>
         </header>
 
-        <div id="historyPanel" class="history-panel hidden">
-            <div class="history-header">
-                <h3>Search History</h3>
-                <div class="history-controls">
-                    <input type="text" id="archiveSearch" placeholder="Search archive..." onkeyup="searchArchive()">
-                    <select id="toolFilter" onchange="searchArchive()">
-                        <option value="">All Tools</option>
-                        <option value="social">Social Media</option>
-                        <option value="email">Email</option>
-                        <option value="holehe">Holehe</option>
-                        <option value="maigret">Maigret</option>
-                        <option value="username">Username</option>
-                        <option value="person">People</option>
-                    </select>
-                </div>
-                <button class="btn-close" onclick="toggleHistory()">&times;</button>
-            </div>
-            <div class="history-content" id="historyContent">
-                <div class="history-section">
-                    <h4>Recent Searches</h4>
-                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                        <button class="btn-mark-read" onclick="markAllRead()">Mark All Read</button>
-                        <button class="btn-archive" onclick="archiveAllEntries()">Archive All</button>
-                    </div>
-                    <div id="recentHistory"></div>
-                </div>
-                <div class="history-section">
-                    <h4>Archive</h4>
-                    <button class="btn-mark-read" onclick="markAllRead()">Mark All Read</button>
-                    <div id="archiveContent"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="search-section">
-            <div class="search-container">
-                <input type="text" id="searchInput" placeholder="Enter search query...">
-                <button id="searchBtn" class="search-btn">
-                    <span class="btn-text">INIT_SCAN</span>
-                </button>
-            </div>
-            <div class="site-selector" id="siteSelector">
-                <label for="siteCategory">[TARGET]</label>
-                <select id="siteCategory" onchange="updateSiteSelection()">
-                    <option value="all">All Sites (56)</option>
-                    <option value="social">Social Media (17)</option>
-                    <option value="developer">Developer (9)</option>
-                    <option value="gaming">Gaming (4)</option>
-                    <option value="creative">Creative (12)</option>
-                    <option value="messaging">Messaging (4)</option>
-                    <option value="linkinbio">Link-in-Bio (2)</option>
-                    <option value="other">Other (8)</option>
-                </select>
-                <span class="site-count" id="siteCount">56 SITES</span>
-            </div>
-            <div class="site-selector" id="maigretSelector" style="display: none;">
-                <label for="maigretCategory">[PLATFORMS]</label>
-                <select id="maigretCategory" onchange="updateMaigretSelection()">
-                    <option value="top">Top 300 (default)</option>
-                    <option value="social">Social Media (50)</option>
-                    <option value="gaming">Gaming (92)</option>
-                    <option value="coding">Coding (41)</option>
-                    <option value="us">US (511)</option>
-                    <option value="ru">Russian (791)</option>
-                    <option value="forum">Forums (735)</option>
-                    <option value="dating">Dating (10)</option>
-                    <option value="all">All (3143)</option>
-                </select>
-                <span class="site-count" id="maigretCount">300 SITES</span>
-            </div>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="site-selector" id="maigretSelector" style="display: none;">
-                <label for="maigretCategory">Platforms:</label>
-                <select id="maigretCategory" onchange="updateMaigretSelection()">
-                    <option value="top">Top 300 (default)</option>
-                    <option value="social">Social Media (50)</option>
-                    <option value="gaming">Gaming (92)</option>
-                    <option value="coding">Coding (41)</option>
-                    <option value="us">US (511)</option>
-                    <option value="ru">Russian (791)</option>
-                    <option value="forum">Forums (735)</option>
-                    <option value="dating">Dating (10)</option>
-                    <option value="all">All (3143)</option>
-                </select>
-                <div class="site-count" id="maigretCount">300 sites</div>
-            </div>
-            
-            <div class="site-info-modal" id="siteInfoModal" onclick="closeSiteInfoOnClickOutside(event)">
-                <div class="site-info-content" onclick="event.stopPropagation()">
-                    <div class="site-info-header">
-                        <h3>Site Categories</h3>
-                        <button class="btn-close" onclick="closeSiteInfo()">&times;</button>
-                    </div>
-                    <div class="site-info-body" id="siteInfoBody">
-                    </div>
-                </div>
-            </div>
-            
-            <div class="site-info-modal" id="healthModal" onclick="closeHealthModalOnClick(event)">
-                <div class="site-info-content health-content" onclick="event.stopPropagation()">
-                    <div class="site-info-header">
-                        <h3>Platform Health Status</h3>
-                        <button class="btn-close" onclick="closeHealthModal()">&times;</button>
-                    </div>
-                    <div class="health-body" id="healthBody">
-                        <div class="loading">Checking platform health...</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="site-info-modal" id="aiModal" onclick="closeAIModalOnClick(event)">
-                <div class="site-info-content" style="max-width: 600px;" onclick="event.stopPropagation()">
-                    <div class="site-info-header">
-                        <h3>AI Assistant</h3>
-                        <button class="btn-close" onclick="closeAIPanel()">&times;</button>
-                    </div>
-                    <div class="site-info-body" id="aiBody">
-                        <div id="aiStatusMessage" class="loading">Checking AI status...</div>
-                        <div id="aiSearchSection" style="display: none; margin-top: 1rem;">
-                            <h4 style="color: var(--text-secondary); margin-bottom: 0.5rem;">Natural Language Search</h4>
-                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Type a question instead of a query. Example: "Find anyone named John Smith in Amsterdam"</p>
-                            <textarea id="nlSearchInput" placeholder="Ask a question..." style="width: 100%; padding: 0.75rem; border-radius: 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); resize: vertical; min-height: 80px;"></textarea>
-                            <button class="btn-search" onclick="analyzeNaturalLanguage()" style="margin-top: 0.5rem; background: var(--accent-primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Analyze Query</button>
-                            <div id="nlSearchResult" style="margin-top: 1rem;"></div>
-                        </div>
-                        <div id="aiQuickActions" style="display: none; margin-top: 1rem;">
-                            <h4 style="color: var(--text-secondary); margin-bottom: 0.5rem;">Quick Actions</h4>
-                            <button class="btn-expand" onclick="generateResultSummary()" style="margin-right: 0.5rem; margin-bottom: 0.5rem;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                                Summarize Last Results
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="site-info-modal" id="changelogModal" onclick="closeChangelogOnClick(event)">
-                <div class="site-info-content changelog-content" onclick="event.stopPropagation()">
-                    <div class="site-info-header">
-                        <h3>What's New</h3>
-                        <button class="btn-close" onclick="closeChangelog()">&times;</button>
-                    </div>
-                    <div class="changelog-body" id="changelogBody">
-                        <div class="changelog-loading">Loading changelog...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Compact Tool Bar -->
+        <!-- Toolbar -->
         <div class="toolbar">
             <div class="toolbar-group">
-                <span class="toolbar-label">[TOOLS]</span>
-                <button class="toolbar-btn active" data-tool="social" title="Social Media">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-                    </svg>
-                    <span>Social</span>
-                </button>
-                <button class="toolbar-btn" data-tool="person" title="People Search">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                    </svg>
-                    <span>People</span>
-                </button>
-                <button class="toolbar-btn" data-tool="email" title="Email Search">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                        <polyline points="22,6 12,13 2,6"></polyline>
-                    </svg>
-                    <span>Email</span>
-                </button>
-                <button class="toolbar-btn" data-tool="phone" title="Phone OSINT">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"></path>
-                    </svg>
-                    <span>Phone</span>
-                </button>
-                <button class="toolbar-btn" data-tool="whatsapp" title="WhatsApp Check">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                    </svg>
-                    <span>WhatsApp</span>
-                </button>
-                <button class="toolbar-btn" data-tool="hibp" title="Breach Check">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                    </svg>
-                    <span>Breach</span>
-                </button>
+                <button class="toolbar-btn active" data-tool="social">Social</button>
+                <button class="toolbar-btn" data-tool="person">People</button>
+                <button class="toolbar-btn" data-tool="email">Email</button>
+                <button class="toolbar-btn" data-tool="phone">Phone</button>
+                <button class="toolbar-btn" data-tool="whatsapp">WhatsApp</button>
+                <button class="toolbar-btn" data-tool="hibp">Breach</button>
             </div>
             <div class="toolbar-group">
-                <span class="toolbar-label">[USERNAME]</span>
-                <button class="toolbar-btn" data-tool="maigret" title="Maigret Deep Search">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    <span>Maigret</span>
-                </button>
-                <button class="toolbar-btn" data-tool="username" title="Sherlock">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <span>Sherlock</span>
-                </button>
-                <button class="toolbar-btn" data-tool="holehe" title="Holehe Deep">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                    </svg>
-                    <span>Holehe</span>
-                </button>
+                <button class="toolbar-btn" data-tool="maigret">Maigret</button>
+                <button class="toolbar-btn" data-tool="username">Sherlock</button>
+                <button class="toolbar-btn" data-tool="holehe">Holehe</button>
             </div>
             <div class="toolbar-group">
-                <span class="toolbar-label">[TECH]</span>
-                <button class="toolbar-btn" data-tool="ip" title="IP Lookup">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-                        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-                        <line x1="6" y1="6" x2="6.01" y2="6"></line>
-                        <line x1="6" y1="18" x2="6.01" y2="18"></line>
-                    </svg>
-                    <span>IP</span>
-                </button>
-                <button class="toolbar-btn" data-tool="domain" title="Domain Lookup">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="2" y1="12" x2="22" y2="12"></line>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                    </svg>
-                    <span>Domain</span>
-                </button>
+                <button class="toolbar-btn" data-tool="ip">IP</button>
+                <button class="toolbar-btn" data-tool="domain">Domain</button>
             </div>
         </div>
 
-        <div class="tools-container" style="display:none;"> <!-- Hidden legacy cards -->
-                    <h3>Email (Sherlock)</h3>
-                    <p>Fast HTTP profile checks</p>
-                    <button class="tool-info-btn" onclick="event.stopPropagation(); showToolInfo('email')" title="Show info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="tool-card" data-tool="holehe">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M12 16v-4"></path>
-                            <path d="M12 8h.01"></path>
-                        </svg>
-                    </div>
-                    <h3>Email (Holehe)</h3>
-                    <p>Email enumeration + recovery info</p>
-                    <button class="tool-info-btn" onclick="event.stopPropagation(); showToolInfo('holehe')" title="Show info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="tool-card" data-tool="crossval">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 11l3 3L22 4"></path>
-                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                        </svg>
-                    </div>
-                    <h3>Email (Cross-Validate)</h3>
-                    <p>Sherlock + Holehe with confidence scores</p>
-                    <button class="tool-info-btn" onclick="event.stopPropagation(); showToolInfo('crossval')" title="Show info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="tool-card" data-tool="hibp">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                            <line x1="12" y1="9" x2="12" y2="13"></line>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                    </div>
-                    <h3>Breach Check</h3>
-                    <p>Check email against known data breaches</p>
-                    <button class="tool-info-btn" onclick="event.stopPropagation(); showToolInfo('hibp')" title="Show info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="tool-card" data-tool="maigret">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                            <polyline points="2 17 12 22 22 17"></polyline>
-                            <polyline points="2 12 12 17 22 12"></polyline>
-                        </svg>
-                    </div>
-                    <h3>Maigret</h3>
-                    <p>Deep username search (3000+ sites)</p>
-                    <button class="tool-info-btn" onclick="event.stopPropagation(); showToolInfo('maigret')" title="Show info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="tool-card" data-tool="username">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                    </div>
-                    <h3>Username Search</h3>
-                    <p>Sherlock (100 sites)</p>
-                    <button class="tool-info-btn" onclick="event.stopPropagation(); showToolInfo('username')" title="Show info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="tool-card" data-tool="phone">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                        </svg>
-                    </div>
-                    <h3>Phone OSINT</h3>
-                    <p>Phone number intelligence lookup</p>
-                    <button class="tool-info-btn" onclick="event.stopPropagation(); showToolInfo('phone')" title="Show info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="tool-card" data-tool="whatsapp">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                        </svg>
-                    </div>
-                    <h3>WhatsApp</h3>
-                    <p>Check phone on WhatsApp</p>
-                    <button class="tool-info-btn" onclick="event.stopPropagation(); showToolInfo('whatsapp')" title="Show info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Tech OSINT tools hidden temporarily
-            <h2 class="section-title">Tech OSINT</h2>
-            <div class="tools-grid">
-                <div class="tool-card" data-tool="ip">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-                            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-                            <line x1="6" y1="6" x2="6.01" y2="6"></line>
-                            <line x1="6" y1="18" x2="6.01" y2="18"></line>
-                        </svg>
-                    </div>
-                    <h3>IP Lookup</h3>
-                    <p>Geolocation and reputation</p>
-                </div>
-
-                <div class="tool-card" data-tool="domain">
-                    <div class="tool-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="2" y1="12" x2="22" y2="12"></line>
-                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                        </svg>
-                    </div>
-                    <h3>Domain Lookup</h3>
-                    <p>DNS records and SSL info</p>
-                </div>
-            </div>
-            -->
+        <!-- Search -->
+        <div class="search-box">
+            <input type="text" id="searchInput" class="search-input" placeholder="Enter search query...">
+            <button id="searchBtn" class="search-btn">Search</button>
         </div>
 
-        <div id="results" class="results-section hidden">
+        <!-- Options -->
+        <div class="options" id="optionsBar">
+            <label>Platforms:</label>
+            <select id="siteCategory">
+                <option value="all">All Sites</option>
+                <option value="social">Social Media</option>
+                <option value="developer">Developer</option>
+                <option value="gaming">Gaming</option>
+            </select>
+            <span class="options-count" id="siteCount">56 sites</span>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results hidden">
             <div class="results-header">
-                <span class="results-title">▸ SCAN RESULTS</span>
-                <button class="close-btn" onclick="closeResults()">×</button>
+                <h3>Results</h3>
+                <button class="close-btn" onclick="closeResults()">&times;</button>
             </div>
             <div id="resultsContent" class="results-content"></div>
         </div>
 
-        <div id="loading" class="loading hidden">
-            <div class="terminal-loader">
-                <span></span><span></span><span></span>
+        <!-- Loading -->
+        <div id="loading" class="results hidden">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Searching...</p>
+                <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+                <p class="progress-text" id="progressText">Preparing...</p>
             </div>
-            <p class="loading-text">INITIALIZING</p>
         </div>
+    </div>
 
-        <div id="skeletonResults" class="hidden">
-            <div class="skeleton-card">
-                <div class="skeleton-row">
-                    <div class="skeleton skeleton-avatar"></div>
-                    <div style="flex: 1;">
-                        <div class="skeleton skeleton-text"></div>
-                        <div class="skeleton skeleton-text short"></div>
-                    </div>
-                </div>
+    <!-- History Modal -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Search History</h3>
+                <button class="close-btn" onclick="toggleHistory()">&times;</button>
             </div>
-            <div class="skeleton-card">
-                <div class="skeleton-row">
-                    <div class="skeleton skeleton-avatar"></div>
-                    <div style="flex: 1;">
-                        <div class="skeleton skeleton-text"></div>
-                        <div class="skeleton skeleton-text short"></div>
-                    </div>
-                </div>
+            <div class="modal-body" id="historyContent">
+                <div class="empty">No history yet</div>
             </div>
-            <div class="skeleton-card">
-                <div class="skeleton-row">
-                    <div class="skeleton skeleton-avatar"></div>
-                    <div style="flex: 1;">
-                        <div class="skeleton skeleton-text"></div>
-                        <div class="skeleton skeleton-text short"></div>
-                    </div>
-                </div>
+        </div>
+    </div>
+
+    <!-- Health Modal -->
+    <div class="modal-overlay" id="healthModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Platform Status</h3>
+                <button class="close-btn" onclick="toggleHealthModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="healthContent">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Changelog Modal -->
+    <div class="modal-overlay" id="changelogModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>What's New</h3>
+                <button class="close-btn" onclick="openChangelog()">&times;</button>
+            </div>
+            <div class="modal-body" id="changelogContent">
+                <div class="loading">Loading...</div>
             </div>
         </div>
     </div>
 
     <script>
-        const toolCards = document.querySelectorAll('.tool-card');
-        const toolbarBtns = document.querySelectorAll('.toolbar-btn');
+        // State
+        let currentTool = 'social';
+        let eventSource = null;
+
+        // DOM Elements
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
-        const resultsSection = document.getElementById('results');
+        const resultsDiv = document.getElementById('results');
         const resultsContent = document.getElementById('resultsContent');
-        const loading = document.getElementById('loading');
-        const skeletonResults = document.getElementById('skeletonResults');
+        const loadingDiv = document.getElementById('loading');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const toolbarBtns = document.querySelectorAll('.toolbar-btn');
 
-        let currentTool = 'social';
-
-        const PLATFORM_ICONS = {
-            'Facebook': 'F', 'Instagram': 'I', 'Twitter': 'X', 'YouTube': 'Y', 'LinkedIn': 'in',
-            'GitHub': 'GH', 'Reddit': 'R', 'TikTok': 'T', 'Discord': 'D', 'Telegram': 'TG',
-            'Snapchat': 'SC', 'Pinterest': 'P', 'Tumblr': 'TB', 'Flickr': 'FL', 'Vimeo': 'V',
-            'Dribbble': 'DB', 'Medium': 'M', 'Quora': 'Q', 'Stack Overflow': 'SO', 'Steam': 'ST',
-            'Spotify': 'SP', 'SoundCloud': 'SC', 'Twitch': 'TW', 'MySpace': 'MS', 'Badoo': 'BD',
-            'VK': 'VK', 'WhatsApp': 'WA', 'WeChat': 'WC', 'Line': 'LN', 'Viber': 'VB',
-            'Amazon': 'AZ', 'eBay': 'EB', 'Patreon': 'PT', 'Cash App': 'CA', 'Venmo': 'VM',
-            'PayPal': 'PP', 'Tumblr': 'TB', 'Etsy': 'ET', 'DeviantArt': 'DA', 'Behance': 'BH',
-            'Dropsforum': 'DF', 'Mastodon': 'MA', 'Ello': 'EL', 'Wattpad': 'WP', 'Warcraft': 'WC',
-            'Minecraft': 'MC', 'Roblox': 'RB', 'Xbox': 'XB', 'PlayStation': 'PS', 'Nintendo': 'NI',
-            'EVE Online': 'EV', 'Final Fantasy': 'FF', 'World of Warcraft': 'WoW', 'Origin': 'OR',
-            'Battle.net': 'BN', 'Steam Community': 'SC', 'Humble Bundle': 'HB', 'Itch.io': 'IT',
-            'Newgrounds': 'NG', 'Kik': 'KI', 'WeChat': 'WC'
-        };
-
-        const PLATFORM_COLORS = {
-            'Facebook': '#1877F2', 'Instagram': '#E4405F', 'Twitter': '#1DA1F2', 'YouTube': '#FF0000',
-            'LinkedIn': '#0A66C2', 'GitHub': '#333333', 'Reddit': '#FF4500', 'TikTok': '#000000',
-            'Discord': '#5865F2', 'Telegram': '#26A5E4', 'Snapchat': '#FFFC00', 'Pinterest': '#E60023',
-            'Medium': '#000000', 'Quora': '#B92B27', 'Steam': '#171a21', 'Spotify': '#1DB954',
-            'SoundCloud': '#FF5500', 'Twitch': '#9146FF', 'VK': '#4680C2', 'WhatsApp': '#25D366',
-            'WeChat': '#07C160', 'Patreon': '#FF424D', 'DeviantArt': '#05CC47', 'Behance': '#1769FF',
-            'Roblox': '#E31C3D', 'Xbox': '#107C10', 'PlayStation': '#003791', 'Battle.net': '#00AEFF',
-            'Steam Community': '#171a21', 'Mastodon': '#6364FF', 'Ello': '#000000', 'Etsy': '#F16421',
-            'eBay': '#E53238', 'Amazon': '#FF9900', 'Tumblr': '#35465C', 'Flickr': '#0063DC',
-            'Dribbble': '#EA4C89', 'Vimeo': '#1AB7EA', 'Stack Overflow': '#F58025', 'Pinterest': '#E60023'
-        };
-
-        function getPlatformIcon(platform) {
-            const name = platform || '';
-            const icon = PLATFORM_ICONS[name] || name.charAt(0).toUpperCase();
-            const color = PLATFORM_COLORS[name] || '#666666';
-            return `<span class="platform-icon" style="background: ${color}">${icon}</span>`;
-        }
-
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            setTheme(savedTheme);
-        }
-
-        function setTheme(theme) {
-            const body = document.body;
-            const sunIcon = document.getElementById('themeIconSun');
-            const moonIcon = document.getElementById('themeIconMoon');
-            const themeLabel = document.getElementById('themeLabel');
-            
-            if (theme === 'light') {
-                body.classList.add('light-mode');
-                sunIcon.style.display = 'none';
-                moonIcon.style.display = 'block';
-                themeLabel.textContent = 'Dark';
-            } else {
-                body.classList.remove('light-mode');
-                sunIcon.style.display = 'block';
-                moonIcon.style.display = 'none';
-                themeLabel.textContent = 'Light';
-            }
-            localStorage.setItem('theme', theme);
-        }
-
-        function toggleTheme() {
-            const currentTheme = document.body.classList.contains('light-mode') ? 'light' : 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            setTheme(newTheme);
-        }
-
-        initTheme();
-        checkAIStatus();
-
-        fetch('/api/version')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('versionBadge').textContent = 'v' + data.version;
-                document.title = `OSINT Dashboard v${data.version}`;
-            })
-            .catch(() => {});
-
+        // Placeholders
         const placeholders = {
-            social: 'Enter username, email or phone number',
-            email: 'Enter email address (e.g., user@example.com)',
-            holehe: 'Enter email address (e.g., user@example.com)',
-            crossval: 'Enter email address (e.g., user@example.com)',
-            hibp: 'Enter email address to check breaches',
-            maigret: 'Enter username to search (deep scan)',
-            ip: 'Enter IP address (e.g., 8.8.8.8)',
-            domain: 'Enter domain (e.g., google.com)',
-            username: 'Enter username to search',
+            social: 'Enter username or email...',
             person: 'Enter full name (e.g., John Smith)',
-            whatsapp: 'Enter phone number (e.g., +31612345678)',
-            phone: 'Enter phone number (e.g., +31612345678)'
+            email: 'Enter email address...',
+            phone: 'Enter phone number (+31612345678)',
+            whatsapp: 'Enter phone number...',
+            hibp: 'Enter email to check breaches...',
+            maigret: 'Enter username (deep search)...',
+            username: 'Enter username...',
+            holehe: 'Enter email for deep search...',
+            ip: 'Enter IP address...',
+            domain: 'Enter domain name...'
         };
 
-        toolCards.forEach(card => {
-            card.addEventListener('click', () => {
-                toolCards.forEach(c => c.classList.remove('active'));
-                toolbarBtns.forEach(b => b.classList.remove('active'));
-                card.classList.add('active');
-                currentTool = card.dataset.tool;
-                searchInput.placeholder = placeholders[currentTool];
-                searchInput.value = '';
-                
-                const siteSelector = document.getElementById('siteSelector');
-                const maigretSelector = document.getElementById('maigretSelector');
-                if (siteSelector) {
-                    siteSelector.style.display = currentTool === 'social' ? 'flex' : 'none';
-                }
-                if (maigretSelector) {
-                    maigretSelector.style.display = currentTool === 'maigret' ? 'flex' : 'none';
-                }
-            });
-        });
-
-        // Toolbar button handlers
+        // Tool selection
         toolbarBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 toolbarBtns.forEach(b => b.classList.remove('active'));
-                toolCards.forEach(c => c.classList.remove('active'));
                 btn.classList.add('active');
                 currentTool = btn.dataset.tool;
                 searchInput.placeholder = placeholders[currentTool];
                 searchInput.value = '';
-                
-                const siteSelector = document.getElementById('siteSelector');
-                const maigretSelector = document.getElementById('maigretSelector');
-                if (siteSelector) {
-                    siteSelector.style.display = currentTool === 'social' ? 'flex' : 'none';
-                }
-                if (maigretSelector) {
-                    maigretSelector.style.display = currentTool === 'maigret' ? 'flex' : 'none';
-                }
+                closeResults();
             });
         });
 
-        function updateSiteSelection() {
-            const category = document.getElementById('siteCategory')?.value || 'all';
-            const counts = { all: 56, social: 17, developer: 9, gaming: 4, creative: 12, messaging: 4, linkinbio: 2, other: 8 };
-            const siteCount = document.getElementById('siteCount');
-            if (siteCount) {
-                siteCount.textContent = `${counts[category] || 55} sites`;
-            }
-        }
-        
-        function updateMaigretSelection() {
-            const category = document.getElementById('maigretCategory')?.value || 'top';
-            const counts = { top: 300, social: 50, gaming: 92, coding: 41, ru: 791, us: 511, forum: 735, dating: 10, all: 3143 };
-            const maigretCount = document.getElementById('maigretCount');
-            if (maigretCount) {
-                maigretCount.textContent = `${counts[category] || 300} sites`;
-            }
-        }
-
-        function showToolInfo(tool) {
-            const siteInfoBody = document.getElementById('siteInfoBody');
-            const siteInfoModal = document.getElementById('siteInfoModal');
-            
-            let content = '';
-            
-            if (tool === 'email') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;">Email Lookup checks 478 sites from the Sherlock database.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">Sample sites include social networks, forums, dating sites, and more.</p>
-                    <p style="color: #888;">The tool checks if an email appears in data breaches and public profiles.</p>
-                `;
-            } else if (tool === 'holehe') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;">Holehe checks 121 sites for email registration.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">It works by examining password reset flows to detect if an email is registered.</p>
-                    <p style="color: #888;">Additional info like recovery email and phone may be found on some sites.</p>
-                `;
-            } else if (tool === 'crossval') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;"><strong>Cross-Validated Email Search</strong> runs both Sherlock and Holehe simultaneously.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">Results are compared and assigned confidence scores based on:</p>
-                    <p style="color: #888; margin-left: 1rem;">• Cross-validation (both tools found = higher confidence)</p>
-                    <p style="color: #888; margin-left: 1rem;">• Source reliability (Holehe = more reliable than Sherlock alone)</p>
-                    <p style="color: #888; margin-left: 1rem;">• HTTP response status and rate limiting</p>
-                    <p style="color: #00ff88; margin-top: 1rem;">Best for: Getting the most reliable email presence data.</p>
-                `;
-            } else if (tool === 'username') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;">Username Search checks 100 sites from the Sherlock database.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">This is a faster alternative to Maigret.</p>
-                    <p style="color: #888;">Checks for username existence across social networks, forums, and other platforms.</p>
-                `;
-            } else if (tool === 'maigret') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;">Maigret checks 50 sites for username existence.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">This is an alternative to Sherlock with different site coverage.</p>
-                    <p style="color: #888;">Uses different detection methods than Sherlock.</p>
-                `;
-            } else if (tool === 'whatsapp') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;">WhatsApp Lookup checks if a phone number is registered on WhatsApp.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">Enter phone number in international format (e.g., +31612345678 or 31612345678).</p>
-                    <p style="color: #f0a500;">Note: Detection is limited due to WhatsApp's client-side rendering.</p>
-                `;
-            } else if (tool === 'phone') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;"><strong>Phone OSINT</strong> gathers intelligence about phone numbers.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">Provides:</p>
-                    <p style="color: #888; margin-left: 1rem;">• Country, region, and timezone</p>
-                    <p style="color: #888; margin-left: 1rem;">• Carrier and line type (mobile/landline)</p>
-                    <p style="color: #888; margin-left: 1rem;">• WhatsApp and Telegram account check</p>
-                    <p style="color: #888;">Uses the phonenumbers library for validation.</p>
-                `;
-            } else if (tool === 'hibp') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;"><strong>Breach Check</strong> uses the Have I Been Pwned API v3.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">Checks if an email has appeared in known data breaches.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">Requires an API key set via HIBP_API_KEY environment variable.</p>
-                    <p style="color: #f0a500;">API key can be obtained from: haveibeenpwned.com/API/Key</p>
-                `;
-            } else if (tool === 'person') {
-                content = `
-                    <p style="color: #888; margin-bottom: 1rem;"><strong>Name Search</strong> finds people by their full name.</p>
-                    <p style="color: #888; margin-bottom: 1rem;">Uses Google dorking to search social media platforms:</p>
-                    <p style="color: #888; margin-left: 1rem;">• LinkedIn, Facebook, Twitter/X, Instagram, YouTube</p>
-                    <p style="color: #888; margin-bottom: 1rem;">Searches GitHub API for user profiles by name.</p>
-                    <p style="color: #888;">Generates common username patterns for additional searching.</p>
-                `;
-            } else if (tool === 'social') {
-                showSiteCategories();
-                return;
-            }
-            
-            siteInfoBody.innerHTML = content;
-            siteInfoModal.classList.add('active');
-        }
-
-        function showSiteCategories() {
-            const siteInfoBody = document.getElementById('siteInfoBody');
-            const siteInfoModal = document.getElementById('siteInfoModal');
-            
-            const categories = {
-                social: { name: 'Social Media', sites: ['Facebook', 'Instagram', 'Twitter/X', 'TikTok', 'YouTube', 'LinkedIn', 'Snapchat', 'Reddit', 'Pinterest', 'Tumblr', 'Medium', 'Quora', 'Threads', 'VK', 'Goodreads', 'MyAnimeList', 'Letterboxd'] },
-                developer: { name: 'Developer', sites: ['GitHub', 'GitLab', 'Bitbucket', 'Keybase', 'LeetCode', 'Replit', 'CodePen', 'StackOverflow', 'Kaggle'] },
-                gaming: { name: 'Gaming', sites: ['Twitch', 'Steam', 'PSN', 'Roblox'] },
-                creative: { name: 'Creative', sites: ['Spotify', 'SoundCloud', 'Vimeo', 'Flickr', 'Behance', 'Dribbble', 'DeviantArt', 'Imgur', 'Last.fm', 'ArtStation', 'VSCO', '500px'] },
-                messaging: { name: 'Messaging', sites: ['Discord', 'Mastodon', 'Telegram', 'WhatsApp'] },
-                linkinbio: { name: 'Link-in-Bio', sites: ['Linktree', 'Carrd'] },
-                other: { name: 'Other', sites: ['CashApp', 'Venmo', 'Patreon', 'Strava', 'Fiverr', 'Wix', 'WordPress', 'Blogger'] }
-            };
-            
-            let html = '';
-            for (const [key, cat] of Object.entries(categories)) {
-                html += `
-                    <div class="category-section">
-                        <div class="category-title" onclick="toggleCategory('${key}')">
-                            <h4>${cat.name} (${cat.sites.length})</h4>
-                            <span class="count">Click to expand</span>
-                        </div>
-                        <div class="category-sites" id="cat-${key}">
-                            ${cat.sites.map(site => `<span class="site-badge">${site}</span>`).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            siteInfoBody.innerHTML = html;
-            siteInfoModal.classList.add('active');
-        }
-
-        function toggleCategory(key) {
-            const el = document.getElementById(`cat-${key}`);
-            if (el) {
-                el.classList.toggle('expanded');
-            }
-        }
-
-        function closeSiteInfo() {
-            const siteInfoModal = document.getElementById('siteInfoModal');
-            siteInfoModal.classList.remove('active');
-        }
-        
-        function closeSiteInfoOnClickOutside(event) {
-            const siteInfoModal = document.getElementById('siteInfoModal');
-            const siteInfoContent = document.querySelector('.site-info-content');
-            if (event.target === siteInfoModal) {
-                closeSiteInfo();
-            }
-        }
-        
-        async function toggleHealthModal() {
-            const modal = document.getElementById('healthModal');
-            if (modal.classList.contains('active')) {
-                closeHealthModal();
-            } else {
-                modal.classList.add('active');
-                await loadPlatformHealth();
-            }
-        }
-        
-        function closeHealthModal() {
-            const modal = document.getElementById('healthModal');
-            modal.classList.remove('active');
-        }
-        
-        function closeHealthModalOnClick(event) {
-            if (event.target === event.currentTarget) {
-                closeHealthModal();
-            }
-        }
-
-        async function openChangelog() {
-            const modal = document.getElementById('changelogModal');
-            const body = document.getElementById('changelogBody');
-            modal.classList.add('active');
-            body.innerHTML = '<div class="changelog-loading">Loading changelog...</div>';
-            try {
-                const response = await fetch('/api/version');
-                const data = await response.json();
-                renderChangelog(data);
-            } catch (error) {
-                body.innerHTML = '<p style="color: #f44336;">Failed to load changelog</p>';
-            }
-        }
-
-        function renderChangelog(data) {
-            const body = document.getElementById('changelogBody');
-            const entries = data.changelog || {};
-            const sortedVersions = Object.keys(entries).sort((a, b) => {
-                const [aMajor, aMinor, aPatch] = a.match(/\d+/g).map(Number);
-                const [bMajor, bMinor, bPatch] = b.match(/\d+/g).map(Number);
-                return (bMajor - aMajor) || (bMinor - aMinor) || (bPatch - aPatch);
-            });
-            let html = `<div class="changelog-version">
-                <div class="changelog-version-header">
-                    <span class="changelog-version-number">v${data.version}</span>
-                    <span class="changelog-version-name">${data.name}</span>
-                    <span class="changelog-version-date">${data.release_date}</span>
-                </div>
-                <p class="changelog-description">${entries[data.version] || 'Latest version'}</p>
-            </div>`;
-            html += '<h4 style="color: var(--text-secondary); margin: 1rem 0 0.5rem;">Previous Versions</h4>';
-            sortedVersions.slice(1, 10).forEach(v => {
-                const [major, minor, patch] = v.match(/\d+/g).map(Number);
-                html += `<div class="changelog-version">
-                    <div class="changelog-version-header">
-                        <span class="changelog-version-number" style="background: var(--bg-tertiary); color: var(--text-secondary);">v${v}</span>
-                        <span class="changelog-version-date">${data.release_date}</span>
-                    </div>
-                    <p class="changelog-description">${entries[v]}</p>
-                </div>`;
-            });
-            body.innerHTML = html;
-        }
-
-        function closeChangelog() {
-            const modal = document.getElementById('changelogModal');
-            modal.classList.remove('active');
-        }
-
-        function closeChangelogOnClick(event) {
-            if (event.target === event.currentTarget) {
-                closeChangelog();
-            }
-        }
-        
-        async function restartApp() {
-            if (!confirm('Are you sure you want to restart the application?')) return;
-            
-            try {
-                const response = await fetch('/api/system/restart', { method: 'POST' });
-                const data = await response.json();
-                showNotification(data.message || 'Restarting...', 'info');
-                
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } catch (error) {
-                showNotification('Failed to restart: ' + error.message, 'error');
-            }
-        }
-        
-        async function exitApp() {
-            if (!confirm('Are you sure you want to exit the application?')) return;
-            
-            try {
-                const response = await fetch('/api/system/exit', { method: 'POST' });
-                const data = await response.json();
-                showNotification(data.message || 'Exiting...', 'info');
-                
-                setTimeout(() => {
-                    window.location.href = 'about:blank';
-                }, 1000);
-            } catch (error) {
-                showNotification('Failed to exit: ' + error.message, 'error');
-            }
-        }
-        
-        async function loadPlatformHealth() {
-            const healthBody = document.getElementById('healthBody');
-            healthBody.innerHTML = '<div class="loading">Checking platform health...</div>';
-            
-            try {
-                const response = await fetch('/api/platform-health');
-                const data = await response.json();
-                
-                if (data.error) {
-                    healthBody.innerHTML = `<div class="error">${data.error}</div>`;
-                    return;
-                }
-                
-                renderHealthStatus(data);
-                updateHealthBadge(data.summary);
-            } catch (error) {
-                healthBody.innerHTML = `<div class="error">Failed to load health status: ${error.message}</div>`;
-            }
-        }
-        
-        function updateHealthBadge(summary) {
-            const badge = document.getElementById('healthStatus');
-            const total = summary.total || 0;
-            const working = summary.working || 0;
-            const blocked = summary.blocked || 0;
-            const degraded = summary.degraded || 0;
-            
-            if (blocked > 0) {
-                badge.className = 'health-status error';
-                badge.textContent = `${blocked}`;
-            } else if (degraded > 0) {
-                badge.className = 'health-status warning';
-                badge.textContent = `${degraded}`;
-            } else {
-                badge.className = 'health-status success';
-                badge.textContent = `${working}/${total}`;
-            }
-        }
-        
-        function renderHealthStatus(data) {
-            const healthBody = document.getElementById('healthBody');
-            const { platforms, summary, timestamp } = data;
-            
-            const categories = {};
-            platforms.forEach(p => {
-                const cat = p.category || 'other';
-                if (!categories[cat]) categories[cat] = [];
-                categories[cat].push(p);
-            });
-            
-            const categoryNames = {
-                social: 'Social Media',
-                developer: 'Developer',
-                gaming: 'Gaming',
-                creative: 'Creative',
-                messaging: 'Messaging',
-                linkinbio: 'Link-in-Bio',
-                other: 'Other'
-            };
-            
-            let html = `
-                <div class="health-summary">
-                    <div class="health-stat working">
-                        <span class="count">${summary.working}</span>
-                        <span class="label">Working</span>
-                    </div>
-                    <div class="health-stat degraded">
-                        <span class="count">${summary.degraded}</span>
-                        <span class="label">Degraded</span>
-                    </div>
-                    <div class="health-stat blocked">
-                        <span class="count">${summary.blocked}</span>
-                        <span class="label">Blocked</span>
-                    </div>
-                    <div class="health-updated">Updated: ${new Date(timestamp).toLocaleTimeString()}</div>
-                </div>
-                <div class="health-categories">`;
-            
-            for (const [cat, platforms] of Object.entries(categories)) {
-                const working = platforms.filter(p => p.health === 'working').length;
-                const total = platforms.length;
-                
-                html += `
-                    <div class="health-category">
-                        <div class="health-category-header" onclick="toggleHealthCategory('${cat}')">
-                            <span class="category-name">${categoryNames[cat] || cat} (${working}/${total})</span>
-                            <span class="health-category-status ${working === total ? 'all-working' : 'has-issues'}">
-                                ${working === total ? '&#10003;' : '&#9888;'}
-                            </span>
-                        </div>
-                        <div class="health-category-platforms" id="health-cat-${cat}">
-                            ${platforms.map(p => `
-                                <div class="health-platform ${p.health}">
-                                    <span class="platform-name">${p.platform}</span>
-                                    <span class="platform-status">
-                                        ${p.status || '?'}
-                                    </span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
-            }
-            
-            html += '</div>';
-            healthBody.innerHTML = html;
-        }
-        
-        function toggleHealthCategory(category) {
-            const platformsContainer = document.getElementById(`health-cat-${category}`);
-            if (platformsContainer) {
-                platformsContainer.classList.toggle('collapsed');
-            }
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeSiteInfo();
-                closeHealthModal();
-                closeChangelog();
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                searchInput.focus();
-                searchInput.select();
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-                e.preventDefault();
-                openChangelog();
-            }
-        });
-
-        function detectInputType(query) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (emailRegex.test(query)) return 'email';
-            return 'username';
-        }
-        
-        function isPhoneNumber(query) {
-            const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
-            return phoneRegex.test(query);
-        }
-        
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
-            notification.innerHTML = `
-                <span>${message}</span>
-                <button onclick="this.parentElement.remove()" style="background: none; border: none; color: inherit; cursor: pointer; margin-left: 10px; font-size: 18px;">&times;</button>
-            `;
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${type === 'warning' ? '#ff9800' : type === 'error' ? '#f44336' : '#2196f3'};
-                color: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                animation: slideIn 0.3s ease;
-                max-width: 400px;
-            `;
-            document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 5000);
-        }
-        
-        function switchToTool(toolName) {
-            const toolCard = document.querySelector(`.tool-card[data-tool="${toolName}"]`);
-            if (toolCard) {
-                toolCard.click();
-            }
-        }
-
-        async function performSearch() {
-            const query = searchInput.value.trim();
-            if (!query) return;
-            
-            if (currentTool === 'social') {
-                if (isPhoneNumber(query)) {
-                    showNotification('For phone number searches, please use the Phone Lookup tool instead.', 'warning');
-                    switchToTool('whatsapp');
-                    return;
-                }
-                const inputType = detectInputType(query);
-                const category = document.getElementById('siteCategory')?.value || 'all';
-                resultsSection.classList.add('hidden');
-                performStreamingSearch(query, 'social', inputType, category);
-            } else if (currentTool === 'username' || currentTool === 'email' || currentTool === 'holehe' || currentTool === 'maigret' || currentTool === 'crossval') {
-                resultsSection.classList.add('hidden');
-                performStreamingSearch(query, currentTool);
-            } else if (currentTool === 'whatsapp') {
-                resultsSection.classList.remove('hidden');
-                performWhatsAppSearch(query);
-            } else if (currentTool === 'phone') {
-                resultsSection.classList.remove('hidden');
-                performPhoneSearch(query);
-            } else if (currentTool === 'hibp') {
-                loading.classList.remove('hidden');
-                resultsSection.classList.add('hidden');
-                try {
-                    const response = await fetch('/api/hibp', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: query })
-                    });
-                    const data = await response.json();
-                    displayResults(data);
-                } catch (error) {
-                    displayError(error.message);
-                } finally {
-                    loading.classList.add('hidden');
-                }
-            } else if (currentTool === 'person') {
-                loading.classList.remove('hidden');
-                resultsSection.classList.add('hidden');
-                try {
-                    const response = await fetch('/api/name-search', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: query })
-                    });
-                    const data = await response.json();
-                    displayResults(data);
-                } catch (error) {
-                    displayError(error.message);
-                } finally {
-                    loading.classList.add('hidden');
-                }
-            } else {
-                loading.classList.remove('hidden');
-                resultsSection.classList.add('hidden');
-
-                const endpoints = {
-                    ip: '/api/ip',
-                    domain: '/api/domain'
-                };
-
-                const fieldNames = {
-                    ip: 'ip',
-                    domain: 'domain'
-                };
-
-                try {
-                    const response = await fetch(endpoints[currentTool], {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ [fieldNames[currentTool]]: query })
-                    });
-
-                    const data = await response.json();
-                    displayResults(data);
-                } catch (error) {
-                    displayError(error.message);
-                } finally {
-                    loading.classList.add('hidden');
-                }
-            }
-        }
-        
-        async function performWhatsAppSearch(phone) {
-            loading.classList.remove('hidden');
-            resultsSection.classList.add('hidden');
-            
-            try {
-                const response = await fetch('/api/phone-lookup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: phone, services: ['whatsapp', 'telegram', 'carrier'] })
-                });
-                
-                const data = await response.json();
-                loading.classList.add('hidden');
-                resultsSection.classList.remove('hidden');
-                displayPhoneLookupResults(data);
-            } catch (error) {
-                loading.classList.add('hidden');
-                displayError(error.message);
-            }
-        }
-        
-        async function performPhoneSearch(phone) {
-            loading.classList.remove('hidden');
-            resultsSection.classList.add('hidden');
-            
-            try {
-                const response = await fetch('/api/phone', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: phone })
-                });
-                
-                const data = await response.json();
-                loading.classList.add('hidden');
-                resultsSection.classList.remove('hidden');
-                displayPhoneOSINTTResults(data);
-            } catch (error) {
-                loading.classList.add('hidden');
-                displayError(error.message);
-            }
-        }
-        
-        function displayPhoneOSINTTResults(data) {
-            if (data.error) {
-                resultsContent.innerHTML = `
-                    <div class="result-card error">
-                        <h3>Error</h3>
-                        <p>${data.error}</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = `
-                <div class="result-card">
-                    <h3>Phone OSINT: ${data.phone}</h3>
-                    <div class="phone-osint-results">
-                        <div class="phone-info-grid">
-                            <div class="phone-info-item">
-                                <span class="label">Valid:</span>
-                                <span class="value ${data.valid ? 'valid' : 'invalid'}">${data.valid ? 'Yes' : 'No'}</span>
-                            </div>
-                            <div class="phone-info-item">
-                                <span class="label">Formatted:</span>
-                                <span class="value">${data.formatted || 'N/A'}</span>
-                            </div>
-                            <div class="phone-info-item">
-                                <span class="label">Country:</span>
-                                <span class="value">${data.country || 'Unknown'}</span>
-                            </div>
-                            <div class="phone-info-item">
-                                <span class="label">Region:</span>
-                                <span class="value">${data.region || 'Unknown'}</span>
-                            </div>
-                            <div class="phone-info-item">
-                                <span class="label">Carrier:</span>
-                                <span class="value">${data.carrier || 'Unknown'}</span>
-                            </div>
-                            <div class="phone-info-item">
-                                <span class="label">Line Type:</span>
-                                <span class="value">${data.line_type || 'Unknown'}</span>
-                            </div>
-                            <div class="phone-info-item">
-                                <span class="label">Timezone:</span>
-                                <span class="value">${data.timezone || 'Unknown'}</span>
-                            </div>
-                        </div>
-            `;
-            
-            if (data.services) {
-                html += '<h4>Messaging Services</h4><div class="phone-services-grid">';
-                
-                if (data.services.whatsapp) {
-                    const wa = data.services.whatsapp;
-                    html += `
-                        <div class="phone-service-card ${wa.exists ? 'found' : 'not-found'}">
-                            <span class="service-icon">💬</span>
-                            <span class="service-name">WhatsApp</span>
-                            <span class="service-status">${wa.exists ? 'Found' : wa.error ? 'Error' : 'Not Found'}</span>
-                            ${wa.url ? `<a href="${wa.url}" target="_blank" class="service-link">Open</a>` : ''}
-                        </div>
-                    `;
-                }
-                
-                if (data.services.telegram) {
-                    const tg = data.services.telegram;
-                    html += `
-                        <div class="phone-service-card ${tg.exists ? 'found' : 'not-found'}">
-                            <span class="service-icon">✈️</span>
-                            <span class="service-name">Telegram</span>
-                            <span class="service-status">${tg.exists ? 'Found' : tg.error ? 'Error' : 'Not Found'}</span>
-                            ${tg.url ? `<a href="${tg.url}" target="_blank" class="service-link">Open</a>` : ''}
-                        </div>
-                    `;
-                }
-                
-                html += '</div>';
-            }
-            
-            html += '</div></div>';
-            resultsContent.innerHTML = html;
-        }
-        
-        function displayPhoneLookupResults(data) {
-            if (data.error) {
-                resultsContent.innerHTML = `
-                    <div class="result-card error">
-                        <h3>Error</h3>
-                        <p>${data.error}</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            const { results } = data;
-            
-            const whatsappStatus = getServiceStatus(results.whatsapp, 'whatsapp');
-            const telegramStatus = getServiceStatus(results.telegram, 'telegram');
-            const carrierStatus = results.carrier;
-            
-            let html = `
-                <div class="result-card">
-                    <h3>Phone Lookup: ${data.phone}</h3>
-                    <div class="phone-lookup-results">
-                        ${whatsappStatus}
-                        ${telegramStatus}
-                        ${carrierStatus ? `
-                        <div class="phone-lookup-service">
-                            <div class="service-header">
-                                <span class="service-icon">📡</span>
-                                <span class="service-name">Carrier Info</span>
-                            </div>
-                            <div class="service-details">
-                                <div class="detail-row">
-                                    <span class="detail-label">Carrier:</span>
-                                    <span class="detail-value">${carrierStatus.carrier || 'Unknown'}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Line Type:</span>
-                                    <span class="detail-value">${carrierStatus.line_type || 'Unknown'}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Country:</span>
-                                    <span class="detail-value">${carrierStatus.country || 'Unknown'}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Valid:</span>
-                                    <span class="detail-value" style="color: ${carrierStatus.valid ? '#00ff88' : '#ff4444'}">${carrierStatus.valid ? 'Yes' : 'No'}</span>
-                                </div>
-                            </div>
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-            
-            resultsContent.innerHTML = html;
-        }
-        
-        function getServiceStatus(service, serviceName) {
-            if (!service) return '';
-            
-            const displayName = serviceName === 'whatsapp' ? 'WhatsApp' : serviceName === 'telegram' ? 'Telegram' : serviceName;
-            
-            const icon = service.exists === true 
-                ? '<span style="color: #00ff88; font-size: 1.5rem;">&#10003;</span>'
-                : service.exists === false
-                ? '<span style="color: #ff4444; font-size: 1.5rem;">&#10007;</span>'
-                : '<span style="color: #888; font-size: 1.5rem;">?</span>';
-            
-            const statusText = service.exists === true 
-                ? 'Found'
-                : service.exists === false
-                ? 'Not Found'
-                : 'Unknown';
-            
-            const statusColor = service.exists === true 
-                ? '#00ff88'
-                : service.exists === false
-                ? '#ff4444'
-                : '#888';
-            
-            const iconSvg = serviceName === 'whatsapp' 
-                ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`
-                : serviceName === 'telegram'
-                ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>`
-                : '📱';
-            
-            return `
-                <div class="phone-lookup-service">
-                    <div class="service-header">
-                        <span class="service-icon">${iconSvg}</span>
-                        <span class="service-name">${displayName}</span>
-                        <span class="service-status" style="color: ${statusColor}; margin-left: auto;">${icon} ${statusText}</span>
-                    </div>
-                    <div class="service-message">${service.message || ''}</div>
-                    ${service.url ? `<div class="service-actions"><a href="${service.url}" target="_blank" class="btn-visit">Open ${displayName}</a></div>` : ''}
-                </div>
-            `;
-        }
-
-        async function performStreamingSearch(query, tool, extra = null, category = 'all') {
-            resultsSection.classList.remove('hidden');
-            
-            const toolNames = { email: 'Email (Sherlock)', username: 'Username (Sherlock)', person: 'Person', social: 'Social Media', holehe: 'Email (Holehe)', maigret: 'Maigret', crossval: 'Email (Cross-Validate)' };
-            const toolName = toolNames[tool] || tool;
-            
-            const endpoints = {
-                email: '/api/email/stream',
-                holehe: '/api/email/holehe',
-                crossval: '/api/email/crossvalidated',
-                maigret: '/api/username/maigret',
-                username: '/api/username/stream',
-                person: '/api/name-search',
-                social: '/api/social/stream'
-            };
-            
-            const fieldNames = {
-                email: 'email',
-                holehe: 'email',
-                crossval: 'email',
-                maigret: 'username',
-                username: 'username',
-                person: 'name',
-                social: 'query'
-            };
-            
-            let searchTypeInfo = '';
-            if (tool === 'social' && extra) {
-                const typeLabels = { email: 'Email', phone: 'Phone', username: 'Username' };
-                searchTypeInfo = `<span style="color: #00ff88;"> (${typeLabels[extra]})</span>`;
-            }
-            
-            const categoryNames = { all: 'All Sites', social: 'Social Media', developer: 'Developer', gaming: 'Gaming', creative: 'Creative', messaging: 'Messaging', linkinbio: 'Link-in-Bio', other: 'Other' };
-            const categoryInfo = tool === 'social' ? ` <span style="color: #888;">[${categoryNames[category] || category}]</span>` : '';
-            
-            resultsContent.innerHTML = `
-                <div class="result-card">
-                    <div class="searching-header">
-                        <div class="searching-spinner"></div>
-                        <h3>Searching ${toolName}: <span style="color: #00d9ff;">${query}</span>${searchTypeInfo}${categoryInfo}</h3>
-                    </div>
-                    <div class="progress-container">
-                        <div class="progress-bar">
-                            <div id="progressFill" class="progress-fill"></div>
-                        </div>
-                        <div id="progressText" class="progress-text">Initializing...</div>
-                        <div id="progressStats" class="progress-stats">
-                            <div class="progress-stat">
-                                <div id="foundCount" class="progress-stat-value">0</div>
-                                <div class="progress-stat-label">Found</div>
-                            </div>
-                            <div class="progress-stat">
-                                <div id="checkedCount" class="progress-stat-value">0</div>
-                                <div class="progress-stat-label">Checked</div>
-                            </div>
-                            <div class="progress-stat">
-                                <div id="totalCount" class="progress-stat-value">0</div>
-                                <div class="progress-stat-label">Total</div>
-                            </div>
-                        </div>
-                        <div id="currentSite" class="current-site"></div>
-                        <div id="stopButtonContainer" class="stop-button-container">
-                            <button id="stopSearchBtn" class="btn-stop" onclick="abortSearch()">
-                                <span class="stop-icon">STOP</span>
-                                Stop & Show Results
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            let searchAborted = false;
-            let accumulatedResults = null;
-            let currentJobId = null;
-            let readerRef = null;
-            
-            window.abortSearch = function() {
-                searchAborted = true;
-                const stopBtn = document.getElementById('stopSearchBtn');
-                if (stopBtn) {
-                    stopBtn.disabled = true;
-                    stopBtn.innerHTML = '<span class="stop-icon">SHOWING...</span>';
-                }
-                
-                if (readerRef) {
-                    readerRef.cancel();
-                }
-                
-                if (accumulatedResults) {
-                    displayResults(accumulatedResults);
-                } else {
-                    displayError('Search stopped - no results yet');
-                }
-            };
-            
-            let body;
-            if (tool === 'social') {
-                body = { [fieldNames[tool]]: query, type: extra || 'username', category: category };
-            } else if (tool === 'maigret') {
-                const maigretCategory = document.getElementById('maigretCategory')?.value || 'top';
-                const maigretLimits = { top: 300, social: 50, gaming: 92, coding: 41, ru: 791, us: 511, forum: 735, dating: 10, all: 3143 };
-                if (maigretCategory === 'top') {
-                    body = { [fieldNames[tool]]: query, limit: 300 };
-                } else if (maigretCategory === 'all') {
-                    body = { [fieldNames[tool]]: query, limit: 3143 };
-                } else if (maigretCategory === 'social') {
-                    body = { [fieldNames[tool]]: query, tags: ['social'], limit: 50 };
-                } else {
-                    body = { [fieldNames[tool]]: query, tags: [maigretCategory], limit: maigretLimits[maigretCategory] || 300 };
-                }
-            } else {
-                body = { [fieldNames[tool]]: query };
-            }
-            
-            try {
-                const response = await fetch(endpoints[tool], {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Search request failed');
-                }
-                
-                const reader = response.body.getReader();
-                readerRef = reader;
-                const decoder = new TextDecoder();
-                let buffer = '';
-                
-                while (true) {
-                    if (searchAborted) {
-                        break;
-                    }
-                    
-                    let readResult;
-                    try {
-                        readResult = await reader.read();
-                    } catch (e) {
-                        if (searchAborted && accumulatedResults) {
-                            displayResults(accumulatedResults);
-                        }
-                        break;
-                    }
-                    
-                    const { done, value } = readResult;
-                    if (done) break;
-                    
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop();
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(line.slice(6));
-                                
-                                if (data.job_id && !currentJobId) {
-                                    currentJobId = data.job_id;
-                                }
-                                
-                                if (data.progress) {
-                                    const { checked, total, found, percent, current_site } = data.progress;
-                                    const progressFill = document.getElementById('progressFill');
-                                    const progressText = document.getElementById('progressText');
-                                    const foundCountEl = document.getElementById('foundCount');
-                                    const checkedCountEl = document.getElementById('checkedCount');
-                                    const totalCountEl = document.getElementById('totalCount');
-                                    const currentSiteEl = document.getElementById('currentSite');
-                                    
-                                    if (progressFill) progressFill.style.width = percent + '%';
-                                    if (progressText) progressText.textContent = current_site ? `Checking ${current_site}... ${percent}%` : `Searching... ${percent}% complete`;
-                                    if (foundCountEl) foundCountEl.textContent = found !== undefined ? found : 0;
-                                    if (checkedCountEl) checkedCountEl.textContent = checked;
-                                    if (totalCountEl) totalCountEl.textContent = total;
-                                    if (currentSiteEl) currentSiteEl.textContent = current_site || '';
-                                } else if (data.complete) {
-                                    accumulatedResults = data.result;
-                                    if (!searchAborted) {
-                                        displayResults(data.result);
-                                    }
-                                    return;
-                                } else if (data.error) {
-                                    if (!searchAborted) {
-                                        displayError(data.error);
-                                    }
-                                    return;
-                                } else if (data.stopped) {
-                                    accumulatedResults = data.result;
-                                    if (searchAborted) {
-                                        displayResults(accumulatedResults);
-                                    }
-                                    return;
-                                }
-                            } catch (e) {
-                                console.log('Parse error:', e);
-                            }
-                        }
-                    }
-                }
-                
-                if (searchAborted && accumulatedResults) {
-                    displayResults(accumulatedResults);
-                }
-            } catch (error) {
-                if (searchAborted && accumulatedResults) {
-                    displayResults(accumulatedResults);
-                } else if (!searchAborted) {
-                    displayError(error.message);
-                }
-            }
-        }
-
+        // Search
         searchBtn.addEventListener('click', performSearch);
-        searchInput.addEventListener('keypress', (e) => {
+        searchInput.addEventListener('keypress', e => {
             if (e.key === 'Enter') performSearch();
         });
 
-        let lastResultsData = null;
-        let lastResultsQuery = '';
-
-        function displayResults(data) {
-            resultsSection.classList.remove('hidden');
-            lastResultsData = data;
-            lastResultsQuery = searchInput.value;
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
             
-            storeLastResults(data, searchInput.value, currentTool);
+            closeResults();
+            loadingDiv.classList.remove('hidden');
             
-            let html = '';
-            
-            if (currentTool === 'email') {
-                html = renderEmailResults(data);
-            } else if (currentTool === 'holehe') {
-                html = renderHoleheResults(data);
-            } else if (currentTool === 'crossval') {
-                html = renderCrossValidatedResults(data);
-            } else if (currentTool === 'maigret') {
-                html = renderUsernameResults(data);
-            } else if (currentTool === 'ip') {
-                html = renderIPResults(data);
-            } else if (currentTool === 'domain') {
-                html = renderDomainResults(data);
-            } else if (currentTool === 'username') {
-                html = renderUsernameResults(data);
-            } else if (currentTool === 'person') {
-                html = renderPersonResults(data);
-            } else if (currentTool === 'social') {
-                html = renderSocialResults(data);
+            // Route to appropriate search
+            if (currentTool === 'social') {
+                searchSocial(query);
+            } else if (currentTool === 'email') {
+                searchEmail(query);
+            } else if (currentTool === 'phone' || currentTool === 'whatsapp') {
+                searchPhone(query);
             } else if (currentTool === 'hibp') {
-                html = renderHIBPResults(data);
+                searchBreach(query);
+            } else if (currentTool === 'person') {
+                searchPerson(query);
+            } else if (currentTool === 'maigret') {
+                searchMaigret(query);
+            } else if (currentTool === 'username') {
+                searchSherlock(query);
+            } else if (currentTool === 'holehe') {
+                searchHolehe(query);
+            } else if (currentTool === 'ip') {
+                searchIP(query);
+            } else if (currentTool === 'domain') {
+                searchDomain(query);
             }
-            
-            html += `
-                <div class="download-section">
-                    ${aiAvailable ? '<button id="aiSummaryBtn" class="btn-ai-summary" onclick="showAISummary()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"></path><path d="M16 11c0 3-2 5-4 7-2-2-4-4-4-7"></path></svg>AI Summary</button>' : ''}
-                    <button id="downloadPdfBtn" class="btn-download">
-                        <span class="btn-icon">PDF</span>
-                        Download Report
-                    </button>
-                </div>
-            `;
-            
-            resultsContent.innerHTML = html;
-            
-            document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
         }
 
-        function showAISummary() {
-            if (!lastResultsData) {
-                showNotification('No results to summarize', 'warning');
+        // API Calls
+        async function searchSocial(query) {
+            const type = query.includes('@') ? 'email' : 'username';
+            startStreaming('/api/social', { [type]: query, type, category: 'all' });
+        }
+
+        async function searchEmail(query) {
+            startStreaming('/api/email', { email: query });
+        }
+
+        async function searchPhone(query) {
+            const res = await fetch('/api/phone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: query })
+            });
+            const data = await res.json();
+            showPhoneResults(data);
+        }
+
+        async function searchBreach(query) {
+            const res = await fetch('/api/hibp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: query })
+            });
+            const data = await res.json();
+            showBreachResults(data);
+        }
+
+        async function searchPerson(query) {
+            const res = await fetch('/api/name-search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: query })
+            });
+            const data = await res.json();
+            showPersonResults(data);
+        }
+
+        async function searchMaigret(query) {
+            startStreaming('/api/username/maigret', { username: query, limit: 50 });
+        }
+
+        async function searchSherlock(query) {
+            startStreaming('/api/username', { username: query });
+        }
+
+        async function searchHolehe(query) {
+            startStreaming('/api/username/holehe', { email: query });
+        }
+
+        async function searchIP(query) {
+            const res = await fetch('/api/ip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: query })
+            });
+            const data = await res.json();
+            showIPResults(data);
+        }
+
+        async function searchDomain(query) {
+            const res = await fetch('/api/domain', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domain: query })
+            });
+            const data = await res.json();
+            showDomainResults(data);
+        }
+
+        // Streaming
+        function startStreaming(endpoint, body) {
+            if (eventSource) eventSource.close();
+            
+            eventSource = new EventSource('/api/stream?' + new URLSearchParams(body));
+            
+            eventSource.onmessage = e => {
+                const data = JSON.parse(e.data);
+                if (data.progress) {
+                    progressFill.style.width = data.progress.percent + '%';
+                    progressText.textContent = `${data.progress.checked}/${data.progress.total} - ${data.progress.current_site || ''}`;
+                }
+                if (data.complete) {
+                    eventSource.close();
+                    showResults(data.result);
+                }
+                if (data.error) {
+                    eventSource.close();
+                    showError(data.error);
+                }
+            };
+        }
+
+        // Display functions
+        function showResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            const found = data.findings || [];
+            const html = `
+                <div class="stats">
+                    <div class="stat"><div class="stat-value">${found.length}</div><div class="stat-label">Found</div></div>
+                    <div class="stat"><div class="stat-value">${data.platforms_checked || found.length}</div><div class="stat-label">Checked</div></div>
+                </div>
+                ${found.length ? found.map(f => `
+                    <div class="result-item ${f.exists ? 'found' : ''}">
+                        <div class="result-info">
+                            <div class="result-name">${f.site || f.service}</div>
+                            <a href="${f.url}" target="_blank" class="result-url">${f.url}</a>
+                        </div>
+                        <span class="result-status ${f.exists ? 'found' : 'not-found'}">${f.exists ? 'FOUND' : 'NOT FOUND'}</span>
+                    </div>
+                `).join('') : '<div class="empty">No results found</div>'}
+            `;
+            resultsContent.innerHTML = html;
+        }
+
+        function showPhoneResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            if (data.error) {
+                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
                 return;
             }
             
-            const aiBody = document.getElementById('aiBody');
-            const statusMsg = document.getElementById('aiStatusMessage');
-            const searchSection = document.getElementById('aiSearchSection');
-            const quickActions = document.getElementById('aiQuickActions');
-            const resultDiv = document.getElementById('nlSearchResult') || document.createElement('div');
-            resultDiv.id = 'nlSearchResult';
-            resultDiv.style.marginTop = '1rem';
-            
-            statusMsg.innerHTML = '<span style="color: #00ff88;">Generating summary...</span>';
-            searchSection.style.display = 'none';
-            quickActions.style.display = 'none';
-            aiBody.appendChild(resultDiv);
-            
-            const modal = document.getElementById('aiModal');
-            modal.classList.add('active');
-            
-            const findings = lastResultsData.findings || lastResultsData.platforms || [];
-            
-            fetch('/api/ai/summarize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: lastResultsQuery,
-                    tool: currentTool,
-                    findings: findings
-                })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    statusMsg.innerHTML = '<span style="color: #ff4444;">' + data.error + '</span>';
-                    return;
-                }
-                
-                statusMsg.innerHTML = '<span style="color: #00ff88;">AI Summary Ready</span>';
-                resultDiv.innerHTML = `
-                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--accent-primary);">
-                        <p style="color: var(--text-primary); line-height: 1.6;">${data.summary}</p>
+            resultsContent.innerHTML = `
+                <div class="card">
+                    <h3>Phone Information</h3>
+                    <div class="grid-2">
+                        <div class="grid-item"><div class="label">Valid</div><div class="value">${data.valid ? 'Yes' : 'No'}</div></div>
+                        <div class="grid-item"><div class="label">Country</div><div class="value">${data.country || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Carrier</div><div class="value">${data.carrier || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Formatted</div><div class="value">${data.formatted || 'N/A'}</div></div>
                     </div>
-                `;
-            })
-            .catch(err => {
-                statusMsg.innerHTML = '<span style="color: #ff4444;">Error generating summary</span>';
-            });
-        }
-
-        async function downloadPdf() {
-            const btn = document.getElementById('downloadPdfBtn');
-            btn.disabled = true;
-            btn.textContent = 'Generating...';
-            
-            try {
-                const response = await fetch('/api/generate-pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        results: lastResultsData,
-                        type: currentTool,
-                        query: lastResultsQuery
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.success && data.download_url) {
-                    window.open(data.download_url, '_blank');
-                } else {
-                    alert('Error generating PDF: ' + (data.error || 'Unknown error'));
-                }
-            } catch (e) {
-                alert('Error generating PDF: ' + e.message);
-            }
-            
-            btn.disabled = false;
-            btn.textContent = 'Download Report';
-        }
-
-        function renderEmailResults(data) {
-            const isCombined = data.sherlock && data.holehe;
-            
-            const sherlockChecks = data.sherlock?.account_checks || data.account_checks || [];
-            const holeheFound = data.holehe?.found || [];
-            
-            const sherlockFound = sherlockChecks.filter(c => c.exists === true);
-            const totalFound = (isCombined ? sherlockFound.length + holeheFound.length : sherlockFound.length);
-            
-            return `
-                <div class="result-card">
-                    <h3>Email Lookup: ${data.email}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value">${totalFound}</span>
-                            <span class="stat-label">Total Found</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.valid_format ? 'Yes' : 'No'}</span>
-                            <span class="stat-label">Valid</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.disposable ? 'Yes' : 'No'}</span>
-                            <span class="stat-label">Disposable</span>
-                        </div>
-                    </div>
-                    
-                    ${isCombined ? `
-                    <div class="stats-row" style="margin-top: 0.5rem;">
-                        <div class="stat">
-                            <span class="stat-value">${sherlockFound.length}</span>
-                            <span class="stat-label">Sherlock</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${holeheFound.length}</span>
-                            <span class="stat-label">Holehe</span>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${totalFound > 0 ? `
-                    <div class="info-section">
-                        <div class="results-header-row">
-                            <h4>Found Accounts (${totalFound})</h4>
-                            <div class="expand-controls">
-                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
-                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
-                            </div>
-                        </div>
-                        <div class="platform-list social-results">
-                            ${sherlockFound.map((a, idx) => `
-                                <div class="platform-item found social-result-item" data-index="sherlock-${idx}" onclick="toggleSocialDetail('sherlock-${idx}')">
-                                    ${getPlatformIcon(a.site || a.name)}
-                                    <span class="platform-name">${a.site || a.name || 'Unknown'}</span>
-                                    <span class="http-status success">Sherlock</span>
-                                    <span class="expand-icon">+</span>
-                                </div>
-                                <div class="social-detail" id="social-detail-sherlock-${idx}" style="display: none;">
-                                    <div class="detail-content">
-                                        <p><strong>Platform:</strong> ${a.site || a.name || 'Unknown'}</p>
-                                        <p><strong>Source:</strong> Sherlock</p>
-                                        <p><strong>Status:</strong> Found</p>
-                                        ${a.url ? `<p><strong>URL:</strong> <a href="${a.url}" target="_blank" class="platform-link">${a.url}</a></p>` : ''}
-                                        <div class="detail-actions">
-                                            ${a.url ? `<a href="${a.url}" target="_blank" class="btn-visit">Visit Profile</a>` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                            ${holeheFound.map((a, idx) => `
-                                <div class="platform-item found social-result-item" data-index="holehe-${idx}" onclick="toggleSocialDetail('holehe-${idx}')">
-                                    ${getPlatformIcon(a.site || a.name)}
-                                    <span class="platform-name">${a.site || a.name || 'Unknown'}</span>
-                                    <span class="http-status success" style="background: rgba(255, 165, 0, 0.2); color: #ffa500;">Holehe</span>
-                                    <span class="expand-icon">+</span>
-                                </div>
-                                <div class="social-detail" id="social-detail-holehe-${idx}" style="display: none;">
-                                    <div class="detail-content">
-                                        <p><strong>Platform:</strong> ${a.site || a.name || 'Unknown'}</p>
-                                        <p><strong>Source:</strong> Holehe</p>
-                                        <p><strong>Status:</strong> Found</p>
-                                        ${a.domain ? `<p><strong>Domain:</strong> ${a.domain}</p>` : ''}
-                                        ${a.emailrecovery ? `<p><strong>Recovery Email:</strong> ${a.emailrecovery}</p>` : ''}
-                                        <div class="detail-actions">
-                                            ${a.domain ? `<a href="https://${a.domain}" target="_blank" class="btn-visit">Visit Site</a>` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : '<p class="search-tip">No accounts found on checked platforms.</p>'}
-                    
-                    ${data.search_links && data.search_links.length > 0 ? `
-                    <div class="info-section">
-                        <h4>External Search Tools</h4>
-                        <div class="platform-list">
-                            ${data.search_links.map(s => `
-                                <div class="platform-item">
-                                    <span class="platform-name">${s.name}</span>
-                                    <a href="${s.url}" target="_blank" class="platform-link">Search</a>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
                 </div>
+                ${data.services ? `
+                    <div class="card">
+                        <h3>Messaging</h3>
+                        <div class="grid-2">
+                            ${data.services.whatsapp ? `<div class="grid-item"><div class="label">WhatsApp</div><div class="value">${data.services.whatsapp.exists ? 'Found' : 'Not found'}</div></div>` : ''}
+                            ${data.services.telegram ? `<div class="grid-item"><div class="label">Telegram</div><div class="value">${data.services.telegram.exists ? 'Found' : 'Not found'}</div></div>` : ''}
+                        </div>
+                    </div>
+                ` : ''}
             `;
         }
 
-        function renderHoleheResults(data) {
-            const foundAccounts = (data.found || []).filter(c => c.exists === true);
+        function showBreachResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
             
-            return `
-                <div class="result-card">
-                    <h3>Holehe Email: ${data.email}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value">${foundAccounts.length}</span>
-                            <span class="stat-label">Found</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.total_checked || 0}</span>
-                            <span class="stat-label">Checked</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.rate_limited_count || 0}</span>
-                            <span class="stat-label">Rate Limited</span>
-                        </div>
-                    </div>
-                    
-                    ${foundAccounts.length > 0 ? `
-                    <div class="info-section">
-                        <div class="results-header-row">
-                            <h4>Found Accounts (${foundAccounts.length})</h4>
-                            <div class="expand-controls">
-                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
-                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
-                            </div>
-                        </div>
-                        <div class="platform-list social-results">
-                            ${foundAccounts.map((a, idx) => `
-                                <div class="platform-item found social-result-item" data-index="hh-${idx}" onclick="toggleSocialDetail('hh-${idx}')">
-                                    <span class="platform-name">${a.site || a.name || 'Unknown'}</span>
-                                    <span class="expand-icon">+</span>
-                                </div>
-                                <div class="social-detail" id="social-detail-hh-${idx}" style="display: none;">
-                                    <div class="detail-content">
-                                        <p><strong>Platform:</strong> ${a.site || a.name || 'Unknown'}</p>
-                                        <p><strong>Domain:</strong> ${a.domain || 'N/A'}</p>
-                                        ${a.emailrecovery ? `<p><strong>Recovery Email:</strong> ${a.emailrecovery}</p>` : ''}
-                                        ${a.phoneNumber ? `<p><strong>Phone:</strong> ${a.phoneNumber}</p>` : ''}
-                                        <div class="detail-actions">
-                                            <a href="https://${a.domain || ''}" target="_blank" class="btn-visit">Visit Site</a>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : '<p class="search-tip">No accounts found on the checked platforms.</p>'}
-                    
-                    <div class="info-section">
-                        <p class="search-tip">Holehe checks if an email is registered by examining password reset flows.</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getConfidenceBadge(confidence, crossValidated) {
-            if (crossValidated) {
-                return `<span class="confidence-badge high" title="Cross-validated by both tools">${confidence}%</span>`;
-            } else if (confidence >= 80) {
-                return `<span class="confidence-badge high">${confidence}%</span>`;
-            } else if (confidence >= 60) {
-                return `<span class="confidence-badge medium">${confidence}%</span>`;
-            } else if (confidence >= 40) {
-                return `<span class="confidence-badge low">${confidence}%</span>`;
-            } else {
-                return `<span class="confidence-badge uncertain">${confidence}%</span>`;
-            }
-        }
-
-        function getSourceBadge(foundBy) {
-            if (foundBy.includes('sherlock') && foundBy.includes('holehe')) {
-                return `<span class="source-badge both">Both</span>`;
-            } else if (foundBy.includes('holehe')) {
-                return `<span class="source-badge holehe">Holehe</span>`;
-            } else {
-                return `<span class="source-badge sherlock">Sherlock</span>`;
-            }
-        }
-
-        function renderCrossValidatedResults(data) {
-            const crossValidated = data.cross_validated || [];
-            const sherlockFound = data.sherlock?.account_checks?.filter(c => c.exists === true) || [];
-            const holeheFound = data.holehe?.found || [];
-            
-            const totalFound = crossValidated.length;
-            const crossCount = crossValidated.filter(r => r.cross_validated).length;
-            const sherlockOnlyCount = crossValidated.filter(r => !r.cross_validated && r.found_by.includes('sherlock')).length;
-            const holeheOnlyCount = crossValidated.filter(r => !r.cross_validated && r.found_by.includes('holehe')).length;
-            
-            const highConf = crossValidated.filter(r => r.confidence >= 80).length;
-            const mediumConf = crossValidated.filter(r => r.confidence >= 60 && r.confidence < 80).length;
-            const lowConf = crossValidated.filter(r => r.confidence < 60).length;
-            
-            return `
-                <div class="result-card">
-                    <h3>Cross-Validated Email: ${data.email}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value">${totalFound}</span>
-                            <span class="stat-label">Total Found</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value" style="color: #00ff88;">${crossCount}</span>
-                            <span class="stat-label">Cross-Validated</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${highConf}</span>
-                            <span class="stat-label">High Confidence</span>
-                        </div>
-                    </div>
-                    
-                    ${totalFound > 0 ? `
-                    <div class="stats-row" style="margin-top: 0.5rem; background: rgba(0,255,136,0.1); padding: 0.75rem; border-radius: 8px;">
-                        <div class="stat" style="flex: 1;">
-                            <span class="stat-value" style="color: #00ff88; font-size: 0.9rem;">${crossCount} Cross-Validated</span>
-                            <span class="stat-label">Both tools agree</span>
-                        </div>
-                        <div class="stat" style="flex: 1;">
-                            <span class="stat-value" style="color: #f0a500; font-size: 0.9rem;">${sherlockOnlyCount} Sherlock Only</span>
-                            <span class="stat-label">Not in Holehe</span>
-                        </div>
-                        <div class="stat" style="flex: 1;">
-                            <span class="stat-value" style="color: #ffa500; font-size: 0.9rem;">${holeheOnlyCount} Holehe Only</span>
-                            <span class="stat-label">Not in Sherlock</span>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${totalFound > 0 ? `
-                    <div class="info-section">
-                        <div class="results-header-row">
-                            <h4>Results (sorted by confidence)</h4>
-                            <div class="expand-controls">
-                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
-                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
-                            </div>
-                        </div>
-                        <div class="confidence-legend" style="margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <span><span class="confidence-badge high">High</span> 80-100%</span>
-                            <span><span class="confidence-badge medium">Medium</span> 60-79%</span>
-                            <span><span class="confidence-badge low">Low</span> 40-59%</span>
-                            <span><span class="confidence-badge uncertain">Uncertain</span> &lt;40%</span>
-                        </div>
-                        <div class="platform-list social-results">
-                            ${crossValidated.map((r, idx) => `
-                                <div class="platform-item found social-result-item ${r.cross_validated ? 'cross-validated' : ''}" data-index="cv-${idx}" onclick="toggleSocialDetail('cv-${idx}')">
-                                    ${getPlatformIcon(r.site)}
-                                    <span class="platform-name">${r.site}</span>
-                                    ${getSourceBadge(r.found_by)}
-                                    ${getConfidenceBadge(r.confidence, r.cross_validated)}
-                                    ${r.cross_validated ? '<span class="cross-badge" title="Verified by both tools">✓</span>' : ''}
-                                    <span class="expand-icon">+</span>
-                                </div>
-                                <div class="social-detail" id="social-detail-cv-${idx}" style="display: none;">
-                                    <div class="detail-content">
-                                        <p><strong>Platform:</strong> ${r.site}</p>
-                                        <p><strong>Confidence:</strong> <span class="confidence-inline ${r.confidence >= 80 ? 'high' : r.confidence >= 60 ? 'medium' : r.confidence >= 40 ? 'low' : 'uncertain'}">${r.confidence}%</span></p>
-                                        <p><strong>Found by:</strong> ${r.found_by.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}</p>
-                                        <p><strong>Cross-Validated:</strong> ${r.cross_validated ? '<span style="color: #00ff88;">Yes - Both tools found this account</span>' : '<span style="color: #ffa500;">No - Only one tool found this account</span>'}</p>
-                                        ${r.sherlock_status ? `<p><strong>Sherlock Status:</strong> ${r.sherlock_status}</p>` : ''}
-                                        ${r.holehe_status ? `<p><strong>Holehe Status:</strong> ${r.holehe_status}</p>` : ''}
-                                        ${r.emailrecovery ? `<p><strong>Recovery Email:</strong> <span style="color: #00ff88;">${r.emailrecovery}</span></p>` : ''}
-                                        ${r.rateLimit ? `<p><strong>Note:</strong> <span style="color: #ffa500;">Rate limited - confidence reduced</span></p>` : ''}
-                                        ${r.url ? `
-                                        <div class="detail-actions">
-                                            <a href="${r.url}" target="_blank" class="btn-visit">Visit Profile</a>
-                                        </div>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : '<p class="search-tip">No accounts found on checked platforms.</p>'}
-                    
-                    <div class="info-section">
-                        <h4>Summary</h4>
-                        <div style="padding: 1rem; background: rgba(0,255,136,0.1); border-radius: 8px; margin-top: 0.5rem;">
-                            <p style="color: #ccc; margin-bottom: 0.5rem;">
-                                ${crossCount > 0 
-                                    ? `<span style="color: #00ff88;">✓ ${crossCount} accounts</span> were found by both Sherlock and Holehe (highest confidence)`
-                                    : 'No accounts were found by both tools simultaneously.'}
-                            </p>
-                            <p style="color: #ccc; margin-bottom: 0.5rem;">
-                                ${highConf > 0 
-                                    ? `${highConf} account(s) have high confidence (80-100%)`
-                                    : 'No accounts with high confidence.'}
-                            </p>
-                            ${sherlockOnlyCount > 0 || holeheOnlyCount > 0
-                                ? `<p style="color: #f0a500; margin-bottom: 0;">⚠ ${sherlockOnlyCount + holeheOnlyCount} account(s) found by only one tool - may be false positives</p>`
-                                : ''}
-                        </div>
-                    </div>
-                    
-                    ${data.search_links && data.search_links.length > 0 ? `
-                    <div class="info-section">
-                        <h4>External Search Tools</h4>
-                        <div class="platform-list">
-                            ${data.search_links.map(s => `
-                                <div class="platform-item">
-                                    <span class="platform-name">${s.name}</span>
-                                    <a href="${s.url}" target="_blank" class="platform-link">Search</a>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-
-        function renderIPResults(data) {
-            return `
-                <div class="result-card">
-                    <h3>IP Lookup: ${data.ip}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value">${data.geolocation?.country || 'N/A'}</span>
-                            <span class="stat-label">Country</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.geolocation?.region || 'N/A'}</span>
-                            <span class="stat-label">Region</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.ports?.length || 0}</span>
-                            <span class="stat-label">Open Ports</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.reputation_score}/100</span>
-                            <span class="stat-label">Reputation</span>
-                        </div>
-                    </div>
-                    
-                    <div class="info-section">
-                        <div class="results-header-row">
-                            <h4>Details</h4>
-                            <div class="expand-controls">
-                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
-                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
-                            </div>
-                        </div>
-                        <div class="platform-list social-results">
-                            <div class="platform-item found social-result-item" data-index="ip-0" onclick="toggleSocialDetail('ip-0')">
-                                <span class="platform-name">Geolocation</span>
-                                <span class="expand-icon">+</span>
-                            </div>
-                            <div class="social-detail" id="social-detail-ip-0" style="display: none;">
-                                <div class="detail-content">
-                                    <p><strong>Country:</strong> ${data.geolocation?.country || 'N/A'}</p>
-                                    <p><strong>Region:</strong> ${data.geolocation?.region || 'N/A'}</p>
-                                    <p><strong>City:</strong> ${data.geolocation?.city || 'N/A'}</p>
-                                    <p><strong>ISP:</strong> ${data.geolocation?.isp || 'N/A'}</p>
-                                    <p><strong>Organization:</strong> ${data.geolocation?.org || 'N/A'}</p>
-                                    <p><strong>AS Number:</strong> ${data.geolocation?.as || 'N/A'}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="platform-item found social-result-item" data-index="ip-1" onclick="toggleSocialDetail('ip-1')">
-                                <span class="platform-name">Network Info</span>
-                                <span class="expand-icon">+</span>
-                            </div>
-                            <div class="social-detail" id="social-detail-ip-1" style="display: none;">
-                                <div class="detail-content">
-                                    <p><strong>IP Address:</strong> ${data.ip}</p>
-                                    <p><strong>Reverse DNS:</strong> ${data.reverse_dns || 'N/A'}</p>
-                                    <p><strong>Reputation Score:</strong> ${data.reputation_score}/100</p>
-                                </div>
-                            </div>
-                            
-                            <div class="platform-item found social-result-item" data-index="ip-2" onclick="toggleSocialDetail('ip-2')">
-                                <span class="platform-name">Open Ports (${data.ports?.length || 0})</span>
-                                <span class="expand-icon">+</span>
-                            </div>
-                            <div class="social-detail" id="social-detail-ip-2" style="display: none;">
-                                <div class="detail-content">
-                                    <p><strong>Detected Ports:</strong></p>
-                                    <div class="ports-list">
-                                        ${data.ports?.length > 0 ? data.ports.map(p => `<span class="port-badge">${p}</span>`).join(' ') : '<span>No common ports detected</span>'}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderDomainResults(data) {
-            return `
-                <div class="result-card">
-                    <h3>Domain Lookup: ${data.domain}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value">${data.ip_addresses?.length || 0}</span>
-                            <span class="stat-label">IP Addresses</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.subdomains?.length || 0}</span>
-                            <span class="stat-label">Subdomains</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${data.valid ? 'Yes' : 'No'}</span>
-                            <span class="stat-label">Valid</span>
-                        </div>
-                    </div>
-                    
-                    <div class="info-section">
-                        <div class="results-header-row">
-                            <h4>Details</h4>
-                            <div class="expand-controls">
-                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
-                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
-                            </div>
-                        </div>
-                        <div class="platform-list social-results">
-                            <div class="platform-item found social-result-item" data-index="dn-0" onclick="toggleSocialDetail('dn-0')">
-                                <span class="platform-name">IP Addresses</span>
-                                <span class="expand-icon">+</span>
-                            </div>
-                            <div class="social-detail" id="social-detail-dn-0" style="display: none;">
-                                <div class="detail-content">
-                                    <p><strong>Resolved IPs:</strong></p>
-                                    ${data.ip_addresses?.length > 0 ? data.ip_addresses.map(ip => `<p>${ip}</p>`).join('') : '<p>N/A</p>'}
-                                </div>
-                            </div>
-                            
-                            <div class="platform-item found social-result-item" data-index="dn-1" onclick="toggleSocialDetail('dn-1')">
-                                <span class="platform-name">DNS Records</span>
-                                <span class="expand-icon">+</span>
-                            </div>
-                            <div class="social-detail" id="social-detail-dn-1" style="display: none;">
-                                <div class="detail-content">
-                                    <p><strong>DNS Records:</strong></p>
-                                    <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 0.75rem;">${JSON.stringify(data.dns_records || {}, null, 2)}</pre>
-                                </div>
-                            </div>
-                            
-                            <div class="platform-item found social-result-item" data-index="dn-2" onclick="toggleSocialDetail('dn-2')">
-                                <span class="platform-name">Subdomains (${data.subdomains?.length || 0})</span>
-                                <span class="expand-icon">+</span>
-                            </div>
-                            <div class="social-detail" id="social-detail-dn-2" style="display: none;">
-                                <div class="detail-content">
-                                    <p><strong>Found Subdomains:</strong></p>
-                                    <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 0.75rem;">${data.subdomains?.length > 0 ? data.subdomains.join('\n') : 'No common subdomains found'}</pre>
-                                </div>
-                            </div>
-                            
-                            ${data.ssl_info ? `
-                            <div class="platform-item found social-result-item" data-index="dn-3" onclick="toggleSocialDetail('dn-3')">
-                                <span class="platform-name">SSL Certificate</span>
-                                <span class="expand-icon">+</span>
-                            </div>
-                            <div class="social-detail" id="social-detail-dn-3" style="display: none;">
-                                <div class="detail-content">
-                                    <p><strong>SSL Certificate Info:</strong></p>
-                                    <p>Issuer: ${data.ssl_info.issuer?.commonName || 'N/A'}</p>
-                                    <p>Valid From: ${data.ssl_info.not_before || 'N/A'}</p>
-                                    <p>Valid Until: ${data.ssl_info.not_after || 'N/A'}</p>
-                                </div>
-                            </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderUsernameResults(data) {
             if (data.error) {
-                return `
-                    <div class="result-card error">
-                        <h3>Error</h3>
-                        <p>${data.error}</p>
-                    </div>
-                `;
+                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
+                return;
             }
             
-            const findings = data.findings || [];
-            const found = findings.filter(f => f.exists === true);
-            
-            const verifiedCount = found.filter(f => f.verification === 'verified' || f.verified === true).length;
-            const uncertainCount = found.filter(f => f.verification === 'likely_false' || f.status === 'unverified').length;
-            
-            const sortedFound = [...found].sort((a, b) => {
-                const aVerified = a.verification === 'verified' || a.verified === true;
-                const bVerified = b.verification === 'verified' || b.verified === true;
-                const aUncertain = a.verification === 'likely_false' || a.status === 'unverified';
-                const bUncertain = b.verification === 'likely_false' || b.status === 'unverified';
-                
-                if (aVerified && !bVerified) return -1;
-                if (!aVerified && bVerified) return 1;
-                if (!aUncertain && bUncertain) return -1;
-                if (aUncertain && !bUncertain) return 1;
-                return 0;
-            });
-            
-            const foundCount = found.length;
-            const checkedCount = data.platforms_checked || 0;
-            
-            return `
-                <div class="result-card">
-                    <h3>Username Search: ${data.username}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value">${foundCount}</span>
-                            <span class="stat-label">Found</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${checkedCount}</span>
-                            <span class="stat-label">Checked</span>
-                        </div>
-                        ${foundCount > 0 ? `
-                        <div class="stat">
-                            <span class="stat-value" style="color: #00ff88;">${verifiedCount}</span>
-                            <span class="stat-label">Verified</span>
-                        </div>
-                        ` : ''}
+            const breaches = data.breaches || [];
+            resultsContent.innerHTML = `
+                <div class="card">
+                    <h3>Breach Results for ${data.email}</h3>
+                    <div class="grid-2">
+                        <div class="grid-item"><div class="label">Breaches Found</div><div class="value">${breaches.length}</div></div>
                     </div>
-                    ${uncertainCount > 0 ? `
-                    <div class="verification-note" style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(255, 170, 0, 0.1); border-radius: 8px; border-left: 3px solid #ffaa00;">
-                        <span style="color: #ffaa00; font-size: 0.8rem;">⚠️ ${uncertainCount} result(s) may be false positives and are marked as unverified</span>
-                    </div>
-                    ` : ''}
-                    
-                    ${foundCount > 0 ? `
-                    <div class="info-section">
-                        <div class="results-header-row">
-                            <h4>Found Accounts (${foundCount})</h4>
-                            <div class="expand-controls">
-                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
-                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
-                            </div>
-                        </div>
-                        <div class="platform-list social-results">
-                            ${sortedFound.map((p, idx) => {
-                                const isVerified = p.verification === 'verified' || p.verified === true;
-                                const isUnverified = p.verification === 'likely_false' || p.status === 'unverified';
-                                const statusClass = isVerified ? 'success' : (isUnverified ? 'warning' : 'info');
-                                const statusText = isVerified ? '✓ Verified' : (isUnverified ? '⚠ Unverified' : '○ Unconfirmed');
-                                return `
-                                <div class="platform-item found social-result-item" data-index="un-${idx}" onclick="toggleSocialDetail('un-${idx}')">
-                                    ${getPlatformIcon(p.platform || p.site)}
-                                    <span class="platform-name">${p.platform || p.site || 'Unknown'}</span>
-                                    <span class="http-status ${statusClass}">${statusText}</span>
-                                    <span class="expand-icon">+</span>
-                                </div>
-                                <div class="social-detail" id="social-detail-un-${idx}" style="display: none;">
-                                    <div class="detail-content">
-                                        <p><strong>Platform:</strong> ${p.platform || p.site || 'Unknown'}</p>
-                                        <p><strong>Status:</strong> ${p.status || 'found'}</p>
-                                        <p><strong>Verification:</strong> ${statusText}</p>
-                                        ${p.http_status ? `<p><strong>HTTP Status:</strong> ${p.http_status}</p>` : ''}
-                                        ${p.url ? `<p><strong>URL:</strong> <a href="${p.url}" target="_blank" class="platform-link">${p.url}</a></p>` : ''}
-                                        <div class="detail-actions">
-                                            ${p.url ? `<a href="${p.url}" target="_blank" class="btn-visit">Visit Profile</a>` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            `}).join('')}
-                        </div>
-                    </div>
-                    ` : '<p class="search-tip">No accounts found on checked platforms.</p>'}
                 </div>
+                ${breaches.length ? breaches.map(b => `
+                    <div class="result-item found">
+                        <div class="result-info">
+                            <div class="result-name">${b.name}</div>
+                            <div style="font-size:0.8rem;color:var(--text2)">${b.date || ''}</div>
+                        </div>
+                    </div>
+                `).join('') : '<div class="empty">No breaches found</div>'}
             `;
         }
 
-        function renderPersonResults(data) {
-            if (data.error) {
-                return `
-                    <div class="result-card error">
-                        <h3>Error</h3>
-                        <p>${data.error}</p>
-                    </div>
-                `;
-            }
+        function showPersonResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
             
             const accounts = data.accounts || [];
-            const foundCount = data.found_count || 0;
-            const usernamePatterns = data.username_patterns || [];
+            const found = accounts.filter(a => a.exists);
             
-            const foundAccounts = accounts.filter(a => a.exists === true);
-            const notFoundAccounts = accounts.filter(a => a.exists === false);
-            const unavailableAccounts = accounts.filter(a => a.exists === null);
-            
-            return `
-                <div class="result-card">
-                    <h3>Name Search: ${data.name}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value" style="color: ${foundCount > 0 ? '#00ff88' : 'var(--text-secondary)'};">${foundCount}</span>
-                            <span class="stat-label">Platforms Found</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${notFoundAccounts.length}</span>
-                            <span class="stat-label">Not Found</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">${usernamePatterns.length}</span>
-                            <span class="stat-label">Username Patterns</span>
-                        </div>
-                    </div>
-                    
-                    ${foundAccounts.length > 0 ? `
-                    <div class="info-section" style="margin-top: 1rem;">
-                        <h4 style="color: #00ff88; margin-bottom: 1rem;">Found on ${foundAccounts.length} Platform${foundAccounts.length > 1 ? 's' : ''}</h4>
-                        <div class="platform-list social-results">
-                            ${foundAccounts.map((account, idx) => `
-                                <div class="platform-item found social-result-item" data-index="pf-${idx}" onclick="toggleSocialDetail('pf-${idx}')">
-                                    <span class="platform-name" style="color: #00ff88;">${account.site}</span>
-                                    <span class="expand-icon">+</span>
-                                </div>
-                                <div class="social-detail" id="social-detail-pf-${idx}" style="display: none;">
-                                    <div class="detail-content">
-                                        <p><strong>Status:</strong> <span style="color: #00ff88;">Found</span></p>
-                                        ${account.url ? `<p><strong>URL:</strong> <a href="${account.url}" target="_blank" style="color: #00d9ff;">${account.url.substring(0, 60)}...</a></p>` : ''}
-                                        ${account.note ? `<p><strong>Note:</strong> ${account.note}</p>` : ''}
-                                        ${account.users ? `
-                                            <div style="margin-top: 0.5rem;">
-                                                <p style="font-weight: bold; margin-bottom: 0.5rem;">Users Found:</p>
-                                                ${account.users.map(u => `
-                                                    <div style="background: var(--bg-tertiary); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem;">
-                                                        <div style="font-weight: bold;">${u.username || u.full_name}</div>
-                                                        ${u.url ? `<a href="${u.url}" target="_blank" style="color: #00d9ff; font-size: 0.85rem;">View Profile</a>` : ''}
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                        ` : ''}
-                                        ${account.url ? `<div class="detail-actions"><a href="${account.url}" target="_blank" class="btn-visit">Visit Platform</a></div>` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${unavailableAccounts.length > 0 ? `
-                    <div class="info-section" style="margin-top: 1rem;">
-                        <h4 style="color: #f0a500; margin-bottom: 1rem;">Unavailable / Rate Limited</h4>
-                        <div class="platform-list">
-                            ${unavailableAccounts.map(account => `
-                                <div class="platform-item" style="opacity: 0.7;">
-                                    <span class="platform-name" style="color: #f0a500;">${account.site}</span>
-                                    <span class="platform-status" style="color: var(--text-muted);">${account.status}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${notFoundAccounts.length > 0 ? `
-                    <div class="info-section" style="margin-top: 1rem;">
-                        <h4 style="color: var(--text-muted); margin-bottom: 1rem;">Not Found</h4>
-                        <div class="platform-list">
-                            ${notFoundAccounts.map(account => `
-                                <div class="platform-item" style="opacity: 0.6;">
-                                    <span class="platform-name">${account.site}</span>
-                                    ${account.url ? `<a href="${account.url}" target="_blank" style="margin-left: auto; color: #00d9ff; font-size: 0.85rem;">Search</a>` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${usernamePatterns.length > 0 ? `
-                    <div class="info-section" style="margin-top: 1rem;">
-                        <h4 style="margin-bottom: 1rem;">Username Patterns</h4>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">Try these username patterns for additional searching:</p>
-                        <div class="username-patterns" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            ${usernamePatterns.map(pattern => `
-                                <span style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.25rem 0.75rem; font-family: monospace; font-size: 0.9rem;">${pattern}</span>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-
-        function renderHIBPResults(data) {
-            if (data.error) {
-                return `
-                    <div class="result-card error">
-                        <h3>Error</h3>
-                        <p>${data.error}</p>
-                    </div>
-                `;
-            }
-
-            if (data.no_api_key) {
-                return `
-                    <div class="result-card">
-                        <h3>Breach Check: ${data.email}</h3>
-                        <div class="info-section" style="margin-top: 1rem;">
-                            <h4 style="color: var(--text-secondary); margin-bottom: 1rem;">Free Breach Checkers</h4>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
-                                The built-in HIBP API requires a paid key. Use these free alternatives:
-                            </p>
-                            <div class="links-grid">
-                                <a href="https://haveibeenpwned.com/unverifiedpwned?q=${data.email}" target="_blank" class="search-link" style="background: #f44336; color: white; padding: 0.75rem 1rem; border-radius: 6px; text-decoration: none; display: inline-block; text-align: center;">
-                                    Have I Been Pwned
-                                </a>
-                                <a href="https://leakcheck.io/?q=${data.email}" target="_blank" class="search-link" style="background: #2196f3; color: white; padding: 0.75rem 1rem; border-radius: 6px; text-decoration: none; display: inline-block; text-align: center;">
-                                    LeakCheck
-                                </a>
-                                <a href="https://snusbase.com/" target="_blank" class="search-link" style="background: #9c27b0; color: white; padding: 0.75rem 1rem; border-radius: 6px; text-decoration: none; display: inline-block; text-align: center;">
-                                    Snusbase
-                                </a>
-                                <a href="https://dehashed.com/search?query=${data.email}" target="_blank" class="search-link" style="background: #ff9800; color: white; padding: 0.75rem 1rem; border-radius: 6px; text-decoration: none; display: inline-block; text-align: center;">
-                                    Dehashed
-                                </a>
-                            </div>
-                            <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem;">
-                                Note: HIBP API key ($3/month) available at haveibeenpwned.com/API/Key
-                            </p>
-                        </div>
-                    </div>
-                `;
-            }
-
-            const breaches = data.breaches || [];
-            const breachCount = breaches.length;
-
-            return `
-                <div class="result-card">
-                    <h3>Breach Check: ${data.email}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value" style="color: ${breachCount > 0 ? '#f44336' : '#00ff88'};">${breachCount}</span>
-                            <span class="stat-label">Breaches Found</span>
-                        </div>
-                    </div>
-                    ${breachCount > 0 ? `
-                        <div class="info-section" style="margin-top: 1rem;">
-                            <h4 style="color: #f44336; margin-bottom: 1rem;">Found in ${breachCount} data breach${breachCount > 1 ? 'es' : ''}</h4>
-                            <div class="breach-list">
-                                ${breaches.map(b => `
-                                    <div class="breach-item" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;">
-                                        <div class="breach-header" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                                            ${b.LogoPath ? `<img src="${b.LogoPath}" alt="${b.Name}" style="width: 32px; height: 32px; border-radius: 4px;">` : `<div style="width: 32px; height: 32px; background: #f44336; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${b.Name.charAt(0)}</div>`}
-                                            <div>
-                                                <strong style="color: #f44336;">${b.Title}</strong>
-                                                <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">${b.BreachDate}</span>
-                                            </div>
-                                        </div>
-                                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0.5rem 0;">${b.Description.replace(/<[^>]*>/g, '').substring(0, 200)}...</p>
-                                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
-                                            ${b.DataClasses ? b.DataClasses.map(d => `<span class="data-class" style="background: rgba(244, 67, 54, 0.2); color: #f44336; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${d}</span>`).join('') : ''}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="info-section" style="margin-top: 1rem; background: rgba(0, 255, 136, 0.1); border: 1px solid #00ff88; padding: 1rem; border-radius: 8px;">
-                            <p style="color: #00ff88; margin: 0;"><strong>No breaches found</strong></p>
-                            <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.9rem;">This email was not found in any known data breaches.</p>
-                        </div>
-                    `}
-                    <div class="search-links" style="margin-top: 1.5rem;">
-                        <h4 style="color: var(--text-secondary); margin-bottom: 0.5rem;">External Checks</h4>
-                        <div class="links-grid">
-                            <a href="https://haveibeenpwned.com/unverifiedpwned?q=${data.email}" target="_blank" class="search-link">Have I Been Pwned (Full)</a>
-                            <a href="https://hunter.io/search/${data.email}" target="_blank" class="search-link">Hunter.io</a>
-                            <a href="https://emailrep.io/${data.email}" target="_blank" class="search-link">EmailRep</a>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderSocialResults(data) {
-            const allPlatforms = data.platforms || [];
-            
-            const found = allPlatforms.filter(p => p.exists === true);
-            const errors = allPlatforms.filter(p => p.http_status && p.http_status >= 400 && p.http_status < 500);
-            const notFound = allPlatforms.filter(p => p.exists === false && (!p.http_status || p.http_status < 400));
-            const unknown = allPlatforms.filter(p => p.exists === null && (!p.http_status || p.http_status < 400));
-            
-            const foundCount = found.length;
-            const errorCount = errors.length;
-            
-            let html = `
-                <div class="result-card">
-                    <h3>Social Media Search: ${data.query}</h3>
-                    <div class="stats-row">
-                        <div class="stat">
-                            <span class="stat-value" style="color: #00ff88;">${foundCount}</span>
-                            <span class="stat-label">Found</span>
-                        </div>
-                        ${errorCount > 0 ? `
-                        <div class="stat">
-                            <span class="stat-value" style="color: #ff4444;">${errorCount}</span>
-                            <span class="stat-label">Errors</span>
-                        </div>
-                        ` : ''}
-                        <div class="stat">
-                            <span class="stat-value">${data.total_checked || 0}</span>
-                            <span class="stat-label">Checked</span>
-                        </div>
-                        ${data.from_cache ? '<span class="cached-badge">Cached</span>' : ''}
-                    </div>`;
-            
-            if (foundCount > 0) {
-                html += `
-                    <div class="info-section">
-                        <div class="results-header-row">
-                            <h4 style="color: #00ff88;">Found Accounts (${foundCount})</h4>
-                            <div class="expand-controls">
-                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
-                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
-                            </div>
-                        </div>
-                        <div class="platform-list social-results">
-                            ${found.map((p, idx) => `
-                                <div class="platform-item found social-result-item" data-index="sm-found-${idx}" onclick="toggleSocialDetail('sm-found-${idx}')">
-                                    <span class="platform-name">${p.platform}</span>
-                                    ${p.http_status ? `<span class="http-status success">${p.http_status}</span>` : ''}
-                                    <span class="expand-icon">+</span>
-                                </div>
-                                <div class="social-detail" id="social-detail-sm-found-${idx}" style="display: none;">
-                                    <div class="detail-content">
-                                        <p><strong>Platform:</strong> ${p.platform}</p>
-                                        <p><strong>Status:</strong> <span style="color: #00ff88;">Found</span></p>
-                                        <p><strong>URL:</strong> <a href="${p.url}" target="_blank" class="platform-link">${p.url}</a></p>
-                                        ${p.http_status ? `<p><strong>HTTP Status:</strong> ${p.http_status}</p>` : ''}
-                                        <div class="detail-actions">
-                                            <a href="${p.url}" target="_blank" class="btn-visit">Visit Profile</a>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
-            }
-            
-            if (errorCount > 0) {
-                html += `
-                    <div class="info-section">
-                        <div class="results-header-row">
-                            <h4 style="color: #ff4444;">Errors (${errorCount})</h4>
-                            <div class="expand-controls">
-                                <button class="btn-expand" onclick="expandAllSocial()">Expand All</button>
-                                <button class="btn-expand" onclick="collapseAllSocial()">Collapse All</button>
-                            </div>
-                        </div>
-                        <div class="platform-list social-results">
-                            ${errors.map((p, idx) => `
-                                <div class="platform-item error social-result-item" data-index="sm-error-${idx}" onclick="toggleSocialDetail('sm-error-${idx}')">
-                                    <span class="platform-name">${p.platform}</span>
-                                    <span class="http-status error">${p.http_status}</span>
-                                    <span class="expand-icon">+</span>
-                                </div>
-                                <div class="social-detail" id="social-detail-sm-error-${idx}" style="display: none;">
-                                    <div class="detail-content">
-                                        <p><strong>Platform:</strong> ${p.platform}</p>
-                                        <p><strong>Status:</strong> <span style="color: #ff4444;">${p.status || 'error'}</span></p>
-                                        <p><strong>HTTP Status:</strong> <span style="color: #ff4444;">${p.http_status}</span></p>
-                                        <p><strong>URL:</strong> <a href="${p.url}" target="_blank" class="platform-link">${p.url}</a></p>
-                                        <div class="detail-actions">
-                                            <a href="${p.url}" target="_blank" class="btn-visit">Visit Profile</a>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
-            }
-            
-            if (foundCount === 0 && errorCount === 0) {
-                html += '<p class="search-tip">No accounts found.</p>';
-            }
-            
-            html += '</div>';
-            return html;
-        }
-
-        function toggleSocialDetail(idx) {
-            const detail = document.getElementById(`social-detail-${idx}`);
-            if (!detail) return;
-            const item = document.querySelector(`.social-result-item[data-index="${idx}"]`);
-            if (!item) return;
-            const icon = item.querySelector('.expand-icon');
-            
-            if (detail.style.display === 'none') {
-                detail.style.display = 'block';
-                icon.textContent = '-';
-                item.classList.add('expanded');
-            } else {
-                detail.style.display = 'none';
-                icon.textContent = '+';
-                item.classList.remove('expanded');
-            }
-        }
-
-        function expandAllSocial() {
-            const resultCard = document.querySelector('.result-card:not(.hidden)');
-            if (!resultCard) return;
-            const details = resultCard.querySelectorAll('.social-detail');
-            const items = resultCard.querySelectorAll('.social-result-item');
-            details.forEach((detail, idx) => {
-                detail.style.display = 'block';
-                if (items[idx]) {
-                    items[idx].classList.add('expanded');
-                    const icon = items[idx].querySelector('.expand-icon');
-                    if (icon) icon.textContent = '-';
-                }
-            });
-        }
-
-        function collapseAllSocial() {
-            const resultCard = document.querySelector('.result-card:not(.hidden)');
-            if (!resultCard) return;
-            const details = resultCard.querySelectorAll('.social-detail');
-            const items = resultCard.querySelectorAll('.social-result-item');
-            details.forEach((detail, idx) => {
-                detail.style.display = 'none';
-                if (items[idx]) {
-                    items[idx].classList.remove('expanded');
-                    const icon = items[idx].querySelector('.expand-icon');
-                    if (icon) icon.textContent = '+';
-                }
-            });
-        }
-
-        function displayError(message) {
-            resultsSection.classList.remove('hidden');
             resultsContent.innerHTML = `
-                <div class="result-card error">
-                    <h3>Error</h3>
-                    <p>${message}</p>
+                <div class="stats">
+                    <div class="stat"><div class="stat-value">${found.length}</div><div class="stat-label">Found</div></div>
+                    <div class="stat"><div class="stat-value">${accounts.length}</div><div class="stat-label">Checked</div></div>
+                </div>
+                ${found.length ? found.map(f => `
+                    <div class="result-item found">
+                        <div class="result-info">
+                            <div class="result-name">${f.site}</div>
+                            <a href="${f.url}" target="_blank" class="result-url">${f.url}</a>
+                        </div>
+                    </div>
+                `).join('') : '<div class="empty">No accounts found</div>'}
+            `;
+        }
+
+        function showIPResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            if (data.error) {
+                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
+                return;
+            }
+            
+            resultsContent.innerHTML = `
+                <div class="card">
+                    <h3>IP Information</h3>
+                    <div class="grid-2">
+                        <div class="grid-item"><div class="label">IP</div><div class="value">${data.ip}</div></div>
+                        <div class="grid-item"><div class="label">Country</div><div class="value">${data.country || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">City</div><div class="value">${data.city || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">ISP</div><div class="value">${data.isp || 'Unknown'}</div></div>
+                    </div>
                 </div>
             `;
+        }
+
+        function showDomainResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            if (data.error) {
+                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
+                return;
+            }
+            
+            resultsContent.innerHTML = `
+                <div class="card">
+                    <h3>Domain: ${data.domain}</h3>
+                    <div class="grid-2">
+                        <div class="grid-item"><div class="label">Registrar</div><div class="value">${data.registrar || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Created</div><div class="value">${data.created || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Expires</div><div class="value">${data.expires || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Nameservers</div><div class="value">${(data.nameservers || []).join(', ') || 'Unknown'}</div></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showError(msg) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            resultsContent.innerHTML = `<div class="empty" style="color:var(--red)">Error: ${msg}</div>`;
         }
 
         function closeResults() {
-            resultsSection.classList.add('hidden');
+            if (eventSource) eventSource.close();
+            resultsDiv.classList.add('hidden');
+            loadingDiv.classList.add('hidden');
         }
 
-        function showCacheStatus() {
-            fetch('/api/cache/status')
-                .then(r => r.json())
-                .then(data => {
-                    const cacheInfo = data.cache_info;
-                    const rateLimits = data.rate_limits || [];
-                    
-                    let html = `
-                        <div style="padding: 1rem;">
-                            <h3 style="margin-bottom: 1rem;">Cache & Rate Limit Status</h3>
-                            
-                            <div style="margin-bottom: 1.5rem;">
-                                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">Cache</h4>
-                                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                                    <div style="flex: 1; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px; text-align: center;">
-                                        <div style="font-size: 1.5rem; font-weight: bold; color: #00ff88;">${cacheInfo.valid}</div>
-                                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Cached Results</div>
-                                    </div>
-                                    <div style="flex: 1; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px; text-align: center;">
-                                        <div style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);">${cacheInfo.total}</div>
-                                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Total Entries</div>
-                                    </div>
-                                </div>
-                                <button onclick="clearCache()" class="btn-danger" style="width: 100%;">Clear Cache</button>
-                            </div>
-                            
-                            ${rateLimits.length > 0 ? `
-                            <div>
-                                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">Rate Limited Sites</h4>
-                                <p style="color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.85rem;">
-                                    These sites are temporarily blocked due to rate limiting. Auto-clears when ready.
-                                </p>
-                                <div style="max-height: 200px; overflow-y: auto;">
-                                    ${rateLimits.map(r => `
-                                        <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: rgba(255,100,100,0.1); border-radius: 4px; margin-bottom: 0.25rem;">
-                                            <span style="color: var(--text-primary);">${r.site}</span>
-                                            <span style="color: #ff6464;">Wait ${r.remaining_seconds}s</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            ` : '<p style="color: var(--text-secondary);">No rate limited sites</p>'}
-                            
-                            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(0,255,136,0.1); border-radius: 8px;">
-                                <p style="color: #00ff88; font-size: 0.85rem; margin: 0;">
-                                    Results are cached for 24 hours. Rate limits auto-reset after cooldown.
-                                </p>
-                            </div>
-                        </div>
-                    `;
-                    
-                    const modal = document.createElement('div');
-                    modal.className = 'site-info-modal';
-                    modal.style.zIndex = '1000';
-                    modal.innerHTML = `
-                        <div class="site-info-content" style="max-width: 500px;">
-                            ${html}
-                            <button onclick="this.closest('.site-info-modal').remove()" class="btn-close" style="position: absolute; top: 10px; right: 15px;">&times;</button>
-                        </div>
-                    `;
-                    modal.onclick = function(e) {
-                        if (e.target === modal) modal.remove();
-                    };
-                    document.body.appendChild(modal);
-                })
-                .catch(err => {
-                    console.error('Failed to fetch cache status:', err);
-                });
-        }
-
-        function clearCache() {
-            if (confirm('Clear all cached search results?')) {
-                fetch('/api/cache/clear', { method: 'POST' })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.success) {
-                            showCacheStatus();
-                        }
-                    });
-            }
-        }
-
+        // Modals
         function toggleHistory() {
-            const panel = document.getElementById('historyPanel');
-            if (panel.classList.contains('hidden')) {
-                panel.classList.remove('hidden');
-                loadHistory();
-            } else {
-                panel.classList.add('hidden');
-            }
+            const modal = document.getElementById('historyModal');
+            modal.classList.toggle('active');
+            if (modal.classList.contains('active')) loadHistory();
         }
 
-        let aiAvailable = false;
-
-        function checkAIStatus() {
-            fetch('/api/ai/status')
-                .then(r => r.json())
-                .then(data => {
-                    aiAvailable = data.available;
-                    const statusEl = document.getElementById('aiStatus');
-                    const labelEl = document.getElementById('aiStatusLabel');
-                    if (data.available) {
-                        statusEl.textContent = '●';
-                        statusEl.style.color = '#00ff88';
-                        statusEl.style.display = 'inline';
-                        labelEl.textContent = 'AI';
-                    } else {
-                        statusEl.textContent = '○';
-                        statusEl.style.color = '#ff4444';
-                        statusEl.style.display = 'inline';
-                        labelEl.textContent = 'AI';
-                    }
-                })
-                .catch(() => {
-                    aiAvailable = false;
-                    const statusEl = document.getElementById('aiStatus');
-                    statusEl.textContent = '○';
-                    statusEl.style.color = '#ff4444';
-                    statusEl.style.display = 'inline';
-                });
+        function toggleHealthModal() {
+            const modal = document.getElementById('healthModal');
+            modal.classList.toggle('active');
         }
 
-        function toggleAIPanel() {
-            const modal = document.getElementById('aiModal');
-            modal.classList.add('active');
-            
-            const statusMsg = document.getElementById('aiStatusMessage');
-            const searchSection = document.getElementById('aiSearchSection');
-            const quickActions = document.getElementById('aiQuickActions');
-            
-            if (aiAvailable) {
-                statusMsg.innerHTML = '<span style="color: #00ff88;">✓ AI is ready</span><p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">You can use natural language search and generate summaries.</p>';
-                searchSection.style.display = 'block';
-                quickActions.style.display = 'block';
-            } else {
-                statusMsg.innerHTML = '<span style="color: #ff4444;">✗ AI not available</span><p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.5rem;">Install Ollama from <a href="https://ollama.com" target="_blank" style="color: var(--accent-primary);">ollama.com</a> and run: <code style="background: var(--bg-tertiary); padding: 0.2rem 0.4rem; border-radius: 4px;">ollama serve</code></p>';
-                searchSection.style.display = 'none';
-                quickActions.style.display = 'none';
-            }
-        }
-
-        function closeAIPanel() {
-            const modal = document.getElementById('aiModal');
-            modal.classList.remove('active');
-        }
-
-        function closeAIModalOnClick(event) {
-            if (event.target.id === 'aiModal') {
-                closeAIPanel();
-            }
-        }
-
-        function analyzeNaturalLanguage() {
-            const input = document.getElementById('nlSearchInput').value;
-            const resultDiv = document.getElementById('nlSearchResult');
-            
-            if (!input.trim()) {
-                showNotification('Please enter a question', 'warning');
-                return;
-            }
-            
-            resultDiv.innerHTML = '<div class="loading">Analyzing your query...</div>';
-            
-            fetch('/api/ai/analyze-query', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: input })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    resultDiv.innerHTML = '<p style="color: #ff4444;">Error: ' + data.error + '</p>';
-                    return;
-                }
-                
-                const confidence = Math.round((data.confidence || 0) * 100);
-                const typeLabels = {
-                    'username': 'Username Search',
-                    'email': 'Email Lookup',
-                    'phone': 'Phone Lookup',
-                    'name': 'People Search',
-                    'ip': 'IP Lookup',
-                    'domain': 'Domain Lookup'
-                };
-                
-                resultDiv.innerHTML = `
-                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--accent-primary);">
-                        <p style="margin-bottom: 0.5rem;"><strong>Detected:</strong> ${typeLabels[data.type] || data.type || 'Unknown'}</p>
-                        <p style="margin-bottom: 0.5rem;"><strong>Search Value:</strong> <code style="background: var(--bg-tertiary); padding: 0.2rem 0.4rem; border-radius: 4px;">${escapeHtml(data.query || input)}</code></p>
-                        <p style="margin-bottom: 0.5rem;"><strong>Confidence:</strong> ${confidence}%</p>
-                        ${data.type ? `<button class="btn-expand" onclick="executeSuggestedSearch('${data.type}', '${escapeHtml(data.query || input)}')" style="margin-top: 0.5rem;">Search Now</button>` : '<p style="color: var(--text-secondary); margin-top: 0.5rem;">Could not determine search type. Try being more specific.</p>'}
-                    </div>
-                `;
-            })
-            .catch(err => {
-                resultDiv.innerHTML = '<p style="color: #ff4444;">Error analyzing query</p>';
-            });
-        }
-
-        function executeSuggestedSearch(type, query) {
-            closeAIPanel();
-            const toolCard = document.querySelector(`.tool-card[data-tool="${type}"]`);
-            if (toolCard) {
-                toolCard.click();
-                document.getElementById('searchInput').value = query;
-                performSearch();
-            } else {
-                showNotification('Tool not found: ' + type, 'error');
-            }
-        }
-
-        let lastSearchResults = null;
-        let lastSearchQuery = '';
-        let lastSearchTool = '';
-
-        function storeLastResults(data, query, tool) {
-            lastSearchResults = data;
-            lastSearchQuery = query;
-            lastSearchTool = tool;
-        }
-
-        function generateResultSummary() {
-            const resultDiv = document.getElementById('nlSearchResult') || document.createElement('div');
-            
-            if (!lastSearchResults) {
-                showNotification('No search results to summarize', 'warning');
-                return;
-            }
-            
-            resultDiv.innerHTML = '<div class="loading">Generating summary...</div>';
-            
-            const findings = lastSearchResults.findings || lastSearchResults.platforms || [];
-            
-            fetch('/api/ai/summarize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: lastSearchQuery,
-                    tool: lastSearchTool,
-                    findings: findings
-                })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    resultDiv.innerHTML = '<p style="color: #ff4444;">' + data.error + '</p>';
-                    return;
-                }
-                
-                resultDiv.innerHTML = `
-                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--accent-primary); margin-top: 1rem;">
-                        <h4 style="margin-bottom: 0.5rem; color: var(--accent-primary);">AI Summary</h4>
-                        <p style="color: var(--text-primary); line-height: 1.6;">${data.summary}</p>
-                    </div>
-                `;
-            })
-            .catch(err => {
-                resultDiv.innerHTML = '<p style="color: #ff4444;">Error generating summary</p>';
-            });
+        function openChangelog() {
+            const modal = document.getElementById('changelogModal');
+            modal.classList.toggle('active');
         }
 
         function loadHistory() {
             fetch('/api/history')
                 .then(r => r.json())
                 .then(data => {
-                    const container = document.getElementById('recentHistory');
-                    const badge = document.getElementById('historyBadge');
-                    
-                    const unreadCount = data.filter(h => h.status === 'unread').length;
-                    if (unreadCount > 0) {
-                        badge.textContent = unreadCount;
-                        badge.style.display = 'inline';
-                    } else {
-                        badge.style.display = 'none';
-                    }
-                    
-                    container.innerHTML = data.map(h => `
-                        <div class="history-item ${h.status}">
-                            <div class="history-item-main">
-                                <span class="history-tool">${h.tool}</span>
-                                <span class="history-query">${escapeHtml(h.query)}</span>
-                                <span class="history-results">${h.results_summary}</span>
+                    const list = data.history || [];
+                    document.getElementById('historyContent').innerHTML = list.length ? 
+                        list.map(h => `
+                            <div class="history-item">
+                                <div class="history-info">
+                                    <div class="history-query">${h.query}</div>
+                                    <div class="history-meta">${h.tool} • ${new Date(h.timestamp).toLocaleDateString()}</div>
+                                </div>
                             </div>
-                            <div class="history-item-meta">
-                                <span class="history-time">${formatTime(h.timestamp)}</span>
-                                <button class="btn-archive" onclick="archiveEntry('${h.id}')">Archive</button>
-                            </div>
-                        </div>
-                    `).join('') || '<p class="no-history">No recent searches</p>';
-                });
-            
-            searchArchive();
-        }
-
-        function searchArchive() {
-            const query = document.getElementById('archiveSearch').value;
-            const tool = document.getElementById('toolFilter').value;
-            
-            fetch(`/api/archive?q=${encodeURIComponent(query)}&tool=${encodeURIComponent(tool)}`)
-                .then(r => r.json())
-                .then(data => {
-                    const container = document.getElementById('archiveContent');
-                    container.innerHTML = data.map(a => `
-                        <div class="history-item archived">
-                            <div class="history-item-main">
-                                <span class="history-tool">${a.tool}</span>
-                                <span class="history-query">${escapeHtml(a.query)}</span>
-                                <span class="history-results">${a.results_summary}</span>
-                            </div>
-                            <div class="history-item-meta">
-                                <span class="history-time">${formatTime(a.timestamp)}</span>
-                                ${a.archived_at ? `<span class="history-archived">Archived: ${formatTime(a.archived_at)}</span>` : ''}
-                            </div>
-                        </div>
-                    `).join('') || '<p class="no-history">Archive is empty</p>';
+                        `).join('') : '<div class="empty">No history</div>';
                 });
         }
 
-        function archiveEntry(id) {
-            fetch(`/api/history/archive/${id}`, { method: 'POST' })
-                .then(() => loadHistory());
-        }
+        // Init
+        fetch('/api/version').then(r => r.json()).then(data => {
+            document.getElementById('versionBadge').textContent = data.version;
+        });
 
-        function archiveAllEntries() {
-            fetch('/api/history/archive-all', { method: 'POST' })
-                .then(() => loadHistory());
-        }
-
-        function markAllRead() {
-            fetch('/api/history/mark-all-read', { method: 'POST' })
-                .then(() => loadHistory());
-        }
-
-        function formatTime(timestamp) {
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diff = now - date;
-            
-            if (diff < 60000) return 'Just now';
-            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-            return date.toLocaleDateString();
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        loadHistory();
-        setInterval(loadHistory, 30000);
+        // Keyboard shortcuts
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
     </script>
 </body>
 </html>

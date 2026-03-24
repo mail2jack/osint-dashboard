@@ -4866,3 +4866,45 @@
 2026-03-24 09:57:50,492 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 09:57:50] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
 2026-03-24 09:58:43,881 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 09:58:43] "GET /api/history HTTP/1.1" 200 -
 2026-03-24 09:58:43,887 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 09:58:43] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 09:59:50,600 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 09:59:50] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 09:59:50,605 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 09:59:50] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:00:50,471 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:00:50] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:00:50,479 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:00:50] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:01:31,162 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:01:31] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-24 10:01:39,457 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 10:01:39,457 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 10:01:39,487 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:01:39] "GET / HTTP/1.1" 200 -
+2026-03-24 10:01:39,541 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:01:39] "GET /static/style.css HTTP/1.1" 200 -
+2026-03-24 10:01:40,471 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:01:40] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:01:40,478 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:01:40] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:02:48,764 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:02:48] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:02:48,768 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:02:48] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:03:49,783 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:03:49] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:03:49,787 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:03:49] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:04:40,932 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:04:40] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:04:40,934 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:04:40] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:05:50,574 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:05:50] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:05:50,581 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:05:50] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:06:48,618 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:06:48] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:06:48,622 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:06:48] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:07:50,821 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:07:50] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:07:50,826 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:07:50] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:08:40,619 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:08:40] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:08:40,625 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:08:40] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:09:47,720 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:09:47] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:09:47,727 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:09:47] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:10:48,611 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:10:48] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:10:48,613 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:10:48] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:11:40,565 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:11:40] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:11:40,570 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:11:40] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:12:48,863 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:12:48] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:12:48,868 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:12:48] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:13:40,559 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:13:40] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:13:40,567 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:13:40] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:14:41,262 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:14:41] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:14:41,265 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:14:41] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 10:15:49,643 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:15:49] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 10:15:49,654 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 10:15:49] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
