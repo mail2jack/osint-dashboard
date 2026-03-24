@@ -224,7 +224,7 @@
         async function searchSocial(query) {
             const type = query.includes('@') ? 'email' : 'username';
             const category = document.getElementById('siteCategory').value;
-            startStreaming('/api/social/stream', { [type]: query, type, category });
+            startStreaming('/api/social/stream', { query: query, type, category });
         }
 
         async function searchEmail(query) {

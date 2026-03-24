@@ -5364,3 +5364,96 @@
 2026-03-24 16:20:22,638 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:20:22] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
 2026-03-24 16:21:22,239 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:21:22] "GET /api/history HTTP/1.1" 200 -
 2026-03-24 16:21:22,243 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:21:22] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:22:11,877 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:22:11,882 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:22:21,713 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:21] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-24 16:22:30,105 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 16:22:30,106 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 16:22:30,118 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:30] "GET / HTTP/1.1" 200 -
+2026-03-24 16:22:30,182 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:30] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-24 16:22:30,193 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:30] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 16:22:44,957 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:44] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:22:46,586 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:46] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:22:47,480 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:47] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:22:57,745 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:22:57] "[31m[1mPOST /api/name-search HTTP/1.1[0m" 400 -
+2026-03-24 16:23:05,533 - httpx - INFO - HTTP Request: GET https://twitter.com/search?q=muziekkantje%20tes&src=sp "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:23:05,639 - httpx - INFO - HTTP Request: GET https://map.snapchat.com/search?query=muziekkantje%20tes "HTTP/1.1 308 Permanent Redirect"
+2026-03-24 16:23:05,691 - httpx - INFO - HTTP Request: GET https://hinge.co "HTTP/1.1 200 OK"
+2026-03-24 16:23:05,697 - httpx - INFO - HTTP Request: GET https://www.youtube.com/results?search_query=muziekkantje%20tes "HTTP/1.1 200 OK"
+2026-03-24 16:23:05,756 - httpx - INFO - HTTP Request: GET https://medium.com/search?q=muziekkantje%20tes "HTTP/1.1 403 Forbidden"
+2026-03-24 16:23:05,774 - httpx - INFO - HTTP Request: GET https://api.github.com/search/users?q=muziekkantje+tes+in:name "HTTP/1.1 200 OK"
+2026-03-24 16:23:05,781 - httpx - INFO - HTTP Request: GET https://bumble.com "HTTP/1.1 200 OK"
+2026-03-24 16:23:05,791 - httpx - INFO - HTTP Request: GET https://www.threads.net/search?q=muziekkantje%20tes "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:23:05,863 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/search/results/people/?keywords=muziekkantje%20tes "HTTP/1.1 307 Temporary Redirect"
+2026-03-24 16:23:05,871 - httpx - INFO - HTTP Request: GET https://www.tiktok.com/api/search/general/full/?keyword=muziekkantje%20tes "HTTP/1.1 200 OK"
+2026-03-24 16:23:05,874 - httpx - INFO - HTTP Request: GET https://www.facebook.com/search/people/?q=muziekkantje%20tes "HTTP/1.1 404 Not Found"
+2026-03-24 16:23:05,886 - httpx - INFO - HTTP Request: GET https://discord.com/channels/@me "HTTP/1.1 200 OK"
+2026-03-24 16:23:05,915 - httpx - INFO - HTTP Request: GET https://www.pinterest.com/search/users/?q=muziekkantje%20tes "HTTP/1.1 200 OK"
+2026-03-24 16:23:05,925 - httpx - INFO - HTTP Request: GET https://www.reddit.com/search/?q=muziekkantje%20tes "HTTP/1.1 403 Blocked"
+2026-03-24 16:23:06,007 - httpx - INFO - HTTP Request: GET https://www.snapchat.com/ "HTTP/1.1 200 OK"
+2026-03-24 16:23:06,062 - httpx - INFO - HTTP Request: GET https://api.whatsapp.com/v1/contacts "HTTP/1.1 404 Not Found"
+2026-03-24 16:23:06,110 - httpx - INFO - HTTP Request: GET https://x.com/search?q=muziekkantje%20tes&src=sp "HTTP/1.1 200 OK"
+2026-03-24 16:23:06,155 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/uas/login?session_redirect=%2Fsearch%2Fresults%2Fpeople%2F%3Fkeywords%3Dmuziekkantje%2520tes&skipRedirect=true "HTTP/1.1 200 OK"
+2026-03-24 16:23:06,244 - httpx - INFO - HTTP Request: GET https://www.last.fm/search?q=muziekkantje%20tes "HTTP/1.1 200 OK"
+2026-03-24 16:23:06,371 - httpx - INFO - HTTP Request: GET https://www.threads.com/search?q=muziekkantje+tes "HTTP/1.1 200 OK"
+2026-03-24 16:23:06,579 - httpx - INFO - HTTP Request: GET https://www.twitch.tv/search?term=muziekkantje%20tes "HTTP/1.1 200 OK"
+2026-03-24 16:23:06,920 - httpx - INFO - HTTP Request: GET https://grindr.com "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:23:07,715 - httpx - INFO - HTTP Request: GET https://www.grindr.com/ "HTTP/1.1 200 OK"
+2026-03-24 16:23:07,806 - httpx - INFO - HTTP Request: GET https://www.instagram.com/web/search/topsearch/?search_term=muziekkantje%20tes "HTTP/1.1 302 Found"
+2026-03-24 16:23:07,999 - httpx - INFO - HTTP Request: GET https://www.instagram.com/accounts/login/?next=/web/search/topsearch/%3Fsearch_term%3Dmuziekkantje%2520tes "HTTP/1.1 200 OK"
+2026-03-24 16:23:08,489 - __main__ - INFO - Name search for 'muziekkantje tes': 6 platforms with results
+2026-03-24 16:23:08,490 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:23:08] "POST /api/name-search HTTP/1.1" 200 -
+2026-03-24 16:23:20,872 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:23:20] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:23:21,882 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:23:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:23:21,890 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:23:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:23:21,937 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:23:21] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:23:22,607 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:23:22] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:23:23,257 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:23:23] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:23:23,917 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:23:23] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:24:21,866 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:24:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:24:21,880 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:24:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:24:28,902 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:24:28] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:25:12,232 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:25:12] "POST /api/social/stream HTTP/1.1" 200 -
+2026-03-24 16:25:12,814 - httpx - INFO - HTTP Request: GET https://www.facebook.com/testuser "HTTP/1.1 302 Found"
+2026-03-24 16:25:13,014 - httpx - INFO - HTTP Request: GET https://www.facebook.com/login/?next=https%3A%2F%2Fwww.facebook.com%2Ftestuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:14,065 - httpx - INFO - HTTP Request: GET https://github.com/testuser "HTTP/1.1 404 Not Found"
+2026-03-24 16:25:15,322 - httpx - INFO - HTTP Request: GET https://t.me/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:16,131 - httpx - INFO - HTTP Request: GET https://steamcommunity.com/id/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:17,151 - httpx - INFO - HTTP Request: GET https://www.tiktok.com/@testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:18,277 - httpx - INFO - HTTP Request: GET https://www.pinterest.com/testuser "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:25:18,689 - httpx - INFO - HTTP Request: GET https://www.pinterest.com/testuser/ "HTTP/1.1 200 OK"
+2026-03-24 16:25:20,065 - httpx - INFO - HTTP Request: GET https://www.instagram.com/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:21,148 - httpx - INFO - HTTP Request: GET https://www.linkedin.com/in/testuser "HTTP/1.1 999 Request denied"
+2026-03-24 16:25:21,767 - httpx - INFO - HTTP Request: GET https://twitter.com/testuser "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:25:21,859 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:25:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:25:21,870 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:25:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:25:22,222 - httpx - INFO - HTTP Request: GET https://x.com/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:23,115 - httpx - INFO - HTTP Request: GET https://www.youtube.com/@testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:24,022 - httpx - INFO - HTTP Request: GET https://www.reddit.com/user/testuser "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:25:24,592 - httpx - INFO - HTTP Request: GET https://www.reddit.com/user/testuser/ "HTTP/1.1 403 Blocked"
+2026-03-24 16:25:25,573 - httpx - INFO - HTTP Request: GET https://www.snapchat.com/add/testuser "HTTP/1.1 308 Permanent Redirect"
+2026-03-24 16:25:25,791 - httpx - INFO - HTTP Request: GET https://www.snapchat.com/@testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:26,457 - httpx - INFO - HTTP Request: GET https://discord.com/users/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:26,985 - httpx - INFO - HTTP Request: GET https://www.twitch.tv/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:27,746 - httpx - INFO - HTTP Request: GET https://open.spotify.com/user/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:28,410 - httpx - INFO - HTTP Request: GET https://testuser.tumblr.com "HTTP/1.1 403 Forbidden"
+2026-03-24 16:25:29,230 - httpx - INFO - HTTP Request: GET https://soundcloud.com/testuser "HTTP/1.1 403 Forbidden"
+2026-03-24 16:25:30,158 - httpx - INFO - HTTP Request: GET https://gitlab.com/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:31,008 - httpx - INFO - HTTP Request: GET https://bitbucket.org/testuser "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:25:31,321 - httpx - INFO - HTTP Request: GET https://bitbucket.org/testuser/ "HTTP/1.1 404 Not Found"
+2026-03-24 16:25:31,774 - httpx - INFO - HTTP Request: GET https://medium.com/@testuser "HTTP/1.1 403 Forbidden"
+2026-03-24 16:25:32,380 - httpx - INFO - HTTP Request: GET https://www.quora.com/profile/testuser "HTTP/1.1 403 Forbidden"
+2026-03-24 16:25:32,865 - httpx - INFO - HTTP Request: GET https://vimeo.com/testuser "HTTP/1.1 403 Forbidden"
+2026-03-24 16:25:33,842 - httpx - INFO - HTTP Request: GET https://www.flickr.com/people/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:34,893 - httpx - INFO - HTTP Request: GET https://www.behance.net/testuser "HTTP/1.1 302 Found"
+2026-03-24 16:25:35,502 - httpx - INFO - HTTP Request: GET https://www.behance.net/testuser/moodboards "HTTP/1.1 200 OK"
+2026-03-24 16:25:36,494 - httpx - INFO - HTTP Request: GET https://dribbble.com/testuser "HTTP/1.1 404 Not Found"
+2026-03-24 16:25:37,263 - httpx - INFO - HTTP Request: GET https://keybase.io/testuser "HTTP/1.1 200 OK"
+2026-03-24 16:25:38,040 - httpx - INFO - HTTP Request: GET https://mastodon.social/@testuser "HTTP/1.1 410 Gone"
+2026-03-24 16:25:38,817 - httpx - INFO - HTTP Request: GET https://www.threads.net/@testuser "HTTP/1.1 301 Moved Permanently"
+2026-03-24 16:25:40,420 - httpx - INFO - HTTP Request: GET https://www.threads.com/@testuser "HTTP/1.1 302 Found"
+2026-03-24 16:25:40,600 - httpx - INFO - HTTP Request: GET https://www.threads.com/login/?next=https%3A%2F%2Fwww.threads.com%2F%40testuser%2F "HTTP/1.1 200 OK"
+2026-03-24 16:25:42,102 - httpx - INFO - HTTP Request: GET https://vk.com/testuser "HTTP/1.1 200 OK"
