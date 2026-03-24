@@ -1,5 +1,15 @@
 [
   {
+    "id": "20260324155927_734",
+    "timestamp": "2026-03-24T15:59:27.356222",
+    "tool": "maigret",
+    "query": "test",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
     "id": "20260324155016_6388",
     "timestamp": "2026-03-24T15:50:16.477266",
     "tool": "phone",

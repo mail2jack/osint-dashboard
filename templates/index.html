@@ -219,11 +219,11 @@
         // API Calls
         async function searchSocial(query) {
             const type = query.includes('@') ? 'email' : 'username';
-            startStreaming('/api/social', { [type]: query, type, category: 'all' });
+            startStreaming('/api/social/stream', { [type]: query, type, category: 'all' });
         }
 
         async function searchEmail(query) {
-            startStreaming('/api/email', { email: query });
+            startStreaming('/api/email/stream', { email: query });
         }
 
         async function searchPhone(query) {
@@ -261,7 +261,7 @@
         }
 
         async function searchSherlock(query) {
-            startStreaming('/api/username', { username: query });
+            startStreaming('/api/username/stream', { username: query });
         }
 
         async function searchHolehe(query) {
@@ -289,26 +289,47 @@
         }
 
         // Streaming
-        function startStreaming(endpoint, body) {
+        async function startStreaming(endpoint, body) {
             if (eventSource) eventSource.close();
             
-            eventSource = new EventSource('/api/stream?' + new URLSearchParams(body));
-            
-            eventSource.onmessage = e => {
-                const data = JSON.parse(e.data);
-                if (data.progress) {
-                    progressFill.style.width = data.progress.percent + '%';
-                    progressText.textContent = `${data.progress.checked}/${data.progress.total} - ${data.progress.current_site || ''}`;
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.progress) {
+                                    progressFill.style.width = data.progress.percent + '%';
+                                    progressText.textContent = `${data.progress.checked}/${data.progress.total} - ${data.progress.current_site || ''}`;
+                                }
+                                if (data.complete) {
+                                    showResults(data.result);
+                                }
+                                if (data.error) {
+                                    showError(data.error);
+                                }
+                            } catch (e) {}
+                        }
+                    }
                 }
-                if (data.complete) {
-                    eventSource.close();
-                    showResults(data.result);
-                }
-                if (data.error) {
-                    eventSource.close();
-                    showError(data.error);
-                }
-            };
+            } catch (e) {
+                showError(e.message);
+            }
         }
 
         // Display functions

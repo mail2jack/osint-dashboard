@@ -5140,3 +5140,37 @@
 2026-03-24 15:55:21,979 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:55:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
 2026-03-24 15:56:19,192 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:56:19] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
 2026-03-24 15:56:19,195 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:56:19] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:57:11,981 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:57:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:57:11,985 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:57:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:57:33,844 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:57:33] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-24 15:57:42,210 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-24 15:57:42,211 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-24 15:57:42,229 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:57:42] "GET / HTTP/1.1" 200 -
+2026-03-24 15:57:42,280 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:57:42] "GET /static/style.css HTTP/1.1" 200 -
+2026-03-24 15:57:42,293 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:57:42] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 15:57:53,284 - __main__ - WARNING - 404 Not Found: /api/stream
+2026-03-24 15:57:53,285 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:57:53] "[33mGET /api/stream?username=muziekantje&type=username&category=all HTTP/1.1[0m" 404 -
+2026-03-24 15:58:16,172 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:58:16] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:58:16,176 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:58:16] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:58:23,176 - __main__ - WARNING - 404 Not Found: /api/stream
+2026-03-24 15:58:23,177 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:58:23] "[33mGET /api/stream?email=muziekantje@chelklo.nl HTTP/1.1[0m" 404 -
+2026-03-24 15:59:16,158 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:59:16] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 15:59:16,168 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:59:16] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 15:59:24,274 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:59:24] "[31m[1mPOST /api/social HTTP/1.1[0m" 400 -
+2026-03-24 15:59:24,512 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 15:59:24] "POST /api/username/maigret HTTP/1.1" 200 -
+2026-03-24 15:59:25,274 - __main__ - INFO - Loaded Maigret database with 3143 sites
+2026-03-24 16:00:20,424 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:00:20] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:00:20,427 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:00:20] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:01:18,996 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:01:18] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:01:19,005 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:01:19] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:02:07,745 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:07] "POST /api/domain HTTP/1.1" 200 -
+2026-03-24 16:02:11,964 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:02:11,971 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:02:17,991 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:17] "POST /api/domain HTTP/1.1" 200 -
+2026-03-24 16:02:19,987 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:19] "POST /api/domain HTTP/1.1" 200 -
+2026-03-24 16:02:32,556 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:32] "POST /api/ip HTTP/1.1" 200 -
+2026-03-24 16:02:46,175 - __main__ - WARNING - 404 Not Found: /api/stream
+2026-03-24 16:02:46,181 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:02:46] "[33mGET /api/stream?email=muziekantje@chello.nl HTTP/1.1[0m" 404 -
