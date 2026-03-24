@@ -2445,7 +2445,8 @@ def username_search_maigret():
             logger = logging.getLogger('maigret')
             logger.setLevel(logging.ERROR)
             
-            progress_state['total'] = len(db.sites)
+            # Set progress total to the actual number of sites being searched
+            progress_state['total'] = len(limited_sites)
             
             class ProgressNotifier:
                 def __init__(self, cb, total):
