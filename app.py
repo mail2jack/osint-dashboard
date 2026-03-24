@@ -2415,6 +2415,18 @@ def username_search_maigret():
     selected_tags = data.get('tags', [])     # List of tags to filter by
     max_sites = data.get('limit', 300)
     
+    # Predefined site groups
+    SOCIAL_MEDIA_SITES = [
+        'Facebook', 'Instagram', 'Twitter', 'TikTok', 'YouTube', 'LinkedIn', 
+        'Snapchat', 'Reddit', 'Pinterest', 'Tumblr', 'Medium', 'Tinder',
+        'Twitch', 'Spotify', 'SoundCloud', 'GitHub', 'GitLab', 'Mastodon',
+        'VK', 'OK', 'Flickr', 'Vimeo', 'Dribbble', 'Behance', 'DeviantART',
+        'Etsy', 'Fiverr', 'Roblox', 'Steam', 'Patreon', 'Cash.app', 'Venmo',
+        'GoodReads', 'Myspace', 'Xing', 'Last.fm', 'Imgur', 'Plurk', 'AskFM',
+        'Badoo', 'Telegram', 'Discord', 'WhatsApp', 'We Heart It', 'Pornhub',
+        'Threads', 'Hinge', 'Bumble', 'Grindr', 'Strava', 'Untappd'
+    ]
+    
     result_queue = queue.Queue()
     progress_state = {'checked': 0, 'found': 0, 'current_site': '', 'total': 0}
     
@@ -2481,6 +2493,9 @@ def username_search_maigret():
                 if len(selected_tags) == 0:
                     # Empty tags list means ALL sites
                     limited_sites = dict(list(db.sites_dict.items())[:max_sites])
+                elif 'social' in selected_tags:
+                    # Special handling for social media preset
+                    limited_sites = {name: db.sites_dict[name] for name in SOCIAL_MEDIA_SITES if name in db.sites_dict}
                 else:
                     # Filter by tags
                     filtered = {}
