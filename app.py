@@ -3820,6 +3820,115 @@ def normalize_phone_number(phone):
     return digits
 
 
+@app.route('/api/phone', methods=['POST'])
+def phone_osint():
+    """Comprehensive phone number OSINT lookup"""
+    import phonenumbers
+    from phonenumbers import geocoder, carrier, timezone
+    
+    data = request.get_json()
+    phone = data.get('phone', '')
+    
+    if not phone:
+        return jsonify({'error': 'Phone number required'}), 400
+    
+    result = {
+        'phone': phone,
+        'valid': False,
+        'formatted': None,
+        'country': None,
+        'country_code': None,
+        'region': None,
+        'carrier': None,
+        'line_type': None,
+        'timezone': None,
+        'is_valid': False,
+        'services': {}
+    }
+    
+    try:
+        parsed = phonenumbers.parse(phone, None)
+        result['valid'] = phonenumbers.is_valid_number(parsed)
+        result['formatted'] = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        
+        try:
+            country = geocoder.description_for_number(parsed, 'en')
+            result['country'] = country
+        except:
+            pass
+        
+        try:
+            result['country_code'] = f"+{parsed.country_code}"
+        except:
+            pass
+        
+        try:
+            region = geocoder.description_for_number(parsed, None)
+            result['region'] = region
+        except:
+            pass
+        
+        try:
+            carrier_name = carrier.name_for_number(parsed, 'en')
+            result['carrier'] = carrier_name
+        except:
+            pass
+        
+        try:
+            line_type = carrier._api_for_number(parsed).get('type', 'unknown')
+            if callable(line_type):
+                line_type = line_type(parsed)
+            result['line_type'] = str(line_type)
+        except:
+            pass
+        
+        try:
+            tz = timezone.time_zones_for_number(parsed)
+            result['timezone'] = tz[0] if tz else None
+        except:
+            pass
+        
+        normalized = normalize_phone_number(phone)
+        result['normalized'] = normalized
+        
+        with httpx.Client(follow_redirects=True, timeout=10) as client:
+            try:
+                wa_url = f'https://api.whatsapp.com/send?phone={normalized}'
+                wa_response = client.get(wa_url, headers=WHATSAPP_HEADERS)
+                wa_text = wa_response.text.lower()
+                wa_exists = not any(p in wa_text for p in [
+                    'phone number is not on whatsapp',
+                    'is unavailable',
+                    'cannot send messages'
+                ])
+                result['services']['whatsapp'] = {
+                    'exists': wa_exists,
+                    'url': f'https://wa.me/{normalized}'
+                }
+            except Exception as e:
+                result['services']['whatsapp'] = {'error': str(e)}
+            
+            try:
+                tg_url = f'https://t.me/+{normalized}'
+                tg_response = client.get(tg_url, headers=HEADERS)
+                if tg_response.status_code == 400:
+                    result['services']['telegram'] = {'exists': True, 'url': tg_url}
+                else:
+                    result['services']['telegram'] = {'exists': False}
+            except Exception as e:
+                result['services']['telegram'] = {'error': str(e)}
+        
+        search_history.add_entry('phone', phone, f"Valid: {result['valid']}, Country: {result['country']}, Carrier: {result['carrier']}", 1 if result['valid'] else 0)
+        
+        return jsonify(result)
+    
+    except phonenumbers.NumberParseException as e:
+        return jsonify({'error': f'Invalid phone number format: {str(e)}'}), 400
+    except Exception as e:
+        logger.error(f"Phone OSINT error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/whatsapp', methods=['POST'])
 def whatsapp_lookup():
     """Check if a phone number exists on WhatsApp"""

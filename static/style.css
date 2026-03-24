@@ -1944,3 +1944,97 @@ header {
 .service-actions {
     margin-top: 0.5rem;
 }
+
+.phone-osint-results {
+    margin-top: 1rem;
+}
+
+.phone-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.phone-info-item {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+}
+
+.phone-info-item .label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.phone-info-item .value {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.phone-info-item .value.valid {
+    color: #00ff88;
+}
+
+.phone-info-item .value.invalid {
+    color: #ff4757;
+}
+
+.phone-services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.phone-service-card {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.phone-service-card.found {
+    border-color: #00ff88;
+}
+
+.phone-service-card.not-found {
+    border-color: var(--border-color);
+    opacity: 0.7;
+}
+
+.phone-service-card .service-icon {
+    font-size: 1.5rem;
+}
+
+.phone-service-card .service-name {
+    font-weight: 500;
+}
+
+.phone-service-card .service-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.phone-service-card.found .service-status {
+    color: #00ff88;
+}
+
+.phone-service-card .service-link {
+    font-size: 0.8rem;
+    color: #00d9ff;
+    text-decoration: none;
+}
+
+.phone-service-card .service-link:hover {
+    text-decoration: underline;
+}
