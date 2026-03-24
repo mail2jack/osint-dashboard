@@ -326,9 +326,16 @@ header {
 
 /* Loading */
 .loading {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 40px;
     text-align: center;
     color: var(--text2);
+}
+
+.loading .results.hidden {
+    display: none;
 }
 
 .spinner {

@@ -80,7 +80,7 @@
         </div>
 
         <!-- Loading -->
-        <div id="loading" class="results hidden">
+        <div id="loading" class="hidden">
             <div class="loading">
                 <div class="spinner"></div>
                 <p>Searching...</p>
@@ -163,6 +163,8 @@
         };
 
         // Tool selection
+        const optionsBar = document.getElementById('optionsBar');
+        
         toolbarBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 toolbarBtns.forEach(b => b.classList.remove('active'));
@@ -171,6 +173,9 @@
                 searchInput.placeholder = placeholders[currentTool];
                 searchInput.value = '';
                 closeResults();
+                
+                // Show/hide options based on tool
+                optionsBar.style.display = (currentTool === 'social') ? 'flex' : 'none';
             });
         });
 
