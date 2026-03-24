@@ -2417,14 +2417,14 @@ def username_search_maigret():
     
     # Predefined site groups
     SOCIAL_MEDIA_SITES = [
-        'Facebook', 'Instagram', 'Twitter', 'TikTok', 'YouTube', 'LinkedIn', 
-        'Snapchat', 'Reddit', 'Pinterest', 'Tumblr', 'Medium', 'Tinder',
-        'Twitch', 'Spotify', 'SoundCloud', 'GitHub', 'GitLab', 'Mastodon',
-        'VK', 'OK', 'Flickr', 'Vimeo', 'Dribbble', 'Behance', 'DeviantART',
-        'Etsy', 'Fiverr', 'Roblox', 'Steam', 'Patreon', 'Cash.app', 'Venmo',
-        'GoodReads', 'Myspace', 'Xing', 'Last.fm', 'Imgur', 'Plurk', 'AskFM',
-        'Badoo', 'Telegram', 'Discord', 'WhatsApp', 'We Heart It', 'Pornhub',
-        'Threads', 'Hinge', 'Bumble', 'Grindr', 'Strava', 'Untappd'
+        'Facebook', 'Instagram', 'Twitter', 'TikTok', 'YouTube', 'Reddit',
+        'Pinterest', 'Tumblr', 'Medium', 'Twitch', 'Spotify', 'SoundCloud', 
+        'GitHub', 'GitLab', 'VK', 'OK', 'Flickr', 'Vimeo', 'Dribbble', 
+        'Behance', 'DeviantART', 'Etsy', 'Fiverr', 'Roblox', 'Steam', 
+        'Patreon', 'Cash.app', 'Venmo', 'GoodReads', 'Myspace', 'Xing', 
+        'Imgur', 'Plurk', 'AskFM', 'Badoo', 'Telegram', 'We Heart It', 
+        'Pornhub', 'Strava', 'Untappd', 'Pinterest', 'Steam (Group)',
+        'Steam (by id)', 'Steamid', 'Steamidfinder', 'Reddit Search (Pushshift)'
     ]
     
     result_queue = queue.Queue()
@@ -2796,6 +2796,87 @@ def name_search():
                 logger.debug(f"Medium search error: {e}")
                 return {'site': 'Medium', 'exists': None, 'url': '', 'status': 'error', 'error': str(e)}
         
+        async def check_discord():
+            try:
+                search_url = f"https://discord.com/channels/@me"
+                response = await client.get(search_url, timeout=10)
+                if 'login' in response.url.lower() or response.status_code == 401:
+                    return {'site': 'Discord', 'exists': None, 'url': 'https://discord.com/', 'status': 'login_required', 'note': 'Requires authentication to search'}
+                return {'site': 'Discord', 'exists': False, 'url': 'https://discord.com/', 'status': 'not_found'}
+            except Exception as e:
+                logger.debug(f"Discord search error: {e}")
+                return {'site': 'Discord', 'exists': None, 'url': '', 'status': 'error', 'error': str(e)}
+        
+        async def check_lastfm():
+            try:
+                search_url = f"https://www.last.fm/search?q={quote(full_name)}"
+                response = await client.get(search_url, timeout=10)
+                if response.status_code == 200:
+                    text = response.text.lower()
+                    if first_name.lower() in text or last_name.lower() in text:
+                        return {'site': 'Last.fm', 'exists': True, 'url': search_url, 'status': 'found'}
+                return {'site': 'Last.fm', 'exists': False, 'url': search_url, 'status': 'not_found'}
+            except Exception as e:
+                logger.debug(f"Last.fm search error: {e}")
+                return {'site': 'Last.fm', 'exists': None, 'url': '', 'status': 'error', 'error': str(e)}
+        
+        async def check_threads():
+            try:
+                search_url = f"https://www.threads.net/search?q={quote(full_name)}"
+                response = await client.get(search_url, timeout=10)
+                if response.status_code == 200:
+                    text = response.text.lower()
+                    if first_name.lower() in text or last_name.lower() in text:
+                        return {'site': 'Threads', 'exists': True, 'url': search_url, 'status': 'found'}
+                    if 'login' in response.url.lower():
+                        return {'site': 'Threads', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
+                return {'site': 'Threads', 'exists': False, 'url': search_url, 'status': 'not_found'}
+            except Exception as e:
+                logger.debug(f"Threads search error: {e}")
+                return {'site': 'Threads', 'exists': None, 'url': '', 'status': 'error', 'error': str(e)}
+        
+        async def check_hinge():
+            try:
+                search_url = "https://hinge.co"
+                response = await client.get(search_url, timeout=10)
+                if 'login' in response.url.lower():
+                    return {'site': 'Hinge', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
+                return {'site': 'Hinge', 'exists': False, 'url': search_url, 'status': 'not_found'}
+            except Exception as e:
+                logger.debug(f"Hinge search error: {e}")
+                return {'site': 'Hinge', 'exists': None, 'url': '', 'status': 'error', 'error': str(e)}
+        
+        async def check_bumble():
+            try:
+                search_url = "https://bumble.com"
+                response = await client.get(search_url, timeout=10)
+                if 'login' in response.url.lower() or 'auth' in response.url.lower():
+                    return {'site': 'Bumble', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
+                return {'site': 'Bumble', 'exists': False, 'url': search_url, 'status': 'not_found'}
+            except Exception as e:
+                logger.debug(f"Bumble search error: {e}")
+                return {'site': 'Bumble', 'exists': None, 'url': '', 'status': 'error', 'error': str(e)}
+        
+        async def check_grindr():
+            try:
+                search_url = "https://grindr.com"
+                response = await client.get(search_url, timeout=10)
+                if 'login' in response.url.lower():
+                    return {'site': 'Grindr', 'exists': None, 'url': search_url, 'status': 'login_required', 'note': 'Requires authentication'}
+                return {'site': 'Grindr', 'exists': False, 'url': search_url, 'status': 'not_found'}
+            except Exception as e:
+                logger.debug(f"Grindr search error: {e}")
+                return {'site': 'Grindr', 'exists': None, 'url': '', 'status': 'error', 'error': str(e)}
+        
+        async def check_whatsapp():
+            try:
+                search_url = f"https://api.whatsapp.com/v1/contacts"
+                response = await client.get(search_url, timeout=10)
+                return {'site': 'WhatsApp', 'exists': None, 'url': 'https://whatsapp.com/', 'status': 'unavailable', 'note': 'API not available for search'}
+            except Exception as e:
+                logger.debug(f"WhatsApp search error: {e}")
+                return {'site': 'WhatsApp', 'exists': None, 'url': '', 'status': 'error', 'error': str(e)}
+        
         tasks = [
             check_linkedin(),
             check_facebook(),
@@ -2808,7 +2889,14 @@ def name_search():
             check_reddit(),
             check_pinterest(),
             check_twitch(),
-            check_medium()
+            check_medium(),
+            check_discord(),
+            check_lastfm(),
+            check_threads(),
+            check_hinge(),
+            check_bumble(),
+            check_grindr(),
+            check_whatsapp()
         ]
         
         import asyncio
