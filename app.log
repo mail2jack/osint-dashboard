@@ -5331,3 +5331,16 @@
 2026-03-24 16:11:36,441 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:11:36] "GET /api/version HTTP/1.1" 200 -
 2026-03-24 16:12:21,936 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:12:21] "GET /api/history HTTP/1.1" 200 -
 2026-03-24 16:12:21,950 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:12:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:13:16,312 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:13:16] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:13:16,317 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:13:16] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:13:31,712 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:13:31] "GET / HTTP/1.1" 200 -
+2026-03-24 16:13:31,759 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:13:31] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-24 16:13:31,771 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:13:31] "GET /api/version HTTP/1.1" 200 -
+2026-03-24 16:13:46,495 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:13:46] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:14:21,904 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:14:21] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:14:21,911 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:14:21] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:14:38,344 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:14:38] "[31m[1mPOST /api/social/stream HTTP/1.1[0m" 400 -
+2026-03-24 16:15:18,156 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:15:18] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:15:18,160 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:15:18] "GET /api/archive?q=&tool= HTTP/1.1" 200 -
+2026-03-24 16:16:11,910 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:16:11] "GET /api/history HTTP/1.1" 200 -
+2026-03-24 16:16:11,918 - werkzeug - INFO - 127.0.0.1 - - [24/Mar/2026 16:16:11] "GET /api/archive?q=&tool= HTTP/1.1" 200 -

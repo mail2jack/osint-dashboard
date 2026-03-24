@@ -57,7 +57,7 @@
         </div>
 
         <!-- Options -->
-        <div class="options" id="optionsBar">
+        <div class="options" id="optionsBar" style="display:none">
             <label>Platforms:</label>
             <select id="siteCategory">
                 <option value="all">All Sites</option>
@@ -177,6 +177,12 @@
             });
         });
 
+        // Update site count on change
+        document.getElementById('siteCategory').addEventListener('change', function() {
+            const counts = { all: 56, social: 17, developer: 9, gaming: 4 };
+            document.getElementById('siteCount').textContent = (counts[this.value] || 56) + ' sites';
+        });
+
         // Search
         searchBtn.addEventListener('click', performSearch);
         searchInput.addEventListener('keypress', e => {
@@ -215,7 +221,8 @@
         // API Calls
         async function searchSocial(query) {
             const type = query.includes('@') ? 'email' : 'username';
-            startStreaming('/api/social/stream', { [type]: query, type, category: 'all' });
+            const category = document.getElementById('siteCategory').value;
+            startStreaming('/api/social/stream', { [type]: query, type, category });
         }
 
         async function searchEmail(query) {
