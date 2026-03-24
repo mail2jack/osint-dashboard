@@ -1,5 +1,45 @@
 [
   {
+    "id": "20260324162808_4223",
+    "timestamp": "2026-03-24T16:28:08.844331",
+    "tool": "social",
+    "query": "patricia van sandwijk",
+    "results_count": 3,
+    "results_summary": "3 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324162736_394",
+    "timestamp": "2026-03-24T16:27:36.892472",
+    "tool": "social",
+    "query": "muziekant",
+    "results_count": 4,
+    "results_summary": "4 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324162713_9530",
+    "timestamp": "2026-03-24T16:27:13.443804",
+    "tool": "social",
+    "query": "muziekantje",
+    "results_count": 4,
+    "results_summary": "4 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324162647_7851",
+    "timestamp": "2026-03-24T16:26:47.563953",
+    "tool": "social",
+    "query": "muziekkantje",
+    "results_count": 2,
+    "results_summary": "2 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
     "id": "20260324160749_711",
     "timestamp": "2026-03-24T16:07:49.264246",
     "tool": "phone",
