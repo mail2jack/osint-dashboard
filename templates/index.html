@@ -70,7 +70,7 @@
                 <option value="gaming">Gaming</option>
             </select>
             <div id="socialCategories" class="checkbox-group" style="display:none">
-                <label><input type="checkbox" value="social" checked disabled> Social</label>
+                <label><input type="checkbox" value="social" checked> Social</label>
                 <label><input type="checkbox" value="developer"> Developer</label>
                 <label><input type="checkbox" value="gaming"> Gaming</label>
             </div>
@@ -456,22 +456,42 @@
             const seconds = elapsed % 60;
             const elapsedStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
             
-            const found = data.findings || [];
-            const html = `
-                <div class="stats">
-                    <div class="stat"><div class="stat-value">${found.length}</div><div class="stat-label">Found</div></div>
-                    <div class="stat"><div class="stat-value">${data.platforms_checked || found.length}</div><div class="stat-label">Checked</div></div>
-                    <div class="stat"><div class="stat-value">${elapsedStr}</div><div class="stat-label">Time</div></div>
-                </div>
-                ${found.length ? found.map(f => `
+            const found = data.platforms || data.found || [];
+            
+            // Sort: found first, then unknown, then not found
+            const sortedResults = [...found].sort((a, b) => {
+                const scoreA = a.exists === true ? 90 : a.exists === false ? 20 : 50;
+                const scoreB = b.exists === true ? 90 : b.exists === false ? 20 : 50;
+                return scoreB - scoreA;
+            });
+            
+            const renderResult = (f) => {
+                const status = f.exists === true ? 'found' : f.exists === false ? 'not-found' : 'unknown';
+                const statusLabel = f.exists === true ? 'FOUND' : f.exists === false ? 'NOT FOUND' : 'UNKNOWN';
+                const score = f.exists === true ? 90 : f.exists === false ? 20 : 50;
+                const scoreClass = score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
+                const scoreLabel = score >= 70 ? 'High' : score >= 50 ? 'Med' : 'Low';
+                return `
                     <div class="result-item ${f.exists ? 'found' : ''}">
                         <div class="result-info">
-                            <div class="result-name">${f.site || f.service}</div>
-                            <a href="${f.url}" target="_blank" class="result-url">${f.url}</a>
+                            <div class="result-name">${f.platform || f.site || f.service}</div>
+                            ${f.url ? `<div class="url-row"><a href="${f.url}" target="_blank" class="result-url">${f.url}</a><button class="copy-btn" onclick="copyToClipboard('${f.url}', this)" title="Copy URL">⎘</button></div>` : ''}
+                            <div class="result-meta">
+                                <span class="confidence-badge ${scoreClass}">${scoreLabel} ${score}%</span>
+                            </div>
                         </div>
-                        <span class="result-status ${f.exists ? 'found' : 'not-found'}">${f.exists ? 'FOUND' : 'NOT FOUND'}</span>
+                        <span class="result-status ${status}">${statusLabel}</span>
                     </div>
-                `).join('') : '<div class="empty">No results found</div>'}
+                `;
+            };
+            
+            const html = `
+                <div class="stats">
+                    <div class="stat"><div class="stat-value">${data.found_count || found.filter(f => f.exists).length}</div><div class="stat-label">Found</div></div>
+                    <div class="stat"><div class="stat-value">${data.total_checked || found.length}</div><div class="stat-label">Checked</div></div>
+                    <div class="stat"><div class="stat-value">${elapsedStr}</div><div class="stat-label">Time</div></div>
+                </div>
+                ${sortedResults.length ? sortedResults.map(renderResult).join('') : '<div class="empty">No results found</div>'}
             `;
             resultsContent.innerHTML = html;
         }

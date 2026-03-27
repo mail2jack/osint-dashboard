@@ -3273,20 +3273,22 @@ SOCIAL_MEDIA_PLATFORMS = {
     'Facebook': {
         'url': 'https://www.facebook.com/{}',
         'category': 'social',
-        'presence': ['fb://profile', 'entity_id', 'profile_id'],
-        'url_absence': ['/login/']
+        'presence': ['fb://profile', '"entity_id"', '"profile_id"', 'https://static.xx.fbcdn.net'],
+        'absence': ['page not found', 'this page isn\'t available', 'content you requested', '/help/', 'checkpoint'],
+        'url_absence': ['/login/', '/abuse/']
     },
     'Instagram': {
         'url': 'https://www.instagram.com/{}',
         'category': 'social',
-        'presence': ['<div id="splash-screen">', '"profile_id"'],
-        'url_absence': ['/accounts/login/', '/login/']
+        'presence': ['<div id="splash-screen">', '"profile_id"', 'followers', 'following'],
+        'url_absence': ['/accounts/login/', '/login/'],
+        'mobile_url': 'https://www.instagram.com/{}?__a=1&__d=1'
     },
     'Twitter/X': {
         'url': 'https://twitter.com/{}',
         'category': 'social',
-        'presence': [],
-        'absence': []
+        'presence': ['"username"', '"screen_name"'],
+        'absence': ['account suspended', 'doesn\'t exist']
     },
     'TikTok': {
         'url': 'https://www.tiktok.com/@{}',
@@ -3297,7 +3299,7 @@ SOCIAL_MEDIA_PLATFORMS = {
     'YouTube': {
         'url': 'https://www.youtube.com/@{}',
         'category': 'social',
-        'presence': [],
+        'presence': ['"channelId"', '"username"'],
         'absence': []
     },
     'LinkedIn': {
@@ -3651,14 +3653,24 @@ async def check_social_platform(client, platform_name, platform_info, query, tim
         response_text = response.text.lower()
         final_url = str(response.url).lower()
         
+        # Check if redirected to login page (Instagram, etc.)
+        if '/accounts/login/' in final_url or '/login/' in final_url:
+            finding['exists'] = False
+            finding['status'] = 'login_redirect'
+            finding['url'] = url  # Original URL, not login redirect
+            return finding
+        
         has_presence = any(ps.lower() in response_text for ps in presence_strs) if presence_strs else False
         has_absence = any(as_.lower() in response_text for as_ in absence_strs) if absence_strs else False
         has_url_absence = any(ua.lower() in final_url for ua in url_absence_strs) if url_absence_strs else False
         
+        # Check if username is in final URL (profile exists and wasn't redirected to home/login)
+        username_in_url = clean_query in final_url.replace('-', '').replace('_', '')
+        
         if has_absence or has_url_absence:
             finding['exists'] = False
             finding['status'] = 'not_found'
-        elif has_presence:
+        elif has_presence or username_in_url:
             finding['exists'] = True
             finding['status'] = 'found'
         elif response.status_code == 404:
@@ -3768,7 +3780,7 @@ def social_search_stream():
     data = request.get_json()
     query = data.get('query', '')
     search_type = data.get('type', 'username')
-    category = data.get('category', 'all')
+    tags = data.get('tags', ['social'])  # Get selected tags from frontend
     use_cache = data.get('use_cache', True)
     
     if not query:
@@ -3776,18 +3788,22 @@ def social_search_stream():
     
     cleanup_stale_searches(max_age_seconds=60)
     
-    search_key, existing_key = deduplicate_request(search_type, query, category)
+    search_key, existing_key = deduplicate_request(search_type, query, ','.join(tags))
     if existing_key:
         return jsonify({'error': 'Search already in progress', 'query': query}), 409
     
-    cached = get_cached_result('social', query, category) if use_cache else None
+    cached = get_cached_result('social', query, ','.join(tags)) if use_cache else None
     if cached:
         cached['from_cache'] = True
         search_history.add_entry('social', query, f'{cached.get("found_count", 0)} accounts found (cached)', cached.get('found_count', 0))
         mark_search_complete(search_key)
         return jsonify(cached)
     
-    platforms = get_platforms_by_category(category)
+    # Filter platforms by selected tags
+    platforms = {}
+    for tag in tags:
+        tag_platforms = get_platforms_by_category(tag)
+        platforms.update(tag_platforms)
     
     result_queue = queue.Queue()
     progress_state = {'checked': 0, 'found': 0, 'current_site': '', 'total': 0}
