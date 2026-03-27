@@ -1,5 +1,135 @@
 [
   {
+    "id": "20260327194017_4000",
+    "timestamp": "2026-03-27T19:40:17.225308",
+    "tool": "holehe",
+    "query": "royversteegh@gmail.com",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327191240_923",
+    "timestamp": "2026-03-27T19:12:40.020240",
+    "tool": "person",
+    "query": "charo walop",
+    "results_count": 20,
+    "results_summary": "20 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327191153_2346",
+    "timestamp": "2026-03-27T19:11:53.480171",
+    "tool": "person",
+    "query": "roy versteegh",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327191122_7267",
+    "timestamp": "2026-03-27T19:11:22.547106",
+    "tool": "person",
+    "query": "ivan versteegh",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327185012_3507",
+    "timestamp": "2026-03-27T18:50:12.179589",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 24,
+    "results_summary": "24 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327184253_3066",
+    "timestamp": "2026-03-27T18:42:53.975371",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 18,
+    "results_summary": "18 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327184201_3507",
+    "timestamp": "2026-03-27T18:42:01.050447",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 24,
+    "results_summary": "24 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183917_4000",
+    "timestamp": "2026-03-27T18:39:17.048348",
+    "tool": "email",
+    "query": "royversteegh@gmail.com",
+    "results_count": 4,
+    "results_summary": "4 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183803_3507",
+    "timestamp": "2026-03-27T18:38:03.381067",
+    "tool": "username",
+    "query": "clinton.martis.9",
+    "results_count": 12,
+    "results_summary": "12 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183504_9350",
+    "timestamp": "2026-03-27T18:35:04.509038",
+    "tool": "phone",
+    "query": "+31618175143",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: T-Mobile Thuis",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183422_8120",
+    "timestamp": "2026-03-27T18:34:22.843011",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183411_3507",
+    "timestamp": "2026-03-27T18:34:11.682584",
+    "tool": "maigret",
+    "query": "clinton.martis.9",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327182402_7030",
+    "timestamp": "2026-03-27T18:24:02.545926",
+    "tool": "maigret",
+    "query": "clinton.martis.9",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
     "id": "20260327180942_8769",
     "timestamp": "2026-03-27T18:09:42.788101",
     "tool": "person",

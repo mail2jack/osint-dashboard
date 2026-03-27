@@ -23,3 +23,13 @@
   Query error: "anne sophie versteegh" profil - [Errno 54] Connection reset by peer
 
 === 2026-03-27T18:09:34.173440 - People search: anne versteegh ===
+
+=== 2026-03-27T18:42:26.630135 - People search: patricia van sandwijk ===
+  Query error: "patriciavan sandwijk" OR "pat - [Errno 54] Connection reset by peer
+
+=== 2026-03-27T19:11:14.225580 - People search: ivan versteegh ===
+
+=== 2026-03-27T19:11:44.674183 - People search: roy versteegh ===
+
+=== 2026-03-27T19:12:12.345168 - People search: charo walop ===
+  Query error: "charowalop" OR "charo_walop"  - [Errno 54] Connection reset by peer

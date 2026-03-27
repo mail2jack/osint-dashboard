@@ -350,7 +350,7 @@
         }
 
         async function searchHolehe(query) {
-            startStreaming('/api/username/holehe', { email: query });
+            startStreaming('/api/email/holehe', { email: query });
         }
 
         async function searchIP(query) {
@@ -386,8 +386,14 @@
         }
 
         // Streaming
+        let searchCancelled = false;
         async function startStreaming(endpoint, body) {
             if (eventSource) eventSource.close();
+            searchCancelled = false;
+            
+            const searchStartTime = Date.now();
+            let lastUpdateTime = searchStartTime;
+            let lastChecked = 0;
             
             searchBtn.disabled = true;
             searchBtn.textContent = 'Searching...';
@@ -405,6 +411,11 @@
                 let finished = false;
                 
                 while (true) {
+                    if (searchCancelled) {
+                        finished = true;
+                        break;
+                    }
+                    
                     const { done, value } = await reader.read();
                     if (done || finished) break;
                     
@@ -412,6 +423,10 @@
                     const lines = chunk.split('\n');
                     
                     for (const line of lines) {
+                        if (searchCancelled) {
+                            finished = true;
+                            break;
+                        }
                         if (line.startsWith('data: ')) {
                             try {
                                 const data = JSON.parse(line.slice(6));
@@ -422,7 +437,25 @@
                                     const total = p.total || 1;
                                     const percent = p.percent !== undefined ? p.percent : Math.round((checked / total) * 100);
                                     progressFill.style.width = percent + '%';
-                                    progressText.textContent = `${checked}/${total}${p.current_site ? ' - ' + p.current_site : ''}`;
+                                    
+                                    // Calculate time estimate
+                                    const now = Date.now();
+                                    const elapsedSecs = (now - searchStartTime) / 1000;
+                                    let timeEstimate = '';
+                                    if (checked > lastChecked) {
+                                        const rate = checked / elapsedSecs; // sites per second
+                                        const remaining = total - checked;
+                                        const secsRemaining = remaining / rate;
+                                        if (secsRemaining > 60) {
+                                            timeEstimate = ` (~${Math.round(secsRemaining/60)}m remaining)`;
+                                        } else if (secsRemaining > 0) {
+                                            timeEstimate = ` (~${Math.round(secsRemaining)}s remaining)`;
+                                        }
+                                    }
+                                    lastChecked = checked;
+                                    lastUpdateTime = now;
+                                    
+                                    progressText.textContent = `${checked}/${total}${p.current_site ? ' - ' + p.current_site : ''}${timeEstimate}`;
                                 }
                                 if (data.complete) {
                                     console.log('Complete! Result keys:', data.result ? Object.keys(data.result) : 'no result');
@@ -450,6 +483,17 @@
                 searchBtn.textContent = 'Search';
                 updateSystemStatus(false);
             }
+        }
+        
+        // Utility functions
+        function copyToClipboard(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.textContent = '✓';
+                setTimeout(() => { btn.textContent = '⎘'; }, 1500);
+            }).catch(() => {
+                btn.textContent = '✕';
+                setTimeout(() => { btn.textContent = '⎘'; }, 1500);
+            });
         }
 
         // Display functions
@@ -776,6 +820,7 @@
         }
 
         function stopSearch() {
+            searchCancelled = true;
             if (eventSource) {
                 eventSource.close();
                 eventSource = null;
@@ -783,6 +828,9 @@
             loadingDiv.classList.add('hidden');
             searchBtn.disabled = false;
             searchBtn.textContent = 'Search';
+            updateSystemStatus(false);
+            progressFill.style.width = '0%';
+            progressText.textContent = '';
         }
 
         // Modals

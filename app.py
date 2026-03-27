@@ -31,6 +31,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Performance logger
+perf_logger = logging.getLogger('performance')
+perf_logger.setLevel(logging.INFO)
+
+# Request logger  
+req_logger = logging.getLogger('requests')
+req_logger.setLevel(logging.INFO)
+
+def log_performance(operation, duration, details=None):
+    msg = f"{operation}: {duration:.3f}s"
+    if details:
+        msg += f" - {details}"
+    perf_logger.info(msg)
+
+def log_request(tool, query, status, found_count=0, checked=0):
+    req_logger.info(f"{tool.upper()}|{query}|{status}|found:{found_count}|checked:{checked}")
+
 app = Flask(__name__)
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
@@ -3201,11 +3218,12 @@ def person_search_stream():
         # Now do DuckDuckGo dorks search - focus on finding usernames
         # Key queries to find social media handles/usernames
         dork_queries = [
-            # Username pattern searches (most important for finding handles like lindseyjonker37)
+            # Username pattern searches (most important for finding handles)
             f'"{first_name}{last_name}" OR "{first_name}_{last_name}" OR "{first_name}{last_name[0]}"',
+            f'"{first_name}.{last_name}" OR "{first_name}{last_name}"',
             f'"{full_name}" username OR handle OR "at"',
             f'"{full_name}" profile',
-            # Site-specific searches
+            # Major social media platforms
             f'"{full_name}" site:linkedin.com',
             f'"{full_name}" site:facebook.com',
             f'"{full_name}" site:twitter.com OR site:x.com',
@@ -3213,10 +3231,27 @@ def person_search_stream():
             f'"{full_name}" site:tiktok.com',
             f'"{full_name}" site:youtube.com',
             f'"{full_name}" site:github.com',
+            # Additional platforms
+            f'"{full_name}" site:reddit.com',
+            f'"{full_name}" site:pinterest.com',
+            f'"{full_name}" site:snapchat.com',
+            f'"{full_name}" site:discord.com',
+            f'"{full_name}" site:telegram.org',
+            # Dating/social apps
+            f'"{full_name}" site:tinder.com',
+            f'"{full_name}" site:bumble.com',
+            # Professional platforms
+            f'"{full_name}" site:myspace.com',
+            f'"{full_name}" site:flickr.com',
+            f'"{full_name}" site:vimeo.com',
             # File and email searches
             f'"{full_name}" filetype:pdf',
             f'"{full_name}" filetype:doc OR filetype:docx',
             f'"{full_name}" email',
+            # News/public records
+            f'"{full_name}" site:news site:instagram',
+            # Reverse image search patterns
+            f'"{first_name} {last_name}" profile picture',
         ]
         
         try:
@@ -3309,76 +3344,82 @@ SOCIAL_MEDIA_PLATFORMS = {
     'Facebook': {
         'url': 'https://www.facebook.com/{}',
         'category': 'social',
-        'presence': ['fb://profile', '"entity_id"', '"profile_id"', 'https://static.xx.fbcdn.net'],
-        'absence': ['page not found', 'this page isn\'t available', 'content you requested', '/help/', 'checkpoint'],
+        'presence': ['fb://profile', '"entity_id"', '"profile_id"', 'https://static.xx.fbcdn.net', 'pages/publication'],
+        'absence': ['page not found', 'this page isn\'t available', 'content you requested', '/help/', 'checkpoint', 'this content isn\'t available right now'],
         'url_absence': ['/login/', '/abuse/']
     },
     'Instagram': {
         'url': 'https://www.instagram.com/{}',
         'category': 'social',
-        'presence': ['<div id="splash-screen">', '"profile_id"', 'followers', 'following'],
-        'url_absence': ['/accounts/login/', '/login/'],
-        'mobile_url': 'https://www.instagram.com/{}?__a=1&__d=1'
+        'presence': ['<div id="splash-screen">', '"profile_id"', 'followers', 'following', '"username"'],
+        'absence': ['account does not exist', 'not found'],
+        'url_absence': ['/accounts/login/', '/login/']
     },
     'Twitter/X': {
         'url': 'https://twitter.com/{}',
         'category': 'social',
-        'presence': ['"username"', '"screen_name"'],
-        'absence': ['account suspended', 'doesn\'t exist']
+        'presence': ['"username"', '"screen_name"', '"userId"'],
+        'absence': ['account suspended', 'doesn\'t exist', 'account doesn\'t exist']
     },
     'TikTok': {
         'url': 'https://www.tiktok.com/@{}',
         'category': 'social',
-        'presence': ['followerCount', 'followingCount'],
-        'absence': ['Could not find this account', 'account does not exist']
+        'presence': ['followerCount', 'followingCount', '"uniqueId"'],
+        'absence': ['Could not find this account', 'account does not exist', 'doesn\'t exist']
     },
     'YouTube': {
         'url': 'https://www.youtube.com/@{}',
         'category': 'social',
-        'presence': ['"channelId"', '"username"'],
-        'absence': []
+        'presence': ['"channelId"', '"username"', 'youtube.com/channel'],
+        'absence': ['this channel doesn\'t exist']
     },
     'LinkedIn': {
         'url': 'https://www.linkedin.com/in/{}',
         'category': 'social',
-        'presence': [],
-        'absence': []
+        'presence': ['profile', 'linkedin.com/in'],
+        'absence': ['profile not found', 'this profile doesn\'t exist', 'linkedin.com/salary']
     },
     'Snapchat': {
         'url': 'https://www.snapchat.com/add/{}',
         'category': 'social',
-        'presence': [],
-        'absence': []
+        'presence': ['add friend', 'snapcode'],
+        'absence': ['not found', 'doesn\'t exist']
     },
     'Reddit': {
         'url': 'https://www.reddit.com/user/{}',
         'category': 'social',
-        'presence': [],
-        'absence': []
+        'presence': ['u_', 'reddit.com/u/'],
+        'absence': ['page not found', 'doesn\'t exist', 'shadowbanned']
     },
     'Pinterest': {
         'url': 'https://www.pinterest.com/{}',
         'category': 'social',
-        'presence': ['"username"', 'data-grid-item'],
-        'url_absence': ['/login/', '?loginError=']
+        'presence': ['pin', 'pinterest'],
+        'absence': ['not found', 'doesn\'t exist']
     },
-    'Tumblr': {
-        'url': 'https://{}.tumblr.com',
+    'GitHub': {
+        'url': 'https://github.com/{}',
+        'category': 'developer',
+        'presence': ['repositories', 'contributions'],
+        'absence': ['not found', 'is available']
+    },
+    'Discord': {
+        'url': 'https://discord.com/users/{}',
         'category': 'social',
-        'presence': [],
+        'presence': ['user', 'discriminator'],
+        'absence': ['not find', 'unknown']
+    },
+    'Telegram': {
+        'url': 'https://t.me/+{}',
+        'category': 'social',
+        'presence': ['telegram', 'join'],
         'absence': []
     },
     'Twitch': {
         'url': 'https://www.twitch.tv/{}',
         'category': 'gaming',
-        'presence': [],
-        'absence': []
-    },
-    'Discord': {
-        'url': 'https://discord.com/users/{}',
-        'category': 'messaging',
-        'presence': [],
-        'absence': []
+        'presence': ['profile_page', 'video_stream'],
+        'absence': ['doesn\'t exist', 'not found']
     },
     'Steam': {
         'url': 'https://steamcommunity.com/id/{}',
@@ -3690,7 +3731,7 @@ async def check_social_platform(client, platform_name, platform_info, query, tim
         final_url = str(response.url).lower()
         
         # Check if redirected to login page (Instagram, etc.)
-        if '/accounts/login/' in final_url or '/login/' in final_url:
+        if '/accounts/login/' in final_url or '/login/' in final_url or '/signin/' in final_url:
             finding['exists'] = False
             finding['status'] = 'login_redirect'
             finding['url'] = url  # Original URL, not login redirect
@@ -3701,17 +3742,33 @@ async def check_social_platform(client, platform_name, platform_info, query, tim
         has_url_absence = any(ua.lower() in final_url for ua in url_absence_strs) if url_absence_strs else False
         
         # Check if username is in final URL (profile exists and wasn't redirected to home/login)
-        username_in_url = clean_query in final_url.replace('-', '').replace('_', '')
+        username_in_url = clean_query in final_url.replace('-', '').replace('_', '').replace('+', '')
         
-        if has_absence or has_url_absence:
+        # Check HTTP status codes for common patterns
+        if response.status_code == 404 or response.status_code == 410:
+            finding['exists'] = False
+            finding['status'] = 'not_found'
+        elif response.status_code == 403:
+            finding['exists'] = None
+            finding['status'] = 'forbidden'
+        elif response.status_code == 301 or response.status_code == 302:
+            # Redirect - might be valid or might be to error page
+            if username_in_url:
+                finding['exists'] = True
+                finding['status'] = 'found'
+            else:
+                finding['exists'] = None
+                finding['status'] = 'redirect'
+        elif has_absence or has_url_absence:
             finding['exists'] = False
             finding['status'] = 'not_found'
         elif has_presence or username_in_url:
             finding['exists'] = True
             finding['status'] = 'found'
-        elif response.status_code == 404:
-            finding['exists'] = False
-            finding['status'] = 'not_found'
+        elif response.status_code == 200 and len(response_text) > 1000:
+            # Non-empty response, assume found but couldn't detect specific markers
+            finding['exists'] = True
+            finding['status'] = 'found'
         else:
             finding['exists'] = None
             finding['status'] = 'unknown'
