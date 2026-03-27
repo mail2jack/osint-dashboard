@@ -42,6 +42,7 @@
                 <button class="toolbar-btn" data-tool="social">Social</button>
                 <button class="toolbar-btn" data-tool="email">Email</button>
                 <button class="toolbar-btn" data-tool="phone">Phone</button>
+                <button class="toolbar-btn" data-tool="webcam">Webcams</button>
             </div>
             <div class="toolbar-group">
                 <button class="toolbar-btn" data-tool="maigret">Maigret</button>
@@ -175,6 +176,7 @@
             person: 'Enter full name (e.g., John Smith)',
             email: 'Enter email address...',
             phone: 'Enter phone number (+31612345678)',
+            webcam: 'Enter country or city (e.g., Netherlands, Amsterdam)',
             whatsapp: 'Enter phone number...',
 
             maigret: 'Enter username (deep search)...',
@@ -296,6 +298,8 @@
                 searchIP(query);
             } else if (currentTool === 'domain') {
                 searchDomain(query);
+            } else if (currentTool === 'webcam') {
+                searchWebcams(query);
             }
         }
 
@@ -430,7 +434,6 @@
                         if (line.startsWith('data: ')) {
                             try {
                                 const data = JSON.parse(line.slice(6));
-                                console.log('SSE message:', data);
                                 if (data.progress) {
                                     const p = data.progress;
                                     const checked = p.checked !== undefined ? p.checked : (p.completed || 0);
@@ -458,7 +461,6 @@
                                     progressText.textContent = `${checked}/${total}${p.current_site ? ' - ' + p.current_site : ''}${timeEstimate}`;
                                 }
                                 if (data.complete) {
-                                    console.log('Complete! Result keys:', data.result ? Object.keys(data.result) : 'no result');
                                     showResults(data.result);
                                     finished = true;
                                 }
@@ -798,7 +800,89 @@
                         <div class="grid-item"><div class="label">Nameservers</div><div class="value">${(data.nameservers || []).join(', ') || 'Unknown'}</div></div>
                     </div>
                 </div>
+                `;
+        }
+
+        async function searchWebcams(query) {
+            loadingDiv.classList.remove('hidden');
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Searching...';
+            updateSystemStatus(true);
+            document.querySelector('.progress-bar').style.display = 'none';
+            document.querySelector('.progress-text').style.display = 'none';
+            
+            try {
+                const res = await fetch('/api/webcam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                const data = await res.json();
+                showWebcamResults(data);
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+                updateSystemStatus(false);
+            }
+        }
+
+        function showWebcamResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            if (data.error) {
+                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
+                return;
+            }
+            
+            const webcams = data.webcams || [];
+            const countries = data.countries || [];
+            
+            resultsContent.innerHTML = `
+                <div class="stats">
+                    <div class="stat"><div class="stat-value">${webcams.length}</div><div class="stat-label">Cameras</div></div>
+                    <div class="stat"><div class="stat-value">${countries.length}</div><div class="stat-label">Countries</div></div>
+                </div>
+                ${countries.length ? `
+                    <div class="card">
+                        <h3>Countries</h3>
+                        <div class="tags">
+                            ${countries.map(c => `<span class="tag" onclick="searchWebcamsByCountry('${c.code}')">${c.name}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${webcams.length ? `
+                    <div class="webcam-grid">
+                        ${webcams.map(w => `
+                            <div class="webcam-item">
+                                <img src="${w.thumbnail}" alt="${w.title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%2212%22>Offline</text></svg>'">
+                                <div class="webcam-info">
+                                    <div class="webcam-title">${w.title}</div>
+                                    <div class="webcam-location">${w.location}</div>
+                                    <a href="${w.url}" target="_blank" class="webcam-link">Open ↗</a>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<div class="empty">No webcams found</div>'}
             `;
+        }
+
+        async function searchWebcamsByCountry(code) {
+            loadingDiv.classList.remove('hidden');
+            try {
+                const res = await fetch('/api/webcam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ country: code })
+                });
+                const data = await res.json();
+                showWebcamResults(data);
+            } catch (e) {
+                showError(e.message);
+            }
         }
 
         function showError(msg) {

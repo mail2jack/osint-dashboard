@@ -607,3 +607,77 @@ header {
         justify-content: flex-start;
     }
 }
+
+/* Webcam Grid */
+.webcam-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.webcam-item {
+    background: var(--bg3);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.webcam-item img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    background: var(--bg2);
+}
+
+.webcam-info {
+    padding: 12px;
+}
+
+.webcam-title {
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.webcam-location {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 8px;
+}
+
+.webcam-link {
+    font-size: 13px;
+    color: var(--blue);
+    text-decoration: none;
+}
+
+.webcam-link:hover {
+    text-decoration: underline;
+}
+
+/* Country Tags */
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tag:hover {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: white;
+}

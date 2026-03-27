@@ -10304,3 +10304,122 @@ requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetErro
 2026-03-27 19:40:29,474 - httpx - INFO - HTTP Request: POST https://www.clashfarmer.com/forum/xmlhttp.php?action=email_availability "HTTP/1.1 200 OK"
 2026-03-27 19:40:29,724 - httpx - INFO - HTTP Request: GET https://forum.codeigniter.com/member.php "HTTP/1.1 403 Forbidden"
 2026-03-27 19:41:13,402 - httpx - INFO - HTTP Request: GET https://demonforums.net/member.php "HTTP/1.1 302 Found"
+2026-03-27 19:42:17,394 - httpx - INFO - HTTP Request: GET https://forum.ndemiccreations.com/member.php "HTTP/1.1 301 Moved Permanently"
+2026-03-27 19:42:17,436 - httpx - INFO - HTTP Request: GET https://forum.ndemiccreations.com/ "HTTP/1.1 200 OK"
+2026-03-27 19:42:17,557 - httpx - INFO - HTTP Request: POST https://forum.ndemiccreations.com/xmlhttp.php?action=email_availability "HTTP/1.1 200 OK"
+2026-03-27 19:42:18,150 - httpx - INFO - HTTP Request: GET https://forums.nextpvr.com/member.php "HTTP/1.1 302 Found"
+2026-03-27 19:42:18,327 - httpx - INFO - HTTP Request: GET https://forums.nextpvr.com/index.php "HTTP/1.1 200 OK"
+2026-03-27 19:42:18,728 - httpx - INFO - HTTP Request: POST https://forums.nextpvr.com/xmlhttp.php?action=email_availability "HTTP/1.1 200 OK"
+2026-03-27 19:42:19,019 - httpx - INFO - HTTP Request: GET https://onlinesequencer.net/forum/member.php "HTTP/1.1 403 Forbidden"
+2026-03-27 19:42:58,464 - httpx - INFO - HTTP Request: GET http://www.thevapingforum.com/member.php "HTTP/1.1 302 Found"
+2026-03-27 19:43:18,947 - httpx - INFO - HTTP Request: POST https://www.coroflot.com/home/signup_email_check "HTTP/1.1 200 OK"
+2026-03-27 19:45:17,659 - httpx - INFO - HTTP Request: POST https://www.laposte.fr/authentification "HTTP/1.1 404 Not Found"
+2026-03-27 19:45:18,132 - httpx - INFO - HTTP Request: POST https://account.mail.ru/api/v1/user/password/restore "HTTP/1.1 200 OK"
+2026-03-27 19:45:18,533 - httpx - INFO - HTTP Request: GET https://api.protonmail.ch/pks/lookup?op=index&search=royversteegh@gmail.com "HTTP/1.1 200 OK"
+2026-03-27 19:45:18,782 - httpx - INFO - HTTP Request: GET https://login.yahoo.com "HTTP/1.1 200 OK"
+2026-03-27 19:45:18,820 - httpx - INFO - HTTP Request: POST https://login.yahoo.com/?.src=fpctx&.intl=ca&.lang=en-CA&.done=https%3A%2F%2Fca.yahoo.com "HTTP/1.1 429 Too Many Requests"
+2026-03-27 19:45:49,446 - httpx - INFO - HTTP Request: POST https://ello.co/api/v2/availability "HTTP/1.1 520 <none>"
+2026-03-27 19:46:29,094 - httpx - INFO - HTTP Request: POST https://id.rambler.ru/jsonrpc "HTTP/1.1 200 OK"
+2026-03-27 19:46:30,121 - httpx - INFO - HTTP Request: POST https://www.sporcle.com/auth/ajax/verify.php "HTTP/1.1 403 Forbidden"
+2026-03-27 19:46:30,774 - httpx - INFO - HTTP Request: POST https://www.caringbridge.org/signin "HTTP/1.1 405 Method Not Allowed"
+2026-03-27 19:46:30,910 - httpx - INFO - HTTP Request: POST https://www.7cups.com/listener/CreateAccount.php "HTTP/1.1 403 Forbidden"
+2026-03-27 19:47:10,590 - httpx - INFO - HTTP Request: GET https://www.smule.com/user/check_email "HTTP/1.1 403 Forbidden"
+2026-03-27 19:47:10,738 - httpx - INFO - HTTP Request: GET https://soundcloud.com/octobersveryown "HTTP/1.1 307 Temporary Redirect"
+2026-03-27 19:47:11,846 - httpx - INFO - HTTP Request: GET https://m.soundcloud.com/octobersveryown "HTTP/1.1 200 OK"
+2026-03-27 19:47:12,533 - httpx - INFO - HTTP Request: GET https://spclient.wg.spotify.com/signup/public/v1/account?validate=1&email=royversteegh%40gmail.com "HTTP/1.1 200 OK"
+2026-03-27 19:47:12,688 - httpx - INFO - HTTP Request: GET https://www.tunefind.com/user/join "HTTP/1.1 404 Not Found"
+2026-03-27 19:47:13,319 - httpx - INFO - HTTP Request: GET https://rocketreach.co/v1/validateEmail?email_address=royversteegh@gmail.com "HTTP/1.1 404 Not Found"
+2026-03-27 19:47:32,988 - httpx - INFO - HTTP Request: GET https://www.pornhub.com/signup "HTTP/1.1 200 OK"
+2026-03-27 19:47:36,000 - httpx - INFO - HTTP Request: POST https://www.pornhub.com/user/create_account_check?token=MTc3NDYzNzI1MqYEh2V_vBVzTY-QmEeVaUggI-FGTuat-YCh5kBZCiL6EcB69JLzZrGM7ATMvgcQUIgdjCxMdMQ4LAHWrEZ_oFo. "HTTP/1.1 404 Not Found"
+2026-03-27 19:47:36,157 - httpx - INFO - HTTP Request: GET https://redtube.com/register "HTTP/1.1 301 Moved Permanently"
+2026-03-27 19:48:35,642 - httpx - INFO - HTTP Request: POST https://sm-prod2.any.do/check_email "HTTP/1.1 200 OK"
+2026-03-27 19:49:34,722 - httpx - INFO - HTTP Request: GET https://www.codecademy.com/register?redirect=%2F "HTTP/1.1 302 Found"
+2026-03-27 19:49:35,194 - httpx - INFO - HTTP Request: GET https://www.codecademy.com/errors/browser "HTTP/1.1 200 OK"
+2026-03-27 19:49:35,550 - httpx - INFO - HTTP Request: GET https://codepen.io/accounts/signup/user/free "HTTP/1.1 403 Forbidden"
+2026-03-27 19:49:36,421 - httpx - INFO - HTTP Request: POST https://devrant.com/api/users "HTTP/1.1 200 OK"
+2026-03-27 19:50:16,594 - httpx - INFO - HTTP Request: GET https://teamtreehouse.com/subscribe/new?trial=yes "HTTP/1.1 200 OK"
+2026-03-27 19:50:17,261 - httpx - INFO - HTTP Request: POST https://teamtreehouse.com/account/email_address "HTTP/1.1 200 OK"
+2026-03-27 19:50:17,658 - httpx - INFO - HTTP Request: POST https://www.vrbo.com/auth/aam/v3/status "HTTP/1.1 429 Too Many Requests"
+2026-03-27 19:50:18,436 - httpx - INFO - HTTP Request: GET https://www.amazon.com/ap/signin?openid.pape.max_auth_age=0&openid.return_to=https%3A%2F%2Fwww.amazon.com%2F%3F_encoding%3DUTF8%26ref_%3Dnav_ya_signin&openid.identity=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.assoc_handle=usflex&openid.mode=checkid_setup&openid.claimed_id=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.ns=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0& "HTTP/1.1 200 OK"
+2026-03-27 19:50:19,116 - httpx - INFO - HTTP Request: POST https://www.amazon.com/ap/signin/ "HTTP/1.1 200 OK"
+2026-03-27 19:50:20,602 - httpx - INFO - HTTP Request: POST https://www.armurerie-auxerre.com/customer/Email/email/ "HTTP/1.1 404 Not Found"
+2026-03-27 19:50:21,112 - httpx - INFO - HTTP Request: GET https://commande.dominos.fr/eStore/fr/Signup "HTTP/1.1 200 OK"
+2026-03-27 19:50:21,199 - httpx - INFO - HTTP Request: GET https://commande.dominos.fr/eStore/fr/Signup/IsEmailAvailable?email=royversteegh%40gmail.com "HTTP/1.1 200 OK"
+2026-03-27 19:50:21,932 - httpx - INFO - HTTP Request: GET https://www.ebay.com/signin/ "HTTP/1.1 301 Moved Permanently"
+2026-03-27 19:50:41,726 - httpx - INFO - HTTP Request: POST https://account.envato.com/api/validate_email "HTTP/1.1 403 Forbidden"
+2026-03-27 19:50:42,247 - httpx - INFO - HTTP Request: GET https://sso.garmin.com/sso/createNewAccount?service=https%3A%2F%2Fwww.garmin.com%2Ffr-FR%2Faccount%2Fprofile%2F&webhost=https%3A%2F%2Fwww.garmin.com%2Ffr-FR%2Faccount%2Fcreate%2F&source=https%3A%2F%2Fwww.garmin.com%2Ffr-FR%2Faccount%2Fcreate%2F&redirectAfterAccountLoginUrl=https%3A%2F%2Fwww.garmin.com%2Ffr-FR%2Faccount%2Fprofile%2F&redirectAfterAccountCreationUrl=https%3A%2F%2Fwww.garmin.com%2Ffr-FR%2Faccount%2Fprofile%2F&gauthHost=https%3A%2F%2Fsso.garmin.com%2Fsso&id=js__app__create__gauth-widget&cssUrl=https%3A%2F%2Fwww.garmin.com%2Faccount%2Fui%2Fcss%2Fcreate-account-v1.12.3-min.css&clientId=ACCOUNT_MANAGEMENT_CENTER&rememberMeShown=true&rememberMeChecked=undefined&createAccountShown=true&openCreateAccount=true&displayNameShown=false&consumeServiceTicket=true&initialFocus=true&embedWidget=false&generateExtraServiceTicket=true&generateTwoExtraServiceTickets=false&generateNoServiceTicket=false&globalOptInShown=true&globalOptInChecked=false&mobile=false&connectLegalTerms=false&showTermsOfUse=false&showPrivacyPolicy=false&showConnectLegalAge=false&locationPromptShown=false&showPassword=true&useCustomHeader=false&mfaRequired=false&rememberMyDeviceShown=false&rememberMyDeviceChecked=false "HTTP/1.1 200 OK"
+2026-03-27 19:51:22,131 - httpx - INFO - HTTP Request: GET https://accounts.snapchat.com "HTTP/1.1 301 Moved Permanently"
+2026-03-27 19:51:22,294 - httpx - INFO - HTTP Request: GET https://accounts.snapchat.com/accounts/v2/login "HTTP/1.1 308 Permanent Redirect"
+2026-03-27 19:51:22,528 - httpx - INFO - HTTP Request: GET https://accounts.snapchat.com/v2/login "HTTP/1.1 200 OK"
+2026-03-27 19:51:23,150 - httpx - INFO - HTTP Request: GET https://crevado.com "HTTP/1.1 404 Not Found"
+2026-03-27 19:52:22,381 - httpx - INFO - HTTP Request: GET https://www.instagram.com/accounts/emailsignup/ "HTTP/1.1 200 OK"
+2026-03-27 19:52:44,715 - httpx - INFO - HTTP Request: POST https://api.parler.com/v2/login/new "HTTP/1.1 301 Moved Permanently"
+2026-03-27 19:53:04,691 - httpx - INFO - HTTP Request: POST https://www.patreon.com/api/email/available?json-api-version=1.0&include=%5B%5D "HTTP/1.1 404 Not Found"
+2026-03-27 19:53:44,044 - httpx - INFO - HTTP Request: GET https://accounts.snapchat.com "HTTP/1.1 301 Moved Permanently"
+2026-03-27 19:53:44,160 - httpx - INFO - HTTP Request: GET https://accounts.snapchat.com/accounts/v2/login "HTTP/1.1 308 Permanent Redirect"
+2026-03-27 19:53:44,317 - httpx - INFO - HTTP Request: GET https://accounts.snapchat.com/v2/login "HTTP/1.1 200 OK"
+2026-03-27 19:53:44,983 - httpx - INFO - HTTP Request: GET https://www.strava.com/register/free?cta=sign-up&element=button&source=website_show "HTTP/1.1 200 OK"
+2026-03-27 19:53:45,503 - httpx - INFO - HTTP Request: GET https://www.strava.com/athletes/email_unique?email=royversteegh%40gmail.com "HTTP/1.1 404 Not Found"
+2026-03-27 19:53:45,737 - httpx - INFO - HTTP Request: POST https://www.taringa.net/api/auth/availability/email "HTTP/1.1 200 OK"
+2026-03-27 19:55:42,886 - httpx - INFO - HTTP Request: POST https://auth.services.adobe.com/signin/v1/authenticationstate "HTTP/1.1 401 Unauthorized"
+2026-03-27 19:57:01,112 - httpx - INFO - HTTP Request: GET https://lastpass.com/create_account.php?check=avail&skipcontent=1&mistype=1&username=royversteegh%40gmail.com "HTTP/1.1 200 OK"
+2026-03-27 19:57:01,296 - httpx - INFO - HTTP Request: GET https://outlook.office365.com/autodiscover/autodiscover.json/v1.0/705492928292631921133188154147@gmail.com?Protocol=Autodiscoverv1 "HTTP/1.1 302 Found"
+2026-03-27 19:57:01,714 - httpx - INFO - HTTP Request: GET https://outlook.office365.com/autodiscover/autodiscover.json/v1.0/royversteegh@gmail.com?Protocol=Autodiscoverv1 "HTTP/1.1 302 Found"
+2026-03-27 19:57:02,403 - httpx - INFO - HTTP Request: HEAD https://api.bodybuilding.com/profile/email/royversteegh@gmail.com "HTTP/1.1 404 Not Found"
+2026-03-27 19:57:03,577 - httpx - INFO - HTTP Request: GET https://www.blablacar.fr/register "HTTP/1.1 403 Forbidden"
+2026-03-27 19:58:08,478 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 19:58:08] "GET /api/history HTTP/1.1" 200 -
+2026-03-27 19:58:25,029 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 19:58:25] "POST /api/ip HTTP/1.1" 200 -
+2026-03-27 19:58:45,351 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 19:58:45] "POST /api/domain HTTP/1.1" 200 -
+2026-03-27 20:09:37,889 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:09:37] "GET / HTTP/1.1" 200 -
+2026-03-27 20:09:38,629 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:09:38] "GET /static/style.css HTTP/1.1" 200 -
+2026-03-27 20:09:38,826 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:09:38] "GET /api/version HTTP/1.1" 200 -
+2026-03-27 20:09:39,166 - __main__ - WARNING - 404 Not Found: /favicon.ico
+2026-03-27 20:09:39,169 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:09:39] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2026-03-27 20:09:44,091 - __main__ - WARNING - 404 Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-03-27 20:09:44,111 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:09:44] "[33mGET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1[0m" 404 -
+2026-03-27 20:16:21,213 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:16:21] "GET / HTTP/1.1" 200 -
+2026-03-27 20:16:21,892 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:16:21] "GET /static/style.css HTTP/1.1" 200 -
+2026-03-27 20:16:22,066 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:16:22] "GET /api/version HTTP/1.1" 200 -
+2026-03-27 20:16:22,344 - __main__ - WARNING - 404 Not Found: /.well-known/appspecific/com.chrome.devtools.json
+2026-03-27 20:16:22,344 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:16:22] "[33mGET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1[0m" 404 -
+2026-03-27 20:16:22,517 - __main__ - WARNING - 404 Not Found: /favicon.ico
+2026-03-27 20:16:22,521 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:16:22] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2026-03-27 20:16:38,391 - __main__ - WARNING - 404 Not Found: /api/webcam
+2026-03-27 20:16:38,392 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:16:38] "[33mPOST /api/webcam HTTP/1.1[0m" 404 -
+2026-03-27 20:16:46,566 - __main__ - WARNING - 404 Not Found: /api/webcam
+2026-03-27 20:16:46,568 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:16:46] "[33mPOST /api/webcam HTTP/1.1[0m" 404 -
+2026-03-27 20:20:15,518 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:20:15] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-27 20:20:28,099 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-27 20:20:28,101 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-27 20:20:28,994 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:20:28] "GET / HTTP/1.1" 200 -
+2026-03-27 20:20:29,324 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:20:29] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-27 20:20:30,171 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:20:30] "GET /api/version HTTP/1.1" 200 -
+2026-03-27 20:20:49,914 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:20:49] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:21:09,078 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:21:09] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:21:11,896 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:21:11] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:21:21,372 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:21:21] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:21:28,165 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:21:28] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:29:20,689 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:29:20] "POST /api/system/restart HTTP/1.1" 200 -
+2026-03-27 20:29:29,881 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.2.0.2:5000
+2026-03-27 20:29:29,881 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-27 20:29:30,033 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:29:30] "GET / HTTP/1.1" 200 -
+2026-03-27 20:29:30,214 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:29:30] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2026-03-27 20:29:30,654 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:29:30] "GET /api/version HTTP/1.1" 200 -
+2026-03-27 20:29:44,542 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:29:44] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:29:50,469 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:29:50] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:29:54,467 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:29:54] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:30:13,720 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:30:13] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:30:17,467 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:30:17] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:30:20,333 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:30:20] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:30:22,315 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:30:22] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:30:24,130 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:30:24] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:30:26,914 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:30:26] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:30:30,428 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:30:30] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:30:32,195 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:30:32] "POST /api/webcam HTTP/1.1" 200 -
+2026-03-27 20:31:51,426 - werkzeug - INFO - 127.0.0.1 - - [27/Mar/2026 20:31:51] "POST /api/webcam HTTP/1.1" 200 -

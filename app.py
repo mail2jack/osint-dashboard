@@ -2032,6 +2032,143 @@ def domain_lookup():
     return jsonify(lookup_domain(domain))
 
 
+# Public webcam data - organized by country and city
+WEBCAM_DATA = {
+    'countries': [
+        {'code': 'us', 'name': 'United States'},
+        {'code': 'uk', 'name': 'United Kingdom'},
+        {'code': 'nl', 'name': 'Netherlands'},
+        {'code': 'de', 'name': 'Germany'},
+        {'code': 'fr', 'name': 'France'},
+        {'code': 'jp', 'name': 'Japan'},
+        {'code': 'au', 'name': 'Australia'},
+        {'code': 'ca', 'name': 'Canada'},
+        {'code': 'it', 'name': 'Italy'},
+        {'code': 'es', 'name': 'Spain'},
+        {'code': 'ch', 'name': 'Switzerland'},
+        {'code': 'at', 'name': 'Austria'},
+        {'code': 'be', 'name': 'Belgium'},
+        {'code': 'no', 'name': 'Norway'},
+        {'code': 'se', 'name': 'Sweden'},
+    ],
+    'webcams': [
+        # United States
+        {'title': 'Times Square', 'location': 'New York, US', 'url': 'https://www.earthcam.com/fanschoose/nyctimessquare/', 'thumbnail': 'https://videos-3.earthcam.com/fecnetwork/9974.flv/playlist.m3u8', 'country': 'us', 'city': 'new york', 'type': 'stream'},
+        {'title': 'Las Vegas Strip', 'location': 'Las Vegas, US', 'url': 'https://www.earthcam.com/fanschoose/vegasstrip/', 'thumbnail': 'https://videos-3.earthcam.com/fecnetwork/4018.flv/playlist.m3u8', 'country': 'us', 'city': 'las vegas', 'type': 'stream'},
+        {'title': 'South Beach', 'location': 'Miami Beach, US', 'url': 'https://www.earthcam.com/floridakeys/', 'thumbnail': 'https://videos-3.earthcam.com/fecnetwork/9974.flv/playlist.m3u8', 'country': 'us', 'city': 'miami', 'type': 'stream'},
+        {'title': 'French Quarter', 'location': 'New Orleans, US', 'url': 'https://www.earthcam.com/louisiana/bourbonstreet/', 'thumbnail': '', 'country': 'us', 'city': 'new orleans', 'type': 'image'},
+        {'title': 'Santa Monica Pier', 'location': 'Santa Monica, US', 'url': 'https://www.santamonica.gov/places/santa-monica-pier-live-camera', 'thumbnail': '', 'country': 'us', 'city': 'santa monica', 'type': 'image'},
+        {'title': 'Hawaii Beach', 'location': 'Honolulu, Hawaii, US', 'url': 'https://www.earthcam.com/hawaii/waikiki/', 'thumbnail': '', 'country': 'us', 'city': 'honolulu', 'type': 'image'},
+        {'title': 'Denver Downtown', 'location': 'Denver, US', 'url': 'https://www.earthcam.com/colorado/denver/', 'thumbnail': '', 'country': 'us', 'city': 'denver', 'type': 'image'},
+        {'title': 'Chicago Skyline', 'location': 'Chicago, US', 'url': 'https://www.earthcam.com/illinois/chicagobridgetower/', 'thumbnail': '', 'country': 'us', 'city': 'chicago', 'type': 'image'},
+        # Netherlands
+        {'title': 'Dam Square', 'location': 'Amsterdam, NL', 'url': 'https://www.amsterdam.nl/publish/pages/846657/live_camera.html', 'thumbnail': '', 'country': 'nl', 'city': 'amsterdam', 'type': 'image'},
+        {'title': 'Leidseplein', 'location': 'Amsterdam, NL', 'url': 'https://www.amsterdam.nl/publish/pages/846657/live_camera.html', 'thumbnail': '', 'country': 'nl', 'city': 'amsterdam', 'type': 'image'},
+        {'title': 'Keukenhof Tulips', 'location': 'Lisse, NL', 'url': 'https://www.keukenhof.nl/', 'thumbnail': '', 'country': 'nl', 'city': 'lisse', 'type': 'image'},
+        {'title': 'Rotterdam Harbor', 'location': 'Rotterdam, NL', 'url': 'https://www.portofrotterdam.com/en/cameras', 'thumbnail': '', 'country': 'nl', 'city': 'rotterdam', 'type': 'image'},
+        # United Kingdom
+        {'title': 'Tower Bridge', 'location': 'London, UK', 'url': 'https://www.earthcam.com/uk/london/', 'thumbnail': '', 'country': 'uk', 'city': 'london', 'type': 'image'},
+        {'title': 'Abbey Road', 'location': 'London, UK', 'url': 'https://www.abbeyroad.com/crossing', 'thumbnail': '', 'country': 'uk', 'city': 'london', 'type': 'image'},
+        {'title': 'Edinburgh Castle', 'location': 'Edinburgh, UK', 'url': 'https://www.edinburgh.gov.uk/cam1', 'thumbnail': '', 'country': 'uk', 'city': 'edinburgh', 'type': 'image'},
+        {'title': 'Brighton Pier', 'location': 'Brighton, UK', 'url': 'https://www.brighton.gov.uk/', 'thumbnail': '', 'country': 'uk', 'city': 'brighton', 'type': 'image'},
+        # France
+        {'title': 'Eiffel Tower', 'location': 'Paris, FR', 'url': 'https://www.earthcam.com/fr/pariseiffeltower/', 'thumbnail': '', 'country': 'fr', 'city': 'paris', 'type': 'image'},
+        {'title': 'Louvre', 'location': 'Paris, FR', 'url': 'https://www.earthcam.com/fr/parislouvre/', 'thumbnail': '', 'country': 'fr', 'city': 'paris', 'type': 'image'},
+        {'title': 'Nice Beach', 'location': 'Nice, FR', 'url': 'https://www.nicetourisme.com/en/webcams', 'thumbnail': '', 'country': 'fr', 'city': 'nice', 'type': 'image'},
+        # Germany
+        {'title': 'Brandenburg Gate', 'location': 'Berlin, DE', 'url': 'https://www.earthcam.com/germany/berlin/', 'thumbnail': '', 'country': 'de', 'city': 'berlin', 'type': 'image'},
+        {'title': 'Munich Marienplatz', 'location': 'Munich, DE', 'url': 'www.muenchen.de', 'thumbnail': '', 'country': 'de', 'city': 'munich', 'type': 'image'},
+        {'title': 'Cologne Cathedral', 'location': 'Cologne, DE', 'url': 'https://www.koelntourguide.de/', 'thumbnail': '', 'country': 'de', 'city': 'cologne', 'type': 'image'},
+        # Japan
+        {'title': 'Shibuya Crossing', 'location': 'Tokyo, JP', 'url': 'https://www.shinjuku.life/', 'thumbnail': '', 'country': 'jp', 'city': 'tokyo', 'type': 'image'},
+        {'title': 'Mount Fuji', 'location': 'Fujinomiya, JP', 'url': 'https://www.shizuoka-guide.com/', 'thumbnail': '', 'country': 'jp', 'city': 'fuji', 'type': 'image'},
+        {'title': 'Nara Deer Park', 'location': 'Nara, JP', 'url': 'https://www.narakoubou.com/', 'thumbnail': '', 'country': 'jp', 'city': 'nara', 'type': 'image'},
+        # Australia
+        {'title': 'Sydney Harbour', 'location': 'Sydney, AU', 'url': 'https://www.sydney.com/', 'thumbnail': '', 'country': 'au', 'city': 'sydney', 'type': 'image'},
+        {'title': 'Bondi Beach', 'location': 'Sydney, AU', 'url': 'https://www.bondi.nsw.gov.au/', 'thumbnail': '', 'country': 'au', 'city': 'bondi', 'type': 'image'},
+        {'title': 'Melbourne CBD', 'location': 'Melbourne, AU', 'url': 'https://www.melbourne.vic.gov.au/', 'thumbnail': '', 'country': 'au', 'city': 'melbourne', 'type': 'image'},
+        # Italy
+        {'title': 'Colosseum', 'location': 'Rome, IT', 'url': 'https://www.earthcam.com/italy/rome/', 'thumbnail': '', 'country': 'it', 'city': 'rome', 'type': 'image'},
+        {'title': 'Venice Canal', 'location': 'Venice, IT', 'url': 'https://www.italia.it/', 'thumbnail': '', 'country': 'it', 'city': 'venice', 'type': 'image'},
+        {'title': 'Florence Duomo', 'location': 'Florence, IT', 'url': 'https://www.museodelduomo.org/', 'thumbnail': '', 'country': 'it', 'city': 'florence', 'type': 'image'},
+        # Spain
+        {'title': 'La Rambla', 'location': 'Barcelona, ES', 'url': 'https://www.barcelona-tourisme.com/', 'thumbnail': '', 'country': 'es', 'city': 'barcelona', 'type': 'image'},
+        {'title': 'Plaza Mayor', 'location': 'Madrid, ES', 'url': 'https://www.esmadrid.com/', 'thumbnail': '', 'country': 'es', 'city': 'madrid', 'type': 'image'},
+        {'title': 'Ibiza Beach', 'location': 'Ibiza, ES', 'url': 'https://www.ibiza.travel/', 'thumbnail': '', 'country': 'es', 'city': 'ibiza', 'type': 'image'},
+        # Switzerland
+        {'title': 'Zermatt Matterhorn', 'location': 'Zermatt, CH', 'url': 'www.zermatt.ch', 'thumbnail': '', 'country': 'ch', 'city': 'zermatt', 'type': 'image'},
+        {'title': 'Jungfrau', 'location': 'Jungfraujoch, CH', 'url': 'www.jungfrau.ch', 'thumbnail': '', 'country': 'ch', 'city': 'jungfrau', 'type': 'image'},
+        # Austria
+        {'title': 'Vienna Square', 'location': 'Vienna, AT', 'url': 'https://www.wien.info/', 'thumbnail': '', 'country': 'at', 'city': 'vienna', 'type': 'image'},
+        {'title': 'Salzburg Old Town', 'location': 'Salzburg, AT', 'url': 'https://www.salzburg.info/', 'thumbnail': '', 'country': 'at', 'city': 'salzburg', 'type': 'image'},
+        # Belgium
+        {'title': 'Grand Place', 'location': 'Brussels, BE', 'url': 'https://www.brussels.be/', 'thumbnail': '', 'country': 'be', 'city': 'brussels', 'type': 'image'},
+        {'title': 'Antwerp Harbor', 'location': 'Antwerp, BE', 'url': 'https://www.portofantwerp.com/', 'thumbnail': '', 'country': 'be', 'city': 'antwerp', 'type': 'image'},
+        # Norway
+        {'title': 'Bergen Harbor', 'location': 'Bergen, NO', 'url': 'https://www.visitbergen.com/', 'thumbnail': '', 'country': 'no', 'city': 'bergen', 'type': 'image'},
+        {'title': 'Oslo Opera', 'location': 'Oslo, NO', 'url': 'https://www.oslo.com/', 'thumbnail': '', 'country': 'no', 'city': 'oslo', 'type': 'image'},
+        # Sweden
+        {'title': 'Stockholm Old Town', 'location': 'Stockholm, SE', 'url': 'https://www.stockholm.se/', 'thumbnail': '', 'country': 'se', 'city': 'stockholm', 'type': 'image'},
+        {'title': 'Gothenburg Harbor', 'location': 'Gothenburg, SE', 'url': 'https://www.goteborg.com/', 'thumbnail': '', 'country': 'se', 'city': 'gothenburg', 'type': 'image'},
+        # Canada
+        {'title': 'Niagara Falls', 'location': 'Ontario, CA', 'url': 'https://www.earthcam.com/canada/niagarafalls/', 'thumbnail': '', 'country': 'ca', 'city': 'niagara', 'type': 'image'},
+        {'title': 'Vancouver Harbor', 'location': 'Vancouver, CA', 'url': 'https://www.portmetrovancouver.com/', 'thumbnail': '', 'country': 'ca', 'city': 'vancouver', 'type': 'image'},
+        {'title': 'Toronto Skyline', 'location': 'Toronto, CA', 'url': 'https://www.toronto.ca/', 'thumbnail': '', 'country': 'ca', 'city': 'toronto', 'type': 'image'},
+    ]
+}
+
+@app.route('/api/webcam', methods=['POST'])
+def webcam_lookup():
+    data = request.get_json()
+    query = data.get('query', '').lower().strip()
+    country_code = data.get('country', '').lower().strip()
+    
+    webcams = WEBCAM_DATA['webcams'].copy()
+    results = []
+    selected_country = None
+    
+    # Country name to code mapping
+    country_map = {
+        'united states': 'us', 'usa': 'us', 'us': 'us', 'america': 'us',
+        'united kingdom': 'uk', 'uk': 'uk', 'britain': 'uk', 'england': 'uk',
+        'netherlands': 'nl', 'holland': 'nl', 'nl': 'nl',
+        'germany': 'de', 'deutschland': 'de', 'de': 'de',
+        'france': 'fr', 'fr': 'fr',
+        'japan': 'jp', 'jp': 'jp',
+        'australia': 'au', 'au': 'au',
+        'canada': 'ca', 'ca': 'ca',
+        'italy': 'it', 'it': 'it',
+        'spain': 'es', 'es': 'es',
+    }
+    
+    # Convert country name to code if needed
+    if query in country_map:
+        country_code = country_map[query]
+        query = ''
+    
+    # If country code specified
+    if country_code:
+        results = [w for w in webcams if w['country'] == country_code]
+        selected_country = next((c for c in WEBCAM_DATA['countries'] if c['code'] == country_code), None)
+    # If search query
+    elif query:
+        # Search by city, country, or title
+        results = [w for w in webcams if 
+                   query in w['city'].lower() or 
+                   query in w['country'].lower() or 
+                   query in w['title'].lower() or
+                   query in w['location'].lower()]
+    else:
+        # Return all webcams
+        results = webcams
+    
+    return jsonify({
+        'webcams': results[:24],  # Limit to 24
+        'countries': WEBCAM_DATA['countries'],
+        'selected_country': selected_country
+    })
+
+
 @app.route('/api/hibp', methods=['POST'])
 def hibp_check():
     data = request.get_json()
