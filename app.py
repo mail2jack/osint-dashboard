@@ -880,8 +880,9 @@ async def check_email_site(client, site_name, site_info, email):
     return finding
 
 
-async def search_email_async(email, progress_callback=None):
-    cached = get_cached_result('email_sherlock', email)
+async def search_email_async(email, progress_callback=None, limit=30):
+    cache_key = f'email_sherlock_{limit}'
+    cached = get_cached_result(cache_key, email)
     if cached:
         cached['from_cache'] = True
         return cached
@@ -916,6 +917,24 @@ async def search_email_async(email, progress_callback=None):
     result['disposable'] = any(d in domain.lower() for d in disposable_domains)
     
     email_sites = get_sherlock_sites()
+    
+    # Priority sites for Quick search (popular platforms with email)
+    priority_sites = [
+        'Facebook', 'Instagram', 'Twitter', 'TikTok', 'LinkedIn', 'YouTube',
+        'WhatsApp', 'Telegram', 'Snapchat', 'Pinterest', 'Reddit', 'GitHub',
+        'Dropbox', 'Google', 'Microsoft', 'Apple', 'Amazon', 'Netflix',
+        'Spotify', 'Adobe', 'Discord', 'Slack', 'Zoom', 'PayPal', 'Steam',
+        'Ebay', 'Airbnb', 'Uber', 'Tinder', 'Bumble'
+    ]
+    
+    # Apply limit - prioritize important sites
+    if limit <= 50:
+        priority = {k: v for k, v in email_sites.items() if k in priority_sites}
+        remaining = {k: v for k, v in email_sites.items() if k not in priority_sites}
+        combined = {**priority, **remaining}
+        email_sites = dict(list(combined.items())[:limit])
+    else:
+        email_sites = dict(list(email_sites.items())[:limit])
     
     all_checks = []
     total_sites = len(email_sites)
@@ -983,7 +1002,7 @@ async def search_email_async(email, progress_callback=None):
         {'name': 'Dehashed', 'url': f'https://dehashed.com/search?query={email}'},
     ]
     
-    set_cached_result('email_sherlock', email, result.copy())
+    set_cached_result(cache_key, email, result.copy())
     
     return result
 
@@ -2110,8 +2129,25 @@ def email_search_stream():
     
     data = request.get_json()
     email = data.get('email', '')
+    tags = data.get('tags', ['all'])
     if not email:
         return jsonify({'error': 'Email required'}), 400
+    
+    # Map tags to site limits (handle both string and numeric)
+    limit = 30  # Default to Quick
+    for tag in tags:
+        if isinstance(tag, str) and tag.isdigit():
+            limit = max(limit, int(tag))
+        elif isinstance(tag, int):
+            limit = max(limit, tag)
+        elif tag in ['social', '30']:
+            limit = max(limit, 30)
+        elif tag in ['developer', '50']:
+            limit = max(limit, 50)
+        elif tag in ['gaming', '100']:
+            limit = max(limit, 100)
+        elif tag in ['all', '200']:
+            limit = max(limit, 200)
     
     result_queue = queue.Queue()
     progress_state = {'checked': 0, 'found': 0, 'current_site': '', 'total': 0}
@@ -2123,7 +2159,7 @@ def email_search_stream():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(search_email_async(email, progress_callback))
+            result = loop.run_until_complete(search_email_async(email, progress_callback, limit))
             found_count = result.get('found_count', 0)
             search_history.add_entry('email', email, f'{found_count} accounts found', found_count)
             result_queue.put(('complete', result))
@@ -2137,7 +2173,7 @@ def email_search_stream():
     if not email_sites:
         return jsonify({'error': 'Could not load site data'}), 400
     
-    progress_state['total'] = len(email_sites)
+    progress_state['total'] = limit
     
     thread = threading.Thread(target=run_search_thread)
     thread.start()
@@ -4181,27 +4217,27 @@ def phone_osint():
                 wa_url = f'https://api.whatsapp.com/send?phone={normalized}'
                 wa_response = client.get(wa_url, headers=WHATSAPP_HEADERS)
                 wa_text = wa_response.text.lower()
-                wa_exists = not any(p in wa_text for p in [
-                    'phone number is not on whatsapp',
-                    'is unavailable',
-                    'cannot send messages'
-                ])
-                result['services']['whatsapp'] = {
-                    'exists': wa_exists,
-                    'url': f'https://wa.me/{normalized}'
-                }
+                if 'phone number is not on whatsapp' in wa_text:
+                    result['services']['whatsapp'] = {'exists': False, 'url': f'https://wa.me/{normalized}'}
+                elif 'unavailable' in wa_text or 'cannot send' in wa_text:
+                    result['services']['whatsapp'] = {'exists': None, 'note': 'API unavailable'}
+                else:
+                    result['services']['whatsapp'] = {'exists': True, 'url': f'https://wa.me/{normalized}'}
             except Exception as e:
-                result['services']['whatsapp'] = {'error': str(e)}
+                result['services']['whatsapp'] = {'exists': None, 'note': 'Check blocked'}
             
             try:
                 tg_url = f'https://t.me/+{normalized}'
-                tg_response = client.get(tg_url, headers=HEADERS)
-                if tg_response.status_code == 400:
+                tg_response = client.get(tg_url, headers=HEADERS, timeout=5)
+                tg_text = tg_response.text.lower()
+                if tg_response.status_code == 400 or 'join' in tg_text or 'subscribe' in tg_text:
                     result['services']['telegram'] = {'exists': True, 'url': tg_url}
-                else:
+                elif tg_response.status_code == 200:
                     result['services']['telegram'] = {'exists': False}
+                else:
+                    result['services']['telegram'] = {'exists': None, 'note': 'Unable to verify'}
             except Exception as e:
-                result['services']['telegram'] = {'error': str(e)}
+                result['services']['telegram'] = {'exists': None, 'note': 'Check blocked'}
         
         search_history.add_entry('phone', phone, f"Valid: {result['valid']}, Country: {result['country']}, Carrier: {result['carrier']}", 1 if result['valid'] else 0)
         

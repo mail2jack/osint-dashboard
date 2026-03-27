@@ -70,11 +70,12 @@
                 <option value="gaming">Gaming</option>
             </select>
             <div id="socialCategories" class="checkbox-group" style="display:none">
-                <label><input type="checkbox" value="social" checked> Social</label>
-                <label><input type="checkbox" value="developer"> Developer</label>
-                <label><input type="checkbox" value="gaming"> Gaming</label>
+                <label><input type="checkbox" value="30" checked> Quick (~30)</label>
+                <label><input type="checkbox" value="50"> Standard (~50)</label>
+                <label><input type="checkbox" value="100"> Deep (~100)</label>
+                <label><input type="checkbox" value="200"> Full (~200)</label>
             </div>
-            <span class="options-count" id="siteCount">56 sites</span>
+            <span class="options-count" id="siteCount">30 sites</span>
         </div>
 
         <!-- Results -->
@@ -199,7 +200,7 @@
                 const siteCategory = document.getElementById('siteCategory');
                 const socialCategories = document.getElementById('socialCategories');
                 
-                if (currentTool === 'social') {
+                if (currentTool === 'social' || currentTool === 'email') {
                     optionsBar.style.display = 'flex';
                     siteCategory.style.display = 'none';
                     socialCategories.style.display = 'block';
@@ -223,23 +224,33 @@
                 }
             });
         });
-
+        
         // Update site count on change
         document.getElementById('siteCategory').addEventListener('change', function() {
             const counts = { all: 56, social: 17, developer: 9, gaming: 4 };
             document.getElementById('siteCount').textContent = (counts[this.value] || 56) + ' sites';
         });
         
-        // Social categories checkboxes
+        // Social/Email categories checkboxes
         document.querySelectorAll('#socialCategories input[type="checkbox"]').forEach(cb => {
             cb.addEventListener('change', function() {
                 const checked = document.querySelectorAll('#socialCategories input[type="checkbox"]:checked').length;
-                const catCounts = { social: 17, developer: 9, gaming: 4 };
-                let total = 0;
-                document.querySelectorAll('#socialCategories input[type="checkbox"]:checked').forEach(c => {
-                    total += catCounts[c.value] || 0;
-                });
-                document.getElementById('siteCount').textContent = total + ' sites';
+                // Check if numeric values (Email tool) or string values (Social tool)
+                const firstCb = document.querySelector('#socialCategories input[type="checkbox"]');
+                if (firstCb && !isNaN(firstCb.value)) {
+                    // Email tool - use highest value selected
+                    const values = Array.from(document.querySelectorAll('#socialCategories input[type="checkbox"]:checked')).map(c => parseInt(c.value));
+                    const maxVal = values.length > 0 ? Math.max(...values) : 30;
+                    document.getElementById('siteCount').textContent = maxVal + ' sites';
+                } else {
+                    // Social tool - sum values
+                    const catCounts = { social: 17, developer: 9, gaming: 4 };
+                    let total = 0;
+                    document.querySelectorAll('#socialCategories input[type="checkbox"]:checked').forEach(c => {
+                        total += catCounts[c.value] || 0;
+                    });
+                    document.getElementById('siteCount').textContent = total + ' sites';
+                }
             });
         });
 
@@ -305,7 +316,9 @@
         }
 
         async function searchEmail(query) {
-            startStreaming('/api/email/stream', { email: query });
+            const checkboxes = document.querySelectorAll('#socialCategories input[type="checkbox"]:checked');
+            const tags = Array.from(checkboxes).map(cb => cb.value);
+            startStreaming('/api/email/stream', { email: query, tags: tags });
         }
 
         async function searchPhone(query) {
@@ -456,7 +469,10 @@
             const seconds = elapsed % 60;
             const elapsedStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
             
-            const found = data.platforms || data.found || [];
+            const found = data.platforms || data.found || data.findings || [];
+            
+            // Get found count - handle different data structures
+            const foundCount = data.found_count !== undefined ? data.found_count : found.filter(f => f.exists).length;
             
             // Sort: found first, then unknown, then not found
             const sortedResults = [...found].sort((a, b) => {
@@ -487,8 +503,8 @@
             
             const html = `
                 <div class="stats">
-                    <div class="stat"><div class="stat-value">${data.found_count || found.filter(f => f.exists).length}</div><div class="stat-label">Found</div></div>
-                    <div class="stat"><div class="stat-value">${data.total_checked || found.length}</div><div class="stat-label">Checked</div></div>
+                    <div class="stat"><div class="stat-value">${foundCount}</div><div class="stat-label">Found</div></div>
+                    <div class="stat"><div class="stat-value">${data.platforms_checked || data.total_checked || found.length}</div><div class="stat-label">Checked</div></div>
                     <div class="stat"><div class="stat-value">${elapsedStr}</div><div class="stat-label">Time</div></div>
                 </div>
                 ${sortedResults.length ? sortedResults.map(renderResult).join('') : '<div class="empty">No results found</div>'}
@@ -519,8 +535,18 @@
                     <div class="card">
                         <h3>Messaging</h3>
                         <div class="grid-2">
-                            ${data.services.whatsapp ? `<div class="grid-item"><div class="label">WhatsApp</div><div class="value">${data.services.whatsapp.exists ? 'Found' : 'Not found'}</div></div>` : ''}
-                            ${data.services.telegram ? `<div class="grid-item"><div class="label">Telegram</div><div class="value">${data.services.telegram.exists ? 'Found' : 'Not found'}</div></div>` : ''}
+                            ${data.services.whatsapp ? `
+                                <div class="grid-item">
+                                    <div class="label">WhatsApp</div>
+                                    <div class="value">${data.services.whatsapp.exists === true ? 'Found ✓' : data.services.whatsapp.exists === false ? 'Not found' : data.services.whatsapp.note || 'Unknown'}</div>
+                                </div>
+                            ` : ''}
+                            ${data.services.telegram ? `
+                                <div class="grid-item">
+                                    <div class="label">Telegram</div>
+                                    <div class="value">${data.services.telegram.exists === true ? 'Found ✓' : data.services.telegram.exists === false ? 'Not found' : data.services.telegram.note || 'Unknown'}</div>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                 ` : ''}
