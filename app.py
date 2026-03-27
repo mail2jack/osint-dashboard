@@ -382,6 +382,26 @@ Provide brief context about this platform (what it is, typical use cases). Keep 
 http_limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
 http_client = None
 
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+]
+
+import random
+random.seed()
+
+def get_random_headers():
+    ua = random.choice(USER_AGENTS)
+    return {
+        'User-Agent': ua,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+    }
+
 def get_http_client():
     global http_client
     if http_client is None:
@@ -3012,8 +3032,8 @@ def person_dorks_search():
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
         })
         
-        # Using Bing instead of Google (less likely to block)
-        search_url = "https://www.bing.com/search"
+        # Using DuckDuckGo instead of Bing
+        search_url = "https://html.duckduckgo.com/html/"
         
         for query in dork_queries[:5]:  # Limit to first 5 to avoid rate limiting
             results['queries_run'].append(query)
@@ -3022,22 +3042,21 @@ def person_dorks_search():
                 f.write(f"Query: {query}\n")
             
             try:
-                params = {'q': query, 'count': 10, 'setlang': 'en'}
+                params = {'q': query}
                 response = client.get(search_url, params=params)
                 
                 with open(dork_log_file, 'a') as f:
                     f.write(f"  Status: {response.status_code}, Content-Length: {len(response.text)}\n")
                 
                 if response.status_code == 200:
-                    # Extract links from Bing results
+                    # Extract links from DuckDuckGo results
                     import re
-                    # Look for actual result links
                     links = re.findall(r'https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s<>"]*', response.text)
                     with open(dork_log_file, 'a') as f:
                         f.write(f"  Found {len(links)} raw links\n")
                     
                     seen = set()
-                    exclude_domains = ['bing.com', 'google.com', 'microsoft.com', 'yahoo.com', 'duckduckgo.com', 'r.bing.com', 'www.bing.com', 'cc.bingj.com']
+                    exclude_domains = ['duckduckgo.com', 'bing.com', 'google.com', 'microsoft.com', 'yahoo.com', 'r.bing.com', 'www.bing.com', 'cc.bingj.com']
                     for link in links[:10]:
                         try:
                             domain = re.sub(r'https?://(www\.)?', '', link).split('/')[0]
@@ -3090,36 +3109,142 @@ def person_search_stream():
     from flask import Response, stream_with_context
     import threading
     import queue
+    import os
+    from datetime import datetime
+    import httpx
+    import re
     
     data = request.get_json()
     full_name = data.get('name', '')
     if not full_name:
         return jsonify({'error': 'Full name required'}), 400
     
+    parts = full_name.strip().split()
+    if len(parts) < 2:
+        return jsonify({'error': 'Please enter first and last name'}), 400
+    
+    first_name = parts[0]
+    last_name = ' '.join(parts[1:])
+    
     result_queue = queue.Queue()
     
     def run_search_thread():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        from urllib.parse import quote
+        
+        dork_log_file = os.path.join(os.path.dirname(__file__), 'dorks_log.txt')
+        
+        with open(dork_log_file, 'a') as f:
+            f.write(f"\n=== {datetime.now().isoformat()} - People search: {full_name} ===\n")
+        
+        result = {
+            'name': full_name,
+            'first_name': first_name,
+            'last_name': last_name,
+            'search_links': [],
+            'dorks_results': [],
+            'total_results': 0
+        }
+        
+        # Generate search links
+        search_query = quote(f'"{first_name}" "{last_name}"')
+        result['search_links'] = [
+            {'engine': 'Google', 'name': 'Search on Google', 'url': f'https://www.google.com/search?q={search_query}'},
+            {'engine': 'DuckDuckGo', 'name': 'Search on DuckDuckGo', 'url': f'https://duckduckgo.com/?q={search_query}'},
+            {'engine': 'LinkedIn', 'name': 'Search on LinkedIn', 'url': f'https://www.linkedin.com/search/results/all/?keywords={quote(first_name + " " + last_name)}'},
+            {'engine': 'Facebook', 'name': 'Search on Facebook', 'url': f'https://www.facebook.com/search/top?q={quote(first_name + " " + last_name)}'},
+            {'engine': 'Twitter/X', 'name': 'Search on Twitter/X', 'url': f'https://nitter.net/search?f=users&q={quote(first_name + " " + last_name)}'},
+            {'engine': 'GitHub', 'name': 'Search on GitHub', 'url': f'https://github.com/search?q={quote(first_name + "+" + last_name)}&type=users'},
+            {'engine': 'Instagram', 'name': 'Search on Instagram', 'url': f'https://www.instagram.com/{quote(first_name + last_name)}/'},
+            {'engine': 'Reddit', 'name': 'Search on Reddit', 'url': f'https://www.reddit.com/search/?q={quote(first_name + " " + last_name)}'},
+            {'engine': 'YouTube', 'name': 'Search on YouTube', 'url': f'https://www.youtube.com/results?search_query={quote(first_name + " " + last_name)}'},
+            {'engine': 'TikTok', 'name': 'Search on TikTok', 'url': f'https://www.tiktok.com/@{quote(first_name + last_name)}'},
+            {'engine': 'Pipl', 'name': 'Search on Pipl', 'url': f'https://pipl.com/search/?q={search_query}'},
+            {'engine': 'Truecaller', 'name': 'Search on Truecaller', 'url': f'https://www.truecaller.com/search/{quote(first_name + " " + last_name)}'},
+        ]
+        
+        # Now do DuckDuckGo dorks search - focus on finding usernames
+        # Key queries to find social media handles/usernames
+        dork_queries = [
+            # Username pattern searches (most important for finding handles like lindseyjonker37)
+            f'"{first_name}{last_name}" OR "{first_name}_{last_name}" OR "{first_name}{last_name[0]}"',
+            f'"{full_name}" username OR handle OR "at"',
+            f'"{full_name}" profile',
+            # Site-specific searches
+            f'"{full_name}" site:linkedin.com',
+            f'"{full_name}" site:facebook.com',
+            f'"{full_name}" site:twitter.com OR site:x.com',
+            f'"{full_name}" site:instagram.com',
+            f'"{full_name}" site:tiktok.com',
+            f'"{full_name}" site:youtube.com',
+            f'"{full_name}" site:github.com',
+            # File and email searches
+            f'"{full_name}" filetype:pdf',
+            f'"{full_name}" filetype:doc OR filetype:docx',
+            f'"{full_name}" email',
+        ]
+        
         try:
-            result = loop.run_until_complete(search_person_async(full_name))
-            found_count = result.get('total_results', 0)
-            search_history.add_entry('person', full_name, f'{found_count} search links', found_count)
-            result_queue.put(('complete', result))
+            headers = get_random_headers()
+            client = httpx.Client(timeout=30.0, follow_redirects=True, headers=headers)
+            search_url = "https://html.duckduckgo.com/html/"
+            
+            seen = set()
+            exclude_domains = ['duckduckgo.com', 'bing.com', 'google.com', 'microsoft.com', 'yahoo.com']
+            
+            for query in dork_queries:
+                try:
+                    params = {'q': query}
+                    response = client.get(search_url, params=params)
+                    
+                    if response.status_code == 200:
+                        # Extract actual URLs from DuckDuckGo redirect format
+                        redirect_links = re.findall(r'uddg=(https?%3A%2F%2F[^&"]+)', response.text)
+                        
+                        # URL decode the links
+                        from urllib.parse import unquote
+                        links = [unquote(unquote(l)) for l in redirect_links]
+                        
+                        for link in links[:10]:
+                            try:
+                                domain = re.sub(r'https?://(www\.)?', '', link).split('/')[0]
+                                if domain and domain not in seen and not any(ex in domain for ex in exclude_domains):
+                                    seen.add(domain)
+                                    category = 'general'
+                                    if any(s in domain for s in ['linkedin', 'facebook', 'twitter', 'instagram', 'tiktok', 'youtube']):
+                                        category = 'social_media'
+                                    elif any(s in domain for s in ['pdf', 'doc', 'docx', 'xls', 'xlsx']):
+                                        category = 'files'
+                                    elif any(s in domain for s in ['news', 'medium', 'blog']):
+                                        category = 'news'
+                                    
+                                    result['dorks_results'].append({
+                                        'url': link,
+                                        'domain': domain,
+                                        'query': query[:50],
+                                        'category': category
+                                    })
+                            except:
+                                continue
+                except Exception as e:
+                    with open(dork_log_file, 'a') as f:
+                        f.write(f"  Query error: {query[:30]} - {str(e)[:50]}\n")
+                    continue
+            
+            client.close()
         except Exception as e:
-            result_queue.put(('error', str(e)))
-        finally:
-            loop.close()
+            with open(dork_log_file, 'a') as f:
+                f.write(f"Dorks search error: {str(e)}\n")
+        
+        result['total_results'] = len(result['search_links']) + len(result['dorks_results'])
+        
+        search_history.add_entry('person', full_name, f'{result["total_results"]} results', result['total_results'])
+        result_queue.put(('complete', result))
     
     thread = threading.Thread(target=run_search_thread)
     thread.start()
     
-    total_tasks = 36
-    
     def generate():
         import time
-        completed = 0
-        
         while True:
             try:
                 status, data = result_queue.get_nowait()
@@ -3129,11 +3254,8 @@ def person_search_stream():
                     yield f"data: {json.dumps({'error': data})}\n\n"
                 break
             except queue.Empty:
-                time.sleep(0.3)
-                
-                completed = min(completed + 1, total_tasks)
-                
-                yield f"data: {json.dumps({'progress': {'completed': completed, 'total': total_tasks, 'percent': int((completed / total_tasks) * 100)}})}\n\n"
+                time.sleep(0.2)
+                yield f"data: {json.dumps({'progress': {'completed': 1, 'total': 1, 'percent': 100}})}\n\n"
     
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 

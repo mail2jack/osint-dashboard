@@ -64,6 +64,58 @@ header {
     font-weight: 400;
 }
 
+.system-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: default;
+}
+
+.system-status .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+
+.system-status.idle {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--green);
+}
+
+.system-status.idle .status-dot {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse-green 2s infinite;
+}
+
+.system-status.searching {
+    background: rgba(248, 81, 73, 0.1);
+    border: 1px solid var(--red);
+    color: var(--red);
+}
+
+.system-status.searching .status-dot {
+    background: var(--red);
+    box-shadow: 0 0 8px var(--red);
+    animation: pulse-red 0.5s infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.2); }
+}
+
 .header-actions {
     display: flex;
     gap: 8px;

@@ -17,6 +17,10 @@
                 <h1>OSINT <span>Dashboard</span></h1>
             </div>
             <div class="header-actions">
+                <div id="systemStatus" class="system-status idle">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Idle</span>
+                </div>
                 <button class="btn-icon" onclick="toggleHistory()" title="History">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     History
@@ -35,7 +39,6 @@
         <div class="toolbar">
             <div class="toolbar-group">
                 <button class="toolbar-btn active" data-tool="person">People</button>
-                <button class="toolbar-btn" data-tool="dorks">Dorks</button>
                 <button class="toolbar-btn" data-tool="social">Social</button>
                 <button class="toolbar-btn" data-tool="email">Email</button>
                 <button class="toolbar-btn" data-tool="phone">Phone</button>
@@ -66,6 +69,11 @@
                 <option value="developer">Developer</option>
                 <option value="gaming">Gaming</option>
             </select>
+            <div id="socialCategories" class="checkbox-group" style="display:none">
+                <label><input type="checkbox" value="social" checked disabled> Social</label>
+                <label><input type="checkbox" value="developer"> Developer</label>
+                <label><input type="checkbox" value="gaming"> Gaming</label>
+            </div>
             <span class="options-count" id="siteCount">56 sites</span>
         </div>
 
@@ -135,6 +143,7 @@
         // State
         let currentTool = 'person';
         let eventSource = null;
+        let searchStartTime = null;
 
         // DOM Elements
         const searchInput = document.getElementById('searchInput');
@@ -145,12 +154,24 @@
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
         const toolbarBtns = document.querySelectorAll('.toolbar-btn');
+        const systemStatus = document.getElementById('systemStatus');
+
+        function updateSystemStatus(searching) {
+            if (searching) {
+                systemStatus.classList.remove('idle');
+                systemStatus.classList.add('searching');
+                systemStatus.querySelector('.status-text').textContent = 'Searching';
+            } else {
+                systemStatus.classList.remove('searching');
+                systemStatus.classList.add('idle');
+                systemStatus.querySelector('.status-text').textContent = 'Idle';
+            }
+        }
 
         // Placeholders
         const placeholders = {
             social: 'Enter username or email...',
             person: 'Enter full name (e.g., John Smith)',
-            dorks: 'Enter full name to search with Google dorks',
             email: 'Enter email address...',
             phone: 'Enter phone number (+31612345678)',
             whatsapp: 'Enter phone number...',
@@ -175,7 +196,31 @@
                 closeResults();
                 
                 // Show/hide options based on tool
-                optionsBar.style.display = (currentTool === 'social') ? 'flex' : 'none';
+                const siteCategory = document.getElementById('siteCategory');
+                const socialCategories = document.getElementById('socialCategories');
+                
+                if (currentTool === 'social') {
+                    optionsBar.style.display = 'flex';
+                    siteCategory.style.display = 'none';
+                    socialCategories.style.display = 'block';
+                } else if (currentTool === 'maigret' || currentTool === 'username') {
+                    optionsBar.style.display = 'flex';
+                    siteCategory.style.display = 'none';
+                    socialCategories.style.display = 'block';
+                } else {
+                    optionsBar.style.display = 'none';
+                }
+                
+                // Show/hide progress bar based on tool
+                const progressBar = document.querySelector('.progress-bar');
+                const progressTextEl = document.querySelector('.progress-text');
+                if (currentTool === 'person') {
+                    progressBar.style.display = 'none';
+                    progressTextEl.style.display = 'none';
+                } else {
+                    progressBar.style.display = '';
+                    progressTextEl.style.display = '';
+                }
             });
         });
 
@@ -183,6 +228,19 @@
         document.getElementById('siteCategory').addEventListener('change', function() {
             const counts = { all: 56, social: 17, developer: 9, gaming: 4 };
             document.getElementById('siteCount').textContent = (counts[this.value] || 56) + ' sites';
+        });
+        
+        // Social categories checkboxes
+        document.querySelectorAll('#socialCategories input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', function() {
+                const checked = document.querySelectorAll('#socialCategories input[type="checkbox"]:checked').length;
+                const catCounts = { social: 17, developer: 9, gaming: 4 };
+                let total = 0;
+                document.querySelectorAll('#socialCategories input[type="checkbox"]:checked').forEach(c => {
+                    total += catCounts[c.value] || 0;
+                });
+                document.getElementById('siteCount').textContent = total + ' sites';
+            });
         });
 
         // Search
@@ -195,10 +253,18 @@
             const query = searchInput.value.trim();
             if (!query) return;
             
+            searchStartTime = Date.now();
             closeResults();
             loadingDiv.classList.remove('hidden');
             searchBtn.disabled = true;
             searchBtn.textContent = 'Searching...';
+            updateSystemStatus(true);
+            
+            // Hide progress bar for people search
+            if (currentTool === 'person') {
+                document.querySelector('.progress-bar').style.display = 'none';
+                document.querySelector('.progress-text').style.display = 'none';
+            }
             
             // Route to appropriate search
             if (currentTool === 'social') {
@@ -209,8 +275,6 @@
                 searchPhone(query);
             } else if (currentTool === 'person') {
                 searchPerson(query);
-            } else if (currentTool === 'dorks') {
-                searchDorks(query);
             } else if (currentTool === 'maigret') {
                 searchMaigret(query);
             } else if (currentTool === 'username') {
@@ -227,8 +291,17 @@
         // API Calls
         async function searchSocial(query) {
             const type = query.includes('@') ? 'email' : 'username';
-            const category = document.getElementById('siteCategory').value;
-            startStreaming('/api/social/stream', { query: query, type, category });
+            const checkboxes = document.querySelectorAll('#socialCategories input[type="checkbox"]:checked');
+            const tags = Array.from(checkboxes).map(cb => cb.value);
+            startStreaming('/api/social/stream', { query: query, type, tags: tags });
+        }
+        
+        async function searchMaigret(query) {
+            startStreaming('/api/username/maigret', { username: query, limit: 300 });
+        }
+        
+        async function searchSherlock(query) {
+            startStreaming('/api/username/stream', { username: query });
         }
 
         async function searchEmail(query) {
@@ -247,37 +320,12 @@
             } finally {
                 searchBtn.disabled = false;
                 searchBtn.textContent = 'Search';
+                updateSystemStatus(false);
             }
         }
 
         async function searchPerson(query) {
-            try {
-                const res = await fetch('/api/name-search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: query })
-                });
-                const data = await res.json();
-                showPersonResults(data);
-            } finally {
-                searchBtn.disabled = false;
-                searchBtn.textContent = 'Search';
-            }
-        }
-
-        async function searchDorks(query) {
-            try {
-                const res = await fetch('/api/person/dorks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: query })
-                });
-                const data = await res.json();
-                showDorksResults(data);
-            } finally {
-                searchBtn.disabled = false;
-                searchBtn.textContent = 'Search';
-            }
+            startStreaming('/api/person/stream', { name: query });
         }
 
         async function searchMaigret(query) {
@@ -304,6 +352,7 @@
             } finally {
                 searchBtn.disabled = false;
                 searchBtn.textContent = 'Search';
+                updateSystemStatus(false);
             }
         }
 
@@ -319,6 +368,7 @@
             } finally {
                 searchBtn.disabled = false;
                 searchBtn.textContent = 'Search';
+                updateSystemStatus(false);
             }
         }
 
@@ -328,6 +378,7 @@
             
             searchBtn.disabled = true;
             searchBtn.textContent = 'Searching...';
+            updateSystemStatus(true);
             
             try {
                 const response = await fetch(endpoint, {
@@ -351,11 +402,17 @@
                         if (line.startsWith('data: ')) {
                             try {
                                 const data = JSON.parse(line.slice(6));
+                                console.log('SSE message:', data);
                                 if (data.progress) {
-                                    progressFill.style.width = data.progress.percent + '%';
-                                    progressText.textContent = `${data.progress.checked}/${data.progress.total} - ${data.progress.current_site || ''}`;
+                                    const p = data.progress;
+                                    const checked = p.checked !== undefined ? p.checked : (p.completed || 0);
+                                    const total = p.total || 1;
+                                    const percent = p.percent !== undefined ? p.percent : Math.round((checked / total) * 100);
+                                    progressFill.style.width = percent + '%';
+                                    progressText.textContent = `${checked}/${total}${p.current_site ? ' - ' + p.current_site : ''}`;
                                 }
                                 if (data.complete) {
+                                    console.log('Complete! Result keys:', data.result ? Object.keys(data.result) : 'no result');
                                     showResults(data.result);
                                     finished = true;
                                 }
@@ -363,7 +420,9 @@
                                     showError(data.error);
                                     finished = true;
                                 }
-                            } catch (e) {}
+                            } catch (e) {
+                                console.error('Parse error:', e);
+                            }
                         }
                     }
                 }
@@ -376,6 +435,7 @@
             } finally {
                 searchBtn.disabled = false;
                 searchBtn.textContent = 'Search';
+                updateSystemStatus(false);
             }
         }
 
@@ -384,11 +444,24 @@
             loadingDiv.classList.add('hidden');
             resultsDiv.classList.remove('hidden');
             
+            // Check if it's person search data
+            if (data.search_links || data.dorks_results) {
+                showPersonResults(data);
+                return;
+            }
+            
+            // Calculate elapsed time
+            const elapsed = searchStartTime ? Math.round((Date.now() - searchStartTime) / 1000) : 0;
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            const elapsedStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+            
             const found = data.findings || [];
             const html = `
                 <div class="stats">
                     <div class="stat"><div class="stat-value">${found.length}</div><div class="stat-label">Found</div></div>
                     <div class="stat"><div class="stat-value">${data.platforms_checked || found.length}</div><div class="stat-label">Checked</div></div>
+                    <div class="stat"><div class="stat-value">${elapsedStr}</div><div class="stat-label">Time</div></div>
                 </div>
                 ${found.length ? found.map(f => `
                     <div class="result-item ${f.exists ? 'found' : ''}">
@@ -436,24 +509,86 @@
 
         function showPersonResults(data) {
             loadingDiv.classList.add('hidden');
+            // Hide progress bar for people search
+            document.querySelector('.progress-bar').style.display = 'none';
+            document.querySelector('.progress-text').style.display = 'none';
             resultsDiv.classList.remove('hidden');
             
-            const accounts = data.accounts || [];
-            const found = accounts.filter(a => a.exists);
+            // Calculate elapsed time
+            const elapsed = searchStartTime ? Math.round((Date.now() - searchStartTime) / 1000) : 0;
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            const elapsedStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+            
+            const searchLinks = data.search_links || [];
+            const dorksResults = data.dorks_results || [];
+            const total = data.total_results || 0;
+            
+            const categoryScore = {
+                'social_media': 80,
+                'files': 70,
+                'news': 60,
+                'general': 50
+            };
+            
+            // Sort dorks results by confidence score (highest first)
+            const sortedDorks = [...dorksResults].sort((a, b) => {
+                const scoreA = categoryScore[a.category] || 50;
+                const scoreB = categoryScore[b.category] || 50;
+                return scoreB - scoreA;
+            });
+            
+            const renderDork = (dork) => {
+                const score = categoryScore[dork.category] || 50;
+                const scoreClass = score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
+                const scoreLabel = score >= 70 ? 'High' : score >= 50 ? 'Med' : 'Low';
+                return `
+                    <div class="result-item found">
+                        <div class="result-info">
+                            <div class="result-name">${dork.domain}</div>
+                            ${dork.url ? `<div class="url-row"><a href="${dork.url}" target="_blank" class="result-url">${dork.url}</a><button class="copy-btn" onclick="copyToClipboard('${dork.url}', this)" title="Copy URL">⎘</button></div>` : ''}
+                            <div class="result-meta">
+                                <span class="category">${dork.category}</span>
+                                <span class="confidence-badge ${scoreClass}">${scoreLabel} ${score}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
+            
+            const renderLink = (link) => `
+                <div class="result-item">
+                    <div class="result-info">
+                        <div class="result-name">${link.name || link.engine}</div>
+                        ${link.url ? `<div class="url-row"><a href="${link.url}" target="_blank" class="result-url">${link.url}</a><button class="copy-btn" onclick="copyToClipboard('${link.url}', this)" title="Copy URL">⎘</button></div>` : ''}
+                    </div>
+                </div>
+            `;
             
             resultsContent.innerHTML = `
                 <div class="stats">
-                    <div class="stat"><div class="stat-value">${found.length}</div><div class="stat-label">Found</div></div>
-                    <div class="stat"><div class="stat-value">${accounts.length}</div><div class="stat-label">Checked</div></div>
+                    <div class="stat"><div class="stat-value">${total}</div><div class="stat-label">Total Results</div></div>
+                    <div class="stat"><div class="stat-value">${dorksResults.length}</div><div class="stat-label">Dorks Found</div></div>
+                    <div class="stat"><div class="stat-value">${searchLinks.length}</div><div class="stat-label">Search Links</div></div>
+                    <div class="stat"><div class="stat-value">${elapsedStr}</div><div class="stat-label">Time</div></div>
                 </div>
-                ${found.length ? found.map(f => `
-                    <div class="result-item found">
-                        <div class="result-info">
-                            <div class="result-name">${f.site}</div>
-                            <a href="${f.url}" target="_blank" class="result-url">${f.url}</a>
+                ${dorksResults.length ? `
+                    <div class="card">
+                        <h3>DuckDuckGo Results (${dorksResults.length})</h3>
+                        <div class="result-list">
+                            ${sortedDorks.map(renderDork).join('')}
                         </div>
                     </div>
-                `).join('') : '<div class="empty">No accounts found</div>'}
+                ` : ''}
+                ${searchLinks.length ? `
+                    <div class="card">
+                        <h3>Search Links (${searchLinks.length})</h3>
+                        <div class="result-list">
+                            ${searchLinks.map(renderLink).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${total === 0 ? '<div class="empty">No results found</div>' : ''}
             `;
         }
 
@@ -585,6 +720,13 @@
         function closeResults() {
             stopSearch();
             resultsDiv.classList.add('hidden');
+            // Restore progress bar for next search
+            document.querySelector('.progress-bar').style.display = '';
+            document.querySelector('.progress-text').style.display = '';
+            // Re-enable search button in case search was cancelled mid-flight
+            searchBtn.disabled = false;
+            searchBtn.textContent = 'Search';
+            updateSystemStatus(false);
         }
 
         function stopSearch() {
