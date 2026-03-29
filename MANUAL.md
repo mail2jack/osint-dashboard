@@ -69,7 +69,7 @@ cd osint-dashboard
 2. Create a virtual environment (recommended):
 ```bash
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 ```
 
 3. Install dependencies:
@@ -77,7 +77,203 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Dependencies
+### Running the Application
+
+```bash
+python app.py
+# or
+./start.sh
+```
+
+The dashboard will be available at: `http://localhost:5000`
+
+---
+
+## Installation by Platform
+
+### macOS
+
+**Prerequisites:**
+- Python 3.8+ (check: `python3 --version`)
+- Git (check: `git --version`)
+
+**Installation:**
+```bash
+# 1. Clone the repository
+git clone https://github.com/mail2jack/osint-dashboard.git
+cd osint-dashboard
+
+# 2. Create virtual environment
+python3 -m venv venv
+
+# 3. Activate virtual environment
+source venv/bin/activate
+
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. Run the application
+python app.py
+```
+
+**Alternative - Using Homebrew:**
+```bash
+# Install Python if needed
+brew install python3 git
+
+# Then follow steps 1-5 above
+```
+
+**To deactivate virtual environment:**
+```bash
+deactivate
+```
+
+---
+
+### Linux
+
+**Prerequisites:**
+- Python 3.8+ (check: `python3 --version`)
+- Git (check: `git --version`)
+
+**Installation (Ubuntu/Debian):**
+```bash
+# 1. Install prerequisites
+sudo apt update
+sudo apt install python3 python3-venv git
+
+# 2. Clone the repository
+git clone https://github.com/mail2jack/osint-dashboard.git
+cd osint-dashboard
+
+# 3. Create virtual environment
+python3 -m venv venv
+
+# 4. Activate virtual environment
+source venv/bin/activate
+
+# 5. Install dependencies
+pip install -r requirements.txt
+
+# 6. Run the application
+python app.py
+```
+
+**Installation (Fedora/RHEL):**
+```bash
+# 1. Install prerequisites
+sudo dnf install python3 python3-pip git
+
+# 2-6. Follow steps 2-6 above
+```
+
+**Installation (Arch/Manjaro):**
+```bash
+# 1. Install prerequisites
+sudo pacman -S python python-pip git
+
+# 2-6. Follow steps 2-6 above
+```
+
+**To deactivate virtual environment:**
+```bash
+deactivate
+```
+
+---
+
+### Windows
+
+**Prerequisites:**
+- Python 3.8+ ([Download from python.org](https://www.python.org/downloads/))
+- Git ([Download from git-scm.com](https://git-scm.com/download/win))
+
+**Installation:**
+```powershell
+# 1. Open PowerShell or Command Prompt
+
+# 2. Clone the repository
+git clone https://github.com/mail2jack/osint-dashboard.git
+cd osint-dashboard
+
+# 3. Create virtual environment
+python -m venv venv
+
+# 4. Activate virtual environment
+.\venv\Scripts\activate
+
+# 5. Install dependencies
+pip install -r requirements.txt
+
+# 6. Run the application
+python app.py
+```
+
+**Using Command Prompt (CMD):**
+```cmd
+# Same commands as PowerShell
+```
+
+**Note:** If you get a "script execution" error, run:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**To deactivate virtual environment:**
+```powershell
+deactivate
+```
+
+---
+
+## Quick Reference Card
+
+| Step | macOS/Linux | Windows |
+|------|-------------|---------|
+| Clone | `git clone ...` | `git clone ...` |
+| Create venv | `python3 -m venv venv` | `python -m venv venv` |
+| Activate | `source venv/bin/activate` | `.\venv\Scripts\activate` |
+| Install | `pip install -r requirements.txt` | `pip install -r requirements.txt` |
+| Run | `python app.py` | `python app.py` |
+| Deactivate | `deactivate` | `deactivate` |
+
+---
+
+## Troubleshooting Installation
+
+### Python not found
+- **macOS:** Install via Homebrew: `brew install python3`
+- **Linux:** Use your package manager (apt, dnf, pacman)
+- **Windows:** Download from [python.org](https://www.python.org/downloads/)
+
+### Git not found
+- **macOS:** `brew install git`
+- **Linux:** `sudo apt install git` (Ubuntu) or use your package manager
+- **Windows:** Download from [git-scm.com](https://git-scm.com/download/win)
+
+### pip not found
+- **macOS:** `python3 -m ensurepip` or `brew install python3`
+- **Linux:** `sudo apt install python3-pip`
+- **Windows:** Reinstall Python with pip included
+
+### Permission denied errors
+- **Linux:** Use `sudo` with pip: `sudo pip install...`
+- **macOS/Linux:** Always use virtual environments (avoids sudo issues)
+- **Windows:** Run PowerShell as Administrator
+
+### SSL/Certificate errors
+```bash
+# macOS
+/Applications/Python\ 3.x/Install\ Certificates.command
+
+# Linux
+pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
+```
+
+---
+
+## Dependencies
 
 | Package | Purpose |
 |---------|---------|
