@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 *.log
+dorks_log.txt
 *.json
 .obsidian/
 .pytest_cache/
