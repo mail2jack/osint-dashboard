@@ -1,4 +1,4 @@
-# OSINT Dashboard Manual
+# Iveras OSINT Manual
 
 **Version:** 2.1.0  
 **Last Updated:** March 2026
@@ -34,7 +34,7 @@
 
 ## Introduction
 
-OSINT Dashboard is a comprehensive open-source intelligence gathering tool for security researchers, investigators, and privacy-conscious users.
+Iveras OSINT is a comprehensive open-source intelligence gathering tool for security researchers, investigators, and privacy-conscious users.
 
 **Key Features:**
 - Search across 50+ social media platforms
@@ -731,4 +731,4 @@ curl -X POST http://localhost:5000/api/username/stream \
 
 ---
 
-*OSINT Dashboard v2.1.0 - March 2026*
+*Iveras OSINT v2.1.0 - March 2026*
