@@ -18,20 +18,16 @@ Git integration (optional):
 
 from datetime import datetime
 
-VERSION = (2, 0, 0)
+VERSION = (2, 1, 0)
 VERSION_STRING = ".".join(map(str, VERSION))
-VERSION_NAME = "Cyber Terminal"
+VERSION_NAME = "Iveras OSINT"
 
 CHANGELOG = {
     (1, 0, 0): "Initial Release - Core OSINT tools (Email, Username, Social Media, People Search)",
-    (1, 1, 0): "Dark/Light mode, False positive filtering, Phone lookup, Combined email search, Platform health dashboard, System controls, Improved UI",
-    (1, 2, 0): "AI Assistant with Ollama integration, Natural language search, AI result summaries, Profile enrichment",
-    (1, 3, 0): "Platform icons for visual identification of social networks in search results",
-    (1, 4, 0): "Split email search into separate Sherlock (fast) and Holehe (deep) tools",
-    (1, 5, 0): "Cross-validated email search with confidence scores (0-100%)",
-    (1, 6, 0): "Result caching (24h TTL), retry logic (2 attempts), rate limit awareness with auto-recovery",
-    (1, 7, 0): "Skeletal loading animations, error logging, keyboard shortcuts (Ctrl+K, Ctrl+/), changelog modal, HIBP breach check, enhanced name-based search across 12 platforms",
-    (2, 0, 0): "Major UI overhaul - Cyber/hacker terminal theme with green neon aesthetics, CRT scanline effects, terminal-style loading animations, modernized layout",
+    (1, 1, 0): "Dark/Light mode, False positive filtering, Phone lookup, Combined email search, Platform health dashboard",
+    (1, 2, 0): "AI Assistant with Ollama integration, Natural language search, AI result summaries",
+    (2, 0, 0): "Major UI overhaul with toolbar, Combined tools, Confidence scoring, Real-time streaming",
+    (2, 1, 0): "Webcams tool, Platform selectors, Time estimates, Cancel functionality, Improved detection, 24 dork queries",
 }
 
 def get_version():
