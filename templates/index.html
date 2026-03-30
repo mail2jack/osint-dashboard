@@ -567,6 +567,35 @@
                 return;
             }
             
+            let whatsapp2ChatHtml = '';
+            if (data.services && data.services.whatsapp_2chat) {
+                const wc2 = data.services.whatsapp_2chat;
+                let businessInfo = '';
+                if (wc2.business) {
+                    businessInfo = `
+                        ${wc2.business.name ? `<div><strong>Business:</strong> ${wc2.business.name}</div>` : ''}
+                        ${wc2.business.description ? `<div><strong>Description:</strong> ${wc2.business.description}</div>` : ''}
+                        ${wc2.business.website && wc2.business.website.length ? `<div><strong>Website:</strong> <a href="${wc2.business.website[0]}" target="_blank">${wc2.business.website[0]}</a></div>` : ''}
+                    `;
+                }
+                whatsapp2ChatHtml = `
+                    <div class="card">
+                        <h3>WhatsApp (2Chat API)</h3>
+                        <div class="grid-2">
+                            <div class="grid-item"><div class="label">Status</div><div class="value">${wc2.exists === true ? '<span style="color:#4caf50">✓ Found on WhatsApp</span>' : wc2.exists === false ? '<span style="color:#f44336">✗ Not on WhatsApp</span>' : 'Unknown'}</div></div>
+                            ${wc2.is_business !== null ? `<div class="grid-item"><div class="label">Type</div><div class="value">${wc2.is_business ? 'Business Account' : 'Personal'}</div></div>` : ''}
+                            ${wc2.verified_level !== null ? `<div class="grid-item"><div class="label">Verified</div><div class="value">${wc2.verified_level > 0 ? `Level ${wc2.verified_level}` : 'No'}</div></div>` : ''}
+                            ${wc2.region ? `<div class="grid-item"><div class="label">Region</div><div class="value">${wc2.region}</div></div>` : ''}
+                            ${wc2.status_text ? `<div class="grid-item"><div class="label">Status Text</div><div class="value">${wc2.status_text}</div></div>` : ''}
+                            ${wc2.number_id ? `<div class="grid-item"><div class="label">Number ID</div><div class="value">${wc2.number_id}</div></div>` : ''}
+                            ${wc2.timezone && wc2.timezone.length ? `<div class="grid-item"><div class="label">Timezone</div><div class="value">${wc2.timezone.join(', ')}</div></div>` : ''}
+                        </div>
+                        ${wc2.profile_pic ? `<div style="margin-top:10px"><img src="${wc2.profile_pic}" alt="Profile" style="width:80px;height:80px;border-radius:50%;object-fit:cover"></div>` : ''}
+                        ${businessInfo ? `<div style="margin-top:10px;border-top:1px solid #333;padding-top:10px">${businessInfo}</div>` : ''}
+                    </div>
+                `;
+            }
+            
             resultsContent.innerHTML = `
                 <div class="card">
                     <h3>Phone Information</h3>
@@ -575,6 +604,8 @@
                         <div class="grid-item"><div class="label">Country</div><div class="value">${data.country || 'Unknown'}</div></div>
                         <div class="grid-item"><div class="label">Carrier</div><div class="value">${data.carrier || 'Unknown'}</div></div>
                         <div class="grid-item"><div class="label">Formatted</div><div class="value">${data.formatted || 'N/A'}</div></div>
+                        ${data.timezone ? `<div class="grid-item"><div class="label">Timezone</div><div class="value">${data.timezone}</div></div>` : ''}
+                        ${data.line_type ? `<div class="grid-item"><div class="label">Line Type</div><div class="value">${data.line_type}</div></div>` : ''}
                     </div>
                 </div>
                 ${data.services ? `
@@ -583,7 +614,7 @@
                         <div class="grid-2">
                             ${data.services.whatsapp ? `
                                 <div class="grid-item">
-                                    <div class="label">WhatsApp</div>
+                                    <div class="label">WhatsApp (Basic)</div>
                                     <div class="value">${data.services.whatsapp.exists === true ? 'Found ✓' : data.services.whatsapp.exists === false ? 'Not found' : data.services.whatsapp.note || 'Unknown'}</div>
                                 </div>
                             ` : ''}
@@ -594,8 +625,10 @@
                                 </div>
                             ` : ''}
                         </div>
+                        ${!data.services.whatsapp_2chat && appConfig && !appConfig['2chat_enabled'] ? '<p style="color:#888;font-size:12px;margin-top:10px">2Chat API not configured. Enable for detailed WhatsApp info (profile pic, business details, verified status).</p>' : ''}
                     </div>
                 ` : ''}
+                ${whatsapp2ChatHtml}
             `;
         }
 
@@ -959,8 +992,12 @@
         }
 
         // Init
+        let appConfig = {};
         fetch('/api/version').then(r => r.json()).then(data => {
             document.getElementById('versionBadge').textContent = data.version;
+        });
+        fetch('/api/config').then(r => r.json()).then(data => {
+            appConfig = data;
         });
 
         // Keyboard shortcuts

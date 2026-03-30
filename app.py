@@ -57,6 +57,12 @@ OLLAMA_MODEL = "llama3.2"
 # Set directly here or use environment variable: export HIBP_API_KEY="your-key"
 HIBP_API_KEY = os.environ.get('HIBP_API_KEY', '')
 
+# 2Chat API Key - get from https://app.2chat.io/api
+# Set via environment variable: export TWOCHAT_API_KEY="your-key"
+# Set your WhatsApp number via: export TWOCHAT_WHATSAPP_NUMBER="+1234567890"
+TWOCHAT_API_KEY = os.environ.get('TWOCHAT_API_KEY', '')
+TWOCHAT_WHATSAPP_NUMBER = os.environ.get('TWOCHAT_WHATSAPP_NUMBER', '')
+
 CACHE_TTL_HOURS = 24
 result_cache = {}
 
@@ -515,6 +521,16 @@ def get_maigret_sites_dict():
 @app.route('/api/version', methods=['GET'])
 def get_version():
     return jsonify(get_version_info())
+
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Return app configuration status"""
+    return jsonify({
+        '2chat_enabled': bool(TWOCHAT_API_KEY and TWOCHAT_WHATSAPP_NUMBER),
+        'ollama_available': check_ollama_available(),
+        'hibp_enabled': bool(HIBP_API_KEY)
+    })
 
 
 @app.route('/api/ai/status', methods=['GET'])
@@ -4433,6 +4449,36 @@ def phone_osint():
             except Exception as e:
                 result['services']['telegram'] = {'exists': None, 'note': 'Check blocked'}
         
+        if TWOCHAT_API_KEY and TWOCHAT_WHATSAPP_NUMBER:
+            try:
+                url = f"https://api.p.2chat.io/open/whatsapp/check-number/{TWOCHAT_WHATSAPP_NUMBER}/{normalized}"
+                headers = {
+                    'X-User-API-Key': TWOCHAT_API_KEY,
+                    'Accept': 'application/json'
+                }
+                response = requests.get(url, headers=headers, timeout=30)
+                if response.status_code == 200:
+                    data = response.json()
+                    result['services']['whatsapp_2chat'] = {
+                        'exists': data.get('on_whatsapp'),
+                        'is_business': data.get('whatsapp_info', {}).get('is_business'),
+                        'verified_level': data.get('whatsapp_info', {}).get('verified_level'),
+                        'status_text': data.get('whatsapp_info', {}).get('status_text'),
+                        'profile_pic': data.get('whatsapp_info', {}).get('contact_profile_pic'),
+                        'number_id': data.get('whatsapp_info', {}).get('number_id'),
+                        'region': data.get('number', {}).get('region'),
+                        'timezone': data.get('number', {}).get('timezone', [])
+                    }
+                    biz_info = data.get('whatsapp_info', {}).get('business_information', {})
+                    if biz_info:
+                        result['services']['whatsapp_2chat']['business'] = {
+                            'name': biz_info.get('verified_name'),
+                            'description': biz_info.get('description'),
+                            'website': biz_info.get('website', [])
+                        }
+            except Exception as e:
+                logger.warning(f"2Chat WhatsApp check failed: {e}")
+        
         search_history.add_entry('phone', phone, f"Valid: {result['valid']}, Country: {result['country']}, Carrier: {result['carrier']}", 1 if result['valid'] else 0)
         
         return jsonify(result)
@@ -4505,6 +4551,102 @@ def whatsapp_lookup():
         result['message'] = str(e)
     
     search_history.add_entry('whatsapp', phone, result['message'], 1 if result['exists'] else 0)
+    
+    return jsonify(result)
+
+
+@app.route('/api/phone/2chat', methods=['POST'])
+def check_whatsapp_2chat():
+    """Check if a phone number is on WhatsApp using 2Chat API.
+    Requires TWOCHAT_API_KEY and TWOCHAT_WHATSAPP_NUMBER environment variables."""
+    data = request.get_json()
+    phone = data.get('phone', '')
+    
+    if not phone:
+        return jsonify({'error': 'Phone number required'}), 400
+    
+    if not TWOCHAT_API_KEY or not TWOCHAT_WHATSAPP_NUMBER:
+        return jsonify({
+            'error': '2Chat API not configured',
+            'setup_required': True,
+            'instructions': {
+                'api_key': 'Set TWOCHAT_API_KEY environment variable',
+                'whatsapp_number': 'Set TWOCHAT_WHATSAPP_NUMBER environment variable (your connected WhatsApp number)',
+                'docs': 'https://developers.2chat.co/docs/API/WhatsApp/Web/check-number'
+            }
+        }), 400
+    
+    normalized = normalize_phone_number(phone)
+    
+    if len(normalized) < 10:
+        return jsonify({'error': 'Invalid phone number format'}), 400
+    
+    result = {
+        'phone': normalized,
+        'query': phone,
+        'on_whatsapp': None,
+        'number_id': None,
+        'is_business': None,
+        'verified_level': None,
+        'status_text': None,
+        'profile_pic': None,
+        'region': None,
+        'timezone': None,
+        'source': '2chat'
+    }
+    
+    try:
+        url = f"https://api.p.2chat.io/open/whatsapp/check-number/{TWOCHAT_WHATSAPP_NUMBER}/{normalized}"
+        
+        headers = {
+            'X-User-API-Key': TWOCHAT_API_KEY,
+            'Accept': 'application/json'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=30)
+        data = response.json()
+        
+        if response.status_code == 200:
+            result['on_whatsapp'] = data.get('on_whatsapp', False)
+            result['is_valid'] = data.get('is_valid', False)
+            
+            number_info = data.get('number', {})
+            result['region'] = number_info.get('region')
+            result['timezone'] = number_info.get('timezone', [])
+            
+            whatsapp_info = data.get('whatsapp_info', {})
+            if whatsapp_info:
+                result['number_id'] = whatsapp_info.get('number_id')
+                result['is_business'] = whatsapp_info.get('is_business')
+                result['verified_level'] = whatsapp_info.get('verified_level')
+                result['status_text'] = whatsapp_info.get('status_text')
+                result['profile_pic'] = whatsapp_info.get('contact_profile_pic')
+                result['pushname'] = whatsapp_info.get('pushname')
+                
+                biz_info = whatsapp_info.get('business_information', {})
+                if biz_info:
+                    result['business'] = {
+                        'name': biz_info.get('verified_name'),
+                        'short_name': biz_info.get('short_name'),
+                        'description': biz_info.get('description'),
+                        'website': biz_info.get('website', []),
+                        'email': biz_info.get('email'),
+                        'currency': biz_info.get('currency')
+                    }
+            
+            result['message'] = 'Found on WhatsApp' if result['on_whatsapp'] else 'Not found on WhatsApp'
+        else:
+            result['error'] = data.get('message', 'API request failed')
+            result['http_status'] = response.status_code
+            
+    except requests.Timeout:
+        result['error'] = 'Request timed out'
+    except requests.ConnectionError:
+        result['error'] = 'Connection error'
+    except Exception as e:
+        result['error'] = str(e)
+    
+    search_history.add_entry('phone_2chat', phone, result.get('message', 'Error'), 1 if result.get('on_whatsapp') else 0)
     
     return jsonify(result)
 
