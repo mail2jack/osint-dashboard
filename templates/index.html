@@ -52,6 +52,7 @@
             <div class="toolbar-group">
                 <button class="toolbar-btn" data-tool="ip">IP</button>
                 <button class="toolbar-btn" data-tool="domain">Domain</button>
+                <button class="toolbar-btn" data-tool="antisocial" id="antisocialBtn">AntiSocial</button>
             </div>
         </div>
 
@@ -71,10 +72,15 @@
                 <option value="gaming">Gaming</option>
             </select>
             <div id="socialCategories" class="checkbox-group" style="display:none">
-                <label><input type="checkbox" value="30" checked> Quick (~30)</label>
-                <label><input type="checkbox" value="50"> Standard (~50)</label>
-                <label><input type="checkbox" value="100"> Deep (~100)</label>
-                <label><input type="checkbox" value="200"> Full (~200)</label>
+                <div id="standardCategories">
+                    <label><input type="checkbox" value="30" checked> Quick (~30)</label>
+                    <label><input type="checkbox" value="50"> Standard (~50)</label>
+                    <label><input type="checkbox" value="100"> Deep (~100)</label>
+                    <label><input type="checkbox" value="200"> Full (~200)</label>
+                </div>
+                <div id="antisocialCategories" style="display:none">
+                    <label><input type="checkbox" value="social" checked> Deep Search (500+ platforms)</label>
+                </div>
             </div>
             <span class="options-count" id="siteCount">30 sites</span>
         </div>
@@ -183,7 +189,8 @@
             username: 'Enter username...',
             holehe: 'Enter email for deep search...',
             ip: 'Enter IP address...',
-            domain: 'Enter domain name...'
+            domain: 'Enter domain name...',
+            antisocial: 'Enter username (3-tier verification)...'
         };
 
         // Tool selection
@@ -210,8 +217,17 @@
                     optionsBar.style.display = 'flex';
                     siteCategory.style.display = 'none';
                     socialCategories.style.display = 'block';
+                } else if (currentTool === 'antisocial') {
+                    optionsBar.style.display = 'flex';
+                    siteCategory.style.display = 'none';
+                    socialCategories.style.display = 'block';
+                    document.getElementById('standardCategories').style.display = 'none';
+                    document.getElementById('antisocialCategories').style.display = 'block';
+                    document.getElementById('siteCount').textContent = '3-tier verification';
                 } else {
                     optionsBar.style.display = 'none';
+                    document.getElementById('standardCategories').style.display = 'block';
+                    document.getElementById('antisocialCategories').style.display = 'none';
                 }
                 
                 // Show/hide progress bar based on tool
@@ -300,6 +316,8 @@
                 searchDomain(query);
             } else if (currentTool === 'webcam') {
                 searchWebcams(query);
+            } else if (currentTool === 'antisocial') {
+                searchAntisocial(query);
             }
         }
 
@@ -916,6 +934,160 @@
             } catch (e) {
                 showError(e.message);
             }
+        }
+
+        async function searchAntisocial(query) {
+            try {
+                const res = await fetch('/api/antisocial/status');
+                const status = await res.json();
+                
+                if (!status.available) {
+                    resultsContent.innerHTML = `
+                        <div class="card">
+                            <h3>Antisocial Service Not Available</h3>
+                            <p>Antisocial is not running. Start it first:</p>
+                            <ol style="text-align:left;margin:15px 0">
+                                <li>Clone: <code>git clone https://github.com/lukeslp/antisocial.git</code></li>
+                                <li>Install: <code>pip install -r requirements.txt && playwright install chromium</code></li>
+                                <li>Run: <code>python run.py</code></li>
+                            </ol>
+                            <p>Then restart this app.</p>
+                            <a href="${status.url}/docs" target="_blank" class="btn">API Docs ↗</a>
+                        </div>
+                    `;
+                    resultsDiv.classList.remove('hidden');
+                    loadingDiv.classList.add('hidden');
+                    searchBtn.disabled = false;
+                    searchBtn.textContent = 'Search';
+                    updateSystemStatus(false);
+                    return;
+                }
+                
+                const checkboxes = document.querySelectorAll('#socialCategories input[type="checkbox"]:checked');
+                const tags = Array.from(checkboxes).map(cb => cb.value);
+                const deepSearch = tags.includes('social');
+                
+                progressText.textContent = 'Starting Antisocial search...';
+                progressFill.style.width = '10%';
+                
+                const searchRes = await fetch('/api/antisocial/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        username: query, 
+                        deep_search: deepSearch,
+                        tiers: [1, 2, 3]
+                    })
+                });
+                
+                const searchData = await searchRes.json();
+                
+                if (searchData.error) {
+                    showError(searchData.error);
+                    return;
+                }
+                
+                const searchId = searchData.search_id;
+                
+                await pollAntisocialResults(searchId, query);
+                
+            } catch (e) {
+                showError(e.message);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+            }
+        }
+
+        async function pollAntisocialResults(searchId, query) {
+            const maxAttempts = 60;
+            let attempts = 0;
+            
+            while (attempts < maxAttempts) {
+                if (searchCancelled) break;
+                
+                try {
+                    const res = await fetch(`/api/antisocial/results/${searchId}`);
+                    const data = await res.json();
+                    
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+                    
+                    const progress = data.progress || 0;
+                    progressFill.style.width = `${progress}%`;
+                    progressText.textContent = `${data.platforms_checked || 0} platforms checked...`;
+                    
+                    if (data.status === 'completed') {
+                        showAntisocialResults(data);
+                        return;
+                    }
+                    
+                    await new Promise(r => setTimeout(r, 2000));
+                    attempts++;
+                    
+                } catch (e) {
+                    showError(e.message);
+                    return;
+                }
+            }
+            
+            showError('Search timed out');
+        }
+
+        function showAntisocialResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            const accounts = data.accounts || [];
+            const foundAccounts = accounts.filter(a => a.status === 'confirmed');
+            const lowConfidence = accounts.filter(a => a.status === 'false_positive');
+            
+            const renderAccount = (account) => {
+                const tierBadge = account.verification_tier ? `<span class="confidence-badge ${account.verification_tier === 1 ? 'high' : account.verification_tier === 2 ? 'medium' : 'low'}">Tier ${account.verification_tier}</span>` : '';
+                return `
+                    <div class="result-item found">
+                        <div class="result-info">
+                            <div class="result-name">${account.platform || account.service}</div>
+                            ${account.url ? `<div class="url-row"><a href="${account.url}" target="_blank" class="result-url">${account.url}</a><button class="copy-btn" onclick="copyToClipboard('${account.url}', this)" title="Copy URL">⎘</button></div>` : ''}
+                            <div class="result-meta">
+                                ${tierBadge}
+                                <span class="confidence-badge ${account.confidence >= 85 ? 'high' : account.confidence >= 70 ? 'medium' : 'low'}">${account.confidence}% confidence</span>
+                            </div>
+                        </div>
+                        <span class="result-status found">${account.status || 'found'}</span>
+                    </div>
+                `;
+            };
+            
+            resultsContent.innerHTML = `
+                <div class="stats">
+                    <div class="stat"><div class="stat-value">${foundAccounts.length}</div><div class="stat-label">Found</div></div>
+                    <div class="stat"><div class="stat-value">${accounts.length}</div><div class="stat-label">Checked</div></div>
+                    <div class="stat"><div class="stat-value">${data.username}</div><div class="stat-label">Username</div></div>
+                </div>
+                ${foundAccounts.length > 0 ? `
+                    <div class="card">
+                        <h3>Confirmed Accounts (${foundAccounts.length})</h3>
+                        <div class="result-list">
+                            ${foundAccounts.map(renderAccount).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${lowConfidence.length > 0 ? `
+                    <div class="card">
+                        <h3>Flagged as False Positives (${lowConfidence.length})</h3>
+                        <div class="result-list" style="opacity:0.6">
+                            ${lowConfidence.map(renderAccount).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${accounts.length === 0 ? '<div class="empty">No accounts found</div>' : ''}
+                <div style="margin-top:20px;text-align:center">
+                    <a href="/api/antisocial/results/${data.search_id}" target="_blank" class="btn">View Full Results ↗</a>
+                </div>
+            `;
         }
 
         function showError(msg) {

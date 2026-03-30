@@ -63,6 +63,10 @@ HIBP_API_KEY = os.environ.get('HIBP_API_KEY', '')
 TWOCHAT_API_KEY = os.environ.get('TWOCHAT_API_KEY', '')
 TWOCHAT_WHATSAPP_NUMBER = os.environ.get('TWOCHAT_WHATSAPP_NUMBER', '')
 
+# Antisocial API - run separately from https://github.com/lukeslp/antisocial
+# Default: http://localhost:8000
+ANTISOCIAL_URL = os.environ.get('ANTISOCIAL_URL', 'http://localhost:8000')
+
 CACHE_TTL_HOURS = 24
 result_cache = {}
 
@@ -526,11 +530,23 @@ def get_version():
 @app.route('/api/config', methods=['GET'])
 def get_config():
     """Return app configuration status"""
+    antisocial_available = check_antisocial_available()
     return jsonify({
         '2chat_enabled': bool(TWOCHAT_API_KEY and TWOCHAT_WHATSAPP_NUMBER),
         'ollama_available': check_ollama_available(),
-        'hibp_enabled': bool(HIBP_API_KEY)
+        'hibp_enabled': bool(HIBP_API_KEY),
+        'antisocial_available': antisocial_available,
+        'antisocial_url': ANTISOCIAL_URL
     })
+
+
+def check_antisocial_available():
+    """Check if Antisocial service is running."""
+    try:
+        response = requests.get(f"{ANTISOCIAL_URL}/api/health", timeout=5)
+        return response.status_code == 200
+    except:
+        return False
 
 
 @app.route('/api/ai/status', methods=['GET'])
@@ -4649,6 +4665,125 @@ def check_whatsapp_2chat():
     search_history.add_entry('phone_2chat', phone, result.get('message', 'Error'), 1 if result.get('on_whatsapp') else 0)
     
     return jsonify(result)
+
+
+@app.route('/api/antisocial/status', methods=['GET'])
+def antisocial_status():
+    """Check if Antisocial service is available."""
+    available = check_antisocial_available()
+    return jsonify({
+        'available': available,
+        'url': ANTISOCIAL_URL,
+        'message': 'Antisocial service ready' if available else 'Antisocial not running. Start from https://github.com/lukeslp/antisocial'
+    })
+
+
+@app.route('/api/antisocial/search', methods=['POST'])
+def antisocial_search():
+    """Run an Antisocial username search."""
+    if not check_antisocial_available():
+        return jsonify({
+            'error': 'Antisocial service not available',
+            'message': 'Start Antisocial service first: https://github.com/lukeslp/antisocial',
+            'setup_url': f'{ANTISOCIAL_URL}/docs'
+        }), 503
+    
+    data = request.get_json()
+    username = data.get('username', '')
+    deep_search = data.get('deep_search', False)
+    tiers = data.get('tiers', [1, 2, 3])
+    
+    if not username:
+        return jsonify({'error': 'Username required'}), 400
+    
+    try:
+        payload = {
+            'username': username,
+            'tiers': tiers
+        }
+        if deep_search:
+            payload['deep_search'] = True
+        
+        response = requests.post(
+            f"{ANTISOCIAL_URL}/api/searches",
+            json=payload,
+            timeout=10
+        )
+        
+        if response.status_code == 200 or response.status_code == 201:
+            search_data = response.json()
+            return jsonify({
+                'search_id': search_data.get('id'),
+                'status': search_data.get('status'),
+                'username': username,
+                'deep_search': deep_search,
+                'check_url': f"{ANTISOCIAL_URL}/api/searches/{search_data.get('id')}",
+                'results_url': f"{ANTISOCIAL_URL}/api/searches/{search_data.get('id')}/results"
+            })
+        else:
+            return jsonify({'error': 'Antisocial API error', 'details': response.text}), response.status_code
+            
+    except requests.Timeout:
+        return jsonify({'error': 'Antisocial request timed out'}), 504
+    except requests.ConnectionError:
+        return jsonify({'error': 'Cannot connect to Antisocial service'}), 503
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/antisocial/results/<search_id>', methods=['GET'])
+def antisocial_results(search_id):
+    """Get Antisocial search results."""
+    if not check_antisocial_available():
+        return jsonify({'error': 'Antisocial service not available'}), 503
+    
+    try:
+        response = requests.get(
+            f"{ANTISOCIAL_URL}/api/searches/{search_id}",
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            search_data = response.json()
+            
+            results_response = requests.get(
+                f"{ANTISOCIAL_URL}/api/searches/{search_id}/results",
+                timeout=10
+            )
+            
+            accounts = []
+            if results_response.status_code == 200:
+                accounts = results_response.json()
+            
+            return jsonify({
+                'search_id': search_id,
+                'username': search_data.get('username'),
+                'status': search_data.get('status'),
+                'progress': search_data.get('progress'),
+                'accounts_found': search_data.get('accounts_found', 0),
+                'platforms_checked': search_data.get('platforms_checked', 0),
+                'accounts': accounts
+            })
+        else:
+            return jsonify({'error': 'Search not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/antisocial/platforms', methods=['GET'])
+def antisocial_platforms():
+    """Get list of platforms supported by Antisocial."""
+    if not check_antisocial_available():
+        return jsonify({'error': 'Antisocial service not available'}), 503
+    
+    try:
+        response = requests.get(f"{ANTISOCIAL_URL}/api/platforms", timeout=10)
+        if response.status_code == 200:
+            return jsonify(response.json())
+        return jsonify({'error': 'Failed to fetch platforms'}), response.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/telegram', methods=['POST'])
