@@ -1355,7 +1355,7 @@ def lookup_ip(ip_address):
         'valid': validate_ip(ip_address),
         'reverse_dns': None,
         'geolocation': None,
-        'whois': None,
+        'ipapi': None,
         'ports': [],
         'reputation_score': 0
     }
@@ -1381,7 +1381,35 @@ def lookup_ip(ip_address):
                     'lon': data.get('lon', 0)
                 }
         except Exception as e:
-            result['error'] = str(e)
+            pass
+        
+        try:
+            import ipapi
+            ipapi_data = ipapi.location(ip=ip_address, output='json')
+            if ipapi_data and 'error' not in ipapi_data:
+                result['ipapi'] = {
+                    'country_name': ipapi_data.get('country_name', 'N/A'),
+                    'region': ipapi_data.get('region', 'N/A'),
+                    'city': ipapi_data.get('city', 'N/A'),
+                    'postal': ipapi_data.get('postal', 'N/A'),
+                    'latitude': ipapi_data.get('latitude'),
+                    'longitude': ipapi_data.get('longitude'),
+                    'timezone': ipapi_data.get('timezone', 'N/A'),
+                    'utc_offset': ipapi_data.get('utc_offset', 'N/A'),
+                    'currency': ipapi_data.get('currency', 'N/A'),
+                    'currency_name': ipapi_data.get('currency_name', 'N/A'),
+                    'asn': ipapi_data.get('asn', 'N/A'),
+                    'org': ipapi_data.get('org', 'N/A'),
+                    'languages': ipapi_data.get('languages', 'N/A'),
+                    'country_capital': ipapi_data.get('country_capital', 'N/A'),
+                    'continent_code': ipapi_data.get('continent_code', 'N/A'),
+                    'in_eu': ipapi_data.get('in_eu', False),
+                    'country_area': ipapi_data.get('country_area'),
+                    'country_population': ipapi_data.get('country_population'),
+                    'calling_code': ipapi_data.get('country_calling_code', 'N/A')
+                }
+        except Exception as e:
+            logger.debug(f"ipapi lookup failed: {e}")
         
         common_ports = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 993, 995, 3306, 3389, 5432, 8080]
         for port in common_ports:

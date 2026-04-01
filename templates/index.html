@@ -801,16 +801,58 @@
                 return;
             }
             
+            const geo = data.geolocation || {};
+            const ipapi = data.ipapi || {};
+            
+            let ipapiSection = '';
+            if (ipapi.country_name) {
+                ipapiSection = `
+                    <div class="card">
+                        <h3>Extended Info (ipapi.co)</h3>
+                        <div class="grid-2">
+                            ${ipapi.country_name ? `<div class="grid-item"><div class="label">Country</div><div class="value">${ipapi.country_name} (${geo.country || ''})</div></div>` : ''}
+                            ${ipapi.region ? `<div class="grid-item"><div class="label">Region</div><div class="value">${ipapi.region}</div></div>` : ''}
+                            ${ipapi.city ? `<div class="grid-item"><div class="label">City</div><div class="value">${ipapi.city}</div></div>` : ''}
+                            ${ipapi.postal ? `<div class="grid-item"><div class="label">Postal</div><div class="value">${ipapi.postal}</div></div>` : ''}
+                            ${ipapi.timezone ? `<div class="grid-item"><div class="label">Timezone</div><div class="value">${ipapi.timezone} (UTC ${ipapi.utc_offset || ''})</div></div>` : ''}
+                            ${ipapi.currency ? `<div class="grid-item"><div class="label">Currency</div><div class="value">${ipapi.currency} (${ipapi.currency_name || ''})</div></div>` : ''}
+                            ${ipapi.asn ? `<div class="grid-item"><div class="label">ASN</div><div class="value">${ipapi.asn}</div></div>` : ''}
+                            ${ipapi.org ? `<div class="grid-item"><div class="label">Organization</div><div class="value">${ipapi.org}</div></div>` : ''}
+                            ${ipapi.country_capital ? `<div class="grid-item"><div class="label">Capital</div><div class="value">${ipapi.country_capital}</div></div>` : ''}
+                            ${ipapi.languages ? `<div class="grid-item"><div class="label">Languages</div><div class="value">${ipapi.languages}</div></div>` : ''}
+                            ${ipapi.continent_code ? `<div class="grid-item"><div class="label">Continent</div><div class="value">${ipapi.continent_code} ${ipapi.in_eu ? '(EU)' : ''}</div></div>` : ''}
+                            ${ipapi.country_area ? `<div class="grid-item"><div class="label">Country Area</div><div class="value">${Number(ipapi.country_area).toLocaleString()} km²</div></div>` : ''}
+                            ${ipapi.country_population ? `<div class="grid-item"><div class="label">Population</div><div class="value">${Number(ipapi.country_population).toLocaleString()}</div></div>` : ''}
+                            ${ipapi.calling_code ? `<div class="grid-item"><div class="label">Calling Code</div><div class="value">${ipapi.calling_code}</div></div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
             resultsContent.innerHTML = `
                 <div class="card">
                     <h3>IP Information</h3>
                     <div class="grid-2">
                         <div class="grid-item"><div class="label">IP</div><div class="value">${data.ip}</div></div>
-                        <div class="grid-item"><div class="label">Country</div><div class="value">${data.country || 'Unknown'}</div></div>
-                        <div class="grid-item"><div class="label">City</div><div class="value">${data.city || 'Unknown'}</div></div>
-                        <div class="grid-item"><div class="label">ISP</div><div class="value">${data.isp || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Country</div><div class="value">${geo.country || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Region</div><div class="value">${geo.region || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">City</div><div class="value">${geo.city || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">ISP</div><div class="value">${geo.isp || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Organization</div><div class="value">${geo.org || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">AS</div><div class="value">${geo.as || 'Unknown'}</div></div>
+                        ${geo.lat ? `<div class="grid-item"><div class="label">Coordinates</div><div class="value">${geo.lat}, ${geo.lon}</div></div>` : ''}
+                        <div class="grid-item"><div class="label">Reverse DNS</div><div class="value">${data.reverse_dns || 'N/A'}</div></div>
                     </div>
                 </div>
+                ${ipapiSection}
+                ${data.ports && data.ports.length > 0 ? `
+                    <div class="card">
+                        <h3>Open Ports</h3>
+                        <div class="tags">
+                            ${data.ports.map(p => `<span class="tag">${p}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
             `;
         }
 
