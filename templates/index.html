@@ -65,18 +65,10 @@
         <div class="options" id="optionsBar" style="display:none">
             <label>Platforms:</label>
             <select id="siteCategory">
-                <option value="all">All Sites</option>
-                <option value="social">Social Media</option>
-                <option value="developer">Developer</option>
-                <option value="gaming">Gaming</option>
+                <option value="social">Social Media (~45 sites)</option>
+                <option value="all">All Sites (~3000 sites)</option>
             </select>
-            <div id="socialCategories" class="checkbox-group" style="display:none">
-                <label><input type="checkbox" value="30" checked> Quick (~30)</label>
-                <label><input type="checkbox" value="50"> Standard (~50)</label>
-                <label><input type="checkbox" value="100"> Deep (~100)</label>
-                <label><input type="checkbox" value="200"> Full (~200)</label>
-            </div>
-            <span class="options-count" id="siteCount">30 sites</span>
+            <span class="options-count" id="siteCount">45 sites</span>
         </div>
 
         <!-- Results -->
@@ -200,16 +192,13 @@
                 
                 // Show/hide options based on tool
                 const siteCategory = document.getElementById('siteCategory');
-                const socialCategories = document.getElementById('socialCategories');
                 
-                if (currentTool === 'social' || currentTool === 'email') {
+                if (currentTool === 'maigret' || currentTool === 'username') {
                     optionsBar.style.display = 'flex';
-                    siteCategory.style.display = 'none';
-                    socialCategories.style.display = 'block';
-                } else if (currentTool === 'maigret' || currentTool === 'username') {
-                    optionsBar.style.display = 'flex';
-                    siteCategory.style.display = 'none';
-                    socialCategories.style.display = 'block';
+                    siteCategory.style.display = 'block';
+                    // Reset to social media default
+                    siteCategory.value = 'social';
+                    document.getElementById('siteCount').textContent = '45 sites';
                 } else {
                     optionsBar.style.display = 'none';
                 }
@@ -229,31 +218,8 @@
         
         // Update site count on change
         document.getElementById('siteCategory').addEventListener('change', function() {
-            const counts = { all: 56, social: 17, developer: 9, gaming: 4 };
-            document.getElementById('siteCount').textContent = (counts[this.value] || 56) + ' sites';
-        });
-        
-        // Social/Email categories checkboxes
-        document.querySelectorAll('#socialCategories input[type="checkbox"]').forEach(cb => {
-            cb.addEventListener('change', function() {
-                const checked = document.querySelectorAll('#socialCategories input[type="checkbox"]:checked').length;
-                // Check if numeric values (Email tool) or string values (Social tool)
-                const firstCb = document.querySelector('#socialCategories input[type="checkbox"]');
-                if (firstCb && !isNaN(firstCb.value)) {
-                    // Email tool - use highest value selected
-                    const values = Array.from(document.querySelectorAll('#socialCategories input[type="checkbox"]:checked')).map(c => parseInt(c.value));
-                    const maxVal = values.length > 0 ? Math.max(...values) : 30;
-                    document.getElementById('siteCount').textContent = maxVal + ' sites';
-                } else {
-                    // Social tool - sum values
-                    const catCounts = { social: 17, developer: 9, gaming: 4 };
-                    let total = 0;
-                    document.querySelectorAll('#socialCategories input[type="checkbox"]:checked').forEach(c => {
-                        total += catCounts[c.value] || 0;
-                    });
-                    document.getElementById('siteCount').textContent = total + ' sites';
-                }
-            });
+            const counts = { all: 3000, social: 45 };
+            document.getElementById('siteCount').textContent = (counts[this.value] || 45) + ' sites';
         });
 
         // Search
@@ -346,11 +312,21 @@
         }
 
         async function searchMaigret(query) {
-            startStreaming('/api/username/maigret', { username: query, limit: 50 });
+            const siteCategory = document.getElementById('siteCategory').value;
+            if (siteCategory === 'all') {
+                startStreaming('/api/username/maigret', { username: query, tags: [], limit: 3000 });
+            } else {
+                startStreaming('/api/username/maigret', { username: query, tags: ['social'], limit: 45 });
+            }
         }
 
         async function searchSherlock(query) {
-            startStreaming('/api/username/stream', { username: query });
+            const siteCategory = document.getElementById('siteCategory').value;
+            if (siteCategory === 'all') {
+                startStreaming('/api/username/stream', { username: query, tags: [] });
+            } else {
+                startStreaming('/api/username/stream', { username: query, tags: ['social'] });
+            }
         }
 
         async function searchHolehe(query) {
