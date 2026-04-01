@@ -1,6 +1,6 @@
 # Iveras OSINT Manual
 
-**Version:** 2.1.2  
+**Version:** 2.1.0  
 **Last Updated:** March 2026
 
 ---
@@ -22,7 +22,6 @@
    - [IP Lookup](#ip-lookup)
    - [Domain Lookup](#domain-lookup)
    - [Webcams](#webcams)
-   - [Antisocial](#antisocial)
 6. [Interface Features](#interface-features)
 7. [Search History & Archive](#search-history--archive)
 8. [System Controls](#system-controls)
@@ -326,7 +325,6 @@ The dashboard will be available at: `http://localhost:5000`
 | **Holehe** | Email deep search | Email Address |
 | **IP** | IP geolocation and intel | IP Address |
 | **Domain** | WHOIS and DNS | Domain Name |
-| **AntiSocial** | 3-tier verification username search | Username |
 
 ---
 
@@ -478,48 +476,12 @@ Multi-service phone intelligence.
 | Service | Status |
 |---------|--------|
 | **WhatsApp** | Check blocked by API limitations |
-| **WhatsApp (2Chat)** | Enhanced with API key (see below) |
 | **Telegram** | Check blocked by API limitations |
 | **Carrier** | Network operator info |
 | **Country** | From phone number prefix |
 | **Timezone** | From phone number |
 
----
-
-### Phone Lookup - 2Chat API Integration
-
-For detailed WhatsApp information, you can enable the 2Chat API integration.
-
-**Setup:**
-
-1. Create account at [2chat.co](https://2chat.co)
-2. Get your API key from [app.2chat.io/api](https://app.2chat.io/api)
-3. Connect your WhatsApp number via QR code in the 2Chat dashboard
-4. Set environment variables:
-
-```bash
-# Linux/macOS
-export TWOCHAT_API_KEY="your-api-key"
-export TWOCHAT_WHATSAPP_NUMBER="+1234567890"
-
-# Windows (PowerShell)
-$env:TWOCHAT_API_KEY="your-api-key"
-$env:TWOCHAT_WHATSAPP_NUMBER="+1234567890"
-```
-
-**What you get with 2Chat:**
-- Profile picture URL
-- Business account information (name, description, website)
-- Verified badge level (0-2)
-- Status text
-- Number ID (for programmatic messaging)
-- Region and timezone from phone number
-
-**Pricing:**
-- Trial: 10 requests/min, 100 checks max
-- Paid: 50 requests/min per connected number
-
-**Note:** WhatsApp and Telegram basic checks are blocked by API limitations. Carrier and location info should still work.
+**Note:** WhatsApp and Telegram APIs often block automated requests. Carrier and location info should still work.
 
 ---
 
@@ -575,53 +537,6 @@ Live webcam directory organized by country and city.
 United States, Netherlands, UK, France, Germany, Japan, Australia, Italy, Spain, Canada, Switzerland, Austria, Belgium, Norway, Sweden
 
 **Note:** Most webcams link to official tourism/city websites. True live streaming requires API keys from services like EarthCam.
-
----
-
-### Antisocial
-
-Advanced username search using 3-tier verification for reduced false positives.
-
-**How to use:**
-1. Select "AntiSocial" tool
-2. Enter username
-3. Optionally enable "Deep Search" for 500+ platforms
-4. Click "Search"
-
-**Setup Required:**
-
-Antisocial runs as a separate service. Install it first:
-
-```bash
-git clone https://github.com/lukeslp/antisocial.git
-cd antisocial
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-playwright install chromium
-python run.py
-```
-
-Set the URL in Iveras OSINT:
-```bash
-export ANTISOCIAL_URL="http://localhost:8000"
-```
-
-**Verification Tiers:**
-| Tier | Method | Confidence |
-|------|--------|------------|
-| 1 | Official APIs | ~95% |
-| 2 | Browser Automation | ~85% |
-| 3 | HTTP Content Analysis | ~70% |
-
-**Features:**
-- False positive rate reduced to ~5% (vs 30-40% for basic checkers)
-- 30+ platforms by default
-- 500+ platforms with Deep Search (WhatsMyName)
-- Real-time streaming results
-- Confidence scores per account
-
-**Note:** Requires Antisocial service running separately on port 8000.
 
 ---
 
@@ -736,7 +651,6 @@ curl -X POST http://localhost:5000/api/username/stream \
 - APIs often block automated requests
 - This is a known limitation of OSINT tools
 - Carrier info should still work
-- For WhatsApp: Enable 2Chat API for detailed results (see Phone Lookup section)
 
 ### Error Messages
 
@@ -750,16 +664,6 @@ curl -X POST http://localhost:5000/api/username/stream \
 ---
 
 ## Changelog
-
-### Version 2.1.2
-- Added Antisocial integration (3-tier verification username search)
-- New environment variable: `ANTISOCIAL_URL`
-- Antisocial runs as separate service for reduced false positives
-
-### Version 2.1.1
-- Added 2Chat API integration for enhanced WhatsApp phone lookups
-- New environment variables: `TWOCHAT_API_KEY`, `TWOCHAT_WHATSAPP_NUMBER`
-- WhatsApp lookup now includes profile pic, business info, verified status (when 2Chat configured)
 
 ### Version 2.1.0
 - Added Webcams tool (47+ locations, 15 countries)
@@ -827,4 +731,4 @@ curl -X POST http://localhost:5000/api/username/stream \
 
 ---
 
-*Iveras OSINT v2.1.2 - March 2026*
+*Iveras OSINT v2.1.0 - March 2026*
