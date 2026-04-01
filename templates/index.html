@@ -193,7 +193,7 @@
                 // Show/hide options based on tool
                 const siteCategory = document.getElementById('siteCategory');
                 
-                if (currentTool === 'maigret' || currentTool === 'username') {
+                if (currentTool === 'maigret') {
                     optionsBar.style.display = 'flex';
                     siteCategory.style.display = 'block';
                     // Reset to social media default
@@ -321,12 +321,7 @@
         }
 
         async function searchSherlock(query) {
-            const siteCategory = document.getElementById('siteCategory').value;
-            if (siteCategory === 'all') {
-                startStreaming('/api/username/stream', { username: query, tags: [] });
-            } else {
-                startStreaming('/api/username/stream', { username: query, tags: ['social'] });
-            }
+            startStreaming('/api/username/stream', { username: query });
         }
 
         async function searchHolehe(query) {
