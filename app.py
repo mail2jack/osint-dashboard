@@ -523,6 +523,31 @@ def get_version():
     return jsonify(get_version_info())
 
 
+@app.route('/api/changelog', methods=['GET'])
+def get_changelog():
+    """Return changelog from MANUAL.md"""
+    try:
+        changelog_path = os.path.join(os.path.dirname(__file__), 'MANUAL.md')
+        with open(changelog_path, 'r') as f:
+            content = f.read()
+        
+        changelog_start = content.find('## Changelog')
+        if changelog_start == -1:
+            return jsonify({'html': '<div class="empty">No changelog found</div>'})
+        
+        changelog_section = content[changelog_start:]
+        html = changelog_section.replace('## ', '<h4>').replace('### ', '<h5>').replace('\n##', '</h4>\n##').replace('\n###', '</h5>\n###')
+        html = f'<div class="changelog-content">{html.replace(chr(10), "<br>")}</div>'
+        html = html.replace('<h4>', '</div><h4>').replace('<h4>', '<div class="changelog-version">').replace('</h4>', '</h4>')
+        html = html.replace('<h5>', '<div class="changelog-item">').replace('</h5>', '</h5></div>')
+        html = html.replace('- ', '<span class="bullet">•</span> ')
+        html = html.replace('<br><br>', '<br>')
+        
+        return jsonify({'html': html})
+    except Exception as e:
+        return jsonify({'html': f'<div class="empty">Error loading changelog: {str(e)}</div>'}), 500
+
+
 @app.route('/api/config', methods=['GET'])
 def get_config():
     """Return app configuration status"""
@@ -4451,7 +4476,8 @@ def phone_osint():
         
         if TWOCHAT_API_KEY and TWOCHAT_WHATSAPP_NUMBER:
             try:
-                url = f"https://api.p.2chat.io/open/whatsapp/check-number/{TWOCHAT_WHATSAPP_NUMBER}/{normalized}"
+                phone_e164 = result.get('formatted') or f"+{normalized}"
+                url = f"https://api.p.2chat.io/open/whatsapp/check-number/{TWOCHAT_WHATSAPP_NUMBER}/{phone_e164}"
                 headers = {
                     'X-User-API-Key': TWOCHAT_API_KEY,
                     'Accept': 'application/json'

@@ -964,7 +964,20 @@
 
         function openChangelog() {
             const modal = document.getElementById('changelogModal');
+            const content = document.getElementById('changelogContent');
             modal.classList.toggle('active');
+            
+            if (modal.classList.contains('active')) {
+                content.innerHTML = '<div class="loading">Loading...</div>';
+                fetch('/api/changelog')
+                    .then(r => r.json())
+                    .then(data => {
+                        content.innerHTML = data.html || '<div class="empty">No changelog available</div>';
+                    })
+                    .catch(() => {
+                        content.innerHTML = '<div class="empty">Failed to load changelog</div>';
+                    });
+            }
         }
 
         function restartApp() {

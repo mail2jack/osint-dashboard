@@ -681,3 +681,47 @@ header {
     border-color: var(--blue);
     color: white;
 }
+
+/* Changelog Modal */
+.changelog-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+.changelog-version {
+    color: var(--green2);
+    font-weight: 600;
+    margin: 15px 0 10px 0;
+    font-size: 16px;
+}
+
+.changelog-item {
+    color: var(--text2);
+    font-size: 13px;
+    padding-left: 15px;
+    margin: 5px 0;
+}
+
+.changelog-content .bullet {
+    color: var(--blue);
+    margin-right: 5px;
+}
+
+.changelog-content h4 {
+    color: var(--green2);
+    font-size: 18px;
+    margin: 20px 0 10px 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+}
+
+.changelog-content h5 {
+    color: var(--yellow);
+    font-size: 15px;
+    margin: 15px 0 5px 0;
+}
+
+.changelog-content p {
+    margin: 10px 0;
+}
