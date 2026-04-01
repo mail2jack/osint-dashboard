@@ -865,17 +865,95 @@
                 return;
             }
             
+            const whois = data.whois || {};
+            const dns = data.dns_records || {};
+            
+            let dnsSection = '';
+            if (Object.keys(dns).length > 0) {
+                const dnsRows = [];
+                for (const [type, value] of Object.entries(dns)) {
+                    if (value && value !== 'N/A' && value !== 'Not available' && value !== 'Not implemented') {
+                        if (Array.isArray(value)) {
+                            if (type === 'MX') {
+                                dnsRows.push(`<div class="grid-item"><div class="label">${type}</div><div class="value">${value.map(v => `${v.priority} ${v.host}`).join('<br>')}</div></div>`);
+                            } else if (type === 'TXT' || type === 'SPF') {
+                                dnsRows.push(`<div class="grid-item"><div class="label">${type}</div><div class="value" style="font-size:12px">${value.join('<br>')}</div></div>`);
+                            } else {
+                                dnsRows.push(`<div class="grid-item"><div class="label">${type}</div><div class="value">${value.join(', ')}</div></div>`);
+                            }
+                        } else {
+                            dnsRows.push(`<div class="grid-item"><div class="label">${type}</div><div class="value">${value}</div></div>`);
+                        }
+                    }
+                }
+                if (dnsRows.length > 0) {
+                    dnsSection = `<div class="card"><h3>DNS Records</h3><div class="grid-2">${dnsRows.join('')}</div></div>`;
+                }
+            }
+            
+            let sslSection = '';
+            if (data.ssl_info && typeof data.ssl_info === 'object') {
+                sslSection = `
+                    <div class="card">
+                        <h3>SSL Certificate</h3>
+                        <div class="grid-2">
+                            <div class="grid-item"><div class="label">Issuer</div><div class="value">${data.ssl_info.issuer?.organizationName || data.ssl_info.issuer?.O || 'N/A'}</div></div>
+                            <div class="grid-item"><div class="label">Valid From</div><div class="value">${data.ssl_info.not_before || 'N/A'}</div></div>
+                            <div class="grid-item"><div class="label">Valid Until</div><div class="value">${data.ssl_info.not_after || 'N/A'}</div></div>
+                            <div class="grid-item"><div class="label">Version</div><div class="value">${data.ssl_info.version || 'N/A'}</div></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let registrantSection = '';
+            if (whois['registrant'] || whois.registrant_org || whois.registrant_country) {
+                registrantSection = `
+                    <div class="card">
+                        <h3>Registrant Info</h3>
+                        <div class="grid-2">
+                            ${whois['registrant'] ? `<div class="grid-item"><div class="label">Name</div><div class="value">${whois['registrant']}</div></div>` : ''}
+                            ${whois.registrant_org ? `<div class="grid-item"><div class="label">Organization</div><div class="value">${whois.registrant_org}</div></div>` : ''}
+                            ${whois.registrant_country ? `<div class="grid-item"><div class="label">Country</div><div class="value">${whois.registrant_country}</div></div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
             resultsContent.innerHTML = `
                 <div class="card">
                     <h3>Domain: ${data.domain}</h3>
                     <div class="grid-2">
-                        <div class="grid-item"><div class="label">Registrar</div><div class="value">${data.registrar || 'Unknown'}</div></div>
-                        <div class="grid-item"><div class="label">Created</div><div class="value">${data.created || 'Unknown'}</div></div>
-                        <div class="grid-item"><div class="label">Expires</div><div class="value">${data.expires || 'Unknown'}</div></div>
-                        <div class="grid-item"><div class="label">Nameservers</div><div class="value">${(data.nameservers || []).join(', ') || 'Unknown'}</div></div>
+                        <div class="grid-item"><div class="label">Registrar</div><div class="value">${whois.registrar || 'N/A'}</div></div>
+                        <div class="grid-item"><div class="label">Created</div><div class="value">${whois.registration_date || 'N/A'}</div></div>
+                        <div class="grid-item"><div class="label">Expires</div><div class="value">${whois.expiration_date || 'N/A'}</div></div>
+                        <div class="grid-item"><div class="label">Updated</div><div class="value">${whois.updated_date || 'N/A'}</div></div>
+                        ${whois.status ? `<div class="grid-item"><div class="label">Status</div><div class="value" style="font-size:11px">${whois.status}</div></div>` : ''}
+                        ${whois.dnssec ? `<div class="grid-item"><div class="label">DNSSEC</div><div class="value">${whois.dnssec}</div></div>` : ''}
                     </div>
                 </div>
-                `;
+                ${whois.name_servers && whois.name_servers.length ? `
+                    <div class="card">
+                        <h3>Name Servers</h3>
+                        <div class="tags">${whois.name_servers.map(ns => `<span class="tag">${ns}</span>`).join('')}</div>
+                    </div>
+                ` : ''}
+                ${registrantSection}
+                ${dnsSection}
+                ${sslSection}
+                ${data.subdomains && data.subdomains.length ? `
+                    <div class="card">
+                        <h3>Subdomains (${data.subdomains.length})</h3>
+                        <div class="tags">${data.subdomains.map(s => `<span class="tag">${s}</span>`).join('')}</div>
+                    </div>
+                ` : ''}
+                ${data.ip_addresses && data.ip_addresses.length ? `
+                    <div class="card">
+                        <h3>IP Addresses</h3>
+                        <div class="tags">${data.ip_addresses.map(ip => `<span class="tag">${ip}</span>`).join('')}</div>
+                    </div>
+                ` : ''}
+            `;
         }
 
         async function searchWebcams(query) {

@@ -1440,7 +1440,7 @@ def lookup_domain(domain):
         'valid': validate_domain(domain),
         'ip_addresses': [],
         'dns_records': {},
-        'whois': None,
+        'whois': {},
         'subdomains': [],
         'ssl_info': None
     }
@@ -1453,7 +1453,8 @@ def lookup_domain(domain):
             result['ip_addresses'] = []
         
         try:
-            dns_types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME']
+            dns_types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME', 'SPF', 'CAA']
+            import dns.resolver
             for dns_type in dns_types:
                 try:
                     if dns_type == 'A':
@@ -1464,13 +1465,86 @@ def lookup_domain(domain):
                         except:
                             result['dns_records']['AAAA'] = 'N/A'
                     else:
-                        result['dns_records'][dns_type] = 'Not implemented'
+                        try:
+                            answers = dns.resolver.resolve(domain, dns_type)
+                            if dns_type == 'MX':
+                                result['dns_records']['MX'] = [{'priority': r.preference, 'host': str(r.exchange).rstrip('.')} for r in answers]
+                            elif dns_type == 'TXT':
+                                result['dns_records']['TXT'] = [str(r).strip('"') for r in answers]
+                            elif dns_type == 'SPF':
+                                result['dns_records']['SPF'] = [str(r).strip('"') for r in answers]
+                            elif dns_type == 'CAA':
+                                result['dns_records']['CAA'] = [str(r) for r in answers]
+                            else:
+                                result['dns_records'][dns_type] = [str(r) for r in answers]
+                        except:
+                            result['dns_records'][dns_type] = 'N/A'
+                except:
+                    result['dns_records'][dns_type] = 'N/A'
+        except ImportError:
+            for dns_type in ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME']:
+                try:
+                    if dns_type == 'A':
+                        result['dns_records']['A'] = socket.getaddrinfo(domain, 80, socket.AF_INET)[0][4][0]
+                    elif dns_type == 'AAAA':
+                        try:
+                            result['dns_records']['AAAA'] = socket.getaddrinfo(domain, 80, socket.AF_INET6)[0][4][0]
+                        except:
+                            result['dns_records']['AAAA'] = 'N/A'
+                    else:
+                        result['dns_records'][dns_type] = 'Not available'
                 except:
                     result['dns_records'][dns_type] = 'N/A'
         except Exception as e:
             result['error'] = str(e)
         
-        common_subdomains = ['www', 'mail', 'ftp', 'admin', 'blog', 'dev', 'api', 'test', 'staging']
+        try:
+            import subprocess
+            whois_proc = subprocess.run(['whois', domain], capture_output=True, text=True, timeout=10)
+            whois_text = whois_proc.stdout
+            
+            def extract_field(text, field_names):
+                for name in field_names:
+                    for line in text.split('\n'):
+                        if line.lower().startswith(name.lower() + ':'):
+                            return line.split(':', 1)[1].strip()
+                    parts = name.split()
+                    if len(parts) > 1:
+                        pattern = ' '.join(parts[:2]).lower()
+                        for line in text.split('\n'):
+                            if pattern in line.lower():
+                                return line.split(':', 1)[1].strip()
+                return None
+            
+            result['whois'] = {
+                'registrar': extract_field(whois_text, ['Registrar', 'Sponsoring Registrar', 'Registrar Name']),
+                'registration_date': extract_field(whois_text, ['Creation Date', 'Created', 'Created On', 'Created Date']),
+                'expiration_date': extract_field(whois_text, ['Expiration Date', 'Expires', 'Expires On', 'Expiry Date', 'Registry Expiry Date']),
+                'updated_date': extract_field(whois_text, ['Updated Date', 'Modified', 'Last Updated']),
+                'status': extract_field(whois_text, ['Domain Status', 'Status']),
+                'name_servers': [],
+                'dnssec': extract_field(whois_text, ['DNSSEC']),
+                ' registrant': extract_field(whois_text, ['Registrant Name', 'Registrant', 'Owner', 'Holder']),
+                'registrant_org': extract_field(whois_text, ['Registrant Organization', 'Org', 'Organization']),
+                'registrant_country': extract_field(whois_text, ['Registrant Country', 'Country']),
+                'admin_contact': extract_field(whois_text, ['Admin Name', 'Admin', 'Administrative Contact']),
+                'tech_contact': extract_field(whois_text, ['Tech Name', 'Tech', 'Technical Contact']),
+            }
+            
+            for line in whois_text.split('\n'):
+                if 'Name Server' in line or 'Nameserver' in line or 'nserver' in line.lower():
+                    parts = line.split(':')
+                    if len(parts) > 1:
+                        ns = parts[1].strip().lower()
+                        if ns and ns not in [n.lower() for n in result['whois']['name_servers']]:
+                            result['whois']['name_servers'].append(ns)
+            
+        except subprocess.TimeoutExpired:
+            result['whois'] = {'error': 'WHOIS timeout'}
+        except Exception as e:
+            result['whois'] = {'error': str(e)}
+        
+        common_subdomains = ['www', 'mail', 'ftp', 'admin', 'blog', 'dev', 'api', 'test', 'staging', 'smtp', 'pop', 'imap', 'webmail']
         for sub in common_subdomains:
             try:
                 full_domain = f"{sub}.{domain}"
