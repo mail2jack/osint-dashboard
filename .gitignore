@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 *.log
+.env
 dorks_log.txt
 *.json
 .obsidian/
