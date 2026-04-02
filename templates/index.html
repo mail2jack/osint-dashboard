@@ -52,6 +52,7 @@
             <div class="toolbar-group">
                 <button class="toolbar-btn" data-tool="ip">IP</button>
                 <button class="toolbar-btn" data-tool="domain">Domain</button>
+                <button class="toolbar-btn" data-tool="openkvk">OpenKVK</button>
             </div>
         </div>
 
@@ -175,7 +176,8 @@
             username: 'Enter username...',
             holehe: 'Enter email for deep search...',
             ip: 'Enter IP address...',
-            domain: 'Enter domain name...'
+            domain: 'Enter domain name...',
+            openkvk: 'Company name, KVK number, or postcode...'
         };
 
         // Tool selection
@@ -266,6 +268,8 @@
                 searchDomain(query);
             } else if (currentTool === 'webcam') {
                 searchWebcams(query);
+            } else if (currentTool === 'openkvk') {
+                searchOpenKVK(query);
             }
         }
 
@@ -358,6 +362,77 @@
                 searchBtn.textContent = 'Search';
                 updateSystemStatus(false);
             }
+        }
+
+        async function searchOpenKVK(query) {
+            try {
+                const res = await fetch('/api/openkvk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                const data = await res.json();
+                showOpenKVKResults(data);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search';
+                updateSystemStatus(false);
+            }
+        }
+
+        function showOpenKVKResults(data) {
+            loadingDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            if (data.error) {
+                let errorHtml = `<div class="card"><h3>OpenKVK Setup Required</h3><p>${data.error}</p>`;
+                if (data.setup_hint) {
+                    errorHtml += `<p style="margin-top:10px">${data.setup_hint}</p>`;
+                    errorHtml += `<a href="https://overheid.io" target="_blank" class="btn" style="margin-top:10px">Get API Key ↗</a>`;
+                }
+                errorHtml += `</div>`;
+                resultsContent.innerHTML = errorHtml;
+                return;
+            }
+            
+            const results = data.results || [];
+            if (results.length === 0) {
+                resultsContent.innerHTML = `<div class="empty">No results found for "${data.query}"</div>`;
+                return;
+            }
+            
+            const renderCompany = (company) => {
+                const status = company.actief !== false ? '<span style="color:#4caf50">● Active</span>' : '<span style="color:#f44336">● Inactive</span>';
+                const coords = company.coords ? `<a href="https://www.google.com/maps?q=${company.coords.lat},${company.coords.lon}" target="_blank" class="btn" style="padding:5px 10px;font-size:12px">📍 Map</a>` : '';
+                
+                return `
+                    <div class="card" style="margin-bottom:15px">
+                        <h3>${company.naam || 'N/A'} ${status}</h3>
+                        <div class="grid-2">
+                            ${company.kvknummer ? `<div class="grid-item"><div class="label">KVK Number</div><div class="value">${company.kvknummer}</div></div>` : ''}
+                            ${company.rechtsvorm ? `<div class="grid-item"><div class="label">Legal Form</div><div class="value">${company.rechtsvorm}</div></div>` : ''}
+                            ${company.inschrijvingstype ? `<div class="grid-item"><div class="label">Type</div><div class="value">${company.inschrijvingstype}</div></div>` : ''}
+                            ${company.vestigingsnummer ? `<div class="grid-item"><div class="label">Establishment</div><div class="value">${company.vestigingsnummer}</div></div>` : ''}
+                            ${company.bezoekadres ? `<div class="grid-item"><div class="label">Address</div><div class="value">${company.bezoekadres}</div></div>` : ''}
+                            ${company.postcode ? `<div class="grid-item"><div class="label">Postcode</div><div class="value">${company.postcode}</div></div>` : ''}
+                            ${company.plaats ? `<div class="grid-item"><div class="label">City</div><div class="value">${company.plaats}</div></div>` : ''}
+                            ${company.website ? `<div class="grid-item"><div class="label">Website</div><div class="value"><a href="https://${company.website}" target="_blank">${company.website}</a></div></div>` : ''}
+                        </div>
+                        ${company.activiteit ? `<p style="margin:10px 0"><strong>Activity:</strong> ${company.activiteit}</p>` : ''}
+                        ${company.sbi_codes && company.sbi_codes.length ? `<p style="margin:5px 0;font-size:12px"><strong>SBI Codes:</strong> ${company.sbi_codes.join(', ')}</p>` : ''}
+                        ${company.handelsnamen && company.handelsnamen.length > 1 ? `<p style="margin:5px 0;font-size:12px"><strong>Also known as:</strong> ${company.handelsnamen.slice(1).join(', ')}</p>` : ''}
+                        <div style="margin-top:10px">${coords}</div>
+                    </div>
+                `;
+            };
+            
+            resultsContent.innerHTML = `
+                <div class="stats">
+                    <div class="stat"><div class="stat-value">${data.total || results.length}</div><div class="stat-label">Total Found</div></div>
+                    <div class="stat"><div class="stat-value">${results.length}</div><div class="stat-label">Showing</div></div>
+                </div>
+                ${results.map(renderCompany).join('')}
+            `;
         }
 
         // Streaming

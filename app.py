@@ -63,6 +63,10 @@ HIBP_API_KEY = os.environ.get('HIBP_API_KEY', '')
 TWOCHAT_API_KEY = os.environ.get('TWOCHAT_API_KEY', '')
 TWOCHAT_WHATSAPP_NUMBER = os.environ.get('TWOCHAT_WHATSAPP_NUMBER', '')
 
+# Overheid.io API Key - get from https://overheid.io
+# Free for non-commercial use, required for OpenKVK company lookup
+OVERHEID_API_KEY = os.environ.get('OVERHEID_API_KEY', '')
+
 CACHE_TTL_HOURS = 24
 result_cache = {}
 
@@ -2173,6 +2177,107 @@ def domain_lookup():
     if not domain:
         return jsonify({'error': 'Domain required'}), 400
     return jsonify(lookup_domain(domain))
+
+
+@app.route('/api/openkvk', methods=['POST'])
+def openkvk_lookup():
+    data = request.get_json()
+    query = data.get('query', '')
+    if not query:
+        return jsonify({'error': 'Company name, KVK number, or postcode required'}), 400
+    
+    result = {
+        'query': query,
+        'results': [],
+        'error': None,
+        'configured': bool(OVERHEID_API_KEY)
+    }
+    
+    if not OVERHEID_API_KEY:
+        result['error'] = 'Overheid.io API key not configured'
+        result['setup_hint'] = 'Set OVERHEID_API_KEY environment variable. Get free key at https://overheid.io'
+        return jsonify(result)
+    
+    try:
+        clean_query = quote(query)
+        search_url = f'https://api.overheid.io/v3/openkvk?query={clean_query}&size=20'
+        
+        headers = {
+            'Accept': 'application/json',
+            'ovio-api-key': OVERHEID_API_KEY
+        }
+        
+        response = requests.get(search_url, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            data = response.json()
+            bedrijven = data.get('_embedded', {}).get('bedrijf', [])
+            
+            for company in bedrijven:
+                slug = company.get('_links', {}).get('self', {}).get('href', '')
+                if slug:
+                    slug = slug.lstrip('/')
+                    detail_url = f'https://api.overheid.io/v3/openkvk/{slug}'
+                    try:
+                        detail_resp = requests.get(detail_url, headers=headers, timeout=10)
+                        if detail_resp.status_code == 200:
+                            detail = detail_resp.json()
+                            company.update(detail)
+                    except:
+                        pass
+                
+                result['results'].append({
+                    'kvknummer': company.get('kvkNummer') or company.get('kvknummer'),
+                    'naam': company.get('naam') or (company.get('huidigeHandelsNamen', [''])[0] if company.get('huidigeHandelsNamen') else ''),
+                    'handelsnamen': company.get('huidigeHandelsNamen', []),
+                    'rechtsvorm': company.get('rechtsvormOmschrijving'),
+                    'activiteit': company.get('activiteitomschrijving'),
+                    'sbi_codes': company.get('sbi', []),
+                    'website': company.get('website'),
+                    'bezoekadres': None,
+                    'postcode': None,
+                    'plaats': None,
+                    'land': None,
+                    'coords': None,
+                    'inschrijvingstype': company.get('inschrijvingstype'),
+                    'actief': company.get('actief', True),
+                    'vestigingsnummer': company.get('vestigingsnummer'),
+                    'updated_at': company.get('updated_at'),
+                    'details_url': slug
+                })
+                
+                bezoek = company.get('bezoeklocatie', {})
+                if bezoek:
+                    addr = bezoek.get('straat', '')
+                    huisnr = bezoek.get('huisnummer', '')
+                    result['results'][-1]['bezoekadres'] = f"{addr} {huisnr}".strip()
+                    result['results'][-1]['postcode'] = bezoek.get('postcode')
+                    result['results'][-1]['plaats'] = bezoek.get('plaats')
+                    result['results'][-1]['land'] = bezoek.get('land')
+                
+                loc = company.get('locatie', {})
+                if loc:
+                    result['results'][-1]['coords'] = {
+                        'lat': loc.get('lat'),
+                        'lon': loc.get('lon')
+                    }
+            
+            result['total'] = data.get('totalItemCount', len(result['results']))
+            
+        elif response.status_code == 404:
+            result['error'] = 'No results found'
+        else:
+            result['error'] = f'API error: {response.status_code}'
+            
+    except requests.Timeout:
+        result['error'] = 'Request timed out'
+    except Exception as e:
+        result['error'] = str(e)
+        logger.error(f"OpenKVK lookup failed: {e}")
+    
+    search_history.add_entry('openkvk', query, f"{len(result['results'])} results found", len(result['results']))
+    
+    return jsonify(result)
 
 
 # Public webcam data - organized by country and city
