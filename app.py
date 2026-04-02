@@ -70,6 +70,35 @@ TWOCHAT_WHATSAPP_NUMBER = os.environ.get('TWOCHAT_WHATSAPP_NUMBER', '')
 # Free for non-commercial use, required for OpenKVK company lookup
 OVERHEID_API_KEY = os.environ.get('OVERHEID_API_KEY', '')
 
+# =============================================================================
+# Case Management System (CMS) Integration
+# =============================================================================
+
+# Generate encryption key if not set
+if not os.environ.get('CMS_ENCRYPTION_KEY'):
+    from cryptography.fernet import Fernet
+    new_key = Fernet.generate_key().decode()
+    os.environ['CMS_ENCRYPTION_KEY'] = new_key
+    logger.info("Generated new CMS encryption key (set CMS_ENCRYPTION_KEY env var for persistence)")
+
+# Set secret key for sessions (required for CMS)
+if not app.config.get('SECRET_KEY'):
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+# Use SQLite for CMS (can migrate to PostgreSQL later)
+CMS_DB_PATH = os.path.join(os.path.dirname(__file__), 'cms.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{CMS_DB_PATH}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize CMS using create_cms_module
+from cms import create_cms_module
+create_cms_module(app)
+logger.info("CMS initialized successfully")
+
+# =============================================================================
+# End CMS Integration
+# =============================================================================
+
 CACHE_TTL_HOURS = 24
 result_cache = {}
 
