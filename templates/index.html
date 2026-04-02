@@ -241,12 +241,6 @@
             searchBtn.textContent = 'Searching...';
             updateSystemStatus(true);
             
-            // Hide progress bar for people search
-            if (currentTool === 'person') {
-                document.querySelector('.progress-bar').style.display = 'none';
-                document.querySelector('.progress-text').style.display = 'none';
-            }
-            
             // Route to appropriate search
             if (currentTool === 'social') {
                 searchSocial(query);
