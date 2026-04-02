@@ -3542,6 +3542,31 @@ def person_dorks_search():
     return jsonify(results)
 
 
+def check_duckduckgo_blocked():
+    """Check if DuckDuckGo is blocking our requests."""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+        }
+        response = httpx.get(
+            'https://html.duckduckgo.com/html/',
+            params={'q': 'test'},
+            headers=headers,
+            timeout=httpx.Timeout(10.0),
+            follow_redirects=True
+        )
+        content = response.text.lower()
+        blocked_keywords = ['error-lite', 'anomaly', 'botnet', 'captcha', 'bot detection', 'sorry index']
+        for keyword in blocked_keywords:
+            if keyword in content:
+                return True
+        return False
+    except Exception:
+        return True
+
+
 @app.route('/api/person/stream', methods=['POST'])
 def person_search_stream():
     from flask import Response, stream_with_context
@@ -3561,6 +3586,13 @@ def person_search_stream():
     parts = full_name.strip().split()
     if len(parts) < 2:
         return jsonify({'error': 'Please enter first and last name'}), 400
+    
+    if check_duckduckgo_blocked():
+        return jsonify({
+            'error': 'DuckDuckGo search is blocked',
+            'hint': 'Your IP may be blocked or rate-limited. Try using a VPN or wait and try again.',
+            'blocked': True
+        }), 403
     
     first_name = parts[0]
     last_name = ' '.join(parts[1:])

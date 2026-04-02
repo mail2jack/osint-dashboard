@@ -450,6 +450,15 @@
                     body: JSON.stringify(body)
                 });
                 
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    showError(errorData.error + (errorData.hint ? '\n\n' + errorData.hint : ''));
+                    searchBtn.disabled = false;
+                    searchBtn.textContent = 'Search';
+                    updateSystemStatus(false);
+                    return;
+                }
+                
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let finished = false;
