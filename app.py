@@ -3548,6 +3548,7 @@ def person_search_stream():
     import threading
     import queue
     import os
+    import time
     from datetime import datetime
     import httpx
     import re
@@ -3565,14 +3566,12 @@ def person_search_stream():
     last_name = ' '.join(parts[1:])
     
     result_queue = queue.Queue()
+    progress_queue = queue.Queue()
+    REQUEST_DELAY = 0.5  # Delay between requests to avoid rate limiting
+    REQUEST_TIMEOUT = 8.0  # Timeout per request
     
     def run_search_thread():
-        from urllib.parse import quote
-        
-        dork_log_file = os.path.join(os.path.dirname(__file__), 'dorks_log.txt')
-        
-        with open(dork_log_file, 'a') as f:
-            f.write(f"\n=== {datetime.now().isoformat()} - People search: {full_name} ===\n")
+        from urllib.parse import quote, unquote
         
         result = {
             'name': full_name,
@@ -3583,7 +3582,6 @@ def person_search_stream():
             'total_results': 0
         }
         
-        # Generate search links
         search_query = quote(f'"{first_name}" "{last_name}"')
         result['search_links'] = [
             {'engine': 'Google', 'name': 'Search on Google', 'url': f'https://www.google.com/search?q={search_query}'},
@@ -3600,15 +3598,11 @@ def person_search_stream():
             {'engine': 'Truecaller', 'name': 'Search on Truecaller', 'url': f'https://www.truecaller.com/search/{quote(first_name + " " + last_name)}'},
         ]
         
-        # Now do DuckDuckGo dorks search - focus on finding usernames
-        # Key queries to find social media handles/usernames
         dork_queries = [
-            # Username pattern searches (most important for finding handles)
             f'"{first_name}{last_name}" OR "{first_name}_{last_name}" OR "{first_name}{last_name[0]}"',
             f'"{first_name}.{last_name}" OR "{first_name}{last_name}"',
             f'"{full_name}" username OR handle OR "at"',
             f'"{full_name}" profile',
-            # Major social media platforms
             f'"{full_name}" site:linkedin.com',
             f'"{full_name}" site:facebook.com',
             f'"{full_name}" site:twitter.com OR site:x.com',
@@ -3616,48 +3610,52 @@ def person_search_stream():
             f'"{full_name}" site:tiktok.com',
             f'"{full_name}" site:youtube.com',
             f'"{full_name}" site:github.com',
-            # Additional platforms
             f'"{full_name}" site:reddit.com',
             f'"{full_name}" site:pinterest.com',
             f'"{full_name}" site:snapchat.com',
             f'"{full_name}" site:discord.com',
             f'"{full_name}" site:telegram.org',
-            # Dating/social apps
             f'"{full_name}" site:tinder.com',
             f'"{full_name}" site:bumble.com',
-            # Professional platforms
             f'"{full_name}" site:myspace.com',
             f'"{full_name}" site:flickr.com',
             f'"{full_name}" site:vimeo.com',
-            # File and email searches
             f'"{full_name}" filetype:pdf',
             f'"{full_name}" filetype:doc OR filetype:docx',
             f'"{full_name}" email',
-            # News/public records
             f'"{full_name}" site:news site:instagram',
-            # Reverse image search patterns
             f'"{first_name} {last_name}" profile picture',
         ]
         
+        total_queries = len(dork_queries)
+        
+        def send_progress(completed, found):
+            try:
+                progress_queue.put_nowait({
+                    'completed': completed,
+                    'total': total_queries,
+                    'percent': int((completed / total_queries) * 100),
+                    'found': found
+                })
+            except:
+                pass
+        
         try:
             headers = get_random_headers()
-            client = httpx.Client(timeout=30.0, follow_redirects=True, headers=headers)
+            client = httpx.Client(timeout=httpx.Timeout(REQUEST_TIMEOUT), follow_redirects=True, headers=headers)
             search_url = "https://html.duckduckgo.com/html/"
             
             seen = set()
             exclude_domains = ['duckduckgo.com', 'bing.com', 'google.com', 'microsoft.com', 'yahoo.com']
             
-            for query in dork_queries:
+            for idx, query in enumerate(dork_queries):
                 try:
+                    send_progress(idx, len(result['dorks_results']))
                     params = {'q': query}
-                    response = client.get(search_url, params=params)
+                    response = client.get(search_url, params=params, timeout=REQUEST_TIMEOUT)
                     
                     if response.status_code == 200:
-                        # Extract actual URLs from DuckDuckGo redirect format
                         redirect_links = re.findall(r'uddg=(https?%3A%2F%2F[^&"]+)', response.text)
-                        
-                        # URL decode the links
-                        from urllib.parse import unquote
                         links = [unquote(unquote(l)) for l in redirect_links]
                         
                         for link in links[:10]:
@@ -3681,16 +3679,24 @@ def person_search_stream():
                                     })
                             except:
                                 continue
+                    
+                    time.sleep(REQUEST_DELAY)
+                    
+                except httpx.TimeoutException:
+                    time.sleep(REQUEST_DELAY)
+                    continue
+                except httpx.HTTPStatusError as e:
+                    time.sleep(REQUEST_DELAY * 2)
+                    continue
                 except Exception as e:
-                    with open(dork_log_file, 'a') as f:
-                        f.write(f"  Query error: {query[:30]} - {str(e)[:50]}\n")
+                    time.sleep(REQUEST_DELAY)
                     continue
             
             client.close()
         except Exception as e:
-            with open(dork_log_file, 'a') as f:
-                f.write(f"Dorks search error: {str(e)}\n")
+            logger.debug(f"Person search error: {e}")
         
+        send_progress(total_queries, len(result['dorks_results']))
         result['total_results'] = len(result['search_links']) + len(result['dorks_results'])
         
         search_history.add_entry('person', full_name, f'{result["total_results"]} results', result['total_results'])
@@ -3700,7 +3706,8 @@ def person_search_stream():
     thread.start()
     
     def generate():
-        import time
+        last_progress = {'completed': 0, 'total': 25, 'percent': 0, 'found': 0}
+        
         while True:
             try:
                 status, data = result_queue.get_nowait()
@@ -3710,8 +3717,13 @@ def person_search_stream():
                     yield f"data: {json.dumps({'error': data})}\n\n"
                 break
             except queue.Empty:
-                time.sleep(0.2)
-                yield f"data: {json.dumps({'progress': {'completed': 1, 'total': 1, 'percent': 100}})}\n\n"
+                try:
+                    progress = progress_queue.get_nowait()
+                    last_progress = progress
+                    yield f"data: {json.dumps({'progress': progress})}\n\n"
+                except queue.Empty:
+                    yield f"data: {json.dumps({'progress': last_progress})}\n\n"
+            time.sleep(0.3)
     
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
