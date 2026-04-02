@@ -4174,9 +4174,13 @@ def social_search_stream():
     
     # Filter platforms by selected tags
     platforms = {}
-    for tag in tags:
-        tag_platforms = get_platforms_by_category(tag)
-        platforms.update(tag_platforms)
+    if tags:
+        for tag in tags:
+            tag_platforms = get_platforms_by_category(tag)
+            platforms.update(tag_platforms)
+    else:
+        # Default to all social platforms when no tags selected
+        platforms = SOCIAL_MEDIA_PLATFORMS
     
     result_queue = queue.Queue()
     progress_state = {'checked': 0, 'found': 0, 'current_site': '', 'total': 0}
