@@ -162,7 +162,7 @@
                 systemStatus.querySelector('.status-text').textContent = 'Idle';
             }
         }
-
+        
         // Placeholders
         const placeholders = {
             social: 'Enter username or email...',
@@ -179,7 +179,26 @@
             domain: 'Enter domain name...',
             openkvk: 'Company name, KVK number, or postcode...'
         };
-
+        
+        // Handle URL parameters for pre-filling search (after DOM is ready)
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const prefillQuery = urlParams.get('q');
+            const prefillTool = urlParams.get('tool');
+            
+            if (prefillQuery && searchInput) {
+                searchInput.value = prefillQuery;
+            }
+            if (prefillTool && ['social', 'person', 'email', 'phone', 'domain', 'maigret', 'sherlock'].includes(prefillTool)) {
+                switchTool(prefillTool);
+            }
+            
+            // Auto-search if query is pre-filled
+            if (prefillQuery && prefillTool === 'person') {
+                setTimeout(() => performSearch(), 500);
+            }
+        });
+        
         // Tool selection
         const optionsBar = document.getElementById('optionsBar');
         
@@ -306,7 +325,15 @@
         }
 
         async function searchPerson(query) {
-            startStreaming('/api/person/stream', { name: query });
+            const urlParams = new URLSearchParams(window.location.search);
+            const caseId = urlParams.get('case_id');
+            const subjectId = urlParams.get('subject_id');
+            
+            const body = { name: query };
+            if (caseId) body.case_id = caseId;
+            if (subjectId) body.subject_id = subjectId;
+            
+            startStreaming('/api/person/stream', body);
         }
 
         async function searchMaigret(query) {
@@ -536,6 +563,46 @@
             }
         }
         
+        // Add found dorks to CMS case findings
+        async function addDorksToFindings(caseId, subjectId, dorks, name) {
+            if (!caseId || dorks.length === 0) return;
+            
+            let added = 0;
+            let errors = 0;
+            
+            for (const dork of dorks) {
+                try {
+                    const response = await fetch('/api/cms/add-finding', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            case_id: caseId,
+                            subject_id: subjectId || null,
+                            title: `OSINT: ${dork.domain} - ${name}`,
+                            content: `Found ${dork.category} profile for ${name}.\n\nSource: DuckDuckGo Search\nQuery: ${dork.query || 'N/A'}`,
+                            source_url: dork.url,
+                            source_type: 'osint',
+                            finding_type: dork.category === 'social_media' ? 'social' : 'identity',
+                            reliability_score: dork.category === 'social_media' ? 8 : 6
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        added++;
+                    } else {
+                        errors++;
+                    }
+                } catch (e) {
+                    errors++;
+                }
+            }
+            
+            alert(`Added ${added} findings to case${errors > 0 ? ` (${errors} errors)` : ''}`);
+            
+            // Open the case in CMS
+            window.open(`/cms/cases/${caseId}`, '_blank');
+        }
+        
         // Utility functions
         function copyToClipboard(text, btn) {
             navigator.clipboard.writeText(text).then(() => {
@@ -746,6 +813,19 @@
                     <div class="stat"><div class="stat-value">${searchLinks.length}</div><div class="stat-label">Search Links</div></div>
                     <div class="stat"><div class="stat-value">${elapsedStr}</div><div class="stat-label">Time</div></div>
                 </div>
+                ${data.case_id && dorksResults.length ? `
+                    <div class="card" style="background: #dcfce7; border: 2px solid #16a34a;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: #16a34a;">✓ Found ${dorksResults.length} results</strong>
+                                <p style="margin: 0.5rem 0 0 0; color: #666;">Ready to add to case findings?</p>
+                            </div>
+                            <button onclick="addDorksToFindings('${data.case_id}', '${data.subject_id || ''}', ${JSON.stringify(dorksResults).replace(/"/g, '&quot;')}, '${data.name}')" class="btn" style="background: #16a34a; padding: 0.5rem 1rem;">
+                                Add to Case Findings
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
                 ${dorksResults.length ? `
                     <div class="card">
                         <h3>DuckDuckGo Results (${dorksResults.length})</h3>

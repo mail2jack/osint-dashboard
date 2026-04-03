@@ -3626,6 +3626,10 @@ def person_search_stream():
             'blocked': True
         }), 403
     
+    # Get optional case and subject IDs from request
+    case_id = data.get('case_id')
+    subject_id = data.get('subject_id')
+    
     first_name = parts[0]
     last_name = ' '.join(parts[1:])
     
@@ -3643,7 +3647,9 @@ def person_search_stream():
             'last_name': last_name,
             'search_links': [],
             'dorks_results': [],
-            'total_results': 0
+            'total_results': 0,
+            'case_id': case_id,
+            'subject_id': subject_id
         }
         
         search_query = quote(f'"{first_name}" "{last_name}"')
@@ -3790,6 +3796,48 @@ def person_search_stream():
             time.sleep(0.3)
     
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
+
+
+@app.route('/api/cms/add-finding', methods=['POST'])
+def add_cms_finding():
+    """API endpoint to add a finding to the CMS case."""
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    required = ['case_id', 'title', 'content']
+    for field in required:
+        if not data.get(field):
+            return jsonify({'error': f'{field} is required'}), 400
+    
+    try:
+        from cms.models import db, Finding, AuditLog
+        from flask_login import current_user
+        
+        # Create the finding
+        finding = Finding(
+            case_id=data['case_id'],
+            subject_id=data.get('subject_id'),
+            title=data['title'],
+            content=data['content'],
+            source_url=data.get('source_url'),
+            source_type='osint',
+            reliability_score=data.get('reliability_score', 5),
+            finding_type=data.get('finding_type', 'identity'),
+            created_by='system'  # System created
+        )
+        
+        db.session.add(finding)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'finding_id': finding.id,
+            'message': f'Finding added to case'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/person', methods=['POST'])

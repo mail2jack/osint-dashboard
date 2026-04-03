@@ -1,0 +1,28 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<h2 style="margin-bottom: 1.5rem;">Create New Client</h2>
+<form method="POST">
+    <div class="form-group">
+        <label for="name">Client Name *</label>
+        <input type="text" name="name" id="name" required>
+    </div>
+    <div class="form-group">
+        <label for="contact_person">Contact Person</label>
+        <input type="text" name="contact_person" id="contact_person">
+    </div>
+    <div class="form-group">
+        <label for="contact_email">Email</label>
+        <input type="email" name="contact_email" id="contact_email">
+    </div>
+    <div class="form-group">
+        <label for="contact_phone">Phone</label>
+        <input type="text" name="contact_phone" id="contact_phone">
+    </div>
+    <div class="form-group">
+        <label for="contract_number">Contract Number</label>
+        <input type="text" name="contract_number" id="contract_number">
+    </div>
+    <button type="submit" class="btn">Create Client</button>
+    <a href="{{ url_for('cms.clients') }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
+</form>
+{% endblock %}

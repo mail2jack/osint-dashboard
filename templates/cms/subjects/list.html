@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Subjects - CMS</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
+        h1 { color: #1a1a2e; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { font-weight: 600; color: #666; }
+        .btn { padding: 0.5rem 1rem; background: #16213e; color: white; text-decoration: none; border-radius: 4px; }
+        .back { margin-bottom: 1rem; }
+        .back a { color: #0066cc; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="back"><a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a></div>
+    
+    <div class="header">
+        <h1>Subjects</h1>
+        <a href="{{ url_for('cms.create_subject') }}" class="btn">+ New Subject</a>
+    </div>
+    
+    <div class="card">
+        <form method="GET" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
+            <input type="text" name="search" placeholder="Search by name..." value="{{ filters.search or '' }}" 
+                   style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; flex: 1; min-width: 200px;">
+            <select name="type" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">All Types</option>
+                <option value="person" {% if filters.type == 'person' %}selected{% endif %}>Person</option>
+                <option value="company" {% if filters.type == 'company' %}selected{% endif %}>Company</option>
+                <option value="organization" {% if filters.type == 'organization' %}selected{% endif %}>Organization</option>
+                <option value="vehicle" {% if filters.type == 'vehicle' %}selected{% endif %}>Vehicle</option>
+                <option value="vessel" {% if filters.type == 'vessel' %}selected{% endif %}>Vessel</option>
+                <option value="property" {% if filters.type == 'property' %}selected{% endif %}>Property</option>
+            </select>
+            <button type="submit" class="btn">Filter</button>
+            {% if filters.search or filters.type %}
+            <a href="{{ url_for('cms.subjects') }}" class="btn" style="background: #888;">Clear</a>
+            {% endif %}
+        </form>
+        
+        {% if subjects %}
+        <table>
+            <thead><tr><th>Name</th><th>Type</th><th>Risk Score</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for subject in subjects %}
+                <tr>
+                    <td><strong>{{ subject.name }}</strong></td>
+                    <td>{{ subject.subject_type }}</td>
+                    <td>{{ subject.risk_score }}</td>
+                    <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No subjects found.</p>
+        {% endif %}
+        
+        {% if pagination.pages > 1 %}
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('cms.subjects', page=pagination.prev_num, search=filters.search, type=filters.type) }}" class="btn" style="padding: 0.3rem 0.8rem;">Previous</a>
+            {% endif %}
+            <span style="padding: 0.3rem 0.8rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+            {% if pagination.has_next %}
+            <a href="{{ url_for('cms.subjects', page=pagination.next_num, search=filters.search, type=filters.type) }}" class="btn" style="padding: 0.3rem 0.8rem;">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

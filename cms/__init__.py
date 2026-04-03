@@ -37,7 +37,7 @@ def create_cms_module(app: Flask):
     login_manager.init_app(app)
     
     # Configure login
-    login_manager.login_view = 'cms.login'
+    login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access the Case Management System.'
     login_manager.login_message_category = 'info'
     

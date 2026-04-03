@@ -54,9 +54,12 @@ class CaseStatus(PyEnum):
 
 class SubjectType(PyEnum):
     """Types of subjects that can be investigated."""
-    PERSON = "persoon"
-    ENTITY = "entiteit"
-    ASSET = "asset"
+    PERSON = "person"
+    COMPANY = "company"
+    ORGANIZATION = "organization"
+    VEHICLE = "vehicle"
+    VESSEL = "vessel"
+    PROPERTY = "property"
 
 
 class VerificationStatus(PyEnum):
@@ -161,6 +164,10 @@ class User(UserMixin, db.Model):
         """Check if user can access a specific case."""
         if self.is_admin:
             return True
+        # Investigators can view any case
+        if self.role in ['senior_investigator', 'junior_investigator']:
+            return True
+        # Assigned users can access their cases
         if case.assigned_to == self.id or self in case.investigators:
             return True
         return False
@@ -298,6 +305,7 @@ class Case(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     target_end_date = db.Column(db.Date)
     actual_end_date = db.Column(db.Date)
+    closure_reason = db.Column(db.Text)  # Reason for closing
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
     assigned_to = db.Column(db.String(36), db.ForeignKey('users.id'))
     
@@ -305,6 +313,11 @@ class Case(db.Model):
     case_type = db.Column(db.String(100))  # e.g., "fraud", "due_diligence", "asset_tracing"
     jurisdiction = db.Column(db.String(100))
     tags = db.Column(db.JSON)  # Flexible tagging
+    
+    # Reopening
+    reopened_reason = db.Column(db.Text)  # Reason for reopening
+    reopened_at = db.Column(db.DateTime)
+    reopened_by = db.Column(db.String(36), db.ForeignKey('users.id'))
     
     # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
@@ -349,14 +362,16 @@ class Case(db.Model):
             CaseStatus.OPEN.value: [CaseStatus.ACTIVE.value, CaseStatus.CLOSED.value],
             CaseStatus.ACTIVE.value: [CaseStatus.SUSPENDED.value, CaseStatus.CLOSED.value],
             CaseStatus.SUSPENDED.value: [CaseStatus.ACTIVE.value, CaseStatus.CLOSED.value],
-            CaseStatus.CLOSED.value: [CaseStatus.ARCHIVED.value],
-            CaseStatus.ARCHIVED.value: []
+            CaseStatus.CLOSED.value: [CaseStatus.ARCHIVED.value, CaseStatus.ACTIVE.value],
+            CaseStatus.ARCHIVED.value: [CaseStatus.ACTIVE.value]
         }
         
         if new_status in valid_transitions.get(self.status, []):
             self.status = new_status
             if new_status == CaseStatus.CLOSED.value:
                 self.actual_end_date = datetime.utcnow().date()
+            elif new_status == CaseStatus.ACTIVE.value and self.actual_end_date:
+                self.actual_end_date = None  # Clear end date when reopening
             return True
         return False
     
@@ -378,6 +393,9 @@ class Case(db.Model):
             'start_date': self.start_date.isoformat() if self.start_date else None,
             'target_end_date': self.target_end_date.isoformat() if self.target_end_date else None,
             'actual_end_date': self.actual_end_date.isoformat() if self.actual_end_date else None,
+            'closure_reason': self.closure_reason,
+            'reopened_reason': self.reopened_reason,
+            'reopened_at': self.reopened_at.isoformat() if self.reopened_at else None,
             'case_type': self.case_type,
             'jurisdiction': self.jurisdiction,
             'tags': self.tags,
@@ -727,6 +745,13 @@ class AuditLog(db.Model):
     
     # No soft delete - audit logs are immutable and permanent
     # No updated_at - logs should not be modified
+    
+    @property
+    def user_name(self) -> str:
+        """Get the full name of the user who performed this action."""
+        if self.user:
+            return self.user.full_name
+        return 'System'
     
     @staticmethod
     def log(

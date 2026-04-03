@@ -1,0 +1,50 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<h2 style="margin-bottom: 1.5rem;">Create New Subject</h2>
+<form method="POST">
+    {% if case_id %}
+    <input type="hidden" name="case_id" value="{{ case_id }}">
+    <div style="margin-bottom: 1rem; padding: 0.5rem; background: #dbeafe; border-radius: 4px;">
+        Subject will be automatically linked to this case.
+    </div>
+    {% endif %}
+    <div class="form-group">
+        <label for="name">Name *</label>
+        <input type="text" name="name" id="name" required>
+    </div>
+    <div class="form-group">
+        <label for="subject_type">Type *</label>
+        <select name="subject_type" id="subject_type" required>
+            <option value="">Select type</option>
+            <option value="person">Person</option>
+            <option value="company">Company</option>
+            <option value="organization">Organization</option>
+            <option value="vehicle">Vehicle</option>
+            <option value="vessel">Vessel</option>
+            <option value="property">Property</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" name="email" id="email">
+    </div>
+    <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="text" name="phone" id="phone">
+    </div>
+    <div class="form-group">
+        <label for="risk_score">Risk Score (0-100)</label>
+        <input type="number" name="risk_score" id="risk_score" value="0" min="0" max="100">
+    </div>
+    <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea name="notes" id="notes" rows="3" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;"></textarea>
+    </div>
+    <button type="submit" class="btn">Create Subject</button>
+    {% if case_id %}
+    <a href="{{ url_for('cms.view_case', case_id=case_id) }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
+    {% else %}
+    <a href="{{ url_for('cms.subjects') }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
+    {% endif %}
+</form>
+{% endblock %}

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ case.case_number }} - CMS</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        h1 { color: #1a1a2e; }
+        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .info-item label { display: block; color: #666; font-size: 0.875rem; margin-bottom: 0.25rem; }
+        .info-item span { font-weight: 500; }
+        .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+        .badge-open { background: #fef3c7; color: #92400e; }
+        .badge-active { background: #dbeafe; color: #1e40af; }
+        .badge-closed { background: #d1fae5; color: #065f46; }
+        .badge-suspended { background: #fef3c7; color: #92400e; }
+        .badge-archived { background: #e5e7eb; color: #374151; }
+        .badge-critical { background: #fee2e2; color: #dc2626; }
+        .badge-high { background: #fed7aa; color: #c2410c; }
+        .badge-medium { background: #fef3c7; color: #92400e; }
+        .badge-low { background: #d1fae5; color: #065f46; }
+        .back { margin-bottom: 1rem; }
+        .back a { color: #0066cc; text-decoration: none; }
+        h2 { margin-top: 1.5rem; color: #1a1a2e; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+        tbody tr:nth-child(odd) { background: #f9f9f9; }
+        tbody tr:nth-child(even) { background: #ffffff; }
+        tbody tr:hover { background: #e8f4ff; }
+        .btn {
+            padding: 0.75rem 1.5rem; background: #16213e;
+            color: white; border: none; border-radius: 8px;
+            font-size: 1rem; cursor: pointer; font-weight: 500; text-decoration: none;
+            display: inline-block;
+        }
+        .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
+        .btn-danger { background: #dc2626; }
+        .btn-success { background: #059669; }
+        
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal.show { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 12px; padding: 2rem; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .modal-header h2 { margin: 0; }
+        .close { font-size: 1.5rem; cursor: pointer; color: #666; }
+        .close:hover { color: #000; }
+        
+        /* Blinking animation */
+        @keyframes blink { 
+            0%, 100% { opacity: 1; } 
+            50% { opacity: 0.3; } 
+        }
+        .searching { animation: blink 1.5s infinite; }
+        
+        /* Results list */
+        .result-item { padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; }
+        .result-item input[type="checkbox"] { margin-top: 0.25rem; }
+        .result-content { flex: 1; }
+        .result-engine { font-weight: 600; color: #1a1a2e; }
+        .result-name { color: #16213e; margin-bottom: 0.25rem; }
+        .result-query { font-size: 0.875rem; color: #666; margin-bottom: 0.25rem; }
+        .result-url { font-size: 0.75rem; color: #0066cc; word-break: break-all; }
+        .result-url a { color: #0066cc; text-decoration: none; }
+        .result-url a:hover { text-decoration: underline; }
+        
+        /* Select all checkbox */
+        .select-all-row { padding: 0.5rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb; }
+    </style>
+</head>
+<body>
+    <div class="back"><a href="{{ url_for('cms.cases') }}">← Back to Cases</a></div>
+    
+    <div class="header">
+        <h1>{{ case.case_number }}: {{ case.title }}</h1>
+    </div>
+    
+    <div class="card">
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Client</label>
+                <span>{{ case.client.name if case.client else '-' }}</span>
+            </div>
+            <div class="info-item">
+                <label>Priority</label>
+                <span class="badge badge-{{ case.priority }}">{{ case.priority }}</span>
+            </div>
+            <div class="info-item">
+                <label>Status</label>
+                <span class="badge badge-{{ case.status }}">{{ case.status }}</span>
+            </div>
+            <div class="info-item">
+                <label>Start Date</label>
+                <span>{{ case.start_date.strftime('%Y-%m-%d') if case.start_date else '-' }}</span>
+            </div>
+        </div>
+        
+        {% if case.description %}
+        <div class="info-item">
+            <label>Description</label>
+            <p>{{ case.description }}</p>
+        </div>
+        {% endif %}
+        
+        {% if case.closure_reason %}
+        <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border-radius: 4px;">
+            <strong>Closure Reason:</strong> {{ case.closure_reason }}
+        </div>
+        {% endif %}
+        
+        {% if case.reopened_reason %}
+        <div style="margin-top: 0.5rem; padding: 0.75rem; background: #dcfce7; border-radius: 4px;">
+            <strong>Reopened Reason:</strong> {{ case.reopened_reason }}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <h2>Subjects ({{ subjects|length }})</h2>
+        
+        {% if case.status not in ['closed', 'archived'] %}
+        <div style="margin-bottom: 1rem;">
+            <button onclick="showAddSubjectForm()" class="btn btn-sm">+ Add Subject</button>
+            <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Create New Subject</a>
+            <button onclick="openOsintModal()" class="btn btn-sm" style="background: #7c3aed;">OSINT Search</button>
+        </div>
+        
+        <div id="addSubjectForm" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+            <form action="{{ url_for('cms.add_subject_to_case', case_id=case.id) }}" method="POST">
+                <div class="form-group">
+                    <label for="subject_id">Select Existing Subject</label>
+                    <select name="subject_id" id="subject_id" required style="padding: 0.5rem; width: 100%;">
+                        <option value="">Choose a subject...</option>
+                        {% for s in all_subjects %}
+                        <option value="{{ s.id }}">{{ s.name }} ({{ s.subject_type }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-sm">Add to Case</button>
+                <button type="button" onclick="hideAddSubjectForm()" class="btn btn-sm" style="background: #666;">Cancel</button>
+            </form>
+        </div>
+        {% else %}
+        <div style="margin-bottom: 1rem; padding: 0.75rem; background: #fee2e2; border-radius: 4px; color: #991b1b;">
+            <strong>Read-only:</strong> This case is closed/archived. Reopen to make changes.
+        </div>
+        {% endif %}
+        
+        {% if subjects %}
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Type</th><th>Risk Score</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for subject in subjects %}
+                <tr>
+                    <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">{{ subject.name }}</a></td>
+                    <td>{{ subject.subject_type }}</td>
+                    <td>{{ subject.risk_score }}</td>
+                    <td>
+                        {% if case.status not in ['closed', 'archived'] %}
+                        <form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn-text" onclick="return confirm('Remove {{ subject.name }} from this case?')" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0;">Remove</button>
+                        </form>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No subjects linked.</p>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Findings ({{ findings|length }})</h2>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <span style="font-weight: 500;">Status:</span>
+                <span class="badge badge-{{ case.status }}">{{ case.status|upper }}</span>
+                {% if case.status == 'open' %}
+                <button onclick="changeStatus('active')" class="btn btn-sm" style="background: #059669;">Start Investigation</button>
+                {% elif case.status == 'active' %}
+                <button onclick="changeStatus('suspended')" class="btn btn-sm" style="background: #f59e0b;">Suspend</button>
+                <button onclick="changeStatus('closed')" class="btn btn-sm" style="background: #059669;">Close Case</button>
+                {% elif case.status == 'suspended' %}
+                <button onclick="changeStatus('active')" class="btn btn-sm" style="background: #059669;">Resume</button>
+                <button onclick="changeStatus('closed')" class="btn btn-sm" style="background: #059669;">Close Case</button>
+                {% elif case.status == 'closed' %}
+                <button onclick="changeStatus('archived')" class="btn btn-sm" style="background: #6b7280;">Archive</button>
+                {% elif case.status == 'archived' %}
+                <button onclick="changeStatus('archived')" class="btn btn-sm" style="background: #6b7280;" disabled>Archived</button>
+                {% endif %}
+                {% if case.status in ['closed', 'archived'] %}
+                <button onclick="reopenCase()" class="btn btn-sm" style="background: #059669;">Reopen Case</button>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if findings %}
+        <table>
+            <thead>
+                <tr><th>Title</th><th>Subject</th><th>Source</th><th>Added By</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {% for finding in findings %}
+                <tr>
+                    <td>
+                        {% if finding.source_url %}
+                        <a href="{{ finding.source_url }}" target="_blank">{{ finding.title }}</a>
+                        {% else %}
+                        {{ finding.title }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if finding.subject_id %}
+                        <a href="{{ url_for('cms.view_subject', subject_id=finding.subject_id) }}">
+                            {{ finding.subject.name if finding.subject else 'Unknown' }}
+                        </a>
+                        {% else %}
+                        <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge" style="background: #e5e7eb; color: #374151;">{{ finding.source_type or 'manual' }}</span></td>
+                    <td>{{ finding.author.full_name if finding.author else 'Unknown' }}</td>
+                    <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No findings yet.</p>
+        {% endif %}
+    </div>
+    
+    <!-- OSINT Search Modal -->
+    <div id="osintModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>OSINT Person Search</h2>
+                <span class="close" onclick="closeOsintModal()">&times;</span>
+            </div>
+            
+            <div id="osintSearchForm">
+                <div style="margin-bottom: 1rem;">
+                    <label for="osintName"><strong>Person Name (first and last name) *</strong></label>
+                    <input type="text" id="osintName" placeholder="e.g., John Smith" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                </div>
+                
+                {% if subjects %}
+                <div style="margin-bottom: 1rem;">
+                    <label for="osintSubject">Link to Subject (optional)</label>
+                    <select id="osintSubject" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                        <option value="">-- Select a subject --</option>
+                        {% for s in subjects %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div id="osintActions">
+                    <button onclick="startOsintSearch()" class="btn btn-success">Search</button>
+                </div>
+            </div>
+            
+            <div id="osintSearching" style="display: none; text-align: center; padding: 2rem;">
+                <div class="searching">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                    <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
+                    <p id="searchQueryDisplay" style="color: #666;"></p>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <button onclick="cancelOsintSearch()" class="btn btn-danger">Cancel Search</button>
+                </div>
+            </div>
+            
+            <div id="osintResults" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">Search Results</h3>
+                    <span id="resultsCount"></span>
+                </div>
+                
+                <div class="select-all-row">
+                    <label>
+                        <input type="checkbox" id="selectAllResults" onchange="toggleAllResults(this)">
+                        <strong>Select All</strong>
+                    </label>
+                </div>
+                
+                <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
+                
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button onclick="closeOsintModal()" class="btn" style="background: #666;">Close</button>
+                    <button onclick="addSelectedFindings()" class="btn btn-success" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
+                </div>
+            </div>
+            
+            <div id="osintError" style="display: none; padding: 1rem; background: #fee2e2; border-radius: 8px; color: #dc2626;">
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSearchId = null;
+        let currentResults = null;
+        let pollInterval = null;
+        
+        // Base URLs for OSINT search endpoints (search_id appended later)
+        const osintBase = "/cms/osint-search/";
+        
+        function showAddSubjectForm() {
+            document.getElementById('addSubjectForm').style.display = 'block';
+        }
+        function hideAddSubjectForm() {
+            document.getElementById('addSubjectForm').style.display = 'none';
+        }
+        
+        function changeStatus(newStatus) {
+            let body = { status: newStatus };
+            
+            if (newStatus === 'closed') {
+                const reason = prompt('Reason for closing (required):');
+                if (!reason) return;
+                body.closure_reason = reason;
+            }
+            
+            if (newStatus === 'active' && ('{{ case.status }}' === 'closed' || '{{ case.status }}' === 'archived')) {
+                const reason = prompt('Reason for reopening (required):');
+                if (!reason) return;
+                body.reopened_reason = reason;
+            }
+            
+            fetch("{{ url_for('cms.transition_case', case_id=case.id) }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }).then(() => {
+                location.reload();
+            });
+        }
+        
+        function reopenCase() {
+            const reason = prompt('Reason for reopening (required):');
+            if (!reason) return;
+            
+            fetch("{{ url_for('cms.transition_case', case_id=case.id) }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'active', reopened_reason: reason })
+            }).then(() => {
+                location.reload();
+            });
+        }
+        
+        // OSINT Search Functions
+        function openOsintModal() {
+            document.getElementById('osintModal').classList.add('show');
+            document.getElementById('osintName').value = '';
+            resetOsintModal();
+        }
+        
+        function closeOsintModal() {
+            if (currentSearchId) {
+                cancelOsintSearch();
+            }
+            document.getElementById('osintModal').classList.remove('show');
+            resetOsintModal();
+        }
+        
+        function resetOsintModal() {
+            document.getElementById('osintSearchForm').style.display = 'block';
+            document.getElementById('osintSearching').style.display = 'none';
+            document.getElementById('osintResults').style.display = 'none';
+            document.getElementById('osintError').style.display = 'none';
+            currentSearchId = null;
+            currentResults = null;
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+        
+        function startOsintSearch() {
+            const name = document.getElementById('osintName').value.trim();
+            if (!name) {
+                alert('Please enter a name');
+                return;
+            }
+            if (name.split(' ').length < 2) {
+                alert('Please enter a full name (first and last name)');
+                return;
+            }
+            
+            // Show searching state
+            document.getElementById('osintSearchForm').style.display = 'none';
+            document.getElementById('osintSearching').style.display = 'block';
+            document.getElementById('searchQueryDisplay').textContent = 'Searching for: ' + name;
+            document.getElementById('osintError').style.display = 'none';
+            
+            // Start the search
+            fetch("{{ url_for('cms.start_osint_search', case_id=case.id) }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showOsintError(data.error);
+                    return;
+                }
+                currentSearchId = data.search_id;
+                pollSearchStatus();
+            })
+            .catch(err => {
+                showOsintError('Failed to start search: ' + err.message);
+            });
+        }
+        
+        function pollSearchStatus() {
+            pollInterval = setInterval(() => {
+                fetch(osintBase + currentSearchId + '/status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        loadSearchResults();
+                    } else if (data.status === 'cancelled') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        showOsintError('Search was cancelled');
+                    }
+                })
+                .catch(() => {});
+            }, 1000);
+        }
+        
+        function cancelOsintSearch() {
+            if (!currentSearchId) return;
+            
+            fetch(osintBase + currentSearchId + '/cancel', {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(() => {
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+                currentSearchId = null;
+                document.getElementById('osintSearching').style.display = 'none';
+                document.getElementById('osintSearchForm').style.display = 'block';
+            })
+            .catch(() => {
+                currentSearchId = null;
+            });
+        }
+        
+        function loadSearchResults() {
+            fetch(osintBase + currentSearchId + '/results')
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showOsintError(data.error);
+                    return;
+                }
+                currentResults = data.results;
+                displayResults(data.results);
+            })
+            .catch(err => {
+                showOsintError('Failed to load results: ' + err.message);
+            });
+        }
+        
+        function displayResults(results) {
+            document.getElementById('osintSearching').style.display = 'none';
+            document.getElementById('osintResults').style.display = 'block';
+            
+            const links = results.search_links || [];
+            document.getElementById('resultsCount').textContent = links.length + ' results';
+            
+            const resultsList = document.getElementById('resultsList');
+            resultsList.innerHTML = '';
+            
+            links.forEach((link, index) => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.innerHTML = `
+                    <input type="checkbox" class="result-checkbox" data-index="${index}" onchange="updateSelectedCount()">
+                    <div class="result-content">
+                        <div class="result-engine">${link.engine || 'Unknown'}</div>
+                        <div class="result-name">${link.name || 'Search Result'}</div>
+                        <div class="result-query">Query: ${link.query || ''}</div>
+                        <div class="result-url"><a href="${link.url || '#'}" target="_blank">${link.url || 'N/A'}</a></div>
+                    </div>
+                `;
+                resultsList.appendChild(div);
+            });
+            
+            updateSelectedCount();
+        }
+        
+        function toggleAllResults(checkbox) {
+            document.querySelectorAll('.result-checkbox').forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updateSelectedCount();
+        }
+        
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('.result-checkbox:checked').length;
+            document.getElementById('selectedCount').textContent = checked;
+            document.getElementById('addFindingsBtn').disabled = checked === 0;
+        }
+        
+        function addSelectedFindings() {
+            const checkboxes = document.querySelectorAll('.result-checkbox:checked');
+            if (checkboxes.length === 0) return;
+            
+            const selectedResults = [];
+            checkboxes.forEach(cb => {
+                const index = parseInt(cb.dataset.index);
+                selectedResults.push(currentResults.search_links[index]);
+            });
+            
+            const subjectId = document.getElementById('osintSubject')?.value || '';
+            
+            fetch("{{ url_for('cms.add_osint_findings', case_id=case.id) }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    results: selectedResults,
+                    subject_id: subjectId || null
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showOsintError(data.error);
+                    return;
+                }
+                alert(data.message);
+                closeOsintModal();
+                location.reload();
+            })
+            .catch(err => {
+                showOsintError('Failed to add findings: ' + err.message);
+            });
+        }
+        
+        function showOsintError(message) {
+            document.getElementById('osintSearching').style.display = 'none';
+            document.getElementById('osintResults').style.display = 'none';
+            document.getElementById('osintError').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+        
+        // Close modal on outside click
+        document.getElementById('osintModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeOsintModal();
+            }
+        });
+    </script>
+</body>
+</html>

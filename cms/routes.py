@@ -1,6 +1,6 @@
 """
 Case Management System - Routes
-================================
+===============================
 CRUD operations for all CMS entities with RBAC and audit logging.
 
 Design Decisions:
@@ -11,8 +11,10 @@ Design Decisions:
 """
 
 import logging
+import threading
+import uuid
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, Dict, Any
 from flask import (
     Blueprint, request, jsonify, render_template,
     redirect, url_for, flash, current_app
@@ -26,7 +28,7 @@ from .models import (
 )
 from .auth import (
     roles_required, admin_required, senior_required,
-    investigator_required, can_export, case_access_required
+    investigator_required, can_export, case_access_required, case_edit_required
 )
 from .encryption_utils import encryptor
 
@@ -34,6 +36,79 @@ from .encryption_utils import encryptor
 logger = logging.getLogger(__name__)
 
 cms_bp = Blueprint('cms', __name__, url_prefix='/cms')
+
+
+# =============================================================================
+# Background Search Manager
+# =============================================================================
+
+class SearchManager:
+    """Manages background OSINT searches with cancellation support."""
+    
+    def __init__(self):
+        self._searches: Dict[str, Dict[str, Any]] = {}
+        self._lock = threading.Lock()
+    
+    def create_search(self, case_id: str, search_id: str, query: str) -> threading.Event:
+        """Create a new search with cancellation event."""
+        cancel_event = threading.Event()
+        with self._lock:
+            self._searches[search_id] = {
+                'case_id': case_id,
+                'query': query,
+                'cancel_event': cancel_event,
+                'status': 'running',
+                'results': None,
+                'started_at': datetime.utcnow(),
+                'thread': None
+            }
+        return cancel_event
+    
+    def get_search(self, search_id: str) -> Optional[Dict[str, Any]]:
+        """Get search info by ID."""
+        with self._lock:
+            return self._searches.get(search_id)
+    
+    def set_results(self, search_id: str, results: Any):
+        """Set search results."""
+        with self._lock:
+            if search_id in self._searches:
+                self._searches[search_id]['results'] = results
+                self._searches[search_id]['status'] = 'completed'
+                self._searches[search_id]['completed_at'] = datetime.utcnow()
+    
+    def cancel_search(self, search_id: str) -> bool:
+        """Cancel a running search."""
+        with self._lock:
+            if search_id in self._searches:
+                self._searches[search_id]['cancel_event'].set()
+                self._searches[search_id]['status'] = 'cancelled'
+                self._searches[search_id]['cancelled_at'] = datetime.utcnow()
+                return True
+        return False
+    
+    def cleanup(self, search_id: str):
+        """Remove search from tracking."""
+        with self._lock:
+            if search_id in self._searches:
+                del self._searches[search_id]
+    
+    def get_status(self, search_id: str) -> Optional[Dict[str, Any]]:
+        """Get current search status."""
+        with self._lock:
+            search = self._searches.get(search_id)
+            if not search:
+                return None
+            return {
+                'status': search['status'],
+                'results': search.get('results'),
+                'started_at': search['started_at'].isoformat() if search.get('started_at') else None,
+                'completed_at': search.get('completed_at').isoformat() if search.get('completed_at') else None,
+                'cancelled_at': search.get('cancelled_at').isoformat() if search.get('cancelled_at') else None
+            }
+
+
+search_manager = SearchManager()
 
 
 # =============================================================================
@@ -62,20 +137,26 @@ def dashboard():
             Case.is_deleted == False
         ).order_by(Case.updated_at.desc()).limit(10).all()
     else:
-        my_cases = Case.query.join(
-            db.session.execute(
-                db.text("SELECT case_id FROM case_assignments WHERE user_id = :user_id")
-            ).params(user_id=current_user.id).fetchall(),
-            Case.id == db.text('case_id')
-        ).filter(
+        # Get case IDs from assignments table using SQLAlchemy
+        from .models import case_assignments
+        assigned_ids = db.session.query(case_assignments.c.case_id).filter(
+            case_assignments.c.user_id == current_user.id
+        ).all()
+        assigned_ids = [row[0] for row in assigned_ids]
+        
+        my_cases = Case.query.filter(
+            Case.is_deleted == False,
             Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
-            Case.is_deleted == False
+            db.or_(
+                Case.assigned_to == current_user.id,
+                Case.id.in_(assigned_ids) if assigned_ids else Case.id == None
+            )
         ).order_by(Case.updated_at.desc()).limit(10).all()
     
-    # Recent activity
-    recent_activity = AuditLog.query.order_by(
-        AuditLog.timestamp.desc()
-    ).limit(20).all()
+    # Recent activity with user eager loaded
+    recent_activity = AuditLog.query.options(
+        db.joinedload(AuditLog.user)
+    ).order_by(AuditLog.timestamp.desc()).limit(20).all()
     
     # Critical/high priority cases
     priority_cases = Case.query.filter(
@@ -238,7 +319,7 @@ def edit_client(client_id: str):
             action='update',
             entity_type='client',
             entity_id=client_id,
-            changes_made=changes,
+            changes=changes,
             ip_address=request.remote_addr,
             description=f"Updated client: {client.name}"
         )
@@ -293,9 +374,10 @@ def cases():
     status = request.args.get('status', '')
     priority = request.args.get('priority', '')
     search = request.args.get('search', '')
+    client_filter = request.args.get('client', '')
     assigned = request.args.get('assigned', '')
     
-    query = Case.query.filter_by(is_deleted=False)
+    query = Case.query.filter_by(is_deleted=False).join(Client)
     
     # Filter by status
     if status:
@@ -305,26 +387,33 @@ def cases():
     if priority:
         query = query.filter_by(priority=priority)
     
-    # Search in title and case number
+    # Filter by client
+    if client_filter:
+        query = query.filter(Client.id == client_filter)
+    
+    # Search in title, case number, description
     if search:
         query = query.filter(
             db.or_(
                 Case.title.ilike(f'%{search}%'),
-                Case.case_number.ilike(f'%{search}%')
+                Case.case_number.ilike(f'%{search}%'),
+                Case.description.ilike(f'%{search}%'),
+                Client.name.ilike(f'%{search}%')
             )
         )
     
     # Filter by assignment (non-admins see only assigned cases)
     if assigned == 'me' and not current_user.is_admin:
+        from .models import case_assignments
+        assigned_ids = db.session.query(case_assignments.c.case_id).filter(
+            case_assignments.c.user_id == current_user.id
+        ).all()
+        assigned_ids = [row[0] for row in assigned_ids]
+        
         query = query.filter(
             db.or_(
                 Case.assigned_to == current_user.id,
-                Case.id.in_([
-                    a.case_id for a in 
-                    db.session.query(db.text('case_id')).select_from('case_assignments').where(
-                        db.text('user_id = :uid')
-                    ).params(uid=current_user.id).all()
-                ])
+                Case.id.in_(assigned_ids) if assigned_ids else False
             )
         )
     
@@ -339,7 +428,7 @@ def cases():
         cases=pagination.items,
         pagination=pagination,
         clients=clients,
-        filters={'status': status, 'priority': priority, 'search': search, 'assigned': assigned}
+        filters={'status': status, 'priority': priority, 'search': search, 'client': client_filter, 'assigned': assigned}
     )
 
 
@@ -352,6 +441,11 @@ def view_case(case_id: str):
     subjects = case.subjects.all()
     findings = case.findings.filter_by(is_deleted=False).order_by(Finding.created_at.desc()).all()
     financials = case.financial_records.filter_by(is_deleted=False).order_by(FinancialRecord.transaction_date.desc()).all()
+    
+    # Get all available subjects (not already linked to this case)
+    linked_ids = [s.id for s in subjects]
+    all_subjects = Subject.query.filter(Subject.is_deleted == False).all()
+    available_subjects = [s for s in all_subjects if s.id not in linked_ids]
     
     # Log read access
     AuditLog.log(
@@ -368,7 +462,8 @@ def view_case(case_id: str):
         case=case,
         subjects=subjects,
         findings=findings,
-        financials=financials
+        financials=financials,
+        all_subjects=available_subjects
     )
 
 
@@ -456,6 +551,7 @@ def create_case():
 @cms_bp.route('/cases/<case_id>/edit', methods=['GET', 'POST'])
 @login_required
 @case_access_required
+@case_edit_required
 def edit_case(case_id: str):
     """Edit case details."""
     case = Case.query.get_or_404(case_id)
@@ -489,7 +585,7 @@ def edit_case(case_id: str):
             action='update',
             entity_type='case',
             entity_id=case_id,
-            changes_made=changes,
+            changes=changes,
             ip_address=request.remote_addr,
             case_id=case_id,
             description=f"Updated case: {case.case_number}"
@@ -518,6 +614,7 @@ def edit_case(case_id: str):
 @cms_bp.route('/cases/<case_id>/transition', methods=['POST'])
 @login_required
 @case_access_required
+@case_edit_required
 def transition_case(case_id: str):
     """Transition case to a new status."""
     case = Case.query.get_or_404(case_id)
@@ -529,6 +626,23 @@ def transition_case(case_id: str):
     
     old_status = case.status
     
+    # Handle closing with reason
+    if new_status == CaseStatus.CLOSED.value:
+        reason = data.get('closure_reason')
+        if not reason:
+            return jsonify({'error': 'Closure reason is required'}), 400
+        case.closure_reason = reason
+    
+    # Handle reopening from closed/archived
+    if old_status in [CaseStatus.CLOSED.value, CaseStatus.ARCHIVED.value] and new_status == CaseStatus.ACTIVE.value:
+        reason = data.get('reopened_reason')
+        if not reason:
+            return jsonify({'error': 'Reopening reason is required'}), 400
+        case.reopened_reason = reason
+        case.reopened_at = datetime.utcnow()
+        case.reopened_by = current_user.id
+        case.closure_reason = None  # Clear previous closure reason
+    
     if not case.transition_status(new_status, current_user.id):
         return jsonify({
             'error': f'Cannot transition from {old_status} to {new_status}'
@@ -539,7 +653,7 @@ def transition_case(case_id: str):
         action='status_change',
         entity_type='case',
         entity_id=case_id,
-        changes_made={'status': {'old': old_status, 'new': new_status}},
+        changes={'status': {'old': old_status, 'new': new_status}},
         ip_address=request.remote_addr,
         case_id=case_id,
         description=f"Case {case.case_number} status changed from {old_status} to {new_status}"
@@ -620,6 +734,12 @@ def view_subject(subject_id: str):
     financials = subject.financial_records.filter_by(is_deleted=False).all()
     findings = subject.findings.filter_by(is_deleted=False).order_by(Finding.created_at.desc()).all()
     
+    # Get linked cases
+    linked_cases = []
+    for case in Case.query.all():
+        if subject in case.subjects.all():
+            linked_cases.append({'id': case.id, 'case_number': case.case_number, 'title': case.title})
+    
     AuditLog.log(
         user_id=current_user.id,
         action='read',
@@ -633,7 +753,8 @@ def view_subject(subject_id: str):
     return render_template('cms/subjects/view.html',
         subject=subject,
         financials=financials,
-        findings=findings
+        findings=findings,
+        linked_cases=linked_cases
     )
 
 
@@ -694,9 +815,16 @@ def create_subject():
             return jsonify({'message': 'Subject created', 'subject': subject.to_dict()}), 201
         
         flash(f'Subject {subject.name} created successfully.', 'success')
+        
+        # If created from case view, redirect back to case
+        if data.get('case_id'):
+            return redirect(url_for('cms.view_case', case_id=data['case_id']))
+        
         return redirect(url_for('cms.view_subject', subject_id=subject.id))
     
-    return render_template('cms/subjects/create.html')
+    # Pass case_id from query param if coming from case view
+    case_id = request.args.get('case_id')
+    return render_template('cms/subjects/create.html', case_id=case_id)
 
 
 @cms_bp.route('/subjects/<subject_id>/edit', methods=['GET', 'POST'])
@@ -742,7 +870,7 @@ def edit_subject(subject_id: str):
             action='update',
             entity_type='subject',
             entity_id=subject_id,
-            changes_made=changes,
+            changes=changes,
             ip_address=request.remote_addr,
             description=f"Updated subject: {subject.name}"
         )
@@ -756,6 +884,78 @@ def edit_subject(subject_id: str):
     
     subject.decrypt_identifiers()
     return render_template('cms/subjects/edit.html', subject=subject)
+
+
+# =============================================================================
+# Subject-Case Linking Routes
+# =============================================================================
+
+@cms_bp.route('/cases/<case_id>/add-subject', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator', 'junior_investigator')
+@case_edit_required
+def add_subject_to_case(case_id: str):
+    """Add an existing subject to a case."""
+    case = Case.query.get_or_404(case_id)
+    data = request.get_json() if request.is_json else request.form
+    
+    subject_id = data.get('subject_id')
+    if not subject_id:
+        return jsonify({'error': 'subject_id is required'}), 400
+    
+    subject = Subject.query.get_or_404(subject_id)
+    
+    if subject in case.subjects.all():
+        return jsonify({'error': 'Subject already linked to this case'}), 400
+    
+    case.subjects.append(subject)
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='update',
+        entity_type='case',
+        entity_id=case_id,
+        new_values={'added_subject': subject.name},
+        ip_address=request.remote_addr,
+        description=f"Added subject {subject.name} to case {case.case_number}"
+    )
+    db.session.commit()
+    
+    if request.is_json:
+        return jsonify({'message': 'Subject added to case', 'case': case.to_dict()})
+    
+    flash(f'Subject {subject.name} added to case.', 'success')
+    return redirect(url_for('cms.view_case', case_id=case_id))
+
+
+@cms_bp.route('/cases/<case_id>/remove-subject/<subject_id>', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+@case_edit_required
+def remove_subject_from_case(case_id: str, subject_id: str):
+    """Remove a subject from a case."""
+    case = Case.query.get_or_404(case_id)
+    subject = Subject.query.get_or_404(subject_id)
+    
+    if subject not in case.subjects.all():
+        return jsonify({'error': 'Subject not linked to this case'}), 400
+    
+    case.subjects.remove(subject)
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='update',
+        entity_type='case',
+        entity_id=case_id,
+        description=f"Removed subject {subject.name} from case {case.case_number}"
+    )
+    db.session.commit()
+    
+    if request.is_json:
+        return jsonify({'message': 'Subject removed from case'})
+    
+    flash(f'Subject {subject.name} removed from case.', 'info')
+    return redirect(url_for('cms.view_case', case_id=case_id))
 
 
 # =============================================================================
@@ -985,3 +1185,229 @@ def audit_log():
         pagination=pagination,
         filters={'entity_type': entity_type, 'action': action, 'user_id': user_id, 'case_id': case_id}
     )
+
+
+# =============================================================================
+# OSINT Background Search Routes
+# =============================================================================
+
+def run_osint_search(search_id: str, case_id: str, query: str, name: str):
+    """Run OSINT search in background thread."""
+    from app import search_person
+    
+    search_info = search_manager.get_search(search_id)
+    if not search_info:
+        return
+    
+    cancel_event = search_info['cancel_event']
+    results = None
+    
+    try:
+        logger.info(f"OSINT search {search_id} started for query: {name}")
+        
+        # Run the search
+        results = search_person(name)
+        
+        # Check if cancelled before setting results
+        if cancel_event.is_set():
+            logger.info(f"OSINT search {search_id} was cancelled")
+            search_manager.cleanup(search_id)
+            return
+        
+        # Set results
+        search_manager.set_results(search_id, results)
+        logger.info(f"OSINT search {search_id} completed with {len(results.get('search_links', []))} results")
+        
+        # Cleanup after a delay (give client time to fetch results)
+        def delayed_cleanup():
+            import time
+            time.sleep(300)  # Keep results for 5 minutes
+            search_manager.cleanup(search_id)
+        
+        cleanup_thread = threading.Thread(target=delayed_cleanup, daemon=True)
+        cleanup_thread.start()
+        
+    except Exception as e:
+        logger.error(f"OSINT search {search_id} failed: {str(e)}")
+        search_manager.cleanup(search_id)
+
+
+@cms_bp.route('/cases/<case_id>/osint-search', methods=['POST'])
+@login_required
+@case_access_required
+def start_osint_search(case_id: str):
+    """Start a background OSINT search for a person."""
+    case = Case.query.get_or_404(case_id)
+    data = request.get_json() if request.is_json else request.form
+    
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+    
+    if len(name.split()) < 2:
+        return jsonify({'error': 'Please enter a full name (first and last name)'}), 400
+    
+    # Create search
+    search_id = str(uuid.uuid4())
+    cancel_event = search_manager.create_search(case_id, search_id, name)
+    
+    # Log the search start
+    AuditLog.log(
+        user_id=current_user.id,
+        action='osint_search_start',
+        entity_type='case',
+        entity_id=case_id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Started OSINT search for: {name}"
+    )
+    db.session.commit()
+    
+    # Start background thread
+    thread = threading.Thread(
+        target=run_osint_search,
+        args=(search_id, case_id, name, name),
+        daemon=True
+    )
+    thread.start()
+    
+    # Update search info with thread reference
+    with search_manager._lock:
+        if search_id in search_manager._searches:
+            search_manager._searches[search_id]['thread'] = thread
+    
+    return jsonify({
+        'search_id': search_id,
+        'status': 'started',
+        'message': f'Search started for: {name}'
+    })
+
+
+@cms_bp.route('/osint-search/<search_id>/status')
+@login_required
+def get_search_status(search_id: str):
+    """Get the status of a background search."""
+    status = search_manager.get_status(search_id)
+    
+    if not status:
+        return jsonify({'error': 'Search not found'}), 404
+    
+    return jsonify({
+        'search_id': search_id,
+        **status
+    })
+
+
+@cms_bp.route('/osint-search/<search_id>/cancel', methods=['POST'])
+@login_required
+def cancel_search(search_id: str):
+    """Cancel a running search."""
+    search_info = search_manager.get_search(search_id)
+    
+    if not search_info:
+        return jsonify({'error': 'Search not found'}), 404
+    
+    if search_info['status'] not in ['running']:
+        return jsonify({'error': 'Search is not running'}), 400
+    
+    search_manager.cancel_search(search_id)
+    
+    # Log cancellation
+    AuditLog.log(
+        user_id=current_user.id,
+        action='osint_search_cancel',
+        entity_type='osint_search',
+        entity_id=search_id,
+        ip_address=request.remote_addr,
+        case_id=search_info.get('case_id'),
+        description=f"Cancelled OSINT search for: {search_info.get('query')}"
+    )
+    db.session.commit()
+    
+    # Cleanup
+    search_manager.cleanup(search_id)
+    
+    return jsonify({
+        'search_id': search_id,
+        'status': 'cancelled',
+        'message': 'Search cancelled'
+    })
+
+
+@cms_bp.route('/osint-search/<search_id>/results')
+@login_required
+def get_search_results(search_id: str):
+    """Get results from a completed search."""
+    status = search_manager.get_status(search_id)
+    
+    if not status:
+        return jsonify({'error': 'Search not found'}), 404
+    
+    if status['status'] == 'running':
+        return jsonify({
+            'search_id': search_id,
+            'status': 'running',
+            'results': None
+        })
+    
+    return jsonify({
+        'search_id': search_id,
+        'status': status['status'],
+        'results': status.get('results'),
+        'completed_at': status.get('completed_at')
+    })
+
+
+@cms_bp.route('/cases/<case_id>/osint-search/add-findings', methods=['POST'])
+@login_required
+@case_access_required
+def add_osint_findings(case_id: str):
+    """Add selected OSINT results as findings to a case."""
+    case = Case.query.get_or_404(case_id)
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    selected_results = data.get('results', [])
+    if not selected_results:
+        return jsonify({'error': 'No results selected'}), 400
+    
+    subject_id = data.get('subject_id')
+    created_findings = []
+    
+    for result in selected_results:
+        finding = Finding(
+            case_id=case_id,
+            subject_id=subject_id,
+            title=f"OSINT: {result.get('engine', 'Unknown')} - {result.get('name', 'Search Result')}",
+            content=result.get('query', '') + f"\n\nSource: {result.get('url', 'N/A')}",
+            source_url=result.get('url', ''),
+            source_type='osint',
+            finding_type='identity',
+            reliability_score=5,
+            confidence_level='medium',
+            created_by=current_user.id,
+            tags=['osint', result.get('engine', '').lower()]
+        )
+        
+        db.session.add(finding)
+        created_findings.append(finding)
+    
+    # Log the action
+    AuditLog.log(
+        user_id=current_user.id,
+        action='create',
+        entity_type='finding',
+        entity_id=None,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        new_values={'count': len(created_findings), 'source': 'osint_search'},
+        description=f"Added {len(created_findings)} OSINT findings to case {case.case_number}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': f'{len(created_findings)} findings added',
+        'findings': [f.to_dict() for f in created_findings]
+    }), 201

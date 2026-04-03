@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ subject.name }} - CMS</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
+        h1 { color: #1a1a2e; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        .info-item { margin-bottom: 1rem; }
+        .info-item label { display: block; color: #666; font-size: 0.875rem; }
+        .info-item span { font-weight: 500; }
+        .back { margin-bottom: 1rem; }
+        .back a { color: #0066cc; text-decoration: none; }
+        .btn-osint {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #059669;
+            color: white;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .btn-osint:hover { background: #047857; }
+        .case-list { margin-top: 1rem; }
+        .case-item { padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="back"><a href="{{ url_for('cms.subjects') }}">← Back to Subjects</a></div>
+    
+    <h1>
+        {{ subject.name }}
+        {% if linked_cases %}
+        <div style="width: 100%; margin-top: 0.5rem;">
+            <label style="font-size: 0.875rem; color: #666; margin-right: 0.5rem;">Search & add to case:</label>
+            {% for case in linked_cases %}
+            <a href="/?q={{ subject.name | urlencode }}&tool=person&case_id={{ case.id }}&subject_id={{ subject.id }}" class="btn-osint" target="_blank" style="margin: 0.25rem;">
+                🔍 {{ case.case_number }}
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <a href="/?q={{ subject.name | urlencode }}&tool=person" class="btn-osint" target="_blank">
+            🔍 OSINT Person Search
+        </a>
+        {% endif %}
+    </h1>
+    
+    <div class="card">
+        <div class="info-item"><label>Type</label><span>{{ subject.subject_type }}</span></div>
+        <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
+        <div class="info-item"><label>Email</label><span>{{ subject.email if subject.email else '-' }}</span></div>
+        <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span></div>
+        <div class="info-item"><label>Address</label><span>{{ subject.address if subject.address else '-' }}</span></div>
+        {% if subject.notes %}<div class="info-item"><label>Notes</label><p>{{ subject.notes }}</p></div>{% endif %}
+    </div>
+    
+    {% if linked_cases %}
+    <div class="card">
+        <h3>Linked Cases</h3>
+        {% for case in linked_cases %}
+        <div class="case-item">
+            <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }} - {{ case.title }}</a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</body>
+</html>

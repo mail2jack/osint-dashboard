@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Users - CMS</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        h1 { color: #1a1a2e; }
+        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { font-weight: 600; color: #666; }
+        .btn { padding: 0.5rem 1rem; background: #16213e; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; display: inline-block; }
+        .btn-danger { background: #dc2626; }
+        .back { margin-bottom: 1rem; }
+        .back a { color: #0066cc; text-decoration: none; }
+        .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
+        .badge-admin { background: #fee2e2; color: #dc2626; }
+        .badge-senior { background: #fef3c7; color: #92400e; }
+        .badge-junior { background: #dbeafe; color: #1e40af; }
+        .badge-viewer { background: #d1fae5; color: #065f46; }
+    </style>
+</head>
+<body>
+    <div class="back"><a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a></div>
+    
+    <div class="header">
+        <h1>Users</h1>
+        <a href="{{ url_for('users.create_user') }}" class="btn">+ New User</a>
+    </div>
+    
+    <div class="card">
+        {% if users %}
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user.full_name }}</strong></td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td><span class="badge badge-{{ user.role }}">{{ user.role|replace('_', ' ') }}</span></td>
+                    <td>
+                        <a href="{{ url_for('users.view_user', user_id=user.id) }}">View</a>
+                        {% if current_user.is_admin and user.id != current_user.id %}
+                        | <a href="{{ url_for('users.edit_user', user_id=user.id) }}">Edit</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No users found.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

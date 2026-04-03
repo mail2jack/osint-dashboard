@@ -49,7 +49,7 @@ def unauthorized():
     """Handle unauthorized access."""
     if request.is_json:
         return jsonify({'error': 'Authentication required'}), 401
-    return redirect(url_for('cms.login'))
+    return redirect(url_for('auth.login'))
 
 
 # =============================================================================
@@ -193,6 +193,88 @@ def case_access_required(f: Callable) -> Callable:
                     return jsonify({'error': 'No access to this case'}), 403
                 flash('You do not have access to this case.', 'warning')
                 return redirect(url_for('cms.cases'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def case_edit_required(f: Callable) -> Callable:
+    """
+    Decorator to check if user can edit a case.
+    
+    - Admins can edit everything
+    - Senior investigators can edit active/in-progress cases
+    - Junior investigators can add findings but not modify case details
+    - Finding operations are always allowed (even on closed cases)
+    - Closed/archived cases are always read-only for case modifications
+    
+    Use after @case_access_required decorator.
+    """
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return unauthorized()
+        
+        case_id = kwargs.get('case_id')
+        if not case_id:
+            case_id = request.args.get('case_id')
+        
+        if not case_id and request.is_json:
+            data = request.get_json()
+            case_id = data.get('case_id') if data else None
+        
+        if not case_id:
+            return f(*args, **kwargs)  # No case to check
+        
+        case = Case.query.get(case_id)
+        if not case:
+            return f(*args, **kwargs)  # Let the route handle 404
+        
+        # Admins can edit everything
+        if current_user.is_admin:
+            return f(*args, **kwargs)
+        
+        # Finding operations are always allowed (investigative work)
+        endpoint = request.endpoint or ''
+        if 'finding' in endpoint or '/findings/' in endpoint or 'osint' in endpoint:
+            return f(*args, **kwargs)
+        
+        # Closed/archived cases are always read-only for case modifications
+        if case.status in ['closed', 'archived']:
+            logger.warning(
+                f"Edit denied: User {current_user.username} attempted to edit "
+                f"closed/archived case {case_id}"
+            )
+            AuditLog.log(
+                user_id=current_user.id,
+                action='case_edit_denied',
+                entity_type='case',
+                entity_id=case_id,
+                ip_address=request.remote_addr,
+                description=f"Attempted to edit closed/archived case {case.case_number}"
+            )
+            db.session.commit()
+            
+            if request.is_json:
+                return jsonify({'error': 'This case is closed and cannot be edited'}), 403
+            flash('This case is closed and cannot be edited.', 'warning')
+            return redirect(url_for('cms.view_case', case_id=case_id))
+        
+        # Junior investigators can only add findings (already handled above)
+        if current_user.role == 'junior_investigator':
+            logger.warning(
+                f"Edit denied: Junior investigator {current_user.username} attempted "
+                f"to edit case {case_id}"
+            )
+            
+            if request.is_json:
+                return jsonify({'error': 'Junior investigators cannot edit case details'}), 403
+            flash('Junior investigators cannot edit case details.', 'warning')
+            return redirect(url_for('cms.view_case', case_id=case_id))
+        
+        # Senior investigators can edit active cases
+        if current_user.is_senior:
+            return f(*args, **kwargs)
         
         return f(*args, **kwargs)
     return decorated_function

@@ -46,7 +46,101 @@
         .badge-high { background: #fed7aa; color: #c2410c; }
         .badge-medium { background: #fef3c7; color: #92400e; }
         .badge-low { background: #d1fae5; color: #065f46; }
+        .show-more {
+            background: #f0f0f0; border: 1px solid #ddd; padding: 0.5rem 1rem;
+            border-radius: 4px; cursor: pointer; width: 100%; margin-top: 1rem;
+            color: #666; font-size: 0.875rem;
+        }
+        .show-more:hover { background: #e0e0e0; }
+        .hidden-rows { display: none; }
+        .search-bar { margin-bottom: 2rem; }
+        .search-form { display: flex; gap: 0.5rem; }
+        .search-form input { 
+            flex: 1; padding: 0.75rem 1rem; border: 1px solid #ddd; 
+            border-radius: 4px; font-size: 1rem;
+        }
+        .search-form select { 
+            padding: 0.75rem 1rem; border: 1px solid #ddd; 
+            border-radius: 4px; background: white;
+        }
+        .search-form button {
+            padding: 0.75rem 1.5rem; background: #16213e; color: white;
+            border: none; border-radius: 4px; cursor: pointer;
+        }
+        .search-results { margin-top: 1rem; }
+        .search-result-item { 
+            padding: 0.75rem; border-bottom: 1px solid #eee; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .search-result-item:last-child { border-bottom: none; }
+        .result-type { font-size: 0.75rem; color: #666; text-transform: uppercase; }
     </style>
+    <script>
+        function performSearch() {
+            const query = document.getElementById('search-input').value;
+            const type = document.getElementById('search-type').value;
+            if (query.length < 2) return;
+            
+            fetch(`/cms/search?q=${encodeURIComponent(query)}&type=${type}`)
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('search-results');
+                    if (!data.results.cases.length && !data.results.clients.length && !data.results.subjects.length) {
+                        container.innerHTML = '<p style="color: #666;">No results found.</p>';
+                        container.style.display = 'block';
+                        return;
+                    }
+                    
+                    let html = '';
+                    if (data.results.cases.length) {
+                        html += '<div style="margin-bottom: 1rem;"><strong>Cases</strong>';
+                        data.results.cases.forEach(c => {
+                            html += `<div class="search-result-item"><div><div>${c.case_number} - ${c.title}</div><span class="result-type">${c.status}</span></div><a href="/cms/cases/${c.id}">View</a></div>`;
+                        });
+                        html += '</div>';
+                    }
+                    if (data.results.clients.length) {
+                        html += '<div style="margin-bottom: 1rem;"><strong>Clients</strong>';
+                        data.results.clients.forEach(c => {
+                            html += `<div class="search-result-item"><div>${c.name}</div><a href="/cms/clients/${c.id}">View</a></div>`;
+                        });
+                        html += '</div>';
+                    }
+                    if (data.results.subjects.length) {
+                        html += '<div style="margin-bottom: 1rem;"><strong>Subjects</strong>';
+                        data.results.subjects.forEach(s => {
+                            html += `<div class="search-result-item"><div>${s.name}</div><a href="/cms/subjects/${s.id}">View</a></div>`;
+                        });
+                        html += '</div>';
+                    }
+                    container.innerHTML = html;
+                    container.style.display = 'block';
+                });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('search-input');
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    performSearch();
+                }
+            });
+        });
+    </script>
+    <script>
+        function toggleActivity() {
+            const hidden = document.querySelector('.hidden-rows');
+            const btn = document.querySelector('.show-more');
+            if (hidden.style.display === 'table-row-group') {
+                hidden.style.display = 'none';
+                btn.textContent = 'Show more';
+            } else {
+                hidden.style.display = 'table-row-group';
+                btn.textContent = 'Show less';
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="header">
@@ -58,6 +152,20 @@
     </div>
     
     <div class="container">
+        <div class="search-bar card">
+            <form class="search-form" onsubmit="event.preventDefault(); performSearch();">
+                <input type="text" id="search-input" placeholder="Search cases, clients, subjects...">
+                <select id="search-type">
+                    <option value="">All</option>
+                    <option value="case">Cases</option>
+                    <option value="client">Clients</option>
+                    <option value="subject">Subjects</option>
+                </select>
+                <button type="submit">Search</button>
+            </form>
+            <div id="search-results" class="search-results" style="display: none;"></div>
+        </div>
+        
         <div class="stats">
             <div class="stat-card">
                 <h3>Open Cases</h3>
@@ -83,6 +191,9 @@
                 <a href="{{ url_for('cms.cases') }}">View All Cases</a> | 
                 <a href="{{ url_for('cms.clients') }}">View Clients</a> | 
                 <a href="{{ url_for('cms.subjects') }}">View Subjects</a>
+                {% if current_user.is_admin %}
+                | <a href="{{ url_for('users.list_users') }}">Manage Users</a>
+                {% endif %}
             </p>
         </div>
         
@@ -99,7 +210,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for log in recent_activity %}
+                    {% for log in recent_activity[:10] %}
                     <tr>
                         <td>{{ log.user_name }}</td>
                         <td>{{ log.action }}</td>
@@ -108,7 +219,22 @@
                     </tr>
                     {% endfor %}
                 </tbody>
+                {% if recent_activity|length > 10 %}
+                <tbody class="hidden-rows">
+                    {% for log in recent_activity[10:] %}
+                    <tr>
+                        <td>{{ log.user_name }}</td>
+                        <td>{{ log.action }}</td>
+                        <td>{{ log.description or '' }}</td>
+                        <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp else '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% endif %}
             </table>
+            {% if recent_activity|length > 10 %}
+            <button class="show-more" onclick="toggleActivity()">Show more ({{ recent_activity|length - 10 }} more)</button>
+            {% endif %}
             {% else %}
             <p>No recent activity.</p>
             {% endif %}

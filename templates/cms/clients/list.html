@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clients - CMS</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        h1 { color: #1a1a2e; }
+        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { font-weight: 600; color: #666; }
+        .btn { padding: 0.5rem 1rem; background: #16213e; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+        .back { margin-bottom: 1rem; }
+        .back a { color: #0066cc; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="back"><a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a></div>
+    
+    <div class="header">
+        <h1>Clients</h1>
+        <a href="{{ url_for('cms.create_client') }}" class="btn">+ New Client</a>
+    </div>
+    
+    <div class="card">
+        <form method="GET" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
+            <input type="text" name="search" placeholder="Search by name..." value="{{ search or '' }}" 
+                   style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; flex: 1; min-width: 200px;">
+            <button type="submit" class="btn">Filter</button>
+            {% if search %}
+            <a href="{{ url_for('cms.clients') }}" class="btn" style="background: #888;">Clear</a>
+            {% endif %}
+        </form>
+        
+        {% if clients %}
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Contact</th><th>Contract</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td><strong>{{ client.name }}</strong></td>
+                    <td>{{ client.contact_person if client.contact_person else '-' }}</td>
+                    <td>{{ client.contract_number or '-' }}</td>
+                    <td><a href="{{ url_for('cms.view_client', client_id=client.id) }}">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No clients found.</p>
+        {% endif %}
+        
+        {% if pagination.pages > 1 %}
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('cms.clients', page=pagination.prev_num, search=search) }}" class="btn" style="padding: 0.3rem 0.8rem;">Previous</a>
+            {% endif %}
+            <span style="padding: 0.3rem 0.8rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+            {% if pagination.has_next %}
+            <a href="{{ url_for('cms.clients', page=pagination.next_num, search=search) }}" class="btn" style="padding: 0.3rem 0.8rem;">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

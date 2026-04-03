@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cases - CMS</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        h1 { color: #1a1a2e; }
+        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
+        .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
+        .filters input, .filters select { padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
+        .filters input[type="text"] { flex: 1; min-width: 200px; }
+        .filters select { min-width: 120px; }
+        .filters button { padding: 0.5rem 1rem; background: #16213e; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .filters button:hover { background: #1a1a2e; }
+        .filters .btn-clear { background: #666; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { font-weight: 600; color: #666; }
+        tbody tr:nth-child(odd) { background: #f9f9f9; }
+        tbody tr:nth-child(even) { background: #ffffff; }
+        tbody tr:hover { background: #e8f4ff; }
+        .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+        .badge-open { background: #fef3c7; color: #92400e; }
+        .badge-active { background: #dbeafe; color: #1e40af; }
+        .badge-closed { background: #d1fae5; color: #065f46; }
+        .badge-suspended { background: #fef3c7; color: #92400e; }
+        .badge-archived { background: #e5e7eb; color: #374151; }
+        .badge-critical { background: #fee2e2; color: #dc2626; }
+        .badge-high { background: #fed7aa; color: #c2410c; }
+        .badge-medium { background: #fef3c7; color: #92400e; }
+        .badge-low { background: #d1fae5; color: #065f46; }
+        .btn { padding: 0.5rem 1rem; background: #16213e; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+        .btn:hover { background: #1a1a2e; }
+        .back { margin-bottom: 1rem; }
+        .back a { color: #0066cc; text-decoration: none; }
+        .pagination { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+        .pagination a, .pagination span { padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; color: #333; }
+        .pagination a:hover { background: #f5f5f5; }
+        .pagination .active { background: #16213e; color: white; }
+    </style>
+</head>
+<body>
+    <div class="back"><a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a></div>
+    
+    <div class="header">
+        <h1>Cases</h1>
+        <a href="{{ url_for('cms.create_case') }}" class="btn">+ New Case</a>
+    </div>
+    
+    <div class="card">
+        <form method="GET" class="filters">
+            <input type="text" name="search" placeholder="Search cases, clients..." value="{{ filters.search or '' }}">
+            <select name="status">
+                <option value="">All Status</option>
+                <option value="open" {% if filters.status == 'open' %}selected{% endif %}>Open</option>
+                <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
+                <option value="suspended" {% if filters.status == 'suspended' %}selected{% endif %}>Suspended</option>
+                <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
+                <option value="archived" {% if filters.status == 'archived' %}selected{% endif %}>Archived</option>
+            </select>
+            <select name="priority">
+                <option value="">All Priority</option>
+                <option value="critical" {% if filters.priority == 'critical' %}selected{% endif %}>Critical</option>
+                <option value="high" {% if filters.priority == 'high' %}selected{% endif %}>High</option>
+                <option value="medium" {% if filters.priority == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="low" {% if filters.priority == 'low' %}selected{% endif %}>Low</option>
+            </select>
+            <select name="client">
+                <option value="">All Clients</option>
+                {% for client in clients %}
+                <option value="{{ client.id }}" {% if filters.client == client.id %}selected{% endif %}>{{ client.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Filter</button>
+            <a href="{{ url_for('cms.cases') }}" class="btn btn-clear">Clear</a>
+        </form>
+        
+        {% if cases %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Case Number</th>
+                    <th>Title</th>
+                    <th>Client</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for case in cases %}
+                <tr>
+                    <td><strong>{{ case.case_number }}</strong></td>
+                    <td>{{ case.title }}</td>
+                    <td>{{ case.client.name if case.client else '-' }}</td>
+                    <td><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></td>
+                    <td><span class="badge badge-{{ case.status }}">{{ case.status }}</span></td>
+                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if pagination.pages > 1 %}
+        <div class="pagination">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('cms.cases', page=pagination.prev_num, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">&laquo; Prev</a>
+            {% endif %}
+            {% for p in range(1, pagination.pages + 1) %}
+                {% if p == pagination.page %}
+                <span class="active">{{ p }}</span>
+                {% elif p <= 3 or p > pagination.pages - 3 or (p <= pagination.page + 1 and p >= pagination.page - 1) %}
+                <a href="{{ url_for('cms.cases', page=p, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <a href="{{ url_for('cms.cases', page=pagination.next_num, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">Next &raquo;</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <p>No cases found. Try adjusting your filters.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

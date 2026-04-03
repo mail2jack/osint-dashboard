@@ -1,14 +1,56 @@
-{% extends "cms/base.html" %}
-{% block content %}
-<form method="POST">
-    <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" name="username" id="username" required autocomplete="username">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS Login</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 { color: #1a1a2e; margin-bottom: 1.5rem; text-align: center; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; color: #555; font-weight: 500; }
+        input { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; }
+        input:focus { outline: none; border-color: #16213e; }
+        .btn { width: 100%; padding: 0.75rem; background: #16213e; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 500; }
+        .btn:hover { background: #1a1a2e; }
+        .alert { padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; }
+        .alert-danger { background: #fee2e2; color: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Case Management</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-danger">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
     </div>
-    <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" name="password" id="password" required autocomplete="current-password">
-    </div>
-    <button type="submit" class="btn">Login</button>
-</form>
-{% endblock %}
+</body>
+</html>
