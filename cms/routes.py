@@ -24,7 +24,7 @@ from flask_login import login_required, current_user
 from .models import (
     db, Case, Client, Subject, Finding, FinancialRecord,
     AuditLog, Document, User, CaseStatus, CasePriority,
-    SubjectType, VerificationStatus
+    SubjectType, VerificationStatus, subject_relations
 )
 from .auth import (
     roles_required, admin_required, senior_required,
@@ -439,8 +439,17 @@ def view_case(case_id: str):
     """View case details with subjects, findings, and financials."""
     case = Case.query.get_or_404(case_id)
     subjects = case.subjects.all()
-    findings = case.findings.filter_by(is_deleted=False).order_by(Finding.created_at.desc()).all()
+    
+    findings_page = request.args.get('findings_page', 1, type=int)
+    findings_per_page = 20
+    findings_pagination = case.findings.filter_by(is_deleted=False).order_by(
+        Finding.created_at.desc()
+    ).paginate(page=findings_page, per_page=findings_per_page, error_out=False)
+    
     financials = case.financial_records.filter_by(is_deleted=False).order_by(FinancialRecord.transaction_date.desc()).all()
+    
+    # Get documents
+    documents = Document.query.filter_by(case_id=case_id, is_deleted=False).order_by(Document.created_at.desc()).all()
     
     # Get all available subjects (not already linked to this case)
     linked_ids = [s.id for s in subjects]
@@ -461,10 +470,154 @@ def view_case(case_id: str):
     return render_template('cms/cases/view.html',
         case=case,
         subjects=subjects,
-        findings=findings,
+        findings=findings_pagination.items,
+        findings_pagination=findings_pagination,
         financials=financials,
+        documents=documents,
         all_subjects=available_subjects
     )
+
+
+@cms_bp.route('/cases/<case_id>/timeline')
+@login_required
+@case_access_required
+def case_timeline(case_id: str):
+    """Get timeline of all events for a case."""
+    case = Case.query.get_or_404(case_id)
+    
+    timeline = []
+    
+    # Case created
+    timeline.append({
+        'timestamp': case.created_at,
+        'type': 'create',
+        'icon': '📁',
+        'title': 'Case Created',
+        'description': f'{case.case_number} - {case.title}',
+        'user': None,
+        'details': f'Client: {case.client.name if case.client else "N/A"}'
+    })
+    
+    # Status transitions from audit log
+    status_logs = AuditLog.query.filter(
+        AuditLog.entity_type == 'case',
+        AuditLog.entity_id == case_id,
+        AuditLog.action.in_(['update', 'status_change'])
+    ).order_by(AuditLog.timestamp.asc()).all()
+    
+    for log in status_logs:
+        if log.changes_made and 'status' in str(log.changes_made):
+            timeline.append({
+                'timestamp': log.timestamp,
+                'type': 'status',
+                'icon': '🔄',
+                'title': 'Status Changed',
+                'description': log.description or 'Case status updated',
+                'user': log.user,
+                'details': log.changes_made
+            })
+    
+    # Subjects added
+    subject_add_logs = AuditLog.query.filter(
+        AuditLog.case_id == case_id,
+        AuditLog.action == 'create',
+        AuditLog.entity_type == 'case_subject'
+    ).order_by(AuditLog.timestamp.asc()).all()
+    
+    for log in subject_add_logs:
+        timeline.append({
+            'timestamp': log.timestamp,
+            'type': 'subject',
+            'icon': '👤',
+            'title': 'Subject Added',
+            'description': log.description or 'Subject linked to case',
+            'user': log.user,
+            'details': None
+        })
+    
+    # Findings added
+    for finding in case.findings.filter_by(is_deleted=False).order_by(Finding.created_at.asc()).all():
+        timeline.append({
+            'timestamp': finding.created_at,
+            'type': 'finding',
+            'icon': '🔍',
+            'title': 'Finding Added',
+            'description': finding.title[:100] + ('...' if len(finding.title) > 100 else ''),
+            'user': finding.author,
+            'details': f'Source: {finding.source_type or "manual"}'
+        })
+    
+    # OSINT searches
+    osint_logs = AuditLog.query.filter(
+        AuditLog.case_id == case_id,
+        AuditLog.action.in_(['osint_search_start', 'osint_search_cancel'])
+    ).order_by(AuditLog.timestamp.asc()).all()
+    
+    for log in osint_logs:
+        icon = '🔍' if log.action == 'osint_search_start' else '⏹️'
+        timeline.append({
+            'timestamp': log.timestamp,
+            'type': 'osint',
+            'icon': icon,
+            'title': 'OSINT Search' if log.action == 'osint_search_start' else 'OSINT Search Cancelled',
+            'description': log.description or 'OSINT search performed',
+            'user': log.user,
+            'details': None
+        })
+    
+    # Financial records added
+    for fin in case.financial_records.filter_by(is_deleted=False).order_by(FinancialRecord.created_at.asc()).all():
+        timeline.append({
+            'timestamp': fin.created_at,
+            'type': 'financial',
+            'icon': '💰',
+            'title': 'Financial Record',
+            'description': f'{fin.currency} {fin.amount} - {fin.transaction_type or "Transaction"}',
+            'user': None,
+            'details': f'Source: {fin.source or "N/A"}'
+        })
+    
+    # Reopen events
+    if case.reopened_at:
+        timeline.append({
+            'timestamp': case.reopened_at,
+            'type': 'reopen',
+            'icon': '↩️',
+            'title': 'Case Reopened',
+            'description': f'Reopened: {case.reopened_reason or "No reason provided"}',
+            'user': None,
+            'details': None
+        })
+    
+    # Close event
+    if case.actual_end_date:
+        timeline.append({
+            'timestamp': datetime.combine(case.actual_end_date, datetime.min.time()),
+            'type': 'close',
+            'icon': '✅',
+            'title': 'Case Closed',
+            'description': f'Closure: {case.closure_reason or "No reason provided"}',
+            'user': None,
+            'details': None
+        })
+    
+    # Sort by timestamp descending (newest first)
+    timeline.sort(key=lambda x: x['timestamp'] or datetime.min, reverse=True)
+    
+    return jsonify({
+        'case_id': case_id,
+        'case_number': case.case_number,
+        'title': case.title,
+        'timeline': [{
+            'timestamp': t['timestamp'].isoformat() if t['timestamp'] else None,
+            'type': t['type'],
+            'icon': t['icon'],
+            'title': t['title'],
+            'description': t['description'],
+            'user_name': t['user'].full_name if t['user'] else 'System',
+            'details': t['details']
+        } for t in timeline]
+    })
 
 
 @cms_bp.route('/cases/create', methods=['GET', 'POST'])
@@ -560,7 +713,7 @@ def edit_case(case_id: str):
         data = request.get_json() if request.is_json else request.form
         changes = {}
         
-        editable_fields = ['title', 'description', 'priority', 'target_end_date',
+        editable_fields = ['title', 'description', 'priority',
                          'case_type', 'jurisdiction', 'tags']
         
         for field in editable_fields:
@@ -570,6 +723,18 @@ def edit_case(case_id: str):
                 if new_value != old_value:
                     changes[field] = {'old': str(old_value) if old_value else None, 'new': str(new_value)}
                     setattr(case, field, new_value)
+        
+        # Handle target_end_date separately (needs date conversion)
+        if 'target_end_date' in data and data['target_end_date']:
+            try:
+                from datetime import datetime
+                new_date = datetime.strptime(data['target_end_date'], '%Y-%m-%d').date()
+                old_date = case.target_end_date
+                if new_date != old_date:
+                    changes['target_end_date'] = {'old': str(old_date) if old_date else None, 'new': str(new_date)}
+                    case.target_end_date = new_date
+            except ValueError:
+                pass
         
         # Status transition
         if data.get('status') and data['status'] != case.status:
@@ -704,6 +869,7 @@ def subjects():
     per_page = 30
     search = request.args.get('search', '')
     subject_type = request.args.get('type', '')
+    fmt = request.args.get('format', '')
     
     query = Subject.query.filter_by(is_deleted=False)
     
@@ -712,6 +878,13 @@ def subjects():
     
     if subject_type:
         query = query.filter_by(subject_type=subject_type)
+    
+    # JSON format for API calls
+    if fmt == 'json':
+        subjects_list = query.order_by(Subject.name).all()
+        return jsonify({
+            'subjects': [{'id': s.id, 'name': s.name, 'type': s.subject_type} for s in subjects_list]
+        })
     
     pagination = query.order_by(Subject.name).paginate(
         page=page, per_page=per_page, error_out=False
@@ -884,6 +1057,276 @@ def edit_subject(subject_id: str):
     
     subject.decrypt_identifiers()
     return render_template('cms/subjects/edit.html', subject=subject)
+
+
+@cms_bp.route('/subjects/<subject_id>/photo', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator', 'junior_investigator')
+def upload_subject_photo(subject_id: str):
+    """Upload a photo for a subject."""
+    subject = Subject.query.get_or_404(subject_id)
+    
+    if 'photo' not in request.files:
+        return jsonify({'error': 'No photo provided'}), 400
+    
+    file = request.files['photo']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    # Only allow images
+    allowed_extensions = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in allowed_extensions:
+        return jsonify({'error': 'Only image files allowed'}), 400
+    
+    # Create upload directory
+    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'subjects', subject_id)
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Remove old photo if exists
+    if subject.photo_path:
+        old_path = os.path.join(current_app.root_path, 'static', subject.photo_path.lstrip('/'))
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    
+    # Save new photo
+    filename = f"photo.{ext}"
+    file_path = os.path.join(upload_dir, filename)
+    file.save(file_path)
+    
+    # Update subject
+    subject.photo_path = f"/uploads/subjects/{subject_id}/{filename}"
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='update',
+        entity_type='subject',
+        entity_id=subject_id,
+        changes={'photo': 'uploaded'},
+        ip_address=request.remote_addr,
+        description=f"Uploaded photo for {subject.name}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Photo uploaded',
+        'photo_path': subject.photo_path
+    })
+
+
+# =============================================================================
+# Subject Relationship Routes
+# =============================================================================
+
+@cms_bp.route('/subjects/<subject_id>/relationships')
+@login_required
+def get_subject_relationships(subject_id: str):
+    """Get relationship network data for a subject."""
+    try:
+        subject = Subject.query.get_or_404(subject_id)
+        
+        # Get direct relationships via direct query
+        related_rows = db.session.execute(
+            subject_relations.select().where(subject_relations.c.subject_id == subject.id)
+        ).fetchall()
+        
+        related_ids = [row.related_subject_id for row in related_rows]
+        related = Subject.query.filter(Subject.id.in_(related_ids), Subject.is_deleted == False).all() if related_ids else []
+        
+        # Build nodes and edges for visualization
+        nodes = [{
+            'id': subject.id,
+            'name': subject.name,
+            'type': subject.subject_type,
+            'isMain': True
+        }]
+        
+        edges = []
+        edge_ids = set()
+        
+        for rel in related:
+            nodes.append({
+                'id': rel.id,
+                'name': rel.name,
+                'type': rel.subject_type,
+                'isMain': False
+            })
+            
+            # Get relationship type from the association table
+            rel_type = 'related'
+            type_rows = db.session.execute(
+                subject_relations.select().where(
+                    (subject_relations.c.subject_id == subject.id) & 
+                    (subject_relations.c.related_subject_id == rel.id)
+                )
+            ).fetchall()
+            if type_rows:
+                rel_type = type_rows[0].relationship_type or 'related'
+            
+            edge_id = f"{subject.id}-{rel.id}"
+            if edge_id not in edge_ids:
+                edges.append({
+                    'id': edge_id,
+                    'source': subject.id,
+                    'target': rel.id,
+                    'type': rel_type
+                })
+                edge_ids.add(edge_id)
+        
+        # Get second-degree connections (friends of friends)
+        for rel in related:
+            second_degree_rows = db.session.execute(
+                subject_relations.select().where(subject_relations.c.subject_id == rel.id)
+            ).fetchall()
+            
+            second_degree_ids = [row.related_subject_id for row in second_degree_rows if row.related_subject_id != subject.id]
+            rel_related = Subject.query.filter(
+                Subject.id.in_(second_degree_ids),
+                Subject.is_deleted == False,
+                Subject.id != subject.id
+            ).all() if second_degree_ids else []
+            
+            for rr in rel_related:
+                # Check if node already exists
+                if not any(n['id'] == rr.id for n in nodes):
+                    nodes.append({
+                        'id': rr.id,
+                        'name': rr.name,
+                        'type': rr.subject_type,
+                        'isMain': False
+                    })
+                
+                edge_id = f"{rel.id}-{rr.id}"
+                rev_edge_id = f"{rr.id}-{rel.id}"
+                if edge_id not in edge_ids and rev_edge_id not in edge_ids:
+                    rel_type = 'connected'
+                    type_rows = db.session.execute(
+                        subject_relations.select().where(
+                            (subject_relations.c.subject_id == rel.id) & 
+                            (subject_relations.c.related_subject_id == rr.id)
+                        )
+                    ).fetchall()
+                    if type_rows:
+                        rel_type = type_rows[0].relationship_type or 'connected'
+                    
+                    edges.append({
+                        'id': edge_id,
+                        'source': rel.id,
+                        'target': rr.id,
+                        'type': rel_type
+                    })
+                    edge_ids.add(edge_id)
+        
+        return jsonify({
+            'subject': {
+                'id': subject.id,
+                'name': subject.name,
+                'type': subject.subject_type
+            },
+            'nodes': nodes,
+            'edges': edges
+        })
+    except Exception as e:
+        logger.error(f"Error in get_subject_relationships: {str(e)}")
+        return jsonify({'error': str(e), 'error_type': type(e).__name__}), 500
+
+
+@cms_bp.route('/subjects/<subject_id>/add-relationship', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator', 'junior_investigator')
+def add_subject_relationship(subject_id: str):
+    """Add a relationship between two subjects."""
+    subject = Subject.query.get_or_404(subject_id)
+    data = request.get_json()
+    
+    related_id = data.get('related_subject_id')
+    relationship_type = data.get('relationship_type', 'related')
+    
+    if not related_id:
+        return jsonify({'error': 'Related subject ID required'}), 400
+    
+    if related_id == subject_id:
+        return jsonify({'error': 'Cannot create relationship with self'}), 400
+    
+    related = Subject.query.get(related_id)
+    if not related:
+        return jsonify({'error': 'Related subject not found'}), 404
+    
+    # Check if relationship already exists
+    existing = db.session.execute(
+        subject_relations.select().where(
+            (subject_relations.c.subject_id == subject.id) & 
+            (subject_relations.c.related_subject_id == related_id)
+        )
+    ).first()
+    
+    if existing:
+        return jsonify({'error': 'Relationship already exists'}), 400
+    
+    # Add relationship (single direction - bidirectional is handled by querying)
+    db.session.execute(
+        subject_relations.insert().values(
+            subject_id=subject.id,
+            related_subject_id=related_id,
+            relationship_type=relationship_type
+        )
+    )
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='create',
+        entity_type='subject_relation',
+        entity_id=f"{subject.id}-{related_id}",
+        ip_address=request.remote_addr,
+        description=f"Added {relationship_type} relationship between {subject.name} and {related.name}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Relationship added',
+        'relationship': {
+            'subject_id': subject.id,
+            'related_subject_id': related_id,
+            'type': relationship_type
+        }
+    })
+
+
+@cms_bp.route('/subjects/<subject_id>/remove-relationship', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def remove_subject_relationship(subject_id: str):
+    """Remove a relationship between two subjects."""
+    subject = Subject.query.get_or_404(subject_id)
+    data = request.get_json()
+    
+    related_id = data.get('related_subject_id')
+    
+    if not related_id:
+        return jsonify({'error': 'Related subject ID required'}), 400
+    
+    # Remove both directions
+    db.session.execute(
+        subject_relations.delete().where(
+            ((subject_relations.c.subject_id == subject.id) & 
+             (subject_relations.c.related_subject_id == related_id)) |
+            ((subject_relations.c.subject_id == related_id) & 
+             (subject_relations.c.related_subject_id == subject.id))
+        )
+    )
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='delete',
+        entity_type='subject_relation',
+        entity_id=f"{subject.id}-{related_id}",
+        ip_address=request.remote_addr,
+        description=f"Removed relationship between {subject.name} and subject {related_id}"
+    )
+    db.session.commit()
+    
+    return jsonify({'message': 'Relationship removed'})
 
 
 # =============================================================================
@@ -1411,3 +1854,328 @@ def add_osint_findings(case_id: str):
         'message': f'{len(created_findings)} findings added',
         'findings': [f.to_dict() for f in created_findings]
     }), 201
+
+
+# =============================================================================
+# Document Upload Routes
+# =============================================================================
+
+import os
+import uuid
+from werkzeug.utils import secure_filename
+
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv'}
+UPLOAD_FOLDER = 'uploads'
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@cms_bp.route('/cases/<case_id>/upload', methods=['POST'])
+@login_required
+@case_access_required
+@case_edit_required
+def upload_case_document(case_id: str):
+    """Upload a document to a case."""
+    case = Case.query.get_or_404(case_id)
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'File type not allowed'}), 400
+    
+    # Create upload directory if not exists
+    upload_dir = os.path.join(current_app.root_path, 'static', UPLOAD_FOLDER, 'cases', case_id)
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    original_filename = secure_filename(file.filename)
+    file_ext = original_filename.rsplit('.', 1)[1].lower()
+    unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    # Save file
+    file.save(file_path)
+    
+    # Get file size
+    file_size = os.path.getsize(file_path)
+    
+    # Create document record
+    document = Document(
+        case_id=case_id,
+        filename=unique_filename,
+        original_filename=original_filename,
+        mime_type=file.content_type,
+        file_size=file_size,
+        storage_path=f"{UPLOAD_FOLDER}/cases/{case_id}/{unique_filename}",
+        storage_type='local',
+        document_type=request.form.get('document_type', 'evidence'),
+        description=request.form.get('description', ''),
+        classification=request.form.get('classification', 'confidential'),
+        uploaded_by=current_user.id
+    )
+    
+    db.session.add(document)
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='create',
+        entity_type='document',
+        entity_id=document.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Uploaded document: {original_filename}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Document uploaded',
+        'document': document.to_dict()
+    }), 201
+
+
+@cms_bp.route('/subjects/<subject_id>/upload', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator', 'junior_investigator')
+def upload_subject_document(subject_id: str):
+    """Upload a document to a subject."""
+    subject = Subject.query.get_or_404(subject_id)
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'File type not allowed'}), 400
+    
+    # Create upload directory
+    upload_dir = os.path.join(current_app.root_path, 'static', UPLOAD_FOLDER, 'subjects', subject_id)
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    original_filename = secure_filename(file.filename)
+    file_ext = original_filename.rsplit('.', 1)[1].lower()
+    unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    file.save(file_path)
+    file_size = os.path.getsize(file_path)
+    
+    document = Document(
+        subject_id=subject_id,
+        filename=unique_filename,
+        original_filename=original_filename,
+        mime_type=file.content_type,
+        file_size=file_size,
+        storage_path=f"{UPLOAD_FOLDER}/subjects/{subject_id}/{unique_filename}",
+        storage_type='local',
+        document_type=request.form.get('document_type', 'evidence'),
+        description=request.form.get('description', ''),
+        classification=request.form.get('classification', 'confidential'),
+        uploaded_by=current_user.id
+    )
+    
+    db.session.add(document)
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='create',
+        entity_type='document',
+        entity_id=document.id,
+        ip_address=request.remote_addr,
+        description=f"Uploaded document to {subject.name}: {original_filename}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Document uploaded',
+        'document': document.to_dict()
+    }), 201
+
+
+@cms_bp.route('/documents/<document_id>')
+@login_required
+def get_document(document_id: str):
+    """Get document metadata."""
+    document = Document.query.get_or_404(document_id)
+    
+    # Check access
+    if document.case_id:
+        case = Case.query.get(document.case_id)
+        if case and not current_user.can_access_case(case):
+            return jsonify({'error': 'Access denied'}), 403
+    
+    return jsonify(document.to_dict())
+
+
+@cms_bp.route('/documents/<document_id>/download')
+@login_required
+def download_document(document_id: str):
+    """Download a document."""
+    document = Document.query.get_or_404(document_id)
+    
+    # Check access
+    if document.case_id:
+        case = Case.query.get(document.case_id)
+        if case and not current_user.can_access_case(case):
+            return jsonify({'error': 'Access denied'}), 403
+    
+    from flask import send_from_directory, abort
+    import os
+    
+    file_path = os.path.join(current_app.root_path, 'static', document.storage_path)
+    
+    if not os.path.exists(file_path):
+        abort(404)
+    
+    return send_from_directory(
+        os.path.dirname(file_path),
+        os.path.basename(file_path),
+        as_attachment=True,
+        download_name=document.original_filename
+    )
+
+
+@cms_bp.route('/documents/<document_id>', methods=['DELETE'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def delete_document(document_id: str):
+    """Delete a document."""
+    document = Document.query.get_or_404(document_id)
+    
+    # Delete file
+    file_path = os.path.join(current_app.root_path, 'static', document.storage_path)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='delete',
+        entity_type='document',
+        entity_id=document_id,
+        ip_address=request.remote_addr,
+        description=f"Deleted document: {document.original_filename}"
+    )
+    
+    db.session.delete(document)
+    db.session.commit()
+    
+    return jsonify({'message': 'Document deleted'})
+
+
+@cms_bp.route('/cases/<case_id>/documents')
+@login_required
+@case_access_required
+def get_case_documents(case_id: str):
+    """Get all documents for a case."""
+    documents = Document.query.filter_by(case_id=case_id, is_deleted=False).order_by(
+        Document.created_at.desc()
+    ).all()
+    
+    return jsonify({
+        'documents': [d.to_dict() for d in documents]
+    })
+
+
+# =============================================================================
+# Financial Summary Routes
+# =============================================================================
+
+@cms_bp.route('/cases/<case_id>/financial-summary')
+@login_required
+@case_access_required
+def get_financial_summary(case_id: str):
+    """Get aggregated financial data for a case."""
+    case = Case.query.get_or_404(case_id)
+    records = FinancialRecord.query.filter_by(case_id=case_id, is_deleted=False).all()
+    
+    if not records:
+        return jsonify({
+            'summary': {
+                'total_records': 0,
+                'total_amount': 0,
+                'currency': 'EUR',
+                'by_type': {},
+                'by_status': {},
+                'by_source': {},
+                'by_month': {},
+                'top_counterparties': []
+            }
+        })
+    
+    # Calculate totals
+    total_amount = sum(float(r.amount or 0) for r in records)
+    
+    # Group by transaction type
+    by_type = {}
+    for r in records:
+        t = r.transaction_type or 'unknown'
+        if t not in by_type:
+            by_type[t] = {'count': 0, 'total': 0}
+        by_type[t]['count'] += 1
+        by_type[t]['total'] += float(r.amount or 0)
+    
+    # Group by verification status
+    by_status = {}
+    for r in records:
+        s = r.verification_status or 'pending'
+        if s not in by_status:
+            by_status[s] = {'count': 0, 'total': 0}
+        by_status[s]['count'] += 1
+        by_status[s]['total'] += float(r.amount or 0)
+    
+    # Group by source
+    by_source = {}
+    for r in records:
+        s = r.source or 'unknown'
+        if s not in by_source:
+            by_source[s] = {'count': 0, 'total': 0}
+        by_source[s]['count'] += 1
+        by_source[s]['total'] += float(r.amount or 0)
+    
+    # Group by month
+    by_month = {}
+    for r in records:
+        if r.transaction_date:
+            month_key = r.transaction_date.strftime('%Y-%m')
+            if month_key not in by_month:
+                by_month[month_key] = {'count': 0, 'total': 0}
+            by_month[month_key]['count'] += 1
+            by_month[month_key]['total'] += float(r.amount or 0)
+    
+    # Top counterparties
+    counterparties = {}
+    for r in records:
+        name = r.counterparty_name or 'Unknown'
+        if name not in counterparties:
+            counterparties[name] = 0
+        counterparties[name] += float(r.amount or 0)
+    
+    top_counterparties = sorted(
+        [{'name': k, 'total': v} for k, v in counterparties.items()],
+        key=lambda x: x['total'],
+        reverse=True
+    )[:10]
+    
+    return jsonify({
+        'summary': {
+            'total_records': len(records),
+            'total_amount': round(total_amount, 2),
+            'currency': records[0].currency if records else 'EUR',
+            'by_type': by_type,
+            'by_status': by_status,
+            'by_source': by_source,
+            'by_month': by_month,
+            'top_counterparties': top_counterparties
+        }
+    })

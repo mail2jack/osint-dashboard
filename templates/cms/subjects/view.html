@@ -12,43 +12,91 @@
         .info-item span { font-weight: 500; }
         .back { margin-bottom: 1rem; }
         .back a { color: #0066cc; text-decoration: none; }
-        .btn-osint {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background: #059669;
-            color: white;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
+        .btn-osint { display: inline-block; padding: 0.5rem 1rem; background: #059669; color: white; border-radius: 4px; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
         .btn-osint:hover { background: #047857; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.875rem; background: #16213e; color: white; border: none; border-radius: 4px; cursor: pointer; }
         .case-list { margin-top: 1rem; }
         .case-item { padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-bottom: 0.5rem; }
+        
+        #networkModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        #networkModal.show { display: flex; align-items: center; justify-content: center; }
+        #networkModal .modal-content { background: white; border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 900px; max-height: 90vh; overflow: auto; }
+        .network-container { width: 100%; height: 400px; border: 1px solid #e5e7eb; border-radius: 8px; margin: 1rem 0; background: #fafafa; }
+        .relation-list { margin-top: 1rem; }
+        .relation-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #eee; }
+        .relation-item:last-child { border-bottom: none; }
+        .relation-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: #e5e7eb; }
+        
+        /* Passport photo */
+        .subject-photo-container { display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 1.5rem; }
+        .photo-frame {
+            width: 120px;
+            height: 150px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .photo-frame img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-placeholder { color: #999; font-size: 3rem; }
+        .photo-upload-btn {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            text-align: center;
+            padding: 0.3rem;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        .photo-upload-btn:hover { background: rgba(0,0,0,0.8); }
+        .photo-input { display: none; }
     </style>
 </head>
 <body>
     <div class="back"><a href="{{ url_for('cms.subjects') }}">← Back to Subjects</a></div>
     
-    <h1>
-        {{ subject.name }}
-        {% if linked_cases %}
-        <div style="width: 100%; margin-top: 0.5rem;">
-            <label style="font-size: 0.875rem; color: #666; margin-right: 0.5rem;">Search & add to case:</label>
-            {% for case in linked_cases %}
-            <a href="/?q={{ subject.name | urlencode }}&tool=person&case_id={{ case.id }}&subject_id={{ subject.id }}" class="btn-osint" target="_blank" style="margin: 0.25rem;">
-                🔍 {{ case.case_number }}
-            </a>
-            {% endfor %}
+    <div class="subject-photo-container">
+        <div class="photo-frame" id="photoFrame">
+            {% if subject.photo_path %}
+            <img src="{{ subject.photo_path }}" alt="Photo of {{ subject.name }}">
+            {% else %}
+            <span class="photo-placeholder">👤</span>
+            {% endif %}
+            <label class="photo-upload-btn" for="photoInput">📷 Upload</label>
+            <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">
         </div>
-        {% else %}
-        <a href="/?q={{ subject.name | urlencode }}&tool=person" class="btn-osint" target="_blank">
-            🔍 OSINT Person Search
-        </a>
-        {% endif %}
-    </h1>
+        <div>
+            <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}</h1>
+            {% if linked_cases %}
+            <div style="margin-top: 0.5rem;">
+                <label style="font-size: 0.875rem; color: #666; margin-right: 0.5rem;">Search & add to case:</label>
+                {% for case in linked_cases %}
+                <a href="/?q={{ subject.name | urlencode }}&tool=person&case_id={{ case.id }}&subject_id={{ subject.id }}" class="btn-osint" target="_blank" style="margin: 0.25rem;">
+                    🔍 {{ case.case_number }}
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <a href="/?q={{ subject.name | urlencode }}&tool=person" class="btn-osint" target="_blank">
+                🔍 OSINT Person Search
+            </a>
+            {% endif %}
+        </div>
+    </div>
     
     <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">Subject Details</h3>
+            <button onclick="openNetworkModal()" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
+        </div>
         <div class="info-item"><label>Type</label><span>{{ subject.subject_type }}</span></div>
         <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
         <div class="info-item"><label>Email</label><span>{{ subject.email if subject.email else '-' }}</span></div>
@@ -67,5 +115,211 @@
         {% endfor %}
     </div>
     {% endif %}
+    
+    <!-- Network Modal -->
+    <div id="networkModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0;">Subject Network</h2>
+                <span onclick="closeNetworkModal()" style="font-size: 1.5rem; cursor: pointer; color: #666;">&times;</span>
+            </div>
+            
+            <div id="networkInfo" style="margin-bottom: 0.5rem;">
+                <strong>{{ subject.name }}</strong> - {{ subject.subject_type }}
+            </div>
+            
+            <div id="networkSvg" class="network-container"></div>
+            
+            <div class="relation-list">
+                <h4>Direct Relationships</h4>
+                <div id="relationshipsList">Loading...</div>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <button onclick="openAddRelationForm()" class="btn-sm" style="background: #059669;">+ Add Relationship</button>
+            </div>
+            
+            <div id="addRelationForm" style="display: none; margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+                <select id="relationSubject" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
+                    <option value="">Select a subject...</option>
+                </select>
+                <select id="relationType" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
+                    <option value="family">Family Member</option>
+                    <option value="business">Business Partner</option>
+                    <option value="colleague">Colleague</option>
+                    <option value="associate">Associate</option>
+                    <option value="neighbor">Neighbor</option>
+                    <option value="related">Related</option>
+                </select>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="addRelationship()" class="btn-sm" style="background: #059669;">Save</button>
+                    <button onclick="closeAddRelationForm()" class="btn-sm" style="background: #666;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let networkData = null;
+        
+        function openNetworkModal() {
+            document.getElementById('networkModal').classList.add('show');
+            loadNetwork();
+        }
+        
+        function closeNetworkModal() {
+            document.getElementById('networkModal').classList.remove('show');
+        }
+        
+        function loadNetwork() {
+            fetch("{{ url_for('cms.get_subject_relationships', subject_id=subject.id) }}")
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(data => {
+                networkData = data;
+                displayNetwork(data);
+                displayRelationships(data);
+            })
+            .catch(err => {
+                document.getElementById('relationshipsList').innerHTML = 'Failed to load relationships: ' + err.message;
+            });
+        }
+        
+        function displayNetwork(data) {
+            const container = document.getElementById('networkSvg');
+            container.innerHTML = '';
+            
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 400;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            const nodes = data.nodes.map((node, i) => {
+                const angle = (2 * Math.PI * i) / data.nodes.length;
+                const radius = data.nodes.length > 1 ? Math.min(width, height) / 3 : 0;
+                return { ...node, x: centerX + radius * Math.cos(angle), y: centerY + radius * Math.sin(angle) };
+            });
+            
+            const nodeMap = {};
+            nodes.forEach(n => nodeMap[n.id] = n);
+            
+            const colors = { 'person': '#3b82f6', 'company': '#10b981', 'organization': '#8b5cf6', 'vehicle': '#f59e0b', 'vessel': '#06b6d4', 'property': '#ec4899' };
+            
+            let svg = `<svg width="${width}" height="${height}" style="overflow: visible;">`;
+            
+            data.edges.forEach(edge => {
+                const s = nodeMap[edge.source], t = nodeMap[edge.target];
+                if (s && t) svg += `<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="#d1d5db" stroke-width="2"/>`;
+            });
+            
+            nodes.forEach(node => {
+                const r = node.isMain ? 25 : 18;
+                const color = colors[node.type] || '#6b7280';
+                svg += `
+                    <a href="/cms/subjects/${node.id}">
+                        <circle cx="${node.x}" cy="${node.y}" r="${r}" fill="${color}" stroke="${node.isMain ? '#1a1a2e' : '#fff'}" stroke-width="${node.isMain ? 3 : 2}"/>
+                        <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${node.name.substring(0, 10)}</text>
+                        <text x="${node.x}" y="${node.y + r + 12}" text-anchor="middle" fill="#6b7280" font-size="9">${node.type}</text>
+                    </a>`;
+            });
+            
+            svg += '</svg>';
+            container.innerHTML = svg;
+        }
+        
+        function displayRelationships(data) {
+            const list = document.getElementById('relationshipsList');
+            const mainNode = data.nodes.find(n => n.isMain);
+            const directEdges = data.edges.filter(e => e.source === mainNode?.id || e.target === mainNode?.id);
+            
+            if (!directEdges.length) {
+                list.innerHTML = '<p style="color: #666;">No relationships yet.</p>';
+                return;
+            }
+            
+            let html = '';
+            directEdges.forEach(edge => {
+                const otherId = edge.source === mainNode?.id ? edge.target : edge.source;
+                const other = data.nodes.find(n => n.id === otherId);
+                if (other) {
+                    html += `<div class="relation-item">
+                        <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || 'related'}</span></div>
+                        <button onclick="removeRelationship('${other.id}')" style="background: #dc2626; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
+                    </div>`;
+                }
+            });
+            list.innerHTML = html;
+        }
+        
+        function openAddRelationForm() {
+            document.getElementById('addRelationForm').style.display = 'block';
+            fetch("{{ url_for('cms.subjects') }}?format=json")
+            .then(r => r.json())
+            .then(data => {
+                const select = document.getElementById('relationSubject');
+                select.innerHTML = '<option value="">Select a subject...</option>';
+                (data.subjects || []).forEach(s => {
+                    if (s.id !== '{{ subject.id }}') select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
+                });
+            });
+        }
+        
+        function closeAddRelationForm() { document.getElementById('addRelationForm').style.display = 'none'; }
+        
+        function addRelationship() {
+            const relatedId = document.getElementById('relationSubject').value;
+            const relType = document.getElementById('relationType').value;
+            if (!relatedId) return alert('Select a subject');
+            
+            fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ related_subject_id: relatedId, relationship_type: relType })
+            })
+            .then(r => r.json())
+            .then(data => { if (!data.error) { closeAddRelationForm(); loadNetwork(); } else alert(data.error); });
+        }
+        
+        function removeRelationship(relatedId) {
+            if (!confirm('Remove this relationship?')) return;
+            fetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ related_subject_id: relatedId })
+            }).then(() => loadNetwork());
+        }
+        
+        document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });
+
+        function uploadPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('photo', file);
+            
+            fetch("{{ url_for('cms.upload_subject_photo', subject_id=subject.id) }}", {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    const photoFrame = document.getElementById('photoFrame');
+                    const existingImg = photoFrame.querySelector('img');
+                    if (existingImg) {
+                        existingImg.src = data.photo_path + '?t=' + new Date().getTime();
+                    } else {
+                        photoFrame.innerHTML = `<img src="${data.photo_path}?t=${new Date().getTime()}" alt="Photo">
+                            <label class="photo-upload-btn" for="photoInput">📷 Change</label>
+                            <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">`;
+                    }
+                }
+            })
+            .catch(err => alert('Upload failed: ' + err.message));
+        }
+    </script>
 </body>
 </html>

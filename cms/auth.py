@@ -239,6 +239,10 @@ def case_edit_required(f: Callable) -> Callable:
         if 'finding' in endpoint or '/findings/' in endpoint or 'osint' in endpoint:
             return f(*args, **kwargs)
         
+        # Status transitions are allowed on closed/archived cases
+        if 'transition' in endpoint:
+            return f(*args, **kwargs)
+        
         # Closed/archived cases are always read-only for case modifications
         if case.status in ['closed', 'archived']:
             logger.warning(
@@ -424,9 +428,31 @@ users_bp = Blueprint('users', __name__, url_prefix='/users')
 @login_required
 @roles_required('admin', 'senior_investigator')
 def list_users():
-    """List all users."""
-    users = User.query.filter_by(is_active=True).all()
-    return render_template('cms/users/list.html', users=users)
+    """List all users with pagination."""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    search = request.args.get('search', '')
+    
+    query = User.query.filter_by(is_active=True)
+    
+    if search:
+        query = query.filter(
+            db.or_(
+                User.full_name.ilike(f'%{search}%'),
+                User.username.ilike(f'%{search}%'),
+                User.email.ilike(f'%{search}%')
+            )
+        )
+    
+    pagination = query.order_by(User.full_name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('cms/users/list.html', 
+        users=pagination.items,
+        pagination=pagination,
+        search=search
+    )
 
 
 @users_bp.route('/<user_id>')
@@ -541,7 +567,7 @@ def edit_user(user_id: str):
             action='update',
             entity_type='user',
             entity_id=user.id,
-            changes_made=changes if changes else None,
+            changes=changes if changes else None,
             ip_address=request.remote_addr,
             description=f"Updated user {user.username}"
         )

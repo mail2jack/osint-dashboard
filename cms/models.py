@@ -451,6 +451,9 @@ class Subject(db.Model):
     estimated_value = db.Column(db.Numeric(15, 2))
     currency = db.Column(db.String(3), default='EUR')
     
+    # Photo
+    photo_path = db.Column(db.String(500))  # Path to uploaded photo
+    
     # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)

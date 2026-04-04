@@ -75,6 +75,7 @@
     
     <div class="header">
         <h1>{{ case.case_number }}: {{ case.title }}</h1>
+        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn btn-sm">✏️ Edit Case</a>
     </div>
     
     <div class="card">
@@ -199,6 +200,7 @@
                 {% if case.status in ['closed', 'archived'] %}
                 <button onclick="reopenCase()" class="btn btn-sm" style="background: #059669;">Reopen Case</button>
                 {% endif %}
+                <button onclick="openTimeline()" class="btn btn-sm" style="background: #7c3aed;">Timeline</button>
             </div>
         </div>
         
@@ -236,6 +238,142 @@
         {% else %}
         <p>No findings yet.</p>
         {% endif %}
+        
+        {% if findings_pagination and findings_pagination.pages > 1 %}
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+            {% if findings_pagination.has_prev %}
+            <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn btn-sm">Previous</a>
+            {% endif %}
+            <span style="padding: 0.5rem 1rem;">Page {{ findings_pagination.page }} of {{ findings_pagination.pages }}</span>
+            {% if findings_pagination.has_next %}
+            <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn btn-sm">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Documents Section -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Documents (<span id="docCount">{{ documents|length }}</span>)</h2>
+            {% if case.status not in ['closed', 'archived'] %}
+            <button onclick="openUploadModal()" class="btn btn-sm" style="background: #059669;">+ Upload Document</button>
+            {% endif %}
+        </div>
+        
+        <div id="documentsList">
+            {% if documents %}
+            <table>
+                <thead>
+                    <tr><th>Filename</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for doc in documents %}
+                    <tr>
+                        <td>{{ doc.original_filename }}</td>
+                        <td><span class="badge" style="background: #e5e7eb;">{{ doc.document_type or 'file' }}</span></td>
+                        <td>{{ (doc.file_size / 1024)|round(1) }} KB</td>
+                        <td>{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '-' }}</td>
+                        <td>
+                            <a href="/cms/documents/{{ doc.id }}/download" target="_blank">Download</a>
+                            {% if current_user.is_admin or current_user.is_senior %}
+                            | <a href="#" onclick="deleteDocument('{{ doc.id }}')" style="color: #dc2626;">Delete</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No documents uploaded.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Upload Document</h2>
+                <span class="close" onclick="closeUploadModal()">&times;</span>
+            </div>
+            
+            <form id="uploadForm" enctype="multipart/form-data" style="margin-top: 1rem;">
+                <div class="form-group">
+                    <label for="uploadFile">File *</label>
+                    <input type="file" id="uploadFile" name="file" required style="padding: 0.5rem;">
+                </div>
+                <div class="form-group">
+                    <label for="documentType">Document Type</label>
+                    <select id="documentType" name="document_type" style="padding: 0.5rem;">
+                        <option value="evidence">Evidence</option>
+                        <option value="report">Report</option>
+                        <option value="contract">Contract</option>
+                        <option value="correspondence">Correspondence</option>
+                        <option value="photo">Photo</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="classification">Classification</label>
+                    <select id="classification" name="classification" style="padding: 0.5rem;">
+                        <option value="confidential">Confidential</option>
+                        <option value="restricted">Restricted</option>
+                        <option value="internal">Internal</option>
+                        <option value="public">Public</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="docDescription" name="description" rows="2" style="width: 100%; padding: 0.5rem;"></textarea>
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <button type="submit" class="btn btn-sm" style="background: #059669;">Upload</button>
+                    <button type="button" onclick="closeUploadModal()" class="btn btn-sm" style="background: #666;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Financial Summary Section -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Financial Summary</h2>
+            <button onclick="openFinancialSummary()" class="btn btn-sm" style="background: #7c3aed;">📊 View Charts</button>
+        </div>
+        
+        <div id="financialSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+            <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #1a1a2e;" id="finTotal">-</div>
+                <div style="color: #666; font-size: 0.875rem;">Total Amount</div>
+            </div>
+            <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #1a1a2e;" id="finCount">-</div>
+                <div style="color: #666; font-size: 0.875rem;">Transactions</div>
+            </div>
+            <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;" id="finVerified">-</div>
+                <div style="color: #666; font-size: 0.875rem;">Verified</div>
+            </div>
+            <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;" id="finPending">-</div>
+                <div style="color: #666; font-size: 0.875rem;">Pending Review</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Financial Modal -->
+    <div id="financialModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>Financial Analysis</h2>
+                <span class="close" onclick="closeFinancialSummary()">&times;</span>
+            </div>
+            
+            <div id="financialCharts" style="max-height: 70vh; overflow-y: auto;">
+                <div style="text-align: center; padding: 2rem;" id="finLoading">Loading...</div>
+            </div>
+        </div>
     </div>
     
     <!-- OSINT Search Modal -->
@@ -306,6 +444,19 @@
             </div>
         </div>
     </div>
+    
+    <!-- Timeline Modal -->
+    <div id="timelineModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>Case Timeline</h2>
+                <span class="close" onclick="closeTimeline()">&times;</span>
+            </div>
+            <div id="timelineContent" style="max-height: 60vh; overflow-y: auto;">
+                <div style="text-align: center; padding: 2rem;">Loading timeline...</div>
+            </div>
+        </div>
+    </div>
 
     <script>
         let currentSearchId = null;
@@ -327,36 +478,59 @@
             
             if (newStatus === 'closed') {
                 const reason = prompt('Reason for closing (required):');
-                if (!reason) return;
-                body.closure_reason = reason;
+                if (!reason || !reason.trim()) {
+                    alert('Closure reason is required');
+                    return;
+                }
+                body.closure_reason = reason.trim();
             }
             
             if (newStatus === 'active' && ('{{ case.status }}' === 'closed' || '{{ case.status }}' === 'archived')) {
                 const reason = prompt('Reason for reopening (required):');
-                if (!reason) return;
-                body.reopened_reason = reason;
+                if (!reason || !reason.trim()) {
+                    alert('Reopening reason is required');
+                    return;
+                }
+                body.reopened_reason = reason.trim();
             }
             
             fetch("{{ url_for('cms.transition_case', case_id=case.id) }}", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
-            }).then(() => {
-                location.reload();
-            });
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    location.reload();
+                }
+            })
+            .catch(err => alert('Error: ' + err.message));
         }
         
         function reopenCase() {
             const reason = prompt('Reason for reopening (required):');
-            if (!reason) return;
+            if (!reason || !reason.trim()) {
+                alert('Reopening reason is required');
+                return;
+            }
             
             fetch("{{ url_for('cms.transition_case', case_id=case.id) }}", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'active', reopened_reason: reason })
-            }).then(() => {
-                location.reload();
-            });
+                body: JSON.stringify({ status: 'active', reopened_reason: reason.trim() })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    location.reload();
+                }
+            })
+            .catch(err => alert('Error: ' + err.message));
         }
         
         // OSINT Search Functions
@@ -569,6 +743,273 @@
                 closeOsintModal();
             }
         });
+        
+        // Timeline Functions
+        function openTimeline() {
+            document.getElementById('timelineModal').classList.add('show');
+            loadTimeline();
+        }
+        
+        function closeTimeline() {
+            document.getElementById('timelineModal').classList.remove('show');
+        }
+        
+        function loadTimeline() {
+            fetch("{{ url_for('cms.case_timeline', case_id=case.id) }}")
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('timelineContent').innerHTML = 
+                        '<div style="padding: 2rem; text-align: center; color: #dc2626;">' + data.error + '</div>';
+                    return;
+                }
+                displayTimeline(data);
+            })
+            .catch(err => {
+                document.getElementById('timelineContent').innerHTML = 
+                    '<div style="padding: 2rem; text-align: center; color: #dc2626;">Failed to load timeline</div>';
+            });
+        }
+        
+        function displayTimeline(data) {
+            const container = document.getElementById('timelineContent');
+            
+            if (!data.timeline || data.timeline.length === 0) {
+                container.innerHTML = '<div style="padding: 2rem; text-align: center;">No timeline events found.</div>';
+                return;
+            }
+            
+            const typeColors = {
+                'create': '#059669',
+                'status': '#2563eb',
+                'subject': '#7c3aed',
+                'finding': '#f59e0b',
+                'osint': '#ec4899',
+                'financial': '#10b981',
+                'reopen': '#14b8a6',
+                'close': '#6b7280'
+            };
+            
+            let html = '<div style="position: relative; padding-left: 2rem;">';
+            html += '<div style="position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #e5e7eb;"></div>';
+            
+            data.timeline.forEach((item, index) => {
+                const color = typeColors[item.type] || '#6b7280';
+                const date = item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Unknown';
+                
+                html += `
+                    <div style="position: relative; padding: 1rem; margin-bottom: 0.5rem; background: #f9fafb; border-radius: 8px; margin-left: 1rem;">
+                        <div style="position: absolute; left: -21px; top: 1.2rem; width: 12px; height: 12px; border-radius: 50%; background: ${color}; border: 2px solid white;"></div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.25rem;">
+                            <span style="font-size: 1.5rem;">${item.icon}</span>
+                            <span style="font-size: 0.75rem; color: #666;">${date}</span>
+                        </div>
+                        <div style="font-weight: 600; color: #1a1a2e;">${item.title}</div>
+                        <div style="color: #374151; margin: 0.25rem 0;">${item.description}</div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">
+                            By: ${item.user_name}
+                            ${item.details ? ' • ' + item.details : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        document.getElementById('timelineModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTimeline();
+            }
+        });
+        
+        // Document Upload Functions
+        function openUploadModal() {
+            document.getElementById('uploadModal').classList.add('show');
+        }
+        
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('show');
+            document.getElementById('uploadForm').reset();
+        }
+        
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const fileInput = document.getElementById('uploadFile');
+            
+            if (fileInput.files.length === 0) {
+                alert('Please select a file');
+                return;
+            }
+            
+            formData.append('file', fileInput.files[0]);
+            formData.append('document_type', document.getElementById('documentType').value);
+            formData.append('classification', document.getElementById('classification').value);
+            formData.append('description', document.getElementById('docDescription').value);
+            
+            fetch("{{ url_for('cms.upload_case_document', case_id=case.id) }}", {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert('Document uploaded successfully');
+                    closeUploadModal();
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                alert('Upload failed: ' + err.message);
+            });
+        });
+        
+        function deleteDocument(docId) {
+            if (!confirm('Are you sure you want to delete this document?')) return;
+            
+            fetch('/cms/documents/' + docId, {
+                method: 'DELETE'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    location.reload();
+                }
+            });
+        }
+        
+        document.getElementById('uploadModal').addEventListener('click', function(e) {
+            if (e.target === this) closeUploadModal();
+        });
+        
+        // Financial Summary Functions
+        function openFinancialSummary() {
+            document.getElementById('financialModal').classList.add('show');
+            loadFinancialSummary();
+        }
+        
+        function closeFinancialSummary() {
+            document.getElementById('financialModal').classList.remove('show');
+        }
+        
+        function loadFinancialSummary() {
+            fetch("{{ url_for('cms.get_financial_summary', case_id=case.id) }}")
+            .then(r => r.json())
+            .then(data => {
+                updateSummaryCards(data.summary);
+                displayFinancialCharts(data.summary);
+            })
+            .catch(() => {
+                document.getElementById('financialCharts').innerHTML = 'Failed to load financial data';
+            });
+        }
+        
+        function updateSummaryCards(summary) {
+            const currency = summary.currency || 'EUR';
+            document.getElementById('finTotal').textContent = formatCurrency(summary.total_amount, currency);
+            document.getElementById('finCount').textContent = summary.total_records;
+            
+            const verified = summary.by_status?.['verified']?.count || 0;
+            const pending = summary.by_status?.['pending']?.count || 0;
+            document.getElementById('finVerified').textContent = verified;
+            document.getElementById('finPending').textContent = pending;
+        }
+        
+        function formatCurrency(amount, currency) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(amount);
+        }
+        
+        function displayFinancialCharts(summary) {
+            const container = document.getElementById('financialCharts');
+            
+            if (summary.total_records === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 2rem;">No financial records to display.</p>';
+                return;
+            }
+            
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+            
+            // By Type chart
+            let typeChart = '<canvas id="typeChart"></canvas>';
+            let typeData = Object.entries(summary.by_type || {}).map(([k, v]) => ({ label: k, value: v.total }));
+            
+            // By Month chart
+            let monthChart = '<canvas id="monthChart"></canvas>';
+            let monthData = Object.entries(summary.by_month || {}).sort();
+            
+            let html = `
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">By Transaction Type</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                        ${Object.entries(summary.by_type || {}).map(([type, data], i) => `
+                            <div style="flex: 1; min-width: 150px; background: ${colors[i % colors.length]}15; padding: 1rem; border-radius: 8px; border-left: 4px solid ${colors[i % colors.length]};">
+                                <div style="font-weight: bold;">${type}</div>
+                                <div>${data.count} transactions</div>
+                                <div style="color: #666;">${formatCurrency(data.total, summary.currency)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">By Month</h3>
+                    <div style="display: flex; align-items: end; gap: 0.5rem; height: 150px; padding: 1rem; background: #f9fafb; border-radius: 8px;">
+                        ${Object.entries(summary.by_month || {}).sort().map(([month, data]) => {
+                            const max = Math.max(...Object.values(summary.by_month || {}).map(m => m.total));
+                            const height = max > 0 ? (data.total / max) * 100 : 0;
+                            return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                                <div style="width: 100%; background: #3b82f6; border-radius: 4px 4px 0 0; height: ${height}%;"></div>
+                                <div style="font-size: 0.7rem; color: #666; margin-top: 0.25rem;">${month.slice(5)}</div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">By Verification Status</h3>
+                    <div style="display: flex; gap: 1rem;">
+                        ${Object.entries(summary.by_status || {}).map(([status, data], i) => `
+                            <div style="flex: 1; background: ${status === 'verified' ? '#dcfce7' : status === 'flagged' ? '#fee2e2' : '#fef3c7'}; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.25rem; font-weight: bold;">${data.count}</div>
+                                <div style="text-transform: capitalize; color: #666;">${status}</div>
+                                <div style="color: #666;">${formatCurrency(data.total, summary.currency)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="margin-bottom: 1rem;">Top Counterparties</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead><tr style="background: #f5f5f5;"><th style="padding: 0.75rem; text-align: left;">Counterparty</th><th style="padding: 0.75rem; text-align: right;">Total Amount</th></tr></thead>
+                        <tbody>
+                            ${summary.top_counterparties.map((cp, i) => `
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 0.75rem;">${i + 1}. ${cp.name}</td>
+                                    <td style="padding: 0.75rem; text-align: right; font-weight: 500;">${formatCurrency(cp.total, summary.currency)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        document.getElementById('financialModal').addEventListener('click', function(e) {
+            if (e.target === this) closeFinancialSummary();
+        });
+        
+        // Load summary on page load
+        loadFinancialSummary();
     </script>
 </body>
 </html>
