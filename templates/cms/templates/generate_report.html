@@ -1,0 +1,95 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<h2 style="margin-bottom: 1.5rem;">Generate Report</h2>
+
+<div class="card">
+    <p style="margin-bottom: 1.5rem;">
+        Generate a report for case: <strong>{{ case.case_number }}</strong> - {{ case.title }}
+    </p>
+    
+    <form method="POST" id="reportForm">
+        <div class="form-group">
+            <label for="template_id">Select Template *</label>
+            <select name="template_id" id="template_id" required onchange="loadPreview()">
+                <option value="">Choose a template...</option>
+                {% for t in templates %}
+                <option value="{{ t.id }}">{{ t.name }}{% if t.is_default %} (Default){% endif %}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="conclusion">Conclusion</label>
+            <textarea name="conclusion" id="conclusion" rows="3" placeholder="Enter case conclusion..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="recommendation">Recommendation</label>
+            <textarea name="recommendation" id="recommendation" rows="3" placeholder="Enter recommendations..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="classification">Classification</label>
+            <select name="classification" id="classification">
+                <option value="Confidential">Confidential</option>
+                <option value="Restricted">Restricted</option>
+                <option value="Internal">Internal</option>
+                <option value="Public">Public</option>
+            </select>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn" style="background: #059669;">Generate & Save</button>
+            <button type="button" onclick="loadPreview()" class="btn">Preview</button>
+            <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn" style="background: #666;">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<!-- Preview Section -->
+<div class="card" id="previewSection" style="display: none;">
+    <h3 style="margin-bottom: 1rem;">Report Preview</h3>
+    <div id="previewContent" style="white-space: pre-wrap; font-family: monospace; background: #f5f5f5; padding: 1rem; border-radius: 8px; max-height: 60vh; overflow-y: auto;"></div>
+</div>
+
+<script>
+function loadPreview() {
+    const templateId = document.getElementById('template_id').value;
+    const previewSection = document.getElementById('previewSection');
+    const previewContent = document.getElementById('previewContent');
+    
+    if (!templateId) {
+        previewSection.style.display = 'none';
+        return;
+    }
+    
+    previewContent.innerHTML = 'Loading preview...';
+    previewSection.style.display = 'block';
+    
+    const formData = {
+        template_id: templateId,
+        case_id: '{{ case.id }}',
+        conclusion: document.getElementById('conclusion').value,
+        recommendation: document.getElementById('recommendation').value,
+        classification: document.getElementById('classification').value
+    };
+    
+    fetch('/cms/templates/api/render-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(r => r.json())
+    .then(data => {
+        previewContent.textContent = data.rendered || 'Unable to generate preview';
+    })
+    .catch(err => {
+        previewContent.innerHTML = '<p style="color: red;">Error loading preview</p>';
+    });
+}
+</script>
+
+<style>
+textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; }
+</style>
+{% endblock %}

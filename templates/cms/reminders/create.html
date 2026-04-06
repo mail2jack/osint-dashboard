@@ -1,0 +1,150 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<style>
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border-input);
+        border-radius: 4px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    .form-group textarea { min-height: 100px; }
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: auto;
+    }
+    .related-info {
+        background: var(--bg-secondary);
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
+    }
+    .related-info strong { color: var(--accent-primary); }
+</style>
+
+<div style="max-width: 600px; margin: 0 auto;">
+    <div style="margin-bottom: 1.5rem;">
+        <a href="{{ url_for('cms.reminders') }}" style="color: var(--link-color); text-decoration: none; font-size: 0.85rem;">← Back to Reminders</a>
+    </div>
+    
+    <div class="card">
+        <h2 style="margin-top: 0;">New Reminder</h2>
+        
+        {% if case or subject or client %}
+        <div class="related-info">
+            <strong>Linked to:</strong>
+            {% if case %}Case {{ case.case_number }}{% endif %}
+            {% if subject %}{{ subject.name }}{% endif %}
+            {% if client %}{{ client.name }}{% endif %}
+        </div>
+        {% endif %}
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="title">Title *</label>
+                <input type="text" id="title" name="title" required placeholder="What needs to be done?">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" placeholder="Additional details..."></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="reminder_date">Reminder Date & Time *</label>
+                    <input type="datetime-local" id="reminder_date" name="reminder_date" required 
+                           value="{{ default_reminder_date }}">
+                </div>
+                <div class="form-group">
+                    <label for="due_date">Due Date</label>
+                    <input type="date" id="due_date" name="due_date">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="priority">Priority</label>
+                    <select id="priority" name="priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="assigned_to">Assign To</label>
+                    <select id="assigned_to" name="assigned_to">
+                        <option value="">-- Unassigned --</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if user.id == current_user.id %}selected{% endif %}>
+                            {{ user.full_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="reminder_type">Type</label>
+                    <select id="reminder_type" name="reminder_type">
+                        <option value="manual">Manual</option>
+                        <option value="recurring">Recurring</option>
+                        <option value="system">System</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="recurrence">Recurrence</label>
+                    <select id="recurrence" name="recurrence">
+                        <option value="none">None</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                    </select>
+                </div>
+            </div>
+            
+            {% if case %}
+            <input type="hidden" name="case_id" value="{{ case.id }}">
+            {% endif %}
+            {% if subject %}
+            <input type="hidden" name="subject_id" value="{{ subject.id }}">
+            {% endif %}
+            {% if client %}
+            <input type="hidden" name="client_id" value="{{ client.id }}">
+            {% endif %}
+            
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="notify_dashboard" name="notify_dashboard" checked>
+                <label for="notify_dashboard" style="margin: 0;">Show on dashboard</label>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn" style="background: var(--accent-primary);">Create Reminder</button>
+                <a href="{{ url_for('cms.reminders') }}" class="btn" style="background: #666;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

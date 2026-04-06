@@ -1,0 +1,68 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<h2 style="margin-bottom: 1.5rem;">Create Document Template</h2>
+
+<div class="card">
+    <form method="POST">
+        <div class="form-group">
+            <label for="name">Template Name *</label>
+            <input type="text" name="name" id="name" required placeholder="e.g., Investigation Report">
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Description</label>
+            <input type="text" name="description" id="description" placeholder="Brief description of this template">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="template_type">Type</label>
+                <select name="template_type" id="template_type">
+                    <option value="report">Report</option>
+                    <option value="summary">Summary</option>
+                    <option value="letter">Letter</option>
+                    <option value="memo">Memo</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select name="category" id="category">
+                    <option value="">Select category</option>
+                    <option value="investigation">Investigation</option>
+                    <option value="compliance">Compliance</option>
+                    <option value="financial">Financial</option>
+                    <option value="general">General</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <input type="checkbox" name="is_default" id="is_default" value="1" style="width: auto; margin-right: 0.5rem;">
+            <label for="is_default" style="display: inline; font-weight: normal;">Set as default template</label>
+        </div>
+        
+        <div class="form-group">
+            <label for="content">Template Content *</label>
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">
+                Use Jinja2 syntax with these variables:<br>
+                <code>{{ case.case_number }}</code>, <code>{{ case.title }}</code>, <code>{{ case.client.name }}</code><br>
+                <code>{% for subject in subjects %}{{ subject.name }}{% endfor %}</code><br>
+                <code>{% for finding in findings %}{{ finding.title }}{% endfor %}</code><br>
+                <code>{{ financials.summary.total_amount }}</code>
+            </p>
+            <textarea name="content" id="content" rows="20" required style="font-family: monospace;" placeholder="Enter your template content here...">{{ content or '' }}</textarea>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn">Create Template</button>
+            <a href="{{ url_for('cms.list_templates') }}" class="btn" style="background: #666;">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.85rem; }
+</style>
+{% endblock %}

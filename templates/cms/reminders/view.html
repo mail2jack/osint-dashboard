@@ -1,0 +1,134 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<style>
+    .detail-row {
+        display: flex;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label {
+        width: 150px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+    }
+    .detail-value { color: var(--text-primary); }
+    
+    .priority-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .priority-critical { background: #fee2e2; color: #dc2626; }
+    .priority-high { background: #ffedd5; color: #ea580c; }
+    .priority-medium { background: #dbeafe; color: #2563eb; }
+    .priority-low { background: #dcfce7; color: #16a34a; }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+    }
+</style>
+
+<div style="max-width: 700px; margin: 0 auto;">
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('cms.reminders') }}" style="color: var(--link-color); text-decoration: none; font-size: 0.85rem;">← Back to Reminders</a>
+    </div>
+    
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+            <div>
+                <h2 style="margin: 0;">{{ reminder.title }}</h2>
+                <span class="priority-badge priority-{{ reminder.priority }}">{{ reminder.priority }}</span>
+                {% if reminder.is_overdue and not reminder.is_completed %}
+                <span class="priority-badge" style="background: #dc2626; color: white;">OVERDUE</span>
+                {% endif %}
+                {% if reminder.is_completed %}
+                <span class="priority-badge" style="background: #d1d5db; color: #374151;">COMPLETED</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if reminder.description %}
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">{{ reminder.description }}</p>
+        {% endif %}
+        
+        <div class="detail-row">
+            <span class="detail-label">Reminder Date</span>
+            <span class="detail-value">{{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else 'Not set' }}</span>
+        </div>
+        
+        {% if reminder.due_date %}
+        <div class="detail-row">
+            <span class="detail-label">Due Date</span>
+            <span class="detail-value">{{ reminder.due_date.strftime('%Y-%m-%d') }}</span>
+        </div>
+        {% endif %}
+        
+        {% if reminder.completed_at %}
+        <div class="detail-row">
+            <span class="detail-label">Completed At</span>
+            <span class="detail-value">{{ reminder.completed_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+        {% endif %}
+        
+        <div class="detail-row">
+            <span class="detail-label">Type</span>
+            <span class="detail-value">{{ reminder.reminder_type|title }}</span>
+        </div>
+        
+        <div class="detail-row">
+            <span class="detail-label">Recurrence</span>
+            <span class="detail-value">{{ reminder.recurrence|title if reminder.recurrence != 'none' else 'None' }}</span>
+        </div>
+        
+        {% if reminder.assigned_user %}
+        <div class="detail-row">
+            <span class="detail-label">Assigned To</span>
+            <span class="detail-value">{{ reminder.assigned_user.full_name }}</span>
+        </div>
+        {% endif %}
+        
+        {% if reminder.case_id and case %}
+        <div class="detail-row">
+            <span class="detail-label">Case</span>
+            <span class="detail-value">
+                <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a>
+                - {{ case.title }}
+            </span>
+        </div>
+        {% endif %}
+        
+        <div class="detail-row">
+            <span class="detail-label">Created By</span>
+            <span class="detail-value">{{ reminder.creator.full_name if reminder.creator else 'Unknown' }}</span>
+        </div>
+        
+        <div class="detail-row">
+            <span class="detail-label">Created At</span>
+            <span class="detail-value">{{ reminder.created_at.strftime('%Y-%m-%d %H:%M') if reminder.created_at else 'Unknown' }}</span>
+        </div>
+        
+        <div class="action-buttons">
+            {% if not reminder.is_completed %}
+            <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+                <button type="submit" class="btn" style="background: #22c55e;">✓ Mark Complete</button>
+            </form>
+            <form method="POST" action="{{ url_for('cms.snooze_reminder', reminder_id=reminder.id, minutes=30) }}" style="display: inline;">
+                <button type="submit" class="btn" style="background: #f59e0b;">⏰ Snooze 30 min</button>
+            </form>
+            <a href="{{ url_for('cms.edit_reminder', reminder_id=reminder.id) }}" class="btn" style="background: #3b82f6;">✏️ Edit</a>
+            {% endif %}
+            <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" onsubmit="return confirm('Delete this reminder?');">
+                <button type="submit" class="btn" style="background: #dc2626;">🗑️ Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

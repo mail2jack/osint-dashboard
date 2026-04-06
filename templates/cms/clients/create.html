@@ -1,15 +1,60 @@
 {% extends "cms/base.html" %}
 {% block content %}
 <h2 style="margin-bottom: 1.5rem;">Create New Client</h2>
-<form method="POST">
+
+{% if duplicate_warning %}
+<div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+    <h4 style="margin: 0 0 0.75rem 0; color: #92400e;">⚠️ Duplicate Detection Warning</h4>
+    
+    {% if exact_match %}
+    <div style="background: #fee2e2; border: 1px solid #ef4444; border-radius: 4px; padding: 0.75rem; margin-bottom: 1rem;">
+        <strong>Exact match found:</strong> <a href="{{ url_for('cms.view_client', client_id=exact_match.id) }}">{{ exact_match.name }}</a>
+        <p style="margin: 0.5rem 0 0 0; color: #991b1b;">A client with this name already exists. Creating a duplicate may cause confusion.</p>
+    </div>
+    {% endif %}
+    
+    {% if similar_clients %}
+    <div style="margin-bottom: 1rem;">
+        <strong>Similar clients found:</strong>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+            {% for c in similar_clients %}
+            <li><a href="{{ url_for('cms.view_client', client_id=c.id) }}">{{ c.name }}</a> - {{ c.similarity }}% similar</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <form method="POST" style="display: inline;">
+            <input type="hidden" name="name" value="{{ submitted_name }}">
+            <input type="hidden" name="is_company" value="{{ submitted_is_company }}">
+            <input type="hidden" name="confirm_duplicate" value="1">
+            <button type="submit" class="btn" style="background: #dc2626;">Create Anyway</button>
+        </form>
+        <a href="{{ url_for('cms.clients') }}" class="btn" style="background: #666;">Cancel</a>
+        <span style="margin-left: 1rem; color: #92400e; font-size: 0.875rem;">Please verify this is not a duplicate before proceeding.</span>
+    </div>
+</div>
+{% endif %}
+
+<form method="POST" onsubmit="return validateForm()">
     <div class="form-group">
         <label for="name">Client Name *</label>
-        <input type="text" name="name" id="name" required>
+        <input type="text" name="name" id="name" required value="{{ submitted_name or '' }}" oninput="checkDuplicate()" autocomplete="off">
+        <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
     </div>
     <div class="form-group">
-        <label for="contact_person">Contact Person</label>
-        <input type="text" name="contact_person" id="contact_person">
+        <input type="checkbox" name="is_company" id="is_company" value="1" style="width: auto; margin-right: 0.5rem;" onchange="toggleCompanyFields()" {% if submitted_is_company %}checked{% endif %}>
+        <label for="is_company" style="display: inline; font-weight: normal;">This is a company/organization</label>
     </div>
+    
+    <div id="company-fields" style="display: none;">
+        <div class="form-group">
+            <label for="contact_person">Contact Person</label>
+            <input type="text" name="contact_person" id="contact_person">
+        </div>
+    </div>
+    
     <div class="form-group">
         <label for="contact_email">Email</label>
         <input type="email" name="contact_email" id="contact_email">
@@ -22,7 +67,92 @@
         <label for="contract_number">Contract Number</label>
         <input type="text" name="contract_number" id="contract_number">
     </div>
+    
+    <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Financial Information</h3>
+    <div class="form-group">
+        <label for="social_security_number">Social Security Number</label>
+        <input type="text" name="social_security_number" id="social_security_number">
+    </div>
+    <div class="form-group" id="vat-field" style="display: none;">
+        <label for="vat_number">VAT Number</label>
+        <input type="text" name="vat_number" id="vat_number">
+    </div>
+    <div class="form-group">
+        <label for="bank_account">Bank Account</label>
+        <input type="text" name="bank_account" id="bank_account">
+    </div>
+    <div class="form-group">
+        <label for="financial_notes">Financial Notes</label>
+        <textarea name="financial_notes" id="financial_notes" rows="3" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;"></textarea>
+    </div>
+    
     <button type="submit" class="btn">Create Client</button>
     <a href="{{ url_for('cms.clients') }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
 </form>
+
+<script>
+let duplicateTimeout = null;
+
+function toggleCompanyFields() {
+    const isCompany = document.getElementById('is_company').checked;
+    const companyFields = document.getElementById('company-fields');
+    const vatField = document.getElementById('vat-field');
+    
+    if (isCompany) {
+        companyFields.style.display = 'block';
+        vatField.style.display = 'block';
+    } else {
+        companyFields.style.display = 'none';
+        vatField.style.display = 'none';
+    }
+}
+
+function checkDuplicate() {
+    const name = document.getElementById('name').value.trim();
+    const alert = document.getElementById('duplicate-alert');
+    
+    if (duplicateTimeout) clearTimeout(duplicateTimeout);
+    
+    if (name.length < 2) {
+        alert.style.display = 'none';
+        return;
+    }
+    
+    duplicateTimeout = setTimeout(() => {
+        fetch(`/cms/api/check-duplicate?name=${encodeURIComponent(name)}&type=client`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.exact) {
+                    alert.innerHTML = `<strong>⚠️ Exact match:</strong> <a href="/cms/clients/${data.exact.id}" target="_blank">${data.exact.name}</a>`;
+                    alert.style.background = '#fee2e2';
+                    alert.style.border = '1px solid #ef4444';
+                    alert.style.display = 'block';
+                } else if (data.duplicates && data.duplicates.length > 0) {
+                    let html = '<strong>Similar clients found:</strong><ul style="margin:0.25rem 0 0 1rem;padding:0;">';
+                    data.duplicates.forEach(d => {
+                        html += `<li><a href="/cms/clients/${d.id}" target="_blank">${d.name}</a> - ${d.similarity}% similar</li>`;
+                    });
+                    html += '</ul>';
+                    alert.innerHTML = html;
+                    alert.style.background = '#fef3c7';
+                    alert.style.border = '1px solid #f59e0b';
+                    alert.style.display = 'block';
+                } else {
+                    alert.style.display = 'none';
+                }
+            })
+            .catch(() => {});
+    }, 300);
+}
+
+function validateForm() {
+    return true;
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', () => {
+    toggleCompanyFields();
+    if (document.getElementById('name').value.length >= 2) checkDuplicate();
+});
+</script>
 {% endblock %}

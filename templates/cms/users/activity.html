@@ -1,0 +1,253 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<style>
+    .activity-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+    .activity-timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--border-color);
+    }
+    .activity-item {
+        position: relative;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: var(--bg-card);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px var(--shadow);
+    }
+    .activity-item::before {
+        content: '';
+        position: absolute;
+        left: -1.75rem;
+        top: 1.25rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent-primary);
+        border: 2px solid var(--bg-secondary);
+    }
+    .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+    }
+    .activity-action {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .action-create { background: #dcfce7; color: #166534; }
+    .action-update { background: #dbeafe; color: #1e40af; }
+    .action-delete { background: #fee2e2; color: #dc2626; }
+    .action-login { background: #fef3c7; color: #92400e; }
+    .action-read { background: #f3f4f6; color: #374151; }
+    
+    .activity-time {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .activity-entity {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    .activity-desc {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .activity-link {
+        display: inline-block;
+        margin-top: 0.5rem;
+        color: var(--link-color);
+        text-decoration: none;
+        font-size: 0.85rem;
+    }
+    .activity-link:hover { text-decoration: underline; }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-box {
+        background: var(--bg-card);
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 1px 3px var(--shadow);
+    }
+    .stat-box .value {
+        font-size: 1.75rem;
+        font-weight: bold;
+        color: var(--text-primary);
+    }
+    .stat-box .label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+    
+    .filter-row {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    .filter-row select {
+        padding: 0.4rem 0.75rem;
+        border: 1px solid var(--border-input);
+        border-radius: 4px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div>
+        <h1 style="margin: 0;">{{ user.full_name }}</h1>
+        <span style="color: var(--text-secondary);">{{ user.role|replace('_', ' ')|title }}</span>
+    </div>
+    <a href="{{ url_for('users.list_users') }}" class="btn" style="background: #666;">← Back to Users</a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-box">
+        <div class="value">{{ stats.total }}</div>
+        <div class="label">Total Actions</div>
+    </div>
+    <div class="stat-box">
+        <div class="value">{{ stats.today }}</div>
+        <div class="label">Today</div>
+    </div>
+    <div class="stat-box">
+        <div class="value">{{ stats.week }}</div>
+        <div class="label">This Week</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 250px; gap: 1.5rem;">
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Activity Timeline</h2>
+        </div>
+        
+        <form method="GET" class="filter-row">
+            <input type="hidden" name="user_id" value="{{ user.id }}">
+            <select name="action" onchange="this.form.submit()">
+                <option value="">All Actions</option>
+                <option value="create" {% if filters.action == 'create' %}selected{% endif %}>Create</option>
+                <option value="update" {% if filters.action == 'update' %}selected{% endif %}>Update</option>
+                <option value="delete" {% if filters.action == 'delete' %}selected{% endif %}>Delete</option>
+                <option value="login" {% if filters.action == 'login' %}selected{% endif %}>Login</option>
+            </select>
+            <select name="entity_type" onchange="this.form.submit()">
+                <option value="">All Entities</option>
+                <option value="case" {% if filters.entity_type == 'case' %}selected{% endif %}>Case</option>
+                <option value="subject" {% if filters.entity_type == 'subject' %}selected{% endif %}>Subject</option>
+                <option value="client" {% if filters.entity_type == 'client' %}selected{% endif %}>Client</option>
+                <option value="finding" {% if filters.entity_type == 'finding' %}selected{% endif %}>Finding</option>
+                <option value="comment" {% if filters.entity_type == 'comment' %}selected{% endif %}>Comment</option>
+            </select>
+            {% if filters.action or filters.entity_type %}
+            <a href="{{ url_for('users.user_activity', user_id=user.id) }}" class="btn" style="padding: 0.4rem 0.75rem; background: #666;">Clear</a>
+            {% endif %}
+        </form>
+        
+        {% if activities %}
+        <div class="activity-timeline">
+            {% for activity in activities %}
+            <div class="activity-item">
+                <div class="activity-header">
+                    <span class="activity-action action-{{ activity.action }}">{{ activity.action }}</span>
+                    <span class="activity-time">{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') if activity.timestamp else '' }}</span>
+                </div>
+                <div class="activity-entity">
+                    {{ activity.entity_type|title }}{% if activity.entity_id %} ({{ activity.entity_id[:8] }}...){% endif %}
+                </div>
+                {% if activity.description %}
+                <div class="activity-desc">{{ activity.description }}</div>
+                {% endif %}
+                
+                {% if activity.case_id %}
+                <a href="{{ url_for('cms.view_case', case_id=activity.case_id) }}" class="activity-link">View Case →</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        
+        {% if pagination.pages > 1 %}
+        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('users.user_activity', user_id=user.id, page=pagination.prev_num, action=filters.action, entity_type=filters.entity_type) }}" class="btn" style="padding: 0.4rem 0.75rem;">Previous</a>
+            {% endif %}
+            <span style="padding: 0.4rem 0.75rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+            {% if pagination.has_next %}
+            <a href="{{ url_for('users.user_activity', user_id=user.id, page=pagination.next_num, action=filters.action, entity_type=filters.entity_type) }}" class="btn" style="padding: 0.4rem 0.75rem;">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No activity found.</p>
+        {% endif %}
+    </div>
+    
+    <div>
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">Actions Breakdown</h3>
+            {% if activity_counts %}
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for action, count in activity_counts %}
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="activity-action action-{{ action }}" style="font-size: 0.7rem;">{{ action }}</span>
+                    <span style="font-weight: 600;">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: var(--text-secondary);">No data</p>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">By Entity Type</h3>
+            {% if entity_counts %}
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for entity, count in entity_counts %}
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="text-transform: capitalize;">{{ entity }}</span>
+                    <span style="font-weight: 600;">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: var(--text-secondary);">No data</p>
+            {% endif %}
+        </div>
+        
+        {% if recent_cases %}
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">Recent Cases</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for case in recent_cases[:5] %}
+                <a href="{{ url_for('cms.view_case', case_id=case.id) }}" style="color: var(--link-color); text-decoration: none;">
+                    {{ case.case_number }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

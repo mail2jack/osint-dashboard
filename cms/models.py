@@ -212,6 +212,7 @@ class Client(db.Model):
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(200), nullable=False, index=True)
+    is_company = db.Column(db.Boolean, default=False)
     contact_person = db.Column(db.String(200))  # Encrypted
     contact_email = db.Column(db.String(200))   # Encrypted
     contact_phone = db.Column(db.String(50))    # Encrypted
@@ -221,6 +222,10 @@ class Client(db.Model):
     address_country = db.Column(db.String(100)) # Encrypted
     contract_number = db.Column(db.String(100))
     contract_info = db.Column(db.Text)
+    social_security_number = db.Column(db.String(50))  # Encrypted
+    vat_number = db.Column(db.String(50))  # For companies
+    bank_account = db.Column(db.String(100))  # Encrypted
+    financial_notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
     is_deleted = db.Column(db.Boolean, default=False)  # Soft delete
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -233,7 +238,8 @@ class Client(db.Model):
     # Encrypted fields list for reference
     ENCRYPTED_FIELDS = [
         'contact_person', 'contact_email', 'contact_phone',
-        'address_street', 'address_city', 'address_postal', 'address_country'
+        'address_street', 'address_city', 'address_postal', 'address_country',
+        'social_security_number', 'bank_account'
     ]
     
     def encrypt_naw(self):
@@ -319,6 +325,9 @@ class Case(db.Model):
     reopened_at = db.Column(db.DateTime)
     reopened_by = db.Column(db.String(36), db.ForeignKey('users.id'))
     
+    # Case hierarchy
+    parent_case_id = db.Column(db.String(36), db.ForeignKey('cases.id'), nullable=True)
+    
     # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
@@ -336,6 +345,8 @@ class Case(db.Model):
     )
     findings = db.relationship('Finding', backref='case', lazy='dynamic', cascade='all, delete-orphan')
     financial_records = db.relationship('FinancialRecord', backref='case', lazy='dynamic')
+    child_cases = db.relationship('Case', backref=db.backref('parent_case', remote_side=[id]), lazy='dynamic')
+    reminders = db.relationship('Reminder', backref='case', lazy='dynamic', foreign_keys='Reminder.case_id')
     
     @staticmethod
     def generate_case_number() -> str:
@@ -408,6 +419,15 @@ class Case(db.Model):
             result['assigned_investigators'] = [
                 {'id': u.id, 'name': u.full_name} for u in self.investigators
             ]
+            result['parent_case'] = {
+                'id': self.parent_case.id,
+                'case_number': self.parent_case.case_number,
+                'title': self.parent_case.title
+            } if self.parent_case else None
+            result['child_cases'] = [
+                {'id': c.id, 'case_number': c.case_number, 'title': c.title, 'status': c.status}
+                for c in self.child_cases.filter_by(is_deleted=False)
+            ]
         
         return result
 
@@ -451,6 +471,13 @@ class Subject(db.Model):
     estimated_value = db.Column(db.Numeric(15, 2))
     currency = db.Column(db.String(3), default='EUR')
     
+    # Vehicle-specific fields (encrypted)
+    license_plate = db.Column(db.String(20))  # Encrypted
+    vin = db.Column(db.String(50))  # Encrypted (Vehicle Identification Number)
+    insurance_company = db.Column(db.String(200))  # Encrypted
+    brand = db.Column(db.String(100))
+    vehicle_type = db.Column(db.String(50))  # sedan, suv, truck, etc.
+    
     # Photo
     photo_path = db.Column(db.String(500))  # Path to uploaded photo
     
@@ -476,7 +503,8 @@ class Subject(db.Model):
     
     ENCRYPTED_FIELDS = [
         'date_of_birth', 'place_of_birth', 'nationality',
-        'identification_number', 'address', 'phone', 'email'
+        'identification_number', 'address', 'phone', 'email',
+        'license_plate', 'vin', 'insurance_company'
     ]
     
     def encrypt_identifiers(self):
@@ -525,6 +553,11 @@ class Subject(db.Model):
             'asset_type': self.asset_type,
             'estimated_value': float(self.estimated_value) if self.estimated_value else None,
             'currency': self.currency,
+            'license_plate': self.license_plate,
+            'vin': self.vin,
+            'insurance_company': self.insurance_company,
+            'brand': self.brand,
+            'vehicle_type': self.vehicle_type,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         
@@ -869,4 +902,274 @@ class Document(db.Model):
             'classification': self.classification,
             'uploaded_by': self.uploaded_by,
             'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+# =============================================================================
+# Comment Model
+# =============================================================================
+
+class Comment(db.Model):
+    """
+    Comment model for notes/discussions on any entity.
+    
+    Can be linked to: case, subject, client, or financial_record
+    """
+    __tablename__ = 'comments'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # Entity references (at least one must be set)
+    case_id = db.Column(db.String(36), db.ForeignKey('cases.id'))
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'))
+    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'))
+    financial_record_id = db.Column(db.String(36), db.ForeignKey('financial_records.id'))
+    
+    # Comment content
+    content = db.Column(db.Text, nullable=False)
+    
+    # Metadata
+    comment_type = db.Column(db.String(20), default='note')  # note, discussion, update, resolution
+    is_pinned = db.Column(db.Boolean, default=False)
+    is_resolved = db.Column(db.Boolean, default=False)
+    
+    # Ownership
+    author_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    author = db.relationship('User', backref='comments')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Soft delete
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime)
+    
+    def soft_delete(self):
+        """Soft delete the comment."""
+        self.is_deleted = True
+        self.deleted_at = datetime.utcnow()
+    
+    def to_dict(self) -> dict:
+        """Serialize comment."""
+        return {
+            'id': self.id,
+            'case_id': self.case_id,
+            'subject_id': self.subject_id,
+            'client_id': self.client_id,
+            'financial_record_id': self.financial_record_id,
+            'content': self.content,
+            'comment_type': self.comment_type,
+            'is_pinned': self.is_pinned,
+            'is_resolved': self.is_resolved,
+            'author_id': self.author_id,
+            'author_name': self.author.full_name if self.author else 'Unknown',
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+# =============================================================================
+# Document Template Model
+# =============================================================================
+
+class DocumentTemplate(db.Model):
+    """
+    Document template for generating investigation reports.
+    
+    Templates use placeholders like {{case_number}}, {{client_name}}, etc.
+    """
+    __tablename__ = 'document_templates'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # Template info
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    template_type = db.Column(db.String(50), default='report')  # report, summary, letter, memo
+    
+    # Template content (uses placeholders)
+    content = db.Column(db.Text, nullable=False)
+    
+    # Categories for organization
+    category = db.Column(db.String(50))  # investigation, compliance, financial, general
+    
+    # Metadata
+    is_default = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Ownership
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
+    creator = db.relationship('User', backref='document_templates')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self) -> dict:
+        """Serialize template."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'template_type': self.template_type,
+            'content': self.content,
+            'category': self.category,
+            'is_default': self.is_default,
+            'is_active': self.is_active,
+            'created_by': self.created_by,
+            'creator_name': self.creator.full_name if self.creator else 'Unknown',
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+    
+    def render(self, context: dict) -> str:
+        """
+        Render template with provided context.
+        
+        Context can include: case, client, subjects, findings, financials, custom fields
+        """
+        from jinja2 import Environment, BaseLoader
+        import logging
+        from datetime import datetime
+        
+        env = Environment(loader=BaseLoader())
+        
+        env.filters['default'] = lambda v, d: v if v else d
+        env.filters['date'] = lambda v, fmt='%Y-%m-%d': v.strftime(fmt) if isinstance(v, datetime) else str(v)
+        env.filters['currency'] = lambda v: f"€{v:,.2f}" if isinstance(v, (int, float)) else str(v)
+        env.globals['now'] = datetime.utcnow()
+        
+        try:
+            template = env.from_string(self.content)
+            return template.render(**context)
+        except Exception as e:
+            logging.error(f"Template render error: {e}")
+            return self.content  # Return raw content on error
+
+
+# =============================================================================
+# Reminder Model
+# =============================================================================
+
+class ReminderType(PyEnum):
+    """Types of reminders."""
+    MANUAL = "manual"
+    RECURRING = "recurring"
+    SYSTEM = "system"
+
+
+class ReminderRecurrence(PyEnum):
+    """Recurrence patterns."""
+    NONE = "none"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+
+
+class Reminder(db.Model):
+    """
+    Reminder model for task/alert management.
+    
+    Supports manual reminders and system-generated alerts.
+    Can be linked to cases, subjects, or be standalone.
+    """
+    __tablename__ = 'reminders'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # Content
+    title = db.Column(db.String(300), nullable=False)
+    description = db.Column(db.Text)
+    
+    # Timing
+    reminder_date = db.Column(db.DateTime, nullable=False, index=True)
+    due_date = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    
+    # Type and recurrence
+    reminder_type = db.Column(db.String(20), default=ReminderType.MANUAL.value)
+    recurrence = db.Column(db.String(20), default=ReminderRecurrence.NONE.value)
+    
+    # Priority
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high, critical
+    
+    # Links (at least one should be set)
+    case_id = db.Column(db.String(36), db.ForeignKey('cases.id'))
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'))
+    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'))
+    
+    # Assignment
+    assigned_to = db.Column(db.String(36), db.ForeignKey('users.id'))
+    assigned_user = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_reminders')
+    
+    # Ownership
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_reminders')
+    
+    # Status
+    is_completed = db.Column(db.Boolean, default=False, index=True)
+    is_overdue = db.Column(db.Boolean, default=False, index=True)
+    is_dismissed = db.Column(db.Boolean, default=False)
+    
+    # Notification settings
+    notify_email = db.Column(db.Boolean, default=False)
+    notify_dashboard = db.Column(db.Boolean, default=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Soft delete
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime)
+    
+    def complete(self):
+        """Mark reminder as completed."""
+        self.is_completed = True
+        self.completed_at = datetime.utcnow()
+    
+    def snooze(self, minutes: int = 30):
+        """Snooze reminder for specified minutes."""
+        from datetime import timedelta
+        self.reminder_date = datetime.utcnow() + timedelta(minutes=minutes)
+    
+    def check_overdue(self):
+        """Check and update overdue status."""
+        if not self.is_completed and self.reminder_date < datetime.utcnow():
+            self.is_overdue = True
+        return self.is_overdue
+    
+    def soft_delete(self):
+        """Soft delete the reminder."""
+        self.is_deleted = True
+        self.deleted_at = datetime.utcnow()
+    
+    def to_dict(self) -> dict:
+        """Serialize reminder."""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'reminder_date': self.reminder_date.isoformat() if self.reminder_date else None,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'reminder_type': self.reminder_type,
+            'recurrence': self.recurrence,
+            'priority': self.priority,
+            'case_id': self.case_id,
+            'subject_id': self.subject_id,
+            'client_id': self.client_id,
+            'assigned_to': self.assigned_to,
+            'assigned_user_name': self.assigned_user.full_name if self.assigned_user else None,
+            'created_by': self.created_by,
+            'creator_name': self.creator.full_name if self.creator else None,
+            'is_completed': self.is_completed,
+            'is_overdue': self.is_overdue,
+            'is_dismissed': self.is_dismissed,
+            'notify_email': self.notify_email,
+            'notify_dashboard': self.notify_dashboard,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

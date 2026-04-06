@@ -15,11 +15,37 @@
         .back { margin-bottom: 1rem; }
         .back a { color: #0066cc; text-decoration: none; }
     </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('cms-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="back"><a href="{{ url_for('users.list_users') }}">← Back to Users</a></div>
+    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+        <div style="display: flex; gap: 0; align-items: center;">
+            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
+            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
+            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
+            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
+            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Users</a>
+            {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
+            <span style="color: #888;">|</span>
+            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        </div>
+    </div>
     
-    <h1>Create New User</h1>
+    <div style="padding: 0 2rem; margin-top: 1rem;">
+        <div class="back"><a href="{{ url_for('users.list_users') }}">← Back to Users</a></div>
+        
+        <h1>Create New User</h1>
     
     <div class="card">
         <form method="POST">
@@ -57,6 +83,7 @@
             <button type="submit" class="btn">Create User</button>
             <a href="{{ url_for('users.list_users') }}" class="btn btn-cancel">Cancel</a>
         </form>
+    </div>
     </div>
 </body>
 </html>

@@ -6,20 +6,47 @@
     <style>
         body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
         h1 { color: #1a1a2e; margin-bottom: 1.5rem; }
+        h3 { color: #1a1a2e; margin-top: 2rem; margin-bottom: 1rem; }
         .card { background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; }
         .form-group { margin-bottom: 1rem; }
         label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333; }
-        input { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; box-sizing: border-box; }
+        input, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; box-sizing: border-box; }
         .btn { padding: 0.75rem 1.5rem; background: #16213e; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; display: inline-block; text-decoration: none; }
         .btn-cancel { background: #666; margin-left: 0.5rem; }
         .back { margin-bottom: 1rem; }
         .back a { color: #0066cc; text-decoration: none; }
     </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('cms-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="back"><a href="{{ url_for('cms.view_client', client_id=client.id) }}">← Back to Client</a></div>
+    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+        <div style="display: flex; gap: 0; align-items: center;">
+            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
+            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
+            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Clients</a>
+            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
+            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
+            {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
+            <span style="color: #888;">|</span>
+            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        </div>
+    </div>
     
-    <h1>Edit Client</h1>
+    <div style="padding: 0 2rem; margin-top: 1rem;">
+        <div class="back"><a href="{{ url_for('cms.view_client', client_id=client.id) }}">← Back to Client</a></div>
+        
+        <h1>Edit Client</h1>
     
     <div class="card">
         <form method="POST">
@@ -29,8 +56,15 @@
             </div>
             
             <div class="form-group">
-                <label for="contact_person">Contact Person</label>
-                <input type="text" name="contact_person" id="contact_person" value="{{ client.contact_person or '' }}">
+                <input type="checkbox" name="is_company" id="is_company" value="1" {% if client.is_company %}checked{% endif %} style="width: auto; margin-right: 0.5rem;" onchange="toggleCompanyFields()">
+                <label for="is_company" style="display: inline; font-weight: normal;">This is a company/organization</label>
+            </div>
+            
+            <div id="company-fields" style="{% if not client.is_company %}display: none;{% endif %}">
+                <div class="form-group">
+                    <label for="contact_person">Contact Person</label>
+                    <input type="text" name="contact_person" id="contact_person" value="{{ client.contact_person or '' }}">
+                </div>
             </div>
             
             <div class="form-group">
@@ -48,9 +82,44 @@
                 <input type="text" name="contract_number" id="contract_number" value="{{ client.contract_number or '' }}">
             </div>
             
+            <h3>Financial Information</h3>
+            <div class="form-group">
+                <label for="social_security_number">Social Security Number</label>
+                <input type="text" name="social_security_number" id="social_security_number" value="{{ client.social_security_number or '' }}">
+            </div>
+            <div class="form-group" id="vat-field" style="{% if not client.is_company %}display: none;{% endif %}">
+                <label for="vat_number">VAT Number</label>
+                <input type="text" name="vat_number" id="vat_number" value="{{ client.vat_number or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="bank_account">Bank Account</label>
+                <input type="text" name="bank_account" id="bank_account" value="{{ client.bank_account or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="financial_notes">Financial Notes</label>
+                <textarea name="financial_notes" id="financial_notes" rows="3">{{ client.financial_notes or '' }}</textarea>
+            </div>
+            
             <button type="submit" class="btn">Save Changes</button>
             <a href="{{ url_for('cms.view_client', client_id=client.id) }}" class="btn btn-cancel">Cancel</a>
         </form>
+    </div>
+    
+    <script>
+    function toggleCompanyFields() {
+        const isCompany = document.getElementById('is_company').checked;
+        const companyFields = document.getElementById('company-fields');
+        const vatField = document.getElementById('vat-field');
+        
+        if (isCompany) {
+            companyFields.style.display = 'block';
+            vatField.style.display = 'block';
+        } else {
+            companyFields.style.display = 'none';
+            vatField.style.display = 'none';
+        }
+    }
+    </script>
     </div>
 </body>
 </html>

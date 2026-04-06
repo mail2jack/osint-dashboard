@@ -5,7 +5,10 @@
     <title>Cases - CMS</title>
     <style>
         body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .header { 
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;
+            position: sticky; top: 0; z-index: 100; background: #f5f5f5; padding: 0.5rem 0;
+        }
         h1 { color: #1a1a2e; }
         .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
         .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #eee; }
@@ -40,14 +43,41 @@
         .pagination a:hover { background: #f5f5f5; }
         .pagination .active { background: #16213e; color: white; }
     </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('cms-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="back"><a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a></div>
-    
-    <div class="header">
-        <h1>Cases</h1>
-        <a href="{{ url_for('cms.create_case') }}" class="btn">+ New Case</a>
+    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+        <div style="display: flex; gap: 0; align-items: center;">
+            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
+            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Cases</a>
+            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
+            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
+            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
+            {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
+            <span style="color: #888;">|</span>
+            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        </div>
     </div>
+    
+    <div style="padding: 0 2rem; margin-top: 1rem;">
+        <div class="header">
+            <h1>Cases</h1>
+            <div style="display: flex; gap: 0.5rem;">
+                <a href="{{ url_for('cms.export_cases', format='csv') }}" class="btn" style="background: #059669;">📥 Export All</a>
+                <a href="{{ url_for('cms.create_case') }}" class="btn">+ New Case</a>
+            </div>
+        </div>
     
     <div class="card">
         <form method="GET" class="filters">
@@ -81,11 +111,31 @@
         <table>
             <thead>
                 <tr>
-                    <th>Case Number</th>
-                    <th>Title</th>
-                    <th>Client</th>
-                    <th>Priority</th>
-                    <th>Status</th>
+                    <th>
+                        <a href="?sort=case_number&order={% if filters.sort == 'case_number' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                            Case Number {% if filters.sort == 'case_number' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="?sort=title&order={% if filters.sort == 'title' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                            Title {% if filters.sort == 'title' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="?sort=client&order={% if filters.sort == 'client' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                            Client {% if filters.sort == 'client' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="?sort=priority&order={% if filters.sort == 'priority' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                            Priority {% if filters.sort == 'priority' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="?sort=status&order={% if filters.sort == 'status' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                            Status {% if filters.sort == 'status' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        </a>
+                    </th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -106,23 +156,24 @@
         {% if pagination.pages > 1 %}
         <div class="pagination">
             {% if pagination.has_prev %}
-            <a href="{{ url_for('cms.cases', page=pagination.prev_num, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">&laquo; Prev</a>
+            <a href="{{ url_for('cms.cases', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">&laquo; Prev</a>
             {% endif %}
             {% for p in range(1, pagination.pages + 1) %}
                 {% if p == pagination.page %}
                 <span class="active">{{ p }}</span>
                 {% elif p <= 3 or p > pagination.pages - 3 or (p <= pagination.page + 1 and p >= pagination.page - 1) %}
-                <a href="{{ url_for('cms.cases', page=p, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">{{ p }}</a>
+                <a href="{{ url_for('cms.cases', page=p, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">{{ p }}</a>
                 {% endif %}
             {% endfor %}
             {% if pagination.has_next %}
-            <a href="{{ url_for('cms.cases', page=pagination.next_num, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">Next &raquo;</a>
+            <a href="{{ url_for('cms.cases', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">Next &raquo;</a>
             {% endif %}
         </div>
         {% endif %}
         {% else %}
         <p>No cases found. Try adjusting your filters.</p>
         {% endif %}
+    </div>
     </div>
 </body>
 </html>

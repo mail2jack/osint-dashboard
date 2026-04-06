@@ -16,18 +16,54 @@
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
     </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('cms-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="back"><a href="{{ url_for('cms.clients') }}">← Back to Clients</a></div>
+    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+        <div style="display: flex; gap: 0; align-items: center;">
+            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
+            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
+            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Clients</a>
+            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
+            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
+            {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
+            <span style="color: #888;">|</span>
+            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        </div>
+    </div>
     
-    <h1>{{ client.name }}</h1>
+    <div style="padding: 0 2rem; margin-top: 1rem;">
+        <div class="back"><a href="{{ url_for('cms.clients') }}">← Back to Clients</a></div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>{{ client.name }}{% if client.is_company %} <span style="font-size: 0.6em; color: #666;">(Company)</span>{% endif %}</h1>
+        <div style="display: flex; gap: 0.5rem;">
+            {% if cases|length == 0 %}
+            <button onclick="archiveClient('{{ client.id }}')" class="btn-sm" style="background: #dc2626; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">📁 Archive</button>
+            {% endif %}
+            <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-sm" style="text-decoration: none;">✏️ Edit</a>
+        </div>
+    </div>
     
     <div class="card">
         <h2>Contact Information</h2>
+        {% if client.is_company %}
         <div class="info-item">
             <label>Contact Person</label>
             <span>{{ client.contact_person if client.contact_person else '-' }}</span>
         </div>
+        {% endif %}
         <div class="info-item">
             <label>Email</label>
             <span>{{ client.contact_email if client.contact_email else '-' }}</span>
@@ -36,6 +72,34 @@
             <label>Phone</label>
             <span>{{ client.contact_phone if client.contact_phone else '-' }}</span>
         </div>
+        <div class="info-item">
+            <label>Contract Number</label>
+            <span>{{ client.contract_number if client.contract_number else '-' }}</span>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Financial Information</h2>
+        <div class="info-item">
+            <label>Social Security Number</label>
+            <span>{{ client.social_security_number if client.social_security_number else '-' }}</span>
+        </div>
+        {% if client.is_company %}
+        <div class="info-item">
+            <label>VAT Number</label>
+            <span>{{ client.vat_number if client.vat_number else '-' }}</span>
+        </div>
+        {% endif %}
+        <div class="info-item">
+            <label>Bank Account</label>
+            <span>{{ client.bank_account if client.bank_account else '-' }}</span>
+        </div>
+        {% if client.financial_notes %}
+        <div class="info-item">
+            <label>Financial Notes</label>
+            <span>{{ client.financial_notes }}</span>
+        </div>
+        {% endif %}
     </div>
     
     <div class="card">
@@ -56,6 +120,26 @@
         {% else %}
         <p>No cases for this client.</p>
         {% endif %}
+    </div>
+    
+    <script>
+    function archiveClient(clientId) {
+        if (!confirm('Are you sure you want to archive this client?')) return;
+        
+        fetch('/cms/clients/' + clientId + '/archive', {
+            method: 'POST'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                window.location.href = '/cms/clients';
+            }
+        })
+        .catch(err => alert('Error: ' + err.message));
+    }
+    </script>
     </div>
 </body>
 </html>

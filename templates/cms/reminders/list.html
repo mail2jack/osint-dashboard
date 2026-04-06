@@ -1,0 +1,227 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<style>
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        background: var(--bg-card);
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 1px 3px var(--shadow);
+    }
+    .stat-card .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--text-primary);
+    }
+    .stat-card .label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+    .stat-card.warning .value { color: #f59e0b; }
+    .stat-card.danger .value { color: #dc2626; }
+    
+    .filter-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    .filter-tab {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        text-decoration: none;
+        color: var(--text-secondary);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        font-size: 0.85rem;
+    }
+    .filter-tab:hover { background: var(--bg-secondary); }
+    .filter-tab.active {
+        background: var(--accent-primary);
+        color: white;
+        border-color: var(--accent-primary);
+    }
+    
+    .reminder-card {
+        background: var(--bg-card);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 3px var(--shadow);
+        border-left: 4px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+    .reminder-card.overdue { border-left-color: #dc2626; }
+    .reminder-card.high { border-left-color: #f59e0b; }
+    .reminder-card.critical { border-left-color: #dc2626; }
+    .reminder-card.medium { border-left-color: #3b82f6; }
+    .reminder-card.low { border-left-color: #22c55e; }
+    .reminder-card.completed { 
+        border-left-color: #9ca3af;
+        opacity: 0.7;
+    }
+    
+    .reminder-info h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+    }
+    .reminder-info h3.completed { text-decoration: line-through; }
+    .reminder-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .reminder-desc {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    
+    .reminder-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+    }
+    .btn-complete { background: #22c55e; color: white; }
+    .btn-snooze { background: #f59e0b; color: white; }
+    .btn-edit { background: #3b82f6; color: white; }
+    .btn-delete { background: #dc2626; color: white; }
+    
+    .priority-badge {
+        display: inline-block;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .priority-critical { background: #fee2e2; color: #dc2626; }
+    .priority-high { background: #ffedd5; color: #ea580c; }
+    .priority-medium { background: #dbeafe; color: #2563eb; }
+    .priority-low { background: #dcfce7; color: #16a34a; }
+    
+    .overdue-badge {
+        background: #dc2626;
+        color: white;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div>
+        <h1 style="margin: 0;">Reminders</h1>
+        <span style="color: var(--text-secondary);">Tasks and alerts</span>
+    </div>
+    <a href="{{ url_for('cms.create_reminder') }}" class="btn" style="background: var(--accent-primary);">+ New Reminder</a>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="value">{{ stats.total }}</div>
+        <div class="label">Pending</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="value">{{ stats.overdue }}</div>
+        <div class="label">Overdue</div>
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ stats.today }}</div>
+        <div class="label">Due Today</div>
+    </div>
+</div>
+
+<div class="filter-tabs">
+    <a href="{{ url_for('cms.reminders', filter='all') }}" class="filter-tab {% if filter_type == 'all' %}active{% endif %}">All</a>
+    <a href="{{ url_for('cms.reminders', filter='overdue') }}" class="filter-tab {% if filter_type == 'overdue' %}active{% endif %}">Overdue</a>
+    <a href="{{ url_for('cms.reminders', filter='upcoming') }}" class="filter-tab {% if filter_type == 'upcoming' %}active{% endif %}">Upcoming</a>
+    <a href="{{ url_for('cms.reminders', filter='completed') }}" class="filter-tab {% if filter_type == 'completed' %}active{% endif %}">Completed</a>
+    <a href="{{ url_for('cms.reminders', filter='mine') }}" class="filter-tab {% if filter_type == 'mine' %}active{% endif %}">Assigned to Me</a>
+</div>
+
+{% if reminders %}
+    {% for reminder in reminders %}
+    <div class="reminder-card {{ reminder.priority }} {% if reminder.is_overdue and not reminder.is_completed %}overdue{% endif %} {% if reminder.is_completed %}completed{% endif %}">
+        <div class="reminder-info">
+            <h3 class="{% if reminder.is_completed %}completed{% endif %}">
+                {{ reminder.title }}
+                <span class="priority-badge priority-{{ reminder.priority }}">{{ reminder.priority }}</span>
+                {% if reminder.is_overdue and not reminder.is_completed %}
+                <span class="overdue-badge">Overdue</span>
+                {% endif %}
+                {% if reminder.is_completed %}
+                <span class="priority-badge" style="background: #d1d5db; color: #374151;">Completed</span>
+                {% endif %}
+            </h3>
+            <div class="reminder-meta">
+                <span>📅 {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else 'No date' }}</span>
+                {% if reminder.due_date %}
+                <span>⏰ Due: {{ reminder.due_date.strftime('%Y-%m-%d') }}</span>
+                {% endif %}
+                {% if reminder.case_id %}
+                <span>📁 Case linked</span>
+                {% endif %}
+                {% if reminder.assigned_user %}
+                <span>👤 {{ reminder.assigned_user.full_name }}</span>
+                {% endif %}
+            </div>
+            {% if reminder.description %}
+            <div class="reminder-desc">{{ reminder.description[:100] }}{% if reminder.description|length > 100 %}...{% endif %}</div>
+            {% endif %}
+        </div>
+        <div class="reminder-actions">
+            {% if not reminder.is_completed %}
+            <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+                <button type="submit" class="btn-sm btn-complete" title="Mark complete">✓</button>
+            </form>
+            <form method="POST" action="{{ url_for('cms.snooze_reminder', reminder_id=reminder.id, minutes=30) }}" style="display: inline;">
+                <button type="submit" class="btn-sm btn-snooze" title="Snooze 30 min">⏰</button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('cms.edit_reminder', reminder_id=reminder.id) }}" class="btn-sm btn-edit" title="Edit">✏️</a>
+            <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" onsubmit="return confirm('Delete this reminder?');">
+                <button type="submit" class="btn-sm btn-delete" title="Delete">🗑️</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+    
+    {% if pagination.pages > 1 %}
+    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('cms.reminders', page=pagination.prev_num, filter=filter_type) }}" class="btn" style="padding: 0.4rem 0.75rem;">Previous</a>
+        {% endif %}
+        <span style="padding: 0.4rem 0.75rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+        <a href="{{ url_for('cms.reminders', page=pagination.next_num, filter=filter_type) }}" class="btn" style="padding: 0.4rem 0.75rem;">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+{% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+        <p style="font-size: 2rem; margin-bottom: 0.5rem;">📋</p>
+        <p>No reminders found.</p>
+        <a href="{{ url_for('cms.create_reminder') }}" class="btn" style="background: var(--accent-primary); margin-top: 1rem;">Create your first reminder</a>
+    </div>
+{% endif %}
+{% endblock %}

@@ -33,6 +33,11 @@
     </div>
     
     <div class="form-group">
+        <label for="tags">Tags (comma-separated)</label>
+        <input type="text" name="tags" id="tags" value="{{ case.tags|join(', ') if case.tags else '' }}" placeholder="e.g. fraud, urgent, offshore">
+    </div>
+    
+    <div class="form-group">
         <label for="target_end_date">Target End Date</label>
         <input type="date" name="target_end_date" id="target_end_date" value="{{ case.target_end_date.strftime('%Y-%m-%d') if case.target_end_date else '' }}">
     </div>

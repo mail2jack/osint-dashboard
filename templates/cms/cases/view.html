@@ -68,14 +68,60 @@
         
         /* Select all checkbox */
         .select-all-row { padding: 0.5rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb; }
+        
+        /* Comments Section */
+        .comments-section { margin-top: 1.5rem; }
+        .comment-form { margin-bottom: 1rem; }
+        .comment-form textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; resize: vertical; min-height: 80px; }
+        .comment-item { padding: 1rem; border-bottom: 1px solid #eee; }
+        .comment-item:last-child { border-bottom: none; }
+        .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .comment-author { font-weight: 600; }
+        .comment-time { font-size: 0.8rem; color: #888; }
+        .comment-content { color: #333; line-height: 1.5; }
+        .comment-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+        .comment-actions button { background: none; border: none; color: #666; cursor: pointer; font-size: 0.8rem; padding: 0; }
+        .comment-actions button:hover { color: #16213e; }
+        .comment-pinned { background: #fef3c7; border-left: 3px solid #f59e0b; }
+        .comment-type-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; background: #e5e7eb; color: #666; }
     </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('cms-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="back"><a href="{{ url_for('cms.cases') }}">← Back to Cases</a></div>
+    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+        <div style="display: flex; gap: 0; align-items: center;">
+            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
+            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Cases</a>
+            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
+            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
+            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
+            {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
+            <span style="color: #888;">|</span>
+            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        </div>
+    </div>
     
-    <div class="header">
-        <h1>{{ case.case_number }}: {{ case.title }}</h1>
-        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn btn-sm">✏️ Edit Case</a>
+    <div style="padding: 0 2rem; margin-top: 1rem;">
+        <div class="back"><a href="{{ url_for('cms.cases') }}">← Back to Cases</a></div>
+        
+        <div class="header">
+            <h1>{{ case.case_number }}: {{ case.title }}</h1>
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn btn-sm" style="background: #059669;">📥 Export CSV</a>
+            <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn btn-sm" style="background: #7c3aed;">📄 Generate Report</a>
+            <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn btn-sm">✏️ Edit Case</a>
+        </div>
     </div>
     
     <div class="card">
@@ -105,6 +151,16 @@
         </div>
         {% endif %}
         
+        {% if case.tags %}
+        <div class="info-item">
+            <label>Tags</label>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
+                {% for tag in case.tags %}
+                <span style="background: #e8f4ff; color: #1e40af; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
         {% if case.closure_reason %}
         <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border-radius: 4px;">
             <strong>Closure Reason:</strong> {{ case.closure_reason }}
@@ -117,6 +173,38 @@
         </div>
         {% endif %}
     </div>
+    
+    {% if case.parent_case or case.child_cases.count() > 0 %}
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0;">Case Hierarchy</h2>
+            <button onclick="openHierarchyModal()" class="btn btn-sm" style="background: #7c3aed;">Manage Hierarchy</button>
+        </div>
+        
+        {% if case.parent_case %}
+        <div style="margin-top: 1rem; padding: 0.75rem; background: #ede9fe; border-radius: 8px;">
+            <label style="display: block; color: #666; font-size: 0.875rem;">Parent Case</label>
+            <a href="{{ url_for('cms.view_case', case_id=case.parent_case.id) }}" style="font-weight: 600;">
+                {{ case.parent_case.case_number }}: {{ case.parent_case.title }}
+            </a>
+        </div>
+        {% endif %}
+        
+        {% if case.child_cases.count() > 0 %}
+        <div style="margin-top: 1rem;">
+            <label style="display: block; color: #666; font-size: 0.875rem;">Child Cases ({{ case.child_cases.count() }})</label>
+            {% for child in case.child_cases.filter_by(is_deleted=False) %}
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-top: 0.5rem;">
+                <a href="{{ url_for('cms.view_case', case_id=child.id) }}">
+                    {{ child.case_number }}: {{ child.title }}
+                </a>
+                <span class="badge badge-{{ child.status }}">{{ child.status }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
     
     <div class="card">
         <h2>Subjects ({{ subjects|length }})</h2>
@@ -376,6 +464,97 @@
         </div>
     </div>
     
+    <!-- Case Hierarchy Modal -->
+    <div id="hierarchyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Case Hierarchy</h2>
+                <span class="close" onclick="closeHierarchyModal()">&times;</span>
+            </div>
+            
+            <p style="color: #666; margin-bottom: 1rem;">Link this case to a parent case to create a hierarchy of related investigations.</p>
+            
+            <h4 style="margin-bottom: 0.5rem;">Current Parent</h4>
+            <div id="currentParent"></div>
+            
+            <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #eee;">
+            
+            <h4 style="margin-bottom: 0.5rem;">Set New Parent</h4>
+            <div style="margin-bottom: 1rem;">
+                <input type="text" id="parentSearchInput" placeholder="Search cases by number or title..." 
+                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px;"
+                       oninput="searchParentCases()">
+            </div>
+            <div id="parentSearchResults" style="max-height: 300px; overflow-y: auto;">
+                <p style="color: #666;">Type to search for a parent case...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reminders Section -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">⏰ Reminders ({{ case_reminders|length }})</h2>
+            <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Add Reminder</a>
+        </div>
+        
+        {% if case_reminders %}
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            {% for reminder in case_reminders %}
+            <div style="padding: 0.75rem; background: {% if reminder.is_completed %}#f3f4f6{% elif reminder.is_overdue %}#fee2e2{% else %}#dbeafe{% endif %}; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>{{ reminder.title }}</strong>
+                    <div style="font-size: 0.8rem; color: #666;">
+                        {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else 'No date' }}
+                        {% if reminder.is_completed %} - Completed{% elif reminder.is_overdue %} - OVERDUE{% endif %}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.25rem;">
+                    {% if not reminder.is_completed %}
+                    <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('cms.edit_reminder', reminder_id=reminder.id) }}" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #3b82f6;">✏️</a>
+                    <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" onsubmit="return confirm('Delete this reminder?');">
+                        <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #dc2626;">🗑️</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: #888; text-align: center; padding: 1rem;">No reminders for this case. <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" style="color: #059669;">Add one</a></p>
+        {% endif %}
+    </div>
+    
+    <!-- Comments Section -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Notes & Comments <span id="commentCount" style="font-size: 0.9rem; color: #888;"></span></h2>
+            <button onclick="loadComments()" class="btn btn-sm">🔄 Refresh</button>
+        </div>
+        
+        <div class="comment-form">
+            <textarea id="newComment" placeholder="Add a note or comment..."></textarea>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
+                <select id="commentType" style="padding: 0.4rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="note">Note</option>
+                    <option value="discussion">Discussion</option>
+                    <option value="update">Update</option>
+                </select>
+                <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: #666;">
+                    <input type="checkbox" id="commentPinned"> Pin comment
+                </label>
+                <button onclick="addComment()" class="btn btn-sm" style="background: #059669;">Add Comment</button>
+            </div>
+        </div>
+        
+        <div id="commentsList">
+            <p style="color: #888; text-align: center; padding: 1rem;">Loading comments...</p>
+        </div>
+    </div>
+    
     <!-- OSINT Search Modal -->
     <div id="osintModal" class="modal">
         <div class="modal-content">
@@ -572,112 +751,127 @@
                 return;
             }
             
-            // Show searching state
             document.getElementById('osintSearchForm').style.display = 'none';
             document.getElementById('osintSearching').style.display = 'block';
             document.getElementById('searchQueryDisplay').textContent = 'Searching for: ' + name;
             document.getElementById('osintError').style.display = 'none';
             
-            // Start the search
-            fetch("{{ url_for('cms.start_osint_search', case_id=case.id) }}", {
+            // Use the main app's /api/person/stream endpoint
+            fetch('/api/person/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: name })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    showOsintError(data.error);
-                    return;
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Search failed');
                 }
-                currentSearchId = data.search_id;
-                pollSearchStatus();
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            if (buffer.trim()) {
+                                try {
+                                    const data = JSON.parse(buffer.trim().replace(/^data: /, ''));
+                                    if (data.complete) {
+                                        displayResults(data.result || {});
+                                    }
+                                } catch (e) {}
+                            }
+                            return;
+                        }
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    if (data.complete) {
+                                        displayResults(data.result || {});
+                                        reader.cancel();
+                                        return;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                        
+                        read();
+                    });
+                }
+                
+                read();
             })
             .catch(err => {
-                showOsintError('Failed to start search: ' + err.message);
+                showOsintError('Search failed: ' + err.message);
             });
-        }
-        
-        function pollSearchStatus() {
-            pollInterval = setInterval(() => {
-                fetch(osintBase + currentSearchId + '/status')
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'completed') {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
-                        loadSearchResults();
-                    } else if (data.status === 'cancelled') {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
-                        showOsintError('Search was cancelled');
-                    }
-                })
-                .catch(() => {});
-            }, 1000);
         }
         
         function cancelOsintSearch() {
-            if (!currentSearchId) return;
-            
-            fetch(osintBase + currentSearchId + '/cancel', {
-                method: 'POST'
-            })
-            .then(r => r.json())
-            .then(() => {
-                if (pollInterval) {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
-                }
-                currentSearchId = null;
-                document.getElementById('osintSearching').style.display = 'none';
-                document.getElementById('osintSearchForm').style.display = 'block';
-            })
-            .catch(() => {
-                currentSearchId = null;
-            });
+            // Nothing to cancel with stream endpoint
         }
         
-        function loadSearchResults() {
-            fetch(osintBase + currentSearchId + '/results')
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    showOsintError(data.error);
-                    return;
-                }
-                currentResults = data.results;
-                displayResults(data.results);
-            })
-            .catch(err => {
-                showOsintError('Failed to load results: ' + err.message);
-            });
-        }
+        function loadSearchResults() {}
         
         function displayResults(results) {
             document.getElementById('osintSearching').style.display = 'none';
             document.getElementById('osintResults').style.display = 'block';
             
-            const links = results.search_links || [];
-            document.getElementById('resultsCount').textContent = links.length + ' results';
+            const dorkResults = results.dorks_results || [];
+            currentResults = results;
+            
+            document.getElementById('resultsCount').textContent = dorkResults.length + ' results found';
             
             const resultsList = document.getElementById('resultsList');
             resultsList.innerHTML = '';
             
-            links.forEach((link, index) => {
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                div.innerHTML = `
-                    <input type="checkbox" class="result-checkbox" data-index="${index}" onchange="updateSelectedCount()">
-                    <div class="result-content">
-                        <div class="result-engine">${link.engine || 'Unknown'}</div>
-                        <div class="result-name">${link.name || 'Search Result'}</div>
-                        <div class="result-query">Query: ${link.query || ''}</div>
-                        <div class="result-url"><a href="${link.url || '#'}" target="_blank">${link.url || 'N/A'}</a></div>
-                    </div>
-                `;
-                resultsList.appendChild(div);
+            if (dorkResults.length === 0) {
+                resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found.</p>';
+                updateSelectedCount();
+                return;
+            }
+            
+            // Group by category
+            const categories = {};
+            dorkResults.forEach((r, index) => {
+                const cat = r.category || 'general';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push({...r, originalIndex: index});
             });
+            
+            const categoryLabels = {
+                'social_media': 'Social Media',
+                'files': 'Documents',
+                'news': 'News',
+                'general': 'Other'
+            };
+            
+            for (const [cat, items] of Object.entries(categories)) {
+                const catDiv = document.createElement('div');
+                catDiv.style.marginBottom = '1rem';
+                catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">${categoryLabels[cat] || cat} (${items.length})</h4>`;
+                
+                items.forEach((item) => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.innerHTML = `
+                        <input type="checkbox" class="result-checkbox" data-domain="${item.domain}" data-url="${item.url}" data-query="${item.query || ''}" onchange="updateSelectedCount()">
+                        <div class="result-content">
+                            <div class="result-engine">${item.domain || 'Unknown'}</div>
+                            <div class="result-query" style="font-size: 0.75rem; color: #666;">${item.query || ''}</div>
+                            <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
+                        </div>
+                    `;
+                    catDiv.appendChild(div);
+                });
+                resultsList.appendChild(catDiv);
+            }
             
             updateSelectedCount();
         }
@@ -701,8 +895,11 @@
             
             const selectedResults = [];
             checkboxes.forEach(cb => {
-                const index = parseInt(cb.dataset.index);
-                selectedResults.push(currentResults.search_links[index]);
+                selectedResults.push({
+                    url: cb.dataset.url,
+                    domain: cb.dataset.domain,
+                    query: cb.dataset.query
+                });
             });
             
             const subjectId = document.getElementById('osintSubject')?.value || '';
@@ -1010,6 +1207,212 @@
         
         // Load summary on page load
         loadFinancialSummary();
+        
+        // Case Hierarchy Functions
+        function openHierarchyModal() {
+            document.getElementById('hierarchyModal').classList.add('show');
+            loadAvailableParents();
+        }
+        
+        function closeHierarchyModal() {
+            document.getElementById('hierarchyModal').classList.remove('show');
+        }
+        
+        function loadAvailableParents() {
+            const searchResults = document.getElementById('parentSearchResults');
+            searchResults.innerHTML = '<p style="color: #666;">Type to search for a parent case...</p>';
+            
+            // Show current parent if exists
+            {% if case.parent_case %}
+            document.getElementById('currentParent').innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #ede9fe; border-radius: 8px; margin-bottom: 1rem;">
+                    <div>
+                        <strong>{{ case.parent_case.case_number }}</strong>: {{ case.parent_case.title }}
+                    </div>
+                    <button onclick="removeParent()" class="btn btn-sm" style="background: #dc2626;">Remove</button>
+                </div>
+            `;
+            {% else %}
+            document.getElementById('currentParent').innerHTML = '<p style="color: #666; font-style: italic;">No parent case assigned.</p>';
+            {% endif %}
+        }
+        
+        let parentSearchTimeout = null;
+        function searchParentCases() {
+            const query = document.getElementById('parentSearchInput').value;
+            
+            if (parentSearchTimeout) clearTimeout(parentSearchTimeout);
+            
+            if (query.length < 2) {
+                document.getElementById('parentSearchResults').innerHTML = '<p style="color: #666;">Type at least 2 characters to search...</p>';
+                return;
+            }
+            
+            parentSearchTimeout = setTimeout(() => {
+                fetch(`/cms/api/cases/search?q=${encodeURIComponent(query)}&exclude_id={{ case.id }}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.cases.length === 0) {
+                            document.getElementById('parentSearchResults').innerHTML = '<p style="color: #666;">No cases found.</p>';
+                            return;
+                        }
+                        
+                        let html = '';
+                        data.cases.forEach(c => {
+                            html += `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-bottom: 0.5rem;">
+                                    <div>
+                                        <a href="/cms/cases/${c.id}" target="_blank">${c.case_number}</a>: ${c.title}
+                                        <span class="badge badge-${c.status}" style="margin-left: 0.5rem;">${c.status}</span>
+                                    </div>
+                                    <button onclick="setParent('${c.id}')" class="btn btn-sm" style="background: #059669;">Set as Parent</button>
+                                </div>
+                            `;
+                        });
+                        document.getElementById('parentSearchResults').innerHTML = html;
+                    });
+            }, 300);
+        }
+        
+        function setParent(parentId) {
+            fetch(`/cms/cases/{{ case.id }}/set-parent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ parent_case_id: parentId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('Parent case set successfully!');
+                    location.reload();
+                }
+            })
+            .catch(err => alert('Error: ' + err.message));
+        }
+        
+        function removeParent() {
+            if (!confirm('Remove this case from its parent?')) return;
+            
+            fetch(`/cms/cases/{{ case.id }}/set-parent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ parent_case_id: null })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('Parent case removed!');
+                    location.reload();
+                }
+            })
+            .catch(err => alert('Error: ' + err.message));
+        }
+        
+        document.getElementById('hierarchyModal').addEventListener('click', function(e) {
+            if (e.target === this) closeHierarchyModal();
+        });
+        
+        // Comments Functions
+        function loadComments() {
+            fetch(`/cms/api/comments/for-entity?type=case&id={{ case.id }}`)
+                .then(r => r.json())
+                .then(data => {
+                    displayComments(data.comments);
+                    document.getElementById('commentCount').textContent = `(${data.count})`;
+                })
+                .catch(() => {
+                    document.getElementById('commentsList').innerHTML = '<p style="color: #dc2626;">Failed to load comments.</p>';
+                });
+        }
+        
+        function displayComments(comments) {
+            const container = document.getElementById('commentsList');
+            
+            if (!comments || comments.length === 0) {
+                container.innerHTML = '<p style="color: #888; text-align: center; padding: 1rem;">No comments yet. Be the first to add one!</p>';
+                return;
+            }
+            
+            let html = '';
+            comments.forEach(c => {
+                const pinnedClass = c.is_pinned ? 'comment-pinned' : '';
+                const date = new Date(c.created_at);
+                const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                html += `
+                    <div class="comment-item ${pinnedClass}" id="comment-${c.id}">
+                        <div class="comment-header">
+                            <div>
+                                <span class="comment-author">${c.author_name}</span>
+                                <span class="comment-type-badge">${c.comment_type}</span>
+                                ${c.is_pinned ? '📌' : ''}
+                            </div>
+                            <div class="comment-time">${timeStr}</div>
+                        </div>
+                        <div class="comment-content">${escapeHtml(c.content)}</div>
+                        <div class="comment-actions">
+                            <button onclick="deleteComment('${c.id}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function addComment() {
+            const content = document.getElementById('newComment').value.trim();
+            if (!content) {
+                alert('Please enter a comment.');
+                return;
+            }
+            
+            const commentType = document.getElementById('commentType').value;
+            const isPinned = document.getElementById('commentPinned').checked;
+            
+            fetch('/cms/api/comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    case_id: '{{ case.id }}',
+                    content: content,
+                    comment_type: commentType,
+                    is_pinned: isPinned
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('newComment').value = '';
+                document.getElementById('commentPinned').checked = false;
+                loadComments();
+            })
+            .catch(err => alert('Error: ' + err.message));
+        }
+        
+        function deleteComment(commentId) {
+            if (!confirm('Delete this comment?')) return;
+            
+            fetch(`/cms/api/comments/${commentId}`, {
+                method: 'DELETE'
+            })
+            .then(r => r.json())
+            .then(() => loadComments())
+            .catch(err => alert('Error: ' + err.message));
+        }
+        
+        // Load comments on page load
+        loadComments();
     </script>
+    </div>
 </body>
 </html>

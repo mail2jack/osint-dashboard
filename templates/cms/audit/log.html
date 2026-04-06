@@ -4,40 +4,158 @@
     <meta charset="UTF-8">
     <title>Audit Log</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f5f5f5; font-weight: 600; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-secondary, #f5f5f5); padding: 2rem; }
+        .card { background: var(--bg-card, white); border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
         .back { margin-bottom: 1rem; }
-        .back a { color: #0066cc; text-decoration: none; }
+        .back a { color: var(--link-color, #0066cc); text-decoration: none; }
+        h1 { margin-bottom: 1.5rem; color: var(--text-primary, #1a1a2e); }
+        .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-secondary, #f9fafb); border-radius: 8px; }
+        .filters select, .filters input { padding: 0.5rem; border: 1px solid var(--border-input, #ddd); border-radius: 4px; background: var(--bg-card, white); color: var(--text-primary, #1a1a2e); }
+        .filters input[type="text"] { min-width: 200px; }
+        .filters button { padding: 0.5rem 1rem; background: var(--accent-primary, #16213e); color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .filters .btn-clear { background: #666; text-decoration: none; display: inline-block; padding: 0.5rem 1rem; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color, #eee); }
+        th { background: var(--bg-secondary, #f9fafb); font-weight: 600; color: var(--text-secondary, #666); position: sticky; top: 0; }
+        tbody tr:hover { background: var(--bg-secondary, #f5f5f5); }
+        .action-badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
+        .action-create { background: var(--success-bg, #dcfce7); color: var(--success-text, #166534); }
+        .action-update { background: var(--info-bg, #dbeafe); color: var(--info-text, #1e40af); }
+        .action-delete { background: var(--danger-bg, #fee2e2); color: var(--danger-text, #dc2626); }
+        .action-login { background: var(--warning-bg, #fef3c7); color: var(--warning-text, #92400e); }
+        .action-read { background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #374151); }
+        .pagination { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+        .pagination a, .pagination span { padding: 0.5rem 0.75rem; border: 1px solid var(--border-color, #ddd); border-radius: 4px; text-decoration: none; color: var(--text-primary, #333); }
+        .pagination a:hover { background: var(--bg-secondary, #f5f5f5); }
+        .pagination .active { background: var(--accent-primary, #16213e); color: white; }
+        .empty { text-align: center; padding: 2rem; color: var(--text-secondary, #666); }
+        .filter-group { display: flex; flex-direction: column; gap: 0.25rem; }
+        .filter-group label { font-size: 0.75rem; color: var(--text-secondary, #666); }
     </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('cms-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="back">
-        <a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a>
+    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+        <div style="display: flex; gap: 0; align-items: center;">
+            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
+            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
+            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
+            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
+            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
+            {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
+            <span style="color: #888;">|</span>
+            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        </div>
     </div>
-    <h1>Audit Log</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>User</th>
-                <th>Action</th>
-                <th>Entity</th>
-                <th>Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for log in logs %}
-            <tr>
-                <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') if log.timestamp else '' }}</td>
-                <td>{{ log.user_name }}</td>
-                <td>{{ log.action }}</td>
-                <td>{{ log.entity_type }}{% if log.entity_id %} ({{ log.entity_id[:8] }}...){% endif %}</td>
-                <td>{{ log.description or '' }}</td>
-            </tr>
+    
+    <div style="padding: 0 2rem; margin-top: 1rem;">
+        <h1>Audit Log</h1>
+    
+    <div class="card">
+        <form method="GET" class="filters">
+            <div class="filter-group">
+                <label>Search</label>
+                <input type="text" name="search" value="{{ filters.search or '' }}" placeholder="Search descriptions...">
+            </div>
+            <div class="filter-group">
+                <label>Entity Type</label>
+                <select name="entity_type">
+                    <option value="">All Types</option>
+                    {% for et in entity_types %}
+                    <option value="{{ et }}" {% if filters.entity_type == et %}selected{% endif %}>{{ et }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Action</label>
+                <select name="action">
+                    <option value="">All Actions</option>
+                    {% for a in actions %}
+                    <option value="{{ a }}" {% if filters.action == a %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>User</label>
+                <select name="user_id">
+                    <option value="">All Users</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}" {% if filters.user_id == u.id %}selected{% endif %}>{{ u.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group" style="justify-content: flex-end;">
+                <label>&nbsp;</label>
+                <button type="submit">Filter</button>
+            </div>
+            <div class="filter-group" style="justify-content: flex-end;">
+                <label>&nbsp;</label>
+                <a href="{{ url_for('cms.audit_log') }}" class="btn-clear">Clear</a>
+            </div>
+        </form>
+        
+        {% if logs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="white-space: nowrap;">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp else '' }}</td>
+                    <td>{{ log.user_name or 'System' }}</td>
+                    <td>
+                        <span class="action-badge action-{{ log.action }}">{{ log.action }}</span>
+                    </td>
+                    <td>
+                        <span style="color: var(--text-secondary);">{{ log.entity_type }}</span>
+                        {% if log.entity_id %}
+                        <span style="color: #888; font-size: 0.8rem;">({{ log.entity_id[:8] }}...)</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.description or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if pagination.pages > 1 %}
+        <div class="pagination">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('cms.audit_log', page=pagination.prev_num, search=filters.search, entity_type=filters.entity_type, action=filters.action, user_id=filters.user_id) }}">Previous</a>
+            {% endif %}
+            {% for p in range(1, pagination.pages + 1) %}
+                {% if p >= pagination.page - 2 and p <= pagination.page + 2 %}
+                    <a href="{{ url_for('cms.audit_log', page=p, search=filters.search, entity_type=filters.entity_type, action=filters.action, user_id=filters.user_id) }}" class="{% if p == pagination.page %}active{% endif %}">{{ p }}</a>
+                {% endif %}
             {% endfor %}
-        </tbody>
-    </table>
+            {% if pagination.has_next %}
+            <a href="{{ url_for('cms.audit_log', page=pagination.next_num, search=filters.search, entity_type=filters.entity_type, action=filters.action, user_id=filters.user_id) }}">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty">No audit logs found matching your criteria.</div>
+        {% endif %}
+    </div>
+    </div>
 </body>
 </html>

@@ -1,0 +1,67 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<h2 style="margin-bottom: 1.5rem;">Edit Document Template</h2>
+
+<div class="card">
+    <form method="POST">
+        <div class="form-group">
+            <label for="name">Template Name *</label>
+            <input type="text" name="name" id="name" value="{{ template.name }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Description</label>
+            <input type="text" name="description" id="description" value="{{ template.description or '' }}">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="template_type">Type</label>
+                <select name="template_type" id="template_type">
+                    <option value="report" {% if template.template_type == 'report' %}selected{% endif %}>Report</option>
+                    <option value="summary" {% if template.template_type == 'summary' %}selected{% endif %}>Summary</option>
+                    <option value="letter" {% if template.template_type == 'letter' %}selected{% endif %}>Letter</option>
+                    <option value="memo" {% if template.template_type == 'memo' %}selected{% endif %}>Memo</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select name="category" id="category">
+                    <option value="">Select category</option>
+                    <option value="investigation" {% if template.category == 'investigation' %}selected{% endif %}>Investigation</option>
+                    <option value="compliance" {% if template.category == 'compliance' %}selected{% endif %}>Compliance</option>
+                    <option value="financial" {% if template.category == 'financial' %}selected{% endif %}>Financial</option>
+                    <option value="general" {% if template.category == 'general' %}selected{% endif %}>General</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <input type="checkbox" name="is_default" id="is_default" value="1" {% if template.is_default %}checked{% endif %} style="width: auto; margin-right: 0.5rem;">
+            <label for="is_default" style="display: inline; font-weight: normal;">Set as default template</label>
+        </div>
+        
+        <div class="form-group">
+            <label for="content">Template Content *</label>
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">
+                Available variables: <code>{{ case.case_number }}</code>, <code>{{ case.title }}</code>, <code>{{ client.name }}</code>, <code>{{ subjects }}</code>, <code>{{ findings }}</code>, <code>{{ financials }}</code>, <code>{{ user.full_name }}</code>
+            </p>
+            <textarea name="content" id="content" rows="20" required style="font-family: monospace;">{{ template.content }}</textarea>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="submit" class="btn">Save Changes</button>
+            <a href="{{ url_for('cms.list_templates') }}" class="btn" style="background: #666;">Cancel</a>
+            <form method="POST" action="{{ url_for('cms.delete_template', template_id=template.id) }}" style="margin-left: auto;" onsubmit="return confirm('Delete this template?');">
+                <button type="submit" class="btn" style="background: #dc2626;">Delete</button>
+            </form>
+        </div>
+    </form>
+</div>
+
+<style>
+textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.85rem; }
+</style>
+{% endblock %}

@@ -58,15 +58,60 @@
         }
         .photo-upload-btn:hover { background: rgba(0,0,0,0.8); }
         .photo-input { display: none; }
+        
+        /* OSINT Modal */
+        #osintModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        #osintModal.show { display: flex; align-items: center; justify-content: center; }
+        #osintModal .modal-content { background: white; border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 700px; max-height: 90vh; overflow: auto; }
+        
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .searching { animation: blink 1.5s infinite; }
+        
+        .result-item { padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; }
+        .result-item input[type="checkbox"] { margin-top: 0.25rem; }
+        .result-content { flex: 1; }
+        .result-engine { font-weight: 600; color: #1a1a2e; }
+        .result-name { color: #16213e; margin-bottom: 0.25rem; }
+        .result-url { font-size: 0.75rem; color: #0066cc; word-break: break-all; }
+        .result-url a { color: #0066cc; text-decoration: none; }
+        .result-url a:hover { text-decoration: underline; }
+        
+        .btn-success { background: #059669; }
     </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('cms-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="back"><a href="{{ url_for('cms.subjects') }}">← Back to Subjects</a></div>
+    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+        <div style="display: flex; gap: 0; align-items: center;">
+            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
+            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
+            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
+            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Subjects</a>
+            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
+            {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
+            <span style="color: #888;">|</span>
+            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        </div>
+    </div>
     
-    <div class="subject-photo-container">
+    <div style="padding: 0 2rem; margin-top: 1rem;">
+        <div class="back"><a href="{{ url_for('cms.subjects') }}">← Back to Subjects</a></div>
+        
+        <div class="subject-photo-container">
         <div class="photo-frame" id="photoFrame">
             {% if subject.photo_path %}
-            <img src="{{ subject.photo_path }}" alt="Photo of {{ subject.name }}">
+            <img src="/static{{ subject.photo_path }}" alt="Photo of {{ subject.name }}">
             {% else %}
             <span class="photo-placeholder">👤</span>
             {% endif %}
@@ -74,21 +119,16 @@
             <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">
         </div>
         <div>
-            <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}</h1>
-            {% if linked_cases %}
+            <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
+                <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
+            </h1>
             <div style="margin-top: 0.5rem;">
-                <label style="font-size: 0.875rem; color: #666; margin-right: 0.5rem;">Search & add to case:</label>
-                {% for case in linked_cases %}
-                <a href="/?q={{ subject.name | urlencode }}&tool=person&case_id={{ case.id }}&subject_id={{ subject.id }}" class="btn-osint" target="_blank" style="margin: 0.25rem;">
-                    🔍 {{ case.case_number }}
-                </a>
-                {% endfor %}
+                {% if subject.subject_type == 'person' %}
+                <button onclick="openOsintModal()" class="btn-osint" style="border: none; cursor: pointer;">
+                    🔍 OSINT Person Search
+                </button>
+                {% endif %}
             </div>
-            {% else %}
-            <a href="/?q={{ subject.name | urlencode }}&tool=person" class="btn-osint" target="_blank">
-                🔍 OSINT Person Search
-            </a>
-            {% endif %}
         </div>
     </div>
     
@@ -97,24 +137,78 @@
             <h3 style="margin: 0;">Subject Details</h3>
             <button onclick="openNetworkModal()" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
         </div>
-        <div class="info-item"><label>Type</label><span>{{ subject.subject_type }}</span></div>
-        <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
-        <div class="info-item"><label>Email</label><span>{{ subject.email if subject.email else '-' }}</span></div>
-        <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span></div>
-        <div class="info-item"><label>Address</label><span>{{ subject.address if subject.address else '-' }}</span></div>
-        {% if subject.notes %}<div class="info-item"><label>Notes</label><p>{{ subject.notes }}</p></div>{% endif %}
+        <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
+            <div>
+                <div class="info-item"><label>Type</label><span>{{ subject.subject_type }}</span></div>
+                <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
+                {% if subject.subject_type != 'vehicle' %}
+                <div class="info-item"><label>Email</label><span>{{ subject.email if subject.email else '-' }}</span></div>
+                <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span></div>
+                {% endif %}
+                {% if subject.subject_type == 'vehicle' %}
+                <div class="info-item"><label>License Plate</label><span>{{ subject.license_plate if subject.license_plate else '-' }}</span></div>
+                <div class="info-item"><label>VIN</label><span>{{ subject.vin if subject.vin else '-' }}</span></div>
+                <div class="info-item"><label>Brand</label><span>{{ subject.brand if subject.brand else '-' }}</span></div>
+                <div class="info-item"><label>Vehicle Type</label><span>{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span></div>
+                <div class="info-item"><label>Insurance Company</label><span>{{ subject.insurance_company if subject.insurance_company else '-' }}</span></div>
+                {% endif %}
+                <div class="info-item"><label>Address</label><span>{{ subject.address if subject.address else '-' }}</span></div>
+                {% if subject.notes %}<div class="info-item"><label>Notes</label><p>{{ subject.notes }}</p></div>{% endif %}
+            </div>
+            {% if linked_cases %}
+            <div>
+                <h4 style="margin: 0 0 0.5rem 0; color: #1a1a2e;">Linked Cases</h4>
+                {% for case in linked_cases %}
+                <div class="case-item">
+                    <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
     </div>
     
-    {% if linked_cases %}
-    <div class="card">
-        <h3>Linked Cases</h3>
-        {% for case in linked_cases %}
-        <div class="case-item">
-            <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }} - {{ case.title }}</a>
+    <!-- OSINT Search Modal -->
+    <div id="osintModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0;">OSINT Person Search</h2>
+                <span onclick="closeOsintModal()" style="font-size: 1.5rem; cursor: pointer; color: #666;">&times;</span>
+            </div>
+            
+            <div id="osintSearchForm">
+                <p style="margin-bottom: 1rem; color: #666;">Search for information about <strong>{{ subject.name }}</strong></p>
+                <div id="osintActions">
+                    <button onclick="startOsintSearch()" class="btn-sm btn-success">Start Search</button>
+                </div>
+            </div>
+            
+            <div id="osintSearching" style="display: none; text-align: center; padding: 2rem;">
+                <div class="searching">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                    <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <button onclick="cancelOsintSearch()" class="btn-sm" style="background: #dc2626;">Cancel Search</button>
+                </div>
+            </div>
+            
+            <div id="osintResults" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">Search Results</h3>
+                    <span id="resultsCount"></span>
+                </div>
+                <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
+                <div style="margin-top: 1rem;">
+                    <button onclick="closeOsintModal()" class="btn-sm">Close</button>
+                </div>
+            </div>
+            
+            <div id="osintError" style="display: none; padding: 1rem; background: #fee2e2; border-radius: 8px; color: #dc2626;">
+                <p id="errorMessage"></p>
+            </div>
         </div>
-        {% endfor %}
     </div>
-    {% endif %}
     
     <!-- Network Modal -->
     <div id="networkModal" class="modal">
@@ -310,9 +404,9 @@
                     const photoFrame = document.getElementById('photoFrame');
                     const existingImg = photoFrame.querySelector('img');
                     if (existingImg) {
-                        existingImg.src = data.photo_path + '?t=' + new Date().getTime();
+                        existingImg.src = '/static' + data.photo_path + '?t=' + new Date().getTime();
                     } else {
-                        photoFrame.innerHTML = `<img src="${data.photo_path}?t=${new Date().getTime()}" alt="Photo">
+                        photoFrame.innerHTML = `<img src="/static${data.photo_path}?t=${new Date().getTime()}" alt="Photo">
                             <label class="photo-upload-btn" for="photoInput">📷 Change</label>
                             <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">`;
                     }
@@ -320,6 +414,220 @@
             })
             .catch(err => alert('Upload failed: ' + err.message));
         }
+        
+        // OSINT Search Functions
+        let currentSearchId = null;
+        let pollInterval = null;
+        const osintBase = "/cms/osint-search/";
+        
+        function openOsintModal() {
+            document.getElementById('osintModal').classList.add('show');
+            resetOsintModal();
+        }
+        
+        function closeOsintModal() {
+            if (currentSearchId) {
+                cancelOsintSearch();
+            }
+            document.getElementById('osintModal').classList.remove('show');
+            resetOsintModal();
+        }
+        
+        function resetOsintModal() {
+            document.getElementById('osintSearchForm').style.display = 'block';
+            document.getElementById('osintSearching').style.display = 'none';
+            document.getElementById('osintResults').style.display = 'none';
+            document.getElementById('osintError').style.display = 'none';
+            currentSearchId = null;
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+        
+        function startOsintSearch() {
+            const name = "{{ subject.name }}";
+            
+            document.getElementById('osintSearchForm').style.display = 'none';
+            document.getElementById('osintSearching').style.display = 'block';
+            document.getElementById('osintError').style.display = 'none';
+            
+            // Use the main app's /api/person/stream endpoint
+            fetch('/api/person/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Search failed');
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            // Try to parse any remaining data
+                            if (buffer.trim()) {
+                                try {
+                                    const data = JSON.parse(buffer.trim().replace(/^data: /, ''));
+                                    if (data.complete) {
+                                        displayOsintResults(data.result || {});
+                                    }
+                                } catch (e) {}
+                            }
+                            return;
+                        }
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    if (data.complete) {
+                                        displayOsintResults(data.result || {});
+                                        reader.cancel();
+                                        return;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                        
+                        read();
+                    });
+                }
+                
+                read();
+            })
+            .catch(err => {
+                showOsintError('Search failed: ' + err.message);
+            });
+        }
+        
+        function pollSearchStatus() {}
+        
+        function cancelOsintSearch() {
+            if (!currentSearchId) return;
+            
+            fetch(osintBase + currentSearchId + '/cancel', {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(() => {
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+                currentSearchId = null;
+            })
+            .catch(() => {
+                currentSearchId = null;
+            });
+        }
+        
+        function loadSearchResults() {
+            fetch(osintBase + currentSearchId + '/results')
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showOsintError(data.error);
+                    return;
+                }
+                displayOsintResults(data.results);
+            })
+            .catch(err => {
+                showOsintError('Failed to load results: ' + err.message);
+            });
+        }
+        
+        function displayOsintResults(results) {
+            document.getElementById('osintSearching').style.display = 'none';
+            document.getElementById('osintResults').style.display = 'block';
+            
+            const dorkResults = results.dorks_results || [];
+            const searchLinks = results.search_links || [];
+            
+            document.getElementById('resultsCount').textContent = `${dorkResults.length} results found`;
+            
+            const resultsList = document.getElementById('resultsList');
+            resultsList.innerHTML = '';
+            
+            if (dorkResults.length === 0) {
+                resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found. Try opening the search links below.</p>';
+                
+                // Show search links as fallback
+                if (searchLinks.length > 0) {
+                    const linksDiv = document.createElement('div');
+                    linksDiv.style.marginTop = '1rem';
+                    linksDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem;">Search Links:</h4>';
+                    searchLinks.forEach(link => {
+                        const a = document.createElement('a');
+                        a.href = link.url;
+                        a.target = '_blank';
+                        a.style.display = 'block';
+                        a.style.marginBottom = '0.5rem';
+                        a.textContent = `${link.engine}: ${link.name}`;
+                        linksDiv.appendChild(a);
+                    });
+                    resultsList.appendChild(linksDiv);
+                }
+                return;
+            }
+            
+            // Group results by category
+            const categories = {};
+            dorkResults.forEach(r => {
+                const cat = r.category || 'general';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(r);
+            });
+            
+            // Display by category
+            const categoryLabels = {
+                'social_media': 'Social Media',
+                'files': 'Documents',
+                'news': 'News',
+                'general': 'Other'
+            };
+            
+            for (const [cat, items] of Object.entries(categories)) {
+                const catDiv = document.createElement('div');
+                catDiv.style.marginBottom = '1rem';
+                catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">${categoryLabels[cat] || cat} (${items.length})</h4>`;
+                
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.innerHTML = `
+                        <div class="result-content">
+                            <div class="result-engine">${item.domain || 'Unknown'}</div>
+                            <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
+                        </div>
+                    `;
+                    catDiv.appendChild(div);
+                });
+                resultsList.appendChild(catDiv);
+            }
+        }
+        
+        function showOsintError(message) {
+            document.getElementById('osintSearchForm').style.display = 'none';
+            document.getElementById('osintSearching').style.display = 'none';
+            document.getElementById('osintResults').style.display = 'none';
+            document.getElementById('osintError').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+        
+        document.getElementById('osintModal').addEventListener('click', function(e) {
+            if (e.target === this) closeOsintModal();
+        });
     </script>
+    </div>
 </body>
 </html>

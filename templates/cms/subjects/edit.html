@@ -1,0 +1,88 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<h2 style="margin-bottom: 1.5rem;">Edit Subject</h2>
+<form method="POST">
+    <div class="form-group">
+        <label for="name">Name *</label>
+        <input type="text" name="name" id="name" value="{{ subject.name }}" required>
+    </div>
+    <div class="form-group">
+        <label for="subject_type">Type *</label>
+        <select name="subject_type" id="subject_type" required onchange="toggleVehicleFields()">
+            <option value="person" {% if subject.subject_type == 'person' %}selected{% endif %}>Person</option>
+            <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>Company</option>
+            <option value="organization" {% if subject.subject_type == 'organization' %}selected{% endif %}>Organization</option>
+            <option value="vehicle" {% if subject.subject_type == 'vehicle' %}selected{% endif %}>Vehicle</option>
+            <option value="vessel" {% if subject.subject_type == 'vessel' %}selected{% endif %}>Vessel</option>
+            <option value="property" {% if subject.subject_type == 'property' %}selected{% endif %}>Property</option>
+        </select>
+    </div>
+    
+    <div id="person-fields">
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" name="email" id="email" value="{{ subject.email or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="text" name="phone" id="phone" value="{{ subject.phone or '' }}">
+    </div>
+    </div>
+    
+    <div id="vehicle-fields" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="form-group">
+            <label for="license_plate">License Plate</label>
+            <input type="text" name="license_plate" id="license_plate" value="{{ subject.license_plate or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="vin">VIN</label>
+            <input type="text" name="vin" id="vin" value="{{ subject.vin or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="brand">Brand</label>
+            <input type="text" name="brand" id="brand" value="{{ subject.brand or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="vehicle_type">Vehicle Type</label>
+            <input type="text" name="vehicle_type" id="vehicle_type" value="{{ subject.vehicle_type or '' }}" placeholder="e.g. sedan, truck, motorcycle">
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+            <label for="insurance_company">Insurance Company</label>
+            <input type="text" name="insurance_company" id="insurance_company" value="{{ subject.insurance_company or '' }}">
+        </div>
+    </div>
+    </div>
+    
+    <div class="form-group">
+        <label for="address">Address</label>
+        <input type="text" name="address" id="address" value="{{ subject.address or '' }}">
+    </div>
+    <div class="form-group">
+        <label for="risk_score">Risk Score (0-100)</label>
+        <input type="number" name="risk_score" id="risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100">
+    </div>
+    <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea name="notes" id="notes" rows="3" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;">{{ subject.notes or '' }}</textarea>
+    </div>
+    <button type="submit" class="btn">Save Changes</button>
+    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
+</form>
+<script>
+function toggleVehicleFields() {
+    const type = document.getElementById('subject_type').value;
+    const personFields = document.getElementById('person-fields');
+    const vehicleFields = document.getElementById('vehicle-fields');
+    
+    if (type === 'vehicle') {
+        personFields.style.display = 'none';
+        vehicleFields.style.display = 'block';
+    } else {
+        personFields.style.display = 'block';
+        vehicleFields.style.display = 'none';
+    }
+}
+document.addEventListener('DOMContentLoaded', toggleVehicleFields);
+</script>
+{% endblock %}

@@ -11,17 +11,73 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
         th { font-weight: 600; color: #666; }
-        .btn { padding: 0.5rem 1rem; background: #16213e; color: white; text-decoration: none; border-radius: 4px; }
+        .btn { padding: 0.5rem 1rem; background: #16213e; color: white; text-decoration: none; border-radius: 4px; cursor: pointer; border: none; font-size: 0.875rem; }
+        .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+        .btn-success { background: #059669; }
+        .btn-danger { background: #dc2626; }
         .back { margin-bottom: 1rem; }
         .back a { color: #0066cc; text-decoration: none; }
+        .bulk-actions { background: #e8f4ff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; }
+        .bulk-actions.show { display: block; }
+        .checkbox-col { width: 40px; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .select-all-row { background: #f0f9ff; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal.show { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 500px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .modal-header h2 { margin: 0; }
+        .close { font-size: 1.5rem; cursor: pointer; color: #666; }
+        .close:hover { color: #000; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; }
+        .form-group select, .form-group input { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
     </style>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('cms-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="back"><a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a></div>
+    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+        <div style="display: flex; gap: 0; align-items: center;">
+            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
+            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
+            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
+            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
+            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Subjects</a>
+            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
+            {% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
+            <span style="color: #888;">|</span>
+            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        </div>
+    </div>
     
-    <div class="header">
+    <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 2rem 1rem;">
         <h1>Subjects</h1>
-        <a href="{{ url_for('cms.create_subject') }}" class="btn">+ New Subject</a>
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="{{ url_for('cms.export_subjects', format='csv') }}" class="btn" style="background: #059669;">📥 Export</a>
+            <a href="{{ url_for('cms.create_subject') }}" class="btn">+ New Subject</a>
+        </div>
+    </div>
+    
+    <div id="bulkActionsBar" class="bulk-actions">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <span id="selectedCount">0</span> subject(s) selected
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button onclick="openBulkLinkModal()" class="btn btn-success" id="linkBtn" disabled>Link to Case</button>
+                <button onclick="clearSelection()" class="btn">Clear Selection</button>
+            </div>
+        </div>
     </div>
     
     <div class="card">
@@ -44,19 +100,54 @@
         </form>
         
         {% if subjects %}
-        <table>
-            <thead><tr><th>Name</th><th>Type</th><th>Risk Score</th><th>Actions</th></tr></thead>
-            <tbody>
-                {% for subject in subjects %}
-                <tr>
-                    <td><strong>{{ subject.name }}</strong></td>
-                    <td>{{ subject.subject_type }}</td>
-                    <td>{{ subject.risk_score }}</td>
-                    <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <form id="bulkForm">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="checkbox-col">
+                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        </th>
+                        <th>
+                            <a href="?sort=name&order={% if filters.sort == 'name' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}" style="color: inherit; text-decoration: none;">
+                                Name {% if filters.sort == 'name' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort=type&order={% if filters.sort == 'type' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}" style="color: inherit; text-decoration: none;">
+                                Type {% if filters.sort == 'type' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="?sort=risk&order={% if filters.sort == 'risk' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}" style="color: inherit; text-decoration: none;">
+                                Risk Score {% if filters.sort == 'risk' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
+                            </a>
+                        </th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="select-all-row">
+                        <td class="checkbox-col">
+                            <input type="checkbox" id="selectAllOnPage" onchange="toggleSelectAllOnPage()">
+                        </td>
+                        <td colspan="4" style="color: #666; font-size: 0.875rem;">
+                            Select all <span id="totalOnPage">{{ subjects|length }}</span> subjects on this page
+                        </td>
+                    </tr>
+                    {% for subject in subjects %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="subject_ids" value="{{ subject.id }}" onchange="updateSelection()">
+                        </td>
+                        <td><strong>{{ subject.name }}</strong></td>
+                        <td>{{ subject.subject_type }}</td>
+                        <td>{{ subject.risk_score }}</td>
+                        <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
         {% else %}
         <p>No subjects found.</p>
         {% endif %}
@@ -64,14 +155,150 @@
         {% if pagination.pages > 1 %}
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
             {% if pagination.has_prev %}
-            <a href="{{ url_for('cms.subjects', page=pagination.prev_num, search=filters.search, type=filters.type) }}" class="btn" style="padding: 0.3rem 0.8rem;">Previous</a>
+            <a href="{{ url_for('cms.subjects', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type) }}" class="btn" style="padding: 0.3rem 0.8rem;">Previous</a>
             {% endif %}
             <span style="padding: 0.3rem 0.8rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
             {% if pagination.has_next %}
-            <a href="{{ url_for('cms.subjects', page=pagination.next_num, search=filters.search, type=filters.type) }}" class="btn" style="padding: 0.3rem 0.8rem;">Next</a>
+            <a href="{{ url_for('cms.subjects', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type) }}" class="btn" style="padding: 0.3rem 0.8rem;">Next</a>
             {% endif %}
         </div>
         {% endif %}
     </div>
+    
+    <!-- Bulk Link Modal -->
+    <div id="bulkLinkModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Link Subjects to Case</h2>
+                <span class="close" onclick="closeBulkLinkModal()">&times;</span>
+            </div>
+            
+            <p style="margin-bottom: 1rem; color: #666;">
+                Link <strong id="bulkSubjectCount">0</strong> selected subject(s) to a case.
+            </p>
+            
+            <div class="form-group">
+                <label for="caseSelect">Select Case</label>
+                <select id="caseSelect" required>
+                    <option value="">Loading cases...</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button onclick="closeBulkLinkModal()" class="btn" style="background: #666;">Cancel</button>
+                <button onclick="submitBulkLink()" class="btn btn-success">Link Subjects</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let selectedSubjects = new Set();
+        
+        function toggleSelectAll() {
+            const checked = document.getElementById('selectAll').checked;
+            document.querySelectorAll('input[name="subject_ids"]').forEach(cb => {
+                cb.checked = checked;
+                if (checked) selectedSubjects.add(cb.value);
+                else selectedSubjects.delete(cb.value);
+            });
+            updateSelection();
+        }
+        
+        function toggleSelectAllOnPage() {
+            const checked = document.getElementById('selectAllOnPage').checked;
+            document.querySelectorAll('input[name="subject_ids"]').forEach(cb => {
+                cb.checked = checked;
+                if (checked) selectedSubjects.add(cb.value);
+                else selectedSubjects.delete(cb.value);
+            });
+            updateSelection();
+        }
+        
+        function updateSelection() {
+            // Sync checkboxes with our Set
+            document.querySelectorAll('input[name="subject_ids"]').forEach(cb => {
+                if (cb.checked) selectedSubjects.add(cb.value);
+                else selectedSubjects.delete(cb.value);
+            });
+            
+            const count = selectedSubjects.size;
+            document.getElementById('selectedCount').textContent = count;
+            document.getElementById('bulkSubjectCount').textContent = count;
+            
+            const bulkBar = document.getElementById('bulkActionsBar');
+            const linkBtn = document.getElementById('linkBtn');
+            
+            if (count > 0) {
+                bulkBar.classList.add('show');
+                linkBtn.disabled = false;
+            } else {
+                bulkBar.classList.remove('show');
+                linkBtn.disabled = true;
+            }
+        }
+        
+        function clearSelection() {
+            selectedSubjects.clear();
+            document.querySelectorAll('input[name="subject_ids"]').forEach(cb => cb.checked = false);
+            document.getElementById('selectAll').checked = false;
+            document.getElementById('selectAllOnPage').checked = false;
+            updateSelection();
+        }
+        
+        function openBulkLinkModal() {
+            if (selectedSubjects.size === 0) {
+                alert('Please select at least one subject.');
+                return;
+            }
+            
+            // Load cases
+            fetch('/cms/api/cases/search?q=')
+                .then(r => r.json())
+                .then(data => {
+                    const select = document.getElementById('caseSelect');
+                    select.innerHTML = '<option value="">Select a case...</option>';
+                    data.cases.forEach(c => {
+                        select.innerHTML += `<option value="${c.id}">${c.case_number}: ${c.title}</option>`;
+                    });
+                });
+            
+            document.getElementById('bulkLinkModal').classList.add('show');
+        }
+        
+        function closeBulkLinkModal() {
+            document.getElementById('bulkLinkModal').classList.remove('show');
+        }
+        
+        function submitBulkLink() {
+            const caseId = document.getElementById('caseSelect').value;
+            if (!caseId) {
+                alert('Please select a case.');
+                return;
+            }
+            
+            const subjectIds = Array.from(selectedSubjects);
+            
+            fetch(`/cms/cases/${caseId}/add-subjects-bulk`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject_ids: subjectIds })
+            })
+            .then(r => r.json())
+            .then(data => {
+                alert(`Added ${data.total_added} subject(s) to case.`);
+                if (data.skipped && data.skipped.length > 0) {
+                    alert(`Skipped: ${data.skipped.map(s => s.name || s.id).join(', ')}`);
+                }
+                closeBulkLinkModal();
+                clearSelection();
+            })
+            .catch(err => alert('Error: ' + err.message));
+        }
+        
+        // Close modal on outside click
+        document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
+            if (e.target === this) closeBulkLinkModal();
+        });
+    </script>
 </body>
 </html>
