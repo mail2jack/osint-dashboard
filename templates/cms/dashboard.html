@@ -134,6 +134,9 @@
         --warning-bg: #78350f;
         --info-bg: #1e3a8a;
     }
+    .card table a { color: #dc2626 !important; font-weight: 500; }
+    .card table a:visited { color: #dc2626 !important; }
+    .card table a:hover { color: #ef4444; text-decoration: underline; }
 </style>
 
 <div class="stats-grid">
@@ -259,24 +262,33 @@
 
 <div class="grid-2">
     <div class="card">
-        <h2>Subject Types</h2>
-        {% if subject_type_labels %}
-        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 0.5rem;">
-            {% set colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'] %}
-            {% for label in subject_type_labels %}
-            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
-                <div style="width: 12px; height: 12px; border-radius: 2px; background: {{ colors[loop.index0 % colors|length] }};"></div>
-                <span>{{ label }}: {{ subject_type_values[loop.index0] }}</span>
-            </div>
-            {% endfor %}
-        </div>
+        <h2>My Active Cases</h2>
+        {% if my_cases %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Case</th>
+                    <th>Priority</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for case in my_cases[:5] %}
+                <tr>
+                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a> {{ case.title[:25] }}{% if case.title|length > 25 %}...{% endif %}</td>
+                    <td><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></td>
+                    <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ case.updated_at.strftime('%m/%d') if case.updated_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         {% else %}
-        <p style="color: var(--text-secondary); text-align: center;">No subject data</p>
+        <p style="color: var(--text-secondary);">No active cases assigned</p>
         {% endif %}
     </div>
     
     <div class="card">
-        <h2>Priority Cases</h2>
+        <h2>Recent Activity</h2>
         {% if priority_cases %}
         {% for case in priority_cases %}
         <div class="priority-case {% if case.priority == 'critical' %}critical{% endif %}">
@@ -353,28 +365,19 @@
 
 <div class="grid-2">
     <div class="card">
-        <h2>My Active Cases</h2>
-        {% if my_cases %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Case</th>
-                    <th>Priority</th>
-                    <th>Updated</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for case in my_cases[:5] %}
-                <tr>
-                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a> {{ case.title[:25] }}{% if case.title|length > 25 %}...{% endif %}</td>
-                    <td><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></td>
-                    <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ case.updated_at.strftime('%m/%d') if case.updated_at else '-' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <h2>Subject Types</h2>
+        {% if subject_type_labels %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 0.5rem;">
+            {% set colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'] %}
+            {% for label in subject_type_labels %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
+                <div style="width: 12px; height: 12px; border-radius: 2px; background: {{ colors[loop.index0 % colors|length] }};"></div>
+                <span>{{ label }}: {{ subject_type_values[loop.index0] }}</span>
+            </div>
+            {% endfor %}
+        </div>
         {% else %}
-        <p style="color: var(--text-secondary);">No active cases assigned</p>
+        <p style="color: var(--text-secondary); text-align: center;">No subject data</p>
         {% endif %}
     </div>
     

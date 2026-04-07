@@ -452,65 +452,43 @@
             document.getElementById('osintSearching').style.display = 'block';
             document.getElementById('osintError').style.display = 'none';
             
-            // Use the main app's /api/person/stream endpoint
-            fetch('/api/person/stream', {
+            fetch("{{ url_for('cms.start_osint_search', case_id=first_case_id) }}", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: name })
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Search failed');
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showOsintError(data.error);
+                    return;
                 }
-                
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                
-                function read() {
-                    reader.read().then(({ done, value }) => {
-                        if (done) {
-                            // Try to parse any remaining data
-                            if (buffer.trim()) {
-                                try {
-                                    const data = JSON.parse(buffer.trim().replace(/^data: /, ''));
-                                    if (data.complete) {
-                                        displayOsintResults(data.result || {});
-                                    }
-                                } catch (e) {}
-                            }
-                            return;
-                        }
-                        
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                try {
-                                    const data = JSON.parse(line.slice(6));
-                                    if (data.complete) {
-                                        displayOsintResults(data.result || {});
-                                        reader.cancel();
-                                        return;
-                                    }
-                                } catch (e) {}
-                            }
-                        }
-                        
-                        read();
-                    });
-                }
-                
-                read();
+                currentSearchId = data.search_id;
+                pollSearchStatus();
             })
             .catch(err => {
-                showOsintError('Search failed: ' + err.message);
+                showOsintError('Failed to start search: ' + err.message);
             });
         }
         
-        function pollSearchStatus() {}
+        function pollSearchStatus() {
+            pollInterval = setInterval(() => {
+                fetch(osintBase + currentSearchId + '/status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        loadSearchResults();
+                    } else if (data.status === 'cancelled') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        showOsintError('Search was cancelled');
+                    }
+                })
+                .catch(() => {});
+            }, 1000);
+        }
         
         function cancelOsintSearch() {
             if (!currentSearchId) return;
@@ -550,53 +528,37 @@
             document.getElementById('osintSearching').style.display = 'none';
             document.getElementById('osintResults').style.display = 'block';
             
-            const dorkResults = results.dorks_results || [];
+            const dorksResults = results.dorks_results || [];
             const searchLinks = results.search_links || [];
             
-            document.getElementById('resultsCount').textContent = `${dorkResults.length} results found`;
+            const totalCount = dorksResults.length + searchLinks.length;
+            document.getElementById('resultsCount').textContent = `${totalCount} results found`;
             
             const resultsList = document.getElementById('resultsList');
             resultsList.innerHTML = '';
             
-            if (dorkResults.length === 0) {
-                resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found. Try opening the search links below.</p>';
-                
-                // Show search links as fallback
-                if (searchLinks.length > 0) {
-                    const linksDiv = document.createElement('div');
-                    linksDiv.style.marginTop = '1rem';
-                    linksDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem;">Search Links:</h4>';
-                    searchLinks.forEach(link => {
-                        const a = document.createElement('a');
-                        a.href = link.url;
-                        a.target = '_blank';
-                        a.style.display = 'block';
-                        a.style.marginBottom = '0.5rem';
-                        a.textContent = `${link.engine}: ${link.name}`;
-                        linksDiv.appendChild(a);
-                    });
-                    resultsList.appendChild(linksDiv);
-                }
+            if (totalCount === 0) {
+                resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found.</p>';
                 return;
             }
             
-            // Group results by category
-            const categories = {};
-            dorkResults.forEach(r => {
-                const cat = r.category || 'general';
-                if (!categories[cat]) categories[cat] = [];
-                categories[cat].push(r);
-            });
-            
-            // Display by category
             const categoryLabels = {
                 'social_media': 'Social Media',
                 'files': 'Documents',
+                'public_records': 'Public Records',
                 'news': 'News',
-                'general': 'Other'
+                'general': 'Other',
+                'search': 'Search Links'
             };
             
-            for (const [cat, items] of Object.entries(categories)) {
+            const grouped = {};
+            dorksResults.forEach(item => {
+                const cat = item.category || 'general';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(item);
+            });
+            
+            for (const [cat, items] of Object.entries(grouped)) {
                 const catDiv = document.createElement('div');
                 catDiv.style.marginBottom = '1rem';
                 catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">${categoryLabels[cat] || cat} (${items.length})</h4>`;
@@ -613,6 +575,25 @@
                     catDiv.appendChild(div);
                 });
                 resultsList.appendChild(catDiv);
+            }
+            
+            if (searchLinks.length > 0) {
+                const searchDiv = document.createElement('div');
+                searchDiv.style.marginBottom = '1rem';
+                searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">Search Links (${searchLinks.length})</h4>`;
+                
+                searchLinks.forEach(link => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.innerHTML = `
+                        <div class="result-content">
+                            <div class="result-engine">${link.engine || 'Unknown'}</div>
+                            <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
+                        </div>
+                    `;
+                    searchDiv.appendChild(div);
+                });
+                resultsList.appendChild(searchDiv);
             }
         }
         

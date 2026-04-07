@@ -70,6 +70,10 @@ TWOCHAT_WHATSAPP_NUMBER = os.environ.get('TWOCHAT_WHATSAPP_NUMBER', '')
 # Free for non-commercial use, required for OpenKVK company lookup
 OVERHEID_API_KEY = os.environ.get('OVERHEID_API_KEY', '')
 
+# Brave Search API Key - get from https://brave.com/search/api/
+# Free tier: 2000 queries/month, used for OSINT dork scraping
+BRAVE_API_KEY = os.environ.get('BRAVE_API_KEY', '')
+
 # =============================================================================
 # Case Management System (CMS) Integration
 # =============================================================================
@@ -86,7 +90,8 @@ if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Use SQLite for CMS (can migrate to PostgreSQL later)
-CMS_DB_PATH = os.path.join(os.path.dirname(__file__), 'cms.db')
+# Use absolute path to prevent Flask-SQLAlchemy from using instance/ folder
+CMS_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'cms.db'))
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{CMS_DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -2263,6 +2268,272 @@ async def search_person_async(full_name, progress_callback=None):
 
 def search_person(full_name):
     return asyncio.run(search_person_async(full_name))
+
+
+def brave_search(query, api_key):
+    """Search using Brave Search API.
+    
+    Returns list of results or empty list if failed.
+    Requires BRAVE_API_KEY environment variable.
+    """
+    import httpx
+    from urllib.parse import quote
+    
+    if not api_key:
+        return []
+    
+    try:
+        headers = {
+            'X-Subscription-Token': api_key,
+            'Accept': 'application/json'
+        }
+        
+        url = f"https://api.search.brave.com/res/v1/web/search"
+        params = {
+            'q': query,
+            'count': 10
+        }
+        
+        response = httpx.get(url, headers=headers, params=params, timeout=15.0)
+        
+        if response.status_code != 200:
+            return []
+        
+        data = response.json()
+        results = []
+        
+        # Extract web results
+        web_results = data.get('web', {}).get('results', [])
+        for item in web_results:
+            results.append({
+                'url': item.get('url', ''),
+                'domain': item.get('domain', ''),
+                'title': item.get('title', ''),
+                'description': item.get('description', '')
+            })
+        
+        return results
+        
+    except Exception as e:
+        logger.debug(f"Brave search error: {e}")
+        return []
+
+
+def person_dorks_search(full_name):
+    """Search using Google dorks to find person info across web.
+    
+    Uses Brave Search API if available, falls back to DuckDuckGo scraping.
+    """
+    import os
+    import re
+    import time
+    import httpx
+    from urllib.parse import quote, unquote
+    from datetime import datetime
+    
+    dork_log_file = os.path.join(os.path.dirname(__file__), 'dorks_log.txt')
+    
+    parts = full_name.strip().split()
+    if len(parts) < 2:
+        return {'error': 'Please enter first and last name', 'results': None}
+    
+    first_name = parts[0]
+    last_name = ' '.join(parts[1:])
+    
+    logger.info(f"Dorks search started for: {full_name}")
+    
+    with open(dork_log_file, 'a') as f:
+        f.write(f"\n=== {datetime.now().isoformat()} - Dorks search: {full_name} ===\n")
+    
+    # Search links (direct links to search engines)
+    search_query = quote(f'"{first_name}" "{last_name}"')
+    search_links = [
+        {'engine': 'Google', 'name': 'Search on Google', 'url': f'https://www.google.com/search?q={search_query}', 'query': f'"{first_name}" "{last_name}"'},
+        {'engine': 'LinkedIn', 'name': 'Search on LinkedIn', 'url': f'https://www.linkedin.com/search/results/all/?keywords={quote(first_name + " " + last_name)}', 'query': 'LinkedIn Profile'},
+        {'engine': 'Facebook', 'name': 'Search on Facebook', 'url': f'https://www.facebook.com/search/top?q={quote(first_name + " " + last_name)}', 'query': 'Facebook Profile'},
+        {'engine': 'Twitter/X', 'name': 'Search on Twitter/X', 'url': f'https://nitter.net/search?f=users&q={quote(first_name + " " + last_name)}', 'query': 'Twitter Profile'},
+        {'engine': 'GitHub', 'name': 'Search on GitHub', 'url': f'https://github.com/search?q={quote(first_name + "+" + last_name)}&type=users', 'query': 'GitHub Profile'},
+        {'engine': 'Instagram', 'name': 'Search on Instagram', 'url': f'https://www.instagram.com/{quote(first_name + last_name)}/', 'query': 'Instagram Profile'},
+        {'engine': 'Reddit', 'name': 'Search on Reddit', 'url': f'https://www.reddit.com/search/?q={quote(first_name + " " + last_name)}', 'query': 'Reddit Posts'},
+        {'engine': 'YouTube', 'name': 'Search on YouTube', 'url': f'https://www.youtube.com/results?search_query={quote(first_name + " " + last_name)}', 'query': 'YouTube Channel'},
+        {'engine': 'TikTok', 'name': 'Search on TikTok', 'url': f'https://www.tiktok.com/@{quote(first_name + last_name)}', 'query': 'TikTok Profile'},
+        {'engine': 'Pipl', 'name': 'Search on Pipl', 'url': f'https://pipl.com/search/?q={search_query}', 'query': 'Deep Web Search'},
+    ]
+    
+    # Dork queries (scraped results)
+    dork_queries = [
+        f'"{first_name} {last_name}" profile',
+        f'"{full_name}" site:linkedin.com',
+        f'"{full_name}" site:facebook.com',
+        f'"{full_name}" site:twitter.com OR site:x.com',
+        f'"{full_name}" site:instagram.com',
+        f'"{full_name}" site:tiktok.com',
+        f'"{full_name}" site:youtube.com',
+        f'"{full_name}" site:github.com',
+        f'"{full_name}" site:reddit.com',
+        f'"{full_name}" filetype:pdf',
+        f'"{full_name}" filetype:doc OR filetype:docx',
+        f'"{full_name}" email',
+    ]
+    
+    results = {
+        'name': full_name,
+        'first_name': first_name,
+        'last_name': last_name,
+        'search_links': search_links,
+        'dorks_results': [],
+        'total_results': 0,
+        'queries_run': [],
+        'duckduckgo_blocked': False,
+        'brave_used': False
+    }
+    
+    seen = set()
+    exclude_domains = ['duckduckgo.com', 'bing.com', 'google.com', 'microsoft.com', 'yahoo.com', 'duck.com', 'brave.com']
+    
+    def add_result(link, query):
+        """Add a result to the dorks_results list."""
+        try:
+            domain = re.sub(r'https?://(www\.)?', '', link).split('/')[0]
+            if domain and domain not in seen and not any(ex in domain for ex in exclude_domains):
+                seen.add(domain)
+                category = 'general'
+                if any(s in domain for s in ['linkedin', 'facebook', 'twitter', 'instagram', 'tiktok', 'youtube']):
+                    category = 'social_media'
+                elif any(s in domain for s in ['pdf', 'doc', 'docx', 'xls', 'xlsx']):
+                    category = 'files'
+                elif any(s in domain for s in ['news', 'medium', 'blog']):
+                    category = 'news'
+                
+                results['dorks_results'].append({
+                    'url': link,
+                    'domain': domain,
+                    'query': query[:50] if query else '',
+                    'category': category
+                })
+                results['total_results'] += 1
+                
+                with open(dork_log_file, 'a') as f:
+                    f.write(f"  Added: {domain} ({category})\n")
+        except Exception:
+            pass
+    
+    # Try Brave Search API first if API key is configured
+    if BRAVE_API_KEY:
+        with open(dork_log_file, 'a') as f:
+            f.write(f"Using Brave Search API (key configured)\n")
+        
+        results['brave_used'] = True
+        for query in dork_queries[:10]:
+            results['queries_run'].append(query)
+            with open(dork_log_file, 'a') as f:
+                f.write(f"Brave Query: {query}\n")
+            
+            brave_results = brave_search(query, BRAVE_API_KEY)
+            with open(dork_log_file, 'a') as f:
+                f.write(f"  Brave found {len(brave_results)} results\n")
+            
+            for item in brave_results:
+                add_result(item.get('url', ''), query)
+            
+            time.sleep(0.3)  # Rate limiting
+    
+    # If Brave didn't return results or no API key, try DuckDuckGo
+    if not results['dorks_results']:
+        with open(dork_log_file, 'a') as f:
+            f.write(f"Trying DuckDuckGo scraping...\n")
+        
+        try:
+            client = httpx.Client(timeout=15.0, follow_redirects=True, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            })
+            
+            search_url = "https://html.duckduckgo.com/html/"
+            
+            for query in dork_queries[:10]:
+                results['queries_run'].append(query)
+                
+                with open(dork_log_file, 'a') as f:
+                    f.write(f"DDG Query: {query}\n")
+                
+                try:
+                    params = {'q': query}
+                    response = client.get(search_url, params=params)
+                    
+                    with open(dork_log_file, 'a') as f:
+                        f.write(f"  Status: {response.status_code}\n")
+                    
+                    if response.status_code == 200:
+                        # Extract redirect links
+                        redirect_links = re.findall(r'uddg=(https?%3A%2F%2F[^&"]+)', response.text)
+                        links = [unquote(unquote(l)) for l in redirect_links]
+                        
+                        with open(dork_log_file, 'a') as f:
+                            f.write(f"  Found {len(links)} redirect links\n")
+                        
+                        for link in links[:10]:
+                            add_result(link, query)
+                    
+                except Exception as e:
+                    with open(dork_log_file, 'a') as f:
+                        f.write(f"  ERROR: {str(e)}\n")
+                
+                time.sleep(0.5)
+            
+            client.close()
+            
+        except Exception as e:
+            with open(dork_log_file, 'a') as f:
+                f.write(f"DDG error: {str(e)}\n")
+    
+    with open(dork_log_file, 'a') as f:
+        f.write(f"=== COMPLETE: {results['total_results']} dork results, {len(results['search_links'])} search links ===\n")
+    
+    return results
+
+
+@app.route('/api/person/stream', methods=['POST'])
+@rate_limit(limit=STRICT_RATE_LIMIT, key_prefix='person')
+def person_search_stream():
+    from flask import Response, stream_with_context
+    import threading
+    import queue
+    
+    data = request.get_json()
+    name = data.get('name', '')
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    
+    result_queue = queue.Queue()
+    
+    def run_search():
+        try:
+            result = search_person(name)
+            result_queue.put(('complete', result))
+        except Exception as e:
+            result_queue.put(('error', str(e)))
+    
+    thread = threading.Thread(target=run_search)
+    thread.start()
+    
+    def generate():
+        while True:
+            try:
+                msg_type, msg_data = result_queue.get(timeout=30)
+                if msg_type == 'complete':
+                    yield f"data: {json.dumps({'complete': True, 'result': msg_data})}\n\n"
+                    break
+                elif msg_type == 'error':
+                    yield f"data: {json.dumps({'complete': True, 'error': msg_data})}\n\n"
+                    break
+            except queue.Empty:
+                yield f"data: {json.dumps({'complete': True, 'result': {'name': name, 'search_links': [], 'error': 'Timeout'}})}\n\n"
+                break
+    
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
+
 
 @app.route('/')
 def index():

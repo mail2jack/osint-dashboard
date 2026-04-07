@@ -785,121 +785,165 @@
             document.getElementById('searchQueryDisplay').textContent = 'Searching for: ' + name;
             document.getElementById('osintError').style.display = 'none';
             
-            // Use the main app's /api/person/stream endpoint
-            fetch('/api/person/stream', {
+            fetch("{{ url_for('cms.start_osint_search', case_id=case.id) }}", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: name })
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Search failed');
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showOsintError(data.error);
+                    return;
                 }
-                
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                
-                function read() {
-                    reader.read().then(({ done, value }) => {
-                        if (done) {
-                            if (buffer.trim()) {
-                                try {
-                                    const data = JSON.parse(buffer.trim().replace(/^data: /, ''));
-                                    if (data.complete) {
-                                        displayResults(data.result || {});
-                                    }
-                                } catch (e) {}
-                            }
-                            return;
-                        }
-                        
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                try {
-                                    const data = JSON.parse(line.slice(6));
-                                    if (data.complete) {
-                                        displayResults(data.result || {});
-                                        reader.cancel();
-                                        return;
-                                    }
-                                } catch (e) {}
-                            }
-                        }
-                        
-                        read();
-                    });
-                }
-                
-                read();
+                currentSearchId = data.search_id;
+                pollSearchStatus();
             })
             .catch(err => {
-                showOsintError('Search failed: ' + err.message);
+                showOsintError('Failed to start search: ' + err.message);
             });
         }
         
-        function cancelOsintSearch() {
-            // Nothing to cancel with stream endpoint
+        function pollSearchStatus() {
+            pollInterval = setInterval(() => {
+                fetch(osintBase + currentSearchId + '/status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        loadSearchResults();
+                    } else if (data.status === 'cancelled') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        showOsintError('Search was cancelled');
+                    }
+                })
+                .catch(() => {});
+            }, 1000);
         }
         
-        function loadSearchResults() {}
+        function cancelOsintSearch() {
+            if (!currentSearchId) return;
+            
+            fetch(osintBase + currentSearchId + '/cancel', {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(() => {
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+                currentSearchId = null;
+                document.getElementById('osintSearching').style.display = 'none';
+                document.getElementById('osintSearchForm').style.display = 'block';
+            })
+            .catch(() => {
+                currentSearchId = null;
+            });
+        }
+        
+        function loadSearchResults() {
+            fetch(osintBase + currentSearchId + '/results')
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showOsintError(data.error);
+                    return;
+                }
+                displayResults(data.results || {});
+            })
+            .catch(err => {
+                showOsintError('Failed to load results: ' + err.message);
+            });
+        }
+        
+        function showOsintError(message) {
+            document.getElementById('osintSearching').style.display = 'none';
+            document.getElementById('osintError').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
         
         function displayResults(results) {
             document.getElementById('osintSearching').style.display = 'none';
             document.getElementById('osintResults').style.display = 'block';
             
-            const dorkResults = results.dorks_results || [];
+            const dorksResults = results.dorks_results || [];
+            const searchLinks = results.search_links || [];
             currentResults = results;
             
-            document.getElementById('resultsCount').textContent = dorkResults.length + ' results found';
+            const totalCount = dorksResults.length + searchLinks.length;
+            document.getElementById('resultsCount').textContent = totalCount + ' results found';
             
             const resultsList = document.getElementById('resultsList');
             resultsList.innerHTML = '';
             
-            if (dorkResults.length === 0) {
+            if (totalCount === 0) {
                 resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found.</p>';
                 updateSelectedCount();
                 return;
             }
             
-            // Group by category
-            const categories = {};
-            dorkResults.forEach((r, index) => {
-                const cat = r.category || 'general';
-                if (!categories[cat]) categories[cat] = [];
-                categories[cat].push({...r, originalIndex: index});
-            });
-            
             const categoryLabels = {
                 'social_media': 'Social Media',
                 'files': 'Documents',
+                'public_records': 'Public Records',
                 'news': 'News',
-                'general': 'Other'
+                'general': 'Other',
+                'search': 'Search Links'
             };
             
-            for (const [cat, items] of Object.entries(categories)) {
+            // Group dorks results by category
+            const grouped = {};
+            dorksResults.forEach(item => {
+                const cat = item.category || 'general';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(item);
+            });
+            
+            // Show dorks results first
+            for (const [cat, items] of Object.entries(grouped)) {
                 const catDiv = document.createElement('div');
-                catDiv.style.marginBottom = '1rem';
+                catDiv.style.marginBottom = '1.5rem';
                 catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">${categoryLabels[cat] || cat} (${items.length})</h4>`;
                 
-                items.forEach((item) => {
+                items.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'result-item';
                     div.innerHTML = `
-                        <input type="checkbox" class="result-checkbox" data-domain="${item.domain}" data-url="${item.url}" data-query="${item.query || ''}" onchange="updateSelectedCount()">
+                        <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" onchange="updateSelectedCount()">
                         <div class="result-content">
                             <div class="result-engine">${item.domain || 'Unknown'}</div>
-                            <div class="result-query" style="font-size: 0.75rem; color: #666;">${item.query || ''}</div>
+                            <div class="result-query">${item.query || ''}</div>
                             <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
                         </div>
                     `;
                     catDiv.appendChild(div);
                 });
                 resultsList.appendChild(catDiv);
+            }
+            
+            // Show search links
+            if (searchLinks.length > 0) {
+                const searchDiv = document.createElement('div');
+                searchDiv.style.marginBottom = '1.5rem';
+                searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">Search Links (${searchLinks.length})</h4>`;
+                
+                searchLinks.forEach(link => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.innerHTML = `
+                        <input type="checkbox" class="result-checkbox" data-domain="${link.engine || ''}" data-url="${link.url}" data-query="${link.query || ''}" onchange="updateSelectedCount()">
+                        <div class="result-content">
+                            <div class="result-engine">${link.engine || 'Unknown'}</div>
+                            <div class="result-query">${link.query || ''}</div>
+                            <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
+                        </div>
+                    `;
+                    searchDiv.appendChild(div);
+                });
+                resultsList.appendChild(searchDiv);
             }
             
             updateSelectedCount();
@@ -1347,14 +1391,17 @@
         
         // Comments Functions
         function loadComments() {
-            fetch(`/cms/api/comments/for-entity?type=case&id={{ case.id }}`)
-                .then(r => r.json())
+            fetch(`/cms/api/comments/for-entity?type=case&id={{ case.id }}`, { credentials: 'include' })
+                .then(r => {
+                    if (!r.ok) throw new Error('Not authenticated');
+                    return r.json();
+                })
                 .then(data => {
                     displayComments(data.comments);
                     document.getElementById('commentCount').textContent = `(${data.count})`;
                 })
-                .catch(() => {
-                    document.getElementById('commentsList').innerHTML = '<p style="color: #dc2626;">Failed to load comments.</p>';
+                .catch((err) => {
+                    document.getElementById('commentsList').innerHTML = '<p style="color: #dc2626;">Failed to load comments. Please refresh the page and login if needed.</p>';
                 });
         }
         
@@ -1456,7 +1503,8 @@
             fetch(`/cms/api/comments/${commentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: newContent })
+                body: JSON.stringify({ content: newContent }),
+                credentials: 'include'
             })
             .then(r => r.json())
             .then(data => {
@@ -1487,7 +1535,8 @@
                     content: content,
                     comment_type: commentType,
                     is_pinned: isPinned
-                })
+                }),
+                credentials: 'include'
             })
             .then(r => r.json())
             .then(data => {
@@ -1502,7 +1551,8 @@
             if (!confirm('Delete this comment?')) return;
             
             fetch(`/cms/api/comments/${commentId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                credentials: 'include'
             })
             .then(r => r.json())
             .then(() => loadComments())

@@ -79,8 +79,8 @@ def init_db(app: Flask, database_url: str = None):
     """
     if database_url:
         app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    else:
-        # Default to PostgreSQL
+    elif not app.config.get('SQLALCHEMY_DATABASE_URI'):
+        # Default to PostgreSQL only if not already set
         db_host = app.config.get('DB_HOST', 'localhost')
         db_port = app.config.get('DB_PORT', '5432')
         db_name = app.config.get('DB_NAME', 'cms_db')

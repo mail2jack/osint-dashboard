@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#16213e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OSINT">
+    <meta name="description" content="Iveras OSINT Case Management System">
+    <link rel="manifest" href="/static/pwa/manifest.json">
+    <link rel="apple-touch-icon" href="/static/pwa/icon-192.png">
     <title>{% block title %}CMS{% endblock %}</title>
     <script>
         // Apply theme before page renders to avoid flash
@@ -348,6 +355,15 @@
         const style = document.createElement('style');
         style.textContent = 'tbody tr.selected { background: var(--table-hover) !important; }';
         document.head.appendChild(style);
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/pwa/sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
     </script>
 </body>
 </html>

@@ -287,7 +287,8 @@ def dashboard():
     ).filter(
         Case.is_deleted == False,
         Case.case_type.isnot(None),
-        Case.case_type != ''
+        Case.case_type != '',
+        Case.case_type.like('%|%')  # Only show cases with criminal code format
     ).group_by(
         func.substr(Case.case_type, 1, func.instr(Case.case_type, '|') - 1)
     ).order_by(func.count(Case.id).desc()).limit(10).all()
@@ -309,13 +310,20 @@ def dashboard():
     investigator_names = [s.full_name for s in lead_investigator_stats]
     investigator_counts = [s.case_count for s in lead_investigator_stats]
     
-    # My cases stats for quick filters
+    # My cases stats for quick filters (include case_assignments table)
+    from .models import case_assignments
+    my_assigned_ids = db.session.query(case_assignments.c.case_id).filter(
+        case_assignments.c.user_id == current_user.id
+    ).all()
+    my_assigned_ids = [row[0] for row in my_assigned_ids]
+    
     my_open_cases = Case.query.filter(
         Case.is_deleted == False,
         Case.status == CaseStatus.OPEN.value,
         db.or_(
             Case.assigned_to == current_user.id,
-            Case.lead_investigator_id == current_user.id
+            Case.lead_investigator_id == current_user.id,
+            Case.id.in_(my_assigned_ids) if my_assigned_ids else False
         )
     ).count()
     
@@ -324,7 +332,8 @@ def dashboard():
         Case.status == CaseStatus.ACTIVE.value,
         db.or_(
             Case.assigned_to == current_user.id,
-            Case.lead_investigator_id == current_user.id
+            Case.lead_investigator_id == current_user.id,
+            Case.id.in_(my_assigned_ids) if my_assigned_ids else False
         )
     ).count()
     
@@ -334,28 +343,22 @@ def dashboard():
         Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value])
     ).count()
     
-    # Get cases assigned to current user
-    if current_user.is_admin:
-        my_cases = Case.query.filter(
-            Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
-            Case.is_deleted == False
-        ).order_by(Case.updated_at.desc()).limit(10).all()
-    else:
-        # Get case IDs from assignments table using SQLAlchemy
-        from .models import case_assignments
-        assigned_ids = db.session.query(case_assignments.c.case_id).filter(
-            case_assignments.c.user_id == current_user.id
-        ).all()
-        assigned_ids = [row[0] for row in assigned_ids]
-        
-        my_cases = Case.query.filter(
-            Case.is_deleted == False,
-            Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
-            db.or_(
-                Case.assigned_to == current_user.id,
-                Case.id.in_(assigned_ids) if assigned_ids else Case.id == None
-            )
-        ).order_by(Case.updated_at.desc()).limit(10).all()
+    # Get cases assigned to current user (always show user's own cases, even for admins)
+    from .models import case_assignments
+    assigned_ids = db.session.query(case_assignments.c.case_id).filter(
+        case_assignments.c.user_id == current_user.id
+    ).all()
+    assigned_ids = [row[0] for row in assigned_ids]
+    
+    my_cases = Case.query.filter(
+        Case.is_deleted == False,
+        Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
+        db.or_(
+            Case.assigned_to == current_user.id,
+            Case.lead_investigator_id == current_user.id,
+            Case.id.in_(assigned_ids) if assigned_ids else Case.id == None
+        )
+    ).order_by(Case.updated_at.desc()).limit(10).all()
     
     # Recent activity with user eager loaded
     recent_activity = AuditLog.query.options(
@@ -716,9 +719,11 @@ def cases():
     
     query = Case.query.filter_by(is_deleted=False).join(Client)
     
-    # Filter by status
+    # Filter by status - hide closed cases by default unless explicitly selected
     if status:
         query = query.filter(Case.status == status)
+    else:
+        query = query.filter(Case.status != CaseStatus.CLOSED.value)
     
     # Filter by priority
     if priority:
@@ -1205,8 +1210,8 @@ def edit_case(case_id: str):
         # Handle target_end_date separately (needs date conversion)
         if 'target_end_date' in data and data['target_end_date']:
             try:
-                from datetime import datetime
-                new_date = datetime.strptime(data['target_end_date'], '%Y-%m-%d').date()
+                from datetime import datetime as dt
+                new_date = dt.strptime(data['target_end_date'], '%Y-%m-%d').date()
                 old_date = case.target_end_date
                 if new_date != old_date:
                     changes['target_end_date'] = {'old': str(old_date) if old_date else None, 'new': str(new_date)}
@@ -1400,9 +1405,13 @@ def view_subject(subject_id: str):
     
     # Get linked cases
     linked_cases = []
-    for case in Case.query.all():
+    first_case_id = None
+    for case in Case.query.filter_by(is_deleted=False).all():
         if subject in case.subjects.all():
-            linked_cases.append({'id': case.id, 'case_number': case.case_number, 'title': case.title})
+            case_info = {'id': case.id, 'case_number': case.case_number, 'title': case.title}
+            linked_cases.append(case_info)
+            if first_case_id is None:
+                first_case_id = case.id
     
     AuditLog.log(
         user_id=current_user.id,
@@ -1418,7 +1427,8 @@ def view_subject(subject_id: str):
         subject=subject,
         financials=financials,
         findings=findings,
-        linked_cases=linked_cases
+        linked_cases=linked_cases,
+        first_case_id=first_case_id
     )
 
 
@@ -3000,7 +3010,7 @@ def render_template_preview():
 
 def run_osint_search(search_id: str, case_id: str, query: str, name: str):
     """Run OSINT search in background thread."""
-    from app import search_person
+    from app import person_dorks_search
     
     search_info = search_manager.get_search(search_id)
     if not search_info:
@@ -3012,8 +3022,8 @@ def run_osint_search(search_id: str, case_id: str, query: str, name: str):
     try:
         logger.info(f"OSINT search {search_id} started for query: {name}")
         
-        # Run the search
-        results = search_person(name)
+        # Run the dorks search
+        results = person_dorks_search(name)
         
         # Check if cancelled before setting results
         if cancel_event.is_set():
@@ -3021,9 +3031,15 @@ def run_osint_search(search_id: str, case_id: str, query: str, name: str):
             search_manager.cleanup(search_id)
             return
         
+        # Count results
+        total_results = 0
+        if results and 'categories' in results:
+            for cat, items in results.get('categories', {}).items():
+                total_results += len(items) if items else 0
+        
         # Set results
         search_manager.set_results(search_id, results)
-        logger.info(f"OSINT search {search_id} completed with {len(results.get('search_links', []))} results")
+        logger.info(f"OSINT search {search_id} completed with {total_results} dork results, {len(results.get('search_links', []))} search links")
         
         # Cleanup after a delay (give client time to fetch results)
         def delayed_cleanup():
@@ -3114,8 +3130,19 @@ def cancel_search(search_id: str):
     if not search_info:
         return jsonify({'error': 'Search not found'}), 404
     
-    if search_info['status'] not in ['running']:
-        return jsonify({'error': 'Search is not running'}), 400
+    if search_info['status'] == 'completed':
+        return jsonify({
+            'search_id': search_id,
+            'status': 'completed',
+            'message': 'Search already completed'
+        })
+    
+    if search_info['status'] == 'cancelled':
+        return jsonify({
+            'search_id': search_id,
+            'status': 'cancelled',
+            'message': 'Search already cancelled'
+        })
     
     search_manager.cancel_search(search_id)
     
