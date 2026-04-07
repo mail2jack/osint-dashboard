@@ -1,5 +1,80 @@
 {% extends "cms/base.html" %}
 {% block content %}
+<style>
+    .combobox-container {
+        position: relative;
+        width: 100%;
+    }
+    .combobox-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: var(--bg-card);
+        color: var(--text-primary);
+    }
+    .combobox-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        height: 320px;
+        overflow-y: auto;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 6px var(--shadow);
+    }
+    .combobox-list.show { display: block; }
+    .combobox-viewport {
+        position: relative;
+        height: var(--total-height, 1000px);
+    }
+    .combobox-item {
+        position: absolute;
+        left: 0;
+        right: 0;
+        padding: 0.75rem;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.85rem;
+        box-sizing: border-box;
+    }
+    .combobox-item:hover { background: var(--table-hover); }
+    .combobox-item.main { background: var(--bg-secondary); font-weight: 600; font-size: 0.9rem; }
+    .combobox-item.sub1 { padding-left: 1.5rem; }
+    .combobox-item.sub2 { padding-left: 3rem; }
+    .combobox-item.sub3 { padding-left: 4.5rem; }
+    .combobox-item .code { font-weight: 700; color: var(--accent-primary); margin-right: 0.5rem; }
+    .combobox-item .beleidcode { font-size: 0.7rem; color: #666; background: #eee; padding: 0.1rem 0.3rem; border-radius: 3px; margin-left: 0.5rem; }
+    .combobox-item .definitie { display: block; font-size: 0.75rem; color: #888; margin-top: 0.25rem; line-height: 1.4; }
+    .combobox-item .beleid-display { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+    .combobox-header-row {
+        background: var(--bg-secondary);
+        padding: 0.5rem 0.75rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--accent-primary);
+        border-bottom: 1px solid var(--border-color);
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+    }
+    .combobox-count {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        padding: 0.25rem 0.75rem;
+        background: var(--bg-secondary);
+        position: sticky;
+        bottom: 0;
+        border-top: 1px solid var(--border-color);
+    }
+</style>
+
 <h2 style="margin-bottom: 1.5rem;">Edit Case</h2>
 <form method="POST">
     <div class="form-group">
@@ -23,8 +98,22 @@
     </div>
     
     <div class="form-group">
-        <label for="case_type">Case Type</label>
-        <input type="text" name="case_type" id="case_type" value="{{ case.case_type or '' }}">
+        <label for="case_type">Criminal Code (searchable)</label>
+        <div class="combobox-container">
+            <input type="text" id="case_type" class="combobox-input" placeholder="Type to search..." value="{{ case.case_type or '' }}" autocomplete="off">
+            <input type="hidden" name="case_type" id="case_type_value" value="{{ case.case_type or '' }}">
+            <div id="case_type_list" class="combobox-list"></div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label for="lead_investigator_id">Lead Investigator</label>
+        <select name="lead_investigator_id" id="lead_investigator_id">
+            <option value="">Select lead investigator</option>
+            {% for investigator in investigators %}
+            <option value="{{ investigator.id }}" {% if case.lead_investigator_id == investigator.id %}selected{% endif %}>{{ investigator.full_name }} ({{ investigator.role }})</option>
+            {% endfor %}
+        </select>
     </div>
     
     <div class="form-group">
@@ -45,4 +134,187 @@
     <button type="submit" class="btn">Save Changes</button>
     <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
 </form>
+
+<script>
+const ITEM_HEIGHT = 52;
+const HEADER_HEIGHT = 32;
+const BUFFER_COUNT = 5;
+
+let beleidData = [];
+let filteredData = [];
+let currentCategory = '';
+
+const input = document.getElementById('case_type');
+const hiddenInput = document.getElementById('case_type_value');
+const list = document.getElementById('case_type_list');
+
+fetch('/static/data/cbs-crime-codes.json')
+    .then(response => response.json())
+    .then(data => {
+        beleidData = data;
+    })
+    .catch(error => console.error('Error loading crime codes:', error));
+
+function getItemsWithHeaders(items) {
+    const result = [];
+    let lastMainCode = '';
+    let lastSub1Code = '';
+    let lastSub2Code = '';
+    
+    for (const item of items) {
+        const parts = item.code.split('.');
+        const mainCode = parts[0];
+        const sub1Code = parts.length > 1 ? parts.slice(0, 2).join('.') : '';
+        const sub2Code = parts.length > 2 ? parts.slice(0, 3).join('.') : '';
+        
+        if (mainCode !== lastMainCode) {
+            result.push({ type: 'header', level: 0, text: mainCode, code: mainCode });
+            lastMainCode = mainCode;
+        }
+        if (sub1Code && sub1Code !== lastSub1Code && sub1Code !== mainCode) {
+            result.push({ type: 'header', level: 1, text: sub1Code, code: sub1Code });
+            lastSub1Code = sub1Code;
+        }
+        if (sub2Code && sub2Code !== lastSub2Code && sub2Code !== sub1Code) {
+            result.push({ type: 'header', level: 2, text: sub2Code, code: sub2Code });
+            lastSub2Code = sub2Code;
+        }
+        
+        result.push({ type: 'item', data: item });
+    }
+    return result;
+}
+
+function renderList(items, scrollTop = 0) {
+    if (items.length === 0) {
+        list.innerHTML = '<div class="combobox-header">No matches found</div>';
+        list.classList.add('show');
+        return;
+    }
+    
+    const totalHeight = items.reduce((sum, item) => sum + (item.type === 'header' ? HEADER_HEIGHT : ITEM_HEIGHT), 0);
+    list.style.setProperty('--total-height', totalHeight + 'px');
+    
+    const listHeight = 320;
+    const startIndex = getStartIndex(items, scrollTop);
+    const endIndex = getEndIndex(items, scrollTop, listHeight, startIndex);
+    
+    let html = `<div class="combobox-viewport" style="height: ${totalHeight}px;">`;
+    
+    for (let i = startIndex; i <= endIndex && i < items.length; i++) {
+        const item = items[i];
+        const top = getItemTop(items, i);
+        
+        if (item.type === 'header') {
+            html += `<div class="combobox-header-row" style="position: absolute; top: ${top}px; left: 0; right: 0; height: ${HEADER_HEIGHT}px;">
+                ${item.text}
+            </div>`;
+        } else {
+            const level = item.data.code.split('.').length - 1;
+            const levelClass = level === 0 ? 'main' : (level === 1 ? 'sub1' : (level === 2 ? 'sub2' : 'sub3'));
+            html += `<div class="combobox-item ${levelClass}" data-code="${item.data.code}" data-beleid="${item.data.beleid}" data-beleidcode="${item.data.beleidcode || ''}" data-definitie="${item.data.definitie || ''}" style="position: absolute; top: ${top}px; left: 0; right: 0;">
+                <div class="beleid-display">
+                    <span class="code">${item.data.code}</span>
+                    <span>${item.data.beleid}</span>
+                    ${item.data.beleidcode ? `<span class="beleidcode">${item.data.beleidcode}</span>` : ''}
+                </div>
+                ${item.data.definitie ? `<span class="definitie">${item.data.definitie}</span>` : ''}
+            </div>`;
+        }
+    }
+    
+    html += `</div><div class="combobox-count">${items.filter(i => i.type === 'item').length} results</div>`;
+    list.innerHTML = html;
+}
+
+function getItemTop(items, index) {
+    let top = 0;
+    for (let i = 0; i < index; i++) {
+        top += items[i].type === 'header' ? HEADER_HEIGHT : ITEM_HEIGHT;
+    }
+    return top;
+}
+
+function getStartIndex(items, scrollTop) {
+    let accumulated = 0;
+    for (let i = 0; i < items.length; i++) {
+        const height = items[i].type === 'header' ? HEADER_HEIGHT : ITEM_HEIGHT;
+        if (accumulated + height > scrollTop) {
+            return Math.max(0, i - BUFFER_COUNT);
+        }
+        accumulated += height;
+    }
+    return 0;
+}
+
+function getEndIndex(items, scrollTop, listHeight, startIndex) {
+    let accumulated = 0;
+    for (let i = 0; i < items.length; i++) {
+        accumulated += items[i].type === 'header' ? HEADER_HEIGHT : ITEM_HEIGHT;
+    }
+    
+    const targetBottom = scrollTop + listHeight;
+    let endIndex = startIndex;
+    accumulated = 0;
+    
+    for (let i = 0; i <= endIndex; i++) {
+        accumulated += items[i].type === 'header' ? HEADER_HEIGHT : ITEM_HEIGHT;
+    }
+    
+    for (let i = endIndex; i < items.length; i++) {
+        accumulated += items[i].type === 'header' ? HEADER_HEIGHT : ITEM_HEIGHT;
+        endIndex = i;
+        if (accumulated >= targetBottom + BUFFER_COUNT * ITEM_HEIGHT) break;
+    }
+    
+    return endIndex;
+}
+
+let lastScrollTop = 0;
+list.addEventListener('scroll', function() {
+    const scrollTop = this.scrollTop;
+    if (Math.abs(scrollTop - lastScrollTop) > 5) {
+        lastScrollTop = scrollTop;
+        const items = getItemsWithHeaders(filteredData);
+        renderList(items, scrollTop);
+    }
+});
+
+input.addEventListener('input', function() {
+    const search = this.value.toLowerCase();
+    if (search.length < 1) {
+        list.classList.remove('show');
+        return;
+    }
+    
+    filteredData = beleidData.filter(item => 
+        item.code.toLowerCase().includes(search) || 
+        item.beleid.toLowerCase().includes(search) ||
+        (item.definitie && item.definitie.toLowerCase().includes(search))
+    );
+    
+    const items = getItemsWithHeaders(filteredData);
+    list.scrollTop = 0;
+    renderList(items, 0);
+    list.classList.add('show');
+});
+
+list.addEventListener('click', function(e) {
+    const item = e.target.closest('.combobox-item');
+    if (item && item.dataset.code) {
+        const selectedCode = item.dataset.code;
+        const selectedBeleid = item.dataset.beleid;
+        const selectedBeleidcode = item.dataset.beleidcode;
+        input.value = selectedBeleid;
+        hiddenInput.value = selectedCode + '|' + selectedBeleid + '|' + selectedBeleidcode;
+        list.classList.remove('show');
+    }
+});
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.combobox-container')) {
+        list.classList.remove('show');
+    }
+});
+</script>
 {% endblock %}

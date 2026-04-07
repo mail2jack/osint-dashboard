@@ -103,6 +103,63 @@
                 <option value="{{ client.id }}" {% if filters.client == client.id %}selected{% endif %}>{{ client.name }}</option>
                 {% endfor %}
             </select>
+            <select name="case_type">
+                <option value="">All Types</option>
+                <option value="1.1.1" {% if filters.case_type == '1.1.1' %}selected{% endif %}>1.1.1 - Diefstal/inbraak woning</option>
+                <option value="1.1.2" {% if filters.case_type == '1.1.2' %}selected{% endif %}>1.1.2 - Diefstal box/garage/schuur</option>
+                <option value="1.2.1" {% if filters.case_type == '1.2.1' %}selected{% endif %}>1.2.1 - Geweldsmisdrijven</option>
+                <option value="1.2.2" {% if filters.case_type == '1.2.2' %}selected{% endif %}>1.2.2 - Seksuele misdrijven</option>
+                <option value="1.2.3" {% if filters.case_type == '1.2.3' %}selected{% endif %}>1.2.3 - Overvallen</option>
+                <option value="1.2.4" {% if filters.case_type == '1.2.4' %}selected{% endif %}>1.2.4 - Mensenhandel</option>
+                <option value="1.2.5" {% if filters.case_type == '1.2.5' %}selected{% endif %}>1.2.5 - Digitale criminaliteit</option>
+                <option value="1.3.1" {% if filters.case_type == '1.3.1' %}selected{% endif %}>1.3.1 - Vermogensmisdrijven</option>
+                <option value="1.4.1" {% if filters.case_type == '1.4.1' %}selected{% endif %}>1.4.1 - Vernieling/chemie</option>
+                <option value="1.4.2" {% if filters.case_type == '1.4.2' %}selected{% endif %}>1.4.2 - Drugsmisdrijven</option>
+                <option value="1.5.2" {% if filters.case_type == '1.5.2' %}selected{% endif %}>1.5.2 - Verkeersmisdrijven</option>
+                <option value="1.6.1" {% if filters.case_type == '1.6.1' %}selected{% endif %}>1.6.1 - Vuurwerk</option>
+                <option value="1.6.2" {% if filters.case_type == '1.6.2' %}selected{% endif %}>1.6.2 - Milieudelicten</option>
+                <option value="1.6.3" {% if filters.case_type == '1.6.3' %}selected{% endif %}>1.6.3 - Economische delicten</option>
+                <option value="1.6.4" {% if filters.case_type == '1.6.4' %}selected{% endif %}>1.6.4 - Openbare orde</option>
+                <option value="2.1.1" {% if filters.case_type == '2.1.1' %}selected{% endif %}>2.1.1 - Fraude (algemeen)</option>
+                <option value="2.2.1" {% if filters.case_type == '2.2.1' %}selected{% endif %}>2.2.1 - Verduistering</option>
+                <option value="2.4.1" {% if filters.case_type == '2.4.1' %}selected{% endif %}>2.4.1 - Bankbreuk</option>
+                <option value="2.4.2" {% if filters.case_type == '2.4.2' %}selected{% endif %}>2.4.2 - Identiteitsfraude</option>
+                <option value="2.5.1" {% if filters.case_type == '2.5.1' %}selected{% endif %}>2.5.1 - Faillissementsfraude</option>
+                <option value="2.5.2" {% if filters.case_type == '2.5.2' %}selected{% endif %}>2.5.2 - Subsidiefraude</option>
+                <option value="2.6.1" {% if filters.case_type == '2.6.1' %}selected{% endif %}>2.6.1 - Hypotheekfraude</option>
+                <option value="2.6.2" {% if filters.case_type == '2.6.2' %}selected{% endif %}>2.6.2 - Projectfraude</option>
+                <option value="2.6.3" {% if filters.case_type == '2.6.3' %}selected{% endif %}>2.6.3 - Subfacturering</option>
+                <option value="2.6.4" {% if filters.case_type == '2.6.4' %}selected{% endif %}>2.6.4 - Overige fraude</option>
+                <option value="2.6.5" {% if filters.case_type == '2.6.5' %}selected{% endif %}>2.6.5 - Cybercrime</option>
+                <option value="2.6.7" {% if filters.case_type == '2.6.7' %}selected{% endif %}>2.6.7 - Fraude met eurobiljetten</option>
+                <option value="2.6.8" {% if filters.case_type == '2.6.8' %}selected{% endif %}>2.6.8 - Valse aangifte</option>
+                <option value="2.6.9" {% if filters.case_type == '2.6.9' %}selected{% endif %}>2.6.9 - Munt- en valsemunterij</option>
+                <option value="2.6.10" {% if filters.case_type == '2.6.10' %}selected{% endif %}>2.6.10 - Douanefraude</option>
+                <option value="2.6.11" {% if filters.case_type == '2.6.11' %}selected{% endif %}>2.6.11 - Acquisitiefraude</option>
+                <option value="2.6.12" {% if filters.case_type == '2.6.12' %}selected{% endif %}>2.6.12 - Verzekeringsfraude</option>
+                <option value="2.6.13" {% if filters.case_type == '2.6.13' %}selected{% endif %}>2.6.13 - Beleggingsfraude</option>
+                <option value="2.7.1" {% if filters.case_type == '2.7.1' %}selected{% endif %}>2.7.1 - Fraude met medicijnen</option>
+                <option value="2.7.2" {% if filters.case_type == '2.7.2' %}selected{% endif %}>2.7.2 - Voedselfraude</option>
+                <option value="2.7.3" {% if filters.case_type == '2.7.3' %}selected{% endif %}>2.7.3 - Overige fraude</option>
+                <option value="3.1.1" {% if filters.case_type == '3.1.1' %}selected{% endif %}>3.1.1 - Wederspannigheid</option>
+                <option value="3.1.2" {% if filters.case_type == '3.1.2' %}selected{% endif %}>3.1.2 - Geweld tegen ambtenaren</option>
+                <option value="3.1.3" {% if filters.case_type == '3.1.3' %}selected{% endif %}>3.1.3 - Vervalsing officiele stukken</option>
+                <option value="3.2.1" {% if filters.case_type == '3.2.1' %}selected{% endif %}>3.2.1 - Valsheid in geschrifte</option>
+                <option value="3.2.2" {% if filters.case_type == '3.2.2' %}selected{% endif %}>3.2.2 - Valse attesten</option>
+                <option value="3.3.2" {% if filters.case_type == '3.3.2' %}selected{% endif %}>3.3.2 - Rijden onder invloed (lucht)</option>
+                <option value="3.3.5" {% if filters.case_type == '3.3.5' %}selected{% endif %}>3.3.5 - Overige luchtvaartmisdrijven</option>
+                <option value="3.4.2" {% if filters.case_type == '3.4.2' %}selected{% endif %}>3.4.2 - Rijden onder invloed (water)</option>
+                <option value="3.5.2" {% if filters.case_type == '3.5.2' %}selected{% endif %}>3.5.2 - Rijden onder invloed (weg)</option>
+                <option value="3.5.5" {% if filters.case_type == '3.5.5' %}selected{% endif %}>3.5.5 - Verkeersmisdrijven overig</option>
+                <option value="3.6.4" {% if filters.case_type == '3.6.4' %}selected{% endif %}>3.6.4 - Openbare orde overig</option>
+                <option value="3.7.1" {% if filters.case_type == '3.7.1' %}selected{% endif %}>3.7.1 - Discriminatie</option>
+                <option value="3.7.2" {% if filters.case_type == '3.7.2' %}selected{% endif %}>3.7.2 - Vreemdelingenzorg</option>
+                <option value="3.7.3" {% if filters.case_type == '3.7.3' %}selected{% endif %}>3.7.3 - Maatschappelijke integriteit</option>
+                <option value="3.7.4" {% if filters.case_type == '3.7.4' %}selected{% endif %}>3.7.4 - Cybercrime</option>
+                <option value="3.9.1" {% if filters.case_type == '3.9.1' %}selected{% endif %}>3.9.1 - Horizontale fraude</option>
+                <option value="3.9.2" {% if filters.case_type == '3.9.2' %}selected{% endif %}>3.9.2 - Verticale fraude</option>
+                <option value="3.9.3" {% if filters.case_type == '3.9.3' %}selected{% endif %}>3.9.3 - Overige fraude</option>
+            </select>
             <button type="submit">Filter</button>
             <a href="{{ url_for('cms.cases') }}" class="btn btn-clear">Clear</a>
         </form>
@@ -112,30 +169,36 @@
             <thead>
                 <tr>
                     <th>
-                        <a href="?sort=case_number&order={% if filters.sort == 'case_number' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                        <a href="?sort=case_number&order={% if filters.sort == 'case_number' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
                             Case Number {% if filters.sort == 'case_number' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                         </a>
                     </th>
                     <th>
-                        <a href="?sort=title&order={% if filters.sort == 'title' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                        <a href="?sort=title&order={% if filters.sort == 'title' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
                             Title {% if filters.sort == 'title' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                         </a>
                     </th>
                     <th>
-                        <a href="?sort=client&order={% if filters.sort == 'client' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                        <a href="?sort=client&order={% if filters.sort == 'client' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
                             Client {% if filters.sort == 'client' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                         </a>
                     </th>
                     <th>
-                        <a href="?sort=priority&order={% if filters.sort == 'priority' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                        <a href="?sort=priority&order={% if filters.sort == 'priority' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
                             Priority {% if filters.sort == 'priority' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                         </a>
                     </th>
                     <th>
-                        <a href="?sort=status&order={% if filters.sort == 'status' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}" style="color: inherit; text-decoration: none;">
+                        <a href="?sort=status&order={% if filters.sort == 'status' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
                             Status {% if filters.sort == 'status' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                         </a>
                     </th>
+                    <th>
+                        <a href="?sort=case_type&order={% if filters.sort == 'case_type' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
+                            Type {% if filters.sort == 'case_type' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>Lead Investigator</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -147,6 +210,8 @@
                     <td>{{ case.client.name if case.client else '-' }}</td>
                     <td><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></td>
                     <td><span class="badge badge-{{ case.status }}">{{ case.status }}</span></td>
+                    <td style="font-size: 0.8rem;">{{ case.case_type.split('|')[0] if case.case_type else '-' }}</td>
+                    <td>{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</td>
                     <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">View</a></td>
                 </tr>
                 {% endfor %}
@@ -156,17 +221,17 @@
         {% if pagination.pages > 1 %}
         <div class="pagination">
             {% if pagination.has_prev %}
-            <a href="{{ url_for('cms.cases', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">&laquo; Prev</a>
+            <a href="{{ url_for('cms.cases', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client, case_type=filters.case_type) }}">&laquo; Prev</a>
             {% endif %}
             {% for p in range(1, pagination.pages + 1) %}
                 {% if p == pagination.page %}
                 <span class="active">{{ p }}</span>
                 {% elif p <= 3 or p > pagination.pages - 3 or (p <= pagination.page + 1 and p >= pagination.page - 1) %}
-                <a href="{{ url_for('cms.cases', page=p, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">{{ p }}</a>
+                <a href="{{ url_for('cms.cases', page=p, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client, case_type=filters.case_type) }}">{{ p }}</a>
                 {% endif %}
             {% endfor %}
             {% if pagination.has_next %}
-            <a href="{{ url_for('cms.cases', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client) }}">Next &raquo;</a>
+            <a href="{{ url_for('cms.cases', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client, case_type=filters.case_type) }}">Next &raquo;</a>
             {% endif %}
         </div>
         {% endif %}

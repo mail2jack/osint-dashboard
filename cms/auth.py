@@ -467,6 +467,83 @@ def view_user(user_id: str):
     return render_template('cms/users/view.html', user=user)
 
 
+@users_bp.route('/<user_id>/activity')
+@login_required
+def user_activity(user_id: str):
+    """View activity timeline for a specific user."""
+    # Users can view their own activity, admins can view anyone
+    if user_id != current_user.id and not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    user = User.query.get_or_404(user_id)
+    
+    # Get query parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    entity_type = request.args.get('entity_type', '')
+    action = request.args.get('action', '')
+    
+    # Build query
+    query = AuditLog.query.filter_by(user_id=user_id)
+    
+    if entity_type:
+        query = query.filter_by(entity_type=entity_type)
+    if action:
+        query = query.filter_by(action=action)
+    
+    # Get activity counts by type
+    activity_counts = db.session.query(
+        AuditLog.action,
+        db.func.count(AuditLog.id)
+    ).filter(AuditLog.user_id == user_id).group_by(AuditLog.action).all()
+    
+    entity_counts = db.session.query(
+        AuditLog.entity_type,
+        db.func.count(AuditLog.id)
+    ).filter(AuditLog.user_id == user_id).group_by(AuditLog.entity_type).all()
+    
+    # Pagination
+    pagination = query.order_by(AuditLog.timestamp.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get recent cases worked on
+    recent_case_ids = db.session.query(AuditLog.case_id).filter(
+        AuditLog.user_id == user_id,
+        AuditLog.case_id.isnot(None)
+    ).distinct().limit(10).all()
+    recent_case_ids = [c[0] for c in recent_case_ids]
+    
+    recent_cases = Case.query.filter(Case.id.in_(recent_case_ids)).all() if recent_case_ids else []
+    
+    # Get statistics
+    total_actions = AuditLog.query.filter_by(user_id=user_id).count()
+    today = datetime.utcnow().date()
+    today_actions = AuditLog.query.filter(
+        AuditLog.user_id == user_id,
+        db.func.date(AuditLog.timestamp) == today
+    ).count()
+    
+    # This week
+    from datetime import timedelta
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_actions = AuditLog.query.filter(
+        AuditLog.user_id == user_id,
+        AuditLog.timestamp >= week_ago
+    ).count()
+    
+    return render_template('cms/users/activity.html',
+        user=user,
+        activities=pagination.items,
+        pagination=pagination,
+        activity_counts=activity_counts,
+        entity_counts=entity_counts,
+        recent_cases=recent_cases,
+        stats={'total': total_actions, 'today': today_actions, 'week': week_actions},
+        filters={'entity_type': entity_type, 'action': action}
+    )
+
+
 @users_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @admin_required

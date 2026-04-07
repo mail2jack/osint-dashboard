@@ -169,6 +169,21 @@
     </div>
 </div>
 
+<div class="quick-filters" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+    <a href="{{ url_for('cms.cases', assigned='me', status='open') }}" class="quick-filter-btn" style="background: #fef3c7; color: #92400e; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+        My Open ({{ my_open_cases }})
+    </a>
+    <a href="{{ url_for('cms.cases', assigned='me', status='active') }}" class="quick-filter-btn" style="background: #dbeafe; color: #1e40af; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+        My Active ({{ my_active_cases }})
+    </a>
+    <a href="{{ url_for('cms.cases', priority='critical,high') }}" class="quick-filter-btn" style="background: #fee2e2; color: #dc2626; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+        Priority Cases
+    </a>
+    <a href="{{ url_for('cms.cases', client='') }}" class="quick-filter-btn" style="background: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+        All Cases ({{ stats.open_cases + stats.active_cases + stats.suspended_cases }})
+    </a>
+</div>
+
 <div class="grid-2">
     <div class="card">
         <h2>Cases by Status</h2>
@@ -197,6 +212,48 @@
             </div>
             {% endfor %}
         </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <h2>Cases by Criminal Code</h2>
+        {% if case_type_labels %}
+        <div class="chart-row" style="height: 150px;">
+            {% set max_type = case_type_values|max if case_type_values else 1 %}
+            {% set colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#84cc16', '#a855f7', '#14b8a6'] %}
+            {% for i in range(case_type_labels|length) %}
+            <div class="chart-bar">
+                <div class="chart-bar-value">{{ case_type_values[i] }}</div>
+                <div class="chart-bar-fill" style="height: {% if max_type > 0 %}{{ (case_type_values[i] / max_type * 100)|round }}%{% else %}0{% endif %}; background: {{ colors[loop.index0 % colors|length] }};"></div>
+                <div class="chart-bar-label" title="{{ case_type_labels[i] }}">{{ case_type_labels[i][:6] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-secondary);">Top {{ case_type_labels|length }} crime types</div>
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center;">No criminal code data</p>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <h2>Lead Investigator Workload</h2>
+        {% if investigator_names %}
+        <div class="chart-row" style="height: 150px;">
+            {% set max_inv = investigator_counts|max if investigator_counts else 1 %}
+            {% set colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'] %}
+            {% for i in range(investigator_names|length) %}
+            <div class="chart-bar">
+                <div class="chart-bar-value">{{ investigator_counts[i] }}</div>
+                <div class="chart-bar-fill" style="height: {% if max_inv > 0 %}{{ (investigator_counts[i] / max_inv * 100)|round }}%{% else %}0{% endif %}; background: {{ colors[loop.index0 % colors|length] }};"></div>
+                <div class="chart-bar-label" title="{{ investigator_names[i] }}">{{ investigator_names[i][:8] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-secondary);">Active cases per investigator</div>
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center;">No lead investigators assigned</p>
+        {% endif %}
     </div>
 </div>
 

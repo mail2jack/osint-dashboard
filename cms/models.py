@@ -52,6 +52,55 @@ class CaseStatus(PyEnum):
     ARCHIVED = "archived"    # Archived for compliance
 
 
+class CaseType(PyEnum):
+    """Case types based on CBS criminaliteitscijfers definitions."""
+    HKDEELNAME = "hkdeelname"
+    HKBELASTING = "hkbelasting"
+    HKWOON = "hkwoon"
+    HKBURGERLIJK = "hkburgerlijk"
+    HKMIGRATIEACHTER = "hkmigratieachter"
+    HKEENPERS = "hkeenpers"
+    HKJAARMED = "hkjaarmed"
+    HKHERKOMST = "hkherkomst"
+    HKETNICITEIT = "hketniciteit"
+    HKGESLACHT = "hkgeslacht"
+    HKLEEFTIJD = "hkleeftijd"
+    HKEENGEZ = "hkeengez"
+    HKVERZOPENKINDEREN = "hkverzopenkinderen"
+    HKKINDETAL = "hkindetal"
+    HKLFTCAT = "hklftcat"
+    HKVERMISSING = "hkvermissing"
+    HKMOORD = "hkmoord"
+    HKDOODMOORD = "hkdoodmoord"
+    HKDIEFSTAL = "hkdiefstal"
+    HKINBRAAKWONING = "hkinbraakwoning"
+    HKOVERVAL = "hkoverval"
+    HKMISHANDELING = "hkmishandeling"
+    HKBEDREIGING = "hkbedreiging"
+    HKSEKSMISBRUIK = "hkseksmisbruik"
+    HKVERKRACHTING = "hkverkrachting"
+    HKDRUGS = "hkdrugs"
+    HKVUURWERK = "hkvuurwerk"
+    HKECONOMY = "hkeconomy"
+    HKFRAUDE = "hkfraude"
+    HKOMZETTINGVPH = "hkomzettingvph"
+    HKVERBLIJFSTITEL = "hkverblijfstitel"
+    HKJAARMEDINKOMEN = "hkjaarmedinkomen"
+    HKADRES = "hkadres"
+    HKINDELING = "hkindeling"
+    HKINKOMEN = "hkinkomen"
+    HKSOORTINKOMEN = "hksoortinkomen"
+    HKWOZ = "hkwoz"
+    HKSTAPPEN = "hkstappen"
+    HKZAAK = "hkzaak"
+    HKZAAKTYPE = "hkzaaktype"
+    HKDATUM = "hkdatum"
+    HKPERIODE = "hkperiode"
+    HKKLASSE = "hkklasse"
+    HKVERWIJZING = "hkverwijzing"
+    HKLOCATIE = "hklocatie"
+
+
 class SubjectType(PyEnum):
     """Types of subjects that can be investigated."""
     PERSON = "person"
@@ -314,6 +363,7 @@ class Case(db.Model):
     closure_reason = db.Column(db.Text)  # Reason for closing
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
     assigned_to = db.Column(db.String(36), db.ForeignKey('users.id'))
+    lead_investigator_id = db.Column(db.String(36), db.ForeignKey('users.id'))
     
     # Case metadata
     case_type = db.Column(db.String(100))  # e.g., "fraud", "due_diligence", "asset_tracing"
@@ -347,6 +397,7 @@ class Case(db.Model):
     financial_records = db.relationship('FinancialRecord', backref='case', lazy='dynamic')
     child_cases = db.relationship('Case', backref=db.backref('parent_case', remote_side=[id]), lazy='dynamic')
     reminders = db.relationship('Reminder', backref='case', lazy='dynamic', foreign_keys='Reminder.case_id')
+    lead_investigator = db.relationship('User', foreign_keys=[lead_investigator_id], backref='led_cases')
     
     @staticmethod
     def generate_case_number() -> str:
@@ -935,7 +986,14 @@ class Comment(db.Model):
     
     # Ownership
     author_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
-    author = db.relationship('User', backref='comments')
+    author = db.relationship('User', foreign_keys=[author_id], backref='comments')
+    
+    # Edit tracking
+    edit_count = db.Column(db.Integer, default=0)
+    last_edited_by_id = db.Column(db.String(36), db.ForeignKey('users.id'))
+    last_edited_by = db.relationship('User', foreign_keys=[last_edited_by_id], backref='edited_comments')
+    last_edited_at = db.Column(db.DateTime)
+    edit_history = db.relationship('CommentEditHistory', backref='comment', lazy='dynamic', cascade='all, delete-orphan')
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -965,7 +1023,48 @@ class Comment(db.Model):
             'author_id': self.author_id,
             'author_name': self.author.full_name if self.author else 'Unknown',
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'edit_count': self.edit_count,
+            'last_edited_by_id': self.last_edited_by_id,
+            'last_edited_by_name': self.last_edited_by.full_name if self.last_edited_by else None,
+            'last_edited_at': self.last_edited_at.isoformat() if self.last_edited_at else None,
+            'edit_history': [h.to_dict() for h in self.edit_history.order_by(CommentEditHistory.edited_at.desc()).limit(10).all()]
+        }
+
+
+# =============================================================================
+# Comment Edit History Model
+# =============================================================================
+
+class CommentEditHistory(db.Model):
+    """
+    Audit trail for comment edits.
+    Stores each version of a comment when it is edited.
+    """
+    __tablename__ = 'comment_edit_history'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    comment_id = db.Column(db.String(36), db.ForeignKey('comments.id'), nullable=False)
+    
+    previous_content = db.Column(db.Text, nullable=False)
+    new_content = db.Column(db.Text, nullable=False)
+    
+    edited_by_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    edited_by = db.relationship('User', backref='comment_edits')
+    
+    edited_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self) -> dict:
+        """Serialize edit history entry."""
+        return {
+            'id': self.id,
+            'comment_id': self.comment_id,
+            'previous_content': self.previous_content,
+            'new_content': self.new_content,
+            'edited_by_id': self.edited_by_id,
+            'edited_by_name': self.edited_by.full_name if self.edited_by else 'Unknown',
+            'edited_at': self.edited_at.isoformat() if self.edited_at else None
         }
 
 

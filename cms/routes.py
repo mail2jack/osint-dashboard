@@ -25,7 +25,7 @@ from .models import (
     db, Case, Client, Subject, Finding, FinancialRecord,
     AuditLog, Document, User, CaseStatus, CasePriority,
     SubjectType, VerificationStatus, subject_relations, Comment,
-    DocumentTemplate, Reminder, ReminderType, ReminderRecurrence
+    CommentEditHistory, DocumentTemplate, Reminder, ReminderType, ReminderRecurrence
 )
 from .auth import (
     roles_required, admin_required, senior_required,
@@ -279,6 +279,61 @@ def dashboard():
     subject_type_labels = [s[0] for s in subject_types]
     subject_type_values = [s[1] for s in subject_types]
     
+    # Cases by criminal code type (extract Niv3 code from case_type field)
+    from sqlalchemy import func, case as sql_case
+    case_type_stats = db.session.query(
+        func.substr(Case.case_type, 1, func.instr(Case.case_type, '|') - 1).label('code'),
+        func.count(Case.id).label('count')
+    ).filter(
+        Case.is_deleted == False,
+        Case.case_type.isnot(None),
+        Case.case_type != ''
+    ).group_by(
+        func.substr(Case.case_type, 1, func.instr(Case.case_type, '|') - 1)
+    ).order_by(func.count(Case.id).desc()).limit(10).all()
+    
+    case_type_labels = [s.code if s.code else 'Unknown' for s in case_type_stats]
+    case_type_values = [s.count for s in case_type_stats]
+    
+    # Lead investigator workload
+    lead_investigator_stats = db.session.query(
+        User.full_name,
+        func.count(Case.id).label('case_count')
+    ).join(
+        Case, Case.lead_investigator_id == User.id
+    ).filter(
+        Case.is_deleted == False,
+        Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value])
+    ).group_by(User.id, User.full_name).order_by(func.count(Case.id).desc()).all()
+    
+    investigator_names = [s.full_name for s in lead_investigator_stats]
+    investigator_counts = [s.case_count for s in lead_investigator_stats]
+    
+    # My cases stats for quick filters
+    my_open_cases = Case.query.filter(
+        Case.is_deleted == False,
+        Case.status == CaseStatus.OPEN.value,
+        db.or_(
+            Case.assigned_to == current_user.id,
+            Case.lead_investigator_id == current_user.id
+        )
+    ).count()
+    
+    my_active_cases = Case.query.filter(
+        Case.is_deleted == False,
+        Case.status == CaseStatus.ACTIVE.value,
+        db.or_(
+            Case.assigned_to == current_user.id,
+            Case.lead_investigator_id == current_user.id
+        )
+    ).count()
+    
+    overdue_cases = Case.query.filter(
+        Case.is_deleted == False,
+        Case.target_end_date < datetime.utcnow().date(),
+        Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value])
+    ).count()
+    
     # Get cases assigned to current user
     if current_user.is_admin:
         my_cases = Case.query.filter(
@@ -346,7 +401,14 @@ def dashboard():
         subject_type_labels=subject_type_labels,
         subject_type_values=subject_type_values,
         overdue_reminders=overdue_reminders,
-        upcoming_reminders=upcoming_reminders
+        upcoming_reminders=upcoming_reminders,
+        case_type_labels=case_type_labels,
+        case_type_values=case_type_values,
+        investigator_names=investigator_names,
+        investigator_counts=investigator_counts,
+        my_open_cases=my_open_cases,
+        my_active_cases=my_active_cases,
+        overdue_cases=overdue_cases
     )
 
 
@@ -656,11 +718,16 @@ def cases():
     
     # Filter by status
     if status:
-        query = query.filter_by(status=status)
+        query = query.filter(Case.status == status)
     
     # Filter by priority
     if priority:
-        query = query.filter_by(priority=priority)
+        query = query.filter(Case.priority == priority)
+    
+    # Filter by case type (stored as "code|beleid|beleidcode")
+    case_type_filter = request.args.get('case_type', '')
+    if case_type_filter:
+        query = query.filter(Case.case_type.like(f'{case_type_filter}|%'))
     
     # Filter by client
     if client_filter:
@@ -718,7 +785,7 @@ def cases():
         cases=pagination.items,
         pagination=pagination,
         clients=clients,
-        filters={'status': status, 'priority': priority, 'search': search, 'client': client_filter, 'assigned': assigned, 'sort': sort, 'order': order}
+        filters={'status': status, 'priority': priority, 'search': search, 'client': client_filter, 'assigned': assigned, 'sort': sort, 'order': order, 'case_type': case_type_filter}
     )
 
 
@@ -1045,7 +1112,8 @@ def create_case():
             case_type=data.get('case_type'),
             jurisdiction=data.get('jurisdiction'),
             tags=data.get('tags'),
-            created_by=current_user.id
+            created_by=current_user.id,
+            lead_investigator_id=data.get('lead_investigator_id') or None
         )
         
         db.session.add(case)
@@ -1127,6 +1195,12 @@ def edit_case(case_id: str):
             if sorted(new_tags) != sorted(old_tags):
                 changes['tags'] = {'old': old_tags, 'new': new_tags}
                 case.tags = new_tags if new_tags else None
+        
+        # Handle lead_investigator_id
+        new_lead = data.get('lead_investigator_id') or None
+        if new_lead != case.lead_investigator_id:
+            changes['lead_investigator_id'] = {'old': case.lead_investigator_id, 'new': new_lead}
+            case.lead_investigator_id = new_lead
         
         # Handle target_end_date separately (needs date conversion)
         if 'target_end_date' in data and data['target_end_date']:
@@ -2510,9 +2584,21 @@ def update_comment(comment_id: str):
         return jsonify({'error': 'Not authorized to edit this comment'}), 403
     
     data = request.get_json()
+    content_changed = False
     
-    if 'content' in data:
+    if 'content' in data and data['content'] != comment.content:
+        CommentEditHistory(
+            comment_id=comment.id,
+            previous_content=comment.content,
+            new_content=data['content'],
+            edited_by_id=current_user.id,
+            edited_at=datetime.utcnow()
+        )
         comment.content = data['content']
+        comment.edit_count = (comment.edit_count or 0) + 1
+        comment.last_edited_by_id = current_user.id
+        comment.last_edited_at = datetime.utcnow()
+        content_changed = True
     
     if 'is_pinned' in data:
         comment.is_pinned = data['is_pinned']
@@ -2522,6 +2608,18 @@ def update_comment(comment_id: str):
     
     comment.updated_at = datetime.utcnow()
     db.session.commit()
+    
+    if content_changed:
+        AuditLog.log(
+            user_id=current_user.id,
+            action='comment_edit',
+            entity_type='comment',
+            entity_id=comment.id,
+            ip_address=request.remote_addr,
+            case_id=comment.case_id,
+            description=f"Edited comment (edit #{comment.edit_count})"
+        )
+        db.session.commit()
     
     return jsonify(comment.to_dict())
 

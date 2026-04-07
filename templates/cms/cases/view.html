@@ -84,6 +84,19 @@
         .comment-actions button:hover { color: #16213e; }
         .comment-pinned { background: #fef3c7; border-left: 3px solid #f59e0b; }
         .comment-type-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; background: #e5e7eb; color: #666; }
+        .comment-edited { font-size: 0.75rem; color: #888; font-style: italic; }
+        .comment-edit-history { margin-top: 0.75rem; padding: 0.5rem; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 0.8rem; }
+        .comment-edit-history summary { cursor: pointer; color: #666; font-weight: 500; }
+        .comment-edit-entry { padding: 0.4rem 0; border-bottom: 1px solid #eee; }
+        .comment-edit-entry:last-child { border-bottom: none; }
+        .comment-edit-entry .edit-by { font-weight: 500; color: #333; }
+        .comment-edit-entry .edit-date { color: #888; font-size: 0.75rem; }
+        .comment-edit-entry .edit-diff { margin-top: 0.25rem; padding: 0.4rem; background: #fff; border-radius: 4px; font-size: 0.8rem; }
+        .comment-edit-entry .edit-old { color: #dc2626; text-decoration: line-through; }
+        .comment-edit-entry .edit-new { color: #059669; }
+        .comment-edit-form { margin-top: 0.5rem; }
+        .comment-edit-form textarea { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; resize: vertical; min-height: 60px; font-family: inherit; }
+        .comment-edit-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
     </style>
     <script>
         (function() {
@@ -131,6 +144,10 @@
                 <span>{{ case.client.name if case.client else '-' }}</span>
             </div>
             <div class="info-item">
+                <label>Lead Investigator</label>
+                <span>{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</span>
+            </div>
+            <div class="info-item">
                 <label>Priority</label>
                 <span class="badge badge-{{ case.priority }}">{{ case.priority }}</span>
             </div>
@@ -141,6 +158,18 @@
             <div class="info-item">
                 <label>Start Date</label>
                 <span>{{ case.start_date.strftime('%Y-%m-%d') if case.start_date else '-' }}</span>
+            </div>
+            <div class="info-item">
+                <label>Criminal Code</label>
+                <span>
+                    {% if case.case_type %}
+                        {% set parts = case.case_type.split('|') %}
+                        <strong>{{ parts[0] }}</strong> - {{ parts[1] if parts[1] else '' }}
+                        {% if parts[2] %}({{ parts[2] }}){% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </span>
             </div>
         </div>
         
@@ -1342,6 +1371,32 @@
                 const pinnedClass = c.is_pinned ? 'comment-pinned' : '';
                 const date = new Date(c.created_at);
                 const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const canEdit = c.author_id === '{{ current_user.id }}' || {{ 'true' if current_user.is_admin else 'false' }};
+                
+                let editInfo = '';
+                if (c.edit_count > 0) {
+                    const editDate = c.last_edited_at ? new Date(c.last_edited_at) : null;
+                    const editDateStr = editDate ? editDate.toLocaleDateString() + ' ' + editDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+                    editInfo = `<div class="comment-edited">Edited ${c.edit_count} time${c.edit_count > 1 ? 's' : ''}${c.last_edited_by_name ? ' by ' + c.last_edited_by_name : ''}${editDateStr ? ' on ' + editDateStr : ''}</div>`;
+                }
+                
+                let editHistory = '';
+                if (c.edit_history && c.edit_history.length > 0) {
+                    editHistory = `<details class="comment-edit-history">
+                        <summary>View edit history (${c.edit_history.length})</summary>
+                        ${c.edit_history.map(h => {
+                            const hDate = new Date(h.edited_at);
+                            const hDateStr = hDate.toLocaleDateString() + ' ' + hDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            return `<div class="comment-edit-entry">
+                                <div><span class="edit-by">${h.edited_by_name}</span> <span class="edit-date">${hDateStr}</span></div>
+                                <div class="edit-diff">
+                                    <div class="edit-old">- ${escapeHtml(h.previous_content.substring(0, 100))}${h.previous_content.length > 100 ? '...' : ''}</div>
+                                    <div class="edit-new">+ ${escapeHtml(h.new_content.substring(0, 100))}${h.new_content.length > 100 ? '...' : ''}</div>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </details>`;
+                }
                 
                 html += `
                     <div class="comment-item ${pinnedClass}" id="comment-${c.id}">
@@ -1353,8 +1408,18 @@
                             </div>
                             <div class="comment-time">${timeStr}</div>
                         </div>
-                        <div class="comment-content">${escapeHtml(c.content)}</div>
+                        ${editInfo}
+                        <div class="comment-content" id="content-${c.id}">${escapeHtml(c.content)}</div>
+                        ${editHistory}
+                        <div class="comment-edit-form" id="edit-form-${c.id}" style="display: none;">
+                            <textarea id="edit-content-${c.id}">${escapeHtml(c.content)}</textarea>
+                            <div class="comment-edit-actions">
+                                <button onclick="saveEdit('${c.id}')" class="btn btn-sm" style="background: #059669;">Save</button>
+                                <button onclick="cancelEdit('${c.id}')" class="btn btn-sm" style="background: #666;">Cancel</button>
+                            </div>
+                        </div>
                         <div class="comment-actions">
+                            ${canEdit ? `<button onclick="showEditForm('${c.id}')">Edit</button>` : ''}
                             <button onclick="deleteComment('${c.id}')">Delete</button>
                         </div>
                     </div>
@@ -1365,9 +1430,43 @@
         }
         
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        function showEditForm(commentId) {
+            document.getElementById(`edit-form-${commentId}`).style.display = 'block';
+            document.getElementById(`content-${commentId}`).style.display = 'none';
+        }
+        
+        function cancelEdit(commentId) {
+            document.getElementById(`edit-form-${commentId}`).style.display = 'none';
+            document.getElementById(`content-${commentId}`).style.display = 'block';
+        }
+        
+        function saveEdit(commentId) {
+            const newContent = document.getElementById(`edit-content-${commentId}`).value.trim();
+            if (!newContent) {
+                alert('Comment cannot be empty.');
+                return;
+            }
+            
+            fetch(`/cms/api/comments/${commentId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: newContent })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    loadComments();
+                }
+            })
+            .catch(err => alert('Error: ' + err.message));
         }
         
         function addComment() {
