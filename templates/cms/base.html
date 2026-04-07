@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#16213e">
+    <meta name="theme-color" content="#1a1a2e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="OSINT">
     <meta name="description" content="Iveras OSINT Case Management System">
     <link rel="manifest" href="/static/pwa/manifest.json">
-    <link rel="apple-touch-icon" href="/static/pwa/icon-192.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="/static/pwa/icon-192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="/static/pwa/icon-512.png">
-    <link rel="apple-touch-startup-image" href="/static/pwa/icon-512.png">
+    <link rel="apple-touch-icon" href="/static/pwa/icon-180.png">
     <meta name="mobile-web-app-capable" content="yes">
     <title>{% block title %}CMS{% endblock %}</title>
     <script>
@@ -266,7 +263,11 @@
         .app-loader {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            background: #1a1a2e;
             display: flex;
             flex-direction: column;
             align-items: center;
