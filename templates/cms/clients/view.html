@@ -72,6 +72,30 @@
             <label>Phone</label>
             <span>{{ client.contact_phone if client.contact_phone else '-' }}</span>
         </div>
+    </div>
+    
+    <div class="card">
+        <h2>Address</h2>
+        <div class="info-item">
+            <label>Street</label>
+            <span>{{ client.address_street if client.address_street else '-' }}</span>
+        </div>
+        <div class="info-item">
+            <label>Postal Code</label>
+            <span>{{ client.address_postal if client.address_postal else '-' }}</span>
+        </div>
+        <div class="info-item">
+            <label>City</label>
+            <span>{{ client.address_city if client.address_city else '-' }}</span>
+        </div>
+        <div class="info-item">
+            <label>Country</label>
+            <span>{{ client.address_country if client.address_country else '-' }}</span>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Contract Information</h2>
         <div class="info-item">
             <label>Contract Number</label>
             <span>{{ client.contract_number if client.contract_number else '-' }}</span>

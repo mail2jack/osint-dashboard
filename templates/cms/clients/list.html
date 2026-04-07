@@ -76,6 +76,7 @@
                             Contact {% if sort == 'contact' %}{{ '↑' if order == 'asc' else '↓' }}{% endif %}
                         </a>
                     </th>
+                    <th>Address</th>
                     <th>
                         <a href="?sort=contract&order={% if sort == 'contract' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search %}&search={{ search }}{% endif %}" style="color: inherit; text-decoration: none;">
                             Contract {% if sort == 'contract' %}{{ '↑' if order == 'asc' else '↓' }}{% endif %}
@@ -89,6 +90,15 @@
                 <tr>
                     <td><strong>{{ client.name }}</strong></td>
                     <td>{{ client.contact_person if client.contact_person else '-' }}</td>
+                    <td>
+                        {% if client.address_street or client.address_city %}
+                            {{ client.address_street if client.address_street else '' }}
+                            {% if client.address_postal %}{{ client.address_postal }}{% endif %}
+                            {{ client.address_city if client.address_city else '' }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>{{ client.contract_number or '-' }}</td>
                     <td><a href="{{ url_for('cms.view_client', client_id=client.id) }}">View</a></td>
                 </tr>
