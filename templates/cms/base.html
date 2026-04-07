@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#16213e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10,6 +10,10 @@
     <meta name="description" content="Iveras OSINT Case Management System">
     <link rel="manifest" href="/static/pwa/manifest.json">
     <link rel="apple-touch-icon" href="/static/pwa/icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/pwa/icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/static/pwa/icon-512.png">
+    <link rel="apple-touch-startup-image" href="/static/pwa/icon-512.png">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>{% block title %}CMS{% endblock %}</title>
     <script>
         // Apply theme before page renders to avoid flash
@@ -247,9 +251,69 @@
         
         /* Select options for dark mode */
         option { background: var(--bg-card); color: var(--text-primary); }
+        
+        /* iOS PWA splash screen */
+        @media screen and (device-width: 100%) {
+            body {
+                --sat: env(safe-area-inset-top);
+                --sar: env(safe-area-inset-right);
+                --sab: env(safe-area-inset-bottom);
+                --sal: env(safe-area-inset-left);
+            }
+        }
+        
+        /* Splash screen loader */
+        .app-loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease-out;
+        }
+        .app-loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .app-loader-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            background: #16213e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        .app-loader-text {
+            color: #ffffff;
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        .app-loader-spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-top: 1rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <div class="app-loader" id="appLoader">
+        <div class="app-loader-icon">📋</div>
+        <div class="app-loader-text">Loading OSINT...</div>
+        <div class="app-loader-spinner"></div>
+    </div>
     <div class="header">
         <div>
             <strong>CMS</strong>
@@ -357,13 +421,35 @@
         document.head.appendChild(style);
     </script>
     <script>
+        function hideLoader() {
+            const loader = document.getElementById('appLoader');
+            if (loader) {
+                setTimeout(() => {
+                    loader.classList.add('hidden');
+                    setTimeout(() => loader.remove(), 300);
+                }, 100);
+            }
+        }
+        
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/pwa/sw.js')
-                    .then(reg => console.log('SW registered'))
-                    .catch(err => console.log('SW registration failed:', err));
+                    .then(reg => {
+                        console.log('SW registered');
+                        hideLoader();
+                    })
+                    .catch(err => {
+                        console.log('SW registration failed:', err);
+                        hideLoader();
+                    });
             });
+        } else {
+            hideLoader();
         }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(hideLoader, 2000);
+        });
     </script>
 </body>
 </html>
