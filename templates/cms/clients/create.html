@@ -86,8 +86,8 @@
     
     <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Contract</h3>
     <div class="form-group">
-        <label for="contract_number">Contract Number</label>
-        <input type="text" name="contract_number" id="contract_number">
+        <label for="contract_number">Contract Number (auto-generated)</label>
+        <input type="text" name="contract_number" id="contract_number" readonly style="background: #f0f0f0; color: #666;">
     </div>
     
     <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Financial Information</h3>
@@ -171,9 +171,21 @@ function validateForm() {
     return true;
 }
 
+function generateContractNumber() {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 90000000 + 10000000).toString();
+    return `${year}${month}${day}${hours}${minutes}-${random}`;
+}
+
 // Run on page load
 document.addEventListener('DOMContentLoaded', () => {
     toggleCompanyFields();
+    document.getElementById('contract_number').value = generateContractNumber();
     if (document.getElementById('name').value.length >= 2) checkDuplicate();
 });
 </script>

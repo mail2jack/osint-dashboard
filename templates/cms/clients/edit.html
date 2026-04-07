@@ -99,8 +99,12 @@
             
             <h3>Contract</h3>
             <div class="form-group">
-                <label for="contract_number">Contract Number</label>
+                <label for="contract_number">Contract Number {% if not current_user.is_admin %}(read-only){% endif %}</label>
+                {% if current_user.is_admin %}
                 <input type="text" name="contract_number" id="contract_number" value="{{ client.contract_number or '' }}">
+                {% else %}
+                <input type="text" name="contract_number" id="contract_number" value="{{ client.contract_number or '' }}" readonly style="background: #f0f0f0; color: #666;">
+                {% endif %}
             </div>
             
             <h3>Financial Information</h3>
