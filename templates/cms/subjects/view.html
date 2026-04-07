@@ -1,614 +1,589 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ subject.name }} - CMS</title>
-    <style>
-        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
-        h1 { color: #1a1a2e; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
-        .info-item { margin-bottom: 1rem; }
-        .info-item label { display: block; color: #666; font-size: 0.875rem; }
-        .info-item span { font-weight: 500; }
-        .back { margin-bottom: 1rem; }
-        .back a { color: #0066cc; text-decoration: none; }
-        .btn-osint { display: inline-block; padding: 0.5rem 1rem; background: #059669; color: white; border-radius: 4px; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
-        .btn-osint:hover { background: #047857; }
-        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.875rem; background: #16213e; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .case-list { margin-top: 1rem; }
-        .case-item { padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-bottom: 0.5rem; }
-        
-        #networkModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        #networkModal.show { display: flex; align-items: center; justify-content: center; }
-        #networkModal .modal-content { background: white; border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 900px; max-height: 90vh; overflow: auto; }
-        .network-container { width: 100%; height: 400px; border: 1px solid #e5e7eb; border-radius: 8px; margin: 1rem 0; background: #fafafa; }
-        .relation-list { margin-top: 1rem; }
-        .relation-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #eee; }
-        .relation-item:last-child { border-bottom: none; }
-        .relation-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: #e5e7eb; }
-        
-        /* Passport photo */
-        .subject-photo-container { display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 1.5rem; }
-        .photo-frame {
-            width: 120px;
-            height: 150px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
-            overflow: hidden;
-            background: #f5f5f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            flex-shrink: 0;
-        }
-        .photo-frame img { width: 100%; height: 100%; object-fit: cover; }
-        .photo-placeholder { color: #999; font-size: 3rem; }
-        .photo-upload-btn {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            text-align: center;
-            padding: 0.3rem;
-            font-size: 0.7rem;
-            cursor: pointer;
-        }
-        .photo-upload-btn:hover { background: rgba(0,0,0,0.8); }
-        .photo-input { display: none; }
-        
-        /* OSINT Modal */
-        #osintModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        #osintModal.show { display: flex; align-items: center; justify-content: center; }
-        #osintModal .modal-content { background: white; border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 700px; max-height: 90vh; overflow: auto; }
-        
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .searching { animation: blink 1.5s infinite; }
-        
-        .result-item { padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; }
-        .result-item input[type="checkbox"] { margin-top: 0.25rem; }
-        .result-content { flex: 1; }
-        .result-engine { font-weight: 600; color: #1a1a2e; }
-        .result-name { color: #16213e; margin-bottom: 0.25rem; }
-        .result-url { font-size: 0.75rem; color: #0066cc; word-break: break-all; }
-        .result-url a { color: #0066cc; text-decoration: none; }
-        .result-url a:hover { text-decoration: underline; }
-        
-        .btn-success { background: #059669; }
-    </style>
-    <script>
-        (function() {
-            const theme = localStorage.getItem('cms-theme') || 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
-</head>
-<body>
-    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
-        <div style="display: flex; gap: 0; align-items: center;">
-            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
-            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
-            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
-            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
-            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Subjects</a>
-            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
-            {% if current_user.is_admin %}
-            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
-            {% endif %}
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
-            <span style="color: #888;">|</span>
-            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
-        </div>
-    </div>
-    
-    <div style="padding: 0 2rem; margin-top: 1rem;">
-        <div class="back"><a href="{{ url_for('cms.subjects') }}">← Back to Subjects</a></div>
-        
-        <div class="subject-photo-container">
-        <div class="photo-frame" id="photoFrame">
-            {% if subject.photo_path %}
-            <img src="/static{{ subject.photo_path }}" alt="Photo of {{ subject.name }}">
-            {% else %}
-            <span class="photo-placeholder">👤</span>
-            {% endif %}
-            <label class="photo-upload-btn" for="photoInput">📷 Upload</label>
-            <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">
-        </div>
-        <div>
-            <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
-                <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
-            </h1>
-            <div style="margin-top: 0.5rem;">
-                {% if subject.subject_type == 'person' %}
-                <button onclick="openOsintModal()" class="btn-osint" style="border: none; cursor: pointer;">
-                    🔍 OSINT Person Search
-                </button>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h3 style="margin: 0;">Subject Details</h3>
-            <button onclick="openNetworkModal()" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
-            <div>
-                <div class="info-item"><label>Type</label><span>{{ subject.subject_type }}</span></div>
-                <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
-                {% if subject.subject_type != 'vehicle' %}
-                <div class="info-item"><label>Email</label><span>{{ subject.email if subject.email else '-' }}</span></div>
-                <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span></div>
-                {% endif %}
-                {% if subject.subject_type == 'vehicle' %}
-                <div class="info-item"><label>License Plate</label><span>{{ subject.license_plate if subject.license_plate else '-' }}</span></div>
-                <div class="info-item"><label>VIN</label><span>{{ subject.vin if subject.vin else '-' }}</span></div>
-                <div class="info-item"><label>Brand</label><span>{{ subject.brand if subject.brand else '-' }}</span></div>
-                <div class="info-item"><label>Vehicle Type</label><span>{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span></div>
-                <div class="info-item"><label>Insurance Company</label><span>{{ subject.insurance_company if subject.insurance_company else '-' }}</span></div>
-                {% endif %}
-                <div class="info-item"><label>Address</label><span>{{ subject.address if subject.address else '-' }}</span></div>
-                {% if subject.notes %}<div class="info-item"><label>Notes</label><p>{{ subject.notes }}</p></div>{% endif %}
-            </div>
-            {% if linked_cases %}
-            <div>
-                <h4 style="margin: 0 0 0.5rem 0; color: #1a1a2e;">Linked Cases</h4>
-                {% for case in linked_cases %}
-                <div class="case-item">
-                    <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-    </div>
-    
-    <!-- OSINT Search Modal -->
-    <div id="osintModal" class="modal">
-        <div class="modal-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="margin: 0;">OSINT Person Search</h2>
-                <span onclick="closeOsintModal()" style="font-size: 1.5rem; cursor: pointer; color: #666;">&times;</span>
-            </div>
-            
-            <div id="osintSearchForm">
-                <p style="margin-bottom: 1rem; color: #666;">Search for information about <strong>{{ subject.name }}</strong></p>
-                <div id="osintActions">
-                    <button onclick="startOsintSearch()" class="btn-sm btn-success">Start Search</button>
-                </div>
-            </div>
-            
-            <div id="osintSearching" style="display: none; text-align: center; padding: 2rem;">
-                <div class="searching">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-                    <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
-                </div>
-                <div style="margin-top: 1.5rem;">
-                    <button onclick="cancelOsintSearch()" class="btn-sm" style="background: #dc2626;">Cancel Search</button>
-                </div>
-            </div>
-            
-            <div id="osintResults" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="margin: 0;">Search Results</h3>
-                    <span id="resultsCount"></span>
-                </div>
-                <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
-                <div style="margin-top: 1rem;">
-                    <button onclick="closeOsintModal()" class="btn-sm">Close</button>
-                </div>
-            </div>
-            
-            <div id="osintError" style="display: none; padding: 1rem; background: #fee2e2; border-radius: 8px; color: #dc2626;">
-                <p id="errorMessage"></p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Network Modal -->
-    <div id="networkModal" class="modal">
-        <div class="modal-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="margin: 0;">Subject Network</h2>
-                <span onclick="closeNetworkModal()" style="font-size: 1.5rem; cursor: pointer; color: #666;">&times;</span>
-            </div>
-            
-            <div id="networkInfo" style="margin-bottom: 0.5rem;">
-                <strong>{{ subject.name }}</strong> - {{ subject.subject_type }}
-            </div>
-            
-            <div id="networkSvg" class="network-container"></div>
-            
-            <div class="relation-list">
-                <h4>Direct Relationships</h4>
-                <div id="relationshipsList">Loading...</div>
-            </div>
-            
-            <div style="margin-top: 1rem;">
-                <button onclick="openAddRelationForm()" class="btn-sm" style="background: #059669;">+ Add Relationship</button>
-            </div>
-            
-            <div id="addRelationForm" style="display: none; margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
-                <select id="relationSubject" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
-                    <option value="">Select a subject...</option>
-                </select>
-                <select id="relationType" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
-                    <option value="family">Family Member</option>
-                    <option value="business">Business Partner</option>
-                    <option value="colleague">Colleague</option>
-                    <option value="associate">Associate</option>
-                    <option value="neighbor">Neighbor</option>
-                    <option value="related">Related</option>
-                </select>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button onclick="addRelationship()" class="btn-sm" style="background: #059669;">Save</button>
-                    <button onclick="closeAddRelationForm()" class="btn-sm" style="background: #666;">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
+{% extends "cms/base.html" %}
 
-    <script>
-        let networkData = null;
+{% block title %}{{ subject.name }} - CMS{% endblock %}
+
+{% block content %}
+<div class="back"><a href="{{ url_for('cms.subjects') }}">← Back to Subjects</a></div>
+
+<div class="subject-photo-container">
+    <div class="photo-frame" id="photoFrame">
+        {% if subject.photo_path %}
+        <img src="/static{{ subject.photo_path }}" alt="Photo of {{ subject.name }}">
+        {% else %}
+        <span class="photo-placeholder">👤</span>
+        {% endif %}
+        <label class="photo-upload-btn" for="photoInput">📷 Upload</label>
+        <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">
+    </div>
+    <div>
+        <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
+            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
+        </h1>
+        <div style="margin-top: 0.5rem;">
+            {% if subject.subject_type == 'person' %}
+            <button onclick="openOsintModal()" class="btn-osint" style="border: none; cursor: pointer;">
+                🔍 OSINT Person Search
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">Subject Details</h3>
+        <button onclick="openNetworkModal()" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
+        <div>
+            <div class="info-item"><label>Type</label><span>{{ subject.subject_type }}</span></div>
+            <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
+            {% if subject.subject_type != 'vehicle' %}
+            <div class="info-item"><label>Email</label><span>{{ subject.email if subject.email else '-' }}</span></div>
+            <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span></div>
+            {% endif %}
+            {% if subject.subject_type == 'vehicle' %}
+            <div class="info-item"><label>License Plate</label><span>{{ subject.license_plate if subject.license_plate else '-' }}</span></div>
+            <div class="info-item"><label>VIN</label><span>{{ subject.vin if subject.vin else '-' }}</span></div>
+            <div class="info-item"><label>Brand</label><span>{{ subject.brand if subject.brand else '-' }}</span></div>
+            <div class="info-item"><label>Vehicle Type</label><span>{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span></div>
+            <div class="info-item"><label>Insurance Company</label><span>{{ subject.insurance_company if subject.insurance_company else '-' }}</span></div>
+            {% endif %}
+            <div class="info-item"><label>Address</label><span>{{ subject.address if subject.address else '-' }}</span></div>
+            {% if subject.notes %}<div class="info-item"><label>Notes</label><p>{{ subject.notes }}</p></div>{% endif %}
+        </div>
+        {% if linked_cases %}
+        <div>
+            <h4 style="margin: 0 0 0.5rem 0;">Linked Cases</h4>
+            {% for case in linked_cases %}
+            <div class="case-item">
+                <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- OSINT Search Modal -->
+<div id="osintModal" class="modal">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">OSINT Person Search</h2>
+            <span onclick="closeOsintModal()" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+        </div>
         
-        function openNetworkModal() {
-            document.getElementById('networkModal').classList.add('show');
-            loadNetwork();
+        <div id="osintSearchForm">
+            <p style="margin-bottom: 1rem; color: var(--text-secondary);">Search for information about <strong>{{ subject.name }}</strong></p>
+            <div id="osintActions">
+                <button onclick="startOsintSearch()" class="btn-sm btn-success">Start Search</button>
+            </div>
+        </div>
+        
+        <div id="osintSearching" style="display: none; text-align: center; padding: 2rem;">
+            <div class="searching">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <button onclick="cancelOsintSearch()" class="btn-sm" style="background: var(--danger-text);">Cancel Search</button>
+            </div>
+        </div>
+        
+        <div id="osintResults" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">Search Results</h3>
+                <span id="resultsCount"></span>
+            </div>
+            <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
+            <div style="margin-top: 1rem;">
+                <button onclick="closeOsintModal()" class="btn-sm">Close</button>
+            </div>
+        </div>
+        
+        <div id="osintError" style="display: none; padding: 1rem; background: var(--danger-bg); border-radius: 8px; color: var(--danger-text);">
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Network Modal -->
+<div id="networkModal" class="modal">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Subject Network</h2>
+            <span onclick="closeNetworkModal()" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+        </div>
+        
+        <div id="networkInfo" style="margin-bottom: 0.5rem;">
+            <strong>{{ subject.name }}</strong> - {{ subject.subject_type }}
+        </div>
+        
+        <div id="networkSvg" class="network-container"></div>
+        
+        <div class="relation-list">
+            <h4>Direct Relationships</h4>
+            <div id="relationshipsList">Loading...</div>
+        </div>
+        
+        <div style="margin-top: 1rem;">
+            <button onclick="openAddRelationForm()" class="btn-sm" style="background: #059669;">+ Add Relationship</button>
+        </div>
+        
+        <div id="addRelationForm" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
+            <select id="relationSubject" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
+                <option value="">Select a subject...</option>
+            </select>
+            <select id="relationType" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
+                <option value="family">Family Member</option>
+                <option value="business">Business Partner</option>
+                <option value="colleague">Colleague</option>
+                <option value="associate">Associate</option>
+                <option value="neighbor">Neighbor</option>
+                <option value="related">Related</option>
+            </select>
+            <div style="display: flex; gap: 0.5rem;">
+                <button onclick="addRelationship()" class="btn-sm" style="background: #059669;">Save</button>
+                <button onclick="closeAddRelationForm()" class="btn-sm" style="background: var(--text-muted);">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: var(--bg-secondary); }
+    h1 { color: var(--text-primary); display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .card { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px var(--shadow); margin-bottom: 1rem; }
+    .info-item { margin-bottom: 1rem; }
+    .info-item label { display: block; color: var(--text-secondary); font-size: 0.875rem; }
+    .info-item span { font-weight: 500; color: var(--text-primary); }
+    .back { margin-bottom: 1rem; }
+    .back a { color: var(--link-color); text-decoration: none; }
+    .btn-osint { display: inline-block; padding: 0.5rem 1rem; background: #059669; color: white; border-radius: 4px; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
+    .btn-osint:hover { background: #047857; }
+    .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.875rem; background: var(--accent-primary); color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .case-list { margin-top: 1rem; }
+    .case-item { padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 0.5rem; }
+    .case-item a { color: var(--link-color); }
+    
+    #networkModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: var(--modal-bg); }
+    #networkModal.show { display: flex; align-items: center; justify-content: center; }
+    #networkModal .modal-content { background: var(--bg-card); border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 900px; max-height: 90vh; overflow: auto; }
+    .network-container { width: 100%; height: 400px; border: 1px solid var(--border-color); border-radius: 8px; margin: 1rem 0; background: var(--chart-bg); }
+    .relation-list { margin-top: 1rem; }
+    .relation-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border-color); color: var(--text-primary); }
+    .relation-item:last-child { border-bottom: none; }
+    .relation-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-secondary); color: var(--text-secondary); }
+    
+    .subject-photo-container { display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 1.5rem; }
+    .photo-frame {
+        width: 120px;
+        height: 150px;
+        border: 2px solid var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+        background: var(--bg-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        flex-shrink: 0;
+    }
+    .photo-frame img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-placeholder { color: var(--text-muted); font-size: 3rem; }
+    .photo-upload-btn {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        text-align: center;
+        padding: 0.3rem;
+        font-size: 0.7rem;
+        cursor: pointer;
+    }
+    .photo-upload-btn:hover { background: rgba(0,0,0,0.8); }
+    .photo-input { display: none; }
+    
+    #osintModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: var(--modal-bg); }
+    #osintModal.show { display: flex; align-items: center; justify-content: center; }
+    #osintModal .modal-content { background: var(--bg-card); border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 700px; max-height: 90vh; overflow: auto; }
+    #osintModal h2, #osintModal h3 { color: var(--text-primary); }
+    #osintModal p { color: var(--text-secondary); }
+    
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .searching { animation: blink 1.5s infinite; }
+    
+    .result-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card); }
+    .result-item input[type="checkbox"] { margin-top: 0.25rem; }
+    .result-content { flex: 1; }
+    .result-engine { font-weight: 600; color: var(--text-primary); }
+    .result-name { color: var(--accent-primary); margin-bottom: 0.25rem; }
+    .result-url { font-size: 0.75rem; color: var(--link-color); word-break: break-all; }
+    .result-url a { color: var(--link-color); text-decoration: none; }
+    .result-url a:hover { text-decoration: underline; }
+    
+    .btn-success { background: #059669; }
+    .btn-success:hover { background: #047857; }
+</style>
+
+<script>
+    let networkData = null;
+    
+    function openNetworkModal() {
+        document.getElementById('networkModal').classList.add('show');
+        loadNetwork();
+    }
+    
+    function closeNetworkModal() {
+        document.getElementById('networkModal').classList.remove('show');
+    }
+    
+    function loadNetwork() {
+        fetch("{{ url_for('cms.get_subject_relationships', subject_id=subject.id) }}")
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            networkData = data;
+            displayNetwork(data);
+            displayRelationships(data);
+        })
+        .catch(err => {
+            document.getElementById('relationshipsList').innerHTML = 'Failed to load relationships: ' + err.message;
+        });
+    }
+    
+    function displayNetwork(data) {
+        const container = document.getElementById('networkSvg');
+        container.innerHTML = '';
+        
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 400;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        
+        const nodes = data.nodes.map((node, i) => {
+            const angle = (2 * Math.PI * i) / data.nodes.length;
+            const radius = data.nodes.length > 1 ? Math.min(width, height) / 3 : 0;
+            return { ...node, x: centerX + radius * Math.cos(angle), y: centerY + radius * Math.sin(angle) };
+        });
+        
+        const nodeMap = {};
+        nodes.forEach(n => nodeMap[n.id] = n);
+        
+        const colors = { 'person': '#3b82f6', 'company': '#10b981', 'organization': '#8b5cf6', 'vehicle': '#f59e0b', 'vessel': '#06b6d4', 'property': '#ec4899' };
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const lineColor = isDark ? '#4b5563' : '#d1d5db';
+        
+        let svg = `<svg width="${width}" height="${height}" style="overflow: visible;">`;
+        
+        data.edges.forEach(edge => {
+            const s = nodeMap[edge.source], t = nodeMap[edge.target];
+            if (s && t) svg += `<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="${lineColor}" stroke-width="2"/>`;
+        });
+        
+        nodes.forEach(node => {
+            const r = node.isMain ? 25 : 18;
+            const color = colors[node.type] || '#6b7280';
+            svg += `
+                <a href="/cms/subjects/${node.id}">
+                    <circle cx="${node.x}" cy="${node.y}" r="${r}" fill="${color}" stroke="${node.isMain ? (isDark ? '#fff' : '#1a1a2e') : '#fff'}" stroke-width="${node.isMain ? 3 : 2}"/>
+                    <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${node.name.substring(0, 10)}</text>
+                    <text x="${node.x}" y="${node.y + r + 12}" text-anchor="middle" fill="${isDark ? '#9ca3af' : '#6b7280'}" font-size="9">${node.type}</text>
+                </a>`;
+        });
+        
+        svg += '</svg>';
+        container.innerHTML = svg;
+    }
+    
+    function displayRelationships(data) {
+        const list = document.getElementById('relationshipsList');
+        const mainNode = data.nodes.find(n => n.isMain);
+        const directEdges = data.edges.filter(e => e.source === mainNode?.id || e.target === mainNode?.id);
+        
+        if (!directEdges.length) {
+            list.innerHTML = '<p style="color: var(--text-muted);">No relationships yet.</p>';
+            return;
         }
         
-        function closeNetworkModal() {
-            document.getElementById('networkModal').classList.remove('show');
-        }
+        let html = '';
+        directEdges.forEach(edge => {
+            const otherId = edge.source === mainNode?.id ? edge.target : edge.source;
+            const other = data.nodes.find(n => n.id === otherId);
+            if (other) {
+                html += `<div class="relation-item">
+                    <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || 'related'}</span></div>
+                    <button onclick="removeRelationship('${other.id}')" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
+                </div>`;
+            }
+        });
+        list.innerHTML = html;
+    }
+    
+    function openAddRelationForm() {
+        document.getElementById('addRelationForm').style.display = 'block';
+        fetch("{{ url_for('cms.subjects') }}?format=json")
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('relationSubject');
+            select.innerHTML = '<option value="">Select a subject...</option>';
+            (data.subjects || []).forEach(s => {
+                if (s.id !== '{{ subject.id }}') select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
+            });
+        });
+    }
+    
+    function closeAddRelationForm() { document.getElementById('addRelationForm').style.display = 'none'; }
+    
+    function addRelationship() {
+        const relatedId = document.getElementById('relationSubject').value;
+        const relType = document.getElementById('relationType').value;
+        if (!relatedId) return alert('Select a subject');
         
-        function loadNetwork() {
-            fetch("{{ url_for('cms.get_subject_relationships', subject_id=subject.id) }}")
-            .then(r => {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            })
-            .then(data => {
-                networkData = data;
-                displayNetwork(data);
-                displayRelationships(data);
-            })
-            .catch(err => {
-                document.getElementById('relationshipsList').innerHTML = 'Failed to load relationships: ' + err.message;
-            });
-        }
+        fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ related_subject_id: relatedId, relationship_type: relType })
+        })
+        .then(r => r.json())
+        .then(data => { if (!data.error) { closeAddRelationForm(); loadNetwork(); } else alert(data.error); });
+    }
+    
+    function removeRelationship(relatedId) {
+        if (!confirm('Remove this relationship?')) return;
+        fetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ related_subject_id: relatedId })
+        }).then(() => loadNetwork());
+    }
+    
+    document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });
+
+    function uploadPhoto(input) {
+        const file = input.files[0];
+        if (!file) return;
         
-        function displayNetwork(data) {
-            const container = document.getElementById('networkSvg');
-            container.innerHTML = '';
-            
-            const width = container.clientWidth || 800;
-            const height = container.clientHeight || 400;
-            const centerX = width / 2;
-            const centerY = height / 2;
-            
-            const nodes = data.nodes.map((node, i) => {
-                const angle = (2 * Math.PI * i) / data.nodes.length;
-                const radius = data.nodes.length > 1 ? Math.min(width, height) / 3 : 0;
-                return { ...node, x: centerX + radius * Math.cos(angle), y: centerY + radius * Math.sin(angle) };
-            });
-            
-            const nodeMap = {};
-            nodes.forEach(n => nodeMap[n.id] = n);
-            
-            const colors = { 'person': '#3b82f6', 'company': '#10b981', 'organization': '#8b5cf6', 'vehicle': '#f59e0b', 'vessel': '#06b6d4', 'property': '#ec4899' };
-            
-            let svg = `<svg width="${width}" height="${height}" style="overflow: visible;">`;
-            
-            data.edges.forEach(edge => {
-                const s = nodeMap[edge.source], t = nodeMap[edge.target];
-                if (s && t) svg += `<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="#d1d5db" stroke-width="2"/>`;
-            });
-            
-            nodes.forEach(node => {
-                const r = node.isMain ? 25 : 18;
-                const color = colors[node.type] || '#6b7280';
-                svg += `
-                    <a href="/cms/subjects/${node.id}">
-                        <circle cx="${node.x}" cy="${node.y}" r="${r}" fill="${color}" stroke="${node.isMain ? '#1a1a2e' : '#fff'}" stroke-width="${node.isMain ? 3 : 2}"/>
-                        <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${node.name.substring(0, 10)}</text>
-                        <text x="${node.x}" y="${node.y + r + 12}" text-anchor="middle" fill="#6b7280" font-size="9">${node.type}</text>
-                    </a>`;
-            });
-            
-            svg += '</svg>';
-            container.innerHTML = svg;
-        }
+        const formData = new FormData();
+        formData.append('photo', file);
         
-        function displayRelationships(data) {
-            const list = document.getElementById('relationshipsList');
-            const mainNode = data.nodes.find(n => n.isMain);
-            const directEdges = data.edges.filter(e => e.source === mainNode?.id || e.target === mainNode?.id);
-            
-            if (!directEdges.length) {
-                list.innerHTML = '<p style="color: #666;">No relationships yet.</p>';
+        fetch("{{ url_for('cms.upload_subject_photo', subject_id=subject.id) }}", {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                const photoFrame = document.getElementById('photoFrame');
+                const existingImg = photoFrame.querySelector('img');
+                if (existingImg) {
+                    existingImg.src = '/static' + data.photo_path + '?t=' + new Date().getTime();
+                } else {
+                    photoFrame.innerHTML = `<img src="/static${data.photo_path}?t=${new Date().getTime()}" alt="Photo">
+                        <label class="photo-upload-btn" for="photoInput">📷 Change</label>
+                        <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">`;
+                }
+            }
+        })
+        .catch(err => alert('Upload failed: ' + err.message));
+    }
+    
+    // OSINT Search Functions
+    let currentSearchId = null;
+    let pollInterval = null;
+    const osintBase = "/cms/osint-search/";
+    
+    function openOsintModal() {
+        document.getElementById('osintModal').classList.add('show');
+        resetOsintModal();
+    }
+    
+    function closeOsintModal() {
+        if (currentSearchId) {
+            cancelOsintSearch();
+        }
+        document.getElementById('osintModal').classList.remove('show');
+        resetOsintModal();
+    }
+    
+    function resetOsintModal() {
+        document.getElementById('osintSearchForm').style.display = 'block';
+        document.getElementById('osintSearching').style.display = 'none';
+        document.getElementById('osintResults').style.display = 'none';
+        document.getElementById('osintError').style.display = 'none';
+        currentSearchId = null;
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+    
+    function startOsintSearch() {
+        const name = "{{ subject.name }}";
+        
+        document.getElementById('osintSearchForm').style.display = 'none';
+        document.getElementById('osintSearching').style.display = 'block';
+        document.getElementById('osintError').style.display = 'none';
+        
+        fetch("{{ url_for('cms.start_osint_search', case_id=first_case_id) }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                showOsintError(data.error);
                 return;
             }
-            
-            let html = '';
-            directEdges.forEach(edge => {
-                const otherId = edge.source === mainNode?.id ? edge.target : edge.source;
-                const other = data.nodes.find(n => n.id === otherId);
-                if (other) {
-                    html += `<div class="relation-item">
-                        <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || 'related'}</span></div>
-                        <button onclick="removeRelationship('${other.id}')" style="background: #dc2626; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
-                    </div>`;
-                }
-            });
-            list.innerHTML = html;
-        }
-        
-        function openAddRelationForm() {
-            document.getElementById('addRelationForm').style.display = 'block';
-            fetch("{{ url_for('cms.subjects') }}?format=json")
+            currentSearchId = data.search_id;
+            pollSearchStatus();
+        })
+        .catch(err => {
+            showOsintError('Failed to start search: ' + err.message);
+        });
+    }
+    
+    function pollSearchStatus() {
+        pollInterval = setInterval(() => {
+            fetch(osintBase + currentSearchId + '/status')
             .then(r => r.json())
             .then(data => {
-                const select = document.getElementById('relationSubject');
-                select.innerHTML = '<option value="">Select a subject...</option>';
-                (data.subjects || []).forEach(s => {
-                    if (s.id !== '{{ subject.id }}') select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
-                });
-            });
-        }
-        
-        function closeAddRelationForm() { document.getElementById('addRelationForm').style.display = 'none'; }
-        
-        function addRelationship() {
-            const relatedId = document.getElementById('relationSubject').value;
-            const relType = document.getElementById('relationType').value;
-            if (!relatedId) return alert('Select a subject');
-            
-            fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ related_subject_id: relatedId, relationship_type: relType })
-            })
-            .then(r => r.json())
-            .then(data => { if (!data.error) { closeAddRelationForm(); loadNetwork(); } else alert(data.error); });
-        }
-        
-        function removeRelationship(relatedId) {
-            if (!confirm('Remove this relationship?')) return;
-            fetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ related_subject_id: relatedId })
-            }).then(() => loadNetwork());
-        }
-        
-        document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });
-
-        function uploadPhoto(input) {
-            const file = input.files[0];
-            if (!file) return;
-            
-            const formData = new FormData();
-            formData.append('photo', file);
-            
-            fetch("{{ url_for('cms.upload_subject_photo', subject_id=subject.id) }}", {
-                method: 'POST',
-                body: formData
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    const photoFrame = document.getElementById('photoFrame');
-                    const existingImg = photoFrame.querySelector('img');
-                    if (existingImg) {
-                        existingImg.src = '/static' + data.photo_path + '?t=' + new Date().getTime();
-                    } else {
-                        photoFrame.innerHTML = `<img src="/static${data.photo_path}?t=${new Date().getTime()}" alt="Photo">
-                            <label class="photo-upload-btn" for="photoInput">📷 Change</label>
-                            <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">`;
-                    }
+                if (data.status === 'completed') {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    loadSearchResults();
+                } else if (data.status === 'cancelled') {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    showOsintError('Search was cancelled');
                 }
             })
-            .catch(err => alert('Upload failed: ' + err.message));
-        }
+            .catch(() => {});
+        }, 1000);
+    }
+    
+    function cancelOsintSearch() {
+        if (!currentSearchId) return;
         
-        // OSINT Search Functions
-        let currentSearchId = null;
-        let pollInterval = null;
-        const osintBase = "/cms/osint-search/";
-        
-        function openOsintModal() {
-            document.getElementById('osintModal').classList.add('show');
-            resetOsintModal();
-        }
-        
-        function closeOsintModal() {
-            if (currentSearchId) {
-                cancelOsintSearch();
-            }
-            document.getElementById('osintModal').classList.remove('show');
-            resetOsintModal();
-        }
-        
-        function resetOsintModal() {
-            document.getElementById('osintSearchForm').style.display = 'block';
-            document.getElementById('osintSearching').style.display = 'none';
-            document.getElementById('osintResults').style.display = 'none';
-            document.getElementById('osintError').style.display = 'none';
-            currentSearchId = null;
+        fetch(osintBase + currentSearchId + '/cancel', {
+            method: 'POST'
+        })
+        .then(r => r.json())
+        .then(() => {
             if (pollInterval) {
                 clearInterval(pollInterval);
                 pollInterval = null;
             }
-        }
-        
-        function startOsintSearch() {
-            const name = "{{ subject.name }}";
-            
-            document.getElementById('osintSearchForm').style.display = 'none';
-            document.getElementById('osintSearching').style.display = 'block';
-            document.getElementById('osintError').style.display = 'none';
-            
-            fetch("{{ url_for('cms.start_osint_search', case_id=first_case_id) }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    showOsintError(data.error);
-                    return;
-                }
-                currentSearchId = data.search_id;
-                pollSearchStatus();
-            })
-            .catch(err => {
-                showOsintError('Failed to start search: ' + err.message);
-            });
-        }
-        
-        function pollSearchStatus() {
-            pollInterval = setInterval(() => {
-                fetch(osintBase + currentSearchId + '/status')
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'completed') {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
-                        loadSearchResults();
-                    } else if (data.status === 'cancelled') {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
-                        showOsintError('Search was cancelled');
-                    }
-                })
-                .catch(() => {});
-            }, 1000);
-        }
-        
-        function cancelOsintSearch() {
-            if (!currentSearchId) return;
-            
-            fetch(osintBase + currentSearchId + '/cancel', {
-                method: 'POST'
-            })
-            .then(r => r.json())
-            .then(() => {
-                if (pollInterval) {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
-                }
-                currentSearchId = null;
-            })
-            .catch(() => {
-                currentSearchId = null;
-            });
-        }
-        
-        function loadSearchResults() {
-            fetch(osintBase + currentSearchId + '/results')
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    showOsintError(data.error);
-                    return;
-                }
-                displayOsintResults(data.results);
-            })
-            .catch(err => {
-                showOsintError('Failed to load results: ' + err.message);
-            });
-        }
-        
-        function displayOsintResults(results) {
-            document.getElementById('osintSearching').style.display = 'none';
-            document.getElementById('osintResults').style.display = 'block';
-            
-            const dorksResults = results.dorks_results || [];
-            const searchLinks = results.search_links || [];
-            
-            const totalCount = dorksResults.length + searchLinks.length;
-            document.getElementById('resultsCount').textContent = `${totalCount} results found`;
-            
-            const resultsList = document.getElementById('resultsList');
-            resultsList.innerHTML = '';
-            
-            if (totalCount === 0) {
-                resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found.</p>';
+            currentSearchId = null;
+        })
+        .catch(() => {
+            currentSearchId = null;
+        });
+    }
+    
+    function loadSearchResults() {
+        fetch(osintBase + currentSearchId + '/results')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                showOsintError(data.error);
                 return;
             }
-            
-            const categoryLabels = {
-                'social_media': 'Social Media',
-                'files': 'Documents',
-                'public_records': 'Public Records',
-                'news': 'News',
-                'general': 'Other',
-                'search': 'Search Links'
-            };
-            
-            const grouped = {};
-            dorksResults.forEach(item => {
-                const cat = item.category || 'general';
-                if (!grouped[cat]) grouped[cat] = [];
-                grouped[cat].push(item);
-            });
-            
-            for (const [cat, items] of Object.entries(grouped)) {
-                const catDiv = document.createElement('div');
-                catDiv.style.marginBottom = '1rem';
-                catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">${categoryLabels[cat] || cat} (${items.length})</h4>`;
-                
-                items.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `
-                        <div class="result-content">
-                            <div class="result-engine">${item.domain || 'Unknown'}</div>
-                            <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
-                        </div>
-                    `;
-                    catDiv.appendChild(div);
-                });
-                resultsList.appendChild(catDiv);
-            }
-            
-            if (searchLinks.length > 0) {
-                const searchDiv = document.createElement('div');
-                searchDiv.style.marginBottom = '1rem';
-                searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">Search Links (${searchLinks.length})</h4>`;
-                
-                searchLinks.forEach(link => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `
-                        <div class="result-content">
-                            <div class="result-engine">${link.engine || 'Unknown'}</div>
-                            <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
-                        </div>
-                    `;
-                    searchDiv.appendChild(div);
-                });
-                resultsList.appendChild(searchDiv);
-            }
-        }
-        
-        function showOsintError(message) {
-            document.getElementById('osintSearchForm').style.display = 'none';
-            document.getElementById('osintSearching').style.display = 'none';
-            document.getElementById('osintResults').style.display = 'none';
-            document.getElementById('osintError').style.display = 'block';
-            document.getElementById('errorMessage').textContent = message;
-        }
-        
-        document.getElementById('osintModal').addEventListener('click', function(e) {
-            if (e.target === this) closeOsintModal();
+            displayOsintResults(data.results);
+        })
+        .catch(err => {
+            showOsintError('Failed to load results: ' + err.message);
         });
-    </script>
-    </div>
-</body>
-</html>
+    }
+    
+    function displayOsintResults(results) {
+        document.getElementById('osintSearching').style.display = 'none';
+        document.getElementById('osintResults').style.display = 'block';
+        
+        const dorksResults = results.dorks_results || [];
+        const searchLinks = results.search_links || [];
+        
+        const totalCount = dorksResults.length + searchLinks.length;
+        document.getElementById('resultsCount').textContent = `${totalCount} results found`;
+        
+        const resultsList = document.getElementById('resultsList');
+        resultsList.innerHTML = '';
+        
+        if (totalCount === 0) {
+            resultsList.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">No results found.</p>';
+            return;
+        }
+        
+        const categoryLabels = {
+            'social_media': 'Social Media',
+            'files': 'Documents',
+            'public_records': 'Public Records',
+            'news': 'News',
+            'general': 'Other',
+            'search': 'Search Links'
+        };
+        
+        const grouped = {};
+        dorksResults.forEach(item => {
+            const cat = item.category || 'general';
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(item);
+        });
+        
+        for (const [cat, items] of Object.entries(grouped)) {
+            const catDiv = document.createElement('div');
+            catDiv.style.marginBottom = '1rem';
+            catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">${categoryLabels[cat] || cat} (${items.length})</h4>`;
+            
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.innerHTML = `
+                    <div class="result-content">
+                        <div class="result-engine">${item.domain || 'Unknown'}</div>
+                        <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
+                    </div>
+                `;
+                catDiv.appendChild(div);
+            });
+            resultsList.appendChild(catDiv);
+        }
+        
+        if (searchLinks.length > 0) {
+            const searchDiv = document.createElement('div');
+            searchDiv.style.marginBottom = '1rem';
+            searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (${searchLinks.length})</h4>`;
+            
+            searchLinks.forEach(link => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.innerHTML = `
+                    <div class="result-content">
+                        <div class="result-engine">${link.engine || 'Unknown'}</div>
+                        <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
+                    </div>
+                `;
+                searchDiv.appendChild(div);
+            });
+            resultsList.appendChild(searchDiv);
+        }
+    }
+    
+    function showOsintError(message) {
+        document.getElementById('osintSearchForm').style.display = 'none';
+        document.getElementById('osintSearching').style.display = 'none';
+        document.getElementById('osintResults').style.display = 'none';
+        document.getElementById('osintError').style.display = 'block';
+        document.getElementById('errorMessage').textContent = message;
+    }
+    
+    document.getElementById('osintModal').addEventListener('click', function(e) {
+        if (e.target === this) closeOsintModal();
+    });
+</script>
+{% endblock %}

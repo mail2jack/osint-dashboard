@@ -173,16 +173,16 @@
 </div>
 
 <div class="quick-filters" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
-    <a href="{{ url_for('cms.cases', assigned='me', status='open') }}" class="quick-filter-btn" style="background: #fef3c7; color: #92400e; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+    <a href="{{ url_for('cms.cases', assigned='me', status='open') }}" class="quick-filter-btn" style="background: var(--badge-open); color: var(--badge-open-text); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
         My Open ({{ my_open_cases }})
     </a>
-    <a href="{{ url_for('cms.cases', assigned='me', status='active') }}" class="quick-filter-btn" style="background: #dbeafe; color: #1e40af; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+    <a href="{{ url_for('cms.cases', assigned='me', status='active') }}" class="quick-filter-btn" style="background: var(--badge-active); color: var(--badge-active-text); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
         My Active ({{ my_active_cases }})
     </a>
-    <a href="{{ url_for('cms.cases', priority='critical,high') }}" class="quick-filter-btn" style="background: #fee2e2; color: #dc2626; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+    <a href="{{ url_for('cms.cases', priority='critical,high') }}" class="quick-filter-btn" style="background: var(--danger-bg); color: var(--danger-text); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
         Priority Cases
     </a>
-    <a href="{{ url_for('cms.cases', client='') }}" class="quick-filter-btn" style="background: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+    <a href="{{ url_for('cms.cases', client='') }}" class="quick-filter-btn" style="background: var(--bg-secondary); color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
         All Cases ({{ stats.open_cases + stats.active_cases + stats.suspended_cases }})
     </a>
 </div>

@@ -1,1567 +1,906 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ case.case_number }} - CMS</title>
-    <style>
-        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        h1 { color: #1a1a2e; }
-        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-        .info-item label { display: block; color: #666; font-size: 0.875rem; margin-bottom: 0.25rem; }
-        .info-item span { font-weight: 500; }
-        .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
-        .badge-open { background: #fef3c7; color: #92400e; }
-        .badge-active { background: #dbeafe; color: #1e40af; }
-        .badge-closed { background: #d1fae5; color: #065f46; }
-        .badge-suspended { background: #fef3c7; color: #92400e; }
-        .badge-archived { background: #e5e7eb; color: #374151; }
-        .badge-critical { background: #fee2e2; color: #dc2626; }
-        .badge-high { background: #fed7aa; color: #c2410c; }
-        .badge-medium { background: #fef3c7; color: #92400e; }
-        .badge-low { background: #d1fae5; color: #065f46; }
-        .back { margin-bottom: 1rem; }
-        .back a { color: #0066cc; text-decoration: none; }
-        h2 { margin-top: 1.5rem; color: #1a1a2e; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
-        tbody tr:nth-child(odd) { background: #f9f9f9; }
-        tbody tr:nth-child(even) { background: #ffffff; }
-        tbody tr:hover { background: #e8f4ff; }
-        .btn {
-            padding: 0.75rem 1.5rem; background: #16213e;
-            color: white; border: none; border-radius: 8px;
-            font-size: 1rem; cursor: pointer; font-weight: 500; text-decoration: none;
-            display: inline-block;
-        }
-        .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
-        .btn-danger { background: #dc2626; }
-        .btn-success { background: #059669; }
-        
-        /* Modal Styles */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        .modal.show { display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: white; border-radius: 12px; padding: 2rem; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; position: relative; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-        .modal-header h2 { margin: 0; }
-        .close { font-size: 1.5rem; cursor: pointer; color: #666; }
-        .close:hover { color: #000; }
-        
-        /* Blinking animation */
-        @keyframes blink { 
-            0%, 100% { opacity: 1; } 
-            50% { opacity: 0.3; } 
-        }
-        .searching { animation: blink 1.5s infinite; }
-        
-        /* Results list */
-        .result-item { padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; }
-        .result-item input[type="checkbox"] { margin-top: 0.25rem; }
-        .result-content { flex: 1; }
-        .result-engine { font-weight: 600; color: #1a1a2e; }
-        .result-name { color: #16213e; margin-bottom: 0.25rem; }
-        .result-query { font-size: 0.875rem; color: #666; margin-bottom: 0.25rem; }
-        .result-url { font-size: 0.75rem; color: #0066cc; word-break: break-all; }
-        .result-url a { color: #0066cc; text-decoration: none; }
-        .result-url a:hover { text-decoration: underline; }
-        
-        /* Select all checkbox */
-        .select-all-row { padding: 0.5rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb; }
-        
-        /* Comments Section */
-        .comments-section { margin-top: 1.5rem; }
-        .comment-form { margin-bottom: 1rem; }
-        .comment-form textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; resize: vertical; min-height: 80px; }
-        .comment-item { padding: 1rem; border-bottom: 1px solid #eee; }
-        .comment-item:last-child { border-bottom: none; }
-        .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-        .comment-author { font-weight: 600; }
-        .comment-time { font-size: 0.8rem; color: #888; }
-        .comment-content { color: #333; line-height: 1.5; }
-        .comment-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-        .comment-actions button { background: none; border: none; color: #666; cursor: pointer; font-size: 0.8rem; padding: 0; }
-        .comment-actions button:hover { color: #16213e; }
-        .comment-pinned { background: #fef3c7; border-left: 3px solid #f59e0b; }
-        .comment-type-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; background: #e5e7eb; color: #666; }
-        .comment-edited { font-size: 0.75rem; color: #888; font-style: italic; }
-        .comment-edit-history { margin-top: 0.75rem; padding: 0.5rem; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 0.8rem; }
-        .comment-edit-history summary { cursor: pointer; color: #666; font-weight: 500; }
-        .comment-edit-entry { padding: 0.4rem 0; border-bottom: 1px solid #eee; }
-        .comment-edit-entry:last-child { border-bottom: none; }
-        .comment-edit-entry .edit-by { font-weight: 500; color: #333; }
-        .comment-edit-entry .edit-date { color: #888; font-size: 0.75rem; }
-        .comment-edit-entry .edit-diff { margin-top: 0.25rem; padding: 0.4rem; background: #fff; border-radius: 4px; font-size: 0.8rem; }
-        .comment-edit-entry .edit-old { color: #dc2626; text-decoration: line-through; }
-        .comment-edit-entry .edit-new { color: #059669; }
-        .comment-edit-form { margin-top: 0.5rem; }
-        .comment-edit-form textarea { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; resize: vertical; min-height: 60px; font-family: inherit; }
-        .comment-edit-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-    </style>
-    <script>
-        (function() {
-            const theme = localStorage.getItem('cms-theme') || 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
-</head>
-<body>
-    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
-        <div style="display: flex; gap: 0; align-items: center;">
-            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
-            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
-            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Cases</a>
-            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
-            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
-            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
-            {% if current_user.is_admin %}
-            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
-            {% endif %}
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
-            <span style="color: #888;">|</span>
-            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
-        </div>
+{% extends "cms/base.html" %}
+
+{% block title %}{{ case.case_number }} - CMS{% endblock %}
+
+{% block content %}
+<div class="back"><a href="{{ url_for('cms.cases') }}">← Back to Cases</a></div>
+
+<div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1 style="margin: 0;">{{ case.case_number }}: {{ case.title }}</h1>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn btn-sm" style="background: #059669;">📥 Export CSV</a>
+        <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn btn-sm" style="background: #7c3aed;">📄 Generate Report</a>
+        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn btn-sm">✏️ Edit Case</a>
     </div>
-    
-    <div style="padding: 0 2rem; margin-top: 1rem;">
-        <div class="back"><a href="{{ url_for('cms.cases') }}">← Back to Cases</a></div>
-        
-        <div class="header">
-            <h1>{{ case.case_number }}: {{ case.title }}</h1>
-        <div style="display: flex; gap: 0.5rem;">
-            <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn btn-sm" style="background: #059669;">📥 Export CSV</a>
-            <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn btn-sm" style="background: #7c3aed;">📄 Generate Report</a>
-            <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn btn-sm">✏️ Edit Case</a>
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="info-grid">
-            <div class="info-item">
-                <label>Client</label>
-                <span>{{ case.client.name if case.client else '-' }}</span>
-            </div>
-            <div class="info-item">
-                <label>Lead Investigator</label>
-                <span>{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</span>
-            </div>
-            <div class="info-item">
-                <label>Priority</label>
-                <span class="badge badge-{{ case.priority }}">{{ case.priority }}</span>
-            </div>
-            <div class="info-item">
-                <label>Status</label>
-                <span class="badge badge-{{ case.status }}">{{ case.status }}</span>
-            </div>
-            <div class="info-item">
-                <label>Start Date</label>
-                <span>{{ case.start_date.strftime('%Y-%m-%d') if case.start_date else '-' }}</span>
-            </div>
-            <div class="info-item">
-                <label>Criminal Code</label>
-                <span>
-                    {% if case.case_type %}
-                        {% set parts = case.case_type.split('|') %}
-                        <strong>{{ parts[0] }}</strong> - {{ parts[1] if parts[1] else '' }}
-                        {% if parts[2] %}({{ parts[2] }}){% endif %}
-                    {% else %}
-                        -
-                    {% endif %}
-                </span>
-            </div>
-        </div>
-        
-        {% if case.description %}
+</div>
+
+<div class="card">
+    <div class="info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
         <div class="info-item">
-            <label>Description</label>
-            <p>{{ case.description }}</p>
+            <label>Client</label>
+            <span>{{ case.client.name if case.client else '-' }}</span>
         </div>
-        {% endif %}
-        
-        {% if case.tags %}
         <div class="info-item">
-            <label>Tags</label>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
-                {% for tag in case.tags %}
-                <span style="background: #e8f4ff; color: #1e40af; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">{{ tag }}</span>
-                {% endfor %}
-            </div>
+            <label>Lead Investigator</label>
+            <span>{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</span>
         </div>
-        {% endif %}
-        {% if case.closure_reason %}
-        <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border-radius: 4px;">
-            <strong>Closure Reason:</strong> {{ case.closure_reason }}
+        <div class="info-item">
+            <label>Priority</label>
+            <span class="badge badge-{{ case.priority }}">{{ case.priority }}</span>
         </div>
-        {% endif %}
-        
-        {% if case.reopened_reason %}
-        <div style="margin-top: 0.5rem; padding: 0.75rem; background: #dcfce7; border-radius: 4px;">
-            <strong>Reopened Reason:</strong> {{ case.reopened_reason }}
+        <div class="info-item">
+            <label>Status</label>
+            <span class="badge badge-{{ case.status }}">{{ case.status }}</span>
         </div>
-        {% endif %}
+        <div class="info-item">
+            <label>Start Date</label>
+            <span>{{ case.start_date.strftime('%Y-%m-%d') if case.start_date else '-' }}</span>
+        </div>
+        <div class="info-item">
+            <label>Criminal Code</label>
+            <span>
+                {% if case.case_type %}
+                    {% set parts = case.case_type.split('|') %}
+                    <strong>{{ parts[0] }}</strong> - {{ parts[1] if parts[1] else '' }}
+                    {% if parts[2] %}({{ parts[2] }}){% endif %}
+                {% else %}
+                    -
+                {% endif %}
+            </span>
+        </div>
     </div>
     
-    {% if case.parent_case or case.child_cases.count() > 0 %}
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0;">Case Hierarchy</h2>
-            <button onclick="openHierarchyModal()" class="btn btn-sm" style="background: #7c3aed;">Manage Hierarchy</button>
-        </div>
-        
-        {% if case.parent_case %}
-        <div style="margin-top: 1rem; padding: 0.75rem; background: #ede9fe; border-radius: 8px;">
-            <label style="display: block; color: #666; font-size: 0.875rem;">Parent Case</label>
-            <a href="{{ url_for('cms.view_case', case_id=case.parent_case.id) }}" style="font-weight: 600;">
-                {{ case.parent_case.case_number }}: {{ case.parent_case.title }}
-            </a>
-        </div>
-        {% endif %}
-        
-        {% if case.child_cases.count() > 0 %}
-        <div style="margin-top: 1rem;">
-            <label style="display: block; color: #666; font-size: 0.875rem;">Child Cases ({{ case.child_cases.count() }})</label>
-            {% for child in case.child_cases.filter_by(is_deleted=False) %}
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-top: 0.5rem;">
-                <a href="{{ url_for('cms.view_case', case_id=child.id) }}">
-                    {{ child.case_number }}: {{ child.title }}
-                </a>
-                <span class="badge badge-{{ child.status }}">{{ child.status }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
+    {% if case.description %}
+    <div class="info-item">
+        <label>Description</label>
+        <p>{{ case.description }}</p>
     </div>
     {% endif %}
     
-    <div class="card">
-        <h2>Subjects ({{ subjects|length }})</h2>
-        
-        {% if case.status not in ['closed', 'archived'] %}
-        <div style="margin-bottom: 1rem;">
-            <button onclick="showAddSubjectForm()" class="btn btn-sm">+ Add Subject</button>
-            <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Create New Subject</a>
-            <button onclick="openOsintModal()" class="btn btn-sm" style="background: #7c3aed;">OSINT Search</button>
-        </div>
-        
-        <div id="addSubjectForm" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
-            <form action="{{ url_for('cms.add_subject_to_case', case_id=case.id) }}" method="POST">
-                <div class="form-group">
-                    <label for="subject_id">Select Existing Subject</label>
-                    <select name="subject_id" id="subject_id" required style="padding: 0.5rem; width: 100%;">
-                        <option value="">Choose a subject...</option>
-                        {% for s in all_subjects %}
-                        <option value="{{ s.id }}">{{ s.name }} ({{ s.subject_type }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-sm">Add to Case</button>
-                <button type="button" onclick="hideAddSubjectForm()" class="btn btn-sm" style="background: #666;">Cancel</button>
-            </form>
-        </div>
-        {% else %}
-        <div style="margin-bottom: 1rem; padding: 0.75rem; background: #fee2e2; border-radius: 4px; color: #991b1b;">
-            <strong>Read-only:</strong> This case is closed/archived. Reopen to make changes.
-        </div>
-        {% endif %}
-        
-        {% if subjects %}
-        <table>
-            <thead>
-                <tr><th>Name</th><th>Type</th><th>Risk Score</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-                {% for subject in subjects %}
-                <tr>
-                    <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">{{ subject.name }}</a></td>
-                    <td>{{ subject.subject_type }}</td>
-                    <td>{{ subject.risk_score }}</td>
-                    <td>
-                        {% if case.status not in ['closed', 'archived'] %}
-                        <form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display: inline;">
-                            <button type="submit" class="btn-text" onclick="return confirm('Remove {{ subject.name }} from this case?')" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0;">Remove</button>
-                        </form>
-                        {% else %}
-                        -
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>No subjects linked.</p>
-        {% endif %}
-    </div>
-    
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">Findings ({{ findings|length }})</h2>
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <span style="font-weight: 500;">Status:</span>
-                <span class="badge badge-{{ case.status }}">{{ case.status|upper }}</span>
-                {% if case.status == 'open' %}
-                <button onclick="changeStatus('active')" class="btn btn-sm" style="background: #059669;">Start Investigation</button>
-                {% elif case.status == 'active' %}
-                <button onclick="changeStatus('suspended')" class="btn btn-sm" style="background: #f59e0b;">Suspend</button>
-                <button onclick="changeStatus('closed')" class="btn btn-sm" style="background: #059669;">Close Case</button>
-                {% elif case.status == 'suspended' %}
-                <button onclick="changeStatus('active')" class="btn btn-sm" style="background: #059669;">Resume</button>
-                <button onclick="changeStatus('closed')" class="btn btn-sm" style="background: #059669;">Close Case</button>
-                {% elif case.status == 'closed' %}
-                <button onclick="changeStatus('archived')" class="btn btn-sm" style="background: #6b7280;">Archive</button>
-                {% elif case.status == 'archived' %}
-                <button onclick="changeStatus('archived')" class="btn btn-sm" style="background: #6b7280;" disabled>Archived</button>
-                {% endif %}
-                {% if case.status in ['closed', 'archived'] %}
-                <button onclick="reopenCase()" class="btn btn-sm" style="background: #059669;">Reopen Case</button>
-                {% endif %}
-                <button onclick="openTimeline()" class="btn btn-sm" style="background: #7c3aed;">Timeline</button>
-            </div>
-        </div>
-        
-        {% if findings %}
-        <table>
-            <thead>
-                <tr><th>Title</th><th>Subject</th><th>Source</th><th>Added By</th><th>Date</th></tr>
-            </thead>
-            <tbody>
-                {% for finding in findings %}
-                <tr>
-                    <td>
-                        {% if finding.source_url %}
-                        <a href="{{ finding.source_url }}" target="_blank">{{ finding.title }}</a>
-                        {% else %}
-                        {{ finding.title }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if finding.subject_id %}
-                        <a href="{{ url_for('cms.view_subject', subject_id=finding.subject_id) }}">
-                            {{ finding.subject.name if finding.subject else 'Unknown' }}
-                        </a>
-                        {% else %}
-                        <span style="color: #999;">-</span>
-                        {% endif %}
-                    </td>
-                    <td><span class="badge" style="background: #e5e7eb; color: #374151;">{{ finding.source_type or 'manual' }}</span></td>
-                    <td>{{ finding.author.full_name if finding.author else 'Unknown' }}</td>
-                    <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>No findings yet.</p>
-        {% endif %}
-        
-        {% if findings_pagination and findings_pagination.pages > 1 %}
-        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
-            {% if findings_pagination.has_prev %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn btn-sm">Previous</a>
-            {% endif %}
-            <span style="padding: 0.5rem 1rem;">Page {{ findings_pagination.page }} of {{ findings_pagination.pages }}</span>
-            {% if findings_pagination.has_next %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn btn-sm">Next</a>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-    
-    <!-- Documents Section -->
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">Documents (<span id="docCount">{{ documents|length }}</span>)</h2>
-            {% if case.status not in ['closed', 'archived'] %}
-            <button onclick="openUploadModal()" class="btn btn-sm" style="background: #059669;">+ Upload Document</button>
-            {% endif %}
-        </div>
-        
-        <div id="documentsList">
-            {% if documents %}
-            <table>
-                <thead>
-                    <tr><th>Filename</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                    {% for doc in documents %}
-                    <tr>
-                        <td>{{ doc.original_filename }}</td>
-                        <td><span class="badge" style="background: #e5e7eb;">{{ doc.document_type or 'file' }}</span></td>
-                        <td>{{ (doc.file_size / 1024)|round(1) }} KB</td>
-                        <td>{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '-' }}</td>
-                        <td>
-                            <a href="/cms/documents/{{ doc.id }}/download" target="_blank">Download</a>
-                            {% if current_user.is_admin or current_user.is_senior %}
-                            | <a href="#" onclick="deleteDocument('{{ doc.id }}')" style="color: #dc2626;">Delete</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p>No documents uploaded.</p>
-            {% endif %}
-        </div>
-    </div>
-    
-    <!-- Upload Modal -->
-    <div id="uploadModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2>Upload Document</h2>
-                <span class="close" onclick="closeUploadModal()">&times;</span>
-            </div>
-            
-            <form id="uploadForm" enctype="multipart/form-data" style="margin-top: 1rem;">
-                <div class="form-group">
-                    <label for="uploadFile">File *</label>
-                    <input type="file" id="uploadFile" name="file" required style="padding: 0.5rem;">
-                </div>
-                <div class="form-group">
-                    <label for="documentType">Document Type</label>
-                    <select id="documentType" name="document_type" style="padding: 0.5rem;">
-                        <option value="evidence">Evidence</option>
-                        <option value="report">Report</option>
-                        <option value="contract">Contract</option>
-                        <option value="correspondence">Correspondence</option>
-                        <option value="photo">Photo</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="classification">Classification</label>
-                    <select id="classification" name="classification" style="padding: 0.5rem;">
-                        <option value="confidential">Confidential</option>
-                        <option value="restricted">Restricted</option>
-                        <option value="internal">Internal</option>
-                        <option value="public">Public</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="docDescription" name="description" rows="2" style="width: 100%; padding: 0.5rem;"></textarea>
-                </div>
-                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                    <button type="submit" class="btn btn-sm" style="background: #059669;">Upload</button>
-                    <button type="button" onclick="closeUploadModal()" class="btn btn-sm" style="background: #666;">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Financial Summary Section -->
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">Financial Summary</h2>
-            <button onclick="openFinancialSummary()" class="btn btn-sm" style="background: #7c3aed;">📊 View Charts</button>
-        </div>
-        
-        <div id="financialSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-            <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #1a1a2e;" id="finTotal">-</div>
-                <div style="color: #666; font-size: 0.875rem;">Total Amount</div>
-            </div>
-            <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #1a1a2e;" id="finCount">-</div>
-                <div style="color: #666; font-size: 0.875rem;">Transactions</div>
-            </div>
-            <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;" id="finVerified">-</div>
-                <div style="color: #666; font-size: 0.875rem;">Verified</div>
-            </div>
-            <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
-                <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;" id="finPending">-</div>
-                <div style="color: #666; font-size: 0.875rem;">Pending Review</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Financial Modal -->
-    <div id="financialModal" class="modal">
-        <div class="modal-content" style="max-width: 900px;">
-            <div class="modal-header">
-                <h2>Financial Analysis</h2>
-                <span class="close" onclick="closeFinancialSummary()">&times;</span>
-            </div>
-            
-            <div id="financialCharts" style="max-height: 70vh; overflow-y: auto;">
-                <div style="text-align: center; padding: 2rem;" id="finLoading">Loading...</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Case Hierarchy Modal -->
-    <div id="hierarchyModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Case Hierarchy</h2>
-                <span class="close" onclick="closeHierarchyModal()">&times;</span>
-            </div>
-            
-            <p style="color: #666; margin-bottom: 1rem;">Link this case to a parent case to create a hierarchy of related investigations.</p>
-            
-            <h4 style="margin-bottom: 0.5rem;">Current Parent</h4>
-            <div id="currentParent"></div>
-            
-            <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #eee;">
-            
-            <h4 style="margin-bottom: 0.5rem;">Set New Parent</h4>
-            <div style="margin-bottom: 1rem;">
-                <input type="text" id="parentSearchInput" placeholder="Search cases by number or title..." 
-                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px;"
-                       oninput="searchParentCases()">
-            </div>
-            <div id="parentSearchResults" style="max-height: 300px; overflow-y: auto;">
-                <p style="color: #666;">Type to search for a parent case...</p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Reminders Section -->
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">⏰ Reminders ({{ case_reminders|length }})</h2>
-            <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Add Reminder</a>
-        </div>
-        
-        {% if case_reminders %}
-        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-            {% for reminder in case_reminders %}
-            <div style="padding: 0.75rem; background: {% if reminder.is_completed %}#f3f4f6{% elif reminder.is_overdue %}#fee2e2{% else %}#dbeafe{% endif %}; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong>{{ reminder.title }}</strong>
-                    <div style="font-size: 0.8rem; color: #666;">
-                        {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else 'No date' }}
-                        {% if reminder.is_completed %} - Completed{% elif reminder.is_overdue %} - OVERDUE{% endif %}
-                    </div>
-                </div>
-                <div style="display: flex; gap: 0.25rem;">
-                    {% if not reminder.is_completed %}
-                    <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
-                        <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
-                    </form>
-                    {% endif %}
-                    <a href="{{ url_for('cms.edit_reminder', reminder_id=reminder.id) }}" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #3b82f6;">✏️</a>
-                    <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" onsubmit="return confirm('Delete this reminder?');">
-                        <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #dc2626;">🗑️</button>
-                    </form>
-                </div>
-            </div>
+    {% if case.tags %}
+    <div class="info-item">
+        <label>Tags</label>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
+            {% for tag in case.tags %}
+            <span style="background: var(--info-bg); color: var(--info-text); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">{{ tag }}</span>
             {% endfor %}
         </div>
-        {% else %}
-        <p style="color: #888; text-align: center; padding: 1rem;">No reminders for this case. <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" style="color: #059669;">Add one</a></p>
+    </div>
+    {% endif %}
+    {% if case.closure_reason %}
+    <div style="margin-top: 1rem; padding: 0.75rem; background: var(--warning-bg); border-radius: 4px;">
+        <strong>Closure Reason:</strong> {{ case.closure_reason }}
+    </div>
+    {% endif %}
+    
+    {% if case.reopened_reason %}
+    <div style="margin-top: 0.5rem; padding: 0.75rem; background: var(--success-bg); border-radius: 4px;">
+        <strong>Reopened Reason:</strong> {{ case.reopened_reason }}
+    </div>
+    {% endif %}
+</div>
+
+{% if case.parent_case or case.child_cases.count() > 0 %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0;">Case Hierarchy</h2>
+        <button onclick="openHierarchyModal()" class="btn btn-sm" style="background: #7c3aed;">Manage Hierarchy</button>
+    </div>
+    
+    {% if case.parent_case %}
+    <div style="margin-top: 1rem; padding: 0.75rem; background: var(--info-bg); border-radius: 8px;">
+        <label style="display: block; color: var(--text-secondary); font-size: 0.875rem;">Parent Case</label>
+        <a href="{{ url_for('cms.view_case', case_id=case.parent_case.id) }}" style="font-weight: 600;">
+            {{ case.parent_case.case_number }}: {{ case.parent_case.title }}
+        </a>
+    </div>
+    {% endif %}
+    
+    {% if case.child_cases.count() > 0 %}
+    <div style="margin-top: 1rem;">
+        <label style="display: block; color: var(--text-secondary); font-size: 0.875rem;">Child Cases ({{ case.child_cases.count() }})</label>
+        {% for child in case.child_cases.filter_by(is_deleted=False) %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; margin-top: 0.5rem;">
+            <a href="{{ url_for('cms.view_case', case_id=child.id) }}">
+                {{ child.case_number }}: {{ child.title }}
+            </a>
+            <span class="badge badge-{{ child.status }}">{{ child.status }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Subjects ({{ subjects|length }})</h2>
+    
+    {% if case.status not in ['closed', 'archived'] %}
+    <div style="margin-bottom: 1rem;">
+        <button onclick="showAddSubjectForm()" class="btn btn-sm">+ Add Subject</button>
+        <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Create New Subject</a>
+        <button onclick="openOsintModal()" class="btn btn-sm" style="background: #7c3aed;">OSINT Search</button>
+    </div>
+    
+    <div id="addSubjectForm" style="display: none; margin-bottom: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
+        <form action="{{ url_for('cms.add_subject_to_case', case_id=case.id) }}" method="POST">
+            <div class="form-group">
+                <label for="subject_id">Select Existing Subject</label>
+                <select name="subject_id" id="subject_id" required style="padding: 0.5rem; width: 100%;">
+                    <option value="">Choose a subject...</option>
+                    {% for s in all_subjects %}
+                    <option value="{{ s.id }}">{{ s.name }} ({{ s.subject_type }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-sm">Add to Case</button>
+            <button type="button" onclick="hideAddSubjectForm()" class="btn btn-sm" style="background: var(--text-muted);">Cancel</button>
+        </form>
+    </div>
+    {% else %}
+    <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--danger-bg); border-radius: 4px; color: var(--danger-text);">
+        <strong>Read-only:</strong> This case is closed/archived. Reopen to make changes.
+    </div>
+    {% endif %}
+    
+    {% if subjects %}
+    <table>
+        <thead>
+            <tr><th>Name</th><th>Type</th><th>Risk Score</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for subject in subjects %}
+            <tr>
+                <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">{{ subject.name }}</a></td>
+                <td>{{ subject.subject_type }}</td>
+                <td>{{ subject.risk_score }}</td>
+                <td>
+                    {% if case.status not in ['closed', 'archived'] %}
+                    <form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn-text" onclick="return confirm('Remove {{ subject.name }} from this case?')" style="background: none; border: none; color: var(--danger-text); cursor: pointer; padding: 0;">Remove</button>
+                    </form>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No subjects linked.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Findings ({{ findings|length }})</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span style="font-weight: 500;">Status:</span>
+            <span class="badge badge-{{ case.status }}">{{ case.status|upper }}</span>
+            {% if case.status == 'open' %}
+            <button onclick="changeStatus('active')" class="btn btn-sm" style="background: #059669;">Start Investigation</button>
+            {% elif case.status == 'active' %}
+            <button onclick="changeStatus('suspended')" class="btn btn-sm" style="background: #f59e0b;">Suspend</button>
+            <button onclick="changeStatus('closed')" class="btn btn-sm" style="background: #059669;">Close Case</button>
+            {% elif case.status == 'suspended' %}
+            <button onclick="changeStatus('active')" class="btn btn-sm" style="background: #059669;">Resume</button>
+            <button onclick="changeStatus('closed')" class="btn btn-sm" style="background: #059669;">Close Case</button>
+            {% elif case.status == 'closed' %}
+            <button onclick="changeStatus('archived')" class="btn btn-sm" style="background: #6b7280;">Archive</button>
+            {% elif case.status == 'archived' %}
+            <button onclick="changeStatus('archived')" class="btn btn-sm" style="background: #6b7280;" disabled>Archived</button>
+            {% endif %}
+            {% if case.status in ['closed', 'archived'] %}
+            <button onclick="reopenCase()" class="btn btn-sm" style="background: #059669;">Reopen Case</button>
+            {% endif %}
+            <button onclick="openTimeline()" class="btn btn-sm" style="background: #7c3aed;">Timeline</button>
+        </div>
+    </div>
+    
+    {% if findings %}
+    <table>
+        <thead>
+            <tr><th>Title</th><th>Subject</th><th>Source</th><th>Added By</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+            {% for finding in findings %}
+            <tr>
+                <td>
+                    {% if finding.source_url %}
+                    <a href="{{ finding.source_url }}" target="_blank">{{ finding.title }}</a>
+                    {% else %}
+                    {{ finding.title }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if finding.subject_id %}
+                    <a href="{{ url_for('cms.view_subject', subject_id=finding.subject_id) }}">
+                        {{ finding.subject.name if finding.subject else 'Unknown' }}
+                    </a>
+                    {% else %}
+                    <span style="color: var(--text-muted);">-</span>
+                    {% endif %}
+                </td>
+                <td><span class="badge" style="background: var(--bg-secondary); color: var(--text-secondary);">{{ finding.source_type or 'manual' }}</span></td>
+                <td>{{ finding.author.full_name if finding.author else 'Unknown' }}</td>
+                <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No findings yet.</p>
+    {% endif %}
+    
+    {% if findings_pagination and findings_pagination.pages > 1 %}
+    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+        {% if findings_pagination.has_prev %}
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn btn-sm">Previous</a>
+        {% endif %}
+        <span style="padding: 0.5rem 1rem;">Page {{ findings_pagination.page }} of {{ findings_pagination.pages }}</span>
+        {% if findings_pagination.has_next %}
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn btn-sm">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Documents (<span id="docCount">{{ documents|length }}</span>)</h2>
+        {% if case.status not in ['closed', 'archived'] %}
+        <button onclick="openUploadModal()" class="btn btn-sm" style="background: #059669;">+ Upload Document</button>
         {% endif %}
     </div>
     
-    <!-- Comments Section -->
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">Notes & Comments <span id="commentCount" style="font-size: 0.9rem; color: #888;"></span></h2>
-            <button onclick="loadComments()" class="btn btn-sm">🔄 Refresh</button>
-        </div>
-        
-        <div class="comment-form">
-            <textarea id="newComment" placeholder="Add a note or comment..."></textarea>
-            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
-                <select id="commentType" style="padding: 0.4rem; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="note">Note</option>
-                    <option value="discussion">Discussion</option>
-                    <option value="update">Update</option>
-                </select>
-                <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: #666;">
-                    <input type="checkbox" id="commentPinned"> Pin comment
-                </label>
-                <button onclick="addComment()" class="btn btn-sm" style="background: #059669;">Add Comment</button>
-            </div>
-        </div>
-        
-        <div id="commentsList">
-            <p style="color: #888; text-align: center; padding: 1rem;">Loading comments...</p>
-        </div>
+    <div id="documentsList">
+        {% if documents %}
+        <table>
+            <thead>
+                <tr><th>Filename</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td>{{ doc.original_filename }}</td>
+                    <td><span class="badge" style="background: var(--bg-secondary);">{{ doc.document_type or 'file' }}</span></td>
+                    <td>{{ (doc.file_size / 1024)|round(1) }} KB</td>
+                    <td>{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '-' }}</td>
+                    <td>
+                        <a href="/cms/documents/{{ doc.id }}/download" target="_blank">Download</a>
+                        {% if current_user.is_admin or current_user.is_senior %}
+                        | <a href="#" onclick="deleteDocument('{{ doc.id }}')" style="color: var(--danger-text);">Delete</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No documents uploaded.</p>
+        {% endif %}
     </div>
-    
-    <!-- OSINT Search Modal -->
-    <div id="osintModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>OSINT Person Search</h2>
-                <span class="close" onclick="closeOsintModal()">&times;</span>
-            </div>
-            
-            <div id="osintSearchForm">
-                <div style="margin-bottom: 1rem;">
-                    <label for="osintName"><strong>Person Name (first and last name) *</strong></label>
-                    <input type="text" id="osintName" placeholder="e.g., John Smith" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
-                </div>
-                
-                {% if subjects %}
-                <div style="margin-bottom: 1rem;">
-                    <label for="osintSubject">Link to Subject (optional)</label>
-                    <select id="osintSubject" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
-                        <option value="">-- Select a subject --</option>
-                        {% for s in subjects %}
-                        <option value="{{ s.id }}">{{ s.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
-                
-                <div id="osintActions">
-                    <button onclick="startOsintSearch()" class="btn btn-success">Search</button>
-                </div>
-            </div>
-            
-            <div id="osintSearching" style="display: none; text-align: center; padding: 2rem;">
-                <div class="searching">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-                    <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
-                    <p id="searchQueryDisplay" style="color: #666;"></p>
-                </div>
-                <div style="margin-top: 1.5rem;">
-                    <button onclick="cancelOsintSearch()" class="btn btn-danger">Cancel Search</button>
-                </div>
-            </div>
-            
-            <div id="osintResults" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="margin: 0;">Search Results</h3>
-                    <span id="resultsCount"></span>
-                </div>
-                
-                <div class="select-all-row">
-                    <label>
-                        <input type="checkbox" id="selectAllResults" onchange="toggleAllResults(this)">
-                        <strong>Select All</strong>
-                    </label>
-                </div>
-                
-                <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
-                
-                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                    <button onclick="closeOsintModal()" class="btn" style="background: #666;">Close</button>
-                    <button onclick="addSelectedFindings()" class="btn btn-success" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
-                </div>
-            </div>
-            
-            <div id="osintError" style="display: none; padding: 1rem; background: #fee2e2; border-radius: 8px; color: #dc2626;">
-                <p id="errorMessage"></p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Timeline Modal -->
-    <div id="timelineModal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h2>Case Timeline</h2>
-                <span class="close" onclick="closeTimeline()">&times;</span>
-            </div>
-            <div id="timelineContent" style="max-height: 60vh; overflow-y: auto;">
-                <div style="text-align: center; padding: 2rem;">Loading timeline...</div>
-            </div>
-        </div>
-    </div>
+</div>
 
-    <script>
-        let currentSearchId = null;
-        let currentResults = null;
-        let pollInterval = null;
-        
-        // Base URLs for OSINT search endpoints (search_id appended later)
-        const osintBase = "/cms/osint-search/";
-        
-        function showAddSubjectForm() {
-            document.getElementById('addSubjectForm').style.display = 'block';
-        }
-        function hideAddSubjectForm() {
-            document.getElementById('addSubjectForm').style.display = 'none';
-        }
-        
-        function changeStatus(newStatus) {
-            let body = { status: newStatus };
-            
-            if (newStatus === 'closed') {
-                const reason = prompt('Reason for closing (required):');
-                if (!reason || !reason.trim()) {
-                    alert('Closure reason is required');
-                    return;
-                }
-                body.closure_reason = reason.trim();
-            }
-            
-            if (newStatus === 'active' && ('{{ case.status }}' === 'closed' || '{{ case.status }}' === 'archived')) {
-                const reason = prompt('Reason for reopening (required):');
-                if (!reason || !reason.trim()) {
-                    alert('Reopening reason is required');
-                    return;
-                }
-                body.reopened_reason = reason.trim();
-            }
-            
-            fetch("{{ url_for('cms.transition_case', case_id=case.id) }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    location.reload();
-                }
-            })
-            .catch(err => alert('Error: ' + err.message));
-        }
-        
-        function reopenCase() {
-            const reason = prompt('Reason for reopening (required):');
-            if (!reason || !reason.trim()) {
-                alert('Reopening reason is required');
-                return;
-            }
-            
-            fetch("{{ url_for('cms.transition_case', case_id=case.id) }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'active', reopened_reason: reason.trim() })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    location.reload();
-                }
-            })
-            .catch(err => alert('Error: ' + err.message));
-        }
-        
-        // OSINT Search Functions
-        function openOsintModal() {
-            document.getElementById('osintModal').classList.add('show');
-            document.getElementById('osintName').value = '';
-            resetOsintModal();
-        }
-        
-        function closeOsintModal() {
-            if (currentSearchId) {
-                cancelOsintSearch();
-            }
-            document.getElementById('osintModal').classList.remove('show');
-            resetOsintModal();
-        }
-        
-        function resetOsintModal() {
-            document.getElementById('osintSearchForm').style.display = 'block';
-            document.getElementById('osintSearching').style.display = 'none';
-            document.getElementById('osintResults').style.display = 'none';
-            document.getElementById('osintError').style.display = 'none';
-            currentSearchId = null;
-            currentResults = null;
-            if (pollInterval) {
-                clearInterval(pollInterval);
-                pollInterval = null;
-            }
-        }
-        
-        function startOsintSearch() {
-            const name = document.getElementById('osintName').value.trim();
-            if (!name) {
-                alert('Please enter a name');
-                return;
-            }
-            if (name.split(' ').length < 2) {
-                alert('Please enter a full name (first and last name)');
-                return;
-            }
-            
-            document.getElementById('osintSearchForm').style.display = 'none';
-            document.getElementById('osintSearching').style.display = 'block';
-            document.getElementById('searchQueryDisplay').textContent = 'Searching for: ' + name;
-            document.getElementById('osintError').style.display = 'none';
-            
-            fetch("{{ url_for('cms.start_osint_search', case_id=case.id) }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    showOsintError(data.error);
-                    return;
-                }
-                currentSearchId = data.search_id;
-                pollSearchStatus();
-            })
-            .catch(err => {
-                showOsintError('Failed to start search: ' + err.message);
-            });
-        }
-        
-        function pollSearchStatus() {
-            pollInterval = setInterval(() => {
-                fetch(osintBase + currentSearchId + '/status')
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'completed') {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
-                        loadSearchResults();
-                    } else if (data.status === 'cancelled') {
-                        clearInterval(pollInterval);
-                        pollInterval = null;
-                        showOsintError('Search was cancelled');
-                    }
-                })
-                .catch(() => {});
-            }, 1000);
-        }
-        
-        function cancelOsintSearch() {
-            if (!currentSearchId) return;
-            
-            fetch(osintBase + currentSearchId + '/cancel', {
-                method: 'POST'
-            })
-            .then(r => r.json())
-            .then(() => {
-                if (pollInterval) {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
-                }
-                currentSearchId = null;
-                document.getElementById('osintSearching').style.display = 'none';
-                document.getElementById('osintSearchForm').style.display = 'block';
-            })
-            .catch(() => {
-                currentSearchId = null;
-            });
-        }
-        
-        function loadSearchResults() {
-            fetch(osintBase + currentSearchId + '/results')
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    showOsintError(data.error);
-                    return;
-                }
-                displayResults(data.results || {});
-            })
-            .catch(err => {
-                showOsintError('Failed to load results: ' + err.message);
-            });
-        }
-        
-        function showOsintError(message) {
-            document.getElementById('osintSearching').style.display = 'none';
-            document.getElementById('osintError').style.display = 'block';
-            document.getElementById('errorMessage').textContent = message;
-        }
-        
-        function displayResults(results) {
-            document.getElementById('osintSearching').style.display = 'none';
-            document.getElementById('osintResults').style.display = 'block';
-            
-            const dorksResults = results.dorks_results || [];
-            const searchLinks = results.search_links || [];
-            currentResults = results;
-            
-            const totalCount = dorksResults.length + searchLinks.length;
-            document.getElementById('resultsCount').textContent = totalCount + ' results found';
-            
-            const resultsList = document.getElementById('resultsList');
-            resultsList.innerHTML = '';
-            
-            if (totalCount === 0) {
-                resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found.</p>';
-                updateSelectedCount();
-                return;
-            }
-            
-            const categoryLabels = {
-                'social_media': 'Social Media',
-                'files': 'Documents',
-                'public_records': 'Public Records',
-                'news': 'News',
-                'general': 'Other',
-                'search': 'Search Links'
-            };
-            
-            // Group dorks results by category
-            const grouped = {};
-            dorksResults.forEach(item => {
-                const cat = item.category || 'general';
-                if (!grouped[cat]) grouped[cat] = [];
-                grouped[cat].push(item);
-            });
-            
-            // Show dorks results first
-            for (const [cat, items] of Object.entries(grouped)) {
-                const catDiv = document.createElement('div');
-                catDiv.style.marginBottom = '1.5rem';
-                catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">${categoryLabels[cat] || cat} (${items.length})</h4>`;
-                
-                items.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `
-                        <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" onchange="updateSelectedCount()">
-                        <div class="result-content">
-                            <div class="result-engine">${item.domain || 'Unknown'}</div>
-                            <div class="result-query">${item.query || ''}</div>
-                            <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
-                        </div>
-                    `;
-                    catDiv.appendChild(div);
-                });
-                resultsList.appendChild(catDiv);
-            }
-            
-            // Show search links
-            if (searchLinks.length > 0) {
-                const searchDiv = document.createElement('div');
-                searchDiv.style.marginBottom = '1.5rem';
-                searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">Search Links (${searchLinks.length})</h4>`;
-                
-                searchLinks.forEach(link => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `
-                        <input type="checkbox" class="result-checkbox" data-domain="${link.engine || ''}" data-url="${link.url}" data-query="${link.query || ''}" onchange="updateSelectedCount()">
-                        <div class="result-content">
-                            <div class="result-engine">${link.engine || 'Unknown'}</div>
-                            <div class="result-query">${link.query || ''}</div>
-                            <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
-                        </div>
-                    `;
-                    searchDiv.appendChild(div);
-                });
-                resultsList.appendChild(searchDiv);
-            }
-            
-            updateSelectedCount();
-        }
-        
-        function toggleAllResults(checkbox) {
-            document.querySelectorAll('.result-checkbox').forEach(cb => {
-                cb.checked = checkbox.checked;
-            });
-            updateSelectedCount();
-        }
-        
-        function updateSelectedCount() {
-            const checked = document.querySelectorAll('.result-checkbox:checked').length;
-            document.getElementById('selectedCount').textContent = checked;
-            document.getElementById('addFindingsBtn').disabled = checked === 0;
-        }
-        
-        function addSelectedFindings() {
-            const checkboxes = document.querySelectorAll('.result-checkbox:checked');
-            if (checkboxes.length === 0) return;
-            
-            const selectedResults = [];
-            checkboxes.forEach(cb => {
-                selectedResults.push({
-                    url: cb.dataset.url,
-                    domain: cb.dataset.domain,
-                    query: cb.dataset.query
-                });
-            });
-            
-            const subjectId = document.getElementById('osintSubject')?.value || '';
-            
-            fetch("{{ url_for('cms.add_osint_findings', case_id=case.id) }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    results: selectedResults,
-                    subject_id: subjectId || null
-                })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    showOsintError(data.error);
-                    return;
-                }
-                alert(data.message);
-                closeOsintModal();
-                location.reload();
-            })
-            .catch(err => {
-                showOsintError('Failed to add findings: ' + err.message);
-            });
-        }
-        
-        function showOsintError(message) {
-            document.getElementById('osintSearching').style.display = 'none';
-            document.getElementById('osintResults').style.display = 'none';
-            document.getElementById('osintError').style.display = 'block';
-            document.getElementById('errorMessage').textContent = message;
-        }
-        
-        // Close modal on outside click
-        document.getElementById('osintModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeOsintModal();
-            }
-        });
-        
-        // Timeline Functions
-        function openTimeline() {
-            document.getElementById('timelineModal').classList.add('show');
-            loadTimeline();
-        }
-        
-        function closeTimeline() {
-            document.getElementById('timelineModal').classList.remove('show');
-        }
-        
-        function loadTimeline() {
-            fetch("{{ url_for('cms.case_timeline', case_id=case.id) }}")
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    document.getElementById('timelineContent').innerHTML = 
-                        '<div style="padding: 2rem; text-align: center; color: #dc2626;">' + data.error + '</div>';
-                    return;
-                }
-                displayTimeline(data);
-            })
-            .catch(err => {
-                document.getElementById('timelineContent').innerHTML = 
-                    '<div style="padding: 2rem; text-align: center; color: #dc2626;">Failed to load timeline</div>';
-            });
-        }
-        
-        function displayTimeline(data) {
-            const container = document.getElementById('timelineContent');
-            
-            if (!data.timeline || data.timeline.length === 0) {
-                container.innerHTML = '<div style="padding: 2rem; text-align: center;">No timeline events found.</div>';
-                return;
-            }
-            
-            const typeColors = {
-                'create': '#059669',
-                'status': '#2563eb',
-                'subject': '#7c3aed',
-                'finding': '#f59e0b',
-                'osint': '#ec4899',
-                'financial': '#10b981',
-                'reopen': '#14b8a6',
-                'close': '#6b7280'
-            };
-            
-            let html = '<div style="position: relative; padding-left: 2rem;">';
-            html += '<div style="position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #e5e7eb;"></div>';
-            
-            data.timeline.forEach((item, index) => {
-                const color = typeColors[item.type] || '#6b7280';
-                const date = item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Unknown';
-                
-                html += `
-                    <div style="position: relative; padding: 1rem; margin-bottom: 0.5rem; background: #f9fafb; border-radius: 8px; margin-left: 1rem;">
-                        <div style="position: absolute; left: -21px; top: 1.2rem; width: 12px; height: 12px; border-radius: 50%; background: ${color}; border: 2px solid white;"></div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.25rem;">
-                            <span style="font-size: 1.5rem;">${item.icon}</span>
-                            <span style="font-size: 0.75rem; color: #666;">${date}</span>
-                        </div>
-                        <div style="font-weight: 600; color: #1a1a2e;">${item.title}</div>
-                        <div style="color: #374151; margin: 0.25rem 0;">${item.description}</div>
-                        <div style="font-size: 0.75rem; color: #6b7280;">
-                            By: ${item.user_name}
-                            ${item.details ? ' • ' + item.details : ''}
-                        </div>
-                    </div>
-                `;
-            });
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }
-        
-        document.getElementById('timelineModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeTimeline();
-            }
-        });
-        
-        // Document Upload Functions
-        function openUploadModal() {
-            document.getElementById('uploadModal').classList.add('show');
-        }
-        
-        function closeUploadModal() {
-            document.getElementById('uploadModal').classList.remove('show');
-            document.getElementById('uploadForm').reset();
-        }
-        
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData();
-            const fileInput = document.getElementById('uploadFile');
-            
-            if (fileInput.files.length === 0) {
-                alert('Please select a file');
-                return;
-            }
-            
-            formData.append('file', fileInput.files[0]);
-            formData.append('document_type', document.getElementById('documentType').value);
-            formData.append('classification', document.getElementById('classification').value);
-            formData.append('description', document.getElementById('docDescription').value);
-            
-            fetch("{{ url_for('cms.upload_case_document', case_id=case.id) }}", {
-                method: 'POST',
-                body: formData
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    alert('Document uploaded successfully');
-                    closeUploadModal();
-                    location.reload();
-                }
-            })
-            .catch(err => {
-                alert('Upload failed: ' + err.message);
-            });
-        });
-        
-        function deleteDocument(docId) {
-            if (!confirm('Are you sure you want to delete this document?')) return;
-            
-            fetch('/cms/documents/' + docId, {
-                method: 'DELETE'
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    location.reload();
-                }
-            });
-        }
-        
-        document.getElementById('uploadModal').addEventListener('click', function(e) {
-            if (e.target === this) closeUploadModal();
-        });
-        
-        // Financial Summary Functions
-        function openFinancialSummary() {
-            document.getElementById('financialModal').classList.add('show');
-            loadFinancialSummary();
-        }
-        
-        function closeFinancialSummary() {
-            document.getElementById('financialModal').classList.remove('show');
-        }
-        
-        function loadFinancialSummary() {
-            fetch("{{ url_for('cms.get_financial_summary', case_id=case.id) }}")
-            .then(r => r.json())
-            .then(data => {
-                updateSummaryCards(data.summary);
-                displayFinancialCharts(data.summary);
-            })
-            .catch(() => {
-                document.getElementById('financialCharts').innerHTML = 'Failed to load financial data';
-            });
-        }
-        
-        function updateSummaryCards(summary) {
-            const currency = summary.currency || 'EUR';
-            document.getElementById('finTotal').textContent = formatCurrency(summary.total_amount, currency);
-            document.getElementById('finCount').textContent = summary.total_records;
-            
-            const verified = summary.by_status?.['verified']?.count || 0;
-            const pending = summary.by_status?.['pending']?.count || 0;
-            document.getElementById('finVerified').textContent = verified;
-            document.getElementById('finPending').textContent = pending;
-        }
-        
-        function formatCurrency(amount, currency) {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(amount);
-        }
-        
-        function displayFinancialCharts(summary) {
-            const container = document.getElementById('financialCharts');
-            
-            if (summary.total_records === 0) {
-                container.innerHTML = '<p style="text-align: center; padding: 2rem;">No financial records to display.</p>';
-                return;
-            }
-            
-            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
-            
-            // By Type chart
-            let typeChart = '<canvas id="typeChart"></canvas>';
-            let typeData = Object.entries(summary.by_type || {}).map(([k, v]) => ({ label: k, value: v.total }));
-            
-            // By Month chart
-            let monthChart = '<canvas id="monthChart"></canvas>';
-            let monthData = Object.entries(summary.by_month || {}).sort();
-            
-            let html = `
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="margin-bottom: 1rem;">By Transaction Type</h3>
-                    <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                        ${Object.entries(summary.by_type || {}).map(([type, data], i) => `
-                            <div style="flex: 1; min-width: 150px; background: ${colors[i % colors.length]}15; padding: 1rem; border-radius: 8px; border-left: 4px solid ${colors[i % colors.length]};">
-                                <div style="font-weight: bold;">${type}</div>
-                                <div>${data.count} transactions</div>
-                                <div style="color: #666;">${formatCurrency(data.total, summary.currency)}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="margin-bottom: 1rem;">By Month</h3>
-                    <div style="display: flex; align-items: end; gap: 0.5rem; height: 150px; padding: 1rem; background: #f9fafb; border-radius: 8px;">
-                        ${Object.entries(summary.by_month || {}).sort().map(([month, data]) => {
-                            const max = Math.max(...Object.values(summary.by_month || {}).map(m => m.total));
-                            const height = max > 0 ? (data.total / max) * 100 : 0;
-                            return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                                <div style="width: 100%; background: #3b82f6; border-radius: 4px 4px 0 0; height: ${height}%;"></div>
-                                <div style="font-size: 0.7rem; color: #666; margin-top: 0.25rem;">${month.slice(5)}</div>
-                            </div>`;
-                        }).join('')}
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="margin-bottom: 1rem;">By Verification Status</h3>
-                    <div style="display: flex; gap: 1rem;">
-                        ${Object.entries(summary.by_status || {}).map(([status, data], i) => `
-                            <div style="flex: 1; background: ${status === 'verified' ? '#dcfce7' : status === 'flagged' ? '#fee2e2' : '#fef3c7'}; padding: 1rem; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 1.25rem; font-weight: bold;">${data.count}</div>
-                                <div style="text-transform: capitalize; color: #666;">${status}</div>
-                                <div style="color: #666;">${formatCurrency(data.total, summary.currency)}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                
-                <div>
-                    <h3 style="margin-bottom: 1rem;">Top Counterparties</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead><tr style="background: #f5f5f5;"><th style="padding: 0.75rem; text-align: left;">Counterparty</th><th style="padding: 0.75rem; text-align: right;">Total Amount</th></tr></thead>
-                        <tbody>
-                            ${summary.top_counterparties.map((cp, i) => `
-                                <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 0.75rem;">${i + 1}. ${cp.name}</td>
-                                    <td style="padding: 0.75rem; text-align: right; font-weight: 500;">${formatCurrency(cp.total, summary.currency)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            
-            container.innerHTML = html;
-        }
-        
-        document.getElementById('financialModal').addEventListener('click', function(e) {
-            if (e.target === this) closeFinancialSummary();
-        });
-        
-        // Load summary on page load
-        loadFinancialSummary();
-        
-        // Case Hierarchy Functions
-        function openHierarchyModal() {
-            document.getElementById('hierarchyModal').classList.add('show');
-            loadAvailableParents();
-        }
-        
-        function closeHierarchyModal() {
-            document.getElementById('hierarchyModal').classList.remove('show');
-        }
-        
-        function loadAvailableParents() {
-            const searchResults = document.getElementById('parentSearchResults');
-            searchResults.innerHTML = '<p style="color: #666;">Type to search for a parent case...</p>';
-            
-            // Show current parent if exists
-            {% if case.parent_case %}
-            document.getElementById('currentParent').innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #ede9fe; border-radius: 8px; margin-bottom: 1rem;">
-                    <div>
-                        <strong>{{ case.parent_case.case_number }}</strong>: {{ case.parent_case.title }}
-                    </div>
-                    <button onclick="removeParent()" class="btn btn-sm" style="background: #dc2626;">Remove</button>
-                </div>
-            `;
-            {% else %}
-            document.getElementById('currentParent').innerHTML = '<p style="color: #666; font-style: italic;">No parent case assigned.</p>';
-            {% endif %}
-        }
-        
-        let parentSearchTimeout = null;
-        function searchParentCases() {
-            const query = document.getElementById('parentSearchInput').value;
-            
-            if (parentSearchTimeout) clearTimeout(parentSearchTimeout);
-            
-            if (query.length < 2) {
-                document.getElementById('parentSearchResults').innerHTML = '<p style="color: #666;">Type at least 2 characters to search...</p>';
-                return;
-            }
-            
-            parentSearchTimeout = setTimeout(() => {
-                fetch(`/cms/api/cases/search?q=${encodeURIComponent(query)}&exclude_id={{ case.id }}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.cases.length === 0) {
-                            document.getElementById('parentSearchResults').innerHTML = '<p style="color: #666;">No cases found.</p>';
-                            return;
-                        }
-                        
-                        let html = '';
-                        data.cases.forEach(c => {
-                            html += `
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-bottom: 0.5rem;">
-                                    <div>
-                                        <a href="/cms/cases/${c.id}" target="_blank">${c.case_number}</a>: ${c.title}
-                                        <span class="badge badge-${c.status}" style="margin-left: 0.5rem;">${c.status}</span>
-                                    </div>
-                                    <button onclick="setParent('${c.id}')" class="btn btn-sm" style="background: #059669;">Set as Parent</button>
-                                </div>
-                            `;
-                        });
-                        document.getElementById('parentSearchResults').innerHTML = html;
-                    });
-            }, 300);
-        }
-        
-        function setParent(parentId) {
-            fetch(`/cms/cases/{{ case.id }}/set-parent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ parent_case_id: parentId })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    alert('Parent case set successfully!');
-                    location.reload();
-                }
-            })
-            .catch(err => alert('Error: ' + err.message));
-        }
-        
-        function removeParent() {
-            if (!confirm('Remove this case from its parent?')) return;
-            
-            fetch(`/cms/cases/{{ case.id }}/set-parent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ parent_case_id: null })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    alert('Parent case removed!');
-                    location.reload();
-                }
-            })
-            .catch(err => alert('Error: ' + err.message));
-        }
-        
-        document.getElementById('hierarchyModal').addEventListener('click', function(e) {
-            if (e.target === this) closeHierarchyModal();
-        });
-        
-        // Comments Functions
-        function loadComments() {
-            fetch(`/cms/api/comments/for-entity?type=case&id={{ case.id }}`, { credentials: 'include' })
-                .then(r => {
-                    if (!r.ok) throw new Error('Not authenticated');
-                    return r.json();
-                })
-                .then(data => {
-                    displayComments(data.comments);
-                    document.getElementById('commentCount').textContent = `(${data.count})`;
-                })
-                .catch((err) => {
-                    document.getElementById('commentsList').innerHTML = '<p style="color: #dc2626;">Failed to load comments. Please refresh the page and login if needed.</p>';
-                });
-        }
-        
-        function displayComments(comments) {
-            const container = document.getElementById('commentsList');
-            
-            if (!comments || comments.length === 0) {
-                container.innerHTML = '<p style="color: #888; text-align: center; padding: 1rem;">No comments yet. Be the first to add one!</p>';
-                return;
-            }
-            
-            let html = '';
-            comments.forEach(c => {
-                const pinnedClass = c.is_pinned ? 'comment-pinned' : '';
-                const date = new Date(c.created_at);
-                const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const canEdit = c.author_id === '{{ current_user.id }}' || {{ 'true' if current_user.is_admin else 'false' }};
-                
-                let editInfo = '';
-                if (c.edit_count > 0) {
-                    const editDate = c.last_edited_at ? new Date(c.last_edited_at) : null;
-                    const editDateStr = editDate ? editDate.toLocaleDateString() + ' ' + editDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-                    editInfo = `<div class="comment-edited">Edited ${c.edit_count} time${c.edit_count > 1 ? 's' : ''}${c.last_edited_by_name ? ' by ' + c.last_edited_by_name : ''}${editDateStr ? ' on ' + editDateStr : ''}</div>`;
-                }
-                
-                let editHistory = '';
-                if (c.edit_history && c.edit_history.length > 0) {
-                    editHistory = `<details class="comment-edit-history">
-                        <summary>View edit history (${c.edit_history.length})</summary>
-                        ${c.edit_history.map(h => {
-                            const hDate = new Date(h.edited_at);
-                            const hDateStr = hDate.toLocaleDateString() + ' ' + hDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                            return `<div class="comment-edit-entry">
-                                <div><span class="edit-by">${h.edited_by_name}</span> <span class="edit-date">${hDateStr}</span></div>
-                                <div class="edit-diff">
-                                    <div class="edit-old">- ${escapeHtml(h.previous_content.substring(0, 100))}${h.previous_content.length > 100 ? '...' : ''}</div>
-                                    <div class="edit-new">+ ${escapeHtml(h.new_content.substring(0, 100))}${h.new_content.length > 100 ? '...' : ''}</div>
-                                </div>
-                            </div>`;
-                        }).join('')}
-                    </details>`;
-                }
-                
-                html += `
-                    <div class="comment-item ${pinnedClass}" id="comment-${c.id}">
-                        <div class="comment-header">
-                            <div>
-                                <span class="comment-author">${c.author_name}</span>
-                                <span class="comment-type-badge">${c.comment_type}</span>
-                                ${c.is_pinned ? '📌' : ''}
-                            </div>
-                            <div class="comment-time">${timeStr}</div>
-                        </div>
-                        ${editInfo}
-                        <div class="comment-content" id="content-${c.id}">${escapeHtml(c.content)}</div>
-                        ${editHistory}
-                        <div class="comment-edit-form" id="edit-form-${c.id}" style="display: none;">
-                            <textarea id="edit-content-${c.id}">${escapeHtml(c.content)}</textarea>
-                            <div class="comment-edit-actions">
-                                <button onclick="saveEdit('${c.id}')" class="btn btn-sm" style="background: #059669;">Save</button>
-                                <button onclick="cancelEdit('${c.id}')" class="btn btn-sm" style="background: #666;">Cancel</button>
-                            </div>
-                        </div>
-                        <div class="comment-actions">
-                            ${canEdit ? `<button onclick="showEditForm('${c.id}')">Edit</button>` : ''}
-                            <button onclick="deleteComment('${c.id}')">Delete</button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-        }
-        
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        function showEditForm(commentId) {
-            document.getElementById(`edit-form-${commentId}`).style.display = 'block';
-            document.getElementById(`content-${commentId}`).style.display = 'none';
-        }
-        
-        function cancelEdit(commentId) {
-            document.getElementById(`edit-form-${commentId}`).style.display = 'none';
-            document.getElementById(`content-${commentId}`).style.display = 'block';
-        }
-        
-        function saveEdit(commentId) {
-            const newContent = document.getElementById(`edit-content-${commentId}`).value.trim();
-            if (!newContent) {
-                alert('Comment cannot be empty.');
-                return;
-            }
-            
-            fetch(`/cms/api/comments/${commentId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: newContent }),
-                credentials: 'include'
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    alert('Error: ' + data.error);
-                } else {
-                    loadComments();
-                }
-            })
-            .catch(err => alert('Error: ' + err.message));
-        }
-        
-        function addComment() {
-            const content = document.getElementById('newComment').value.trim();
-            if (!content) {
-                alert('Please enter a comment.');
-                return;
-            }
-            
-            const commentType = document.getElementById('commentType').value;
-            const isPinned = document.getElementById('commentPinned').checked;
-            
-            fetch('/cms/api/comments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    case_id: '{{ case.id }}',
-                    content: content,
-                    comment_type: commentType,
-                    is_pinned: isPinned
-                }),
-                credentials: 'include'
-            })
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('newComment').value = '';
-                document.getElementById('commentPinned').checked = false;
-                loadComments();
-            })
-            .catch(err => alert('Error: ' + err.message));
-        }
-        
-        function deleteComment(commentId) {
-            if (!confirm('Delete this comment?')) return;
-            
-            fetch(`/cms/api/comments/${commentId}`, {
-                method: 'DELETE',
-                credentials: 'include'
-            })
-            .then(r => r.json())
-            .then(() => loadComments())
-            .catch(err => alert('Error: ' + err.message));
-        }
-        
-        // Load comments on page load
-        loadComments();
-    </script>
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Financial Summary</h2>
+        <button onclick="openFinancialSummary()" class="btn btn-sm" style="background: #7c3aed;">📊 View Charts</button>
     </div>
-</body>
-</html>
+    
+    <div id="financialSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);" id="finTotal">-</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Total Amount</div>
+        </div>
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: bold; color: var(--text-primary);" id="finCount">-</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Transactions</div>
+        </div>
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: bold; color: var(--success-text);" id="finVerified">-</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Verified</div>
+        </div>
+        <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: bold; color: var(--warning-text);" id="finPending">-</div>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Pending Review</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">⏰ Reminders ({{ case_reminders|length }})</h2>
+        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Add Reminder</a>
+    </div>
+    
+    {% if case_reminders %}
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        {% for reminder in case_reminders %}
+        <div style="padding: 0.75rem; background: {% if reminder.is_completed %}var(--bg-secondary){% elif reminder.is_overdue %}var(--danger-bg){% else %}var(--info-bg){% endif %}; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>{{ reminder.title }}</strong>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else 'No date' }}
+                    {% if reminder.is_completed %} - Completed{% elif reminder.is_overdue %} - OVERDUE{% endif %}
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.25rem;">
+                {% if not reminder.is_completed %}
+                <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('cms.edit_reminder', reminder_id=reminder.id) }}" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #3b82f6;">✏️</a>
+                <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" onsubmit="return confirm('Delete this reminder?');">
+                    <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: var(--danger-text);">🗑️</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted); text-align: center; padding: 1rem;">No reminders for this case. <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" style="color: #059669;">Add one</a></p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Notes & Comments <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h2>
+        <button onclick="loadComments()" class="btn btn-sm">🔄 Refresh</button>
+    </div>
+    
+    <div class="comment-form">
+        <textarea id="newComment" placeholder="Add a note or comment..." style="background: var(--bg-card); color: var(--text-primary); border-color: var(--border-input);"></textarea>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
+            <select id="commentType" style="padding: 0.4rem; border: 1px solid var(--border-input); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                <option value="note">Note</option>
+                <option value="discussion">Discussion</option>
+                <option value="update">Update</option>
+            </select>
+            <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: var(--text-secondary);">
+                <input type="checkbox" id="commentPinned"> Pin comment
+            </label>
+            <button onclick="addComment()" class="btn btn-sm" style="background: #059669;">Add Comment</button>
+        </div>
+    </div>
+    
+    <div id="commentsList">
+        <p style="color: var(--text-muted); text-align: center; padding: 1rem;">Loading comments...</p>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Case Activity</h2>
+        <button onclick="openTimeline()" class="btn btn-sm" style="background: #7c3aed;">Timeline</button>
+    </div>
+    
+    <div id="auditLogList">
+        <p style="color: var(--text-muted); text-align: center; padding: 1rem;">Loading activity...</p>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="uploadModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>Upload Document</h2>
+            <span class="close" onclick="closeUploadModal()">&times;</span>
+        </div>
+        <form id="uploadForm" enctype="multipart/form-data" style="margin-top: 1rem;">
+            <div class="form-group">
+                <label for="uploadFile">File *</label>
+                <input type="file" id="uploadFile" name="file" required style="padding: 0.5rem;">
+            </div>
+            <div class="form-group">
+                <label for="documentType">Document Type</label>
+                <select id="documentType" name="document_type" style="padding: 0.5rem;">
+                    <option value="evidence">Evidence</option>
+                    <option value="report">Report</option>
+                    <option value="contract">Contract</option>
+                    <option value="correspondence">Correspondence</option>
+                    <option value="photo">Photo</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="classification">Classification</label>
+                <select id="classification" name="classification" style="padding: 0.5rem;">
+                    <option value="confidential">Confidential</option>
+                    <option value="restricted">Restricted</option>
+                    <option value="internal">Internal</option>
+                    <option value="public">Public</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="docDescription" name="description" rows="2" style="width: 100%; padding: 0.5rem;"></textarea>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button type="submit" class="btn btn-sm" style="background: #059669;">Upload</button>
+                <button type="button" onclick="closeUploadModal()" class="btn btn-sm" style="background: var(--text-muted);">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="financialModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2>Financial Analysis</h2>
+            <span class="close" onclick="closeFinancialSummary()">&times;</span>
+        </div>
+        <div id="financialCharts" style="max-height: 70vh; overflow-y: auto;">
+            <div style="text-align: center; padding: 2rem;" id="finLoading">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<div id="hierarchyModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Case Hierarchy</h2>
+            <span class="close" onclick="closeHierarchyModal()">&times;</span>
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Link this case to a parent case to create a hierarchy of related investigations.</p>
+        <h4 style="margin-bottom: 0.5rem;">Current Parent</h4>
+        <div id="currentParent"></div>
+        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border-color);">
+        <h4 style="margin-bottom: 0.5rem;">Set New Parent</h4>
+        <div style="margin-bottom: 1rem;">
+            <input type="text" id="parentSearchInput" placeholder="Search cases by number or title..." 
+                   style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-input); border-radius: 8px;"
+                   oninput="searchParentCases()">
+        </div>
+        <div id="parentSearchResults" style="max-height: 300px; overflow-y: auto;">
+            <p style="color: var(--text-muted);">Type to search for a parent case...</p>
+        </div>
+    </div>
+</div>
+
+<div id="osintModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>OSINT Person Search</h2>
+            <span class="close" onclick="closeOsintModal()">&times;</span>
+        </div>
+        
+        <div id="osintSearchForm">
+            <div style="margin-bottom: 1rem;">
+                <label for="osintName"><strong>Person Name (first and last name) *</strong></label>
+                <input type="text" id="osintName" placeholder="e.g., John Smith" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem; border: 1px solid var(--border-input); border-radius: 8px; font-size: 1rem;">
+            </div>
+            
+            {% if subjects %}
+            <div style="margin-bottom: 1rem;">
+                <label for="osintSubject">Link to Subject (optional)</label>
+                <select id="osintSubject" style="width: 100%; padding: 0.75rem; margin-top: 0.5rem; border: 1px solid var(--border-input); border-radius: 8px; font-size: 1rem;">
+                    <option value="">-- Select a subject --</option>
+                    {% for s in subjects %}
+                    <option value="{{ s.id }}">{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            
+            <div id="osintActions">
+                <button onclick="startOsintSearch()" class="btn btn-success">Search</button>
+            </div>
+        </div>
+        
+        <div id="osintSearching" style="display: none; text-align: center; padding: 2rem;">
+            <div class="searching">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
+                <p id="searchQueryDisplay" style="color: var(--text-secondary);"></p>
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <button onclick="cancelOsintSearch()" class="btn btn-danger">Cancel Search</button>
+            </div>
+        </div>
+        
+        <div id="osintResults" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">Search Results</h3>
+                <span id="resultsCount"></span>
+            </div>
+            
+            <div class="select-all-row">
+                <label>
+                    <input type="checkbox" id="selectAllResults" onchange="toggleAllResults(this)">
+                    <strong>Select All</strong>
+                </label>
+            </div>
+            
+            <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
+            
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button onclick="closeOsintModal()" class="btn" style="background: var(--text-muted);">Close</button>
+                <button onclick="addSelectedFindings()" class="btn btn-success" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
+            </div>
+        </div>
+        
+        <div id="osintError" style="display: none; padding: 1rem; background: var(--danger-bg); border-radius: 8px; color: var(--danger-text);">
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+</div>
+
+<div id="timelineModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2>Case Timeline</h2>
+            <span class="close" onclick="closeTimeline()">&times;</span>
+        </div>
+        <div id="timelineContent" style="max-height: 60vh; overflow-y: auto;">
+            <div style="text-align: center; padding: 2rem;">Loading timeline...</div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .searching { animation: blink 1.5s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .result-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card); }
+    .result-content { flex: 1; }
+    .result-engine { font-weight: 600; color: var(--text-primary); }
+    .result-query { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+    .result-url { font-size: 0.75rem; color: var(--link-color); word-break: break-all; }
+    .btn-success { background: #059669; }
+    .btn-success:hover { background: #047857; }
+</style>
+
+<script>
+// Include the rest of the JavaScript from the original file
+// This is a condensed version - the full JavaScript continues below
+let currentSearchId = null;
+let currentResults = null;
+let pollInterval = null;
+const osintBase = "/cms/osint-search/";
+
+function showAddSubjectForm() { document.getElementById('addSubjectForm').style.display = 'block'; }
+function hideAddSubjectForm() { document.getElementById('addSubjectForm').style.display = 'none'; }
+
+function changeStatus(newStatus) {
+    let body = { status: newStatus };
+    if (newStatus === 'closed') {
+        const reason = prompt('Reason for closing (required):');
+        if (!reason || !reason.trim()) { alert('Closure reason is required'); return; }
+        body.closure_reason = reason.trim();
+    }
+    if (newStatus === 'active' && ('{{ case.status }}' === 'closed' || '{{ case.status }}' === 'archived')) {
+        const reason = prompt('Reason for reopening (required):');
+        if (!reason || !reason.trim()) { alert('Reopening reason is required'); return; }
+        body.reopened_reason = reason.trim();
+    }
+    fetch("{{ url_for('cms.transition_case', case_id=case.id) }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    }).then(r => r.json()).then(data => {
+        if (data.error) alert('Error: ' + data.error);
+        else location.reload();
+    }).catch(err => alert('Error: ' + err.message));
+}
+
+function reopenCase() {
+    const reason = prompt('Reason for reopening (required):');
+    if (!reason || !reason.trim()) { alert('Reopening reason is required'); return; }
+    fetch("{{ url_for('cms.transition_case', case_id=case.id) }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active', reopened_reason: reason.trim() })
+    }).then(r => r.json()).then(data => {
+        if (data.error) alert('Error: ' + data.error);
+        else location.reload();
+    }).catch(err => alert('Error: ' + err.message));
+}
+
+// OSINT Functions
+function openOsintModal() {
+    document.getElementById('osintModal').classList.add('show');
+    document.getElementById('osintName').value = '';
+    resetOsintModal();
+}
+
+function closeOsintModal() {
+    if (currentSearchId) cancelOsintSearch();
+    document.getElementById('osintModal').classList.remove('show');
+    resetOsintModal();
+}
+
+function resetOsintModal() {
+    document.getElementById('osintSearchForm').style.display = 'block';
+    document.getElementById('osintSearching').style.display = 'none';
+    document.getElementById('osintResults').style.display = 'none';
+    document.getElementById('osintError').style.display = 'none';
+    currentSearchId = null;
+    currentResults = null;
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+}
+
+function startOsintSearch() {
+    const name = document.getElementById('osintName').value.trim();
+    if (!name) { alert('Please enter a name'); return; }
+    if (name.split(' ').length < 2) { alert('Please enter a full name (first and last name)'); return; }
+    
+    document.getElementById('osintSearchForm').style.display = 'none';
+    document.getElementById('osintSearching').style.display = 'block';
+    document.getElementById('searchQueryDisplay').textContent = 'Searching for: ' + name;
+    document.getElementById('osintError').style.display = 'none';
+    
+    fetch("{{ url_for('cms.start_osint_search', case_id=case.id) }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name })
+    }).then(r => r.json()).then(data => {
+        if (data.error) { showOsintError(data.error); return; }
+        currentSearchId = data.search_id;
+        pollSearchStatus();
+    }).catch(err => { showOsintError('Failed to start search: ' + err.message); });
+}
+
+function pollSearchStatus() {
+    pollInterval = setInterval(() => {
+        fetch(osintBase + currentSearchId + '/status').then(r => r.json()).then(data => {
+            if (data.status === 'completed') { clearInterval(pollInterval); pollInterval = null; loadSearchResults(); }
+            else if (data.status === 'cancelled') { clearInterval(pollInterval); pollInterval = null; showOsintError('Search was cancelled'); }
+        }).catch(() => {});
+    }, 1000);
+}
+
+function cancelOsintSearch() {
+    if (!currentSearchId) return;
+    fetch(osintBase + currentSearchId + '/cancel', { method: 'POST' }).then(r => r.json()).then(() => {
+        if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+        currentSearchId = null;
+        document.getElementById('osintSearching').style.display = 'none';
+        document.getElementById('osintSearchForm').style.display = 'block';
+    }).catch(() => { currentSearchId = null; });
+}
+
+function loadSearchResults() {
+    fetch(osintBase + currentSearchId + '/results').then(r => r.json()).then(data => {
+        if (data.error) { showOsintError(data.error); return; }
+        displayResults(data.results || {});
+    }).catch(err => { showOsintError('Failed to load results: ' + err.message); });
+}
+
+function displayResults(results) {
+    document.getElementById('osintSearching').style.display = 'none';
+    document.getElementById('osintResults').style.display = 'block';
+    const dorksResults = results.dorks_results || [];
+    const searchLinks = results.search_links || [];
+    currentResults = results;
+    const totalCount = dorksResults.length + searchLinks.length;
+    document.getElementById('resultsCount').textContent = totalCount + ' results found';
+    const resultsList = document.getElementById('resultsList');
+    resultsList.innerHTML = '';
+    if (totalCount === 0) { resultsList.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">No results found.</p>'; updateSelectedCount(); return; }
+    
+    const categoryLabels = { 'social_media': 'Social Media', 'files': 'Documents', 'public_records': 'Public Records', 'news': 'News', 'general': 'Other', 'search': 'Search Links' };
+    const grouped = {};
+    dorksResults.forEach(item => { const cat = item.category || 'general'; if (!grouped[cat]) grouped[cat] = []; grouped[cat].push(item); });
+    
+    for (const [cat, items] of Object.entries(grouped)) {
+        const catDiv = document.createElement('div');
+        catDiv.style.marginBottom = '1.5rem';
+        catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">${categoryLabels[cat] || cat} (${items.length})</h4>`;
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerHTML = `<input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" onchange="updateSelectedCount()">
+                <div class="result-content"><div class="result-engine">${item.domain || 'Unknown'}</div><div class="result-query">${item.query || ''}</div><div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div></div>`;
+            catDiv.appendChild(div);
+        });
+        resultsList.appendChild(catDiv);
+    }
+    
+    if (searchLinks.length > 0) {
+        const searchDiv = document.createElement('div');
+        searchDiv.style.marginBottom = '1.5rem';
+        searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (${searchLinks.length})</h4>`;
+        searchLinks.forEach(link => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerHTML = `<input type="checkbox" class="result-checkbox" data-domain="${link.engine || ''}" data-url="${link.url}" data-query="${link.query || ''}" onchange="updateSelectedCount()">
+                <div class="result-content"><div class="result-engine">${link.engine || 'Unknown'}</div><div class="result-query">${link.query || ''}</div><div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div></div>`;
+            searchDiv.appendChild(div);
+        });
+        resultsList.appendChild(searchDiv);
+    }
+    updateSelectedCount();
+}
+
+function toggleAllResults(checkbox) { document.querySelectorAll('.result-checkbox').forEach(cb => { cb.checked = checkbox.checked; }); updateSelectedCount(); }
+function updateSelectedCount() { const checked = document.querySelectorAll('.result-checkbox:checked').length; document.getElementById('selectedCount').textContent = checked; document.getElementById('addFindingsBtn').disabled = checked === 0; }
+
+function addSelectedFindings() {
+    const checkboxes = document.querySelectorAll('.result-checkbox:checked');
+    if (checkboxes.length === 0) return;
+    const selectedResults = [];
+    checkboxes.forEach(cb => { selectedResults.push({ url: cb.dataset.url, domain: cb.dataset.domain, query: cb.dataset.query }); });
+    const subjectId = document.getElementById('osintSubject')?.value || '';
+    fetch("{{ url_for('cms.add_osint_findings', case_id=case.id) }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ results: selectedResults, subject_id: subjectId || null })
+    }).then(r => r.json()).then(data => {
+        if (data.error) { showOsintError(data.error); return; }
+        alert(data.message);
+        closeOsintModal();
+        location.reload();
+    }).catch(err => { showOsintError('Failed to add findings: ' + err.message); });
+}
+
+function showOsintError(message) {
+    document.getElementById('osintSearching').style.display = 'none';
+    document.getElementById('osintResults').style.display = 'none';
+    document.getElementById('osintError').style.display = 'block';
+    document.getElementById('errorMessage').textContent = message;
+}
+
+// Comments
+function loadComments() {
+    fetch("{{ url_for('cms.get_case_comments', case_id=case.id) }}").then(r => r.json()).then(data => {
+        const list = document.getElementById('commentsList');
+        document.getElementById('commentCount').textContent = '(' + (data.comments?.length || 0) + ')';
+        if (!data.comments || data.comments.length === 0) { list.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No comments yet.</p>'; return; }
+        let html = '';
+        data.comments.forEach(c => {
+            html += `<div class="comment-item" style="padding: 1rem; border-bottom: 1px solid var(--border-color); ${c.is_pinned ? 'background: var(--warning-bg); border-left: 3px solid #f59e0b;' : ''}">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-weight: 600; color: var(--text-primary);">${c.author_name}</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">${c.created_at}</span>
+                </div>
+                <div style="color: var(--text-primary); line-height: 1.5;">${c.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                ${c.edited_at ? '<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 0.25rem;">Edited ' + c.edited_at + '</div>' : ''}
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button onclick="editComment(${c.id})" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem;">Edit</button>
+                    <button onclick="deleteComment(${c.id})" style="background: none; border: none; color: var(--danger-text); cursor: pointer; font-size: 0.8rem;">Delete</button>
+                </div>
+            </div>`;
+        });
+        list.innerHTML = html;
+    }).catch(() => { document.getElementById('commentsList').innerHTML = '<p style="color: var(--danger-text);">Failed to load comments.</p>'; });
+}
+
+function addComment() {
+    const content = document.getElementById('newComment').value.trim();
+    if (!content) { alert('Please enter a comment'); return; }
+    const isPinned = document.getElementById('commentPinned').checked;
+    const commentType = document.getElementById('commentType').value;
+    fetch("{{ url_for('cms.add_case_comment', case_id=case.id) }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, is_pinned: isPinned, comment_type: commentType })
+    }).then(r => r.json()).then(data => {
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('newComment').value = '';
+        document.getElementById('commentPinned').checked = false;
+        loadComments();
+    }).catch(err => alert('Failed to add comment: ' + err.message));
+}
+
+function editComment(id) {
+    const newContent = prompt('Edit comment:');
+    if (!newContent || !newContent.trim()) return;
+    fetch("{{ url_for('cms.edit_case_comment', case_id=case.id, comment_id='') }}" + id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: newContent.trim() })
+    }).then(r => r.json()).then(data => { if (data.error) alert(data.error); else loadComments(); }).catch(err => alert('Failed: ' + err.message));
+}
+
+function deleteComment(id) {
+    if (!confirm('Delete this comment?')) return;
+    fetch("{{ url_for('cms.delete_case_comment', case_id=case.id, comment_id='') }}" + id, { method: 'DELETE' })
+        .then(r => r.json()).then(data => { if (data.error) alert(data.error); else loadComments(); })
+        .catch(err => alert('Failed: ' + err.message));
+}
+
+// Upload
+function openUploadModal() { document.getElementById('uploadModal').classList.add('show'); }
+function closeUploadModal() { document.getElementById('uploadModal').classList.remove('show'); }
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('file', document.getElementById('uploadFile').files[0]);
+    formData.append('document_type', document.getElementById('documentType').value);
+    formData.append('classification', document.getElementById('classification').value);
+    formData.append('description', document.getElementById('docDescription').value);
+    fetch("{{ url_for('cms.upload_case_document', case_id=case.id) }}", { method: 'POST', body: formData })
+        .then(r => r.json()).then(data => {
+            if (data.error) alert(data.error);
+            else { alert('Document uploaded'); closeUploadModal(); location.reload(); }
+        }).catch(err => alert('Upload failed: ' + err.message));
+});
+
+// Financial
+function openFinancialSummary() {
+    document.getElementById('financialModal').classList.add('show');
+    fetch("{{ url_for('cms.get_case_financials', case_id=case.id) }}").then(r => r.json()).then(data => {
+        document.getElementById('finTotal').textContent = '€' + (data.total || 0).toLocaleString();
+        document.getElementById('finCount').textContent = data.count || 0;
+        document.getElementById('finVerified').textContent = data.verified || 0;
+        document.getElementById('finPending').textContent = data.pending || 0;
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">';
+        (data.transactions || []).forEach(t => {
+            html += `<div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                <div style="font-weight: 600; color: var(--text-primary);">${t.type}: €${t.amount.toLocaleString()}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">${t.date} - ${t.status}</div>
+            </div>`;
+        });
+        html += '</div>';
+        document.getElementById('financialCharts').innerHTML = html;
+    }).catch(() => { document.getElementById('financialCharts').innerHTML = '<p>Failed to load financial data.</p>'; });
+}
+function closeFinancialSummary() { document.getElementById('financialModal').classList.remove('show'); }
+
+// Timeline
+function openTimeline() {
+    document.getElementById('timelineModal').classList.add('show');
+    fetch("{{ url_for('cms.get_case_timeline', case_id=case.id) }}").then(r => r.json()).then(data => {
+        let html = '<div style="border-left: 2px solid var(--border-color); margin-left: 1rem; padding-left: 1rem;">';
+        (data.timeline || []).forEach(item => {
+            html += `<div style="margin-bottom: 1rem; position: relative;">
+                <div style="position: absolute; left: -1.7rem; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-primary);"></div>
+                <div style="font-weight: 600; color: var(--text-primary);">${item.action}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">${item.user} - ${item.date}</div>
+            </div>`;
+        });
+        html += '</div>';
+        document.getElementById('timelineContent').innerHTML = html || '<p>No timeline data.</p>';
+    }).catch(() => { document.getElementById('timelineContent').innerHTML = '<p>Failed to load timeline.</p>'; });
+}
+function closeTimeline() { document.getElementById('timelineModal').classList.remove('show'); }
+
+// Hierarchy
+function openHierarchyModal() { document.getElementById('hierarchyModal').classList.add('show'); loadCurrentParent(); }
+function closeHierarchyModal() { document.getElementById('hierarchyModal').classList.remove('show'); }
+function loadCurrentParent() {
+    fetch("{{ url_for('cms.get_case_hierarchy', case_id=case.id) }}").then(r => r.json()).then(data => {
+        document.getElementById('currentParent').innerHTML = data.parent 
+            ? `<a href="/cms/cases/${data.parent.id}">${data.parent.case_number}: ${data.parent.title}</a>` 
+            : '<span style="color: var(--text-muted);">No parent case</span>';
+    });
+}
+function searchParentCases() {
+    const q = document.getElementById('parentSearchInput').value;
+    if (q.length < 2) { document.getElementById('parentSearchResults').innerHTML = '<p style="color: var(--text-muted);">Type to search...</p>'; return; }
+    fetch("{{ url_for('cms.search_cases') }}?q=" + encodeURIComponent(q)).then(r => r.json()).then(data => {
+        let html = '';
+        (data.cases || []).forEach(c => {
+            if (c.id != {{ case.id }}) html += `<div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                <a href="#" onclick="setParentCase(${c.id}); return false;">${c.case_number}: ${c.title}</a>
+            </div>`;
+        });
+        document.getElementById('parentSearchResults').innerHTML = html || '<p style="color: var(--text-muted);">No cases found.</p>';
+    });
+}
+function setParentCase(parentId) {
+    fetch("{{ url_for('cms.set_case_parent', case_id=case.id) }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent_id: parentId })
+    }).then(r => r.json()).then(data => { if (data.error) alert(data.error); else { alert('Parent case set'); closeHierarchyModal(); location.reload(); } })
+        .catch(err => alert('Failed: ' + err.message));
+}
+
+// Audit Log
+function loadAuditLog() {
+    fetch("{{ url_for('cms.get_case_audit_log', case_id=case.id) }}").then(r => r.json()).then(data => {
+        let html = '';
+        (data.logs || []).slice(0, 20).forEach(log => {
+            html += `<div style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="font-weight: 500; color: var(--text-primary);">${log.action}</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">${log.created_at}</span>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">${log.user}</div>
+            </div>`;
+        });
+        document.getElementById('auditLogList').innerHTML = html || '<p style="color: var(--text-muted);">No activity yet.</p>';
+    }).catch(() => { document.getElementById('auditLogList').innerHTML = '<p style="color: var(--danger-text);">Failed to load activity.</p>'; });
+}
+
+// Modal click handlers
+['uploadModal', 'financialModal', 'hierarchyModal', 'osintModal', 'timelineModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('show'); } });
+});
+
+// Initialize
+loadComments();
+loadAuditLog();
+</script>
+{% endblock %}
