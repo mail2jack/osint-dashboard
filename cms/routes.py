@@ -939,6 +939,48 @@ def search_cases():
     })
 
 
+@cms_bp.route('/api/cases/<case_id>/hierarchy')
+@login_required
+def get_case_hierarchy_api(case_id: str):
+    """Get case hierarchy (parent and children) via API."""
+    case = Case.query.get_or_404(case_id)
+    return jsonify({
+        'parent': {
+            'id': case.parent_case.id,
+            'case_number': case.parent_case.case_number,
+            'title': case.parent_case.title
+        } if case.parent_case else None,
+        'children': [
+            {'id': c.id, 'case_number': c.case_number, 'title': c.title, 'status': c.status}
+            for c in case.child_cases.filter_by(is_deleted=False)
+        ]
+    })
+
+
+@cms_bp.route('/api/cases/<case_id>/audit-log')
+@login_required
+def get_case_audit_log_api(case_id: str):
+    """Get audit log for a case via API."""
+    case = Case.query.get_or_404(case_id)
+    logs = AuditLog.query.filter_by(
+        entity_type='case',
+        entity_id=case_id
+    ).order_by(AuditLog.created_at.desc()).limit(50).all()
+    
+    return jsonify({
+        'logs': [
+            {
+                'action': log.action,
+                'description': log.description,
+                'user': log.user.full_name if log.user else 'System',
+                'created_at': log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '',
+                'changes': log.changes
+            }
+            for log in logs
+        ]
+    })
+
+
 @cms_bp.route('/cases/<case_id>/timeline')
 @login_required
 @case_access_required

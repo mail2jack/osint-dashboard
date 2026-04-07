@@ -737,7 +737,7 @@ function showOsintError(message) {
 
 // Comments
 function loadComments() {
-    fetch("{{ url_for('cms.get_case_comments', case_id=case.id) }}").then(r => r.json()).then(data => {
+    fetch("/cms/api/comments/for-entity?type=case&id={{ case.id }}").then(r => r.json()).then(data => {
         const list = document.getElementById('commentsList');
         document.getElementById('commentCount').textContent = '(' + (data.comments?.length || 0) + ')';
         if (!data.comments || data.comments.length === 0) { list.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No comments yet.</p>'; return; }
@@ -745,11 +745,11 @@ function loadComments() {
         data.comments.forEach(c => {
             html += `<div class="comment-item" style="padding: 1rem; border-bottom: 1px solid var(--border-color); ${c.is_pinned ? 'background: var(--warning-bg); border-left: 3px solid #f59e0b;' : ''}">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <span style="font-weight: 600; color: var(--text-primary);">${c.author_name}</span>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">${c.created_at}</span>
+                    <span style="font-weight: 600; color: var(--text-primary);">${c.author_name || 'Unknown'}</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">${new Date(c.created_at).toLocaleString()}</span>
                 </div>
-                <div style="color: var(--text-primary); line-height: 1.5;">${c.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-                ${c.edited_at ? '<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 0.25rem;">Edited ' + c.edited_at + '</div>' : ''}
+                <div style="color: var(--text-primary); line-height: 1.5;">${(c.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                ${c.edited_at ? '<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 0.25rem;">Edited ' + new Date(c.edited_at).toLocaleString() + '</div>' : ''}
                 <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
                     <button onclick="editComment(${c.id})" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem;">Edit</button>
                     <button onclick="deleteComment(${c.id})" style="background: none; border: none; color: var(--danger-text); cursor: pointer; font-size: 0.8rem;">Delete</button>
@@ -765,9 +765,9 @@ function addComment() {
     if (!content) { alert('Please enter a comment'); return; }
     const isPinned = document.getElementById('commentPinned').checked;
     const commentType = document.getElementById('commentType').value;
-    fetch("{{ url_for('cms.add_case_comment', case_id=case.id) }}", {
+    fetch("/cms/api/comments", {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, is_pinned: isPinned, comment_type: commentType })
+        body: JSON.stringify({ content, is_pinned: isPinned, comment_type: commentType, entity_type: 'case', entity_id: {{ case.id }} })
     }).then(r => r.json()).then(data => {
         if (data.error) { alert(data.error); return; }
         document.getElementById('newComment').value = '';
@@ -779,14 +779,14 @@ function addComment() {
 function editComment(id) {
     const newContent = prompt('Edit comment:');
     if (!newContent || !newContent.trim()) return;
-    fetch("{{ url_for('cms.edit_case_comment', case_id=case.id, comment_id='') }}" + id, {
+    fetch("/cms/api/comments/" + id, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: newContent.trim() })
     }).then(r => r.json()).then(data => { if (data.error) alert(data.error); else loadComments(); }).catch(err => alert('Failed: ' + err.message));
 }
 
 function deleteComment(id) {
     if (!confirm('Delete this comment?')) return;
-    fetch("{{ url_for('cms.delete_case_comment', case_id=case.id, comment_id='') }}" + id, { method: 'DELETE' })
+    fetch("/cms/api/comments/" + id, { method: 'DELETE' })
         .then(r => r.json()).then(data => { if (data.error) alert(data.error); else loadComments(); })
         .catch(err => alert('Failed: ' + err.message));
 }
@@ -811,7 +811,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
 // Financial
 function openFinancialSummary() {
     document.getElementById('financialModal').classList.add('show');
-    fetch("{{ url_for('cms.get_case_financials', case_id=case.id) }}").then(r => r.json()).then(data => {
+    fetch("/cms/cases/{{ case.id }}/financial-summary").then(r => r.json()).then(data => {
         document.getElementById('finTotal').textContent = '€' + (data.total || 0).toLocaleString();
         document.getElementById('finCount').textContent = data.count || 0;
         document.getElementById('finVerified').textContent = data.verified || 0;
@@ -832,13 +832,13 @@ function closeFinancialSummary() { document.getElementById('financialModal').cla
 // Timeline
 function openTimeline() {
     document.getElementById('timelineModal').classList.add('show');
-    fetch("{{ url_for('cms.get_case_timeline', case_id=case.id) }}").then(r => r.json()).then(data => {
+    fetch("/cms/cases/{{ case.id }}/timeline").then(r => r.json()).then(data => {
         let html = '<div style="border-left: 2px solid var(--border-color); margin-left: 1rem; padding-left: 1rem;">';
         (data.timeline || []).forEach(item => {
             html += `<div style="margin-bottom: 1rem; position: relative;">
                 <div style="position: absolute; left: -1.7rem; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-primary);"></div>
                 <div style="font-weight: 600; color: var(--text-primary);">${item.action}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">${item.user} - ${item.date}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">${item.user || 'System'} - ${item.date || ''}</div>
             </div>`;
         });
         html += '</div>';
@@ -851,18 +851,20 @@ function closeTimeline() { document.getElementById('timelineModal').classList.re
 function openHierarchyModal() { document.getElementById('hierarchyModal').classList.add('show'); loadCurrentParent(); }
 function closeHierarchyModal() { document.getElementById('hierarchyModal').classList.remove('show'); }
 function loadCurrentParent() {
-    fetch("{{ url_for('cms.get_case_hierarchy', case_id=case.id) }}").then(r => r.json()).then(data => {
+    fetch("/cms/api/cases/{{ case.id }}/hierarchy").then(r => r.json()).then(data => {
         document.getElementById('currentParent').innerHTML = data.parent 
             ? `<a href="/cms/cases/${data.parent.id}">${data.parent.case_number}: ${data.parent.title}</a>` 
             : '<span style="color: var(--text-muted);">No parent case</span>';
+    }).catch(() => {
+        document.getElementById('currentParent').innerHTML = '<span style="color: var(--text-muted);">No parent case</span>';
     });
 }
 function searchParentCases() {
     const q = document.getElementById('parentSearchInput').value;
     if (q.length < 2) { document.getElementById('parentSearchResults').innerHTML = '<p style="color: var(--text-muted);">Type to search...</p>'; return; }
-    fetch("{{ url_for('cms.search_cases') }}?q=" + encodeURIComponent(q)).then(r => r.json()).then(data => {
+    fetch("/cms/api/cases/search?q=" + encodeURIComponent(q)).then(r => r.json()).then(data => {
         let html = '';
-        (data.cases || []).forEach(c => {
+        (data.results || []).forEach(c => {
             if (c.id != {{ case.id }}) html += `<div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
                 <a href="#" onclick="setParentCase(${c.id}); return false;">${c.case_number}: ${c.title}</a>
             </div>`;
@@ -871,27 +873,29 @@ function searchParentCases() {
     });
 }
 function setParentCase(parentId) {
-    fetch("{{ url_for('cms.set_case_parent', case_id=case.id) }}", {
+    fetch("/cms/cases/{{ case.id }}/set-parent", {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent_id: parentId })
     }).then(r => r.json()).then(data => { if (data.error) alert(data.error); else { alert('Parent case set'); closeHierarchyModal(); location.reload(); } })
         .catch(err => alert('Failed: ' + err.message));
 }
 
-// Audit Log
+// Audit Log - Load from API
 function loadAuditLog() {
-    fetch("{{ url_for('cms.get_case_audit_log', case_id=case.id) }}").then(r => r.json()).then(data => {
+    fetch("/cms/api/cases/{{ case.id }}/audit-log").then(r => r.json()).then(data => {
         let html = '';
         (data.logs || []).slice(0, 20).forEach(log => {
             html += `<div style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">
                 <div style="display: flex; justify-content: space-between;">
-                    <span style="font-weight: 500; color: var(--text-primary);">${log.action}</span>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">${log.created_at}</span>
+                    <span style="font-weight: 500; color: var(--text-primary);">${log.action || log.description || 'Activity'}</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">${log.created_at || ''}</span>
                 </div>
-                <div style="font-size: 0.85rem; color: var(--text-secondary);">${log.user}</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">${log.user || 'System'}</div>
             </div>`;
         });
         document.getElementById('auditLogList').innerHTML = html || '<p style="color: var(--text-muted);">No activity yet.</p>';
-    }).catch(() => { document.getElementById('auditLogList').innerHTML = '<p style="color: var(--danger-text);">Failed to load activity.</p>'; });
+    }).catch(() => { 
+        document.getElementById('auditLogList').innerHTML = '<p style="color: var(--text-muted);">No activity available.</p>'; 
+    });
 }
 
 // Modal click handlers
