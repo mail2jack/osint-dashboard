@@ -99,7 +99,12 @@
         }
         .header {
             background: var(--bg-header);
-            color: white; padding: 0.75rem 2rem;
+            color: white; 
+            padding: 0.75rem 2rem;
+            padding-top: calc(0.75rem + env(safe-area-inset-top));
+            padding-bottom: calc(0.75rem + env(safe-area-inset-top));
+            padding-left: calc(2rem + env(safe-area-inset-left));
+            padding-right: calc(2rem + env(safe-area-inset-right));
             display: flex; justify-content: space-between; align-items: center;
             position: sticky;
             top: 0;
@@ -108,7 +113,19 @@
         .header a { color: white; text-decoration: none; margin-left: 1.5rem; }
         .header .nav-active { font-weight: bold; border-bottom: 2px solid white; padding-bottom: 2px; }
         .header a:hover { opacity: 0.8; }
-        .container { max-width: 1400px; margin: 1.5rem auto; padding: 0 1rem; }
+        .container { max-width: 1400px; margin: 1.5rem auto; padding: 0 1rem; padding-left: calc(1rem + env(safe-area-inset-left)); }
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 0.5rem 1rem;
+                padding-top: calc(0.5rem + env(safe-area-inset-top));
+                padding-bottom: calc(0.5rem + env(safe-area-inset-top));
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            .header a { margin-left: 1rem; font-size: 0.9rem; }
+            .header > div:last-child { font-size: 0.85rem; }
+        }
         h1 { color: var(--text-primary); }
         h2 { color: var(--text-primary); margin-bottom: 1rem; }
         .form-group { margin-bottom: 1rem; }
@@ -170,6 +187,8 @@
         
         .keyboard-hint {
             position: fixed; bottom: 1rem; right: 1rem;
+            bottom: calc(1rem + env(safe-area-inset-bottom));
+            right: calc(1rem + env(safe-area-inset-right));
             background: var(--bg-card);
             color: var(--text-secondary);
             padding: 0.5rem 1rem; border-radius: 8px;
