@@ -428,11 +428,8 @@
     }
     
     function openAddRelationForm() {
-        console.log('openAddRelationForm called');
         const form = document.getElementById('addRelationForm');
         const select = document.getElementById('relationSubject');
-        console.log('Form element:', form);
-        console.log('Select element:', select);
         
         if (!form || !select) {
             alert('Form elements not found!');
@@ -443,25 +440,16 @@
         select.innerHTML = '<option value="">Loading...</option>';
         
         fetch("{{ url_for('cms.subjects') }}?format=json")
-        .then(r => {
-            console.log('Fetch response:', r.status);
-            return r.json();
-        })
+        .then(r => r.json())
         .then(data => {
-            console.log('Subjects data:', data);
-            console.log('Current subject id: {{ subject.id }}');
             select.innerHTML = '<option value="">Select a subject...</option>';
-            let count = 0;
             (data.subjects || []).forEach(s => {
                 if (s.id !== '{{ subject.id }}') {
                     select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
-                    count++;
                 }
             });
-            console.log('Options added:', count);
         })
         .catch(err => {
-            console.error('Error loading subjects:', err);
             select.innerHTML = '<option value="">Error loading</option>';
         });
     }
@@ -469,11 +457,8 @@
     function closeAddRelationForm() { document.getElementById('addRelationForm').style.display = 'none'; }
     
     function addRelationship() {
-        console.log('addRelationship called');
         const relatedId = document.getElementById('relationSubject').value;
         const relType = document.getElementById('relationType').value;
-        console.log('relatedId:', relatedId);
-        console.log('relType:', relType);
         if (!relatedId) return alert('Select a subject');
         
         fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
