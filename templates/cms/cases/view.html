@@ -1367,14 +1367,23 @@
         
         function openAddScreenshotModal(url = '') {
             document.getElementById('addScreenshotModal').classList.add('show');
-            document.getElementById('screenshotUrl').value = url || '';
-            document.getElementById('screenshotFile').value = '';
+            
+            // Reset all form elements
+            const uploadBtn = document.getElementById('uploadBtn');
+            const status = document.getElementById('screenshotStatus');
+            const fileInput = document.getElementById('screenshotFile');
+            
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Save Screenshot';
+            status.textContent = '';
+            status.style.color = '';
+            fileInput.value = '';
             document.getElementById('screenshotPreview').style.display = 'none';
-            document.getElementById('screenshotStatus').textContent = '';
+            document.getElementById('screenshotUrl').value = url || '';
             currentScreenshotUrl = url || '';
             
             // Setup file input change listener for preview
-            document.getElementById('screenshotFile').onchange = function(e) {
+            fileInput.onchange = function(e) {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
