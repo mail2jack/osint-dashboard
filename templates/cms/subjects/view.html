@@ -449,10 +449,16 @@
         })
         .then(data => {
             console.log('Subjects data:', data);
+            console.log('Current subject id: {{ subject.id }}');
             select.innerHTML = '<option value="">Select a subject...</option>';
+            let count = 0;
             (data.subjects || []).forEach(s => {
-                if (s.id !== '{{ subject.id }}') select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
+                if (s.id !== '{{ subject.id }}') {
+                    select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
+                    count++;
+                }
             });
+            console.log('Options added:', count);
         })
         .catch(err => {
             console.error('Error loading subjects:', err);
