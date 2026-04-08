@@ -675,11 +675,15 @@
         document.getElementById('osintSearching').style.display = 'block';
         document.getElementById('osintError').style.display = 'none';
         
+        {% if first_case_id %}
         fetch("{{ url_for('cms.start_osint_search', case_id=first_case_id) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name })
         })
+        {% else %}
+        showOsintError('This subject is not linked to any case. Link the subject to a case first.');
+        {% endif %}
         .then(r => r.json())
         .then(data => {
             if (data.error) {
