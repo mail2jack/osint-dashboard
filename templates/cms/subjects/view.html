@@ -529,8 +529,18 @@
         const dorksResults = results.dorks_results || [];
         const searchLinks = results.search_links || [];
         
+        const braveCount = results.brave_results_count || 0;
+        const ddgCount = results.ddg_results_count || 0;
+        let sourceInfo = '';
+        if (braveCount > 0 || ddgCount > 0) {
+            sourceInfo = `<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem;">Brave: ${braveCount}</span>`;
+            if (ddgCount > 0) {
+                sourceInfo += `<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem;">DDG: ${ddgCount}</span>`;
+            }
+        }
+        
         const totalCount = dorksResults.length + searchLinks.length;
-        document.getElementById('resultsCount').textContent = `${totalCount} results found`;
+        document.getElementById('resultsCount').innerHTML = `${totalCount} results found${sourceInfo}`;
         
         const resultsList = document.getElementById('resultsList');
         resultsList.innerHTML = '';
@@ -545,6 +555,7 @@
             'files': 'Documents',
             'public_records': 'Public Records',
             'news': 'News',
+            'people_search': 'People Search',
             'general': 'Other',
             'search': 'Search Links'
         };
@@ -564,9 +575,12 @@
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
+                const sourceBadge = item.source === 'brave' ? '<span style="background: #f97316; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">Brave</span>' : 
+                                     item.source === 'duckduckgo' ? '<span style="background: #25D366; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">DDG</span>' : '';
                 div.innerHTML = `
                     <div class="result-content">
-                        <div class="result-engine">${item.domain || 'Unknown'}</div>
+                        <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
+                        ${item.query ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">${item.query}</div>` : ''}
                         <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
                     </div>
                 `;

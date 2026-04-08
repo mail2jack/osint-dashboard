@@ -861,25 +861,41 @@
             document.getElementById('osintSearching').style.display = 'none';
             document.getElementById('osintResults').style.display = 'block';
             
-            const categories = results.categories || {};
+            const dorksResults = results.dorks_results || [];
             const searchLinks = results.search_links || [];
             
-            let totalDorks = 0;
-            for (const cat in categories) {
-                totalDorks += (categories[cat] || []).length;
+            currentResults = results;
+            
+            // Show source summary
+            const sourceSummary = results.source_summary || {};
+            const braveCount = results.brave_results_count || 0;
+            const ddgCount = results.ddg_results_count || 0;
+            let sourceInfo = '';
+            if (braveCount > 0 || ddgCount > 0) {
+                sourceInfo = `<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">Brave: ${braveCount}</span>`;
+                if (ddgCount > 0) {
+                    sourceInfo += `<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">DDG: ${ddgCount}</span>`;
+                }
             }
             
-            currentResults = results;
-            document.getElementById('resultsCount').textContent = (totalDorks + searchLinks.length) + ' results found';
+            document.getElementById('resultsCount').innerHTML = (dorksResults.length + searchLinks.length) + ' results found' + sourceInfo;
             
             const resultsList = document.getElementById('resultsList');
             resultsList.innerHTML = '';
             
-            if (totalDorks === 0 && searchLinks.length === 0) {
+            if (dorksResults.length === 0 && searchLinks.length === 0) {
                 resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found.</p>';
                 updateSelectedCount();
                 return;
             }
+            
+            // Group dork results by category
+            const categories = {};
+            dorksResults.forEach(item => {
+                const cat = item.category || 'general';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(item);
+            });
             
             const categoryLabels = {
                 'social_media': 'Social Media',
@@ -901,10 +917,12 @@
                 items.forEach((item) => {
                     const div = document.createElement('div');
                     div.className = 'result-item';
+                    const sourceBadge = item.source === 'brave' ? '<span style="background: #f97316; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">Brave</span>' : 
+                                         item.source === 'duckduckgo' ? '<span style="background: #25D366; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">DDG</span>' : '';
                     div.innerHTML = `
-                        <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" onchange="updateSelectedCount()">
+                        <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" data-source="${item.source || ''}" onchange="updateSelectedCount()">
                         <div class="result-content">
-                            <div class="result-engine">${item.domain || 'Unknown'}</div>
+                            <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
                             ${item.query ? `<div class="result-query" style="font-size: 0.75rem; color: #666;">${item.query}</div>` : ''}
                             <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
                         </div>
