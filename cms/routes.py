@@ -3575,11 +3575,11 @@ def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
     
     try:
         # Generate thumbnail on the fly
-        img = Image.open(filepath)
-        img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+        with Image.open(filepath) as img:
+            img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+            thumb_io = io.BytesIO()
+            img.save(thumb_io, format='PNG')
         
-        thumb_io = io.BytesIO()
-        img.save(thumb_io, format='PNG')
         thumb_io.seek(0)
         
         return send_file(
