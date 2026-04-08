@@ -3339,6 +3339,7 @@ def add_osint_findings(case_id: str):
 import io
 from PIL import Image
 
+UPLOAD_FOLDER = 'uploads'
 SCREENSHOT_FOLDER = 'screenshots'
 
 def get_screenshot_path(case_id: str, filename: str = None) -> str:
@@ -3544,12 +3545,15 @@ def capture_screenshot(case_id: str):
 @case_access_required
 def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
     """Get a thumbnail version of a screenshot."""
-    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first_or_404()
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
+    
+    if not screenshot:
+        return '', 404
     
     filepath = get_screenshot_path(case_id, screenshot.filename)
     
     if not os.path.exists(filepath):
-        return jsonify({'error': 'Screenshot not found'}), 404
+        return '', 404
     
     try:
         # Generate thumbnail on the fly
@@ -3567,7 +3571,8 @@ def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
             download_name=f"thumb_{screenshot.filename}"
         )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Thumbnail error: {e}")
+        return '', 500
 
 
 @cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>/view')
@@ -3575,12 +3580,15 @@ def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
 @case_access_required
 def view_screenshot(case_id: str, screenshot_id: str):
     """View the full screenshot."""
-    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first_or_404()
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
+    
+    if not screenshot:
+        return '', 404
     
     filepath = get_screenshot_path(case_id, screenshot.filename)
     
     if not os.path.exists(filepath):
-        return jsonify({'error': 'Screenshot not found'}), 404
+        return '', 404
     
     return send_file(
         filepath,
@@ -3595,7 +3603,11 @@ def view_screenshot(case_id: str, screenshot_id: str):
 @case_access_required
 def get_screenshot(case_id: str, screenshot_id: str):
     """Get screenshot details."""
-    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first_or_404()
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
+    
+    if not screenshot:
+        return jsonify({'error': 'Screenshot not found'}), 404
+    
     return jsonify(screenshot.to_dict())
 
 
