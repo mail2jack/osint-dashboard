@@ -1370,7 +1370,8 @@
         }
         
         function previewUrl() {
-            const url = document.getElementById('screenshotUrl').value.trim();
+            const urlInput = document.getElementById('screenshotUrl');
+            let url = urlInput.value.trim();
             if (!url) {
                 alert('Please enter a URL');
                 return;
@@ -1379,19 +1380,62 @@
             // Validate URL
             if (!url.startsWith('http://') && !url.startsWith('https://')) {
                 url = 'https://' + url;
-                document.getElementById('screenshotUrl').value = url;
+                urlInput.value = url;
             }
             
             currentScreenshotUrl = url;
+            
+            // Try to show iframe preview first
             document.getElementById('screenshotPreview').innerHTML = `
-                <div style="text-align: center; padding: 2rem;">
-                    <p style="color: #888; margin-bottom: 1rem;">Preview for:</p>
-                    <a href="${url}" target="_blank" style="color: #3b82f6; word-break: break-all;">${url}</a>
-                    <p style="color: #666; margin-top: 1rem; font-size: 0.875rem;">Click the link to verify in a new tab</p>
-                    <p style="color: #f59e0b; margin-top: 1rem; font-size: 0.875rem;">Note: Social media sites (Facebook, Twitter, etc.) may block iframe preview.</p>
+                <div style="position: relative; width: 100%; height: 100%; min-height: 400px;">
+                    <iframe id="previewIframe" src="${url}" 
+                        style="width: 100%; height: 100%; border: none; min-height: 400px;"
+                        sandbox="allow-scripts allow-same-origin allow-forms"
+                        onload="iframeLoaded()"
+                        onerror="iframeError()">
+                    </iframe>
+                    <div id="iframeFallback" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888;">
+                        <p style="margin-bottom: 1rem;">This site blocks iframe preview</p>
+                        <a href="${url}" target="_blank" style="color: #3b82f6; margin-bottom: 1rem;">Open in new tab</a>
+                        <p style="font-size: 0.75rem; color: #666;">You can still capture a screenshot below</p>
+                    </div>
                 </div>
             `;
+            
+            // Set timeout to show fallback if iframe doesn't load
+            window.previewTimeout = setTimeout(() => {
+                const iframe = document.getElementById('previewIframe');
+                if (iframe && iframe.style.display !== 'none') {
+                    showIframeFallback();
+                }
+            }, 5000);
+            
             document.getElementById('captureBtn').disabled = false;
+        }
+        
+        function iframeLoaded() {
+            clearTimeout(window.previewTimeout);
+            // Try to check if content loaded
+            try {
+                const iframe = document.getElementById('previewIframe');
+                if (iframe && iframe.contentDocument && iframe.contentDocument.body.innerHTML.length < 100) {
+                    showIframeFallback();
+                }
+            } catch (e) {
+                // Cross-origin, can't check - assume blocked
+            }
+        }
+        
+        function iframeError() {
+            clearTimeout(window.previewTimeout);
+            showIframeFallback();
+        }
+        
+        function showIframeFallback() {
+            const iframe = document.getElementById('previewIframe');
+            const fallback = document.getElementById('iframeFallback');
+            if (iframe) iframe.style.display = 'none';
+            if (fallback) fallback.style.display = 'flex';
         }
         
         function captureScreenshot() {
