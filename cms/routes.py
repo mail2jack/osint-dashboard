@@ -3332,6 +3332,197 @@ def add_osint_findings(case_id: str):
 
 
 # =============================================================================
+# Screenshot Routes
+# =============================================================================
+
+import io
+from PIL import Image
+
+SCREENSHOT_FOLDER = 'screenshots'
+
+def get_screenshot_path(case_id: str, filename: str = None) -> str:
+    """Get the path for screenshot storage."""
+    base_path = os.path.join(current_app.root_path, 'static', UPLOAD_FOLDER, 'cases', case_id, SCREENSHOT_FOLDER)
+    if filename:
+        return os.path.join(base_path, filename)
+    return base_path
+
+
+@cms_bp.route('/cases/<case_id>/screenshots')
+@login_required
+@case_access_required
+def list_screenshots(case_id: str):
+    """List all screenshots for a case."""
+    case = Case.query.get_or_404(case_id)
+    screenshots = Screenshot.query.filter_by(case_id=case_id).order_by(Screenshot.created_at.desc()).all()
+    
+    return jsonify({
+        'screenshots': [s.to_dict() for s in screenshots],
+        'count': len(screenshots)
+    })
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/capture', methods=['POST'])
+@login_required
+@case_access_required
+@case_edit_required
+def capture_screenshot(case_id: str):
+    """
+    Capture a screenshot of a URL and save it.
+    Note: This requires Playwright or similar to be installed.
+    For now, this returns an error indicating the feature needs setup.
+    """
+    case = Case.query.get_or_404(case_id)
+    data = request.get_json()
+    
+    if not data or not data.get('url'):
+        return jsonify({'error': 'URL is required'}), 400
+    
+    url = data.get('url')
+    title = data.get('title', '')
+    
+    # Create screenshot directory
+    screenshot_dir = get_screenshot_path(case_id)
+    os.makedirs(screenshot_dir, exist_ok=True)
+    
+    # Generate unique filename
+    screenshot_id = str(uuid.uuid4())
+    filename = f"{screenshot_id}.png"
+    filepath = os.path.join(screenshot_dir, filename)
+    
+    try:
+        # Try to use Playwright for screenshot capture
+        try:
+            from playwright.sync_api import sync_playwright
+            
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page(viewport={'width': 1280, 'height': 720})
+                page.goto(url, wait_until='networkidle', timeout=30000)
+                page.wait_for_timeout(2000)  # Extra wait for dynamic content
+                page.screenshot(path=filepath, full_page=False)
+                
+                # Get page title if not provided
+                if not title:
+                    title = page.title()[:300]
+                
+                browser.close()
+            
+            file_size = os.path.getsize(filepath)
+            
+        except ImportError:
+            # Playwright not installed - try selenium as fallback
+            return jsonify({
+                'error': 'Screenshot capture not available. No screenshot library installed.',
+                'setup_required': True,
+                'message': 'Install playwright: pip install playwright && playwright install chromium'
+            }), 503
+            
+        except Exception as e:
+            return jsonify({
+                'error': f'Failed to capture screenshot: {str(e)}',
+                'setup_required': False
+            }), 500
+        
+        # Create database record
+        screenshot = Screenshot(
+            id=screenshot_id,
+            case_id=case_id,
+            url=url,
+            filename=filename,
+            title=title,
+            file_size=file_size,
+            created_by=current_user.id
+        )
+        
+        db.session.add(screenshot)
+        
+        # Log the action
+        AuditLog.log(
+            user_id=current_user.id,
+            action='create',
+            entity_type='screenshot',
+            entity_id=screenshot_id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Captured screenshot from: {url}"
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Screenshot captured successfully',
+            'screenshot': screenshot.to_dict()
+        }), 201
+        
+    except Exception as e:
+        # Clean up file if database insert failed
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({'error': str(e)}), 500
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>/thumbnail')
+@login_required
+@case_access_required
+def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
+    """Get a thumbnail version of a screenshot."""
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first_or_404()
+    
+    filepath = get_screenshot_path(case_id, screenshot.filename)
+    
+    if not os.path.exists(filepath):
+        return jsonify({'error': 'Screenshot not found'}), 404
+    
+    try:
+        # Generate thumbnail on the fly
+        img = Image.open(filepath)
+        img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+        
+        thumb_io = io.BytesIO()
+        img.save(thumb_io, format='PNG')
+        thumb_io.seek(0)
+        
+        return send_file(
+            thumb_io,
+            mimetype='image/png',
+            as_attachment=False,
+            download_name=f"thumb_{screenshot.filename}"
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>/view')
+@login_required
+@case_access_required
+def view_screenshot(case_id: str, screenshot_id: str):
+    """View the full screenshot."""
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first_or_404()
+    
+    filepath = get_screenshot_path(case_id, screenshot.filename)
+    
+    if not os.path.exists(filepath):
+        return jsonify({'error': 'Screenshot not found'}), 404
+    
+    return send_file(
+        filepath,
+        mimetype='image/png',
+        as_attachment=False,
+        download_name=screenshot.title or screenshot.filename
+    )
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>')
+@login_required
+@case_access_required
+def get_screenshot(case_id: str, screenshot_id: str):
+    """Get screenshot details."""
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first_or_404()
+    return jsonify(screenshot.to_dict())
+
+
+# =============================================================================
 # Document Upload Routes
 # =============================================================================
 

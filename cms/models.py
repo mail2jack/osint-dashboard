@@ -798,6 +798,62 @@ class Finding(db.Model):
 
 
 # =============================================================================
+# Screenshot Model
+# =============================================================================
+
+class Screenshot(db.Model):
+    """
+    Screenshots captured from URLs for case documentation.
+    """
+    __tablename__ = 'screenshots'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    case_id = db.Column(db.String(36), db.ForeignKey('cases.id'), nullable=False)
+    
+    url = db.Column(db.String(500), nullable=False)  # Source URL
+    filename = db.Column(db.String(255), nullable=False)  # Stored filename
+    original_filename = db.Column(db.String(255))  # Original name if provided
+    title = db.Column(db.String(300))  # Optional title
+    
+    # Dimensions
+    width = db.Column(db.Integer)
+    height = db.Column(db.Integer)
+    
+    # File info
+    file_size = db.Column(db.Integer)  # Size in bytes
+    
+    # Optional extracted data (e.g., social media IDs)
+    extracted_data = db.Column(db.JSON)
+    
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    case = db.relationship('Case', backref='screenshots')
+    creator = db.relationship('User', foreign_keys=[created_by])
+    
+    def to_dict(self) -> dict:
+        """Serialize screenshot."""
+        return {
+            'id': self.id,
+            'case_id': self.case_id,
+            'url': self.url,
+            'filename': self.filename,
+            'original_filename': self.original_filename,
+            'title': self.title,
+            'width': self.width,
+            'height': self.height,
+            'file_size': self.file_size,
+            'extracted_data': self.extracted_data,
+            'created_by': self.created_by,
+            'creator_name': self.creator.full_name if self.creator else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'thumbnail_url': f'/cms/cases/{self.case_id}/screenshots/{self.id}/thumbnail',
+            'full_url': f'/cms/cases/{self.case_id}/screenshots/{self.id}/view'
+        }
+
+
+# =============================================================================
 # Audit Log Model
 # =============================================================================
 

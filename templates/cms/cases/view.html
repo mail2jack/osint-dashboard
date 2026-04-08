@@ -424,6 +424,71 @@
         </div>
     </div>
     
+    <!-- Screenshots Section -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Screenshots (<span id="screenshotCount">0</span>)</h2>
+            <button onclick="openCaptureScreenshotModal()" class="btn btn-sm" style="background: #7c3aed;">+ Capture Screenshot</button>
+        </div>
+        
+        <div id="screenshotsGallery">
+            <p style="color: #666;">Loading screenshots...</p>
+        </div>
+    </div>
+    
+    <!-- Capture Screenshot Modal -->
+    <div id="captureScreenshotModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; background: #1a1a2e;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0; color: white;">Capture Screenshot</h2>
+                <span onclick="closeCaptureScreenshotModal()" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <input type="url" id="screenshotUrl" placeholder="Enter URL to capture (e.g., https://facebook.com/user)" 
+                       style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 4px; background: #2a2a4e; color: white; font-size: 1rem;">
+            </div>
+            
+            <!-- Painting Frame Container -->
+            <div style="background: linear-gradient(135deg, #d4a574 0%, #c4956a 50%, #b8845a 100%); padding: 20px; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+                <div style="background: linear-gradient(145deg, #f5f5f0 0%, #e8e8e0 100%); padding: 15px; border: 2px solid #8b7355; box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);">
+                    <div id="screenshotPreview" style="background: #333; min-height: 400px; display: flex; align-items: center; justify-content: center; border: 1px solid #555;">
+                        <p style="color: #888; text-align: center;">Enter a URL above and click "Preview" to see a preview</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end;">
+                <button onclick="previewUrl()" class="btn btn-sm" style="background: #f59e0b;">Preview</button>
+                <button onclick="captureScreenshot()" id="captureBtn" class="btn btn-sm" style="background: #059669;" disabled>Capture Screenshot</button>
+                <button onclick="closeCaptureScreenshotModal()" class="btn btn-sm" style="background: #666;">Close</button>
+            </div>
+            
+            <div id="screenshotStatus" style="margin-top: 0.5rem; text-align: center;"></div>
+        </div>
+    </div>
+    
+    <!-- View Screenshot Modal -->
+    <div id="viewScreenshotModal" class="modal">
+        <div class="modal-content" style="max-width: 95%; background: #1a1a2e; padding: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 id="viewScreenshotTitle" style="margin: 0; color: white;"></h2>
+                <span onclick="closeViewScreenshotModal()" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #d4a574 0%, #c4956a 50%, #b8845a 100%); padding: 25px; border-radius: 4px; box-shadow: 0 10px 50px rgba(0,0,0,0.6);">
+                <div style="background: linear-gradient(145deg, #f5f5f0 0%, #e8e8e0 100%); padding: 20px; border: 2px solid #8b7355;">
+                    <img id="viewScreenshotImage" src="" style="max-width: 100%; display: block; margin: 0 auto;">
+                </div>
+            </div>
+            
+            <div style="margin-top: 1rem; text-align: center;">
+                <a id="viewScreenshotLink" href="#" target="_blank" class="btn btn-sm" style="background: #3b82f6;">Open Original URL</a>
+                <button onclick="closeViewScreenshotModal()" class="btn btn-sm" style="background: #666;">Close</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Upload Modal -->
     <div id="uploadModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
@@ -1233,6 +1298,159 @@
                 }
             });
         }
+        
+        // Screenshot Functions
+        let currentScreenshotUrl = '';
+        
+        function loadScreenshots() {
+            fetch("{{ url_for('cms.list_screenshots', case_id=case.id) }}")
+            .then(r => r.json())
+            .then(data => {
+                displayScreenshots(data.screenshots);
+                document.getElementById('screenshotCount').textContent = data.count;
+            })
+            .catch(() => {
+                document.getElementById('screenshotsGallery').innerHTML = '<p style="color: #dc2626;">Failed to load screenshots</p>';
+            });
+        }
+        
+        function displayScreenshots(screenshots) {
+            const gallery = document.getElementById('screenshotsGallery');
+            
+            if (!screenshots || screenshots.length === 0) {
+                gallery.innerHTML = '<p style="color: #666;">No screenshots captured yet.</p>';
+                return;
+            }
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem;">';
+            
+            screenshots.forEach(s => {
+                html += `
+                    <div style="background: #f5f5f5; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s;" 
+                         onclick="viewScreenshot('${s.id}', '${s.title || s.url}', '${s.url}')">
+                        <img src="${s.thumbnail_url}" alt="${s.title || 'Screenshot'}" 
+                             style="width: 100%; height: 120px; object-fit: cover; display: block;"
+                             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 fill=%22%23666%22 text-anchor=%22middle%22 font-size=%2212%22>No preview</text></svg>'">
+                        <div style="padding: 0.5rem;">
+                            <div style="font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.title || 'Screenshot'}</div>
+                            <div style="font-size: 0.65rem; color: #999;">${s.creator_name || 'Unknown'} - ${new Date(s.created_at).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            gallery.innerHTML = html;
+        }
+        
+        function openCaptureScreenshotModal() {
+            document.getElementById('captureScreenshotModal').classList.add('show');
+            document.getElementById('screenshotUrl').value = '';
+            document.getElementById('screenshotPreview').innerHTML = '<p style="color: #888; text-align: center;">Enter a URL above and click "Preview" to see a preview</p>';
+            document.getElementById('captureBtn').disabled = true;
+            document.getElementById('screenshotStatus').textContent = '';
+            currentScreenshotUrl = '';
+        }
+        
+        function closeCaptureScreenshotModal() {
+            document.getElementById('captureScreenshotModal').classList.remove('show');
+        }
+        
+        function previewUrl() {
+            const url = document.getElementById('screenshotUrl').value.trim();
+            if (!url) {
+                alert('Please enter a URL');
+                return;
+            }
+            
+            // Validate URL
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+                document.getElementById('screenshotUrl').value = url;
+            }
+            
+            currentScreenshotUrl = url;
+            document.getElementById('screenshotPreview').innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <p style="color: #888; margin-bottom: 1rem;">Preview for:</p>
+                    <a href="${url}" target="_blank" style="color: #3b82f6; word-break: break-all;">${url}</a>
+                    <p style="color: #666; margin-top: 1rem; font-size: 0.875rem;">Click the link to verify in a new tab</p>
+                    <p style="color: #f59e0b; margin-top: 1rem; font-size: 0.875rem;">Note: Social media sites (Facebook, Twitter, etc.) may block iframe preview.</p>
+                </div>
+            `;
+            document.getElementById('captureBtn').disabled = false;
+        }
+        
+        function captureScreenshot() {
+            if (!currentScreenshotUrl) {
+                alert('Please enter a URL first');
+                return;
+            }
+            
+            const captureBtn = document.getElementById('captureBtn');
+            const status = document.getElementById('screenshotStatus');
+            
+            captureBtn.disabled = true;
+            captureBtn.textContent = 'Capturing...';
+            status.textContent = 'Capturing screenshot...';
+            status.style.color = '#888';
+            
+            fetch("{{ url_for('cms.capture_screenshot', case_id=case.id) }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: currentScreenshotUrl })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    status.textContent = 'Error: ' + data.error;
+                    status.style.color = '#dc2626';
+                    captureBtn.disabled = false;
+                    captureBtn.textContent = 'Capture Screenshot';
+                    
+                    if (data.setup_required) {
+                        status.textContent = 'Screenshot feature requires setup: ' + data.message;
+                    }
+                } else {
+                    status.textContent = 'Screenshot captured successfully!';
+                    status.style.color = '#10b981';
+                    
+                    setTimeout(() => {
+                        closeCaptureScreenshotModal();
+                        loadScreenshots();
+                    }, 1500);
+                }
+            })
+            .catch(err => {
+                status.textContent = 'Failed: ' + err.message;
+                status.style.color = '#dc2626';
+                captureBtn.disabled = false;
+                captureBtn.textContent = 'Capture Screenshot';
+            });
+        }
+        
+        function viewScreenshot(id, title, url) {
+            document.getElementById('viewScreenshotTitle').textContent = title || 'Screenshot';
+            document.getElementById('viewScreenshotLink').href = url;
+            document.getElementById('viewScreenshotImage').src = `/cms/cases/{{ case.id }}/screenshots/${id}/view`;
+            document.getElementById('viewScreenshotModal').classList.add('show');
+        }
+        
+        function closeViewScreenshotModal() {
+            document.getElementById('viewScreenshotModal').classList.remove('show');
+            document.getElementById('viewScreenshotImage').src = '';
+        }
+        
+        // Load screenshots on page load
+        loadScreenshots();
+        
+        document.getElementById('captureScreenshotModal').addEventListener('click', function(e) {
+            if (e.target === this) closeCaptureScreenshotModal();
+        });
+        
+        document.getElementById('viewScreenshotModal').addEventListener('click', function(e) {
+            if (e.target === this) closeViewScreenshotModal();
+        });
         
         document.getElementById('uploadModal').addEventListener('click', function(e) {
             if (e.target === this) closeUploadModal();
