@@ -2341,6 +2341,15 @@ def person_dorks_search(full_name):
     
     logger.info(f"Dorks search started for: {full_name}")
     
+    # Log to dorks_log.txt
+    dorks_log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dorks_log.txt')
+    log_start = f"\n=== {datetime.now()} - Dorks search: {full_name} ===\n"
+    try:
+        with open(dorks_log_file, 'a') as f:
+            f.write(log_start)
+    except Exception:
+        pass
+    
     # Search links (direct links to search engines)
     search_query = quote(f'"{first_name}" "{last_name}"')
     search_links = [
@@ -2428,49 +2437,66 @@ def person_dorks_search(full_name):
     
     # Try Brave Search API first
     brave_success = False
+    
+    def log_ddg(msg):
+        try:
+            with open(dorks_log_file, 'a') as f:
+                f.write(msg + '\n')
+                f.flush()  # Force write immediately
+        except Exception:
+            pass
+    
     if BRAVE_API_KEY:
         logger.info("Using Brave Search API")
         results['sources_used'].append('brave')
         
-        for query in dork_queries[:10]:
+        log_ddg(f"Using Brave Search API (key configured)")
+        
+        for query in dork_queries[:6]:  # Reduced from 10 to 6
             results['queries_run'].append(query)
             try:
                 brave_results = brave_search(query, BRAVE_API_KEY)
+                log_ddg(f"Brave Query: {query}")
+                log_ddg(f"  Brave found {len(brave_results)} results")
                 if brave_results:
                     brave_success = True
                     for item in brave_results:
                         add_result(item.get('url', ''), query, 'brave')
-                time.sleep(0.2)
+                time.sleep(0.15)
             except Exception as e:
+                log_ddg(f"  Brave error: {str(e)}")
                 logger.warning(f"Brave search error: {e}")
+    else:
+        log_ddg("Brave API key not configured - skipping Brave search")
     
     # DuckDuckGo fallback - try multiple methods
     ddg_success = False
     if not brave_success or not results['dorks_results']:
         logger.info("Trying DuckDuckGo scraping methods")
+        log_ddg(f"Trying DuckDuckGo scraping...")
         
         # Method 1: Try DuckDuckGo Lite (simpler, less blocked)
         ddg_methods = [
-            {'name': 'duckduckgo_lite', 'url': 'https://lite.duckduckgo.com/50x.html', 'params': {'q': ''}},
-            {'name': 'duckduckgo_html', 'url': 'https://html.duckduckgo.com/html/', 'params': {'q': ''}},
-            {'name': 'duckduckgo_classic', 'url': 'https://duckduckgo.com/html/', 'params': {'q': ''}},
+            {'name': 'duckduckgo_lite', 'url': 'https://lite.duckduckgo.com/50x.html'},
+            {'name': 'duckduckgo_html', 'url': 'https://html.duckduckgo.com/html/'},
         ]
         
         for method in ddg_methods:
-            if results['dorks_results'] and results['brave_results_count'] > 5:
+            if ddg_success and results['ddg_results_count'] > 5:
+                break  # Stop if we have enough results
+            if results['brave_results_count'] > 5:
                 break  # Stop if we have enough results from Brave
             
             try:
-                client = httpx.Client(timeout=12.0, follow_redirects=True, headers={
+                client = httpx.Client(timeout=6.0, follow_redirects=True, headers={
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                     'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate',
                     'Connection': 'keep-alive',
                 })
                 
-                for query in dork_queries[:8]:
-                    if ddg_success and results['ddg_results_count'] > 10:
+                for query in dork_queries[:5]:  # Reduced from 8 to 5
+                    if ddg_success and results['ddg_results_count'] > 5:
                         break
                     
                     results['queries_run'].append(query)
@@ -2479,32 +2505,22 @@ def person_dorks_search(full_name):
                     
                     try:
                         response = client.get(method_url, params=params)
+                        log_ddg(f"DDG Query: {query}")
+                        log_ddg(f"  Status: {response.status_code}")
                         
                         if response.status_code == 200 and response.text:
                             found_count = 0
                             
                             if 'duckduckgo_lite' in method['name']:
-                                # Parse DuckDuckGo Lite format
                                 links = re.findall(r'<a rel="nofollow" href="(https?://[^"]+)"', response.text)
-                                for link in links[:15]:
+                                for link in links[:10]:
                                     add_result(link, query, 'duckduckgo')
                                     found_count += 1
                             
                             elif 'duckduckgo_html' in method['name']:
-                                # Parse redirect links
                                 redirect_links = re.findall(r'uddg=(https?%3A%2F%2F[^&"]+)', response.text)
-                                for link in redirect_links[:15]:
+                                for link in redirect_links[:10]:
                                     add_result(unquote(unquote(link)), query, 'duckduckgo')
-                                    found_count += 1
-                            
-                            elif 'duckduckgo_classic' in method['name']:
-                                # Try to find result links
-                                links = re.findall(r'<a class="result__a" href="(https?://[^"]+)"', response.text)
-                                if not links:
-                                    links = re.findall(r'uddg=(https?%3A%2F%2F[^&"]+)', response.text)
-                                    links = [unquote(unquote(l)) for l in links]
-                                for link in links[:15]:
-                                    add_result(link, query, 'duckduckgo')
                                     found_count += 1
                             
                             if found_count > 0:
@@ -2512,14 +2528,16 @@ def person_dorks_search(full_name):
                                 if 'duckduckgo' not in results['sources_used']:
                                     results['sources_used'].append('duckduckgo')
                     
-                    except Exception:
+                    except Exception as e:
+                        log_ddg(f"  Exception: {str(e)}")
                         continue
                     
-                    time.sleep(0.5)
+                    time.sleep(0.3)  # Reduced from 0.5
                 
                 client.close()
                 
-            except Exception:
+            except Exception as e:
+                log_ddg(f"  Method error: {str(e)}")
                 continue
     
     # Build source summary
@@ -2534,6 +2552,8 @@ def person_dorks_search(full_name):
     }
     
     logger.info(f"Search complete: {results['total_results']} results from {results['sources_used']}")
+    
+    log_ddg(f"=== COMPLETE: {results['total_results']} dork results, {len(results['search_links'])} search links ===")
     
     return results
 

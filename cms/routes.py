@@ -3252,19 +3252,61 @@ def add_osint_findings(case_id: str):
     subject_id = data.get('subject_id')
     created_findings = []
     
+    category_labels = {
+        'social_media': 'Social Media',
+        'files': 'Document',
+        'news': 'News',
+        'people_search': 'People Search',
+        'general': 'Website',
+        'search_link': 'Search Link'
+    }
+    
     for result in selected_results:
+        domain = result.get('domain', 'Unknown')
+        query = result.get('query', '')
+        source = result.get('source', '')
+        category = result.get('category', 'general')
+        
+        # Construct meaningful title based on what's available
+        category_label = category_labels.get(category, category.replace('_', ' ').title())
+        
+        if source == 'search_link':
+            # Search links show the engine name
+            title = f"OSINT: {domain} - Search Link"
+        elif query:
+            # Extract key part of query (first 40 chars max)
+            query_short = query[:40] + "..." if len(query) > 40 else query
+            title = f"OSINT: {domain} - {query_short}"
+        else:
+            title = f"OSINT: {domain}"
+        
+        # Create content with full details
+        content_parts = []
+        if query:
+            content_parts.append(f"Search Query: {query}")
+        content_parts.append(f"Source: {source.upper() if source else 'Unknown'}")
+        content_parts.append(f"URL: {result.get('url', 'N/A')}")
+        content = '\n'.join(content_parts)
+        
+        # Build tags
+        tags = ['osint', source.lower() if source else 'unknown']
+        if category:
+            tags.append(category.lower())
+        if domain:
+            tags.append(domain.split('.')[0])  # e.g., 'linkedin' from 'linkedin.com'
+        
         finding = Finding(
             case_id=case_id,
             subject_id=subject_id,
-            title=f"OSINT: {result.get('engine', 'Unknown')} - {result.get('name', 'Search Result')}",
-            content=result.get('query', '') + f"\n\nSource: {result.get('url', 'N/A')}",
+            title=title,
+            content=content,
             source_url=result.get('url', ''),
             source_type='osint',
             finding_type='identity',
             reliability_score=5,
             confidence_level='medium',
             created_by=current_user.id,
-            tags=['osint', result.get('engine', '').lower()]
+            tags=tags
         )
         
         db.session.add(finding)

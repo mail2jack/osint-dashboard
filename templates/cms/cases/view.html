@@ -322,13 +322,30 @@
         </div>
         
         {% if findings %}
-        <table>
+        <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 8px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                <span style="font-weight: 500;">Filter:</span>
+                <input type="text" id="filterTitle" placeholder="Title" onkeyup="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
+                <input type="text" id="filterSubject" placeholder="Subject" onkeyup="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
+                <select id="filterSource" onchange="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Source</option>
+                    <option value="osint">OSINT</option>
+                    <option value="manual">Manual</option>
+                    <option value="document">Document</option>
+                </select>
+                <input type="text" id="filterAddedBy" placeholder="Added By" onkeyup="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100px;">
+                <input type="date" id="filterDate" onchange="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <button onclick="clearFindingFilters()" style="padding: 0.25rem 0.5rem; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Clear</button>
+                <span id="findingCount" style="margin-left: auto; color: #666; font-size: 0.875rem;"></span>
+            </div>
+        </div>
+        <table id="findingsTable">
             <thead>
                 <tr><th>Title</th><th>Subject</th><th>Source</th><th>Added By</th><th>Date</th></tr>
             </thead>
             <tbody>
                 {% for finding in findings %}
-                <tr>
+                <tr data-title="{{ finding.title|lower }}" data-subject="{{ finding.subject.name|lower if finding.subject else '' }}" data-source="{{ finding.source_type|lower }}" data-addedby="{{ finding.author.full_name|lower if finding.author else '' }}" data-date="{{ finding.created_at.strftime('%Y-%m-%d') if finding.created_at else '' }}">
                     <td>
                         {% if finding.source_url %}
                         <a href="{{ finding.source_url }}" target="_blank">{{ finding.title }}</a>
@@ -920,7 +937,7 @@
                     const sourceBadge = item.source === 'brave' ? '<span style="background: #f97316; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">Brave</span>' : 
                                          item.source === 'duckduckgo' ? '<span style="background: #25D366; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">DDG</span>' : '';
                     div.innerHTML = `
-                        <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" data-source="${item.source || ''}" onchange="updateSelectedCount()">
+                        <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || ''}" onchange="updateSelectedCount()">
                         <div class="result-content">
                             <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
                             ${item.query ? `<div class="result-query" style="font-size: 0.75rem; color: #666;">${item.query}</div>` : ''}
@@ -942,7 +959,7 @@
                     const div = document.createElement('div');
                     div.className = 'result-item';
                     div.innerHTML = `
-                        <input type="checkbox" class="result-checkbox" data-domain="${link.engine || ''}" data-url="${link.url}" data-query="${link.query || ''}" onchange="updateSelectedCount()">
+                        <input type="checkbox" class="result-checkbox" data-domain="${link.engine || ''}" data-url="${link.url}" data-query="${link.query || ''}" data-source="search_link" data-category="search_link" onchange="updateSelectedCount()">
                         <div class="result-content">
                             <div class="result-engine">${link.engine || 'Unknown'}</div>
                             ${link.query ? `<div class="result-query" style="font-size: 0.75rem; color: #666;">${link.query}</div>` : ''}
@@ -979,7 +996,9 @@
                 selectedResults.push({
                     url: cb.dataset.url,
                     domain: cb.dataset.domain,
-                    query: cb.dataset.query
+                    query: cb.dataset.query,
+                    source: cb.dataset.source,
+                    category: cb.dataset.category
                 });
             });
             
@@ -1019,6 +1038,58 @@
         document.getElementById('osintModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeOsintModal();
+            }
+        });
+        
+        // Findings Filter Functions
+        function filterFindings() {
+            const titleFilter = document.getElementById('filterTitle').value.toLowerCase();
+            const subjectFilter = document.getElementById('filterSubject').value.toLowerCase();
+            const sourceFilter = document.getElementById('filterSource').value.toLowerCase();
+            const addedByFilter = document.getElementById('filterAddedBy').value.toLowerCase();
+            const dateFilter = document.getElementById('filterDate').value;
+            
+            const rows = document.querySelectorAll('#findingsTable tbody tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const title = row.getAttribute('data-title') || '';
+                const subject = row.getAttribute('data-subject') || '';
+                const source = row.getAttribute('data-source') || '';
+                const addedBy = row.getAttribute('data-addedby') || '';
+                const date = row.getAttribute('data-date') || '';
+                
+                const matchesTitle = title.includes(titleFilter);
+                const matchesSubject = subject.includes(subjectFilter);
+                const matchesSource = sourceFilter === '' || source === sourceFilter;
+                const matchesAddedBy = addedBy.includes(addedByFilter);
+                const matchesDate = dateFilter === '' || date === dateFilter;
+                
+                if (matchesTitle && matchesSubject && matchesSource && matchesAddedBy && matchesDate) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('findingCount').textContent = `Showing ${visibleCount} of ${rows.length}`;
+        }
+        
+        function clearFindingFilters() {
+            document.getElementById('filterTitle').value = '';
+            document.getElementById('filterSubject').value = '';
+            document.getElementById('filterSource').value = '';
+            document.getElementById('filterAddedBy').value = '';
+            document.getElementById('filterDate').value = '';
+            filterFindings();
+        }
+        
+        // Initialize finding count on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const rows = document.querySelectorAll('#findingsTable tbody tr');
+            if (rows.length > 0) {
+                document.getElementById('findingCount').textContent = `Showing ${rows.length} of ${rows.length}`;
             }
         });
         

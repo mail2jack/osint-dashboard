@@ -21,9 +21,15 @@
         </h1>
         <div style="margin-top: 0.5rem;">
             {% if subject.subject_type == 'person' %}
+            {% if first_case_id %}
             <button onclick="openOsintModal()" class="btn-osint" style="border: none; cursor: pointer;">
                 🔍 OSINT Person Search
             </button>
+            {% else %}
+            <button onclick="openOsintModalNoCase()" class="btn-osint" style="border: none; cursor: pointer; opacity: 0.6;" title="Link subject to a case first">
+                🔍 OSINT Person Search
+            </button>
+            {% endif %}
             {% endif %}
         </div>
     </div>
@@ -421,6 +427,10 @@
     function openOsintModal() {
         document.getElementById('osintModal').classList.add('show');
         resetOsintModal();
+    }
+    
+    function openOsintModalNoCase() {
+        alert('This subject is not linked to any case yet.\n\nPlease link this subject to a case first before using OSINT search.\nYou can do this from the Case view.');
     }
     
     function closeOsintModal() {
