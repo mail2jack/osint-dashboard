@@ -25,7 +25,8 @@ from .models import (
     db, Case, Client, Subject, Finding, FinancialRecord,
     AuditLog, Document, User, CaseStatus, CasePriority,
     SubjectType, VerificationStatus, subject_relations, Comment,
-    CommentEditHistory, DocumentTemplate, Reminder, ReminderType, ReminderRecurrence
+    CommentEditHistory, DocumentTemplate, Reminder, ReminderType, ReminderRecurrence,
+    Screenshot
 )
 from .auth import (
     roles_required, admin_required, senior_required,
