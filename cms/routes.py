@@ -3390,13 +3390,27 @@ def upload_screenshot(case_id: str):
     
     # Generate unique filename
     screenshot_id = str(uuid.uuid4())
-    file_ext = 'png'
-    filename = f"{screenshot_id}.{file_ext}"
+    
+    # Get file extension from original filename or content type
+    original_ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'png'
+    if original_ext not in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+        original_ext = 'png'
+    
+    filename = f"{screenshot_id}.{original_ext}"
     filepath = os.path.join(screenshot_dir, filename)
     
+    # Initialize filepath to avoid unbound variable in except block
+    filepath_defined = False
+    
     try:
-        # Save the file
-        file.save(filepath)
+        # Read file content into memory first
+        file_content = file.read()
+        
+        # Write to file
+        with open(filepath, 'wb') as f:
+            f.write(file_content)
+        
+        filepath_defined = True
         file_size = os.path.getsize(filepath)
         
         # Get URL from form
@@ -3434,9 +3448,13 @@ def upload_screenshot(case_id: str):
         }), 201
         
     except Exception as e:
-        # Clean up file if database insert failed
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        logger.error(f"Screenshot upload error: {e}")
+        # Clean up file if it was created
+        if filepath_defined and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
         return jsonify({'error': str(e)}), 500
 
 
