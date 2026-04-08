@@ -1845,6 +1845,11 @@ def edit_subject(subject_id: str):
             changes['name'] = {'old': subject.name, 'new': data['name']}
             subject.name = data['name']
         
+        # Update subject_type if provided
+        if 'subject_type' in data and data['subject_type'] and data['subject_type'] != subject.subject_type:
+            changes['subject_type'] = {'old': subject.subject_type, 'new': data['subject_type']}
+            subject.subject_type = data['subject_type']
+        
         if 'risk_score' in data:
             changes['risk_score'] = {'old': subject.risk_score, 'new': data['risk_score']}
             subject.risk_score = int(data['risk_score'])
@@ -1852,26 +1857,53 @@ def edit_subject(subject_id: str):
         if 'notes' in data:
             subject.notes = data['notes']
         
-        # Update encrypted fields
+        # Update encrypted fields for persons
         encrypted_fields = ['date_of_birth', 'place_of_birth', 'nationality',
                           'identification_number', 'address', 'phone', 'email']
         for field in encrypted_fields:
             if field in data:
                 new_value = data[field] if data[field] else None
-                if new_value != getattr(subject, field):
-                    changes[field] = {'old': '[encrypted]', 'new': '[encrypted]'}
+                old_value = getattr(subject, field)
+                # Decrypt old value for comparison
+                try:
+                    if old_value:
+                        old_value = encryptor.decrypt(old_value)
+                except:
+                    pass
+                if new_value != old_value:
+                    changes[field] = {'old': old_value or '[empty]', 'new': new_value or '[empty]'}
                     if new_value:
                         setattr(subject, field, encryptor.encrypt(new_value))
                     else:
                         setattr(subject, field, None)
         
         # Update vehicle fields
-        vehicle_fields = ['license_plate', 'vin', 'insurance_company', 'brand', 'vehicle_type']
-        for field in vehicle_fields:
+        # Encrypted vehicle fields
+        encrypted_vehicle_fields = ['license_plate', 'vin', 'insurance_company']
+        for field in encrypted_vehicle_fields:
+            if field in data:
+                new_value = data[field] if data[field] else None
+                old_value = getattr(subject, field)
+                # Decrypt old value for comparison
+                try:
+                    if old_value:
+                        old_value = encryptor.decrypt(old_value)
+                except:
+                    pass
+                if new_value != old_value:
+                    changes[field] = {'old': old_value or '[empty]', 'new': new_value or '[empty]'}
+                    if new_value:
+                        setattr(subject, field, encryptor.encrypt(new_value))
+                    else:
+                        setattr(subject, field, None)
+        
+        # Non-encrypted vehicle fields
+        non_encrypted_vehicle_fields = ['brand', 'vehicle_type']
+        for field in non_encrypted_vehicle_fields:
             if field in data:
                 new_value = data[field] if data[field] else None
                 if new_value != getattr(subject, field):
-                    changes[field] = {'old': getattr(subject, field), 'new': new_value}
+                    changes[field] = {'old': getattr(subject, field) or '[empty]', 'new': new_value or '[empty]'}
                     setattr(subject, field, new_value)
         
         subject.updated_at = datetime.utcnow()
