@@ -52,7 +52,14 @@
             <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span></div>
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
-            <div class="info-item"><label>License Plate</label><span>{{ subject.license_plate if subject.license_plate else '-' }}</span></div>
+            <div class="info-item"><label>License Plate</label>
+                <span>{{ subject.license_plate if subject.license_plate else '-' }}</span>
+                {% if subject.license_plate %}
+                <button onclick="checkRDWVehicle('{{ subject.license_plate }}', '{{ subject.id }}')" class="btn-sm" style="background: #f59e0b; margin-left: 0.5rem; font-size: 0.7rem;">🚗 Check RDW</button>
+                {% else %}
+                <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">(Add license plate first)</span>
+                {% endif %}
+            </div>
             <div class="info-item"><label>VIN</label><span>{{ subject.vin if subject.vin else '-' }}</span></div>
             <div class="info-item"><label>Brand</label><span>{{ subject.brand if subject.brand else '-' }}</span></div>
             <div class="info-item"><label>Vehicle Type</label><span>{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span></div>
@@ -481,6 +488,79 @@
     }
     
     document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });
+    
+    // RDW Vehicle Check Functions
+    function checkRDWVehicle(kenteken, subjectId) {
+        if (!kenteken) {
+            alert('No license plate (kenteken) available for this vehicle.');
+            return;
+        }
+        
+        const confirmed = confirm(
+            'Check RDW (Dutch Vehicle Authority) data for:\n' +
+            'Kenteken: ' + kenteken + '\n\n' +
+            'This will fetch official vehicle data and offer to update the subject.'
+        );
+        
+        if (!confirmed) return;
+        
+        fetch('/cms/check-rdw-vehicle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kenteken: kenteken, subject_id: subjectId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+            
+            if (!data.found) {
+                alert('No vehicle found in RDW database for: ' + kenteken);
+                return;
+            }
+            
+            // Show vehicle data and offer to update
+            let message = 'RDW Data Found:\n\n';
+            message += 'Kenteken: ' + data.kenteken_display + '\n';
+            message += 'Merk: ' + data.merk + '\n';
+            message += 'Model: ' + data.handelsbenaming + '\n';
+            message += 'Type: ' + data.voertuigsoort + '\n';
+            message += 'Inrichting: ' + data.inrichting + '\n';
+            message += 'Kleur: ' + data.kleur + '\n';
+            if (data.vervaldatum_apk) message += 'APK vervalt: ' + data.vervaldatum_apk + '\n';
+            message += 'Verzekerd (WAM): ' + data.wam_verzekerd + '\n';
+            message += '\n\nUpdate subject with this data?';
+            
+            if (confirm(message)) {
+                updateSubjectFromRDW(data.kenteken);
+            }
+        })
+        .catch(err => {
+            alert('Failed to check RDW: ' + err.message);
+        });
+    }
+    
+    function updateSubjectFromRDW(kenteken) {
+        fetch('/cms/subjects/{{ subject.id }}/update-from-rdw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kenteken: kenteken })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error updating: ' + data.error);
+            } else {
+                alert('Subject updated successfully!');
+                location.reload();
+            }
+        })
+        .catch(err => {
+            alert('Failed to update: ' + err.message);
+        });
+    }
 
     function uploadPhoto(input) {
         const file = input.files[0];

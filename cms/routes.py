@@ -3765,6 +3765,220 @@ def check_policie_api_status():
         }), 200
 
 
+# =============================================================================
+# RDW Vehicle Data Routes
+# =============================================================================
+
+RDW_API_BASE = 'https://opendata.rdw.nl/resource/m9d7-ebf2.json'
+
+
+def normalize_kenteken(kenteken: str) -> str:
+    """Normalize kenteken format (remove spaces, dashes, uppercase)."""
+    return kenteken.upper().replace('-', '').replace(' ', '')
+
+
+def denormalize_kenteken(kenteken: str) -> str:
+    """Add dashes to kenteken for display (e.g., 22PBR2 -> 22-PBR-2)."""
+    kenteken = kenteken.upper().replace('-', '').replace(' ', '')
+    if len(kenteken) == 6:
+        return f"{kenteken[:2]}-{kenteken[2:5]}-{kenteken[5:]}"
+    elif len(kenteken) == 5:
+        return f"{kenteken[:2]}-{kenteken[2:4]}-{kenteken[4:]}"
+    return kenteken
+
+
+@cms_bp.route('/check-rdw-vehicle', methods=['POST'])
+@login_required
+def check_rdw_vehicle():
+    """
+    Check vehicle data from RDW (Dutch Road Transport Authority).
+    Returns vehicle details based on license plate (kenteken).
+    """
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    kenteken = data.get('kenteken', '').strip()
+    subject_id = data.get('subject_id')
+    
+    if not kenteken:
+        return jsonify({'error': 'Kenteken (license plate) is required'}), 400
+    
+    # Normalize kenteken
+    kenteken_normalized = normalize_kenteken(kenteken)
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
+            'Accept': 'application/json'
+        }
+        
+        # Query RDW API
+        url = f'{RDW_API_BASE}?kenteken={kenteken_normalized}'
+        r = http_requests.get(url, headers=headers, timeout=15)
+        
+        if r.status_code != 200:
+            return jsonify({
+                'error': f'RDW API returned status {r.status_code}',
+                'kenteken': kenteken_normalized
+            }), 502
+        
+        results = r.json()
+        
+        if not results:
+            return jsonify({
+                'found': False,
+                'kenteken': kenteken_normalized,
+                'kenteken_display': denormalize_kenteken(kenteken_normalized),
+                'message': 'No vehicle found for this license plate'
+            }), 200
+        
+        vehicle = results[0]
+        
+        # Build response with relevant fields
+        vehicle_data = {
+            'found': True,
+            'kenteken': vehicle.get('kenteken', ''),
+            'kenteken_display': denormalize_kenteken(vehicle.get('kenteken', '')),
+            'voertuigsoort': vehicle.get('voertuigsoort', ''),
+            'merk': vehicle.get('merk', ''),
+            'handelsbenaming': vehicle.get('handelsbenaming', ''),
+            'inrichting': vehicle.get('inrichting', ''),
+            'type': vehicle.get('type', ''),
+            'variant': vehicle.get('variant', ''),
+            'uitvoering': vehicle.get('uitvoering', ''),
+            'kleur': vehicle.get('eerste_kleur', ''),
+            'tweede_kleur': vehicle.get('tweede_kleur', ''),
+            'aantal_deuren': vehicle.get('aantal_deuren', ''),
+            'aantal_zitplaatsen': vehicle.get('aantal_zitplaatsen', ''),
+            'cilinderinhoud': vehicle.get('cilinderinhoud', ''),
+            'aantal_cilinders': vehicle.get('aantal_cilinders', ''),
+            'vermogen': vehicle.get('vermogen_massarijklaar', ''),
+            'massa_ledig': vehicle.get('massa_ledig_voertuig', ''),
+            'maximum_massa': vehicle.get('toegestane_maximum_massa_voertuig', ''),
+            'wielbasis': vehicle.get('wielbasis', ''),
+            'datum_eerste_toelating': vehicle.get('datum_eerste_toelating', ''),
+            'datum_tenaamstelling': vehicle.get('datum_tenaamstelling', ''),
+            'vervaldatum_apk': vehicle.get('vervaldatum_apk', ''),
+            'europese_voertuigcategorie': vehicle.get('europese_voertuigcategorie', ''),
+            'wam_verzekerd': vehicle.get('wam_verzekerd', ''),
+            'taxi_indicator': vehicle.get('taxi_indicator', ''),
+            'export_indicator': vehicle.get('export_indicator', ''),
+            'zuinigheidsclassificatie': vehicle.get('zuinigheidsclassificatie', ''),
+            'catalogusprijs': vehicle.get('catalogusprijs', ''),
+            'bruto_bpm': vehicle.get('bruto_bpm', ''),
+            'openstaande_terugroepactie': vehicle.get('openstaande_terugroepactie_indicator', ''),
+            'typegoedkeuringsnummer': vehicle.get('typegoedkeuringsnummer', ''),
+        }
+        
+        # If subject_id provided, suggest updating
+        if subject_id:
+            vehicle_data['subject_id'] = subject_id
+            vehicle_data['suggested_update'] = {
+                'brand': vehicle.get('merk', ''),
+                'vehicle_type': vehicle.get('inrichting', ''),
+                'notes': f"RDW Data: {vehicle.get('merk', '')} {vehicle.get('handelsbenaming', '')} ({denormalize_kenteken(vehicle.get('kenteken', ''))})"
+            }
+        
+        return jsonify(vehicle_data), 200
+        
+    except http_requests.exceptions.RequestException as e:
+        logger.error(f"RDW API error: {e}")
+        return jsonify({
+            'error': f'Failed to connect to RDW API: {str(e)}'
+        }), 503
+        
+    except Exception as e:
+        logger.error(f"RDW check error: {e}")
+        return jsonify({
+            'error': f'Failed to check RDW data: {str(e)}'
+        }), 500
+
+
+@cms_bp.route('/subjects/<subject_id>/update-from-rdw', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def update_subject_from_rdw(subject_id: str):
+    """Update vehicle subject fields with data from RDW."""
+    subject = Subject.query.get_or_404(subject_id)
+    
+    if subject.subject_type != 'vehicle':
+        return jsonify({'error': 'Subject is not a vehicle'}), 400
+    
+    data = request.get_json()
+    
+    if not data or not data.get('kenteken'):
+        return jsonify({'error': 'Kenteken is required'}), 400
+    
+    kenteken = normalize_kenteken(data.get('kenteken'))
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
+            'Accept': 'application/json'
+        }
+        
+        url = f'{RDW_API_BASE}?kenteken={kenteken}'
+        r = http_requests.get(url, headers=headers, timeout=15)
+        
+        if r.status_code != 200 or not r.json():
+            return jsonify({'error': 'Vehicle not found in RDW database'}), 404
+        
+        vehicle = r.json()[0]
+        
+        # Update subject fields
+        if vehicle.get('merk'):
+            subject.brand = vehicle.get('merk')
+        
+        if vehicle.get('inrichting'):
+            subject.vehicle_type = vehicle.get('inrichting')
+        
+        # Build notes with RDW data
+        rdw_notes = []
+        rdw_notes.append(f"Kenteken: {denormalize_kenteken(kenteken)}")
+        if vehicle.get('merk'):
+            rdw_notes.append(f"Merk: {vehicle.get('merk')}")
+        if vehicle.get('handelsbenaming'):
+            rdw_notes.append(f"Model: {vehicle.get('handelsbenaming')}")
+        if vehicle.get('voertuigsoort'):
+            rdw_notes.append(f"Type: {vehicle.get('voertuigsoort')}")
+        if vehicle.get('inrichting'):
+            rdw_notes.append(f"Inrichting: {vehicle.get('inrichting')}")
+        if vehicle.get('kleur'):
+            rdw_notes.append(f"Kleur: {vehicle.get('eerste_kleur')}")
+        if vehicle.get('vervaldatum_apk'):
+            rdw_notes.append(f"APK vervaldatum: {vehicle.get('vervaldatum_apk')}")
+        if vehicle.get('wam_verzekerd'):
+            rdw_notes.append(f"Verzekerd (WAM): {vehicle.get('wam_verzekerd')}")
+        
+        existing_notes = subject.notes or ''
+        new_notes = '[RDW Data]\n' + '\n'.join(rdw_notes)
+        subject.notes = new_notes + '\n\n' + existing_notes if existing_notes else new_notes
+        
+        # Log the action
+        AuditLog.log(
+            user_id=current_user.id,
+            action='update',
+            entity_type='subject',
+            entity_id=subject_id,
+            ip_address=request.remote_addr,
+            description=f"Updated vehicle data from RDW for: {denormalize_kenteken(kenteken)}"
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Subject updated from RDW data',
+            'subject': subject.to_dict()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"RDW update error: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 @cms_bp.route('/cases/<case_id>/screenshots/capture', methods=['POST'])
 @login_required
 @case_access_required
