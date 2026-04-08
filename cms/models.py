@@ -533,6 +533,9 @@ class Subject(db.Model):
     brand = db.Column(db.String(100))
     vehicle_type = db.Column(db.String(50))  # sedan, suv, truck, etc.
     
+    # RDW vehicle data (full RDW record as JSON)
+    rdw_data = db.Column(db.JSON)
+    
     # Photo
     photo_path = db.Column(db.String(500))  # Path to uploaded photo
     
@@ -614,6 +617,7 @@ class Subject(db.Model):
             'brand': self.brand,
             'vehicle_type': self.vehicle_type,
             'social_media_ids': self.social_media_ids or {},
+            'rdw_data': self.rdw_data or {},
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         

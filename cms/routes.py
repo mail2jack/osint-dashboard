@@ -1906,6 +1906,38 @@ def edit_subject(subject_id: str):
                     changes[field] = {'old': getattr(subject, field) or '[empty]', 'new': new_value or '[empty]'}
                     setattr(subject, field, new_value)
         
+        # Update RDW data if provided
+        rdw_fields = [
+            'handelsbenaming', 'voertuigsoort', 'eerste_kleur', 'tweede_kleur',
+            'aantal_deuren', 'aantal_zitplaatsen', 'cilinderinhoud', 'aantal_cilinders',
+            'massa_ledig', 'maximum_massa', 'vervaldatum_apk', 'wam_verzekerd',
+            'taxi_indicator', 'export_indicator', 'europese_voertuigcategorie',
+            'zuinigheidsclassificatie', 'catalogusprijs', 'datum_eerste_toelating',
+            'type', 'variant', 'uitvoering', 'typegoedkeuringsnummer', 'wielbasis'
+        ]
+        
+        rdw_data = {}
+        for field in rdw_fields:
+            if data.get(field):
+                rdw_data[field] = data[field]
+        
+        # Also store basic vehicle fields in RDW data
+        if data.get('license_plate'):
+            rdw_data['kenteken'] = data['license_plate']
+        if data.get('brand'):
+            rdw_data['merk'] = data['brand']
+        if data.get('vehicle_type'):
+            rdw_data['inrichting'] = data['vehicle_type']
+        if data.get('vin'):
+            rdw_data['chassisnummer'] = data['vin']
+        
+        if rdw_data:
+            existing_rdw = subject.rdw_data or {}
+            # Merge with existing RDW data
+            existing_rdw.update(rdw_data)
+            subject.rdw_data = existing_rdw
+            changes['rdw_data'] = {'old': 'updated', 'new': 'RDW fields updated'}
+        
         subject.updated_at = datetime.utcnow()
         
         AuditLog.log(
