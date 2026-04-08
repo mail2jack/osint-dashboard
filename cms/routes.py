@@ -3701,7 +3701,7 @@ def check_policie_data():
             
             # Check missing persons
             missing_url = f'{POLITIE_API_BASE}/api/v1/vermisten'
-            r = requests.get(missing_url, headers=headers, timeout=15)
+            r = http_requests.get(missing_url, headers=headers, timeout=15)
             
             if r.status_code == 200 and 'application/json' in r.headers.get('Content-Type', ''):
                 results['api_available'] = True
@@ -3724,7 +3724,7 @@ def check_policie_data():
                 results['api_available'] = False
                 results['error'] = 'Politie open data API is temporarily unavailable (returning HTML instead of JSON)'
                 
-        except requests.exceptions.RequestException as e:
+        except http_requests.exceptions.RequestException as e:
             results['error'] = f'Failed to connect to Politie API: {str(e)}'
         
         # Note: opsporingsberichten (wanted persons) typically requires specific access
@@ -3750,7 +3750,7 @@ def check_policie_api_status():
             'Accept': 'application/json'
         }
         
-        r = requests.head(f'{POLITIE_API_BASE}/api/v1/vermisten', headers=headers, timeout=10)
+        r = http_requests.head(f'{POLITIE_API_BASE}/api/v1/vermisten', headers=headers, timeout=10)
         
         return jsonify({
             'available': r.status_code == 200,
