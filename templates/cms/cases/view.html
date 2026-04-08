@@ -431,7 +431,7 @@
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="margin: 0;">Screenshots (<span id="screenshotCount">0</span>)</h2>
-            <button onclick="openCaptureScreenshotModal()" class="btn btn-sm" style="background: #7c3aed;">+ Capture Screenshot</button>
+            <button onclick="openAddScreenshotModal()" class="btn btn-sm" style="background: #7c3aed;">+ Add Screenshot</button>
         </div>
         
         <div id="screenshotsGallery">
@@ -439,32 +439,42 @@
         </div>
     </div>
     
-    <!-- Capture Screenshot Modal -->
-    <div id="captureScreenshotModal" class="modal">
-        <div class="modal-content" style="max-width: 900px; background: #1a1a2e;">
+    <!-- Add Screenshot Modal -->
+    <div id="addScreenshotModal" class="modal">
+        <div class="modal-content" style="max-width: 600px; background: #1a1a2e;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="margin: 0; color: white;">Capture Screenshot</h2>
-                <span onclick="closeCaptureScreenshotModal()" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
+                <h2 style="margin: 0; color: white;">Add Screenshot</h2>
+                <span onclick="closeAddScreenshotModal()" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
             </div>
             
             <div style="margin-bottom: 1rem;">
-                <input type="url" id="screenshotUrl" placeholder="Enter URL to capture (e.g., https://facebook.com/user)" 
-                       style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 4px; background: #2a2a4e; color: white; font-size: 1rem;">
+                <label style="color: #ccc; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Source URL (optional)</label>
+                <input type="url" id="screenshotUrl" placeholder="https://..." 
+                       style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 4px; background: #2a2a4e; color: white; font-size: 1rem; box-sizing: border-box;">
             </div>
             
-            <!-- Painting Frame Container -->
-            <div style="background: linear-gradient(135deg, #d4a574 0%, #c4956a 50%, #b8845a 100%); padding: 20px; border-radius: 4px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-                <div style="background: linear-gradient(145deg, #f5f5f0 0%, #e8e8e0 100%); padding: 15px; border: 2px solid #8b7355; box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);">
-                    <div id="screenshotPreview" style="background: #333; min-height: 400px; display: flex; align-items: center; justify-content: center; border: 1px solid #555;">
-                        <p style="color: #888; text-align: center;">Enter a URL above and click "Preview" to see a preview</p>
-                    </div>
-                </div>
+            <div style="margin-bottom: 1rem;">
+                <button onclick="openLinkForScreenshot()" id="openLinkBtn" class="btn btn-sm" style="background: #3b82f6; margin-bottom: 0.5rem;">
+                    🔗 Open Link in New Tab
+                </button>
+                <p style="color: #888; font-size: 0.75rem; margin: 0;">Open the link, take a screenshot manually (Cmd+Shift+4 on Mac, Win+PrtSc on Windows), then upload below.</p>
             </div>
             
-            <div style="display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end;">
-                <button onclick="previewUrl()" class="btn btn-sm" style="background: #f59e0b;">Preview</button>
-                <button onclick="captureScreenshot()" id="captureBtn" class="btn btn-sm" style="background: #059669;" disabled>Capture Screenshot</button>
-                <button onclick="closeCaptureScreenshotModal()" class="btn btn-sm" style="background: #666;">Close</button>
+            <hr style="border-color: #333; margin: 1rem 0;">
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="color: #ccc; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Upload Screenshot *</label>
+                <input type="file" id="screenshotFile" accept="image/*" 
+                       style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 4px; background: #2a2a4e; color: white; box-sizing: border-box;">
+            </div>
+            
+            <div id="screenshotPreview" style="display: none; margin-bottom: 1rem;">
+                <img id="previewImage" src="" style="max-width: 100%; max-height: 200px; display: block; margin: 0 auto; border: 2px solid #444; border-radius: 4px;">
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button onclick="closeAddScreenshotModal()" class="btn btn-sm" style="background: #666;">Cancel</button>
+                <button onclick="uploadScreenshot()" id="uploadBtn" class="btn btn-sm" style="background: #059669;">Save Screenshot</button>
             </div>
             
             <div id="screenshotStatus" style="margin-top: 0.5rem; text-align: center;"></div>
@@ -1321,7 +1331,7 @@
             const gallery = document.getElementById('screenshotsGallery');
             
             if (!screenshots || screenshots.length === 0) {
-                gallery.innerHTML = '<p style="color: #666;">No screenshots captured yet.</p>';
+                gallery.innerHTML = '<p style="color: #666;">No screenshots added yet.</p>';
                 return;
             }
             
@@ -1346,34 +1356,43 @@
             gallery.innerHTML = html;
         }
         
-        function openCaptureScreenshotModal(url = '', title = '') {
-            document.getElementById('captureScreenshotModal').classList.add('show');
-            document.getElementById('screenshotUrl').value = url;
-            document.getElementById('screenshotPreview').innerHTML = '<p style="color: #888; text-align: center;">Enter a URL above and click "Preview" to see a preview</p>';
-            document.getElementById('captureBtn').disabled = !url;
+        function openAddScreenshotModal(url = '') {
+            document.getElementById('addScreenshotModal').classList.add('show');
+            document.getElementById('screenshotUrl').value = url || '';
+            document.getElementById('screenshotFile').value = '';
+            document.getElementById('screenshotPreview').style.display = 'none';
             document.getElementById('screenshotStatus').textContent = '';
-            currentScreenshotUrl = url;
+            currentScreenshotUrl = url || '';
             
-            // If URL was provided, auto-preview
-            if (url) {
-                previewUrl();
-            }
+            // Setup file input change listener for preview
+            document.getElementById('screenshotFile').onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('previewImage').src = e.target.result;
+                        document.getElementById('screenshotPreview').style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
         }
         
         function openCaptureFromFinding(url, title) {
-            // Open the capture modal with the URL from the finding
-            openCaptureScreenshotModal(url, title);
+            // Open the add screenshot modal with the URL from the finding
+            openAddScreenshotModal(url);
         }
         
-        function closeCaptureScreenshotModal() {
-            document.getElementById('captureScreenshotModal').classList.remove('show');
+        function closeAddScreenshotModal() {
+            document.getElementById('addScreenshotModal').classList.remove('show');
         }
         
-        function previewUrl() {
+        function openLinkForScreenshot() {
             const urlInput = document.getElementById('screenshotUrl');
             let url = urlInput.value.trim();
+            
             if (!url) {
-                alert('Please enter a URL');
+                alert('Please enter a URL first');
                 return;
             }
             
@@ -1384,96 +1403,53 @@
             }
             
             currentScreenshotUrl = url;
+            window.open(url, '_blank');
+        }
+        
+        function uploadScreenshot() {
+            const fileInput = document.getElementById('screenshotFile');
+            const file = fileInput.files[0];
+            const url = document.getElementById('screenshotUrl').value.trim();
+            const uploadBtn = document.getElementById('uploadBtn');
+            const status = document.getElementById('screenshotStatus');
             
-            // Try to show iframe preview first
-            document.getElementById('screenshotPreview').innerHTML = `
-                <div style="position: relative; width: 100%; height: 100%; min-height: 400px;">
-                    <iframe id="previewIframe" src="${url}" 
-                        style="width: 100%; height: 100%; border: none; min-height: 400px;"
-                        sandbox="allow-scripts allow-same-origin allow-forms"
-                        onload="iframeLoaded()"
-                        onerror="iframeError()">
-                    </iframe>
-                    <div id="iframeFallback" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888;">
-                        <p style="margin-bottom: 1rem;">This site blocks iframe preview</p>
-                        <a href="${url}" target="_blank" style="color: #3b82f6; margin-bottom: 1rem;">Open in new tab</a>
-                        <p style="font-size: 0.75rem; color: #666;">You can still capture a screenshot below</p>
-                    </div>
-                </div>
-            `;
-            
-            // Set timeout to show fallback if iframe doesn't load
-            window.previewTimeout = setTimeout(() => {
-                const iframe = document.getElementById('previewIframe');
-                if (iframe && iframe.style.display !== 'none') {
-                    showIframeFallback();
-                }
-            }, 5000);
-            
-            document.getElementById('captureBtn').disabled = false;
-        }
-        
-        function iframeLoaded() {
-            clearTimeout(window.previewTimeout);
-            // Try to check if content loaded
-            try {
-                const iframe = document.getElementById('previewIframe');
-                if (iframe && iframe.contentDocument && iframe.contentDocument.body.innerHTML.length < 100) {
-                    showIframeFallback();
-                }
-            } catch (e) {
-                // Cross-origin, can't check - assume blocked
-            }
-        }
-        
-        function iframeError() {
-            clearTimeout(window.previewTimeout);
-            showIframeFallback();
-        }
-        
-        function showIframeFallback() {
-            const iframe = document.getElementById('previewIframe');
-            const fallback = document.getElementById('iframeFallback');
-            if (iframe) iframe.style.display = 'none';
-            if (fallback) fallback.style.display = 'flex';
-        }
-        
-        function captureScreenshot() {
-            if (!currentScreenshotUrl) {
-                alert('Please enter a URL first');
+            if (!file) {
+                alert('Please select a screenshot file');
                 return;
             }
             
-            const captureBtn = document.getElementById('captureBtn');
-            const status = document.getElementById('screenshotStatus');
+            // Check file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
             
-            captureBtn.disabled = true;
-            captureBtn.textContent = 'Capturing...';
-            status.textContent = 'Capturing screenshot...';
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            status.textContent = 'Uploading screenshot...';
             status.style.color = '#888';
             
-            fetch("{{ url_for('cms.capture_screenshot', case_id=case.id) }}", {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('url', url || '');
+            
+            fetch("{{ url_for('cms.upload_screenshot', case_id=case.id) }}", {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: currentScreenshotUrl })
+                body: formData
             })
             .then(r => r.json())
             .then(data => {
                 if (data.error) {
                     status.textContent = 'Error: ' + data.error;
                     status.style.color = '#dc2626';
-                    captureBtn.disabled = false;
-                    captureBtn.textContent = 'Capture Screenshot';
-                    
-                    if (data.setup_required) {
-                        status.textContent = 'Screenshot feature requires setup: ' + data.message;
-                    }
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Save Screenshot';
                 } else {
-                    status.textContent = 'Screenshot captured successfully!';
+                    status.textContent = 'Screenshot saved successfully!';
                     status.style.color = '#10b981';
                     
                     setTimeout(() => {
-                        closeCaptureScreenshotModal();
+                        closeAddScreenshotModal();
                         loadScreenshots();
                     }, 1500);
                 }
@@ -1481,8 +1457,8 @@
             .catch(err => {
                 status.textContent = 'Failed: ' + err.message;
                 status.style.color = '#dc2626';
-                captureBtn.disabled = false;
-                captureBtn.textContent = 'Capture Screenshot';
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Save Screenshot';
             });
         }
         
@@ -1501,8 +1477,8 @@
         // Load screenshots on page load
         loadScreenshots();
         
-        document.getElementById('captureScreenshotModal').addEventListener('click', function(e) {
-            if (e.target === this) closeCaptureScreenshotModal();
+        document.getElementById('addScreenshotModal').addEventListener('click', function(e) {
+            if (e.target === this) closeAddScreenshotModal();
         });
         
         document.getElementById('viewScreenshotModal').addEventListener('click', function(e) {

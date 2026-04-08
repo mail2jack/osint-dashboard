@@ -3363,6 +3363,82 @@ def list_screenshots(case_id: str):
     })
 
 
+@cms_bp.route('/cases/<case_id>/screenshots/upload', methods=['POST'])
+@login_required
+@case_access_required
+@case_edit_required
+def upload_screenshot(case_id: str):
+    """Upload a screenshot file for a case."""
+    case = Case.query.get_or_404(case_id)
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    # Check file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        return jsonify({'error': 'File must be an image'}), 400
+    
+    # Create screenshot directory
+    screenshot_dir = get_screenshot_path(case_id)
+    os.makedirs(screenshot_dir, exist_ok=True)
+    
+    # Generate unique filename
+    screenshot_id = str(uuid.uuid4())
+    file_ext = 'png'
+    filename = f"{screenshot_id}.{file_ext}"
+    filepath = os.path.join(screenshot_dir, filename)
+    
+    try:
+        # Save the file
+        file.save(filepath)
+        file_size = os.path.getsize(filepath)
+        
+        # Get URL from form
+        url = request.form.get('url', '')
+        
+        # Create database record
+        screenshot = Screenshot(
+            id=screenshot_id,
+            case_id=case_id,
+            url=url,
+            filename=filename,
+            title=url.split('/')[-1][:300] if url else f'Screenshot {screenshot_id[:8]}',
+            file_size=file_size,
+            created_by=current_user.id
+        )
+        
+        db.session.add(screenshot)
+        
+        # Log the action
+        AuditLog.log(
+            user_id=current_user.id,
+            action='create',
+            entity_type='screenshot',
+            entity_id=screenshot_id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Uploaded screenshot: {url or 'No URL'}"
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Screenshot uploaded successfully',
+            'screenshot': screenshot.to_dict()
+        }), 201
+        
+    except Exception as e:
+        # Clean up file if database insert failed
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({'error': str(e)}), 500
+
+
 @cms_bp.route('/cases/<case_id>/screenshots/capture', methods=['POST'])
 @login_required
 @case_access_required
