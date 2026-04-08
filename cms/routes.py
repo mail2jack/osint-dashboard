@@ -3574,20 +3574,22 @@ def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
         return '', 404
     
     try:
-        # Generate thumbnail on the fly
-        with Image.open(filepath) as img:
-            img.thumbnail((200, 200), Image.Resampling.LANCZOS)
-            thumb_io = io.BytesIO()
-            img.save(thumb_io, format='PNG')
-        
-        thumb_io.seek(0)
-        
-        return send_file(
-            thumb_io,
-            mimetype='image/png',
-            as_attachment=False,
-            download_name=f"thumb_{screenshot.filename}"
-        )
+        # First try to generate a proper thumbnail
+        try:
+            with Image.open(filepath) as img:
+                img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                thumb_io = io.BytesIO()
+                img.save(thumb_io, format='PNG')
+            thumb_io.seek(0)
+            return send_file(
+                thumb_io,
+                mimetype='image/png',
+                as_attachment=False
+            )
+        except Exception as e:
+            logger.warning(f"Thumbnail generation failed, serving original: {e}")
+            # Fallback: serve original image
+            return send_file(filepath, mimetype='image/png', as_attachment=False)
     except Exception as e:
         logger.error(f"Thumbnail error: {e}")
         return '', 500
@@ -3608,12 +3610,27 @@ def view_screenshot(case_id: str, screenshot_id: str):
     if not os.path.exists(filepath):
         return '', 404
     
-    return send_file(
-        filepath,
-        mimetype='image/png',
-        as_attachment=False,
-        download_name=screenshot.title or screenshot.filename
-    )
+    try:
+        # Detect mimetype from file extension
+        ext = screenshot.filename.rsplit('.', 1)[-1].lower() if '.' in screenshot.filename else 'png'
+        mimetype_map = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'webp': 'image/webp'
+        }
+        mimetype = mimetype_map.get(ext, 'image/png')
+        
+        return send_file(
+            filepath,
+            mimetype=mimetype,
+            as_attachment=False,
+            download_name=screenshot.title or screenshot.filename
+        )
+    except Exception as e:
+        logger.error(f"View screenshot error: {e}")
+        return '', 500
 
 
 @cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>')

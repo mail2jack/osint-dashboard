@@ -1316,14 +1316,23 @@
         let currentScreenshotUrl = '';
         
         function loadScreenshots() {
-            fetch("{{ url_for('cms.list_screenshots', case_id=case.id) }}")
-            .then(r => r.json())
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            
+            fetch("{{ url_for('cms.list_screenshots', case_id=case.id) }}", { signal: controller.signal })
+            .then(r => {
+                clearTimeout(timeoutId);
+                return r.json();
+            })
             .then(data => {
                 displayScreenshots(data.screenshots);
                 document.getElementById('screenshotCount').textContent = data.count;
             })
-            .catch(() => {
-                document.getElementById('screenshotsGallery').innerHTML = '<p style="color: #dc2626;">Failed to load screenshots</p>';
+            .catch(err => {
+                clearTimeout(timeoutId);
+                if (err.name !== 'AbortError') {
+                    document.getElementById('screenshotsGallery').innerHTML = '<p style="color: #dc2626;">Failed to load screenshots</p>';
+                }
             });
         }
         
@@ -1433,11 +1442,19 @@
             formData.append('file', file);
             formData.append('url', url || '');
             
+            // Use AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            
             fetch("{{ url_for('cms.upload_screenshot', case_id=case.id) }}", {
                 method: 'POST',
-                body: formData
+                body: formData,
+                signal: controller.signal
             })
-            .then(r => r.json())
+            .then(r => {
+                clearTimeout(timeoutId);
+                return r.json();
+            })
             .then(data => {
                 if (data.error) {
                     status.textContent = 'Error: ' + data.error;
@@ -1448,14 +1465,23 @@
                     status.textContent = 'Screenshot saved successfully!';
                     status.style.color = '#10b981';
                     
+                    // Reset form
+                    fileInput.value = '';
+                    document.getElementById('screenshotPreview').style.display = 'none';
+                    
                     setTimeout(() => {
                         closeAddScreenshotModal();
                         loadScreenshots();
-                    }, 1500);
+                    }, 1000);
                 }
             })
             .catch(err => {
-                status.textContent = 'Failed: ' + err.message;
+                clearTimeout(timeoutId);
+                if (err.name === 'AbortError') {
+                    status.textContent = 'Upload timed out. Please try again.';
+                } else {
+                    status.textContent = 'Failed: ' + err.message;
+                }
                 status.style.color = '#dc2626';
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = 'Save Screenshot';
