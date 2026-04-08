@@ -348,7 +348,10 @@
                 <tr data-title="{{ finding.title|lower }}" data-subject="{{ finding.subject.name|lower if finding.subject else '' }}" data-source="{{ finding.source_type|lower }}" data-addedby="{{ finding.author.full_name|lower if finding.author else '' }}" data-date="{{ finding.created_at.strftime('%Y-%m-%d') if finding.created_at else '' }}">
                     <td>
                         {% if finding.source_url %}
-                        <a href="{{ finding.source_url }}" target="_blank">{{ finding.title }}</a>
+                        <a href="#" onclick="openCaptureFromFinding('{{ finding.source_url }}', '{{ finding.title|replace("'", "\\'") }}'); return false;" style="color: #3b82f6; text-decoration: none;">
+                            {{ finding.title }}
+                            <span style="font-size: 0.75rem; color: #8b5cf6;">📸</span>
+                        </a>
                         {% else %}
                         {{ finding.title }}
                         {% endif %}
@@ -1343,13 +1346,23 @@
             gallery.innerHTML = html;
         }
         
-        function openCaptureScreenshotModal() {
+        function openCaptureScreenshotModal(url = '', title = '') {
             document.getElementById('captureScreenshotModal').classList.add('show');
-            document.getElementById('screenshotUrl').value = '';
+            document.getElementById('screenshotUrl').value = url;
             document.getElementById('screenshotPreview').innerHTML = '<p style="color: #888; text-align: center;">Enter a URL above and click "Preview" to see a preview</p>';
-            document.getElementById('captureBtn').disabled = true;
+            document.getElementById('captureBtn').disabled = !url;
             document.getElementById('screenshotStatus').textContent = '';
-            currentScreenshotUrl = '';
+            currentScreenshotUrl = url;
+            
+            // If URL was provided, auto-preview
+            if (url) {
+                previewUrl();
+            }
+        }
+        
+        function openCaptureFromFinding(url, title) {
+            // Open the capture modal with the URL from the finding
+            openCaptureScreenshotModal(url, title);
         }
         
         function closeCaptureScreenshotModal() {
