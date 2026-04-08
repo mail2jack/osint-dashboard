@@ -428,15 +428,35 @@
     }
     
     function openAddRelationForm() {
-        document.getElementById('addRelationForm').style.display = 'block';
+        console.log('openAddRelationForm called');
+        const form = document.getElementById('addRelationForm');
+        const select = document.getElementById('relationSubject');
+        console.log('Form element:', form);
+        console.log('Select element:', select);
+        
+        if (!form || !select) {
+            alert('Form elements not found!');
+            return;
+        }
+        
+        form.style.display = 'block';
+        select.innerHTML = '<option value="">Loading...</option>';
+        
         fetch("{{ url_for('cms.subjects') }}?format=json")
-        .then(r => r.json())
+        .then(r => {
+            console.log('Fetch response:', r.status);
+            return r.json();
+        })
         .then(data => {
-            const select = document.getElementById('relationSubject');
+            console.log('Subjects data:', data);
             select.innerHTML = '<option value="">Select a subject...</option>';
             (data.subjects || []).forEach(s => {
                 if (s.id !== '{{ subject.id }}') select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
             });
+        })
+        .catch(err => {
+            console.error('Error loading subjects:', err);
+            select.innerHTML = '<option value="">Error loading</option>';
         });
     }
     
