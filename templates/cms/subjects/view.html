@@ -469,8 +469,11 @@
     function closeAddRelationForm() { document.getElementById('addRelationForm').style.display = 'none'; }
     
     function addRelationship() {
+        console.log('addRelationship called');
         const relatedId = document.getElementById('relationSubject').value;
         const relType = document.getElementById('relationType').value;
+        console.log('relatedId:', relatedId);
+        console.log('relType:', relType);
         if (!relatedId) return alert('Select a subject');
         
         fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
