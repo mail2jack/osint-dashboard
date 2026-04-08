@@ -19,17 +19,20 @@
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
             <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
         </h1>
-        <div style="margin-top: 0.5rem;">
+        <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             {% if subject.subject_type == 'person' %}
             {% if first_case_id %}
             <button onclick="openOsintModal()" class="btn-osint" style="border: none; cursor: pointer;">
-                🔍 OSINT Person Search
+                🔍 OSINT Search
             </button>
             {% else %}
             <button onclick="openOsintModalNoCase()" class="btn-osint" style="border: none; cursor: pointer; opacity: 0.6;" title="Link subject to a case first">
-                🔍 OSINT Person Search
+                🔍 OSINT Search
             </button>
             {% endif %}
+            <button onclick="checkPolitieData()" id="policieCheckBtn" class="btn-osint" style="background: #dc2626; border: none; cursor: pointer;">
+                🚔 Check Politie Data
+            </button>
             {% endif %}
         </div>
     </div>
@@ -507,6 +510,48 @@
             }
         })
         .catch(err => alert('Upload failed: ' + err.message));
+    }
+    
+    // Politie Data Check Functions
+    function checkPolitieData() {
+        const btn = document.getElementById('policieCheckBtn');
+        const subjectName = '{{ subject.name }}';
+        
+        btn.disabled = true;
+        btn.textContent = 'Checking...';
+        
+        fetch('/cms/check-policie-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: subjectName, subject_id: '{{ subject.id }}' })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else if (!data.api_available) {
+                alert('Politie Open Data is currently unavailable.\n\nThe Dutch Police open data service is temporarily down.\nPlease try again later.\n\nError: ' + (data.error || 'API returned HTML instead of JSON'));
+            } else if (data.missing_persons && data.missing_persons.length > 0) {
+                let message = '⚠️ MOGELIJKE MATCH GEVONDEN!\n\n';
+                message += 'Potentially matching missing persons:\n\n';
+                data.missing_persons.forEach((p, i) => {
+                    message += (i + 1) + '. ' + p.name + '\n';
+                    if (p.description) message += '   Info: ' + p.description + '\n';
+                    if (p.location) message += '   Locatie: ' + p.location + '\n';
+                });
+                message += '\nGa naar ' + data.missing_persons[0].url + ' voor meer info';
+                alert(message);
+            } else {
+                alert('Geen matches gevonden in Politie data.\n\nNo matches found in Dutch Police open data.');
+            }
+        })
+        .catch(err => {
+            alert('Failed to check Politie data: ' + err.message);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = '🚔 Check Politie Data';
+        });
     }
     
     // OSINT Search Functions

@@ -3650,6 +3650,121 @@ def update_subject_social_ids(subject_id: str):
     })
 
 
+# =============================================================================
+# Politie Open Data Routes
+# =============================================================================
+
+POLITIE_API_BASE = 'https://data.politie.nl'
+
+
+@cms_bp.route('/check-policie-data', methods=['POST'])
+@login_required
+def check_policie_data():
+    """
+    Check if a subject matches data in Dutch Police open data.
+    Searches missing persons and wanted persons.
+    """
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    subject_name = data.get('name', '').strip()
+    subject_id = data.get('subject_id')
+    
+    if not subject_name:
+        return jsonify({'error': 'Subject name is required'}), 400
+    
+    # Split name into parts for matching
+    name_parts = subject_name.lower().split()
+    
+    results = {
+        'subject_name': subject_name,
+        'subject_id': subject_id,
+        'missing_persons': [],
+        'wanted_persons': [],
+        'api_available': False,
+        'error': None
+    }
+    
+    try:
+        # Try to fetch from Politie open data
+        missing_found = False
+        wanted_found = False
+        
+        try:
+            # Try CBS OData API for Politie data
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
+                'Accept': 'application/json'
+            }
+            
+            # Check missing persons
+            missing_url = f'{POLITIE_API_BASE}/api/v1/vermisten'
+            r = requests.get(missing_url, headers=headers, timeout=15)
+            
+            if r.status_code == 200 and 'application/json' in r.headers.get('Content-Type', ''):
+                results['api_available'] = True
+                data = r.json()
+                # Process missing persons data
+                if 'value' in data:
+                    for person in data['value']:
+                        person_name = person.get('naam', '').lower()
+                        if any(part in person_name for part in name_parts):
+                            results['missing_persons'].append({
+                                'name': person.get('naam', 'Unknown'),
+                                'description': person.get('omschrijving', ''),
+                                'location': person.get('laatste_locatie', ''),
+                                'date_missing': person.get('datum_vermisting', ''),
+                                'url': f"{POLITIE_API_BASE}/vermist/{person.get('id', '')}"
+                            })
+                            missing_found = True
+            elif r.status_code == 200:
+                # HTML response - API not available
+                results['api_available'] = False
+                results['error'] = 'Politie open data API is temporarily unavailable (returning HTML instead of JSON)'
+                
+        except requests.exceptions.RequestException as e:
+            results['error'] = f'Failed to connect to Politie API: {str(e)}'
+        
+        # Note: opsporingsberichten (wanted persons) typically requires specific access
+        # We'll check if available later
+        
+        return jsonify(results), 200
+        
+    except Exception as e:
+        logger.error(f"Politie data check error: {e}")
+        return jsonify({
+            'error': f'Failed to check Politie data: {str(e)}',
+            'api_available': False
+        }), 500
+
+
+@cms_bp.route('/check-policie-data-status', methods=['GET'])
+@login_required
+def check_policie_api_status():
+    """Check if Politie open data API is available."""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
+            'Accept': 'application/json'
+        }
+        
+        r = requests.head(f'{POLITIE_API_BASE}/api/v1/vermisten', headers=headers, timeout=10)
+        
+        return jsonify({
+            'available': r.status_code == 200,
+            'status_code': r.status_code,
+            'api_url': POLITIE_API_BASE
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'available': False,
+            'error': str(e)
+        }), 200
+
+
 @cms_bp.route('/cases/<case_id>/screenshots/capture', methods=['POST'])
 @login_required
 @case_access_required
