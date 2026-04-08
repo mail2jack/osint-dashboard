@@ -355,6 +355,13 @@
                         {% else %}
                         {{ finding.title }}
                         {% endif %}
+                        {% if finding.source_url and finding.subject_id %}
+                        <br>
+                        <button onclick="extractSocialId('{{ finding.source_url }}', '{{ finding.subject_id }}')" 
+                                class="btn btn-sm" style="font-size: 0.65rem; padding: 2px 6px; background: #8b5cf6; margin-top: 4px;">
+                            🔍 Extract ID
+                        </button>
+                        {% endif %}
                     </td>
                     <td>
                         {% if finding.subject_id %}
@@ -1502,6 +1509,45 @@
             document.getElementById('viewScreenshotLink').href = url;
             document.getElementById('viewScreenshotImage').src = `/cms/cases/{{ case.id }}/screenshots/${id}/view`;
             document.getElementById('viewScreenshotModal').classList.add('show');
+        }
+        
+        function extractSocialId(url, subjectId) {
+            if (!confirm('Extract social media ID from this URL?\n\n' + url + '\n\nThe ID will be saved to the linked subject.')) {
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Extracting...';
+            
+            fetch('/cms/extract-social-id', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url, subject_id: subjectId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else if (data.extracted && Object.keys(data.extracted).length > 0) {
+                    let message = 'Social media ID extracted!\n\n';
+                    for (const [key, value] of Object.entries(data.extracted)) {
+                        if (key.endsWith('_id') || ['facebook', 'vk', 'instagram', 'twitter'].includes(key)) {
+                            message += key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : value) + '\n';
+                        }
+                    }
+                    alert(message);
+                } else {
+                    alert('No social media IDs found on this page.');
+                }
+            })
+            .catch(err => {
+                alert('Failed to extract: ' + err.message);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = '🔍 Extract ID';
+            });
         }
         
         function closeViewScreenshotModal() {

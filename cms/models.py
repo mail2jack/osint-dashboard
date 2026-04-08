@@ -522,6 +522,10 @@ class Subject(db.Model):
     estimated_value = db.Column(db.Numeric(15, 2))
     currency = db.Column(db.String(3), default='EUR')
     
+    # Social media identifiers (extracted from profiles)
+    # Structure: {"facebook": {"id": "123456", "username": "johndoe"}, "vk": {...}, etc.}
+    social_media_ids = db.Column(db.JSON)
+    
     # Vehicle-specific fields (encrypted)
     license_plate = db.Column(db.String(20))  # Encrypted
     vin = db.Column(db.String(50))  # Encrypted (Vehicle Identification Number)
@@ -609,6 +613,7 @@ class Subject(db.Model):
             'insurance_company': self.insurance_company,
             'brand': self.brand,
             'vehicle_type': self.vehicle_type,
+            'social_media_ids': self.social_media_ids or {},
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         

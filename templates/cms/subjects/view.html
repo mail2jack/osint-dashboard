@@ -71,6 +71,82 @@
     </div>
 </div>
 
+<!-- Social Media IDs Section -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">Social Media IDs</h3>
+        <button onclick="openAddSocialIdModal()" class="btn-sm" style="background: #8b5cf6;">+ Add ID</button>
+    </div>
+    <div id="socialIdsList">
+        {% if subject.social_media_ids and subject.social_media_ids|length > 0 %}
+        <table style="width: 100%;">
+            <thead>
+                <tr><th>Platform</th><th>ID/Value</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for platform, data in subject.social_media_ids.items() %}
+                <tr>
+                    <td style="text-transform: capitalize;">{{ platform }}</td>
+                    <td>
+                        {% if data is mapping %}
+                            {% if data.id %}{{ data.id }}{% endif %}
+                            {% if data.username %} ({{ data.username }}){% endif %}
+                        {% else %}
+                            {{ data }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button onclick="editSocialId('{{ platform }}')" class="btn-sm" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">Edit</button>
+                        <button onclick="deleteSocialId('{{ platform }}')" class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #666;">No social media IDs recorded yet.</p>
+        <p style="color: #888; font-size: 0.875rem;">Tip: Click "Extract ID" on any URL in findings to automatically extract and save social media IDs.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Social ID Modal -->
+<div id="addSocialIdModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;" id="socialIdModalTitle">Add Social Media ID</h2>
+            <span onclick="closeAddSocialIdModal()" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+        </div>
+        <form id="addSocialIdForm">
+            <div class="form-group">
+                <label for="socialPlatform">Platform</label>
+                <select id="socialPlatform" style="width: 100%; padding: 0.5rem;">
+                    <option value="facebook">Facebook</option>
+                    <option value="vk">VK</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="twitter">Twitter/X</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="reddit">Reddit</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="socialId">ID / Username</label>
+                <input type="text" id="socialId" style="width: 100%; padding: 0.5rem;" placeholder="Enter ID or username">
+            </div>
+            <div class="form-group">
+                <label for="socialUrl">Profile URL (optional)</label>
+                <input type="url" id="socialUrl" style="width: 100%; padding: 0.5rem;" placeholder="https://...">
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button type="button" onclick="saveSocialId()" class="btn-sm" style="background: #059669;">Save</button>
+                <button type="button" onclick="closeAddSocialIdModal()" class="btn-sm" style="background: #666;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- OSINT Search Modal -->
 <div id="osintModal" class="modal">
     <div class="modal-content">
@@ -629,6 +705,97 @@
     
     document.getElementById('osintModal').addEventListener('click', function(e) {
         if (e.target === this) closeOsintModal();
+    });
+    
+    // Social Media ID Functions
+    let editingPlatform = null;
+    
+    function openAddSocialIdModal(platform = null, data = null) {
+        editingPlatform = platform;
+        document.getElementById('socialIdModalTitle').textContent = platform ? 'Edit Social Media ID' : 'Add Social Media ID';
+        document.getElementById('socialPlatform').value = platform || 'facebook';
+        document.getElementById('socialPlatform').disabled = !!platform;
+        
+        if (data) {
+            if (typeof data === 'object') {
+                document.getElementById('socialId').value = data.id || data.username || '';
+                document.getElementById('socialUrl').value = data.url || '';
+            } else {
+                document.getElementById('socialId').value = data;
+                document.getElementById('socialUrl').value = '';
+            }
+        } else {
+            document.getElementById('socialId').value = '';
+            document.getElementById('socialUrl').value = '';
+        }
+        
+        document.getElementById('addSocialIdModal').classList.add('show');
+    }
+    
+    function closeAddSocialIdModal() {
+        document.getElementById('addSocialIdModal').classList.remove('show');
+        editingPlatform = null;
+    }
+    
+    function saveSocialId() {
+        const platform = document.getElementById('socialPlatform').value;
+        const id = document.getElementById('socialId').value.trim();
+        const url = document.getElementById('socialUrl').value.trim();
+        
+        if (!id && !url) {
+            alert('Please enter an ID or URL');
+            return;
+        }
+        
+        const data = {};
+        if (id) data.id = id;
+        if (url) data.url = url;
+        
+        const socialIds = {{ subject.social_media_ids|tojson }} || {};
+        socialIds[platform] = data;
+        
+        fetch('/cms/subjects/{{ subject.id }}/social-ids', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ social_media_ids: socialIds })
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert('Social media ID saved!');
+            location.reload();
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+        });
+    }
+    
+    function editSocialId(platform) {
+        const socialIds = {{ subject.social_media_ids|tojson }} || {};
+        openAddSocialIdModal(platform, socialIds[platform]);
+    }
+    
+    function deleteSocialId(platform) {
+        if (!confirm('Delete ' + platform + ' ID?')) return;
+        
+        const socialIds = {{ subject.social_media_ids|tojson }} || {};
+        delete socialIds[platform];
+        
+        fetch('/cms/subjects/{{ subject.id }}/social-ids', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ social_media_ids: socialIds })
+        })
+        .then(r => r.json())
+        .then(data => {
+            location.reload();
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+        });
+    }
+    
+    document.getElementById('addSocialIdModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddSocialIdModal();
     });
 </script>
 {% endblock %}
