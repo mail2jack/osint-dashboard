@@ -3838,6 +3838,45 @@ def get_screenshot(case_id: str, screenshot_id: str):
     return jsonify(screenshot.to_dict())
 
 
+@cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>', methods=['DELETE'])
+@login_required
+@case_access_required
+@case_edit_required
+def delete_screenshot(case_id: str, screenshot_id: str):
+    """Delete a screenshot."""
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
+    
+    if not screenshot:
+        return jsonify({'error': 'Screenshot not found'}), 404
+    
+    try:
+        # Delete the file
+        filepath = get_screenshot_path(case_id, screenshot.filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        # Log the action
+        AuditLog.log(
+            user_id=current_user.id,
+            action='delete',
+            entity_type='screenshot',
+            entity_id=screenshot_id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Deleted screenshot: {screenshot.title or screenshot.filename}"
+        )
+        
+        # Delete database record
+        db.session.delete(screenshot)
+        db.session.commit()
+        
+        return jsonify({'message': 'Screenshot deleted'}), 200
+        
+    except Exception as e:
+        logger.error(f"Screenshot delete error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 # =============================================================================
 # Document Upload Routes
 # =============================================================================
