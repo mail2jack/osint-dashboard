@@ -8,9 +8,10 @@
 <div class="subject-photo-container">
     <div class="photo-frame" id="photoFrame">
         {% if subject.photo_path %}
-        <img src="/static{{ subject.photo_path }}" alt="Photo of {{ subject.name }}">
+        <img src="/static{{ subject.photo_path }}" alt="Photo of {{ subject.name }}" id="subjectPhoto">
         {% else %}
         <span class="photo-placeholder">👤</span>
+        <img id="subjectPhoto" style="display:none;">
         {% endif %}
         <label class="photo-upload-btn" for="photoInput">📷 Upload</label>
         <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">
@@ -34,13 +35,28 @@
                 🚔 Check Politie Data
             </button>
             {% endif %}
+            {% if subject.photo_path %}
+            <button onclick="encodeFace()" id="encodeFaceBtn" class="btn-osint" style="background: #7c3aed; border: none; cursor: pointer;">
+                👤 Encode Face
+            </button>
+            <button onclick="searchTinEye()" class="btn-osint" style="background: #059669; border: none; cursor: pointer;">
+                🔍 TinEye Search
+            </button>
+            {% endif %}
+            {% if subject.face_encoding %}
+            <span class="face-badge" style="background: #059669; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; font-size: 0.75rem;">✅ Face Encoded</span>
+            <button onclick="deleteFaceEncoding()" class="btn-sm" style="background: #dc2626; padding: 0.3rem 0.6rem; font-size: 0.7rem;">Remove</button>
+            {% endif %}
         </div>
+        <div id="faceStatus" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
     </div>
 </div>
 
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0;">Subject Details</h3>
+        <h3 style="margin: 0;">
+            {% if subject.subject_type == 'vehicle' %}🚗 Vehicle Details{% else %}Subject Details{% endif %}
+        </h3>
         <button onclick="openNetworkModal()" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
@@ -52,18 +68,87 @@
             <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span></div>
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
-            <div class="info-item"><label>License Plate</label>
-                <span>{{ subject.license_plate if subject.license_plate else '-' }}</span>
+            <div class="info-item"><label>License Plate (Kenteken)</label>
+                <span style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate if subject.license_plate else '-' }}</span>
                 {% if subject.license_plate %}
                 <button onclick="checkRDWVehicle('{{ subject.license_plate }}', '{{ subject.id }}')" class="btn-sm" style="background: #f59e0b; margin-left: 0.5rem; font-size: 0.7rem;">🚗 Check RDW</button>
                 {% else %}
                 <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">(Add license plate first)</span>
                 {% endif %}
             </div>
-            <div class="info-item"><label>VIN</label><span>{{ subject.vin if subject.vin else '-' }}</span></div>
-            <div class="info-item"><label>Brand</label><span>{{ subject.brand if subject.brand else '-' }}</span></div>
-            <div class="info-item"><label>Vehicle Type</label><span>{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span></div>
-            <div class="info-item"><label>Insurance Company</label><span>{{ subject.insurance_company if subject.insurance_company else '-' }}</span></div>
+            <div class="info-item"><label>VIN (Chassisnummer)</label><span>{{ subject.vin if subject.vin else '-' }}</span></div>
+            <div class="info-item"><label>Merk (Brand)</label><span>{{ subject.brand if subject.brand else '-' }}</span></div>
+            <div class="info-item"><label>Inrichting (Vehicle Type)</label><span>{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span></div>
+            <div class="info-item"><label>Verzekeringsmaatschappij (Insurance)</label><span>{{ subject.insurance_company if subject.insurance_company else '-' }}</span></div>
+            
+            {% if subject.rdw_data %}
+            <div style="margin-top: 1rem; padding: 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px;">
+                <h4 style="margin: 0 0 0.75rem 0; color: #0369a1;">RDW Voertuiggegevens</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+                    {% if subject.rdw_data.get('handelsbenaming') %}
+                    <div class="info-item"><label>Model (Handelsbenaming)</label><span>{{ subject.rdw_data.handelsbenaming }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('voertuigsoort') %}
+                    <div class="info-item"><label>Voertuigsoort</label><span>{{ subject.rdw_data.voertuigsoort }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('eerste_kleur') %}
+                    <div class="info-item"><label>Kleur (Eerste)</label><span>{{ subject.rdw_data.eerste_kleur }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('tweede_kleur') %}
+                    <div class="info-item"><label>Kleur (Tweede)</label><span>{{ subject.rdw_data.tweede_kleur }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('aantal_deuren') %}
+                    <div class="info-item"><label>Aantal Deuren</label><span>{{ subject.rdw_data.aantal_deuren }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('aantal_zitplaatsen') %}
+                    <div class="info-item"><label>Aantal Zitplaatsen</label><span>{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('cilinderinhoud') %}
+                    <div class="info-item"><label>Cilinderinhoud (cc)</label><span>{{ subject.rdw_data.cilinderinhoud }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('aantal_cilinders') %}
+                    <div class="info-item"><label>Aantal Cilinders</label><span>{{ subject.rdw_data.aantal_cilinders }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('massa_ledig') %}
+                    <div class="info-item"><label>Massa Ledig (kg)</label><span>{{ subject.rdw_data.massa_ledig }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('maximum_massa') %}
+                    <div class="info-item"><label>Maximum Massa (kg)</label><span>{{ subject.rdw_data.maximum_massa }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('vervaldatum_apk') %}
+                    <div class="info-item"><label>APK Vervaldatum</label><span>{{ subject.rdw_data.vervaldatum_apk }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('wam_verzekerd') %}
+                    <div class="info-item"><label>WAM Verzekerd</label>
+                        <span style="color: {% if subject.rdw_data.wam_verzekerd == 'Ja' %}#16a34a{% else %}#dc2626{% endif %};">
+                            {{ subject.rdw_data.wam_verzekerd }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('taxi_indicator') %}
+                    <div class="info-item"><label>Taxi</label><span>{{ subject.rdw_data.taxi_indicator }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('export_indicator') %}
+                    <div class="info-item"><label>Geexporteerd</label><span>{{ subject.rdw_data.export_indicator }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('europese_voertuigcategorie') %}
+                    <div class="info-item"><label>EU Categorie</label><span>{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('zuinigheidsclassificatie') %}
+                    <div class="info-item"><label>Zuinigheidsclassificatie</label><span>{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('catalogusprijs') %}
+                    <div class="info-item"><label>Catalogusprijs (EUR)</label><span>€{{ subject.rdw_data.catalogusprijs }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('datum_eerste_toelating') %}
+                    <div class="info-item"><label>Datum Eerste Toelating</label><span>{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
+                    {% endif %}
+                </div>
+                <div style="margin-top: 0.75rem;">
+                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="background: #0ea5e9; text-decoration: none;">✏️ Edit RDW Data</a>
+                </div>
+            </div>
+            {% endif %}
             {% endif %}
             <div class="info-item"><label>Address</label><span>{{ subject.address if subject.address else '-' }}</span></div>
             {% if subject.notes %}<div class="info-item"><label>Notes</label><p>{{ subject.notes }}</p></div>{% endif %}
@@ -940,5 +1025,129 @@
     document.getElementById('addSocialIdModal').addEventListener('click', function(e) {
         if (e.target === this) closeAddSocialIdModal();
     });
+    
+    // Face Recognition Functions
+    let faceApiLoaded = false;
+    let faceDescriptor = null;
+    
+    async function loadFaceApi() {
+        if (faceApiLoaded) return true;
+        
+        const statusEl = document.getElementById('faceStatus');
+        try {
+            statusEl.innerHTML = '<span style="color: #0ea5e9;">Loading face recognition models...</span>';
+            
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
+            
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            
+            faceApiLoaded = true;
+            statusEl.innerHTML = '<span style="color: #059669;">Face recognition ready</span>';
+            return true;
+        } catch (err) {
+            statusEl.innerHTML = '<span style="color: #dc2626;">Failed to load face recognition</span>';
+            console.error('Face API error:', err);
+            return false;
+        }
+    }
+    
+    async function encodeFace() {
+        const btn = document.getElementById('encodeFaceBtn');
+        const statusEl = document.getElementById('faceStatus');
+        const photoImg = document.getElementById('subjectPhoto');
+        
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+        
+        const loaded = await loadFaceApi();
+        if (!loaded) {
+            btn.disabled = false;
+            btn.textContent = '👤 Encode Face';
+            return;
+        }
+        
+        try {
+            statusEl.innerHTML = '<span style="color: #0ea5e9;">Detecting face...</span>';
+            
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = '/static' + '{{ subject.photo_path }}' + '?t=' + new Date().getTime();
+            
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+            });
+            
+            const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
+            const detection = await faceapi.detectSingleFace(img, options)
+                .withFaceLandmarks(true)
+                .withFaceDescriptor();
+            
+            if (!detection) {
+                statusEl.innerHTML = '<span style="color: #f59e0b;">No face detected. Try a clearer photo.</span>';
+                btn.disabled = false;
+                btn.textContent = '👤 Encode Face';
+                return;
+            }
+            
+            statusEl.innerHTML = '<span style="color: #0ea5e9;">Saving face encoding...</span>';
+            
+            const encoding = Array.from(detection.descriptor);
+            
+            const response = await fetch('/cms/subjects/{{ subject.id }}/face-encoding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ encoding: encoding })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+            } else {
+                statusEl.innerHTML = '<span style="color: #059669;">✅ Face encoding saved!</span>';
+                setTimeout(() => location.reload(), 1000);
+            }
+        } catch (err) {
+            statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            console.error('Face encoding error:', err);
+        }
+        
+        btn.disabled = false;
+        btn.textContent = '👤 Encode Face';
+    }
+    
+    async function deleteFaceEncoding() {
+        if (!confirm('Remove face encoding for this subject?')) return;
+        
+        try {
+            const response = await fetch('/cms/subjects/{{ subject.id }}/face-encoding', {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            if (!data.error) {
+                location.reload();
+            }
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    }
+    
+    function searchTinEye() {
+        const photoPath = '{{ subject.photo_path }}';
+        if (!photoPath) {
+            alert('No photo available for this subject');
+            return;
+        }
+        
+        const baseUrl = window.location.origin;
+        const imageUrl = encodeURIComponent(baseUrl + '/static' + photoPath);
+        const tineyeUrl = `https://tineye.com/search?url=${imageUrl}`;
+        
+        window.open(tineyeUrl, '_blank');
+    }
 </script>
 {% endblock %}

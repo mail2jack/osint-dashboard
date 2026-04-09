@@ -1786,6 +1786,27 @@ def create_subject():
             vehicle_type=data.get('vehicle_type')
         )
         
+        if data['subject_type'] == 'vehicle':
+            rdw_data = {}
+            rdw_fields = [
+                'handelsbenaming', 'voertuigsoort', 'eerste_kleur', 'tweede_kleur',
+                'aantal_deuren', 'aantal_zitplaatsen', 'cilinderinhoud', 'aantal_cilinders',
+                'massa_ledig', 'maximum_massa', 'vervaldatum_apk', 'wam_verzekerd',
+                'taxi_indicator', 'export_indicator', 'europese_voertuigcategorie',
+                'zuinigheidsclassificatie', 'catalogusprijs', 'datum_eerste_toelating'
+            ]
+            for field in rdw_fields:
+                if data.get(field):
+                    rdw_data[field] = data.get(field)
+            
+            if rdw_data or data.get('license_plate'):
+                rdw_data['kenteken'] = data.get('license_plate', '').upper()
+                rdw_data['merk'] = data.get('brand', '')
+                rdw_data['inrichting'] = data.get('vehicle_type', '')
+                if data.get('eerste_kleur'):
+                    rdw_data['kleur'] = data.get('eerste_kleur')
+                subject.rdw_data = rdw_data
+        
         # Encrypt identifying information
         encrypted_fields = ['date_of_birth', 'place_of_birth', 'nationality',
                           'identification_number', 'address', 'phone', 'email']
@@ -2014,6 +2035,135 @@ def upload_subject_photo(subject_id: str):
     return jsonify({
         'message': 'Photo uploaded',
         'photo_path': subject.photo_path
+    })
+
+
+@cms_bp.route('/subjects/<subject_id>/face-encoding', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator', 'junior_investigator')
+def save_face_encoding(subject_id: str):
+    """Save face encoding for a subject."""
+    subject = Subject.query.get_or_404(subject_id)
+    data = request.get_json()
+    
+    if not data or 'encoding' not in data:
+        return jsonify({'error': 'No encoding provided'}), 400
+    
+    encoding = data['encoding']
+    
+    if not isinstance(encoding, list) or len(encoding) != 128:
+        return jsonify({'error': 'Invalid encoding format'}), 400
+    
+    subject.face_encoding = encoding
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='face_encoding_saved',
+        entity_type='subject',
+        entity_id=subject_id,
+        ip_address=request.remote_addr,
+        description=f"Saved face encoding for {subject.name}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Face encoding saved',
+        'has_encoding': True
+    })
+
+
+@cms_bp.route('/subjects/<subject_id>/face-encoding', methods=['DELETE'])
+@login_required
+@roles_required('admin', 'senior_investigator', 'junior_investigator')
+def delete_face_encoding(subject_id: str):
+    """Delete face encoding for a subject."""
+    subject = Subject.query.get_or_404(subject_id)
+    
+    subject.face_encoding = None
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='face_encoding_deleted',
+        entity_type='subject',
+        entity_id=subject_id,
+        ip_address=request.remote_addr,
+        description=f"Deleted face encoding for {subject.name}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Face encoding deleted',
+        'has_encoding': False
+    })
+
+
+@cms_bp.route('/subjects/compare-faces', methods=['POST'])
+@login_required
+def compare_faces():
+    """Compare face encodings. Returns list of matching subjects."""
+    data = request.get_json()
+    
+    if not data or 'encoding' not in data:
+        return jsonify({'error': 'No encoding provided'}), 400
+    
+    target_encoding = data['encoding']
+    
+    if not isinstance(target_encoding, list) or len(target_encoding) != 128:
+        return jsonify({'error': 'Invalid encoding format'}), 400
+    
+    threshold = data.get('threshold', 0.6)
+    limit = data.get('limit', 20)
+    
+    subjects_with_faces = Subject.query.filter(
+        Subject.face_encoding.isnot(None),
+        Subject.is_deleted == False,
+        Subject.photo_path.isnot(None)
+    ).all()
+    
+    def euclidean_distance(enc1, enc2):
+        import math
+        return math.sqrt(sum((a - b) ** 2 for a, b in zip(enc1, enc2)))
+    
+    matches = []
+    for subject in subjects_with_faces:
+        distance = euclidean_distance(target_encoding, subject.face_encoding)
+        if distance < threshold:
+            matches.append({
+                'id': subject.id,
+                'name': subject.name,
+                'subject_type': subject.subject_type,
+                'photo_path': subject.photo_path,
+                'distance': round(distance, 4),
+                'similarity': round((1 - distance) * 100, 1)
+            })
+    
+    matches.sort(key=lambda x: x['distance'])
+    matches = matches[:limit]
+    
+    return jsonify({
+        'matches': matches,
+        'total_searched': len(subjects_with_faces),
+        'threshold': threshold
+    })
+
+
+@cms_bp.route('/api/subjects/with-faces', methods=['GET'])
+@login_required
+def get_subjects_with_faces():
+    """Get list of subjects with face encodings for face-api.js matching."""
+    subjects = Subject.query.filter(
+        Subject.face_encoding.isnot(None),
+        Subject.is_deleted == False,
+        Subject.photo_path.isnot(None)
+    ).all()
+    
+    return jsonify({
+        'subjects': [{
+            'id': s.id,
+            'name': s.name,
+            'photo_path': s.photo_path,
+            'face_encoding': s.face_encoding
+        } for s in subjects]
     })
 
 
@@ -2539,51 +2689,204 @@ def create_finding():
 @cms_bp.route('/search')
 @login_required
 def search():
-    """Global search across all entities."""
+    """Global search across all entities with full page results."""
     query = request.args.get('q', '')
-    entity_type = request.args.get('type', '')  # case, client, subject
+    entity_type = request.args.get('type', 'all')
+    
+    results = {
+        'cases': [],
+        'clients': [],
+        'subjects': [],
+        'findings': [],
+        'financials': [],
+        'comments': [],
+        'notes': []
+    }
+    
+    if query and len(query) >= 2:
+        if entity_type in ['all', 'cases']:
+            cases = Case.query.join(Client).filter(
+                Case.is_deleted == False,
+                db.or_(
+                    Case.title.ilike(f'%{query}%'),
+                    Case.case_number.ilike(f'%{query}%'),
+                    Case.description.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+            results['cases'] = [{
+                'id': c.id,
+                'title': c.title,
+                'case_number': c.case_number,
+                'status': c.status,
+                'priority': c.priority,
+                'client_name': c.client.name if c.client else None,
+                'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else None
+            } for c in cases]
+        
+        if entity_type in ['all', 'clients']:
+            clients = Client.query.filter(
+                Client.is_deleted == False,
+                Client.name.ilike(f'%{query}%')
+            ).limit(20).all()
+            results['clients'] = [{
+                'id': c.id,
+                'name': c.name,
+                'contact_person': c.contact_person,
+                'is_company': c.is_company,
+                'is_active': c.is_active,
+                'contract_number': c.contract_number
+            } for c in clients]
+        
+        if entity_type in ['all', 'subjects']:
+            subjects = Subject.query.filter(
+                Subject.is_deleted == False,
+                db.or_(
+                    Subject.name.ilike(f'%{query}%'),
+                    Subject.identification_number.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+            results['subjects'] = [{
+                'id': s.id,
+                'name': s.name,
+                'subject_type': s.subject_type,
+                'risk_score': s.risk_score,
+                'created_at': s.created_at.strftime('%Y-%m-%d') if s.created_at else None
+            } for s in subjects]
+        
+        if entity_type in ['all', 'findings']:
+            findings = Finding.query.join(Case).filter(
+                Finding.is_deleted == False,
+                db.or_(
+                    Finding.title.ilike(f'%{query}%'),
+                    Finding.content.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+            results['findings'] = [{
+                'id': f.id,
+                'title': f.title,
+                'case_id': f.case_id,
+                'case_number': f.case.case_number if f.case else None,
+                'finding_type': f.finding_type,
+                'source_type': f.source_type,
+                'created_at': f.created_at.strftime('%Y-%m-%d') if f.created_at else None
+            } for f in findings]
+        
+        if entity_type in ['all', 'financials']:
+            financials = FinancialRecord.query.join(Case).filter(
+                FinancialRecord.is_deleted == False,
+                db.or_(
+                    FinancialRecord.description.ilike(f'%{query}%'),
+                    FinancialRecord.source_reference.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+            results['financials'] = [{
+                'id': f.id,
+                'amount': float(f.amount) if f.amount else 0,
+                'currency': f.currency,
+                'case_id': f.case_id,
+                'case_number': f.case.case_number if f.case else None,
+                'transaction_type': f.transaction_type,
+                'transaction_date': f.transaction_date.strftime('%Y-%m-%d') if f.transaction_date else None,
+                'description': f.description[:100] if f.description else None
+            } for f in financials]
+        
+        if entity_type in ['all', 'comments']:
+            comments = Comment.query.filter(
+                Comment.is_deleted == False,
+                Comment.content.ilike(f'%{query}%')
+            ).limit(20).all()
+            results['comments'] = [{
+                'id': c.id,
+                'content': c.content[:200] + ('...' if len(c.content) > 200 else ''),
+                'comment_type': c.comment_type,
+                'case_id': c.case_id,
+                'subject_id': c.subject_id,
+                'client_id': c.client_id,
+                'case_number': Case.query.get(c.case_id).case_number if c.case_id else None,
+                'author_name': c.author.full_name if c.author else 'Unknown',
+                'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else None
+            } for c in comments]
+        
+        if entity_type in ['all', 'notes']:
+            subject_notes = Subject.query.filter(
+                Subject.is_deleted == False,
+                Subject.notes.ilike(f'%{query}%')
+            ).limit(10).all()
+            results['notes'] = [{
+                'id': s.id,
+                'name': s.name,
+                'subject_type': s.subject_type,
+                'note_preview': s.notes[:150] + ('...' if len(s.notes) > 150 else '') if s.notes else None,
+                'entity_type': 'subject'
+            } for s in subject_notes]
+        
+        AuditLog.log(
+            user_id=current_user.id,
+            action='search',
+            entity_type='global_search',
+            ip_address=request.remote_addr,
+            description=f"Searched for: {query}"
+        )
+        db.session.commit()
+    
+    return render_template('cms/search.html',
+        query=query,
+        results=results,
+        active_filter=entity_type
+    )
+
+
+@cms_bp.route('/api/search')
+@login_required
+def api_search():
+    """API endpoint for autocomplete/typeahead search."""
+    query = request.args.get('q', '')
+    entity_type = request.args.get('type', '')
     
     if not query or len(query) < 2:
         return jsonify({'results': []})
     
     results = {'cases': [], 'clients': [], 'subjects': []}
     
-    if not entity_type or entity_type == 'case':
+    if not entity_type or entity_type == 'cases':
         cases = Case.query.filter(
             Case.is_deleted == False,
             db.or_(
                 Case.title.ilike(f'%{query}%'),
-                Case.case_number.ilike(f'%{query}%'),
-                Case.description.ilike(f'%{query}%')
+                Case.case_number.ilike(f'%{query}%')
             )
-        ).limit(10).all()
-        results['cases'] = [c.to_dict(include_relations=False) for c in cases]
+        ).limit(5).all()
+        results['cases'] = [{
+            'id': c.id,
+            'title': c.title,
+            'case_number': c.case_number,
+            'type': 'case'
+        } for c in cases]
     
-    if not entity_type or entity_type == 'client':
+    if not entity_type or entity_type == 'clients':
         clients = Client.query.filter(
             Client.is_deleted == False,
             Client.name.ilike(f'%{query}%')
-        ).limit(10).all()
-        results['clients'] = [c.to_dict() for c in clients]
+        ).limit(5).all()
+        results['clients'] = [{
+            'id': c.id,
+            'name': c.name,
+            'type': 'client'
+        } for c in clients]
     
-    if not entity_type or entity_type == 'subject':
+    if not entity_type or entity_type == 'subjects':
         subjects = Subject.query.filter(
             Subject.is_deleted == False,
             Subject.name.ilike(f'%{query}%')
-        ).limit(10).all()
-        results['subjects'] = [s.to_dict(decrypted=False) for s in subjects]
+        ).limit(5).all()
+        results['subjects'] = [{
+            'id': s.id,
+            'name': s.name,
+            'type': 'subject',
+            'subject_type': s.subject_type
+        } for s in subjects]
     
-    # Log search for audit
-    AuditLog.log(
-        user_id=current_user.id,
-        action='search',
-        entity_type='global_search',
-        ip_address=request.remote_addr,
-        description=f"Searched for: {query}"
-    )
-    db.session.commit()
-    
-    return jsonify({'results': results, 'query': query})
+    return jsonify({'results': results})
 
 
 # =============================================================================

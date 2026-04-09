@@ -539,6 +539,9 @@ class Subject(db.Model):
     # Photo
     photo_path = db.Column(db.String(500))  # Path to uploaded photo
     
+    # Face recognition encoding (stored as JSON array of 128 floats from face-api.js)
+    face_encoding = db.Column(db.JSON)
+    
     # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)

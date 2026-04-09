@@ -1,0 +1,521 @@
+{% extends "cms/base.html" %}
+
+{% block title %}Search{% endblock %}
+
+{% block content %}
+<style>
+    .search-header {
+        margin-bottom: 2rem;
+    }
+    .search-box {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .search-box input {
+        flex: 1;
+        padding: 1rem;
+        font-size: 1.1rem;
+    }
+    .search-box button {
+        padding: 1rem 2rem;
+    }
+    .search-filters {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .filter-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .filter-btn:hover {
+        border-color: var(--accent-primary);
+    }
+    .filter-btn.active {
+        background: var(--accent-primary);
+        color: white;
+        border-color: var(--accent-primary);
+    }
+    .results-section {
+        margin-bottom: 2rem;
+    }
+    .results-section h3 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+    .result-count {
+        background: var(--info-bg);
+        color: var(--info-text);
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+    }
+    .result-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        transition: background 0.2s;
+    }
+    .result-item:hover {
+        background: var(--table-hover);
+    }
+    .result-info {
+        flex: 1;
+    }
+    .result-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    .result-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .result-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .badge-case { background: var(--info-bg); color: var(--info-text); }
+    .badge-client { background: var(--success-bg); color: var(--success-text); }
+    .badge-subject { background: var(--warning-bg); color: var(--warning-text); }
+    .badge-finding { background: var(--danger-bg); color: var(--danger-text); }
+    .badge-financial { background: #e0e7ff; color: #4338ca; }
+    .badge-comment { background: #f3e8ff; color: #7c3aed; }
+    .badge-note { background: #fef3c7; color: #92400e; }
+    .comment-preview {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        border-left: 3px solid #7c3aed;
+    }
+    .note-preview {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        border-left: 3px solid #92400e;
+    }
+    .no-results {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+    .no-results-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .quick-stat {
+        background: var(--bg-card);
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 4px var(--shadow);
+    }
+    .quick-stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--accent-primary);
+    }
+    .quick-stat-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    @media (max-width: 768px) {
+        .search-box {
+            flex-direction: column;
+        }
+        .search-box button {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="search-header">
+    <h1>Global Search</h1>
+    <p style="color: var(--text-secondary);">Search across cases, clients, subjects, findings, comments, and notes</p>
+</div>
+
+<form method="GET" action="{{ url_for('cms.search') }}">
+    <div class="search-box">
+        <input type="text" name="q" id="search-input" value="{{ query }}" placeholder="Search for anything..." autofocus>
+        <button type="submit" class="btn">Search</button>
+    </div>
+    
+    <div class="search-filters">
+        <button type="button" class="filter-btn {% if not active_filter or active_filter == 'all' %}active{% endif %}" onclick="filterResults('all')">All</button>
+        <button type="button" class="filter-btn {% if active_filter == 'cases' %}active{% endif %}" onclick="filterResults('cases')">Cases</button>
+        <button type="button" class="filter-btn {% if active_filter == 'clients' %}active{% endif %}" onclick="filterResults('clients')">Clients</button>
+        <button type="button" class="filter-btn {% if active_filter == 'subjects' %}active{% endif %}" onclick="filterResults('subjects')">Subjects</button>
+        <button type="button" class="filter-btn {% if active_filter == 'findings' %}active{% endif %}" onclick="filterResults('findings')">Findings</button>
+        <button type="button" class="filter-btn {% if active_filter == 'comments' %}active{% endif %}" onclick="filterResults('comments')">Comments</button>
+        <button type="button" class="filter-btn {% if active_filter == 'notes' %}active{% endif %}" onclick="filterResults('notes')">Notes</button>
+    </div>
+    
+    <input type="hidden" name="type" id="filter-type" value="{{ active_filter or 'all' }}">
+</form>
+
+<div class="card" style="margin-top: 1rem; background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h3 style="margin: 0 0 0.25rem 0; color: white;">👤 Find Similar Faces</h3>
+            <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Upload a photo to find subjects with similar faces</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="file" id="faceSearchInput" accept="image/*" onchange="searchByFace(this)" style="display: none;">
+            <label for="faceSearchInput" style="padding: 0.75rem 1.5rem; background: white; color: #7c3aed; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                📷 Upload Photo
+            </label>
+        </div>
+    </div>
+    <div id="faceSearchStatus" style="margin-top: 0.75rem; font-size: 0.875rem;"></div>
+    <div id="faceSearchResults" style="margin-top: 1rem; display: none;">
+        <h4 style="margin: 0 0 0.75rem 0; color: white;">Matching Subjects</h4>
+        <div id="faceMatchesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;"></div>
+    </div>
+</div>
+
+<style>
+.card[style*="linear-gradient"] .badge-finding { background: white; color: #7c3aed; }
+</style>
+
+{% if query %}
+    {% if results.cases or results.clients or results.subjects or results.findings or results.financials or results.comments or results.notes %}
+        <div class="quick-stats">
+            {% if results.cases %}
+            <div class="quick-stat">
+                <div class="quick-stat-value">{{ results.cases|length }}</div>
+                <div class="quick-stat-label">Cases</div>
+            </div>
+            {% endif %}
+            {% if results.clients %}
+            <div class="quick-stat">
+                <div class="quick-stat-value">{{ results.clients|length }}</div>
+                <div class="quick-stat-label">Clients</div>
+            </div>
+            {% endif %}
+            {% if results.subjects %}
+            <div class="quick-stat">
+                <div class="quick-stat-value">{{ results.subjects|length }}</div>
+                <div class="quick-stat-label">Subjects</div>
+            </div>
+            {% endif %}
+            {% if results.findings %}
+            <div class="quick-stat">
+                <div class="quick-stat-value">{{ results.findings|length }}</div>
+                <div class="quick-stat-label">Findings</div>
+            </div>
+            {% endif %}
+            {% if results.financials %}
+            <div class="quick-stat">
+                <div class="quick-stat-value">{{ results.financials|length }}</div>
+                <div class="quick-stat-label">Financials</div>
+            </div>
+            {% endif %}
+            {% if results.comments %}
+            <div class="quick-stat">
+                <div class="quick-stat-value">{{ results.comments|length }}</div>
+                <div class="quick-stat-label">Comments</div>
+            </div>
+            {% endif %}
+            {% if results.notes %}
+            <div class="quick-stat">
+                <div class="quick-stat-value">{{ results.notes|length }}</div>
+                <div class="quick-stat-label">Notes</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if results.cases and (not active_filter or active_filter == 'all' or active_filter == 'cases') %}
+        <div class="results-section" data-type="cases">
+            <h3>Cases <span class="result-count">{{ results.cases|length }}</span></h3>
+            {% for case in results.cases %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="result-title">{{ case.title }}</a>
+                    <div class="result-meta">
+                        {{ case.case_number }} | {{ case.client_name or 'No client' }} | 
+                        <span class="badge badge-{{ case.status }}">{{ case.status }}</span>
+                    </div>
+                </div>
+                <span class="result-badge badge-case">Case</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if results.clients and (not active_filter or active_filter == 'all' or active_filter == 'clients') %}
+        <div class="results-section" data-type="clients">
+            <h3>Clients <span class="result-count">{{ results.clients|length }}</span></h3>
+            {% for client in results.clients %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_client', client_id=client.id) }}" class="result-title">{{ client.name }}</a>
+                    <div class="result-meta">
+                        {% if client.contact_person %}{{ client.contact_person }}{% endif %}
+                        {% if client.is_active %}Active{% else %}Inactive{% endif %}
+                    </div>
+                </div>
+                <span class="result-badge badge-client">Client</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if results.subjects and (not active_filter or active_filter == 'all' or active_filter == 'subjects') %}
+        <div class="results-section" data-type="subjects">
+            <h3>Subjects <span class="result-count">{{ results.subjects|length }}</span></h3>
+            {% for subject in results.subjects %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="result-title">{{ subject.name }}</a>
+                    <div class="result-meta">
+                        {{ subject.subject_type|title }} | Risk: {{ subject.risk_score or 0 }}
+                    </div>
+                </div>
+                <span class="result-badge badge-subject">Subject</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if results.findings and (not active_filter or active_filter == 'all' or active_filter == 'findings') %}
+        <div class="results-section" data-type="findings">
+            <h3>Findings <span class="result-count">{{ results.findings|length }}</span></h3>
+            {% for finding in results.findings %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_case', case_id=finding.case_id) }}#finding-{{ finding.id }}" class="result-title">{{ finding.title }}</a>
+                    <div class="result-meta">
+                        Case: {{ finding.case_number }} | {{ finding.finding_type or 'General' }} | {{ finding.source_type or 'manual' }}
+                    </div>
+                </div>
+                <span class="result-badge badge-finding">Finding</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if results.financials and (not active_filter or active_filter == 'all' or active_filter == 'financials') %}
+        <div class="results-section" data-type="financials">
+            <h3>Financial Records <span class="result-count">{{ results.financials|length }}</span></h3>
+            {% for fin in results.financials %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_case', case_id=fin.case_id) }}" class="result-title">
+                        {{ fin.currency }} {{ "%.2f"|format(fin.amount) }}
+                    </a>
+                    <div class="result-meta">
+                        Case: {{ fin.case_number }} | {{ fin.transaction_type or 'Transaction' }} | {{ fin.transaction_date }}
+                    </div>
+                </div>
+                <span class="result-badge badge-financial">Financial</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if results.comments and (not active_filter or active_filter == 'all' or active_filter == 'comments') %}
+        <div class="results-section" data-type="comments">
+            <h3>Comments <span class="result-count">{{ results.comments|length }}</span></h3>
+            {% for comment in results.comments %}
+            <div class="result-item" style="flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.5rem;">
+                    <div class="result-info">
+                        <div class="result-meta">
+                            {% if comment.case_id %}
+                            <a href="{{ url_for('cms.view_case', case_id=comment.case_id) }}">Case: {{ comment.case_number }}</a> |
+                            {% endif %}
+                            By {{ comment.author_name }} | {{ comment.created_at }} | 
+                            <span class="badge badge-comment">{{ comment.comment_type }}</span>
+                        </div>
+                    </div>
+                    <span class="result-badge badge-comment">Comment</span>
+                </div>
+                <div class="comment-preview">{{ comment.content }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if results.notes and (not active_filter or active_filter == 'all' or active_filter == 'notes') %}
+        <div class="results-section" data-type="notes">
+            <h3>Subject Notes <span class="result-count">{{ results.notes|length }}</span></h3>
+            {% for note in results.notes %}
+            <div class="result-item" style="flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.5rem;">
+                    <div class="result-info">
+                        <a href="{{ url_for('cms.view_subject', subject_id=note.id) }}" class="result-title">{{ note.name }}</a>
+                        <div class="result-meta">
+                            {{ note.subject_type|title }}
+                        </div>
+                    </div>
+                    <span class="result-badge badge-note">Note</span>
+                </div>
+                {% if note.note_preview %}
+                <div class="note-preview">{{ note.note_preview }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="no-results">
+            <div class="no-results-icon">&#128269;</div>
+            <h2>No results found</h2>
+            <p>No matches found for "<strong>{{ query }}</strong>". Try different keywords.</p>
+        </div>
+    {% endif %}
+{% else %}
+    <div class="no-results">
+        <div class="no-results-icon">&#128269;</div>
+        <h2>Start searching</h2>
+        <p>Enter a search term to find cases, clients, subjects, findings, and more.</p>
+    </div>
+{% endif %}
+
+<script>
+function filterResults(type) {
+    document.getElementById('filter-type').value = type;
+    document.querySelector('form').submit();
+}
+
+// Keyboard shortcut for search focus
+document.addEventListener('keydown', function(e) {
+    if (e.key === 's' && !e.target.matches('input, textarea, select')) {
+        e.preventDefault();
+        document.getElementById('search-input').focus();
+    }
+});
+
+// Auto-submit on enter in search box (already standard behavior)
+// But allow Enter to submit form
+document.getElementById('search-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.querySelector('form').submit();
+    }
+});
+
+// Face Recognition Search
+let faceApiLoaded = false;
+
+async function loadFaceApi() {
+    if (faceApiLoaded) return true;
+    
+    const statusEl = document.getElementById('faceSearchStatus');
+    try {
+        statusEl.innerHTML = '<span style="color: #c4b5fd;">Loading face recognition models...</span>';
+        
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
+        
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        
+        faceApiLoaded = true;
+        statusEl.innerHTML = '<span style="color: #c4b5fd;">Face recognition ready - upload a photo</span>';
+        return true;
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color: #fca5a5;">Failed to load face recognition</span>';
+        console.error('Face API error:', err);
+        return false;
+    }
+}
+
+async function searchByFace(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const statusEl = document.getElementById('faceSearchStatus');
+    const resultsEl = document.getElementById('faceSearchResults');
+    const matchesList = document.getElementById('faceMatchesList');
+    
+    const loaded = await loadFaceApi();
+    if (!loaded) return;
+    
+    try {
+        statusEl.innerHTML = '<span style="color: #c4b5fd;">Detecting face...</span>';
+        
+        const img = await faceapi.bufferToImage(file);
+        
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
+        const detection = await faceapi.detectSingleFace(img, options)
+            .withFaceLandmarks(true)
+            .withFaceDescriptor();
+        
+        if (!detection) {
+            statusEl.innerHTML = '<span style="color: #fcd34d;">No face detected in the image. Try another photo.</span>';
+            return;
+        }
+        
+        statusEl.innerHTML = '<span style="color: #c4b5fd;">Finding matches...</span>';
+        
+        const encoding = Array.from(detection.descriptor);
+        
+        const response = await fetch('/cms/subjects/compare-faces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ encoding: encoding, threshold: 0.6, limit: 20 })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            statusEl.innerHTML = '<span style="color: #fca5a5;">Error: ' + data.error + '</span>';
+            return;
+        }
+        
+        statusEl.innerHTML = `<span style="color: #86efac;">Found ${data.matches.length} matches (searched ${data.total_searched} subjects with faces)</span>`;
+        
+        if (data.matches.length === 0) {
+            matchesList.innerHTML = '<p style="color: #c4b5fd;">No matching faces found.</p>';
+        } else {
+            matchesList.innerHTML = data.matches.map(match => `
+                <div style="background: white; border-radius: 8px; padding: 1rem; color: #1a1a2e;">
+                    <img src="/static${match.photo_path}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 6px; margin-bottom: 0.5rem;" onerror="this.src='/static/pwa/icon-180.png'">
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">${match.name}</div>
+                    <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.5rem;">${match.subject_type}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="background: ${match.similarity > 80 ? '#059669' : match.similarity > 60 ? '#f59e0b' : '#dc2626'}; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                            ${match.similarity}% match
+                        </span>
+                        <a href="/cms/subjects/${match.id}" style="color: #7c3aed; font-size: 0.75rem;">View →</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        resultsEl.style.display = 'block';
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color: #fca5a5;">Error: ' + err.message + '</span>';
+        console.error('Face search error:', err);
+    }
+}
+</script>
+{% endblock %}
