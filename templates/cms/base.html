@@ -344,6 +344,7 @@
             <a href="{{ url_for('cms.search') }}">Search</a>
             <a href="{{ url_for('cms.reminders') }}">Reminders</a>
             {% if current_user.is_admin %}
+            <a href="{{ url_for('cms.settings') }}">⚙️ Settings</a>
             <a href="{{ url_for('users.list_users') }}">Users</a>
             {% endif %}
         </div>

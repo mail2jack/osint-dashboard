@@ -1340,3 +1340,127 @@ class Reminder(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+# =============================================================================
+# Setting Model
+# =============================================================================
+
+class Setting(db.Model):
+    """
+    Application settings stored in database.
+    
+    Allows runtime configuration without code changes.
+    Supports categories, masked values, and audit logging.
+    """
+    __tablename__ = 'settings'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    key = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    value = db.Column(db.Text)
+    category = db.Column(db.String(50), default='general', index=True)
+    description = db.Column(db.String(500))
+    value_type = db.Column(db.String(20), default='text')  # text, password, number, boolean, select
+    options = db.Column(db.JSON)  # For select type: {'options': [{'value': 'a', 'label': 'Option A'}]}
+    is_encrypted = db.Column(db.Boolean, default=False)
+    is_sensitive = db.Column(db.Boolean, default=False)  # Show masked in UI
+    display_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
+    
+    def get_masked_value(self) -> str:
+        """Return masked value for display."""
+        if not self.is_sensitive or not self.value:
+            return self.value or ''
+        if len(self.value) <= 4:
+            return '****'
+        return self.value[:2] + '*' * (len(self.value) - 4) + self.value[-2:]
+    
+    def to_dict(self, include_value: bool = True) -> dict:
+        """Serialize setting."""
+        return {
+            'id': self.id,
+            'key': self.key,
+            'value': self.value if include_value else None,
+            'masked_value': self.get_masked_value(),
+            'category': self.category,
+            'description': self.description,
+            'value_type': self.value_type,
+            'options': self.options,
+            'is_sensitive': self.is_sensitive,
+            'display_order': self.display_order,
+            'is_active': self.is_active
+        }
+
+
+def get_setting(key: str, default=None):
+    """Get a setting value by key."""
+    setting = Setting.query.filter_by(key=key, is_active=True).first()
+    if not setting:
+        return default
+    return setting.value
+
+
+def set_setting(key: str, value: str, category: str = 'general', description: str = None,
+                value_type: str = 'text', is_sensitive: bool = False):
+    """Set a setting value, creating if necessary."""
+    setting = Setting.query.filter_by(key=key).first()
+    if setting:
+        setting.value = value
+        setting.updated_at = datetime.utcnow()
+    else:
+        setting = Setting(
+            key=key,
+            value=value,
+            category=category,
+            description=description,
+            value_type=value_type,
+            is_sensitive=is_sensitive,
+            is_encrypted=is_sensitive
+        )
+        db.session.add(setting)
+    db.session.commit()
+    return setting
+
+
+def init_default_settings():
+    """Initialize default settings if they don't exist."""
+    defaults = [
+        # API Keys
+        {'key': 'brave_api_key', 'category': 'api_keys', 'description': 'Brave Search API Key for OSINT searches', 'value_type': 'password', 'is_sensitive': True, 'display_order': 1},
+        {'key': 'pimeyes_api_key', 'category': 'api_keys', 'description': 'PimEyes API Key for face search', 'value_type': 'password', 'is_sensitive': True, 'display_order': 2},
+        {'key': 'tineye_api_key', 'category': 'api_keys', 'description': 'TinEye API Key for image search', 'value_type': 'password', 'is_sensitive': True, 'display_order': 3},
+        
+        # Search Settings
+        {'key': 'default_search_engine', 'category': 'search', 'description': 'Default search engine for OSINT', 'value_type': 'select', 'options': {'options': [{'value': 'brave', 'label': 'Brave Search'}, {'value': 'ddg', 'label': 'DuckDuckGo'}]}, 'display_order': 10},
+        {'key': 'search_result_limit', 'category': 'search', 'description': 'Maximum number of search results', 'value_type': 'number', 'display_order': 11},
+        {'key': 'enable_osint_dorks', 'category': 'search', 'description': 'Enable OSINT dork queries', 'value_type': 'boolean', 'display_order': 12},
+        
+        # General
+        {'key': 'case_number_prefix', 'category': 'general', 'description': 'Prefix for case numbers (e.g., CASE-, INV-)', 'value_type': 'text', 'display_order': 20},
+        {'key': 'default_risk_score', 'category': 'general', 'description': 'Default risk score for new subjects', 'value_type': 'number', 'display_order': 21},
+        {'key': 'organization_name', 'category': 'general', 'description': 'Organization/Company name for reports', 'value_type': 'text', 'display_order': 22},
+        
+        # Security
+        {'key': 'session_timeout_minutes', 'category': 'security', 'description': 'Session timeout in minutes', 'value_type': 'number', 'display_order': 30},
+        {'key': 'require_password_change', 'category': 'security', 'description': 'Require password change after X days', 'value_type': 'number', 'display_order': 31},
+        
+        # Email
+        {'key': 'smtp_server', 'category': 'email', 'description': 'SMTP server hostname', 'value_type': 'text', 'display_order': 40},
+        {'key': 'smtp_port', 'category': 'email', 'description': 'SMTP port (usually 587 for TLS)', 'value_type': 'number', 'display_order': 41},
+        {'key': 'smtp_username', 'category': 'email', 'description': 'SMTP username', 'value_type': 'text', 'display_order': 42},
+        {'key': 'smtp_password', 'category': 'email', 'description': 'SMTP password', 'value_type': 'password', 'is_sensitive': True, 'display_order': 43},
+        {'key': 'smtp_from_email', 'category': 'email', 'description': 'From email address', 'value_type': 'text', 'display_order': 44},
+        {'key': 'smtp_from_name', 'category': 'email', 'description': 'From name for emails', 'value_type': 'text', 'display_order': 45},
+    ]
+    
+    for default in defaults:
+        existing = Setting.query.filter_by(key=default['key']).first()
+        if not existing:
+            setting = Setting(**default)
+            db.session.add(setting)
+    
+    db.session.commit()

@@ -1,0 +1,378 @@
+{% extends "cms/base.html" %}
+
+{% block title %}Settings - CMS{% endblock %}
+
+{% block content %}
+<style>
+.settings-container {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.settings-sidebar {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px var(--shadow);
+    height: fit-content;
+}
+
+.settings-sidebar h3 {
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+}
+
+.category-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-primary);
+    text-decoration: none;
+    margin-bottom: 0.5rem;
+}
+
+.category-item:hover {
+    background: var(--table-hover);
+}
+
+.category-item.active {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.category-item .icon {
+    font-size: 1.25rem;
+}
+
+.settings-content {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+
+.settings-content h2 {
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.settings-content > p {
+    color: var(--text-secondary);
+    margin: 0 0 2rem 0;
+}
+
+.setting-item {
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.setting-item:last-child {
+    margin-bottom: 0;
+}
+
+.setting-item label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.setting-item .description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.setting-item input[type="text"],
+.setting-item input[type="number"],
+.setting-item input[type="password"],
+.setting-item select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.setting-item input:focus,
+.setting-item select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(22, 33, 62, 0.1);
+}
+
+.masked-value {
+    font-family: monospace;
+    color: var(--text-secondary);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.save-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(1rem);
+    transition: all 0.3s;
+    z-index: 1000;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.success { background: #059669; }
+.toast.error { background: #dc2626; }
+.toast.warning { background: #f59e0b; }
+
+@media (max-width: 768px) {
+    .settings-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .settings-sidebar {
+        order: 2;
+    }
+}
+</style>
+
+<div class="back">
+    <a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a>
+</div>
+
+<h1 style="margin-bottom: 2rem;">⚙️ Settings</h1>
+
+<div class="settings-container">
+    <div class="settings-sidebar">
+        <h3>Categories</h3>
+        {% for cat_key, cat_info in categories.items() %}
+        <a href="{{ url_for('cms.settings') }}?category={{ cat_key }}" 
+           class="category-item {% if active_category == cat_key %}active{% endif %}">
+            <span class="icon">{{ cat_info.icon }}</span>
+            <span>{{ cat_info.name.replace(cat_info.icon + ' ', '') }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    
+    <div class="settings-content">
+        <h2>{{ categories[active_category].icon }} {{ categories[active_category].name.replace(categories[active_category].icon + ' ', '') }}</h2>
+        <p>Configure {{ active_category.replace('_', ' ') }} settings for the application.</p>
+        
+        <form id="settingsForm">
+            {% for setting in settings_list %}
+            <div class="setting-item" data-setting-id="{{ setting.id }}" data-value-type="{{ setting.value_type }}" data-key="{{ setting.key }}">
+                <label for="setting-{{ setting.id }}">
+                    {{ setting.key.replace('_', ' ').title() }}
+                    {% if setting.is_sensitive %}
+                    <span style="color: #f59e0b; font-size: 0.75rem; font-weight: normal;">(sensitive)</span>
+                    {% endif %}
+                </label>
+                <p class="description">{{ setting.description or '' }}</p>
+                
+                {% if setting.value_type == 'boolean' %}
+                <select id="setting-{{ setting.id }}" name="{{ setting.key }}" 
+                        data-setting-id="{{ setting.id }}" class="setting-input">
+                    <option value="true" {% if setting.value == 'true' %}selected{% endif %}>Enabled</option>
+                    <option value="false" {% if setting.value == 'false' %}selected{% endif %}>Disabled</option>
+                </select>
+                
+                {% elif setting.value_type == 'select' and setting.options and setting.options.options %}
+                <select id="setting-{{ setting.id }}" name="{{ setting.key }}" 
+                        data-setting-id="{{ setting.id }}" class="setting-input">
+                    {% for option in setting.options.options %}
+                    <option value="{{ option.value }}" {% if setting.value == option.value %}selected{% endif %}>
+                        {{ option.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+                
+                {% elif setting.value_type == 'password' %}
+                <div style="position: relative;">
+                    <input type="password" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
+                           value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
+                           class="setting-input" autocomplete="new-password"
+                           placeholder="{% if not setting.value %}Enter value{% endif %}">
+                    <button type="button" onclick="togglePassword('{{ setting.id }}')" 
+                            style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.5rem;">
+                        👁️
+                    </button>
+                </div>
+                {% if setting.value %}
+                <p class="masked-value" style="margin-top: 0.5rem;">
+                    Current: {{ setting.get_masked_value() }}
+                </p>
+                {% endif %}
+                
+                {% elif setting.value_type == 'number' %}
+                <input type="number" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
+                       value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
+                       class="setting-input">
+                
+                {% else %}
+                <input type="text" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
+                       value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
+                       class="setting-input">
+                {% endif %}
+            </div>
+            {% endfor %}
+            
+            {% if settings_list %}
+            <div class="action-buttons">
+                <button type="button" onclick="resetAllSettings()" class="btn" style="background: #6b7280;">
+                    Reset All
+                </button>
+                <button type="submit" class="btn">Save Changes</button>
+                <div class="save-status" id="saveStatus"></div>
+            </div>
+            {% else %}
+            <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+                No settings in this category.
+            </p>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let hasChanges = false;
+
+function togglePassword(id) {
+    const input = document.getElementById(id);
+    if (input.type === 'password') {
+        input.type = 'text';
+    } else {
+        input.type = 'password';
+    }
+}
+
+document.querySelectorAll('.setting-input').forEach(input => {
+    input.addEventListener('change', () => {
+        hasChanges = true;
+    });
+});
+
+document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const settings = [];
+    document.querySelectorAll('.setting-input').forEach(input => {
+        const settingId = input.dataset.settingId;
+        const key = input.name;
+        let value = input.value;
+        
+        // Handle boolean select
+        if (input.tagName === 'SELECT' && input.options[0].text === 'Enabled') {
+            value = input.value === 'true';
+        }
+        
+        settings.push({
+            id: settingId,
+            key: key,
+            value: value
+        });
+    });
+    
+    const statusEl = document.getElementById('saveStatus');
+    statusEl.innerHTML = '<span style="color: #0ea5e9;">Saving...</span>';
+    
+    try {
+        const response = await fetch('/cms/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: settings })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            statusEl.innerHTML = '<span style="color: #059669;">✅ Saved</span>';
+            showToast('Settings saved successfully!', 'success');
+            hasChanges = false;
+            
+            // Refresh page to show updated masked values
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            statusEl.innerHTML = '<span style="color: #dc2626;">❌ Error</span>';
+            showToast('Failed to save settings: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color: #dc2626;">❌ Error</span>';
+        showToast('Failed to save settings: ' + err.message, 'error');
+    }
+});
+
+async function resetAllSettings() {
+    if (!confirm('Reset all settings in this category to defaults?')) return;
+    
+    const settingIds = [];
+    document.querySelectorAll('.setting-item').forEach(item => {
+        settingIds.push(item.dataset.settingId);
+    });
+    
+    for (const id of settingIds) {
+        try {
+            await fetch(`/cms/api/settings/${id}/reset`, { method: 'POST' });
+        } catch (err) {
+            console.error('Failed to reset setting:', id, err);
+        }
+    }
+    
+    showToast('Settings reset to defaults', 'success');
+    setTimeout(() => window.location.reload(), 1000);
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type} show`;
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+window.addEventListener('beforeunload', (e) => {
+    if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    }
+});
+</script>
+{% endblock %}

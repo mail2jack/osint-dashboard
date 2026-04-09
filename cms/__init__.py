@@ -53,6 +53,10 @@ def create_cms_module(app: Flask):
     with app.app_context():
         db.create_all()
         
+        # Initialize default settings
+        from .models import Setting, init_default_settings
+        init_default_settings()
+        
         # Create default admin user if none exists
         if not User.query.filter_by(role='admin').first():
             admin = User(
