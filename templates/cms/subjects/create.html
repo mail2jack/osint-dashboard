@@ -60,7 +60,7 @@
 }
 </style>
 
-<form method="POST" id="subjectForm" style="display: none;" onsubmit="return validateForm()">
+<form method="POST" id="subjectForm" style="display: none;" onsubmit="return handleFormSubmit()">
     {% if case_id %}
     <input type="hidden" name="case_id" value="{{ case_id }}">
     <div style="margin-bottom: 1rem; padding: 0.5rem; background: #dbeafe; border-radius: 4px;">
@@ -128,8 +128,8 @@
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div class="form-group" style="grid-column: 1 / -1;">
-                <label for="license_plate">License Plate (Kenteken) *</label>
-                <input type="text" name="license_plate" id="license_plate" required 
+                <label for="license_plate">License Plate (Kenteken)</label>
+                <input type="text" name="license_plate" id="license_plate" 
                        placeholder="e.g. AB-12-CD" style="font-size: 1.1rem; font-weight: bold; text-transform: uppercase;">
             </div>
             <div class="form-group">
@@ -227,10 +227,12 @@ function selectType(type) {
         document.getElementById('name').value = '';
         document.getElementById('name').required = false;
         document.getElementById('name').placeholder = 'Vehicle name (e.g. Toyota Aygo) or leave empty';
+        document.getElementById('license_plate').required = true;
     } else {
         document.getElementById('name').required = true;
         document.getElementById('name').placeholder = '';
         document.getElementById('name').focus();
+        document.getElementById('license_plate').required = false;
     }
 }
 
@@ -324,43 +326,77 @@ document.getElementById('license_plate').addEventListener('input', function() {
 
 function checkDuplicate() {
     const name = document.getElementById('name').value.trim();
-    const alert = document.getElementById('duplicate-alert');
+    const alertEl = document.getElementById('duplicate-alert');
     
     if (duplicateTimeout) clearTimeout(duplicateTimeout);
     if (!name || name.length < 2 || selectedType === 'vehicle') {
-        alert.style.display = 'none';
+        if (alertEl) alertEl.style.display = 'none';
         return;
     }
     
     duplicateTimeout = setTimeout(() => {
+        console.log('Checking duplicate for:', name);
         fetch(`/cms/api/check-duplicate?name=${encodeURIComponent(name)}&type=subject`)
-            .then(r => r.json())
+            .then(r => {
+                console.log('Check duplicate response status:', r.status);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
             .then(data => {
+                console.log('Check duplicate data:', data);
+                if (!alertEl) return;
+                
                 if (data.exact) {
-                    alert.innerHTML = `<strong>⚠️ Exact match:</strong> <a href="/cms/subjects/${data.exact.id}" target="_blank">${data.exact.name}</a> (${data.exact.type})`;
-                    alert.style.background = '#fee2e2';
-                    alert.style.border = '1px solid #ef4444';
-                    alert.style.display = 'block';
+                    alertEl.innerHTML = `<strong>⚠️ Exact match:</strong> <a href="/cms/subjects/${data.exact.id}" target="_blank">${data.exact.name}</a> (${data.exact.type})`;
+                    alertEl.style.background = '#fee2e2';
+                    alertEl.style.border = '1px solid #ef4444';
+                    alertEl.style.display = 'block';
                 } else if (data.duplicates && data.duplicates.length > 0) {
                     let html = '<strong>Similar subjects found:</strong><ul style="margin:0.25rem 0 0 1rem;padding:0;">';
                     data.duplicates.forEach(d => {
                         html += `<li><a href="/cms/subjects/${d.id}" target="_blank">${d.name}</a> (${d.type}) - ${d.similarity}% similar</li>`;
                     });
                     html += '</ul>';
-                    alert.innerHTML = html;
-                    alert.style.background = '#fef3c7';
-                    alert.style.border = '1px solid #f59e0b';
-                    alert.style.display = 'block';
+                    alertEl.innerHTML = html;
+                    alertEl.style.background = '#fef3c7';
+                    alertEl.style.border = '1px solid #f59e0b';
+                    alertEl.style.display = 'block';
                 } else {
-                    alert.style.display = 'none';
+                    alertEl.style.display = 'none';
                 }
             })
-            .catch(() => {});
+            .catch(err => {
+                console.error('Check duplicate error:', err);
+                if (alertEl) alertEl.style.display = 'none';
+            });
     }, 300);
 }
 
 function validateForm() {
+    const name = document.getElementById('name').value.trim();
+    const subjectType = document.getElementById('subject_type').value;
+    
+    console.log('Validating form - name:', name, 'type:', subjectType);
+    
+    if (!name && subjectType !== 'vehicle') {
+        alert('Please enter a name');
+        return false;
+    }
+    
     return true;
+}
+
+function handleFormSubmit() {
+    console.log('Form submitted!');
+    const form = document.getElementById('subjectForm');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating...';
+    }
+    
+    return validateForm();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
