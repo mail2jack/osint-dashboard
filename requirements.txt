@@ -13,20 +13,12 @@ requests>=2.25.0
 httpx>=0.24.0
 urllib3>=1.26.0
 
-# OSINT Tools
-holehe>=2.0.0
-sherlock-project>=0.14.0
-maigret>=0.5.0
-socid_extractor>=0.0.1
-
 # Data processing
 beautifulsoup4>=4.9.0
 lxml>=4.9.0
 Pillow>=9.0.0
 bleach>=5.0.0
 markdown>=3.4.0
-maxminddb>=2.2.0
-geoip2>=4.7.0
 python-dateutil>=2.8.0
 
 # Database
@@ -37,6 +29,5 @@ cryptography>=41.0.0
 python-dotenv>=0.19.0
 dnspython>=2.0.0
 email-validator>=2.0.0
-ipapi>=1.0.0
 reportlab>=4.0.0
 werkzeug>=2.0.0
