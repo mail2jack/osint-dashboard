@@ -1,7 +1,7 @@
-# Iveras OSINT Manual
+# Iveras OSINT Case Management System - Manual
 
-**Version:** 2.1.0  
-**Last Updated:** March 2026
+**Version:** 3.0.0  
+**Last Updated:** April 2026
 
 ---
 
@@ -10,44 +10,42 @@
 1. [Introduction](#introduction)
 2. [Installation](#installation)
 3. [Getting Started](#getting-started)
-4. [Tools Overview](#tools-overview)
-5. [Detailed Tool Usage](#detailed-tool-usage)
-   - [People Search](#people-search)
-   - [Social Media Search](#social-media-search)
-   - [Email Lookup](#email-lookup)
-   - [Username Search (Sherlock)](#username-search-sherlock)
-   - [Holehe](#holehe)
-   - [Maigret](#maigret)
-   - [Phone Lookup](#phone-lookup)
-   - [IP Lookup](#ip-lookup)
-   - [Domain Lookup](#domain-lookup)
-   - [Webcams](#webcams)
-6. [Interface Features](#interface-features)
-7. [Search History & Archive](#search-history--archive)
-8. [System Controls](#system-controls)
-9. [Keyboard Shortcuts](#keyboard-shortcuts)
-10. [API Endpoints](#api-endpoints)
-11. [Troubleshooting](#troubleshooting)
-12. [Changelog](#changelog)
+4. [Dashboard](#dashboard)
+5. [Cases](#cases)
+6. [Clients](#clients)
+7. [Subjects](#subjects)
+8. [Search](#search)
+9. [OSINT Tools](#osint-tools)
+10. [Face Recognition](#face-recognition)
+11. [Vehicle Data (RDW)](#vehicle-data-rdw)
+12. [Reminders](#reminders)
+13. [Settings](#settings)
+14. [User Management](#user-management)
+15. [Audit Log](#audit-log)
+16. [Keyboard Shortcuts](#keyboard-shortcuts)
+17. [API Endpoints](#api-endpoints)
+18. [Troubleshooting](#troubleshooting)
+19. [Changelog](#changelog)
 
 ---
 
 ## Introduction
 
-Iveras OSINT is a comprehensive open-source intelligence gathering tool for security researchers, investigators, and privacy-conscious users.
+Iveras OSINT Case Management System combines open-source intelligence gathering with professional case management capabilities for security researchers, investigators, and legal professionals.
 
-**Key Features:**
-- Search across 50+ social media platforms
-- People search via DuckDuckGo with 24 advanced queries
-- Email OSINT with Sherlock + Holehe combination
-- Username discovery using Sherlock and Maigret
-- Phone number lookup (WhatsApp, Telegram, Carrier info)
-- IP and domain intelligence
-- Live webcam directory by country/city
-- Real-time progress with time estimates
-- Search history with archiving
-- Results sorted by confidence scores
-- Export results to PDF
+### Key Features
+
+- **Case Management** - Create and manage investigation cases with clients
+- **Subject Tracking** - Track persons, companies, vehicles, and other entities
+- **OSINT Search** - Web search with Brave API and DuckDuckGo fallback
+- **Global Search** - Search across all cases, clients, subjects, findings
+- **Face Recognition** - Encode and match faces using face-api.js
+- **Vehicle Data** - Dutch RDW vehicle registry lookup
+- **Social Media ID** - Extract social media IDs from profile pages
+- **Screenshot Capture** - Save and manage evidence screenshots
+- **Reminders** - Set follow-up reminders for cases and subjects
+- **Audit Logging** - Track all user actions for compliance
+- **Role-Based Access** - Admin, Senior Investigator, Junior Investigator roles
 
 ---
 
@@ -55,49 +53,12 @@ Iveras OSINT is a comprehensive open-source intelligence gathering tool for secu
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- pip (Python package manager)
+- Python 3.9+
+- PostgreSQL (optional, SQLite default)
+- Git
 
 ### Setup
 
-1. Clone or download the repository:
-```bash
-git clone https://github.com/mail2jack/osint-dashboard.git
-cd osint-dashboard
-```
-
-2. Create a virtual environment (recommended):
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-### Running the Application
-
-```bash
-python app.py
-# or
-./start.sh
-```
-
-The dashboard will be available at: `http://localhost:5000`
-
----
-
-## Installation by Platform
-
-### macOS
-
-**Prerequisites:**
-- Python 3.8+ (check: `python3 --version`)
-- Git (check: `git --version`)
-
-**Installation:**
 ```bash
 # 1. Clone the repository
 git clone https://github.com/mail2jack/osint-dashboard.git
@@ -105,492 +66,395 @@ cd osint-dashboard
 
 # 2. Create virtual environment
 python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or: .\venv\Scripts\activate  # Windows
 
-# 3. Activate virtual environment
-source venv/bin/activate
-
-# 4. Install dependencies
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Copy environment file
+cp .env.example .env  # Edit .env with your API keys
 
 # 5. Run the application
 python app.py
 ```
 
-**Alternative - Using Homebrew:**
-```bash
-# Install Python if needed
-brew install python3 git
+The application will be available at: `http://localhost:5000`
 
-# Then follow steps 1-5 above
-```
+### Default Login
 
-**To deactivate virtual environment:**
-```bash
-deactivate
-```
-
----
-
-### Linux
-
-**Prerequisites:**
-- Python 3.8+ (check: `python3 --version`)
-- Git (check: `git --version`)
-
-**Installation (Ubuntu/Debian):**
-```bash
-# 1. Install prerequisites
-sudo apt update
-sudo apt install python3 python3-venv git
-
-# 2. Clone the repository
-git clone https://github.com/mail2jack/osint-dashboard.git
-cd osint-dashboard
-
-# 3. Create virtual environment
-python3 -m venv venv
-
-# 4. Activate virtual environment
-source venv/bin/activate
-
-# 5. Install dependencies
-pip install -r requirements.txt
-
-# 6. Run the application
-python app.py
-```
-
-**Installation (Fedora/RHEL):**
-```bash
-# 1. Install prerequisites
-sudo dnf install python3 python3-pip git
-
-# 2-6. Follow steps 2-6 above
-```
-
-**Installation (Arch/Manjaro):**
-```bash
-# 1. Install prerequisites
-sudo pacman -S python python-pip git
-
-# 2-6. Follow steps 2-6 above
-```
-
-**To deactivate virtual environment:**
-```bash
-deactivate
-```
-
----
-
-### Windows
-
-**Prerequisites:**
-- Python 3.8+ ([Download from python.org](https://www.python.org/downloads/))
-- Git ([Download from git-scm.com](https://git-scm.com/download/win))
-
-**Installation:**
-```powershell
-# 1. Open PowerShell or Command Prompt
-
-# 2. Clone the repository
-git clone https://github.com/mail2jack/osint-dashboard.git
-cd osint-dashboard
-
-# 3. Create virtual environment
-python -m venv venv
-
-# 4. Activate virtual environment
-.\venv\Scripts\activate
-
-# 5. Install dependencies
-pip install -r requirements.txt
-
-# 6. Run the application
-python app.py
-```
-
-**Using Command Prompt (CMD):**
-```cmd
-# Same commands as PowerShell
-```
-
-**Note:** If you get a "script execution" error, run:
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
-
-**To deactivate virtual environment:**
-```powershell
-deactivate
-```
-
----
-
-## Quick Reference Card
-
-| Step | macOS/Linux | Windows |
-|------|-------------|---------|
-| Clone | `git clone ...` | `git clone ...` |
-| Create venv | `python3 -m venv venv` | `python -m venv venv` |
-| Activate | `source venv/bin/activate` | `.\venv\Scripts\activate` |
-| Install | `pip install -r requirements.txt` | `pip install -r requirements.txt` |
-| Run | `python app.py` | `python app.py` |
-| Deactivate | `deactivate` | `deactivate` |
-
----
-
-## Troubleshooting Installation
-
-### Python not found
-- **macOS:** Install via Homebrew: `brew install python3`
-- **Linux:** Use your package manager (apt, dnf, pacman)
-- **Windows:** Download from [python.org](https://www.python.org/downloads/)
-
-### Git not found
-- **macOS:** `brew install git`
-- **Linux:** `sudo apt install git` (Ubuntu) or use your package manager
-- **Windows:** Download from [git-scm.com](https://git-scm.com/download/win)
-
-### pip not found
-- **macOS:** `python3 -m ensurepip` or `brew install python3`
-- **Linux:** `sudo apt install python3-pip`
-- **Windows:** Reinstall Python with pip included
-
-### Permission denied errors
-- **Linux:** Use `sudo` with pip: `sudo pip install...`
-- **macOS/Linux:** Always use virtual environments (avoids sudo issues)
-- **Windows:** Run PowerShell as Administrator
-
-### SSL/Certificate errors
-```bash
-# macOS
-/Applications/Python\ 3.x/Install\ Certificates.command
-
-# Linux
-pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
-```
-
----
-
-## Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| flask | Web framework |
-| requests | HTTP client |
-| httpx | Async HTTP client |
-| holehe | Email OSINT |
-| sherlock-project | Username OSINT |
-| maigret | Deep username search |
-| phonenumbers | Phone number parsing |
-| reportlab | PDF generation |
-
-### Running the Application
-
-```bash
-python app.py
-# or
-./start.sh
-```
-
-The dashboard will be available at: `http://localhost:5000`
+- **Username:** admin
+- **Password:** changeme123 (change on first login!)
 
 ---
 
 ## Getting Started
 
-1. **Launch the app**: Run `python app.py`
-2. **Open browser**: Navigate to `http://localhost:5000`
-3. **Select tool**: Click on a tool in the toolbar
-4. **Enter query**: Type your search term
-5. **Start search**: Click "Search" or press Enter
-6. **View results**: Results show sorted by confidence with time estimates
+1. **Log in** with your credentials
+2. **Configure Settings** (⚙️ Settings → API Keys) - Add Brave Search API key for OSINT
+3. **Create a Client** - Add your first client
+4. **Create a Case** - Start a new investigation case
+5. **Add Subjects** - Add persons, companies, or vehicles to investigate
 
 ---
 
-## Tools Overview
+## Dashboard
 
-### Toolbar Tools
+The dashboard provides an overview of your work:
 
-| Tool | Description | Search Type |
-|------|-------------|-------------|
-| **People** | Name search via DuckDuckGo | Full Name |
-| **Social** | Multi-platform username/email search | Username/Email |
-| **Email** | Sherlock + Holehe combined | Email Address |
-| **Phone** | WhatsApp/Telegram/Carrier info | Phone Number |
-| **Webcams** | Live webcam directory | Country/City |
-| **Maigret** | Deep username scanner | Username |
-| **Sherlock** | Fast username finder | Username |
-| **Holehe** | Email deep search | Email Address |
-| **IP** | IP geolocation and intel | IP Address |
-| **Domain** | WHOIS and DNS | Domain Name |
+- **Active Cases** - Cases currently in progress
+- **Recent Activity** - Latest updates across all cases
+- **Reminders** - Upcoming follow-ups
+- **Quick Stats** - Case count, subject count, recent searches
 
 ---
 
-## Detailed Tool Usage
+## Cases
 
-### People Search
+Cases are the central unit of organization for investigations.
 
-Search for individuals by full name using DuckDuckGo with advanced Google dorking queries.
+### Creating a Case
 
-**How to use:**
-1. Select "People" tool
-2. Enter full name (e.g., "John Smith")
-3. Click "Search"
+1. Go to **Cases** → **Create Case**
+2. Fill in:
+   - **Title** - Case name
+   - **Case Number** - Auto-generated or custom
+   - **Client** - Select from clients
+   - **Priority** - Low/Medium/High/Critical
+   - **Status** - Open/In Progress/On Hold/Closed
+   - **Description** - Case details
 
-**Search Features:**
-- 24 advanced dork queries covering:
-  - Username patterns (e.g., "johnsmith", "john_smith", "johnsmith37")
-  - Social media sites (Facebook, Twitter, Instagram, LinkedIn, TikTok, etc.)
-  - Dating apps (Tinder, Bumble)
-  - Professional sites (GitHub, Reddit, Pinterest)
-  - File searches (PDF, DOC)
-  - Email discovery
+### Case View
 
-**Results Display:**
-- Sorted by confidence score (social media first)
-- Shows search links for manual verification
-- Time estimate and search duration
+Each case shows:
+- **Overview** - Case details and status
+- **Subjects** - Linked subjects
+- **Findings** - Evidence and discoveries
+- **Comments** - Team notes and updates
+- **Financial Records** - Related transactions
+- **Screenshots** - Visual evidence
+- **OSINT Search** - Run searches linked to this case
 
-**Search Links Generated:**
-- Google, DuckDuckGo, LinkedIn, Facebook, Twitter/X, GitHub, Instagram, Reddit, YouTube, TikTok, Pipl, Truecaller
+### Reopening Cases
 
----
-
-### Social Media Search
-
-Comprehensive username/email/phone search across 50+ platforms with improved detection.
-
-**How to use:**
-1. Select "Social" tool
-2. Enter username, email, or phone number
-3. Select platform categories (optional)
-4. Click "Search"
-
-**Platform Categories:**
-- **Quick (~30)** - Top 30 most popular sites
-- **Standard (~50)** - Extended coverage
-- **Deep (~100)** - Most comprehensive
-- **Full (~200)** - All available sites
-
-**Detection Features:**
-- HTTP status code analysis
-- Login redirect detection
-- Username-in-URL verification
-- Content pattern matching
-
-**Results Display:**
-- Found accounts (green) - sorted first
-- Unknown status (yellow)
-- Not found (gray) - sorted last
-- Confidence badges (High/Med/Low)
+Closed cases can be reopened via **Edit** → **Reopen Case**
 
 ---
 
-### Email Lookup
+## Clients
 
-Combined Sherlock + Holehe for comprehensive email OSINT.
+Clients are organizations or individuals who commission investigations.
 
-**How to use:**
-1. Select "Email" tool
-2. Enter email address
-3. Click "Search"
+### Fields
 
-**Search Options:**
-- Quick (~30 sites)
-- Standard (~50 sites)
-- Deep (~100 sites)
-- Full (~200 sites)
-
-**Tools Used:**
-- **Sherlock**: Checks username patterns
-- **Holehe**: Checks registration via password reset flows
-
-**Privacy Note:** Holehe only examines password reset responses - it does NOT test passwords or access accounts.
+- **Name** - Company or individual name
+- **Contact Person** - Primary contact
+- **Email / Phone** - Contact details
+- **Contract Number** - Reference number
+- **Is Company** - Toggle for company/individual
+- **Is Active** - Active/inactive status
 
 ---
 
-### Username Search (Sherlock)
+## Subjects
 
-Fast username search across popular platforms.
+Subjects are entities being investigated: persons, companies, vehicles, etc.
 
-**How to use:**
-1. Select "Sherlock" tool
-2. Enter username
-3. Click "Search"
+### Subject Types
 
-**Features:**
-- Real-time progress with time estimates
-- Cancel button to stop early
-- Results sorted by confidence
+| Type | Description |
+|------|-------------|
+| Person | Individual persons |
+| Company | Businesses and organizations |
+| Organization | Non-profit or government |
+| Vehicle | Cars, motorcycles, boats |
+| Vessel | Ships and boats |
+| Property | Real estate |
 
----
+### Creating a Subject
 
-### Holehe
+1. Go to **Subjects** → **Create Subject**
+2. **Select Type** - Choose the subject type
+3. **Fill Details** - Type-specific fields appear
+4. **Link to Case** - Optionally link to a case
 
-Deep email search using registration detection.
+### Subject Fields
 
-**How to use:**
-1. Select "Holehe" tool
-2. Enter email address
-3. Click "Search"
+**All Subjects:**
+- Name
+- Address
+- Risk Score (0-100)
+- Notes
 
-**Method:**
-- Tests password reset flows on 100+ sites
-- Detects if email is registered based on response patterns
+**Persons:**
+- Email
+- Phone
+- ID/Passport Number
 
----
+**Vehicles:**
+- License Plate (Kenteken)
+- VIN (Chassisnummer)
+- Merk (Brand)
+- Model (Handelsbenaming)
+- RDW Data (automatic lookup)
 
-### Maigret
+### Subject Relationships
 
-Deep username scanner using ranked database.
-
-**How to use:**
-1. Select "Maigret" tool
-2. Enter username
-3. Click "Search"
-
-**Features:**
-- Sites ranked by popularity
-- Comprehensive coverage
-- Cross-validation with other tools
-
----
-
-### Phone Lookup
-
-Multi-service phone intelligence.
-
-**How to use:**
-1. Select "Phone" tool
-2. Enter phone in international format (e.g., `+31612345678`)
-3. Click "Search"
-
-**Input Formats:**
-- International: `+31612345678`
-- With country code: `31612345678`
-- With zeros: `06-12-34-56-78`
-
-**Services Checked:**
-| Service | Status |
-|---------|--------|
-| **WhatsApp** | Check blocked by API limitations |
-| **Telegram** | Check blocked by API limitations |
-| **Carrier** | Network operator info |
-| **Country** | From phone number prefix |
-| **Timezone** | From phone number |
-
-**Note:** WhatsApp and Telegram APIs often block automated requests. Carrier and location info should still work.
+Subjects can be linked to each other:
+- "Is related to"
+- "Is associated with"
+- "Is family of"
+- Custom relationship types
 
 ---
 
-### IP Lookup
+## Search
 
-IP address geolocation and threat intelligence.
+### Global Search
 
-**How to use:**
-1. Select "IP" tool
-2. Enter IP address
-3. Click "Search"
+Search across all data from the navigation bar:
 
-**Information Retrieved:**
-- Geolocation (city, region, country, coordinates)
-- ISP and organization
-- ASN information
-- Timezone
+- **Cases** - By title, case number, description
+- **Clients** - By name, contact
+- **Subjects** - By name, ID number
+- **Findings** - By title, content
+- **Comments** - By content
+- **Notes** - By subject notes
 
----
+### Filters
 
-### Domain Lookup
+Use category filters to narrow results:
+- All / Cases / Clients / Subjects / Findings / Comments / Notes
 
-Domain registration and DNS information.
+### Face Search
 
-**How to use:**
-1. Select "Domain" tool
-2. Enter domain (e.g., `example.com`)
-3. Click "Search"
+Find similar faces across all subjects:
 
-**Information Retrieved:**
-- Registrar, creation date, expiration
-- DNS records (A, AAAA, MX, TXT, NS)
-- SSL certificate details
+1. Go to **Search**
+2. Scroll to **Find Similar Faces**
+3. Upload a photo
+4. View matching subjects with similarity percentage
 
 ---
 
-### Webcams
+## OSINT Tools
 
-Live webcam directory organized by country and city.
+### Running OSINT Search
 
-**How to use:**
-1. Select "Webcams" tool
-2. Enter country or city name (e.g., "Netherlands" or "Amsterdam")
-3. Click "Search"
+1. Open a **Case**
+2. Click **🔍 OSINT Search**
+3. Enter a name or query
+4. Results appear in real-time
 
-**Features:**
-- 15 countries supported
-- 47+ webcam locations
-- Click country tags to filter
-- Open webcams in browser
+### Search Sources
 
-**Supported Countries:**
-United States, Netherlands, UK, France, Germany, Japan, Australia, Italy, Spain, Canada, Switzerland, Austria, Belgium, Norway, Sweden
+- **Brave Search** (primary) - Requires API key
+- **DuckDuckGo** (fallback) - No API key needed
 
-**Note:** Most webcams link to official tourism/city websites. True live streaming requires API keys from services like EarthCam.
+### DORK Categories
 
----
+Enable OSINT dorks for:
+- Social Media
+- Documents
+- Images
+- People Search
+- Leaks
 
-## Interface Features
+### Adding Findings
 
-### System Status Indicator
-
-- **Green (Idle)**: No search running
-- **Red (Searching)**: Active search in progress
-
-### Progress Display
-
-During searches:
-- Progress bar with percentage
-- Current site being checked
-- Time estimate remaining
-- Cancel button to stop early
-
-### Results Display
-
-- Stats bar (Found, Checked, Time)
-- Results sorted by confidence
-- Copy URL buttons
-- Click to open in new tab
-- Confidence badges (High/Med/Low)
-
-### Close Results
-
-Click the close button (X) or the "Close" button to:
-- Cancel any running search
-- Clear results
-- Reset the UI
+After OSINT search:
+1. Review results
+2. Select relevant findings
+3. Click **Add Selected to Findings**
+4. Findings are saved to the case
 
 ---
 
-## Search History & Archive
+## Face Recognition
 
-Access via the "History" button in the header.
+### Encoding a Face
 
-**Features:**
-- Last 50 searches with results
-- Archive older searches
-- Filter by tool type
-- Mark as read
+1. Go to a **Subject** with a photo
+2. Upload a photo (if not present)
+3. Click **👤 Encode Face**
+4. Face encoding is stored in the database
+
+### Finding Similar Faces
+
+1. Go to **Search** → **Find Similar Faces**
+2. Upload a photo
+3. System compares against all encoded subjects
+4. Results show similarity percentage:
+   - **>80%** - High confidence (green)
+   - **60-80%** - Medium confidence (orange)
+   - **<60%** - Low confidence (red)
+
+### TinEye Integration
+
+Search where a subject's photo appears online:
+
+1. Go to a **Subject** with a photo
+2. Click **🔍 TinEye Search**
+3. Opens TinEye.com with the image
 
 ---
 
-## System Controls
+## Vehicle Data (RDW)
 
-### Restart
-Restarts the Flask server (keeps running).
+Dutch vehicle data from RDW Open Data API.
 
-### Exit
-Stops and exits the application.
+### Check RDW Data
+
+1. Create/edit a **Vehicle** subject
+2. Enter **License Plate** (Kenteken)
+3. Click **Check RDW** or **Fetch RDW**
+4. Vehicle data auto-fills:
+   - Brand (Merk)
+   - Model (Handelsbenaming)
+   - Color (Kleur)
+   - Doors, Seats
+   - APK Status
+   - WAM Insurance
+   - And more...
+
+### RDW Fields (23 total)
+
+| Field | Description |
+|-------|-------------|
+| Kenteken | License plate |
+| Merk | Brand |
+| Handelsbenaming | Model name |
+| Voertuigsoort | Vehicle type |
+| Inrichting | Body type |
+| Eerste Kleur | Primary color |
+| Tweede Kleur | Secondary color |
+| Aantal Deuren | Number of doors |
+| Aantal Zitplaatsen | Number of seats |
+| Cilinderinhoud | Engine displacement |
+| Aantal Cilinders | Number of cylinders |
+| Massa Ledig | Empty weight |
+| Maximum Massa | Maximum weight |
+| Vervaldatum APK | APK expiry date |
+| WAM Verzekerd | Insurance status |
+| Taxi Indicator | Taxi license |
+| Export Indicator | Exported status |
+| EU Categorie | European category |
+| Zuinigheidsclassificatie | Efficiency rating |
+| Catalogusprijs | List price |
+| Datum Eerste Toelating | First registration |
+| Type | Type code |
+| Variant | Variant code |
+| Uitvoering | Execution code |
+
+---
+
+## Reminders
+
+Set follow-up reminders for cases and subjects.
+
+### Creating a Reminder
+
+1. Go to **Reminders** → **Create Reminder**
+2. Fill in:
+   - **Title** - What to do
+   - **Due Date** - When
+   - **Type** - Follow-up / Deadline / Meeting / Call / Other
+   - **Priority** - Low / Medium / High
+   - **Linked Entity** - Case or Subject (optional)
+
+### Recurrence
+
+Set recurring reminders:
+- Daily
+- Weekly
+- Monthly
+- Yearly
+
+### Notifications
+
+Reminders appear on:
+- Dashboard
+- Reminders list
+- Linked case/subject view
+
+---
+
+## Settings
+
+Configure the application via ⚙️ Settings (Admin only).
+
+### Categories
+
+**🔑 API Keys**
+- Brave Search API Key
+- PimEyes API Key (future)
+- TinEye API Key (future)
+
+**🔍 Search**
+- Default search engine
+- Search result limit
+- Enable OSINT dorks
+
+**⚙️ General**
+- Case number prefix
+- Default risk score
+- Organization name
+
+**🔒 Security**
+- Session timeout
+- Password change requirement
+
+**📧 Email**
+- SMTP server configuration
+
+### Access
+
+Settings are **Admin only** - regular users cannot access.
+
+---
+
+## User Management
+
+Manage team members and access levels.
+
+### Roles
+
+| Role | Permissions |
+|------|------------|
+| **Admin** | Full access, settings, user management |
+| **Senior Investigator** | Create/edit cases, subjects, OSINT |
+| **Junior Investigator** | View cases, limited editing |
+
+### Creating Users
+
+1. Go to **Users** → **Create User** (Admin)
+2. Fill in details
+3. Assign role
+4. User receives login credentials
+
+---
+
+## Audit Log
+
+Track all system activity for compliance.
+
+### Logged Actions
+
+- User logins/logouts
+- Case creation and changes
+- Subject additions
+- OSINT searches
+- Settings changes
+- Document uploads
+
+### Viewing Logs
+
+Go to **Audit Log** (Admin) to see:
+- Timestamp
+- User
+- Action
+- Entity affected
+- IP address
 
 ---
 
@@ -598,35 +462,40 @@ Stops and exits the application.
 
 | Key | Action |
 |-----|--------|
-| `Enter` | Start search |
-| `Esc` | Close results |
+| `s` | Focus search |
+| `/` | Focus search |
+| `j` | Next item |
+| `k` | Previous item |
+| `Enter` | View selected |
+| `?` | Show help |
 
 ---
 
 ## API Endpoints
 
+### CMS Endpoints
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/social/stream` | Social media search |
-| POST | `/api/person/stream` | People search |
-| POST | `/api/email/stream` | Email search |
-| POST | `/api/email/holehe` | Holehe email search |
-| POST | `/api/username/stream` | Sherlock username search |
-| POST | `/api/username/maigret` | Maigret username search |
-| POST | `/api/phone` | Phone lookup |
-| POST | `/api/webcam` | Webcam directory |
-| POST | `/api/ip` | IP lookup |
-| POST | `/api/domain` | Domain lookup |
-| GET | `/api/history` | Search history |
-| GET | `/api/version` | Version info |
+| GET | `/cms/` | Dashboard |
+| GET | `/cms/cases` | List cases |
+| POST | `/cms/cases/create` | Create case |
+| GET | `/cms/cases/<id>` | View case |
+| GET | `/cms/clients` | List clients |
+| GET | `/cms/subjects` | List subjects |
+| POST | `/cms/subjects/create` | Create subject |
+| GET | `/cms/search` | Global search |
+| GET | `/cms/api/search` | Search API |
+| POST | `/cms/check-rdw-vehicle` | RDW lookup |
+| POST | `/cms/subjects/compare-faces` | Face matching |
 
-### Example
+### OSINT Endpoints
 
-```bash
-curl -X POST http://localhost:5000/api/username/stream \
-  -H "Content-Type: application/json" \
-  -d '{"query": "testuser", "tags": ["30"]}'
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/cms/cases/<id>/osint-search` | Start OSINT search |
+| GET | `/cms/osint-search/<id>/status` | Search status |
+| POST | `/cms/cases/<id>/osint-search/add-findings` | Add findings |
 
 ---
 
@@ -634,90 +503,94 @@ curl -X POST http://localhost:5000/api/username/stream \
 
 ### Common Issues
 
-**"Could not load Sherlock site data"**
-- Ensure internet connection on first run
-- Sherlock caches site data automatically
+**"Session expired"**
+- Log in again
+- Check session timeout in Settings
 
-**"Could not load Maigret database"**
-- Database downloads on first run
-- Requires internet connection
+**"API key invalid"**
+- Verify Brave API key in Settings
+- Free tier available at brave.com/search/api
 
-**Slow Performance**
-- Check internet connection
-- Some platforms may rate-limit
-- Use smaller search scope (Quick instead of Full)
+**"Face recognition not working"**
+- Ensure internet connection (loads models)
+- Try a clearer photo with visible face
+- Check browser console for errors
 
-**Phone/WhatsApp/Telegram Not Working**
-- APIs often block automated requests
-- This is a known limitation of OSINT tools
-- Carrier info should still work
+**"RDW lookup failed"**
+- RDW API may be temporarily unavailable
+- Try again later
+- Enter data manually
 
-### Error Messages
+**"PDF export not working"**
+- Check reportlab is installed: `pip install reportlab`
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| Network timeout | Platform not responding | Try again later |
-| Rate limited | Too many requests | Wait, use smaller scope |
-| Invalid input | Wrong format | Check input requirements |
-| 400 Bad Request | Wrong tool for input | Select correct tool |
+### Database Issues
+
+If you see database errors:
+
+```bash
+# Reset database (WARNING: loses all data)
+rm cms.db
+python app.py
+```
+
+### Clear Cache
+
+```bash
+# Clear Python cache
+find . -type d -name __pycache__ -exec rm -rf {} +
+find . -name "*.pyc" -delete
+```
 
 ---
 
 ## Changelog
 
-### Version 2.1.0
-- Added Webcams tool (47+ locations, 15 countries)
-- Added platform selector to Email tool (Quick/Standard/Deep/Full)
-- Improved social search detection logic
-- Added time estimates to progress display
-- Added cancel/stop functionality
-- Results sorted by confidence scores
-- People search: 24 dork queries (was 12)
-- Improved platform detection for social media
-- Removed debug console logs
+### Version 3.0.0 - April 2026
+
+**New Features:**
+- Global Search across all entities
+- Face Recognition with face-api.js
+- TinEye integration for image search
+- Settings Configuration UI (Admin)
+- Type-first Subject creation
+- Enhanced Vehicle/RDW fields (23 fields)
+- Subject Relationships (bidirectional)
+- Findings Filter and badges
+- Reminders System
+- Audit Logging improvements
+- Case Reopen functionality
+- Screenshot Management
+- Social Media ID Extraction
+
+**Improvements:**
+- New Dashboard design
+- Enhanced navigation
+- Better mobile support
+- Dark mode toggle
+
+### Version 2.1.0 - March 2026
+
+- Added Webcams tool
+- Platform selector for Email tool
+- Improved detection logic
+- Time estimates for progress
+- Cancel/stop functionality
 
 ### Version 2.0.0
-- Major UI redesign with toolbar
-- Combined Sherlock + Maigret tool
+
+- Major UI redesign
+- Combined Sherlock + Maigret
 - Added Holehe tool
-- Added confidence scoring
-- Real-time streaming results
-- System status indicator
+- Confidence scoring
+- Real-time streaming
 
 ### Version 1.0.0
+
 - Initial release
 - Core OSINT tools
 - Search history
 - PDF export
-
----
-
-## Technical Details
-
-### Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Browser   │────▶│    Flask    │────▶│   Tools     │
-│  (HTML/CSS) │◀────│   Server    │◀────│ (OSINT Libs)│
-└─────────────┘     └─────────────┘     └─────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │  Cache &    │
-                    │  History    │
-                    └─────────────┘
-```
-
-### Libraries Used
-
-| Library | Purpose |
-|---------|---------|
-| Flask | Web framework |
-| Sherlock | Username finding |
-| Holehe | Email OSINT |
-| Maigret | Deep username search |
-| httpx | Async HTTP |
-| phonenumbers | Phone parsing |
 
 ---
 
@@ -728,7 +601,17 @@ curl -X POST http://localhost:5000/api/username/stream \
 - Do not use for harassment or illegal activities
 - Results may contain false positives
 - Some APIs block automated requests
+- Follow GDPR compliance for personal data
+- Regularly review audit logs
+- Use strong passwords and change defaults
 
 ---
 
-*Iveras OSINT v2.1.0 - March 2026*
+## Support
+
+For issues and feature requests:
+- GitHub Issues: https://github.com/mail2jack/osint-dashboard/issues
+
+---
+
+*Iveras OSINT Case Management System v3.0.0 - April 2026*
