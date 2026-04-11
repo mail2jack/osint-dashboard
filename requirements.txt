@@ -1,18 +1,33 @@
+# Core Flask
 flask>=2.0.0
-requests>=2.25.0
-holehe>=2.0.0
-sherlock-project>=0.14.0
-reportlab>=4.0.0
-maigret>=0.5.0
-ipapi>=1.0.0
-dnspython>=2.0.0
-python-dotenv>=0.19.0
-
-# Case Management System
 flask-sqlalchemy>=3.0.0
 flask-login>=0.6.0
 flask-migrate>=4.0.0
 flask-wtf>=1.0.0
+flask-cors>=4.0.0
+flask-bcrypt>=1.0.0
+flask-limiter>=3.0.0
+
+# HTTP clients
+requests>=2.25.0
+httpx>=0.24.0
+urllib3>=1.26.0
+
+# Data processing
+beautifulsoup4>=4.9.0
+lxml>=4.9.0
+Pillow>=9.0.0
+bleach>=5.0.0
+markdown>=3.4.0
+python-dateutil>=2.8.0
+
+# Database
 psycopg2-binary>=2.9.0
 cryptography>=41.0.0
+
+# Utilities
+python-dotenv>=0.19.0
+dnspython>=2.0.0
+email-validator>=2.0.0
+reportlab>=4.0.0
 werkzeug>=2.0.0
