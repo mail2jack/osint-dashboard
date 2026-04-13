@@ -186,6 +186,9 @@ setup_venv() {
     print_step "Installing utilities..."
     pip install python-dotenv dnspython email-validator reportlab
     
+    print_step "Installing Gunicorn..."
+    pip install gunicorn
+    
     chown -R osint:osint "$APP_DIR"
     deactivate
     
@@ -320,12 +323,13 @@ Description=Iveras OSINT Dashboard
 After=network.target postgresql.service
 
 [Service]
-Type=notify
+Type=simple
 User=osint
 Group=osint
 WorkingDirectory=$APP_DIR
 Environment="PATH=$APP_DIR/venv/bin"
-ExecStart=$APP_DIR/venv/bin/gunicorn -c $APP_DIR/gunicorn_config.py app:app
+Environment="FLASK_APP=app.py"
+ExecStart=$APP_DIR/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 --timeout 120 app:app
 ExecReload=/bin/kill -s HUP \$MAINPID
 KillMode=mixed
 TimeoutStopSec=5
