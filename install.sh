@@ -1,221 +1,177 @@
 #!/bin/bash
 #
-# Iveras OSINT Dashboard - Full Stack Installation Script
-# Version: 1.0.0
-# Author: Iveras OSINT Team
+# Iveras OSINT Dashboard - Installation Script (v2.0)
+# Fixed version with all troubleshooting included
 #
 # Usage:
 #   wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/main/install.sh
 #   chmod +x install.sh
-#   ./install.sh
+#   sudo ./install.sh
 #
 
-set -e  # Exit on error
+set -e
 
-# Colors for output
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Configuration
 REPO_URL="https://github.com/mail2jack/osint-dashboard.git"
 BRANCH="master"
 APP_DIR="/opt/osint-dashboard"
 SERVICE_NAME="osint-dashboard"
-DOMAIN=""
-PORT=5000
 
 # Print functions
-print_header() {
-    echo -e "\n${BLUE}========================================${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}========================================${NC}\n"
-}
+print_step() { echo -e "${YELLOW}[STEP]${NC} $1"; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 
-print_step() {
-    echo -e "${YELLOW}[STEP]${NC} $1"
-}
+# Header
+echo -e "\n${BLUE}========================================${NC}"
+echo -e "${BLUE}  Iveras OSINT Dashboard Installation${NC}"
+echo -e "${BLUE}  Version 2.0 - Fixed & Improved${NC}"
+echo -e "${BLUE}========================================${NC}\n"
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
+# Check root
+if [[ $EUID -ne 0 ]]; then
+    print_error "This script must be run as root"
+    exit 1
+fi
 
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+# ============================================================================
+# STEP 1: Update System
+# ============================================================================
+print_step "Updating system packages..."
+apt update -qq
+apt upgrade -y -qq
+print_success "System updated"
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
+# ============================================================================
+# STEP 2: Install System Dependencies
+# ============================================================================
+print_step "Installing system dependencies..."
+apt install -y \
+    curl \
+    wget \
+    git \
+    python3 \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    build-essential \
+    postgresql \
+    postgresql-contrib \
+    nginx \
+    ufw \
+    software-properties-common
+print_success "System dependencies installed"
 
-# Check if running as root
-check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        print_error "This script must be run as root (use sudo)"
-        exit 1
-    fi
-}
+# ============================================================================
+# STEP 3: Create App User
+# ============================================================================
+print_step "Creating application user..."
+if id -u osint &>/dev/null; then
+    print_info "User 'osint' already exists"
+else
+    useradd -m -s /bin/bash osint
+    print_success "User 'osint' created"
+fi
 
-# Get system info
-get_system_info() {
-    print_step "Detecting system..."
-    
-    if [[ -f /etc/os-release ]]; then
-        source /etc/os-release
-        OS=$ID
-        VER=$VERSION_ID
-    else
-        OS="unknown"
-        VER="unknown"
-    fi
-    
-    print_success "Detected: $OS $VER"
-}
+# ============================================================================
+# STEP 4: Clone Repository
+# ============================================================================
+print_step "Cloning repository to $APP_DIR..."
 
-# Update system
-update_system() {
-    print_step "Updating system packages..."
-    apt update -qq
-    apt upgrade -y -qq
-    print_success "System updated"
-}
+if [[ -d "$APP_DIR" ]]; then
+    print_info "Directory exists - removing old installation..."
+    systemctl stop $SERVICE_NAME 2>/dev/null || true
+    rm -rf $APP_DIR
+fi
 
-# Install dependencies
-install_dependencies() {
-    print_step "Installing system dependencies..."
-    
-    # Common dependencies
-    apt install -y \
-        curl \
-        wget \
-        git \
-        ufw \
-        fail2ban \
-        python3 \
-        python3-pip \
-        python3-venv \
-        python3-dev \
-        build-essential \
-        postgresql \
-        postgresql-contrib \
-        nginx \
-        certbot \
-        python3-certbot-nginx \
-        libpq-dev \
-        libxml2-dev \
-        libxslt1-dev \
-        zlib1g-dev \
-        libffi-dev \
-        libssl-dev
-    
-    print_success "Dependencies installed"
-}
+git clone -b $BRANCH $REPO_URL "$APP_DIR"
+chown -R osint:osint "$APP_DIR"
+print_success "Repository cloned"
 
-# Create app user
-create_app_user() {
-    print_step "Creating application user..."
-    
-    if id -u osint &>/dev/null; then
-        print_warning "User 'osint' already exists"
-    else
-        useradd -m -s /bin/bash osint
-        print_success "User 'osint' created"
-    fi
-}
+# ============================================================================
+# STEP 5: Setup Python Virtual Environment
+# ============================================================================
+print_step "Setting up Python virtual environment..."
 
-# Clone repository
-clone_repo() {
-    print_step "Cloning repository..."
-    
-    if [[ -d "$APP_DIR" ]]; then
-        print_warning "Directory $APP_DIR already exists"
-        read -p "Update existing installation? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            cd "$APP_DIR"
-            git pull origin $BRANCH
-            print_success "Repository updated"
-        fi
-    else
-        git clone -b $BRANCH $REPO_URL "$APP_DIR"
-        chown -R osint:osint "$APP_DIR"
-        print_success "Repository cloned to $APP_DIR"
-    fi
-}
+cd "$APP_DIR"
 
-# Setup virtual environment
-setup_venv() {
-    print_step "Setting up Python virtual environment..."
-    
-    cd "$APP_DIR"
-    
-    # Create venv if not exists
-    if [[ -d "venv" ]]; then
-        print_warning "Removing old virtual environment..."
-        rm -rf venv
-    fi
-    
-    print_step "Creating virtual environment..."
-    python3 -m venv venv
-    
-    # Activate venv and install dependencies
-    source venv/bin/activate
-    
-    print_step "Upgrading pip..."
-    pip install --upgrade pip
-    
-    print_step "Installing Python packages..."
-    pip install pip --upgrade
-    pip install wheel setuptools
-    
-    # Install packages one by one to catch errors
-    print_step "Installing Flask and extensions..."
-    pip install flask flask-sqlalchemy flask-login flask-migrate flask-wtf flask-cors flask-bcrypt werkzeug
-    
-    print_step "Installing HTTP clients..."
-    pip install requests httpx urllib3
-    
-    print_step "Installing data processing..."
-    pip install beautifulsoup4 lxml Pillow bleach markdown python-dateutil
-    
-    print_step "Installing database packages..."
-    pip install psycopg2-binary cryptography
-    
-    print_step "Installing utilities..."
-    pip install python-dotenv dnspython email-validator reportlab
-    
-    print_step "Installing Gunicorn..."
-    pip install gunicorn
-    
-    chown -R osint:osint "$APP_DIR"
-    deactivate
-    
-    print_success "Virtual environment ready"
-}
+# Remove old venv if exists
+if [[ -d "venv" ]]; then
+    rm -rf venv
+fi
 
-# Setup PostgreSQL
-setup_postgresql() {
-    print_step "Setting up PostgreSQL..."
-    
-    # Start PostgreSQL
-    systemctl enable postgresql
-    systemctl start postgresql
-    
-    # Create database and user
-    sudo -u postgres psql << EOF
--- Create database user if not exists
+# Create fresh venv
+python3 -m venv venv
+source venv/bin/activate
+
+# Upgrade pip
+pip install --upgrade pip
+pip install --upgrade setuptools wheel
+
+# Install Flask and extensions
+print_step "Installing Flask and extensions..."
+pip install flask flask-sqlalchemy flask-login flask-migrate flask-wtf flask-cors flask-bcrypt werkzeug
+
+# Install HTTP clients
+print_step "Installing HTTP clients..."
+pip install requests httpx urllib3
+
+# Install data processing
+print_step "Installing data processing packages..."
+pip install beautifulsoup4 lxml Pillow bleach markdown python-dateutil
+
+# Install database packages
+print_step "Installing database packages..."
+pip install psycopg2-binary cryptography
+
+# Install utilities
+print_step "Installing utilities..."
+pip install python-dotenv dnspython email-validator reportlab
+
+# Install Gunicorn (REQUIRED for systemd)
+print_step "Installing Gunicorn..."
+pip install gunicorn
+
+# Verify gunicorn is installed
+if ! "$APP_DIR/venv/bin/gunicorn" --version &>/dev/null; then
+    print_error "Gunicorn installation failed!"
+    exit 1
+fi
+
+chown -R osint:osint "$APP_DIR"
+deactivate
+
+print_success "Virtual environment ready with all packages"
+
+# ============================================================================
+# STEP 6: Setup PostgreSQL
+# ============================================================================
+print_step "Setting up PostgreSQL..."
+
+systemctl enable postgresql
+systemctl start postgresql
+
+# Create database and user
+sudo -u postgres psql << 'EOF'
+-- Create user if not exists
 DO 
-\$do\$
+$do$
 BEGIN
    IF NOT EXISTS (
       SELECT FROM pg_catalog.pg_roles
       WHERE  rolname = 'osint') THEN
-      CREATE USER osint WITH PASSWORD 'osint_secure_password_change_me';
+      CREATE USER osint WITH PASSWORD 'ChangeThisPassword123!';
    END IF;
 END
-\$do\$;
+$do$;
 
 -- Create database
 SELECT 'CREATE DATABASE osint_db'
@@ -225,99 +181,97 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'osint_db')\gexec
 GRANT ALL PRIVILEGES ON DATABASE osint_db TO osint;
 ALTER DATABASE osint_db OWNER TO osint;
 EOF
-    
-    print_success "PostgreSQL configured"
-    
-    # Return the database URL
-    echo "postgresql://osint:osint_secure_password_change_me@localhost/osint_db"
-}
 
-# Create .env file
-create_env_file() {
-    print_step "Creating environment configuration..."
-    
-    # Ask for domain
-    read -p "Enter your domain name (or press Enter for localhost): " DOMAIN
-    read -p "Enter Brave API Key (optional, press Enter to skip): " BRAVE_API_KEY
-    read -p "Enter secret key (press Enter for random): " SECRET_KEY
-    
-    # Generate random secret if empty
-    if [[ -z "$SECRET_KEY" ]]; then
-        SECRET_KEY=$(openssl rand -hex 32)
-    fi
-    
-    cat > "$APP_DIR/.env" << EOF
+print_success "PostgreSQL configured"
+
+# ============================================================================
+# STEP 7: Create Environment File
+# ============================================================================
+print_step "Creating environment configuration..."
+
+SECRET_KEY=$(openssl rand -hex 32)
+
+cat > "$APP_DIR/.env" << EOF
 # Flask Configuration
 FLASK_APP=app.py
-FLASK_ENV=production
 SECRET_KEY=$SECRET_KEY
 
 # Database
-DATABASE_URL=postgresql://osint:osint_secure_password_change_me@localhost/osint_db
-
-# OSINT Settings
-BRAVE_API_KEY=$BRAVE_API_KEY
+DATABASE_URL=postgresql://osint:ChangeThisPassword123!@localhost:5432/osint_db
 
 # Server
-PORT=$PORT
+PORT=5000
 EOF
-    
-    chown osint:osint "$APP_DIR/.env"
-    chmod 600 "$APP_DIR/.env"
-    
-    print_success "Environment file created"
+
+chown osint:osint "$APP_DIR/.env"
+chmod 600 "$APP_DIR/.env"
+print_success "Environment file created"
+
+# ============================================================================
+# STEP 8: Configure Nginx
+# ============================================================================
+print_step "Configuring Nginx..."
+
+# Remove old configs
+rm -f /etc/nginx/sites-enabled/*
+rm -f /etc/nginx/sites-available/*
+
+# Create Nginx config
+cat > /etc/nginx/sites-available/default << 'EOF'
+server {
+    listen 80 default_server;
+    server_name _;
+
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    location /static {
+        alias /opt/osint-dashboard/static;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
 }
-
-# Create Gunicorn configuration
-create_gunicorn_config() {
-    print_step "Creating Gunicorn configuration..."
-    
-    cat > "$APP_DIR/gunicorn_config.py" << 'EOF'
-# Gunicorn configuration file
-import multiprocessing
-
-# Server socket
-bind = "127.0.0.1:5000"
-backlog = 2048
-
-# Worker processes
-workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = "sync"
-worker_connections = 1000
-timeout = 120
-keepalive = 5
-
-# Logging
-accesslog = "/var/log/osint-dashboard/access.log"
-errorlog = "/var/log/osint-dashboard/error.log"
-loglevel = "info"
-
-# Process naming
-proc_name = "osint-dashboard"
-
-# Server mechanics
-daemon = False
-pidfile = "/var/run/osint-dashboard.pid"
-umask = 0
-user = "osint"
-group = "osint"
-tmp_upload_dir = None
 EOF
-    
-    chown osint:osint "$APP_DIR/gunicorn_config.py"
-    
-    # Create log directory
-    mkdir -p /var/log/osint-dashboard
-    chown osint:osint /var/log/osint-dashboard
-    
-    print_success "Gunicorn configured"
-}
 
-# Create systemd service
-create_systemd_service() {
-    print_step "Creating systemd service..."
-    
-    cat > /etc/systemd/system/$SERVICE_NAME.service << EOF
+ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+# Test and start nginx
+nginx -t && systemctl restart nginx
+print_success "Nginx configured"
+
+# ============================================================================
+# STEP 9: Configure Firewall
+# ============================================================================
+print_step "Configuring firewall..."
+
+# Allow SSH, HTTP, HTTPS
+ufw allow ssh
+ufw allow http
+ufw allow https
+
+# Enable firewall
+echo "y" | ufw enable || true
+print_success "Firewall configured"
+
+# ============================================================================
+# STEP 10: Create Systemd Service
+# ============================================================================
+print_step "Creating systemd service..."
+
+cat > /etc/systemd/system/$SERVICE_NAME.service << 'EOF'
 [Unit]
 Description=Iveras OSINT Dashboard
 After=network.target postgresql.service
@@ -325,203 +279,84 @@ After=network.target postgresql.service
 [Service]
 Type=simple
 User=osint
-Group=osint
-WorkingDirectory=$APP_DIR
-Environment="PATH=$APP_DIR/venv/bin"
+WorkingDirectory=/opt/osint-dashboard
+Environment="PATH=/opt/osint-dashboard/venv/bin"
 Environment="FLASK_APP=app.py"
-ExecStart=$APP_DIR/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 --timeout 120 app:app
-ExecReload=/bin/kill -s HUP \$MAINPID
-KillMode=mixed
-TimeoutStopSec=5
-PrivateTmp=true
-Restart=on-failure
+ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 --timeout 120 "app:app"
+Restart=always
 RestartSec=10s
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    
-    systemctl daemon-reload
-    systemctl enable $SERVICE_NAME
-    
-    print_success "Systemd service created"
-}
 
-# Setup Nginx
-setup_nginx() {
-    print_step "Setting up Nginx..."
-    
-    if [[ -n "$DOMAIN" && "$DOMAIN" != "localhost" ]]; then
-        # Create Nginx config with SSL
-        cat > /etc/nginx/sites-available/$SERVICE_NAME << EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-    
-    return 301 https://\$server_name\$request_uri;
-}
+chmod 644 /etc/systemd/system/$SERVICE_NAME.service
+systemctl daemon-reload
+systemctl enable $SERVICE_NAME
 
-server {
-    listen 443 ssl http2;
-    server_name $DOMAIN;
-    
-    # SSL Configuration
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-    
-    # Proxy to Gunicorn
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_redirect off;
-        
-        # WebSocket support
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-    
-    # Static files
-    location /static {
-        alias $APP_DIR/static;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # Upload limit
-    client_max_body_size 50M;
-}
-EOF
-        
-        # Enable site
-        ln -sf /etc/nginx/sites-available/$SERVICE_NAME /etc/nginx/sites-enabled/
-        
-        # Get SSL certificate
-        certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "admin@$DOMAIN"
-        
-        print_success "Nginx configured with SSL for $DOMAIN"
-    else
-        # Simple config without SSL
-        cat > /etc/nginx/sites-available/$SERVICE_NAME << EOF
-server {
-    listen 80;
-    server_name localhost;
-    
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_redirect off;
-    }
-    
-    location /static {
-        alias $APP_DIR/static;
-        expires 30d;
-    }
-    
-    client_max_body_size 50M;
-}
-EOF
-        
-        ln -sf /etc/nginx/sites-available/$SERVICE_NAME /etc/nginx/sites-enabled/
-        rm -f /etc/nginx/sites-enabled/default
-        
-        print_success "Nginx configured (HTTP only)"
-    fi
-    
-    # Test and reload Nginx
-    nginx -t && systemctl reload nginx
-}
+# ============================================================================
+# STEP 11: Start Services
+# ============================================================================
+print_step "Starting services..."
 
-# Configure firewall
-setup_firewall() {
-    print_step "Configuring firewall..."
-    
-    # Allow SSH, HTTP, HTTPS
-    ufw allow ssh
-    ufw allow http
-    ufw allow https
-    
-    # Enable firewall
-    echo "y" | ufw enable
-    
-    print_success "Firewall configured"
-}
+systemctl start $SERVICE_NAME
+sleep 2
 
-# Start services
-start_services() {
-    print_step "Starting services..."
-    
-    systemctl restart $SERVICE_NAME
-    systemctl status $SERVICE_NAME --no-pager || true
-    
-    print_success "Services started"
-}
+# Check status
+if systemctl is-active --quiet $SERVICE_NAME; then
+    print_success "Service started successfully"
+else
+    print_error "Service failed to start!"
+    print_info "Check logs with: journalctl -u $SERVICE_NAME -n 50"
+fi
 
-# Print final instructions
-print_final_instructions() {
-    print_header "Installation Complete!"
-    
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  Iveras OSINT Dashboard Installed${NC}"
-    echo -e "${GREEN}========================================${NC}\n"
-    
-    echo -e "Installation Directory: ${BLUE}$APP_DIR${NC}"
-    echo -e "Service Name: ${BLUE}$SERVICE_NAME${NC}"
-    
-    if [[ -n "$DOMAIN" && "$DOMAIN" != "localhost" ]]; then
-        echo -e "URL: ${GREEN}https://$DOMAIN${NC}"
-    else
-        echo -e "URL: ${GREEN}http://localhost:5000${NC}"
-    fi
-    
-    echo ""
-    echo -e "Default Login:"
-    echo -e "  Username: ${YELLOW}admin${NC}"
-    echo -e "  Password: ${YELLOW}changeme123${NC}"
-    echo ""
-    
-    echo -e "${YELLOW}IMPORTANT:${NC} Change the admin password immediately!"
-    echo ""
-    
-    echo "Useful commands:"
-    echo -e "  ${BLUE}sudo systemctl status $SERVICE_NAME${NC}  - Check status"
-    echo -e "  ${BLUE}sudo systemctl restart $SERVICE_NAME${NC} - Restart"
-    echo -e "  ${BLUE}sudo journalctl -u $SERVICE_NAME -f${NC}  - View logs"
-    echo ""
-    
-    echo "Database credentials (change these!):"
-    echo -e "  ${BLUE}sudo -u postgres psql -d osint_db${NC}"
-    echo ""
-}
+systemctl status $SERVICE_NAME --no-pager || true
 
-# Main installation
-main() {
-    print_header "Iveras OSINT Dashboard Installation"
-    
-    check_root
-    get_system_info
-    update_system
-    install_dependencies
-    create_app_user
-    clone_repo
-    setup_venv
-    setup_postgresql
-    create_env_file
-    create_gunicorn_config
-    create_systemd_service
-    setup_nginx
-    setup_firewall
-    start_services
-    print_final_instructions
-}
+# ============================================================================
+# STEP 12: Get Server IP Addresses
+# ============================================================================
+echo -e "\n${BLUE}========================================${NC}"
+echo -e "${BLUE}  Installation Complete!${NC}"
+echo -e "${BLUE}========================================${NC}\n"
 
-# Run main
-main "$@"
+print_info "Server IP Addresses:"
+echo ""
+hostname -I | tr ' ' '\n' | while read ip; do
+    echo -e "  ${GREEN}http://$ip:5000${NC}"
+done
+echo ""
+
+# Also show localhost
+echo -e "  ${GREEN}http://localhost:5000${NC}"
+echo ""
+
+# ============================================================================
+# FINAL INFORMATION
+# ============================================================================
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}  Iveras OSINT Dashboard Installed${NC}"
+echo -e "${GREEN}========================================${NC}\n"
+
+echo -e "Installation Directory: ${BLUE}$APP_DIR${NC}"
+echo ""
+echo -e "Default Login:"
+echo -e "  Username: ${YELLOW}admin${NC}"
+echo -e "  Password: ${YELLOW}changeme123${NC}"
+echo ""
+echo -e "${RED}IMPORTANT:${NC} Change these credentials immediately!"
+echo ""
+
+echo -e "Useful Commands:"
+echo -e "  ${BLUE}sudo systemctl status $SERVICE_NAME${NC}    - Check status"
+echo -e "  ${BLUE}sudo systemctl restart $SERVICE_NAME${NC}  - Restart service"
+echo -e "  ${BLUE}sudo journalctl -u $SERVICE_NAME -f${NC}     - View live logs"
+echo -e "  ${BLUE}sudo systemctl stop $SERVICE_NAME${NC}    - Stop service"
+echo ""
+echo -e "Database:"
+echo -e "  Host: ${BLUE}localhost${NC}"
+echo -e "  Database: ${BLUE}osint_db${NC}"
+echo -e "  User: ${BLUE}osint${NC}"
+echo -e "  Password: ${RED}ChangeThisPassword123!${NC} (change this!)"
+echo ""
+
+echo -e "${BLUE}========================================${NC}\n"
