@@ -96,11 +96,19 @@ install_dependencies() {
         python3 \
         python3-pip \
         python3-venv \
+        python3-dev \
+        build-essential \
         postgresql \
         postgresql-contrib \
         nginx \
         certbot \
-        python3-certbot-nginx
+        python3-certbot-nginx \
+        libpq-dev \
+        libxml2-dev \
+        libxslt1-dev \
+        zlib1g-dev \
+        libffi-dev \
+        libssl-dev
     
     print_success "Dependencies installed"
 }
@@ -144,14 +152,39 @@ setup_venv() {
     cd "$APP_DIR"
     
     # Create venv if not exists
-    if [[ ! -d "venv" ]]; then
-        python3 -m venv venv
+    if [[ -d "venv" ]]; then
+        print_warning "Removing old virtual environment..."
+        rm -rf venv
     fi
+    
+    print_step "Creating virtual environment..."
+    python3 -m venv venv
     
     # Activate venv and install dependencies
     source venv/bin/activate
-    pip install --upgrade pip -q
-    pip install -r requirements.txt -q
+    
+    print_step "Upgrading pip..."
+    pip install --upgrade pip
+    
+    print_step "Installing Python packages..."
+    pip install pip --upgrade
+    pip install wheel setuptools
+    
+    # Install packages one by one to catch errors
+    print_step "Installing Flask and extensions..."
+    pip install flask flask-sqlalchemy flask-login flask-migrate flask-wtf flask-cors flask-bcrypt werkzeug
+    
+    print_step "Installing HTTP clients..."
+    pip install requests httpx urllib3
+    
+    print_step "Installing data processing..."
+    pip install beautifulsoup4 lxml Pillow bleach markdown python-dateutil
+    
+    print_step "Installing database packages..."
+    pip install psycopg2-binary cryptography
+    
+    print_step "Installing utilities..."
+    pip install python-dotenv dnspython email-validator reportlab
     
     chown -R osint:osint "$APP_DIR"
     deactivate
