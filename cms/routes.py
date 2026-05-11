@@ -10,6 +10,7 @@ Design Decisions:
 - Soft deletes to preserve data for legal compliance
 """
 
+import json
 import logging
 import threading
 import uuid
@@ -26,7 +27,7 @@ from .models import (
     AuditLog, Document, User, CaseStatus, CasePriority,
     SubjectType, VerificationStatus, subject_relations, Comment,
     CommentEditHistory, DocumentTemplate, Reminder, ReminderType, ReminderRecurrence,
-    Screenshot, Setting, SpiderFootScan, init_default_settings
+    Screenshot, Setting, SpiderFootScan, Address, init_default_settings
 )
 from .auth import (
     roles_required, admin_required, senior_required,
@@ -1449,6 +1450,8 @@ def view_subject(subject_id: str):
     """View subject details."""
     subject = Subject.query.get_or_404(subject_id)
     subject.decrypt_identifiers()
+    for addr in subject.addresses:
+        addr.decrypt_fields()
     
     financials = subject.financial_records.filter_by(is_deleted=False).all()
     findings = subject.findings.filter_by(is_deleted=False).order_by(Finding.created_at.desc()).all()
@@ -1614,10 +1617,19 @@ def export_subjects_csv() -> Response:
     output = io.StringIO()
     writer = csv.writer(output)
     
-    writer.writerow(['Name', 'Type', 'Risk Score', 'Email', 'Phone', 'Address', 'Notes', 'Created'])
+    writer.writerow([
+        'Name', 'Type', 'Risk Score', 'Email', 'Phone',
+        'Address (old)', 'Street', 'Number', 'Zipcode', 'Town', 'Country',
+        'Address Kadaster Verified',
+        'Notes', 'Created'
+    ])
     
     for subject in Subject.query.filter_by(is_deleted=False).order_by(Subject.name).all():
         subject.decrypt_identifiers()
+        primary_addr = next((a for a in list(subject.addresses) if a.is_primary), None)
+        if primary_addr:
+            primary_addr.decrypt_fields()
+        
         writer.writerow([
             subject.name,
             subject.subject_type,
@@ -1625,6 +1637,12 @@ def export_subjects_csv() -> Response:
             subject.email or '',
             subject.phone or '',
             subject.address or '',
+            primary_addr.street or '' if primary_addr else '',
+            primary_addr.number or '' if primary_addr else '',
+            primary_addr.zipcode or '' if primary_addr else '',
+            primary_addr.town or '' if primary_addr else '',
+            primary_addr.country or '' if primary_addr else '',
+            'Yes' if primary_addr and primary_addr.kadaster_verified else 'No',
             (subject.notes or '')[:200],
             subject.created_at.strftime('%Y-%m-%d')
         ])
@@ -1822,6 +1840,27 @@ def create_subject():
                 setattr(subject, field, encryptor.encrypt(data[field]))
         
         db.session.add(subject)
+        db.session.flush()  # Get subject ID before adding addresses
+        
+        # Handle structured addresses
+        if data.get('addresses_data'):
+            try:
+                addresses_data = json.loads(data['addresses_data']) if isinstance(data['addresses_data'], str) else data['addresses_data']
+                for addr_data in addresses_data:
+                    if addr_data.get('street') or addr_data.get('zipcode'):
+                        address = Address(
+                            subject_id=subject.id,
+                            street=addr_data.get('street'),
+                            number=addr_data.get('number'),
+                            zipcode=addr_data.get('zipcode'),
+                            town=addr_data.get('town'),
+                            country=addr_data.get('country', 'Netherlands'),
+                            is_primary=addr_data.get('is_primary', False)
+                        )
+                        address.encrypt_fields()
+                        db.session.add(address)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse addresses_data: {e}")
         
         # Link to case if specified
         if data.get('case_id'):
@@ -1934,6 +1973,31 @@ def edit_subject(subject_id: str):
                     changes[field] = {'old': getattr(subject, field) or '[empty]', 'new': new_value or '[empty]'}
                     setattr(subject, field, new_value)
         
+        # Handle structured addresses
+        if data.get('addresses_data'):
+            try:
+                addresses_data = json.loads(data['addresses_data']) if isinstance(data['addresses_data'], str) else data['addresses_data']
+                old_addresses = list(subject.addresses)
+                addr_count_before = len(old_addresses)
+                for addr in old_addresses:
+                    db.session.delete(addr)
+                for addr_data in addresses_data:
+                    if addr_data.get('street') or addr_data.get('zipcode'):
+                        address = Address(
+                            subject_id=subject.id,
+                            street=addr_data.get('street'),
+                            number=addr_data.get('number'),
+                            zipcode=addr_data.get('zipcode'),
+                            town=addr_data.get('town'),
+                            country=addr_data.get('country', 'Netherlands'),
+                            is_primary=addr_data.get('is_primary', False)
+                        )
+                        address.encrypt_fields()
+                        db.session.add(address)
+                changes['addresses'] = {'old': f'{addr_count_before} address(es)', 'new': f'{len(addresses_data)} address(es)'}
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse addresses_data: {e}")
+        
         # Update RDW data if provided
         rdw_fields = [
             'handelsbenaming', 'voertuigsoort', 'eerste_kleur', 'tweede_kleur',
@@ -1986,6 +2050,8 @@ def edit_subject(subject_id: str):
         return redirect(url_for('cms.view_subject', subject_id=subject.id))
     
     subject.decrypt_identifiers()
+    for addr in subject.addresses:
+        addr.decrypt_fields()
     return render_template('cms/subjects/edit.html', subject=subject)
 
 
@@ -4489,6 +4555,81 @@ def update_subject_from_rdw(subject_id: str):
         logger.error(f"RDW update error: {e}")
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+@cms_bp.route('/api/kadaster-lookup', methods=['POST'])
+@login_required
+def kadaster_lookup():
+    """
+    Look up a Dutch address in the BAG (Basisregistratie Adressen) via PDOK API.
+    
+    Accepts: {street, number, zipcode, town} or a full query string.
+    Returns verified address data from the Dutch cadastre.
+    """
+    data = request.get_json() if request.is_json else request.form
+    
+    query = data.get('query', '')
+    if not query:
+        parts = []
+        if data.get('street'):
+            parts.append(data['street'])
+        if data.get('number'):
+            parts.append(data['number'])
+        if data.get('zipcode'):
+            parts.append(data['zipcode'])
+        if data.get('town'):
+            parts.append(data['town'])
+        query = ' '.join(parts)
+    
+    if not query:
+        return jsonify({'error': 'No address provided'}), 400
+    
+    try:
+        import httpx
+        pdok_url = f"https://api.pdok.nl/bzk/locatieserver/search/v3_1/free"
+        params = {'q': query, 'rows': 1, 'fl': '*'}
+        
+        resp = httpx.get(pdok_url, params=params, timeout=10)
+        resp.raise_for_status()
+        result = resp.json()
+        
+        docs = result.get('response', {}).get('docs', [])
+        if not docs:
+            return jsonify({
+                'found': False,
+                'message': 'Address not found in BAG registry',
+                'query': query
+            }), 200
+        
+        doc = docs[0]
+        return jsonify({
+            'found': True,
+            'query': query,
+            'bag_data': {
+                'street': doc.get('straatnaam'),
+                'number': doc.get('huisnummer'),
+                'number_letter': doc.get('huisletter'),
+                'number_addition': doc.get('huisnummertoevoeging'),
+                'zipcode': doc.get('postcode'),
+                'town': doc.get('woonplaatsnaam'),
+                'municipality': doc.get('gemeentenaam'),
+                'province': doc.get('provincienaam'),
+                'coordinates': doc.get('centroide_ll'),
+                'purpose': doc.get('gebruiksdoel'),
+                'surface': doc.get('oppervlakte'),
+                'building_year': doc.get('bouwjaar'),
+                'bag_id': doc.get('bag_id'),
+                'status': doc.get('status'),
+                'type': doc.get('type')
+            }
+        }), 200
+        
+    except httpx.RequestError as e:
+        logger.error(f"Kadaster/PDOK lookup error: {e}")
+        return jsonify({'error': f'Failed to lookup address: {str(e)}'}), 502
+    except Exception as e:
+        logger.error(f"Kadaster lookup unexpected error: {e}")
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
 @cms_bp.route('/cases/<case_id>/screenshots/capture', methods=['POST'])

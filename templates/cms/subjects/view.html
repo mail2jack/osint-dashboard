@@ -150,7 +150,35 @@
             </div>
             {% endif %}
             {% endif %}
-            <div class="info-item"><label>Address</label><span>{{ subject.address if subject.address else '-' }}</span></div>
+            <div class="info-item">
+                <label>Address(es)</label>
+                <div style="margin-top: 0.25rem;">
+                    {% if subject.addresses.count() > 0 %}
+                        {% for addr in subject.addresses %}
+                        <div style="background:{% if addr.is_primary %}#f0fdf4{% else %}#f9fafb{% endif %};border:1px solid {% if addr.is_primary %}#bbf7d0{% else %}#e5e7eb{% endif %};border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                                <div>
+                                    <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
+                                    {% if addr.is_primary %}<span style="background:#16a34a;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.5rem;">PRIMARY</span>{% endif %}
+                                    {% if addr.kadaster_verified %}<span style="background:#2563eb;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;">✓ KADASTER</span>{% endif %}
+                                    <br>
+                                    <span style="color:#666;font-size:0.875rem;">
+                                        {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
+                                        {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
+                                    </span>
+                                </div>
+                                <button type="button" onclick="kadasterLookup(this, '{{ addr.id }}')" class="kadaster-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                    🏛 Check Kadaster
+                                </button>
+                            </div>
+                            <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <span>{{ subject.address if subject.address else '-' }}</span>
+                    {% endif %}
+                </div>
+            </div>
             {% if subject.notes %}<div class="info-item"><label>Notes</label><p>{{ subject.notes }}</p></div>{% endif %}
         </div>
         {% if linked_cases %}
@@ -1148,6 +1176,58 @@
         const tineyeUrl = `https://tineye.com/search?url=${imageUrl}`;
         
         window.open(tineyeUrl, '_blank');
+    }
+    
+    async function kadasterLookup(btn, addressId) {
+        const entry = btn.closest('[style*="background"]');
+        const resultDiv = entry.querySelector('.kadaster-result');
+        const origText = btn.textContent;
+        
+        btn.disabled = true;
+        btn.textContent = '🔍 Checking...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Looking up address in BAG registry...</span>';
+        
+        const street = entry.querySelector('strong')?.textContent.trim() || '';
+        const town = entry.querySelector('span[style*="color: #666"]')?.textContent.trim() || '';
+        
+        try {
+            const resp = await fetch('/cms/api/kadaster-lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: street + ' ' + town })
+            });
+            const data = await resp.json();
+            
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+            } else if (!data.found) {
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ Address not found in Kadaster/BAG</span>';
+            } else {
+                const b = data.bag_data;
+                let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+                html += '<div><strong>Status:</strong> ' + (b.status || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + (b.type || '-') + '</div>';
+                html += '<div><strong>Purpose:</strong> ' + (b.purpose || '-') + '</div>';
+                html += '<div><strong>Surface:</strong> ' + (b.surface ? b.surface + ' m²' : '-') + '</div>';
+                html += '<div><strong>Year built:</strong> ' + (b.building_year || '-') + '</div>';
+                html += '<div><strong>Municipality:</strong> ' + (b.municipality || '-') + '</div>';
+                if (b.coordinates) {
+                    const coords = b.coordinates.replace('POINT(', '').replace(')', '');
+                    const [lng, lat] = coords.split(' ');
+                    html += '<div style="grid-column: 1 / -1;"><strong>Coordinates:</strong> ' + lat + ', ' + lng + ' (<a href="https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '&zoom=16" target="_blank">View on map</a>)</div>';
+                }
+                html += '</div></div>';
+                resultDiv.innerHTML = html;
+                btn.textContent = '✅ Verified';
+                btn.style.background = '#16a34a';
+            }
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
     }
 </script>
 {% endblock %}

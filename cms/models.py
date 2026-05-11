@@ -553,6 +553,9 @@ class Subject(db.Model):
     # Relationships
     financial_records = db.relationship('FinancialRecord', backref='subject', lazy='dynamic')
     findings = db.relationship('Finding', backref='subject', lazy='dynamic')
+    addresses = db.relationship('Address', backref='subject', lazy='dynamic',
+                               foreign_keys='Address.subject_id',
+                               order_by='Address.is_primary.desc(), Address.created_at')
     
     # Relations with other subjects
     related_subjects = db.relationship(
@@ -622,6 +625,7 @@ class Subject(db.Model):
             'vehicle_type': self.vehicle_type,
             'social_media_ids': self.social_media_ids or {},
             'rdw_data': self.rdw_data or {},
+            'addresses': [a.to_dict(decrypted=decrypted) for a in self.addresses],
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         
@@ -634,6 +638,90 @@ class Subject(db.Model):
             result['findings_count'] = self.findings.count()
         
         return result
+
+
+# =============================================================================
+# Address Model
+# =============================================================================
+
+class Address(db.Model):
+    """
+    Structured address for a subject.
+    
+    Supports multiple addresses per subject (home, work, etc.)
+    with Kadaster verification status.
+    """
+    __tablename__ = 'addresses'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'), nullable=False, index=True)
+    
+    # Structured address fields (all encrypted)
+    street = db.Column(db.String(200))   # Encrypted
+    number = db.Column(db.String(20))    # Encrypted (huisnummer + toevoeging)
+    zipcode = db.Column(db.String(20))  # Encrypted
+    town = db.Column(db.String(200))     # Encrypted
+    country = db.Column(db.String(100))  # Encrypted
+    
+    is_primary = db.Column(db.Boolean, default=False)
+    
+    # Kadaster verification
+    kadaster_verified = db.Column(db.Boolean, default=False)
+    kadaster_data = db.Column(db.JSON)  # Full BAG response
+    kadaster_checked_at = db.Column(db.DateTime)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    ENCRYPTED_FIELDS = ['street', 'number', 'zipcode', 'town', 'country']
+    
+    def encrypt_fields(self):
+        for field in self.ENCRYPTED_FIELDS:
+            value = getattr(self, field)
+            if value:
+                setattr(self, field, encryptor.encrypt(value))
+    
+    def decrypt_fields(self):
+        for field in self.ENCRYPTED_FIELDS:
+            value = getattr(self, field)
+            if value:
+                try:
+                    setattr(self, field, encryptor.decrypt(value))
+                except:
+                    pass
+    
+    def to_dict(self, decrypted=True):
+        if decrypted:
+            self.decrypt_fields()
+        return {
+            'id': self.id,
+            'subject_id': self.subject_id,
+            'street': self.street,
+            'number': self.number,
+            'zipcode': self.zipcode,
+            'town': self.town,
+            'country': self.country,
+            'is_primary': self.is_primary,
+            'kadaster_verified': self.kadaster_verified,
+            'kadaster_data': self.kadaster_data,
+            'kadaster_checked_at': self.kadaster_checked_at.isoformat() if self.kadaster_checked_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+    
+    def full_address(self):
+        parts = []
+        if self.street:
+            line = self.street
+            if self.number:
+                line += f' {self.number}'
+            parts.append(line)
+        if self.zipcode:
+            parts.append(self.zipcode)
+        if self.town:
+            parts.append(self.town)
+        if self.country:
+            parts.append(self.country)
+        return ', '.join(parts)
 
 
 # =============================================================================

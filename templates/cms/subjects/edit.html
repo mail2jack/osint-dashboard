@@ -1,7 +1,7 @@
 {% extends "cms/base.html" %}
 {% block content %}
 <h2 style="margin-bottom: 1.5rem;">Edit Subject</h2>
-<form method="POST" id="subjectForm">
+<form method="POST" id="subjectForm" onsubmit="serializeAddresses()">
     <div class="form-group">
         <label for="name">Name *</label>
         <input type="text" name="name" id="name" value="{{ subject.name }}" required>
@@ -150,8 +150,61 @@
     </div>
     
     <div class="form-group">
-        <label for="address">Address</label>
-        <input type="text" name="address" id="address" value="{{ subject.address or '' }}">
+        <label>Address(es)</label>
+        <div id="addresses-container">
+            {% if subject.addresses.count() > 0 %}
+                {% for addr in subject.addresses %}
+                <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
+                    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0.5rem;align-items:end;">
+                        <div>
+                            <label style="font-size:0.75rem;">Street + Number</label>
+                            <input type="text" class="addr-street" value="{{ addr.street or '' }} {{ addr.number or '' }}" placeholder="Street + house number" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem;">Zipcode</label>
+                            <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem;">Town</label>
+                            <input type="text" class="addr-town" value="{{ addr.town or '' }}" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                                <input type="checkbox" class="addr-primary" {% if addr.is_primary %}checked{% endif %}> Primary
+                            </label>
+                            <button type="button" onclick="this.closest('.address-entry').remove()" style="font-size:0.75rem;padding:0.25rem 0.5rem;background:#fee2e2;border:1px solid #fecaca;border-radius:4px;cursor:pointer;color:#991b1b;">✕</button>
+                        </div>
+                    </div>
+                    <input type="hidden" class="addr-country" value="{{ addr.country or 'Netherlands' }}">
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
+                <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0.5rem;align-items:end;">
+                    <div>
+                        <label style="font-size:0.75rem;">Street + Number</label>
+                        <input type="text" class="addr-street" placeholder="Street + house number" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;">Zipcode</label>
+                        <input type="text" class="addr-zipcode" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;">Town</label>
+                        <input type="text" class="addr-town" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                            <input type="checkbox" class="addr-primary" checked> Primary
+                        </label>
+                    </div>
+                </div>
+                <input type="hidden" class="addr-country" value="Netherlands">
+            </div>
+            {% endif %}
+        </div>
+        <button type="button" onclick="addAddress()" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another address</button>
+        <input type="hidden" name="addresses_data" id="addresses-data" value="">
     </div>
     <div class="form-group">
         <label for="risk_score">Risk Score (0-100)</label>
@@ -255,6 +308,36 @@ document.getElementById('license_plate').addEventListener('keypress', function(e
         fetchRDWData();
     }
 });
+
+function serializeAddresses() {
+    const entries = document.querySelectorAll('.address-entry');
+    const addresses = [];
+    entries.forEach(entry => {
+        const street = entry.querySelector('.addr-street').value.trim();
+        const zipcode = entry.querySelector('.addr-zipcode').value.trim();
+        if (!street && !zipcode) return;
+        addresses.push({
+            street: street,
+            number: '',
+            zipcode: zipcode,
+            town: entry.querySelector('.addr-town').value.trim(),
+            country: entry.querySelector('.addr-country').value || 'Netherlands',
+            is_primary: entry.querySelector('.addr-primary').checked
+        });
+    });
+    document.getElementById('addresses-data').value = JSON.stringify(addresses);
+}
+
+function addAddress() {
+    const container = document.getElementById('addresses-container');
+    const first = container.querySelector('.address-entry');
+    const clone = first.cloneNode(true);
+    clone.querySelectorAll('input').forEach(el => {
+        if (el.type !== 'checkbox') el.value = '';
+        else el.checked = false;
+    });
+    container.appendChild(clone);
+}
 
 document.addEventListener('DOMContentLoaded', toggleVehicleFields);
 </script>

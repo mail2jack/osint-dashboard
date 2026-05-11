@@ -77,8 +77,33 @@
             <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
         </div>
         <div class="form-group">
-            <label for="address">Address</label>
-            <input type="text" name="address" id="address">
+            <label>Address(es)</label>
+            <div id="addresses-container">
+                <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
+                    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0.5rem;align-items:end;">
+                        <div>
+                            <label style="font-size:0.75rem;">Street + Number</label>
+                            <input type="text" class="addr-street" placeholder="Street + house number" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem;">Zipcode</label>
+                            <input type="text" class="addr-zipcode" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem;">Town</label>
+                            <input type="text" class="addr-town" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                                <input type="checkbox" class="addr-primary" checked> Primary
+                            </label>
+                        </div>
+                    </div>
+                    <input type="hidden" class="addr-country" value="Netherlands">
+                </div>
+            </div>
+            <button type="button" onclick="addAddress()" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another address</button>
+            <input type="hidden" name="addresses_data" id="addresses-data" value="">
         </div>
         <div class="form-group">
             <label for="risk_score">Risk Score (0-100)</label>
@@ -386,10 +411,42 @@ function validateForm() {
     return true;
 }
 
+function serializeAddresses() {
+    const entries = document.querySelectorAll('.address-entry');
+    const addresses = [];
+    entries.forEach(entry => {
+        const street = entry.querySelector('.addr-street').value.trim();
+        const zipcode = entry.querySelector('.addr-zipcode').value.trim();
+        if (!street && !zipcode) return;
+        addresses.push({
+            street: street,
+            number: '',
+            zipcode: zipcode,
+            town: entry.querySelector('.addr-town').value.trim(),
+            country: entry.querySelector('.addr-country').value || 'Netherlands',
+            is_primary: entry.querySelector('.addr-primary').checked
+        });
+    });
+    document.getElementById('addresses-data').value = JSON.stringify(addresses);
+}
+
+function addAddress() {
+    const container = document.getElementById('addresses-container');
+    const first = container.querySelector('.address-entry');
+    const clone = first.cloneNode(true);
+    clone.querySelectorAll('input').forEach(el => {
+        if (el.type !== 'checkbox') el.value = '';
+        else el.checked = false;
+    });
+    container.appendChild(clone);
+}
+
 function handleFormSubmit() {
     console.log('Form submitted!');
     const form = document.getElementById('subjectForm');
     const submitBtn = form.querySelector('button[type="submit"]');
+    
+    serializeAddresses();
     
     if (submitBtn) {
         submitBtn.disabled = true;
