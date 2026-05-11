@@ -151,23 +151,62 @@ setInterval(refreshScan, 30000);
                 </div>
                 {% else %}
                 {% for item in items %}
-                <div class="result-item">
-                    <div class="result-main">
-                        <span class="result-data">{{ (item.data or item.dataTransformed or item.value or '')|string|truncate(150) }}</span>
-                        {% set display_val = (item.data or item.dataTransformed or item.value or '')|string %}
-                        {% if display_val %}
-                        <span class="result-value">{{ display_val|result_link(group) }}</span>
-                        {% endif %}
+                {% set display_val = (item.data or item.dataTransformed or item.value or '')|string %}
+                {% set type_lower = group.lower() %}
+                {% if 'email' in type_lower %}
+                    {% set card_color = '#4a90d9' %}{% set card_icon = '✉' %}
+                {% elif 'domain' in type_lower or 'internet_name' in type_lower or 'dns' in type_lower %}
+                    {% set card_color = '#27ae60' %}{% set card_icon = '🌐' %}
+                {% elif 'ip' in type_lower %}
+                    {% set card_color = '#8e44ad' %}{% set card_icon = '🌍' %}
+                {% elif 'phone' in type_lower %}
+                    {% set card_color = '#e67e22' %}{% set card_icon = '📞' %}
+                {% elif 'url' in type_lower %}
+                    {% set card_color = '#16a085' %}{% set card_icon = '🔗' %}
+                {% elif 'human' in type_lower or 'name' in type_lower %}
+                    {% set card_color = '#2980b9' %}{% set card_icon = '👤' %}
+                {% elif 'username' in type_lower %}
+                    {% set card_color = '#d35400' %}{% set card_icon = '🏷' %}
+                {% elif 'btc' in type_lower or 'bitcoin' in type_lower %}
+                    {% set card_color = '#f7931a' %}{% set card_icon = '₿' %}
+                {% elif 'company' in type_lower or 'organization' in type_lower %}
+                    {% set card_color = '#1abc9c' %}{% set card_icon = '🏢' %}
+                {% elif 'physical' in type_lower or 'location' in type_lower or 'address' in type_lower %}
+                    {% set card_color = '#e74c3c' %}{% set card_icon = '📍' %}
+                {% elif 'breach' in type_lower or 'leak' in type_lower %}
+                    {% set card_color = '#c0392b' %}{% set card_icon = '🔴' %}
+                {% elif 'social' in type_lower %}
+                    {% set card_color = '#3498db' %}{% set card_icon = '👥' %}
+                {% elif 'affiliate' in type_lower %}
+                    {% set card_color = '#9b59b6' %}{% set card_icon = '🤝' %}
+                {% elif 'co-hosted' in type_lower or 'webserver' in type_lower or 'netblock' in type_lower %}
+                    {% set card_color = '#34495e' %}{% set card_icon = '🖥' %}
+                {% elif 'web' in type_lower or 'server' in type_lower %}
+                    {% set card_color = '#95a5a6' %}{% set card_icon = '⚙' %}
+                {% else %}
+                    {% set card_color = '#666' %}{% set card_icon = '📄' %}
+                {% endif %}
+                {% set data_str = (item.data or '')|string %}
+                <div class="rich-card" style="--card-color: {{ card_color }};">
+                    <div class="rich-card-side">
+                        <span class="rich-card-icon">{{ card_icon }}</span>
                     </div>
-                    <div class="result-meta">
-                        <span class="result-source">{{ item.sourceModule or '?' }}</span>
-                        {% if item.sourceUrl %}
-                        <a href="{{ item.sourceUrl }}" target="_blank" rel="noopener" class="result-url">🔗 Source</a>
+                    <div class="rich-card-body">
+                        <div class="rich-card-value">{{ display_val|result_link(group) }}</div>
+                        {% if data_str and data_str != display_val %}
+                        <div class="rich-card-data">{{ data_str|truncate(250) }}</div>
                         {% endif %}
-                        {% if item.timestamp %}
-                        <span class="result-time">{{ item.timestamp }}</span>
-                        {% endif %}
+                        <div class="rich-card-meta">
+                            <span class="rich-card-source">{{ item.sourceModule or '?' }}</span>
+                            {% if item.sourceUrl %}
+                            <a href="{{ item.sourceUrl }}" target="_blank" rel="noopener" class="rich-card-url">Source ↗</a>
+                            {% endif %}
+                            {% if item.timestamp %}
+                            <span class="rich-card-time">{{ item.timestamp }}</span>
+                            {% endif %}
+                        </div>
                     </div>
+                    <button class="copy-btn" onclick="copyValue(this)" title="Copy to clipboard">📋</button>
                 </div>
                 {% endfor %}
                 {% endif %}
@@ -318,7 +357,7 @@ setInterval(refreshScan, 30000);
     color: var(--text-secondary);
 }
 
-/* Result List Styles */
+/* Rich Card Styles */
 .search-bar {
     margin-bottom: 1rem;
 }
@@ -402,55 +441,102 @@ setInterval(refreshScan, 30000);
 .result-group-header.collapsed + .result-group-body {
     display: none;
 }
-.result-item {
-    padding: 0.75rem 1rem;
+
+/* Rich Result Cards */
+.rich-card {
+    display: flex;
+    align-items: stretch;
     border-top: 1px solid var(--border-color);
+    transition: background 0.1s;
 }
-.result-item:hover {
+.rich-card:hover {
     background: var(--bg-secondary);
 }
-.result-data {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.25rem;
-    word-break: break-all;
+.rich-card-side {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    min-height: 48px;
+    flex-shrink: 0;
+    background: var(--card-color, #666);
 }
-.result-value {
-    display: block;
+.rich-card-icon {
+    font-size: 1rem;
+    color: white;
+    line-height: 1;
+}
+.rich-card-body {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+    min-width: 0;
+}
+.rich-card-value {
     font-size: 0.9rem;
+    font-weight: 500;
     word-break: break-all;
+    margin-bottom: 0.15rem;
 }
-.result-value a {
+.rich-card-value a {
     color: var(--accent-primary);
     text-decoration: none;
 }
-.result-value a:hover {
+.rich-card-value a:hover {
     text-decoration: underline;
 }
-.result-meta {
-    display: flex;
-    gap: 1rem;
-    margin-top: 0.5rem;
+.rich-card-data {
     font-size: 0.75rem;
     color: var(--text-secondary);
-    flex-wrap: wrap;
+    word-break: break-all;
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
 }
-.result-source {
+.rich-card-meta {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+    align-items: center;
+}
+.rich-card-source {
     background: var(--bg-secondary);
     padding: 0.1rem 0.4rem;
     border-radius: 3px;
     font-family: monospace;
 }
-.result-url {
+.rich-card-url {
     color: var(--accent-primary);
     text-decoration: none;
 }
-.result-url:hover {
+.rich-card-url:hover {
     text-decoration: underline;
 }
-.result-time {
+.rich-card-time {
     color: var(--text-secondary);
+}
+.copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border-color);
+    cursor: pointer;
+    font-size: 0.85rem;
+    opacity: 0.4;
+    transition: opacity 0.15s;
+    color: var(--text-primary);
+    padding: 0;
+}
+.rich-card:hover .copy-btn {
+    opacity: 0.7;
+}
+.copy-btn:hover {
+    opacity: 1 !important;
+    background: var(--bg-secondary);
 }
 
 /* Account Card Grid */
@@ -522,16 +608,35 @@ function toggleGroup(header) {
 function filterResults(query) {
     const q = query.toLowerCase();
     document.querySelectorAll('.result-group').forEach(group => {
-        const items = group.querySelectorAll('.result-item');
+        const cards = group.querySelectorAll('.rich-card, .account-card');
         let visible = 0;
-        items.forEach(item => {
-            const text = item.textContent.toLowerCase();
+        cards.forEach(card => {
+            const text = card.textContent.toLowerCase();
             const match = !q || text.includes(q);
-            item.style.display = match ? '' : 'none';
+            card.style.display = match ? '' : 'none';
             if (match) visible++;
         });
         group.style.display = visible > 0 ? '' : 'none';
-        group.querySelector('.badge-count').textContent = visible;
+        const badge = group.querySelector('.badge-count');
+        if (badge) badge.textContent = visible;
+    });
+}
+function copyValue(btn) {
+    const card = btn.closest('.rich-card');
+    const valueEl = card.querySelector('.rich-card-value');
+    const text = valueEl ? valueEl.textContent.trim() : '';
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓';
+        btn.style.opacity = '1';
+        setTimeout(() => {
+            btn.textContent = orig;
+            btn.style.opacity = '';
+        }, 1200);
+    }).catch(() => {
+        btn.textContent = '✗';
+        setTimeout(() => { btn.textContent = '📋'; }, 1000);
     });
 }
 </script>
