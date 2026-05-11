@@ -523,6 +523,10 @@ class Subject(db.Model):
     estimated_value = db.Column(db.Numeric(15, 2))
     currency = db.Column(db.String(3), default='EUR')
     
+    # Social media identifiers (extracted from profiles)
+    # Structure: {"facebook": {"id": "123456", "username": "johndoe"}, "vk": {...}, etc.}
+    social_media_ids = db.Column(db.JSON)
+    
     # Vehicle-specific fields (encrypted)
     license_plate = db.Column(db.String(20))  # Encrypted
     vin = db.Column(db.String(50))  # Encrypted (Vehicle Identification Number)
@@ -530,8 +534,14 @@ class Subject(db.Model):
     brand = db.Column(db.String(100))
     vehicle_type = db.Column(db.String(50))  # sedan, suv, truck, etc.
     
+    # RDW vehicle data (full RDW record as JSON)
+    rdw_data = db.Column(db.JSON)
+    
     # Photo
     photo_path = db.Column(db.String(500))  # Path to uploaded photo
+    
+    # Face recognition encoding (stored as JSON array of 128 floats from face-api.js)
+    face_encoding = db.Column(db.JSON)
     
     # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
@@ -610,6 +620,8 @@ class Subject(db.Model):
             'insurance_company': self.insurance_company,
             'brand': self.brand,
             'vehicle_type': self.vehicle_type,
+            'social_media_ids': self.social_media_ids or {},
+            'rdw_data': self.rdw_data or {},
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         
@@ -795,6 +807,62 @@ class Finding(db.Model):
             'author_name': self.author.full_name if self.author else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+# =============================================================================
+# Screenshot Model
+# =============================================================================
+
+class Screenshot(db.Model):
+    """
+    Screenshots captured from URLs for case documentation.
+    """
+    __tablename__ = 'screenshots'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    case_id = db.Column(db.String(36), db.ForeignKey('cases.id'), nullable=False)
+    
+    url = db.Column(db.String(500), nullable=False)  # Source URL
+    filename = db.Column(db.String(255), nullable=False)  # Stored filename
+    original_filename = db.Column(db.String(255))  # Original name if provided
+    title = db.Column(db.String(300))  # Optional title
+    
+    # Dimensions
+    width = db.Column(db.Integer)
+    height = db.Column(db.Integer)
+    
+    # File info
+    file_size = db.Column(db.Integer)  # Size in bytes
+    
+    # Optional extracted data (e.g., social media IDs)
+    extracted_data = db.Column(db.JSON)
+    
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    case = db.relationship('Case', backref='screenshots')
+    creator = db.relationship('User', foreign_keys=[created_by])
+    
+    def to_dict(self) -> dict:
+        """Serialize screenshot."""
+        return {
+            'id': self.id,
+            'case_id': self.case_id,
+            'url': self.url,
+            'filename': self.filename,
+            'original_filename': self.original_filename,
+            'title': self.title,
+            'width': self.width,
+            'height': self.height,
+            'file_size': self.file_size,
+            'extracted_data': self.extracted_data,
+            'created_by': self.created_by,
+            'creator_name': self.creator.full_name if self.creator else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'thumbnail_url': f'/cms/cases/{self.case_id}/screenshots/{self.id}/thumbnail',
+            'full_url': f'/cms/cases/{self.case_id}/screenshots/{self.id}/view'
         }
 
 
@@ -1281,26 +1349,38 @@ class Reminder(db.Model):
 
 class Setting(db.Model):
     """
-    Application settings stored in database for easy management.
-    
-    Allows configuration of external services like SpiderFoot.
+    Application settings stored in database.
+    Allows runtime configuration without code changes.
+    Supports encrypted storage for sensitive values (API keys, credentials).
     """
     __tablename__ = 'settings'
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     key = db.Column(db.String(100), unique=True, nullable=False, index=True)
     value = db.Column(db.Text)
+    category = db.Column(db.String(50), default='general', index=True)
     description = db.Column(db.String(500))
-    category = db.Column(db.String(50), default='general')  # general, spiderfoot, api, etc.
+    value_type = db.Column(db.String(20), default='text')  # text, password, number, boolean, select
+    options = db.Column(db.JSON)
     is_encrypted = db.Column(db.Boolean, default=False)
+    is_sensitive = db.Column(db.Boolean, default=False)
+    display_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
+    
+    def get_masked_value(self) -> str:
+        if not self.is_sensitive or not self.value:
+            return self.value or ''
+        if len(self.value) <= 4:
+            return '****'
+        return self.value[:2] + '*' * (len(self.value) - 4) + self.value[-2:]
     
     @staticmethod
     def get(key: str, default: Any = None) -> Any:
-        """Get a setting value by key."""
-        setting = Setting.query.filter_by(key=key).first()
+        setting = Setting.query.filter_by(key=key, is_active=True).first()
         if setting is None:
             return default
         if setting.is_encrypted:
@@ -1313,13 +1393,10 @@ class Setting(db.Model):
     
     @staticmethod
     def set(key: str, value: Any, description: str = None, category: str = 'general', encrypt: bool = False) -> bool:
-        """Set a setting value."""
         setting = Setting.query.filter_by(key=key).first()
-        
         if setting is None:
             setting = Setting(key=key, category=category, description=description)
             db.session.add(setting)
-        
         if encrypt and value:
             from .encryption_utils import encryptor
             value = encryptor.encrypt(str(value))
@@ -1327,14 +1404,11 @@ class Setting(db.Model):
         else:
             setting.value = str(value) if value is not None else None
             setting.is_encrypted = False
-        
         if description:
             setting.description = description
         if category:
             setting.category = category
-        
         setting.updated_at = datetime.utcnow()
-        
         try:
             db.session.commit()
             return True
@@ -1343,32 +1417,79 @@ class Setting(db.Model):
             logger.error(f"Failed to save setting {key}: {e}")
             return False
     
-    @staticmethod
-    def get_category(category: str) -> List['Setting']:
-        """Get all settings in a category."""
-        return Setting.query.filter_by(category=category).order_by(Setting.key).all()
-    
-    @staticmethod
-    def delete(key: str) -> bool:
-        """Delete a setting."""
-        setting = Setting.query.filter_by(key=key).first()
-        if setting:
-            db.session.delete(setting)
-            db.session.commit()
-            return True
-        return False
-    
-    def to_dict(self) -> dict:
-        """Serialize setting (doesn't decrypt encrypted values)."""
+    def to_dict(self, include_value: bool = True) -> dict:
         return {
             'id': self.id,
             'key': self.key,
-            'value': '[encrypted]' if self.is_encrypted else self.value,
-            'description': self.description,
+            'value': self.value if include_value else None,
+            'masked_value': self.get_masked_value(),
             'category': self.category,
-            'is_encrypted': self.is_encrypted,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'description': self.description,
+            'value_type': self.value_type,
+            'options': self.options,
+            'is_sensitive': self.is_sensitive,
+            'display_order': self.display_order,
+            'is_active': self.is_active
         }
+
+
+def get_setting(key: str, default=None):
+    setting = Setting.query.filter_by(key=key, is_active=True).first()
+    if not setting:
+        return default
+    return setting.value
+
+
+def set_setting(key: str, value: str, category: str = 'general', description: str = None,
+                value_type: str = 'text', is_sensitive: bool = False):
+    setting = Setting.query.filter_by(key=key).first()
+    if setting:
+        setting.value = value
+        setting.updated_at = datetime.utcnow()
+    else:
+        setting = Setting(
+            key=key,
+            value=value,
+            category=category,
+            description=description,
+            value_type=value_type,
+            is_sensitive=is_sensitive,
+            is_encrypted=is_sensitive
+        )
+        db.session.add(setting)
+    db.session.commit()
+    return setting
+
+
+def init_default_settings():
+    defaults = [
+        {'key': 'brave_api_key', 'category': 'api_keys', 'description': 'Brave Search API Key', 'value_type': 'password', 'is_sensitive': True, 'display_order': 1},
+        {'key': 'pimeyes_api_key', 'category': 'api_keys', 'description': 'PimEyes API Key', 'value_type': 'password', 'is_sensitive': True, 'display_order': 2},
+        {'key': 'tineye_api_key', 'category': 'api_keys', 'description': 'TinEye API Key', 'value_type': 'password', 'is_sensitive': True, 'display_order': 3},
+        {'key': 'spiderfoot_url', 'category': 'spiderfoot', 'description': 'SpiderFoot server URL', 'value_type': 'text', 'display_order': 4},
+        {'key': 'spiderfoot_username', 'category': 'spiderfoot', 'description': 'SpiderFoot login username', 'value_type': 'text', 'display_order': 5},
+        {'key': 'spiderfoot_password', 'category': 'spiderfoot', 'description': 'SpiderFoot login password', 'value_type': 'password', 'is_sensitive': True, 'display_order': 6},
+        {'key': 'default_search_engine', 'category': 'search', 'description': 'Default search engine', 'value_type': 'select', 'options': {'options': [{'value': 'brave', 'label': 'Brave Search'}, {'value': 'ddg', 'label': 'DuckDuckGo'}]}, 'display_order': 10},
+        {'key': 'search_result_limit', 'category': 'search', 'description': 'Max search results', 'value_type': 'number', 'display_order': 11},
+        {'key': 'enable_osint_dorks', 'category': 'search', 'description': 'Enable OSINT dorks', 'value_type': 'boolean', 'display_order': 12},
+        {'key': 'case_number_prefix', 'category': 'general', 'description': 'Case number prefix', 'value_type': 'text', 'display_order': 20},
+        {'key': 'default_risk_score', 'category': 'general', 'description': 'Default risk score', 'value_type': 'number', 'display_order': 21},
+        {'key': 'organization_name', 'category': 'general', 'description': 'Organization name', 'value_type': 'text', 'display_order': 22},
+        {'key': 'session_timeout_minutes', 'category': 'security', 'description': 'Session timeout (minutes)', 'value_type': 'number', 'display_order': 30},
+        {'key': 'require_password_change', 'category': 'security', 'description': 'Password change (days)', 'value_type': 'number', 'display_order': 31},
+        {'key': 'smtp_server', 'category': 'email', 'description': 'SMTP server', 'value_type': 'text', 'display_order': 40},
+        {'key': 'smtp_port', 'category': 'email', 'description': 'SMTP port', 'value_type': 'number', 'display_order': 41},
+        {'key': 'smtp_username', 'category': 'email', 'description': 'SMTP username', 'value_type': 'text', 'display_order': 42},
+        {'key': 'smtp_password', 'category': 'email', 'description': 'SMTP password', 'value_type': 'password', 'is_sensitive': True, 'display_order': 43},
+        {'key': 'smtp_from_email', 'category': 'email', 'description': 'From email', 'value_type': 'text', 'display_order': 44},
+        {'key': 'smtp_from_name', 'category': 'email', 'description': 'From name', 'value_type': 'text', 'display_order': 45},
+    ]
+    for default in defaults:
+        existing = Setting.query.filter_by(key=default['key']).first()
+        if not existing:
+            setting = Setting(**default)
+            db.session.add(setting)
+    db.session.commit()
 
 
 # =============================================================================
@@ -1376,60 +1497,35 @@ class Setting(db.Model):
 # =============================================================================
 
 class SpiderFootScan(db.Model):
-    """
-    Model for tracking SpiderFoot scans linked to Iveras cases.
-    
-    Provides a local record of SpiderFoot scans for audit and linking purposes.
-    """
     __tablename__ = 'spiderfoot_scans'
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    
-    # SpiderFoot reference
-    scan_id = db.Column(db.String(100), nullable=False, index=True)  # SpiderFoot's scan ID
+    scan_id = db.Column(db.String(100), nullable=False, index=True)
     scan_name = db.Column(db.String(300))
-    
-    # Target information
     target_value = db.Column(db.String(500), nullable=False)
-    target_type = db.Column(db.String(50))  # DOMAIN_NAME, EMAILADDR, etc.
-    
-    # Iveras linking
+    target_type = db.Column(db.String(50))
     case_id = db.Column(db.String(36), db.ForeignKey('cases.id'))
     subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'))
-    
-    # Scan configuration
     use_case = db.Column(db.String(50), default='passive')
-    profile = db.Column(db.String(50))  # basic, full, threat_hunt, investigation, company
-    module_ids = db.Column(db.JSON)  # List of module IDs used
-    
-    # Status tracking
-    status = db.Column(db.String(50), default='pending')  # pending, running, completed, failed, cancelled
-    progress = db.Column(db.Integer, default=0)  # 0-100
-    
-    # Results summary (cached)
+    profile = db.Column(db.String(50))
+    module_ids = db.Column(db.JSON)
+    status = db.Column(db.String(50), default='pending')
+    progress = db.Column(db.Integer, default=0)
     result_count = db.Column(db.Integer, default=0)
-    result_summary = db.Column(db.JSON)  # {type: count, ...}
-    
-    # Timing
+    result_summary = db.Column(db.JSON)
     started_at = db.Column(db.DateTime)
     finished_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Ownership
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
-    creator = db.relationship('User', foreign_keys=[created_by], backref='spiderfoot_scans')
-    
-    # Relationships
-    case = db.relationship('Case', backref='spiderfoot_scans', foreign_keys=[case_id])
-    subject = db.relationship('Subject', backref='spiderfoot_scans', foreign_keys=[subject_id])
-    
-    # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
     
+    creator = db.relationship('User', foreign_keys=[created_by], backref='spiderfoot_scans')
+    case = db.relationship('Case', backref='spiderfoot_scans', foreign_keys=[case_id])
+    subject = db.relationship('Subject', backref='spiderfoot_scans', foreign_keys=[subject_id])
+    
     def update_status(self, status: str, progress: int = None):
-        """Update scan status."""
         self.status = status
         if progress is not None:
             self.progress = progress
@@ -1440,12 +1536,10 @@ class SpiderFootScan(db.Model):
         self.updated_at = datetime.utcnow()
     
     def soft_delete(self):
-        """Soft delete the scan record."""
         self.is_deleted = True
         self.deleted_at = datetime.utcnow()
     
     def to_dict(self) -> dict:
-        """Serialize scan record."""
         return {
             'id': self.id,
             'scan_id': self.scan_id,

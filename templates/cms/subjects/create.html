@@ -2,53 +2,65 @@
 {% block content %}
 <h2 style="margin-bottom: 1rem;">Create New Subject</h2>
 
-<div style="margin-bottom: 1.5rem;">
-    <label style="display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.875rem;">Quick Templates:</label>
-    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <button type="button" onclick="applyTemplate('suspect')" class="btn" style="background: #dc2626; font-size: 0.8rem; padding: 0.4rem 0.8rem;">🚨 Suspect</button>
-        <button type="button" onclick="applyTemplate('witness')" class="btn" style="background: #059669; font-size: 0.8rem; padding: 0.4rem 0.8rem;">👁️ Witness</button>
-        <button type="button" onclick="applyTemplate('victim')" class="btn" style="background: #7c3aed; font-size: 0.8rem; padding: 0.4rem 0.8rem;">🛡️ Victim</button>
-        <button type="button" onclick="applyTemplate('company')" class="btn" style="background: #16213e; font-size: 0.8rem; padding: 0.4rem 0.8rem;">🏢 Company</button>
-        <button type="button" onclick="applyTemplate('vehicle')" class="btn" style="background: #f59e0b; font-size: 0.8rem; padding: 0.4rem 0.8rem;">🚗 Vehicle</button>
+<div id="type-selection" style="margin-bottom: 2rem;">
+    <p style="color: #666; margin-bottom: 1rem;">Select the type of subject you want to create:</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+        <button type="button" onclick="selectType('person')" class="type-card" id="card-person">
+            <span style="font-size: 2rem;">👤</span>
+            <span>Person</span>
+        </button>
+        <button type="button" onclick="selectType('company')" class="type-card" id="card-company">
+            <span style="font-size: 2rem;">🏢</span>
+            <span>Company</span>
+        </button>
+        <button type="button" onclick="selectType('organization')" class="type-card" id="card-organization">
+            <span style="font-size: 2rem;">🏛️</span>
+            <span>Organization</span>
+        </button>
+        <button type="button" onclick="selectType('vehicle')" class="type-card" id="card-vehicle">
+            <span style="font-size: 2rem;">🚗</span>
+            <span>Vehicle</span>
+        </button>
+        <button type="button" onclick="selectType('vessel')" class="type-card" id="card-vessel">
+            <span style="font-size: 2rem;">🚤</span>
+            <span>Vessel</span>
+        </button>
+        <button type="button" onclick="selectType('property')" class="type-card" id="card-property">
+            <span style="font-size: 2rem;">🏠</span>
+            <span>Property</span>
+        </button>
     </div>
 </div>
 
-{% if duplicate_warning %}
-<div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-    <h4 style="margin: 0 0 0.75rem 0; color: #92400e;">⚠️ Duplicate Detection Warning</h4>
-    
-    {% if exact_match %}
-    <div style="background: #fee2e2; border: 1px solid #ef4444; border-radius: 4px; padding: 0.75rem; margin-bottom: 1rem;">
-        <strong>Exact match found:</strong> <a href="{{ url_for('cms.view_subject', subject_id=exact_match.id) }}">{{ exact_match.name }}</a> ({{ exact_match.type }})
-        <p style="margin: 0.5rem 0 0 0; color: #991b1b;">An entry with this name already exists. Creating a duplicate may cause confusion.</p>
-    </div>
-    {% endif %}
-    
-    {% if similar_subjects %}
-    <div style="margin-bottom: 1rem;">
-        <strong>Similar subjects found:</strong>
-        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-            {% for s in similar_subjects %}
-            <li><a href="{{ url_for('cms.view_subject', subject_id=s.id) }}">{{ s.name }}</a> ({{ s.type }}) - {{ s.similarity }}% similar</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-    
-    <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <form method="POST" style="display: inline;">
-            <input type="hidden" name="name" value="{{ submitted_name }}">
-            <input type="hidden" name="subject_type" value="{{ submitted_type }}">
-            <input type="hidden" name="confirm_duplicate" value="1">
-            <button type="submit" class="btn" style="background: #dc2626;">Create Anyway</button>
-        </form>
-        <a href="{{ url_for('cms.subjects') }}" class="btn" style="background: #666;">Cancel</a>
-        <span style="margin-left: 1rem; color: #92400e; font-size: 0.875rem;">Please verify this is not a duplicate before proceeding.</span>
-    </div>
-</div>
-{% endif %}
+<style>
+.type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem 1rem;
+    background: var(--bg-card);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+.type-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+}
+.type-card.selected {
+    border-color: var(--accent-primary);
+    background: var(--info-bg);
+}
+.type-card span:last-child {
+    font-weight: 500;
+}
+</style>
 
-<form method="POST" onsubmit="return validateForm()">
+<form method="POST" id="subjectForm" style="display: none;" onsubmit="return handleFormSubmit()">
     {% if case_id %}
     <input type="hidden" name="case_id" value="{{ case_id }}">
     <div style="margin-bottom: 1rem; padding: 0.5rem; background: #dbeafe; border-radius: 4px;">
@@ -56,192 +68,341 @@
     </div>
     {% endif %}
     
-    <div class="form-group">
-        <label for="name">Name *</label>
-        <input type="text" name="name" id="name" required value="{{ submitted_name or '' }}" oninput="checkDuplicate()" autocomplete="off">
-        <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
+    <input type="hidden" name="subject_type" id="subject_type" value="">
+    
+    <div id="general-fields" style="display: none;">
+        <div class="form-group">
+            <label for="name">Name *</label>
+            <input type="text" name="name" id="name" required value="{{ submitted_name or '' }}" oninput="checkDuplicate()">
+            <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
+        </div>
+        <div class="form-group">
+            <label for="address">Address</label>
+            <input type="text" name="address" id="address">
+        </div>
+        <div class="form-group">
+            <label for="risk_score">Risk Score (0-100)</label>
+            <input type="number" name="risk_score" id="risk_score" value="0" min="0" max="100">
+        </div>
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea name="notes" id="notes" rows="3" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;"></textarea>
+        </div>
     </div>
     
-    <div class="form-group">
-        <label for="subject_type">Type *</label>
-        <select name="subject_type" id="subject_type" required onchange="toggleVehicleFields()">
-            <option value="">Select type</option>
-            <option value="person" {% if submitted_type == 'person' %}selected{% endif %}>Person</option>
-            <option value="company" {% if submitted_type == 'company' %}selected{% endif %}>Company</option>
-            <option value="organization" {% if submitted_type == 'organization' %}selected{% endif %}>Organization</option>
-            <option value="vehicle" {% if submitted_type == 'vehicle' %}selected{% endif %}>Vehicle</option>
-            <option value="vessel" {% if submitted_type == 'vessel' %}selected{% endif %}>Vessel</option>
-            <option value="property" {% if submitted_type == 'property' %}selected{% endif %}>Property</option>
-        </select>
+    <div id="person-fields" style="display: none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" name="email" id="email">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="text" name="phone" id="phone">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="identification_number">ID/Passport Number</label>
+            <input type="text" name="identification_number" id="identification_number">
+        </div>
     </div>
     
-    <div id="person-fields">
-    <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" name="email" id="email">
-    </div>
-    <div class="form-group">
-        <label for="phone">Phone</label>
-        <input type="text" name="phone" id="phone">
-    </div>
-    </div>
-    
-    <div id="vehicle-fields" style="display:none;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-        <div class="form-group">
-            <label for="license_plate">License Plate</label>
-            <input type="text" name="license_plate" id="license_plate">
+    <div id="vehicle-fields" style="display: none;">
+        <div style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 style="margin: 0 0 0.25rem 0;">🚗 Vehicle Information</h3>
+                    <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Enter license plate to fetch RDW data, or fill in manually</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="kenteken_lookup" placeholder="e.g. AB-12-CD" 
+                           style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 180px;">
+                    <button type="button" onclick="fetchRDWData()" id="fetchRdwBtn" 
+                            style="padding: 0.75rem 1.5rem; background: white; color: #0ea5e9; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                        📡 Fetch RDW
+                    </button>
+                </div>
+            </div>
+            <div id="rdwStatus" style="margin-top: 0.75rem; font-size: 0.875rem;"></div>
         </div>
-        <div class="form-group">
-            <label for="vin">VIN</label>
-            <input type="text" name="vin" id="vin">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="license_plate">License Plate (Kenteken)</label>
+                <input type="text" name="license_plate" id="license_plate" 
+                       placeholder="e.g. AB-12-CD" style="font-size: 1.1rem; font-weight: bold; text-transform: uppercase;">
+            </div>
+            <div class="form-group">
+                <label for="vin">VIN (Chassisnummer)</label>
+                <input type="text" name="vin" id="vin" placeholder="17 characters" maxlength="17">
+            </div>
+            <div class="form-group">
+                <label for="brand">Merk (Brand)</label>
+                <input type="text" name="brand" id="brand">
+            </div>
+            <div class="form-group">
+                <label for="handelsbenaming">Model (Handelsbenaming)</label>
+                <input type="text" name="handelsbenaming" id="handelsbenaming">
+            </div>
+            <div class="form-group">
+                <label for="vehicle_type">Inrichting (Body Type)</label>
+                <input type="text" name="vehicle_type" id="vehicle_type" placeholder="e.g. hatchback, sedan">
+            </div>
+            <div class="form-group">
+                <label for="eerste_kleur">Kleur (Color)</label>
+                <input type="text" name="eerste_kleur" id="eerste_kleur">
+            </div>
+            <div class="form-group">
+                <label for="voertuigsoort">Voertuigsoort</label>
+                <input type="text" name="voertuigsoort" id="voertuigsoort">
+            </div>
+            <div class="form-group">
+                <label for="aantal_deuren">Aantal Deuren</label>
+                <input type="number" name="aantal_deuren" id="aantal_deuren">
+            </div>
+            <div class="form-group">
+                <label for="aantal_zitplaatsen">Aantal Zitplaatsen</label>
+                <input type="number" name="aantal_zitplaatsen" id="aantal_zitplaatsen">
+            </div>
+            <div class="form-group">
+                <label for="vervaldatum_apk">APK Vervaldatum</label>
+                <input type="text" name="vervaldatum_apk" id="vervaldatum_apk" placeholder="YYYYMMDD">
+            </div>
+            <div class="form-group">
+                <label for="wam_verzekerd">WAM Verzekerd</label>
+                <input type="text" name="wam_verzekerd" id="wam_verzekerd">
+            </div>
         </div>
-        <div class="form-group">
-            <label for="brand">Brand</label>
-            <input type="text" name="brand" id="brand">
+        
+        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+            <h4 style="margin: 0 0 0.75rem 0; color: #92400e;">👤 Owner Information</h4>
+            <p style="margin: 0 0 1rem 0; font-size: 0.875rem; color: #78350f;">
+                Owner details are not available via RDW (privacy). Enter manually if known.
+            </p>
+            <div class="form-group">
+                <label for="owner_name">Owner Name</label>
+                <input type="text" name="owner_name" id="owner_name" placeholder="Name of vehicle owner">
+            </div>
+            <div class="form-group">
+                <label for="owner_address">Owner Address</label>
+                <input type="text" name="owner_address" id="owner_address" placeholder="Address of vehicle owner">
+            </div>
         </div>
+        
         <div class="form-group">
-            <label for="vehicle_type">Vehicle Type</label>
-            <input type="text" name="vehicle_type" id="vehicle_type" placeholder="e.g. sedan, truck, motorcycle">
-        </div>
-        <div class="form-group" style="grid-column:1/-1;">
-            <label for="insurance_company">Insurance Company</label>
+            <label for="insurance_company">Verzekeringsmaatschappij (Insurance)</label>
             <input type="text" name="insurance_company" id="insurance_company">
         </div>
     </div>
-    </div>
     
     <div class="form-group">
-        <label for="address">Address</label>
-        <input type="text" name="address" id="address">
+        <label for="notes_vehicle" id="notes_label">Notes</label>
+        <textarea name="notes" id="notes_vehicle" rows="3" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;"></textarea>
     </div>
-    <div class="form-group">
-        <label for="risk_score">Risk Score (0-100)</label>
-        <input type="number" name="risk_score" id="risk_score" value="0" min="0" max="100">
-    </div>
-    <div class="form-group">
-        <label for="notes">Notes</label>
-        <textarea name="notes" id="notes" rows="3" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;"></textarea>
-    </div>
+    
     <button type="submit" class="btn">Create Subject</button>
-    {% if case_id %}
-    <a href="{{ url_for('cms.view_case', case_id=case_id) }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
-    {% else %}
-    <a href="{{ url_for('cms.subjects') }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
-    {% endif %}
+    <button type="button" onclick="resetForm()" class="btn" style="background:#666;margin-left:0.5rem;">Back</button>
 </form>
+
 <script>
+let selectedType = null;
 let duplicateTimeout = null;
 
-function toggleVehicleFields() {
-    const type = document.getElementById('subject_type').value;
-    const personFields = document.getElementById('person-fields');
-    const vehicleFields = document.getElementById('vehicle-fields');
+function selectType(type) {
+    selectedType = type;
+    
+    document.querySelectorAll('.type-card').forEach(card => card.classList.remove('selected'));
+    document.getElementById('card-' + type).classList.add('selected');
+    
+    document.getElementById('subject_type').value = type;
+    document.getElementById('subjectForm').style.display = 'block';
+    document.getElementById('type-selection').style.display = 'none';
+    
+    document.getElementById('general-fields').style.display = 'block';
+    document.getElementById('person-fields').style.display = type === 'person' ? 'block' : 'none';
+    document.getElementById('vehicle-fields').style.display = type === 'vehicle' ? 'block' : 'none';
     
     if (type === 'vehicle') {
-        personFields.style.display = 'none';
-        vehicleFields.style.display = 'block';
+        document.getElementById('kenteken_lookup').focus();
+        document.getElementById('name').value = '';
+        document.getElementById('name').required = false;
+        document.getElementById('name').placeholder = 'Vehicle name (e.g. Toyota Aygo) or leave empty';
+        document.getElementById('license_plate').required = true;
     } else {
-        personFields.style.display = 'block';
-        vehicleFields.style.display = 'none';
+        document.getElementById('name').required = true;
+        document.getElementById('name').placeholder = '';
+        document.getElementById('name').focus();
+        document.getElementById('license_plate').required = false;
     }
 }
 
+function resetForm() {
+    document.getElementById('subjectForm').style.display = 'none';
+    document.getElementById('type-selection').style.display = 'block';
+    document.querySelectorAll('.type-card').forEach(card => card.classList.remove('selected'));
+    selectedType = null;
+}
+
+function fetchRDWData() {
+    const kenteken = document.getElementById('kenteken_lookup').value.trim();
+    const statusDiv = document.getElementById('rdwStatus');
+    const btn = document.getElementById('fetchRdwBtn');
+    
+    if (!kenteken) {
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">Enter a license plate first</span>';
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    statusDiv.innerHTML = '<span style="color: white;">Fetching RDW data...</span>';
+    
+    fetch('/cms/check-rdw-vehicle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kenteken: kenteken })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + data.error + '</span>';
+            btn.disabled = false;
+            btn.textContent = '📡 Fetch RDW';
+            return;
+        }
+        
+        if (!data.found) {
+            statusDiv.innerHTML = '<span style="color: #fcd34d;">No vehicle found for: ' + kenteken + '</span>';
+            btn.disabled = false;
+            btn.textContent = '📡 Fetch RDW';
+            return;
+        }
+        
+        const cleanPlate = (data.kenteken_display || kenteken.toUpperCase()).replace(/-/g, '');
+        
+        document.getElementById('license_plate').value = data.kenteken_display || kenteken.toUpperCase();
+        
+        let nameValue = cleanPlate;
+        if (data.merk) {
+            document.getElementById('brand').value = data.merk;
+            nameValue += ' - ' + data.merk;
+        }
+        if (data.handelsbenaming) {
+            document.getElementById('handelsbenaming').value = data.handelsbenaming;
+            nameValue += ' ' + data.handelsbenaming;
+        }
+        document.getElementById('name').value = nameValue;
+        if (data.inrichting) document.getElementById('vehicle_type').value = data.inrichting;
+        if (data.voertuigsoort) document.getElementById('voertuigsoort').value = data.voertuigsoort;
+        if (data.eerste_kleur) document.getElementById('eerste_kleur').value = data.eerste_kleur;
+        if (data.aantal_deuren) document.getElementById('aantal_deuren').value = data.aantal_deuren;
+        if (data.aantal_zitplaatsen) document.getElementById('aantal_zitplaatsen').value = data.aantal_zitplaatsen;
+        if (data.vervaldatum_apk) document.getElementById('vervaldatum_apk').value = data.vervaldatum_apk;
+        if (data.wam_verzekerd) document.getElementById('wam_verzekerd').value = data.wam_verzekerd;
+        
+        statusDiv.innerHTML = '<span style="color: #86efac;">✅ Loaded: ' + data.merk + ' ' + data.handelsbenaming + '</span>';
+        btn.disabled = false;
+        btn.textContent = '📡 Fetch RDW';
+    })
+    .catch(err => {
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + err.message + '</span>';
+        btn.disabled = false;
+        btn.textContent = '📡 Fetch RDW';
+    });
+}
+
+document.getElementById('kenteken_lookup').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        fetchRDWData();
+    }
+});
+
+document.getElementById('license_plate').addEventListener('input', function() {
+    const kenteken = this.value.toUpperCase();
+    this.value = kenteken;
+    document.getElementById('kenteken_lookup').value = kenteken;
+});
+
 function checkDuplicate() {
     const name = document.getElementById('name').value.trim();
-    const alert = document.getElementById('duplicate-alert');
+    const alertEl = document.getElementById('duplicate-alert');
     
     if (duplicateTimeout) clearTimeout(duplicateTimeout);
-    
-    if (name.length < 2) {
-        alert.style.display = 'none';
+    if (!name || name.length < 2 || selectedType === 'vehicle') {
+        if (alertEl) alertEl.style.display = 'none';
         return;
     }
     
     duplicateTimeout = setTimeout(() => {
+        console.log('Checking duplicate for:', name);
         fetch(`/cms/api/check-duplicate?name=${encodeURIComponent(name)}&type=subject`)
-            .then(r => r.json())
+            .then(r => {
+                console.log('Check duplicate response status:', r.status);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
             .then(data => {
+                console.log('Check duplicate data:', data);
+                if (!alertEl) return;
+                
                 if (data.exact) {
-                    alert.innerHTML = `<strong>⚠️ Exact match:</strong> <a href="/cms/subjects/${data.exact.id}" target="_blank">${data.exact.name}</a> (${data.exact.type})`;
-                    alert.style.background = '#fee2e2';
-                    alert.style.border = '1px solid #ef4444';
-                    alert.style.display = 'block';
+                    alertEl.innerHTML = `<strong>⚠️ Exact match:</strong> <a href="/cms/subjects/${data.exact.id}" target="_blank">${data.exact.name}</a> (${data.exact.type})`;
+                    alertEl.style.background = '#fee2e2';
+                    alertEl.style.border = '1px solid #ef4444';
+                    alertEl.style.display = 'block';
                 } else if (data.duplicates && data.duplicates.length > 0) {
                     let html = '<strong>Similar subjects found:</strong><ul style="margin:0.25rem 0 0 1rem;padding:0;">';
                     data.duplicates.forEach(d => {
                         html += `<li><a href="/cms/subjects/${d.id}" target="_blank">${d.name}</a> (${d.type}) - ${d.similarity}% similar</li>`;
                     });
                     html += '</ul>';
-                    alert.innerHTML = html;
-                    alert.style.background = '#fef3c7';
-                    alert.style.border = '1px solid #f59e0b';
-                    alert.style.display = 'block';
+                    alertEl.innerHTML = html;
+                    alertEl.style.background = '#fef3c7';
+                    alertEl.style.border = '1px solid #f59e0b';
+                    alertEl.style.display = 'block';
                 } else {
-                    alert.style.display = 'none';
+                    alertEl.style.display = 'none';
                 }
             })
-            .catch(() => {});
+            .catch(err => {
+                console.error('Check duplicate error:', err);
+                if (alertEl) alertEl.style.display = 'none';
+            });
     }, 300);
 }
 
 function validateForm() {
-    return true; // Let the server handle duplicate check on submit
-}
-
-const templates = {
-    suspect: {
-        type: 'person',
-        risk_score: 80,
-        notes: 'Investigation suspect. High risk profile. Requires thorough verification.'
-    },
-    witness: {
-        type: 'person',
-        risk_score: 20,
-        notes: 'Witness to events. Low risk profile. Information verification needed.'
-    },
-    victim: {
-        type: 'person',
-        risk_score: 30,
-        notes: 'Victim of reported incident. Requires protection measures.'
-    },
-    company: {
-        type: 'company',
-        risk_score: 40,
-        notes: 'Company under investigation. Background check recommended.'
-    },
-    vehicle: {
-        type: 'vehicle',
-        risk_score: 50,
-        notes: 'Vehicle of interest. License plate and VIN verification required.'
+    const name = document.getElementById('name').value.trim();
+    const subjectType = document.getElementById('subject_type').value;
+    
+    console.log('Validating form - name:', name, 'type:', subjectType);
+    
+    if (!name && subjectType !== 'vehicle') {
+        alert('Please enter a name');
+        return false;
     }
-};
-
-function applyTemplate(templateName) {
-    const template = templates[templateName];
-    if (!template) return;
     
-    const typeSelect = document.getElementById('subject_type');
-    const riskScore = document.getElementById('risk_score');
-    const notes = document.getElementById('notes');
-    
-    typeSelect.value = template.type;
-    riskScore.value = template.risk_score;
-    notes.value = template.notes;
-    
-    // Update UI for vehicle type
-    toggleVehicleFields();
-    
-    // Focus on name field
-    document.getElementById('name').focus();
+    return true;
 }
 
-// Initialize vehicle fields on page load
+function handleFormSubmit() {
+    console.log('Form submitted!');
+    const form = document.getElementById('subjectForm');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating...';
+    }
+    
+    return validateForm();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    toggleVehicleFields();
-    // Check for duplicates if name is pre-filled
-    const nameInput = document.getElementById('name');
-    if (nameInput.value.length >= 2) checkDuplicate();
+    {% if submitted_type %}
+    selectType('{{ submitted_type }}');
+    {% endif %}
 });
 </script>
 {% endblock %}

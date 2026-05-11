@@ -17,7 +17,7 @@ from datetime import datetime, date
 from typing import Optional, Dict, Any
 from flask import (
     Blueprint, request, jsonify, render_template,
-    redirect, url_for, flash, current_app
+    redirect, url_for, flash, current_app, send_file
 )
 from flask_login import login_required, current_user
 
@@ -26,7 +26,7 @@ from .models import (
     AuditLog, Document, User, CaseStatus, CasePriority,
     SubjectType, VerificationStatus, subject_relations, Comment,
     CommentEditHistory, DocumentTemplate, Reminder, ReminderType, ReminderRecurrence,
-    Setting, SpiderFootScan
+    Screenshot, Setting, SpiderFootScan, init_default_settings
 )
 from .auth import (
     roles_required, admin_required, senior_required,
@@ -1793,6 +1793,27 @@ def create_subject():
             vehicle_type=data.get('vehicle_type')
         )
         
+        if data['subject_type'] == 'vehicle':
+            rdw_data = {}
+            rdw_fields = [
+                'handelsbenaming', 'voertuigsoort', 'eerste_kleur', 'tweede_kleur',
+                'aantal_deuren', 'aantal_zitplaatsen', 'cilinderinhoud', 'aantal_cilinders',
+                'massa_ledig', 'maximum_massa', 'vervaldatum_apk', 'wam_verzekerd',
+                'taxi_indicator', 'export_indicator', 'europese_voertuigcategorie',
+                'zuinigheidsclassificatie', 'catalogusprijs', 'datum_eerste_toelating'
+            ]
+            for field in rdw_fields:
+                if data.get(field):
+                    rdw_data[field] = data.get(field)
+            
+            if rdw_data or data.get('license_plate'):
+                rdw_data['kenteken'] = data.get('license_plate', '').upper()
+                rdw_data['merk'] = data.get('brand', '')
+                rdw_data['inrichting'] = data.get('vehicle_type', '')
+                if data.get('eerste_kleur'):
+                    rdw_data['kleur'] = data.get('eerste_kleur')
+                subject.rdw_data = rdw_data
+        
         # Encrypt identifying information
         encrypted_fields = ['date_of_birth', 'place_of_birth', 'nationality',
                           'identification_number', 'address', 'phone', 'email']
@@ -1852,6 +1873,11 @@ def edit_subject(subject_id: str):
             changes['name'] = {'old': subject.name, 'new': data['name']}
             subject.name = data['name']
         
+        # Update subject_type if provided
+        if 'subject_type' in data and data['subject_type'] and data['subject_type'] != subject.subject_type:
+            changes['subject_type'] = {'old': subject.subject_type, 'new': data['subject_type']}
+            subject.subject_type = data['subject_type']
+        
         if 'risk_score' in data:
             changes['risk_score'] = {'old': subject.risk_score, 'new': data['risk_score']}
             subject.risk_score = int(data['risk_score'])
@@ -1859,27 +1885,86 @@ def edit_subject(subject_id: str):
         if 'notes' in data:
             subject.notes = data['notes']
         
-        # Update encrypted fields
+        # Update encrypted fields for persons
         encrypted_fields = ['date_of_birth', 'place_of_birth', 'nationality',
                           'identification_number', 'address', 'phone', 'email']
         for field in encrypted_fields:
             if field in data:
                 new_value = data[field] if data[field] else None
-                if new_value != getattr(subject, field):
-                    changes[field] = {'old': '[encrypted]', 'new': '[encrypted]'}
+                old_value = getattr(subject, field)
+                # Decrypt old value for comparison
+                try:
+                    if old_value:
+                        old_value = encryptor.decrypt(old_value)
+                except:
+                    pass
+                if new_value != old_value:
+                    changes[field] = {'old': old_value or '[empty]', 'new': new_value or '[empty]'}
                     if new_value:
                         setattr(subject, field, encryptor.encrypt(new_value))
                     else:
                         setattr(subject, field, None)
         
         # Update vehicle fields
-        vehicle_fields = ['license_plate', 'vin', 'insurance_company', 'brand', 'vehicle_type']
-        for field in vehicle_fields:
+        # Encrypted vehicle fields
+        encrypted_vehicle_fields = ['license_plate', 'vin', 'insurance_company']
+        for field in encrypted_vehicle_fields:
+            if field in data:
+                new_value = data[field] if data[field] else None
+                old_value = getattr(subject, field)
+                # Decrypt old value for comparison
+                try:
+                    if old_value:
+                        old_value = encryptor.decrypt(old_value)
+                except:
+                    pass
+                if new_value != old_value:
+                    changes[field] = {'old': old_value or '[empty]', 'new': new_value or '[empty]'}
+                    if new_value:
+                        setattr(subject, field, encryptor.encrypt(new_value))
+                    else:
+                        setattr(subject, field, None)
+        
+        # Non-encrypted vehicle fields
+        non_encrypted_vehicle_fields = ['brand', 'vehicle_type']
+        for field in non_encrypted_vehicle_fields:
             if field in data:
                 new_value = data[field] if data[field] else None
                 if new_value != getattr(subject, field):
-                    changes[field] = {'old': getattr(subject, field), 'new': new_value}
+                    changes[field] = {'old': getattr(subject, field) or '[empty]', 'new': new_value or '[empty]'}
                     setattr(subject, field, new_value)
+        
+        # Update RDW data if provided
+        rdw_fields = [
+            'handelsbenaming', 'voertuigsoort', 'eerste_kleur', 'tweede_kleur',
+            'aantal_deuren', 'aantal_zitplaatsen', 'cilinderinhoud', 'aantal_cilinders',
+            'massa_ledig', 'maximum_massa', 'vervaldatum_apk', 'wam_verzekerd',
+            'taxi_indicator', 'export_indicator', 'europese_voertuigcategorie',
+            'zuinigheidsclassificatie', 'catalogusprijs', 'datum_eerste_toelating',
+            'type', 'variant', 'uitvoering', 'typegoedkeuringsnummer', 'wielbasis'
+        ]
+        
+        rdw_data = {}
+        for field in rdw_fields:
+            if data.get(field):
+                rdw_data[field] = data[field]
+        
+        # Also store basic vehicle fields in RDW data
+        if data.get('license_plate'):
+            rdw_data['kenteken'] = data['license_plate']
+        if data.get('brand'):
+            rdw_data['merk'] = data['brand']
+        if data.get('vehicle_type'):
+            rdw_data['inrichting'] = data['vehicle_type']
+        if data.get('vin'):
+            rdw_data['chassisnummer'] = data['vin']
+        
+        if rdw_data:
+            existing_rdw = subject.rdw_data or {}
+            # Merge with existing RDW data
+            existing_rdw.update(rdw_data)
+            subject.rdw_data = existing_rdw
+            changes['rdw_data'] = {'old': 'updated', 'new': 'RDW fields updated'}
         
         subject.updated_at = datetime.utcnow()
         
@@ -1957,6 +2042,135 @@ def upload_subject_photo(subject_id: str):
     return jsonify({
         'message': 'Photo uploaded',
         'photo_path': subject.photo_path
+    })
+
+
+@cms_bp.route('/subjects/<subject_id>/face-encoding', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator', 'junior_investigator')
+def save_face_encoding(subject_id: str):
+    """Save face encoding for a subject."""
+    subject = Subject.query.get_or_404(subject_id)
+    data = request.get_json()
+    
+    if not data or 'encoding' not in data:
+        return jsonify({'error': 'No encoding provided'}), 400
+    
+    encoding = data['encoding']
+    
+    if not isinstance(encoding, list) or len(encoding) != 128:
+        return jsonify({'error': 'Invalid encoding format'}), 400
+    
+    subject.face_encoding = encoding
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='face_encoding_saved',
+        entity_type='subject',
+        entity_id=subject_id,
+        ip_address=request.remote_addr,
+        description=f"Saved face encoding for {subject.name}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Face encoding saved',
+        'has_encoding': True
+    })
+
+
+@cms_bp.route('/subjects/<subject_id>/face-encoding', methods=['DELETE'])
+@login_required
+@roles_required('admin', 'senior_investigator', 'junior_investigator')
+def delete_face_encoding(subject_id: str):
+    """Delete face encoding for a subject."""
+    subject = Subject.query.get_or_404(subject_id)
+    
+    subject.face_encoding = None
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='face_encoding_deleted',
+        entity_type='subject',
+        entity_id=subject_id,
+        ip_address=request.remote_addr,
+        description=f"Deleted face encoding for {subject.name}"
+    )
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Face encoding deleted',
+        'has_encoding': False
+    })
+
+
+@cms_bp.route('/subjects/compare-faces', methods=['POST'])
+@login_required
+def compare_faces():
+    """Compare face encodings. Returns list of matching subjects."""
+    data = request.get_json()
+    
+    if not data or 'encoding' not in data:
+        return jsonify({'error': 'No encoding provided'}), 400
+    
+    target_encoding = data['encoding']
+    
+    if not isinstance(target_encoding, list) or len(target_encoding) != 128:
+        return jsonify({'error': 'Invalid encoding format'}), 400
+    
+    threshold = data.get('threshold', 0.6)
+    limit = data.get('limit', 20)
+    
+    subjects_with_faces = Subject.query.filter(
+        Subject.face_encoding.isnot(None),
+        Subject.is_deleted == False,
+        Subject.photo_path.isnot(None)
+    ).all()
+    
+    def euclidean_distance(enc1, enc2):
+        import math
+        return math.sqrt(sum((a - b) ** 2 for a, b in zip(enc1, enc2)))
+    
+    matches = []
+    for subject in subjects_with_faces:
+        distance = euclidean_distance(target_encoding, subject.face_encoding)
+        if distance < threshold:
+            matches.append({
+                'id': subject.id,
+                'name': subject.name,
+                'subject_type': subject.subject_type,
+                'photo_path': subject.photo_path,
+                'distance': round(distance, 4),
+                'similarity': round((1 - distance) * 100, 1)
+            })
+    
+    matches.sort(key=lambda x: x['distance'])
+    matches = matches[:limit]
+    
+    return jsonify({
+        'matches': matches,
+        'total_searched': len(subjects_with_faces),
+        'threshold': threshold
+    })
+
+
+@cms_bp.route('/api/subjects/with-faces', methods=['GET'])
+@login_required
+def get_subjects_with_faces():
+    """Get list of subjects with face encodings for face-api.js matching."""
+    subjects = Subject.query.filter(
+        Subject.face_encoding.isnot(None),
+        Subject.is_deleted == False,
+        Subject.photo_path.isnot(None)
+    ).all()
+    
+    return jsonify({
+        'subjects': [{
+            'id': s.id,
+            'name': s.name,
+            'photo_path': s.photo_path,
+            'face_encoding': s.face_encoding
+        } for s in subjects]
     })
 
 
@@ -2482,51 +2696,204 @@ def create_finding():
 @cms_bp.route('/search')
 @login_required
 def search():
-    """Global search across all entities."""
+    """Global search across all entities with full page results."""
     query = request.args.get('q', '')
-    entity_type = request.args.get('type', '')  # case, client, subject
+    entity_type = request.args.get('type', 'all')
+    
+    results = {
+        'cases': [],
+        'clients': [],
+        'subjects': [],
+        'findings': [],
+        'financials': [],
+        'comments': [],
+        'notes': []
+    }
+    
+    if query and len(query) >= 2:
+        if entity_type in ['all', 'cases']:
+            cases = Case.query.join(Client).filter(
+                Case.is_deleted == False,
+                db.or_(
+                    Case.title.ilike(f'%{query}%'),
+                    Case.case_number.ilike(f'%{query}%'),
+                    Case.description.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+            results['cases'] = [{
+                'id': c.id,
+                'title': c.title,
+                'case_number': c.case_number,
+                'status': c.status,
+                'priority': c.priority,
+                'client_name': c.client.name if c.client else None,
+                'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else None
+            } for c in cases]
+        
+        if entity_type in ['all', 'clients']:
+            clients = Client.query.filter(
+                Client.is_deleted == False,
+                Client.name.ilike(f'%{query}%')
+            ).limit(20).all()
+            results['clients'] = [{
+                'id': c.id,
+                'name': c.name,
+                'contact_person': c.contact_person,
+                'is_company': c.is_company,
+                'is_active': c.is_active,
+                'contract_number': c.contract_number
+            } for c in clients]
+        
+        if entity_type in ['all', 'subjects']:
+            subjects = Subject.query.filter(
+                Subject.is_deleted == False,
+                db.or_(
+                    Subject.name.ilike(f'%{query}%'),
+                    Subject.identification_number.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+            results['subjects'] = [{
+                'id': s.id,
+                'name': s.name,
+                'subject_type': s.subject_type,
+                'risk_score': s.risk_score,
+                'created_at': s.created_at.strftime('%Y-%m-%d') if s.created_at else None
+            } for s in subjects]
+        
+        if entity_type in ['all', 'findings']:
+            findings = Finding.query.join(Case).filter(
+                Finding.is_deleted == False,
+                db.or_(
+                    Finding.title.ilike(f'%{query}%'),
+                    Finding.content.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+            results['findings'] = [{
+                'id': f.id,
+                'title': f.title,
+                'case_id': f.case_id,
+                'case_number': f.case.case_number if f.case else None,
+                'finding_type': f.finding_type,
+                'source_type': f.source_type,
+                'created_at': f.created_at.strftime('%Y-%m-%d') if f.created_at else None
+            } for f in findings]
+        
+        if entity_type in ['all', 'financials']:
+            financials = FinancialRecord.query.join(Case).filter(
+                FinancialRecord.is_deleted == False,
+                db.or_(
+                    FinancialRecord.description.ilike(f'%{query}%'),
+                    FinancialRecord.source_reference.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+            results['financials'] = [{
+                'id': f.id,
+                'amount': float(f.amount) if f.amount else 0,
+                'currency': f.currency,
+                'case_id': f.case_id,
+                'case_number': f.case.case_number if f.case else None,
+                'transaction_type': f.transaction_type,
+                'transaction_date': f.transaction_date.strftime('%Y-%m-%d') if f.transaction_date else None,
+                'description': f.description[:100] if f.description else None
+            } for f in financials]
+        
+        if entity_type in ['all', 'comments']:
+            comments = Comment.query.filter(
+                Comment.is_deleted == False,
+                Comment.content.ilike(f'%{query}%')
+            ).limit(20).all()
+            results['comments'] = [{
+                'id': c.id,
+                'content': c.content[:200] + ('...' if len(c.content) > 200 else ''),
+                'comment_type': c.comment_type,
+                'case_id': c.case_id,
+                'subject_id': c.subject_id,
+                'client_id': c.client_id,
+                'case_number': Case.query.get(c.case_id).case_number if c.case_id else None,
+                'author_name': c.author.full_name if c.author else 'Unknown',
+                'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else None
+            } for c in comments]
+        
+        if entity_type in ['all', 'notes']:
+            subject_notes = Subject.query.filter(
+                Subject.is_deleted == False,
+                Subject.notes.ilike(f'%{query}%')
+            ).limit(10).all()
+            results['notes'] = [{
+                'id': s.id,
+                'name': s.name,
+                'subject_type': s.subject_type,
+                'note_preview': s.notes[:150] + ('...' if len(s.notes) > 150 else '') if s.notes else None,
+                'entity_type': 'subject'
+            } for s in subject_notes]
+        
+        AuditLog.log(
+            user_id=current_user.id,
+            action='search',
+            entity_type='global_search',
+            ip_address=request.remote_addr,
+            description=f"Searched for: {query}"
+        )
+        db.session.commit()
+    
+    return render_template('cms/search.html',
+        query=query,
+        results=results,
+        active_filter=entity_type
+    )
+
+
+@cms_bp.route('/api/search')
+@login_required
+def api_search():
+    """API endpoint for autocomplete/typeahead search."""
+    query = request.args.get('q', '')
+    entity_type = request.args.get('type', '')
     
     if not query or len(query) < 2:
         return jsonify({'results': []})
     
     results = {'cases': [], 'clients': [], 'subjects': []}
     
-    if not entity_type or entity_type == 'case':
+    if not entity_type or entity_type == 'cases':
         cases = Case.query.filter(
             Case.is_deleted == False,
             db.or_(
                 Case.title.ilike(f'%{query}%'),
-                Case.case_number.ilike(f'%{query}%'),
-                Case.description.ilike(f'%{query}%')
+                Case.case_number.ilike(f'%{query}%')
             )
-        ).limit(10).all()
-        results['cases'] = [c.to_dict(include_relations=False) for c in cases]
+        ).limit(5).all()
+        results['cases'] = [{
+            'id': c.id,
+            'title': c.title,
+            'case_number': c.case_number,
+            'type': 'case'
+        } for c in cases]
     
-    if not entity_type or entity_type == 'client':
+    if not entity_type or entity_type == 'clients':
         clients = Client.query.filter(
             Client.is_deleted == False,
             Client.name.ilike(f'%{query}%')
-        ).limit(10).all()
-        results['clients'] = [c.to_dict() for c in clients]
+        ).limit(5).all()
+        results['clients'] = [{
+            'id': c.id,
+            'name': c.name,
+            'type': 'client'
+        } for c in clients]
     
-    if not entity_type or entity_type == 'subject':
+    if not entity_type or entity_type == 'subjects':
         subjects = Subject.query.filter(
             Subject.is_deleted == False,
             Subject.name.ilike(f'%{query}%')
-        ).limit(10).all()
-        results['subjects'] = [s.to_dict(decrypted=False) for s in subjects]
+        ).limit(5).all()
+        results['subjects'] = [{
+            'id': s.id,
+            'name': s.name,
+            'type': 'subject',
+            'subject_type': s.subject_type
+        } for s in subjects]
     
-    # Log search for audit
-    AuditLog.log(
-        user_id=current_user.id,
-        action='search',
-        entity_type='global_search',
-        ip_address=request.remote_addr,
-        description=f"Searched for: {query}"
-    )
-    db.session.commit()
-    
-    return jsonify({'results': results, 'query': query})
+    return jsonify({'results': results})
 
 
 # =============================================================================
@@ -2583,6 +2950,144 @@ def audit_log():
         entity_types=entity_types,
         actions=actions
     )
+
+
+# =============================================================================
+# Settings Routes
+# =============================================================================
+
+@cms_bp.route('/settings')
+@login_required
+@admin_required
+def settings():
+    """Settings management page."""
+    category = request.args.get('category', 'api_keys')
+    
+    categories = {
+        'api_keys': {'name': '🔑 API Keys', 'icon': '🔑'},
+        'search': {'name': '🔍 Search', 'icon': '🔍'},
+        'general': {'name': '⚙️ General', 'icon': '⚙️'},
+        'security': {'name': '🔒 Security', 'icon': '🔒'},
+        'email': {'name': '📧 Email', 'icon': '📧'},
+    }
+    
+    settings_list = Setting.query.filter_by(
+        category=category,
+        is_active=True
+    ).order_by(Setting.display_order).all()
+    
+    return render_template('cms/settings/index.html',
+        settings_list=settings_list,
+        categories=categories,
+        active_category=category
+    )
+
+
+@cms_bp.route('/api/settings')
+@login_required
+@admin_required
+def get_settings_api():
+    """Get all settings grouped by category (masked values)."""
+    categories = request.args.get('category', None)
+    
+    query = Setting.query.filter_by(is_active=True)
+    if categories:
+        query = query.filter_by(category=categories)
+    
+    settings_list = query.order_by(Setting.category, Setting.display_order).all()
+    
+    return jsonify({
+        'settings': [s.to_dict(include_value=False) for s in settings_list]
+    })
+
+
+@cms_bp.route('/api/settings/<setting_id>', methods=['GET'])
+@login_required
+@admin_required
+def get_setting_api(setting_id: str):
+    """Get a single setting."""
+    setting = Setting.query.get_or_404(setting_id)
+    return jsonify(setting.to_dict(include_value=not setting.is_sensitive))
+
+
+@cms_bp.route('/api/settings', methods=['POST'])
+@login_required
+@admin_required
+def save_settings_api():
+    """Save one or more settings."""
+    data = request.get_json()
+    
+    if not data or 'settings' not in data:
+        return jsonify({'error': 'Settings data required'}), 400
+    
+    saved_count = 0
+    errors = []
+    
+    for item in data['settings']:
+        setting_id = item.get('id')
+        new_value = item.get('value')
+        
+        if setting_id:
+            setting = Setting.query.get(setting_id)
+            if setting:
+                old_value = setting.get_masked_value() if setting.is_sensitive else setting.value
+                setting.value = new_value
+                setting.updated_at = datetime.utcnow()
+                
+                AuditLog.log(
+                    user_id=current_user.id,
+                    action='setting_updated',
+                    entity_type='setting',
+                    entity_id=setting_id,
+                    changes={'value': {'old': old_value, 'new': '***MASKED***' if setting.is_sensitive else new_value}},
+                    ip_address=request.remote_addr,
+                    description=f"Updated setting: {setting.key}"
+                )
+                saved_count += 1
+        else:
+            errors.append(f"Missing setting ID for: {item.get('key', 'unknown')}")
+    
+    db.session.commit()
+    
+    # Reinitialize default settings if needed
+    try:
+        init_default_settings()
+    except:
+        pass
+    
+    return jsonify({
+        'message': f'Saved {saved_count} setting(s)',
+        'saved': saved_count,
+        'errors': errors
+    })
+
+
+@cms_bp.route('/api/settings/<setting_id>/reset', methods=['POST'])
+@login_required
+@admin_required
+def reset_setting_api(setting_id: str):
+    """Reset a setting to its default value."""
+    setting = Setting.query.get_or_404(setting_id)
+    
+    # Remove the setting (will be recreated by init_default_settings)
+    setting.is_active = False
+    setting.updated_at = datetime.utcnow()
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='setting_reset',
+        entity_type='setting',
+        entity_id=setting_id,
+        ip_address=request.remote_addr,
+        description=f"Reset setting: {setting.key}"
+    )
+    
+    db.session.commit()
+    
+    # Reinitialize to get default value
+    init_default_settings()
+    
+    return jsonify({'message': 'Setting reset to default'})
 
 
 # =============================================================================
@@ -3337,6 +3842,880 @@ def add_osint_findings(case_id: str):
         'message': f'{len(created_findings)} findings added',
         'findings': [f.to_dict() for f in created_findings]
     }), 201
+
+
+# =============================================================================
+# Screenshot Routes
+# =============================================================================
+
+import io
+from PIL import Image
+
+UPLOAD_FOLDER = 'uploads'
+SCREENSHOT_FOLDER = 'screenshots'
+
+def get_screenshot_path(case_id: str, filename: str = None) -> str:
+    """Get the path for screenshot storage."""
+    base_path = os.path.join(current_app.root_path, 'static', UPLOAD_FOLDER, 'cases', case_id, SCREENSHOT_FOLDER)
+    if filename:
+        return os.path.join(base_path, filename)
+    return base_path
+
+
+@cms_bp.route('/cases/<case_id>/screenshots')
+@login_required
+@case_access_required
+def list_screenshots(case_id: str):
+    """List all screenshots for a case."""
+    case = Case.query.get_or_404(case_id)
+    screenshots = Screenshot.query.filter_by(case_id=case_id).order_by(Screenshot.created_at.desc()).all()
+    
+    return jsonify({
+        'screenshots': [s.to_dict() for s in screenshots],
+        'count': len(screenshots)
+    })
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/upload', methods=['POST'])
+@login_required
+@case_access_required
+@case_edit_required
+def upload_screenshot(case_id: str):
+    """Upload a screenshot file for a case."""
+    case = Case.query.get_or_404(case_id)
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    # Check file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        return jsonify({'error': 'File must be an image'}), 400
+    
+    # Create screenshot directory
+    screenshot_dir = get_screenshot_path(case_id)
+    os.makedirs(screenshot_dir, exist_ok=True)
+    
+    # Generate unique filename
+    screenshot_id = str(uuid.uuid4())
+    
+    # Get file extension from original filename or content type
+    original_ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'png'
+    if original_ext not in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+        original_ext = 'png'
+    
+    filename = f"{screenshot_id}.{original_ext}"
+    filepath = os.path.join(screenshot_dir, filename)
+    
+    # Initialize filepath to avoid unbound variable in except block
+    filepath_defined = False
+    
+    try:
+        # Read file content into memory first
+        file_content = file.read()
+        
+        # Write to file
+        with open(filepath, 'wb') as f:
+            f.write(file_content)
+        
+        filepath_defined = True
+        file_size = os.path.getsize(filepath)
+        
+        # Get URL from form
+        url = request.form.get('url', '')
+        
+        # Create database record
+        screenshot = Screenshot(
+            id=screenshot_id,
+            case_id=case_id,
+            url=url,
+            filename=filename,
+            title=url.split('/')[-1][:300] if url else f'Screenshot {screenshot_id[:8]}',
+            file_size=file_size,
+            created_by=current_user.id
+        )
+        
+        db.session.add(screenshot)
+        
+        # Log the action
+        AuditLog.log(
+            user_id=current_user.id,
+            action='create',
+            entity_type='screenshot',
+            entity_id=screenshot_id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Uploaded screenshot: {url or 'No URL'}"
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Screenshot uploaded successfully',
+            'screenshot': screenshot.to_dict()
+        }), 201
+        
+    except Exception as e:
+        logger.error(f"Screenshot upload error: {e}")
+        # Clean up file if it was created
+        if filepath_defined and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except Exception:
+                pass
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# Social Media ID Extraction Routes
+# =============================================================================
+
+import requests as http_requests
+
+
+@cms_bp.route('/extract-social-id', methods=['POST'])
+@login_required
+def extract_social_id():
+    """
+    Extract social media IDs from a URL using socid_extractor.
+    Returns extracted information like Facebook ID, VK ID, etc.
+    Uses Playwright for JS-heavy sites.
+    """
+    data = request.get_json()
+    
+    if not data or not data.get('url'):
+        return jsonify({'error': 'URL is required'}), 400
+    
+    url = data.get('url')
+    subject_id = data.get('subject_id')  # Optional: save to subject
+    extracted = {}
+    
+    try:
+        # Try Playwright first (for JS-heavy sites like Facebook)
+        try:
+            from playwright.sync_api import sync_playwright
+            
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.goto(url, wait_until='networkidle', timeout=30000)
+                page.wait_for_timeout(2000)  # Extra wait for dynamic content
+                page_content = page.content()
+                browser.close()
+            
+            # Try to extract from rendered HTML
+            import socid_extractor
+            extracted = socid_extractor.extract(page_content)
+            
+        except ImportError:
+            # Fallback to simple HTTP request
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+            }
+            response = http_requests.get(url, headers=headers, timeout=15)
+            
+            if response.status_code != 200:
+                return jsonify({
+                    'error': f'Failed to fetch URL (status {response.status_code})',
+                    'url': url
+                }), 400
+            
+            # Try to extract from HTML
+            import socid_extractor
+            extracted = socid_extractor.extract(response.text)
+            
+        except Exception as e:
+            logger.warning(f"Playwright extraction failed, trying HTTP: {e}")
+            # Fallback to simple HTTP request
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+            }
+            response = http_requests.get(url, headers=headers, timeout=15)
+            
+            if response.status_code != 200:
+                return jsonify({
+                    'error': f'Failed to fetch URL (status {response.status_code})',
+                    'url': url
+                }), 400
+            
+            import socid_extractor
+            extracted = socid_extractor.extract(response.text)
+        
+        # Try to extract IDs from page content if socid_extractor didn't find anything
+        if not extracted:
+            import re
+            
+            # Look for Facebook ID patterns
+            fb_id_patterns = [
+                r'"entity_id":"(\d+)"',
+                r'"profile_id":"(\d+)"',
+                r'fb://page/\?id=(\d+)',
+                r'&amp;id=(\d{10,})',
+                r'"uid":(\d{10,})',
+            ]
+            
+            for pattern in fb_id_patterns:
+                matches = re.findall(pattern, page_content if 'page_content' in dir() else response.text)
+                if matches:
+                    extracted['facebook_id'] = matches[0]
+                    break
+            
+            # Look for Instagram numeric ID
+            ig_patterns = [
+                r'"user_id":"(\d+)"',
+                r'"id":"(\d{10,})"',
+            ]
+            
+            for pattern in ig_patterns:
+                matches = re.findall(pattern, page_content if 'page_content' in dir() else response.text)
+                if matches:
+                    extracted['instagram_id'] = matches[0]
+                    break
+        
+        if not extracted:
+            return jsonify({
+                'message': 'No social media IDs found on this page',
+                'url': url,
+                'extracted': {},
+                'note': 'Some sites (Facebook, Instagram) block automated access. Try manual extraction.'
+            }), 200
+        
+        # If subject_id provided, save to subject
+        if subject_id:
+            subject = Subject.query.get(subject_id)
+            if subject:
+                # Merge with existing social_media_ids
+                existing = subject.social_media_ids or {}
+                
+                # Add new extracted data
+                for key, value in extracted.items():
+                    # Skip generic fields
+                    if key in ['links', 'created_at', 'updated_at', 'fullname', 'username', 'tagline']:
+                        continue
+                    if key.endswith('_id') or key in ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit']:
+                        existing[key] = value
+                
+                subject.social_media_ids = existing
+                db.session.commit()
+                
+                return jsonify({
+                    'message': 'Social media IDs extracted and saved',
+                    'url': url,
+                    'extracted': extracted,
+                    'saved_to_subject': True,
+                    'subject_id': subject_id
+                }), 200
+        
+        return jsonify({
+            'message': 'Social media IDs extracted',
+            'url': url,
+            'extracted': extracted
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Social ID extraction error: {e}")
+        return jsonify({
+            'error': f'Failed to extract: {str(e)}',
+            'url': url
+        }), 500
+
+
+@cms_bp.route('/subjects/<subject_id>/social-ids', methods=['GET'])
+@login_required
+def get_subject_social_ids(subject_id: str):
+    """Get social media IDs for a subject."""
+    subject = Subject.query.get_or_404(subject_id)
+    
+    return jsonify({
+        'subject_id': subject_id,
+        'social_media_ids': subject.social_media_ids or {}
+    })
+
+
+@cms_bp.route('/subjects/<subject_id>/social-ids', methods=['PUT'])
+@login_required
+def update_subject_social_ids(subject_id: str):
+    """Update social media IDs for a subject (manual entry)."""
+    subject = Subject.query.get_or_404(subject_id)
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    # Merge with existing
+    existing = subject.social_media_ids or {}
+    new_data = data.get('social_media_ids', {})
+    
+    for platform, info in new_data.items():
+        existing[platform] = info
+    
+    subject.social_media_ids = existing
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Social media IDs updated',
+        'social_media_ids': subject.social_media_ids
+    })
+
+
+# =============================================================================
+# Politie Open Data Routes
+# =============================================================================
+
+POLITIE_API_BASE = 'https://data.politie.nl'
+
+
+@cms_bp.route('/check-policie-data', methods=['POST'])
+@login_required
+def check_policie_data():
+    """
+    Check if a subject matches data in Dutch Police open data.
+    Searches missing persons and wanted persons.
+    """
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    subject_name = data.get('name', '').strip()
+    subject_id = data.get('subject_id')
+    
+    if not subject_name:
+        return jsonify({'error': 'Subject name is required'}), 400
+    
+    # Split name into parts for matching
+    name_parts = subject_name.lower().split()
+    
+    results = {
+        'subject_name': subject_name,
+        'subject_id': subject_id,
+        'missing_persons': [],
+        'wanted_persons': [],
+        'api_available': False,
+        'error': None
+    }
+    
+    try:
+        # Try to fetch from Politie open data
+        missing_found = False
+        wanted_found = False
+        
+        try:
+            # Try CBS OData API for Politie data
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
+                'Accept': 'application/json'
+            }
+            
+            # Check missing persons
+            missing_url = f'{POLITIE_API_BASE}/api/v1/vermisten'
+            r = http_requests.get(missing_url, headers=headers, timeout=15)
+            
+            if r.status_code == 200 and 'application/json' in r.headers.get('Content-Type', ''):
+                results['api_available'] = True
+                data = r.json()
+                # Process missing persons data
+                if 'value' in data:
+                    for person in data['value']:
+                        person_name = person.get('naam', '').lower()
+                        if any(part in person_name for part in name_parts):
+                            results['missing_persons'].append({
+                                'name': person.get('naam', 'Unknown'),
+                                'description': person.get('omschrijving', ''),
+                                'location': person.get('laatste_locatie', ''),
+                                'date_missing': person.get('datum_vermisting', ''),
+                                'url': f"{POLITIE_API_BASE}/vermist/{person.get('id', '')}"
+                            })
+                            missing_found = True
+            elif r.status_code == 200:
+                # HTML response - API not available
+                results['api_available'] = False
+                results['error'] = 'Politie open data API is temporarily unavailable (returning HTML instead of JSON)'
+                
+        except http_requests.exceptions.RequestException as e:
+            results['error'] = f'Failed to connect to Politie API: {str(e)}'
+        
+        # Note: opsporingsberichten (wanted persons) typically requires specific access
+        # We'll check if available later
+        
+        return jsonify(results), 200
+        
+    except Exception as e:
+        logger.error(f"Politie data check error: {e}")
+        return jsonify({
+            'error': f'Failed to check Politie data: {str(e)}',
+            'api_available': False
+        }), 500
+
+
+@cms_bp.route('/check-policie-data-status', methods=['GET'])
+@login_required
+def check_policie_api_status():
+    """Check if Politie open data API is available."""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
+            'Accept': 'application/json'
+        }
+        
+        r = http_requests.head(f'{POLITIE_API_BASE}/api/v1/vermisten', headers=headers, timeout=10)
+        
+        return jsonify({
+            'available': r.status_code == 200,
+            'status_code': r.status_code,
+            'api_url': POLITIE_API_BASE
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'available': False,
+            'error': str(e)
+        }), 200
+
+
+# =============================================================================
+# RDW Vehicle Data Routes
+# =============================================================================
+
+RDW_API_BASE = 'https://opendata.rdw.nl/resource/m9d7-ebf2.json'
+
+
+def normalize_kenteken(kenteken: str) -> str:
+    """Normalize kenteken format (remove spaces, dashes, uppercase)."""
+    return kenteken.upper().replace('-', '').replace(' ', '')
+
+
+def denormalize_kenteken(kenteken: str) -> str:
+    """Add dashes to kenteken for display (e.g., 22PBR2 -> 22-PBR-2)."""
+    kenteken = kenteken.upper().replace('-', '').replace(' ', '')
+    if len(kenteken) == 6:
+        return f"{kenteken[:2]}-{kenteken[2:5]}-{kenteken[5:]}"
+    elif len(kenteken) == 5:
+        return f"{kenteken[:2]}-{kenteken[2:4]}-{kenteken[4:]}"
+    return kenteken
+
+
+@cms_bp.route('/check-rdw-vehicle', methods=['POST'])
+@login_required
+def check_rdw_vehicle():
+    """
+    Check vehicle data from RDW (Dutch Road Transport Authority).
+    Returns vehicle details based on license plate (kenteken).
+    """
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    kenteken = data.get('kenteken', '').strip()
+    subject_id = data.get('subject_id')
+    
+    if not kenteken:
+        return jsonify({'error': 'Kenteken (license plate) is required'}), 400
+    
+    # Normalize kenteken
+    kenteken_normalized = normalize_kenteken(kenteken)
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
+            'Accept': 'application/json'
+        }
+        
+        # Query RDW API
+        url = f'{RDW_API_BASE}?kenteken={kenteken_normalized}'
+        r = http_requests.get(url, headers=headers, timeout=15)
+        
+        if r.status_code != 200:
+            return jsonify({
+                'error': f'RDW API returned status {r.status_code}',
+                'kenteken': kenteken_normalized
+            }), 502
+        
+        results = r.json()
+        
+        if not results:
+            return jsonify({
+                'found': False,
+                'kenteken': kenteken_normalized,
+                'kenteken_display': denormalize_kenteken(kenteken_normalized),
+                'message': 'No vehicle found for this license plate'
+            }), 200
+        
+        vehicle = results[0]
+        
+        # Build response with relevant fields
+        vehicle_data = {
+            'found': True,
+            'kenteken': vehicle.get('kenteken', ''),
+            'kenteken_display': denormalize_kenteken(vehicle.get('kenteken', '')),
+            'voertuigsoort': vehicle.get('voertuigsoort', ''),
+            'merk': vehicle.get('merk', ''),
+            'handelsbenaming': vehicle.get('handelsbenaming', ''),
+            'inrichting': vehicle.get('inrichting', ''),
+            'type': vehicle.get('type', ''),
+            'variant': vehicle.get('variant', ''),
+            'uitvoering': vehicle.get('uitvoering', ''),
+            'kleur': vehicle.get('eerste_kleur', ''),
+            'tweede_kleur': vehicle.get('tweede_kleur', ''),
+            'aantal_deuren': vehicle.get('aantal_deuren', ''),
+            'aantal_zitplaatsen': vehicle.get('aantal_zitplaatsen', ''),
+            'cilinderinhoud': vehicle.get('cilinderinhoud', ''),
+            'aantal_cilinders': vehicle.get('aantal_cilinders', ''),
+            'vermogen': vehicle.get('vermogen_massarijklaar', ''),
+            'massa_ledig': vehicle.get('massa_ledig_voertuig', ''),
+            'maximum_massa': vehicle.get('toegestane_maximum_massa_voertuig', ''),
+            'wielbasis': vehicle.get('wielbasis', ''),
+            'datum_eerste_toelating': vehicle.get('datum_eerste_toelating', ''),
+            'datum_tenaamstelling': vehicle.get('datum_tenaamstelling', ''),
+            'vervaldatum_apk': vehicle.get('vervaldatum_apk', ''),
+            'europese_voertuigcategorie': vehicle.get('europese_voertuigcategorie', ''),
+            'wam_verzekerd': vehicle.get('wam_verzekerd', ''),
+            'taxi_indicator': vehicle.get('taxi_indicator', ''),
+            'export_indicator': vehicle.get('export_indicator', ''),
+            'zuinigheidsclassificatie': vehicle.get('zuinigheidsclassificatie', ''),
+            'catalogusprijs': vehicle.get('catalogusprijs', ''),
+            'bruto_bpm': vehicle.get('bruto_bpm', ''),
+            'openstaande_terugroepactie': vehicle.get('openstaande_terugroepactie_indicator', ''),
+            'typegoedkeuringsnummer': vehicle.get('typegoedkeuringsnummer', ''),
+        }
+        
+        # If subject_id provided, suggest updating
+        if subject_id:
+            vehicle_data['subject_id'] = subject_id
+            vehicle_data['suggested_update'] = {
+                'brand': vehicle.get('merk', ''),
+                'vehicle_type': vehicle.get('inrichting', ''),
+                'notes': f"RDW Data: {vehicle.get('merk', '')} {vehicle.get('handelsbenaming', '')} ({denormalize_kenteken(vehicle.get('kenteken', ''))})"
+            }
+        
+        return jsonify(vehicle_data), 200
+        
+    except http_requests.exceptions.RequestException as e:
+        logger.error(f"RDW API error: {e}")
+        return jsonify({
+            'error': f'Failed to connect to RDW API: {str(e)}'
+        }), 503
+        
+    except Exception as e:
+        logger.error(f"RDW check error: {e}")
+        return jsonify({
+            'error': f'Failed to check RDW data: {str(e)}'
+        }), 500
+
+
+@cms_bp.route('/subjects/<subject_id>/update-from-rdw', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def update_subject_from_rdw(subject_id: str):
+    """Update vehicle subject fields with data from RDW."""
+    subject = Subject.query.get_or_404(subject_id)
+    
+    if subject.subject_type != 'vehicle':
+        return jsonify({'error': 'Subject is not a vehicle'}), 400
+    
+    data = request.get_json()
+    
+    if not data or not data.get('kenteken'):
+        return jsonify({'error': 'Kenteken is required'}), 400
+    
+    kenteken = normalize_kenteken(data.get('kenteken'))
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
+            'Accept': 'application/json'
+        }
+        
+        url = f'{RDW_API_BASE}?kenteken={kenteken}'
+        r = http_requests.get(url, headers=headers, timeout=15)
+        
+        if r.status_code != 200 or not r.json():
+            return jsonify({'error': 'Vehicle not found in RDW database'}), 404
+        
+        vehicle = r.json()[0]
+        
+        # Update subject fields
+        if vehicle.get('merk'):
+            subject.brand = vehicle.get('merk')
+        
+        if vehicle.get('inrichting'):
+            subject.vehicle_type = vehicle.get('inrichting')
+        
+        # Build notes with RDW data
+        rdw_notes = []
+        rdw_notes.append(f"Kenteken: {denormalize_kenteken(kenteken)}")
+        if vehicle.get('merk'):
+            rdw_notes.append(f"Merk: {vehicle.get('merk')}")
+        if vehicle.get('handelsbenaming'):
+            rdw_notes.append(f"Model: {vehicle.get('handelsbenaming')}")
+        if vehicle.get('voertuigsoort'):
+            rdw_notes.append(f"Type: {vehicle.get('voertuigsoort')}")
+        if vehicle.get('inrichting'):
+            rdw_notes.append(f"Inrichting: {vehicle.get('inrichting')}")
+        if vehicle.get('kleur'):
+            rdw_notes.append(f"Kleur: {vehicle.get('eerste_kleur')}")
+        if vehicle.get('vervaldatum_apk'):
+            rdw_notes.append(f"APK vervaldatum: {vehicle.get('vervaldatum_apk')}")
+        if vehicle.get('wam_verzekerd'):
+            rdw_notes.append(f"Verzekerd (WAM): {vehicle.get('wam_verzekerd')}")
+        
+        existing_notes = subject.notes or ''
+        new_notes = '[RDW Data]\n' + '\n'.join(rdw_notes)
+        subject.notes = new_notes + '\n\n' + existing_notes if existing_notes else new_notes
+        
+        # Log the action
+        AuditLog.log(
+            user_id=current_user.id,
+            action='update',
+            entity_type='subject',
+            entity_id=subject_id,
+            ip_address=request.remote_addr,
+            description=f"Updated vehicle data from RDW for: {denormalize_kenteken(kenteken)}"
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Subject updated from RDW data',
+            'subject': subject.to_dict()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"RDW update error: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/capture', methods=['POST'])
+@login_required
+@case_access_required
+@case_edit_required
+def capture_screenshot(case_id: str):
+    """
+    Capture a screenshot of a URL and save it.
+    Note: This requires Playwright or similar to be installed.
+    For now, this returns an error indicating the feature needs setup.
+    """
+    case = Case.query.get_or_404(case_id)
+    data = request.get_json()
+    
+    if not data or not data.get('url'):
+        return jsonify({'error': 'URL is required'}), 400
+    
+    url = data.get('url')
+    title = data.get('title', '')
+    
+    # Create screenshot directory
+    screenshot_dir = get_screenshot_path(case_id)
+    os.makedirs(screenshot_dir, exist_ok=True)
+    
+    # Generate unique filename
+    screenshot_id = str(uuid.uuid4())
+    filename = f"{screenshot_id}.png"
+    filepath = os.path.join(screenshot_dir, filename)
+    
+    try:
+        # Try to use Playwright for screenshot capture
+        try:
+            from playwright.sync_api import sync_playwright
+            
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page(viewport={'width': 1280, 'height': 720})
+                page.goto(url, wait_until='networkidle', timeout=30000)
+                page.wait_for_timeout(2000)  # Extra wait for dynamic content
+                page.screenshot(path=filepath, full_page=False)
+                
+                # Get page title if not provided
+                if not title:
+                    title = page.title()[:300]
+                
+                browser.close()
+            
+            file_size = os.path.getsize(filepath)
+            
+        except ImportError:
+            # Playwright not installed - try selenium as fallback
+            return jsonify({
+                'error': 'Screenshot capture not available. No screenshot library installed.',
+                'setup_required': True,
+                'message': 'Install playwright: pip install playwright && playwright install chromium'
+            }), 503
+            
+        except Exception as e:
+            return jsonify({
+                'error': f'Failed to capture screenshot: {str(e)}',
+                'setup_required': False
+            }), 500
+        
+        # Create database record
+        screenshot = Screenshot(
+            id=screenshot_id,
+            case_id=case_id,
+            url=url,
+            filename=filename,
+            title=title,
+            file_size=file_size,
+            created_by=current_user.id
+        )
+        
+        db.session.add(screenshot)
+        
+        # Log the action
+        AuditLog.log(
+            user_id=current_user.id,
+            action='create',
+            entity_type='screenshot',
+            entity_id=screenshot_id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Captured screenshot from: {url}"
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Screenshot captured successfully',
+            'screenshot': screenshot.to_dict()
+        }), 201
+        
+    except Exception as e:
+        # Clean up file if database insert failed
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({'error': str(e)}), 500
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>/thumbnail')
+@login_required
+@case_access_required
+def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
+    """Get a thumbnail version of a screenshot."""
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
+    
+    if not screenshot:
+        return '', 404
+    
+    filepath = get_screenshot_path(case_id, screenshot.filename)
+    
+    if not os.path.exists(filepath):
+        return '', 404
+    
+    try:
+        # First try to generate a proper thumbnail
+        try:
+            with Image.open(filepath) as img:
+                img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                thumb_io = io.BytesIO()
+                img.save(thumb_io, format='PNG')
+            thumb_io.seek(0)
+            return send_file(
+                thumb_io,
+                mimetype='image/png',
+                as_attachment=False
+            )
+        except Exception as e:
+            logger.warning(f"Thumbnail generation failed, serving original: {e}")
+            # Fallback: serve original image
+            return send_file(filepath, mimetype='image/png', as_attachment=False)
+    except Exception as e:
+        logger.error(f"Thumbnail error: {e}")
+        return '', 500
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>/view')
+@login_required
+@case_access_required
+def view_screenshot(case_id: str, screenshot_id: str):
+    """View the full screenshot."""
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
+    
+    if not screenshot:
+        return '', 404
+    
+    filepath = get_screenshot_path(case_id, screenshot.filename)
+    
+    if not os.path.exists(filepath):
+        return '', 404
+    
+    try:
+        # Detect mimetype from file extension
+        ext = screenshot.filename.rsplit('.', 1)[-1].lower() if '.' in screenshot.filename else 'png'
+        mimetype_map = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'webp': 'image/webp'
+        }
+        mimetype = mimetype_map.get(ext, 'image/png')
+        
+        return send_file(
+            filepath,
+            mimetype=mimetype,
+            as_attachment=False,
+            download_name=screenshot.title or screenshot.filename
+        )
+    except Exception as e:
+        logger.error(f"View screenshot error: {e}")
+        return '', 500
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>')
+@login_required
+@case_access_required
+def get_screenshot(case_id: str, screenshot_id: str):
+    """Get screenshot details."""
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
+    
+    if not screenshot:
+        return jsonify({'error': 'Screenshot not found'}), 404
+    
+    return jsonify(screenshot.to_dict())
+
+
+@cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>', methods=['DELETE'])
+@login_required
+@case_access_required
+@case_edit_required
+def delete_screenshot(case_id: str, screenshot_id: str):
+    """Delete a screenshot."""
+    screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
+    
+    if not screenshot:
+        return jsonify({'error': 'Screenshot not found'}), 404
+    
+    try:
+        # Delete the file
+        filepath = get_screenshot_path(case_id, screenshot.filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        # Log the action
+        AuditLog.log(
+            user_id=current_user.id,
+            action='delete',
+            entity_type='screenshot',
+            entity_id=screenshot_id,
+            ip_address=request.remote_addr,
+            case_id=case_id,
+            description=f"Deleted screenshot: {screenshot.title or screenshot.filename}"
+        )
+        
+        # Delete database record
+        db.session.delete(screenshot)
+        db.session.commit()
+        
+        return jsonify({'message': 'Screenshot deleted'}), 200
+        
+    except Exception as e:
+        logger.error(f"Screenshot delete error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 # =============================================================================

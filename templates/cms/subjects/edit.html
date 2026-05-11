@@ -1,7 +1,7 @@
 {% extends "cms/base.html" %}
 {% block content %}
 <h2 style="margin-bottom: 1.5rem;">Edit Subject</h2>
-<form method="POST">
+<form method="POST" id="subjectForm">
     <div class="form-group">
         <label for="name">Name *</label>
         <input type="text" name="name" id="name" value="{{ subject.name }}" required>
@@ -18,7 +18,7 @@
         </select>
     </div>
     
-    <div id="person-fields">
+    <div id="person-fields" style="display:none;">
     <div class="form-group">
         <label for="email">Email</label>
         <input type="email" name="email" id="email" value="{{ subject.email or '' }}">
@@ -30,28 +30,123 @@
     </div>
     
     <div id="vehicle-fields" style="display:none;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-        <div class="form-group">
-            <label for="license_plate">License Plate</label>
-            <input type="text" name="license_plate" id="license_plate" value="{{ subject.license_plate or '' }}">
+        <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong style="color: #0369a1;">RDW Vehicle Data</strong>
+                    <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: #64748b;">
+                        Enter a license plate (kenteken) and fetch official RDW data
+                    </p>
+                </div>
+                <button type="button" onclick="fetchRDWData()" id="fetchRdwBtn" class="btn" style="background: #0ea5e9;">
+                    🚗 Fetch from RDW
+                </button>
+            </div>
+            <div id="rdwStatus" style="margin-top: 0.5rem; font-size: 0.875rem;"></div>
         </div>
-        <div class="form-group">
-            <label for="vin">VIN</label>
-            <input type="text" name="vin" id="vin" value="{{ subject.vin or '' }}">
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+                <label for="license_plate">License Plate (Kenteken)</label>
+                <input type="text" name="license_plate" id="license_plate" value="{{ subject.license_plate or '' }}" placeholder="e.g. AB-12-CD">
+            </div>
+            <div class="form-group">
+                <label for="vin">VIN (Chassisnummer)</label>
+                <input type="text" name="vin" id="vin" value="{{ subject.vin or '' }}" placeholder="17 characters">
+            </div>
+            <div class="form-group">
+                <label for="brand">Merk</label>
+                <input type="text" name="brand" id="brand" value="{{ subject.brand or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="handelsbenaming">Model (Handelsbenaming)</label>
+                <input type="text" name="handelsbenaming" id="handelsbenaming" value="">
+            </div>
+            <div class="form-group">
+                <label for="vehicle_type">Inrichting</label>
+                <input type="text" name="vehicle_type" id="vehicle_type" value="{{ subject.vehicle_type or '' }}" placeholder="e.g. sedan, stationwagen">
+            </div>
+            <div class="form-group">
+                <label for="voertuigsoort">Voertuigsoort</label>
+                <input type="text" name="voertuigsoort" id="voertuigsoort" value="">
+            </div>
+            <div class="form-group">
+                <label for="eerste_kleur">Kleur (Eerste)</label>
+                <input type="text" name="eerste_kleur" id="eerste_kleur" value="">
+            </div>
+            <div class="form-group">
+                <label for="tweede_kleur">Kleur (Tweede)</label>
+                <input type="text" name="tweede_kleur" id="tweede_kleur" value="">
+            </div>
+            <div class="form-group">
+                <label for="aantal_deuren">Aantal Deuren</label>
+                <input type="number" name="aantal_deuren" id="aantal_deuren" value="">
+            </div>
+            <div class="form-group">
+                <label for="aantal_zitplaatsen">Aantal Zitplaatsen</label>
+                <input type="number" name="aantal_zitplaatsen" id="aantal_zitplaatsen" value="">
+            </div>
+            <div class="form-group">
+                <label for="cilinderinhoud">Cilinderinhoud (cc)</label>
+                <input type="number" name="cilinderinhoud" id="cilinderinhoud" value="">
+            </div>
+            <div class="form-group">
+                <label for="aantal_cilinders">Aantal Cilinders</label>
+                <input type="number" name="aantal_cilinders" id="aantal_cilinders" value="">
+            </div>
+            <div class="form-group">
+                <label for="massa_ledig">Massa Ledig (kg)</label>
+                <input type="number" name="massa_ledig" id="massa_ledig" value="">
+            </div>
+            <div class="form-group">
+                <label for="maximum_massa">Maximum Massa (kg)</label>
+                <input type="number" name="maximum_massa" id="maximum_massa" value="">
+            </div>
+            <div class="form-group">
+                <label for="vervaldatum_apk">APK Vervaldatum</label>
+                <input type="text" name="vervaldatum_apk" id="vervaldatum_apk" value="" placeholder="YYYYMMDD">
+            </div>
+            <div class="form-group">
+                <label for="wam_verzekerd">WAM Verzekerd</label>
+                <input type="text" name="wam_verzekerd" id="wam_verzekerd" value="">
+            </div>
+            <div class="form-group">
+                <label for="taxi_indicator">Taxi</label>
+                <input type="text" name="taxi_indicator" id="taxi_indicator" value="">
+            </div>
+            <div class="form-group">
+                <label for="export_indicator">Geexporteerd</label>
+                <input type="text" name="export_indicator" id="export_indicator" value="">
+            </div>
+            <div class="form-group">
+                <label for="europese_voertuigcategorie">EU Categorie</label>
+                <input type="text" name="europese_voertuigcategorie" id="europese_voertuigcategorie" value="">
+            </div>
+            <div class="form-group">
+                <label for="zuinigheidsclassificatie">Zuinigheidsclassificatie</label>
+                <input type="text" name="zuinigheidsclassificatie" id="zuinigheidsclassificatie" value="">
+            </div>
+            <div class="form-group">
+                <label for="catalogusprijs">Catalogusprijs (EUR)</label>
+                <input type="number" name="catalogusprijs" id="catalogusprijs" value="">
+            </div>
+            <div class="form-group">
+                <label for="datum_eerste_toelating">Datum Eerste Toelating</label>
+                <input type="text" name="datum_eerste_toelating" id="datum_eerste_toelating" value="" placeholder="YYYYMMDD">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="insurance_company">Verzekeringsmaatschappij</label>
+                <input type="text" name="insurance_company" id="insurance_company" value="{{ subject.insurance_company or '' }}">
+            </div>
         </div>
-        <div class="form-group">
-            <label for="brand">Brand</label>
-            <input type="text" name="brand" id="brand" value="{{ subject.brand or '' }}">
+        
+        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+            <strong style="color: #92400e;">Note:</strong>
+            <span style="color: #78350f; font-size: 0.875rem;">
+                All fields above are fetched from RDW (open data). 
+                The kenteken and merk are also saved to the basic vehicle fields.
+            </span>
         </div>
-        <div class="form-group">
-            <label for="vehicle_type">Vehicle Type</label>
-            <input type="text" name="vehicle_type" id="vehicle_type" value="{{ subject.vehicle_type or '' }}" placeholder="e.g. sedan, truck, motorcycle">
-        </div>
-        <div class="form-group" style="grid-column:1/-1;">
-            <label for="insurance_company">Insurance Company</label>
-            <input type="text" name="insurance_company" id="insurance_company" value="{{ subject.insurance_company or '' }}">
-        </div>
-    </div>
     </div>
     
     <div class="form-group">
@@ -83,6 +178,84 @@ function toggleVehicleFields() {
         vehicleFields.style.display = 'none';
     }
 }
+
+function fetchRDWData() {
+    const kenteken = document.getElementById('license_plate').value.trim();
+    const statusDiv = document.getElementById('rdwStatus');
+    const btn = document.getElementById('fetchRdwBtn');
+    
+    if (!kenteken) {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">Please enter a license plate (kenteken) first</span>';
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    statusDiv.innerHTML = '<span style="color: #0369a1;">Fetching RDW data...</span>';
+    
+    fetch('/cms/check-rdw-vehicle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kenteken: kenteken, subject_id: '{{ subject.id }}' })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+            btn.disabled = false;
+            btn.textContent = '🚗 Fetch from RDW';
+            return;
+        }
+        
+        if (!data.found) {
+            statusDiv.innerHTML = '<span style="color: #f59e0b;">No vehicle found for: ' + kenteken + '</span>';
+            btn.disabled = false;
+            btn.textContent = '🚗 Fetch from RDW';
+            return;
+        }
+        
+        // Populate all fields
+        if (data.kenteken) document.getElementById('license_plate').value = data.kenteken_display || data.kenteken;
+        if (data.merk) document.getElementById('brand').value = data.merk;
+        if (data.handelsbenaming) document.getElementById('handelsbenaming').value = data.handelsbenaming;
+        if (data.inrichting) document.getElementById('vehicle_type').value = data.inrichting;
+        if (data.voertuigsoort) document.getElementById('voertuigsoort').value = data.voertuigsoort;
+        if (data.eerste_kleur) document.getElementById('eerste_kleur').value = data.eerste_kleur;
+        if (data.tweede_kleur) document.getElementById('tweede_kleur').value = data.tweede_kleur;
+        if (data.aantal_deuren) document.getElementById('aantal_deuren').value = data.aantal_deuren;
+        if (data.aantal_zitplaatsen) document.getElementById('aantal_zitplaatsen').value = data.aantal_zitplaatsen;
+        if (data.cilinderinhoud) document.getElementById('cilinderinhoud').value = data.cilinderinhoud;
+        if (data.aantal_cilinders) document.getElementById('aantal_cilinders').value = data.aantal_cilinders;
+        if (data.massa_ledig) document.getElementById('massa_ledig').value = data.massa_ledig;
+        if (data.maximum_massa) document.getElementById('maximum_massa').value = data.maximum_massa;
+        if (data.vervaldatum_apk) document.getElementById('vervaldatum_apk').value = data.vervaldatum_apk;
+        if (data.wam_verzekerd) document.getElementById('wam_verzekerd').value = data.wam_verzekerd;
+        if (data.taxi_indicator) document.getElementById('taxi_indicator').value = data.taxi_indicator;
+        if (data.export_indicator) document.getElementById('export_indicator').value = data.export_indicator;
+        if (data.europese_voertuigcategorie) document.getElementById('europese_voertuigcategorie').value = data.europese_voertuigcategorie;
+        if (data.zuinigheidsclassificatie) document.getElementById('zuinigheidsclassificatie').value = data.zuinigheidsclassificatie;
+        if (data.catalogusprijs) document.getElementById('catalogusprijs').value = data.catalogusprijs;
+        if (data.datum_eerste_toelating) document.getElementById('datum_eerste_toelating').value = data.datum_eerste_toelating;
+        
+        statusDiv.innerHTML = '<span style="color: #16a34a;">✅ RDW data loaded for ' + data.merk + ' ' + data.handelsbenaming + '</span>';
+        btn.disabled = false;
+        btn.textContent = '🚗 Fetch from RDW';
+    })
+    .catch(err => {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+        btn.disabled = false;
+        btn.textContent = '🚗 Fetch from RDW';
+    });
+}
+
+// Add Enter key support for license plate field
+document.getElementById('license_plate').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        fetchRDWData();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', toggleVehicleFields);
 </script>
 {% endblock %}
