@@ -18,15 +18,15 @@
 9. [OSINT Tools](#osint-tools)
 10. [SpiderFoot Integration](#spiderfoot-integration)
 11. [Face Recognition](#face-recognition)
-11. [Vehicle Data (RDW)](#vehicle-data-rdw)
-12. [Reminders](#reminders)
-13. [Settings](#settings)
-14. [User Management](#user-management)
-15. [Audit Log](#audit-log)
-16. [Keyboard Shortcuts](#keyboard-shortcuts)
-17. [API Endpoints](#api-endpoints)
-18. [Troubleshooting](#troubleshooting)
-19. [Changelog](#changelog)
+12. [Vehicle Data (RDW)](#vehicle-data-rdw)
+13. [Reminders](#reminders)
+14. [Settings](#settings)
+15. [User Management](#user-management)
+16. [Audit Log](#audit-log)
+17. [Keyboard Shortcuts](#keyboard-shortcuts)
+18. [API Endpoints](#api-endpoints)
+19. [Troubleshooting](#troubleshooting)
+20. [Changelog](#changelog)
 
 ---
 
@@ -53,13 +53,46 @@ Iveras OSINT Case Management System combines open-source intelligence gathering 
 
 ## Installation
 
-### Prerequisites
+### Option A: One-command Server Install (Ubuntu/Debian — recommended)
+
+```bash
+sudo apt install -y wget
+wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/master/install.sh
+chmod +x install.sh
+sudo ./install.sh
+```
+
+The script installs everything automatically:
+
+- Python + pip + virtualenv
+- PostgreSQL (random password generated)
+- Nginx reverse proxy (Iveras + SpiderFoot routes)
+- SpiderFoot (git clone + venv + digest auth)
+- SSL via Let's Encrypt (optional, if domain provided)
+- Systemd services (`osint-dashboard` and `spiderfoot`)
+- UFW firewall (SSH/HTTP/HTTPS)
+- Health check endpoint verification
+
+During installation you'll be asked for a **domain name** (for SSL) or can press Enter for IP-only access.
+
+After installation, edit the API keys in `/opt/osint-dashboard/.env` and the SpiderFoot password is shown in the install output.
+
+#### Prerequisites
+
+- **Ubuntu 20.04+** or **Debian 11+**
+- Root access (sudo)
+- Ports 80/443 open (or access to the server's IP)
+- Optional: a domain name pointing to the server for SSL
+
+### Option B: Manual Setup (Development / macOS)
+
+#### Prerequisites
 
 - Python 3.9+
 - PostgreSQL (optional, SQLite default)
 - Git
 
-### Setup
+#### Steps
 
 ```bash
 # 1. Clone the repository
@@ -69,7 +102,6 @@ cd osint-dashboard
 # 2. Create virtual environment
 python3 -m venv venv
 source venv/bin/activate  # Linux/Mac
-# or: .\venv\Scripts\activate  # Windows
 
 # 3. Install dependencies
 pip install -r requirements.txt
@@ -278,6 +310,18 @@ SpiderFoot is een open-source OSINT tool die automatisch informatie verzamelt ov
 
 ### Setup
 
+#### Productie (via install.sh)
+
+Als je `install.sh` hebt gedraaid, is SpiderFoot al geïnstalleerd en geconfigureerd:
+
+- SpiderFoot draait als **systemd service** (`spiderfoot.service`)
+- Digest auth staat aan met een **random gegenereerd wachtwoord**
+- Wachtwoord staat in `/opt/osint-dashboard/.env` (`SPIDERFOOT_PASSWORD`)
+- Reverse proxy via Nginx op `http://<server>/spiderfoot/`
+- Credentials staan automatisch in de Iveras database
+
+#### Handmatig (development)
+
 1. **Clone SpiderFoot**:
    ```bash
    git clone https://github.com/smicallef/spiderfoot.git
@@ -285,22 +329,22 @@ SpiderFoot is een open-source OSINT tool die automatisch informatie verzamelt ov
    pip3 install -r requirements.txt
    ```
 
-2. **Start SpiderFoot**:
+2. **Maak een passwd file voor digest auth** (aanbevolen):
    ```bash
-   python3 ./sf.py -l 127.0.0.1:5001
+   mkdir -p ~/.spiderfoot
+   echo "admin:jouw_wachtwoord" > ~/.spiderfoot/passwd
+   chmod 600 ~/.spiderfoot/passwd
    ```
 
-3. **Configureer in Iveras**: Ga naar **SpiderFoot** → **Settings** en vul de URL in (`http://localhost:5001`)
+3. **Start SpiderFoot met auth**:
+   ```bash
+   python3 ./sf.py -l 127.0.0.1:5001 --passwd ~/.spiderfoot/passwd
+   ```
 
-### Password Auth (aanbevolen)
-
-```bash
-echo "admin:jouw_wachtwoord" > ~/.spiderfoot/passwd
-# Herstart SpiderFoot
-python3 ./sf.py -l 127.0.0.1:5001
-```
-
-Vul daarna dezelfde credentials in bij Iveras Settings.
+4. **Configureer in Iveras**: Ga naar **SpiderFoot** → **Settings**
+   - URL: `http://localhost:5001`
+   - Username: `admin`
+   - Password: `jouw_wachtwoord`
 
 ### Een Scan Starten
 
@@ -618,6 +662,16 @@ Go to **Audit Log** (Admin) to see:
 **"SpiderFoot 401 Unauthorized"**
 - SpiderFoot auth staat aan maar credentials kloppen niet
 - Check `~/.spiderfoot/passwd` en Iveras Settings
+- Na install.sh: check `/opt/osint-dashboard/.env` voor `SPIDERFOOT_PASSWORD`
+
+**"Health check fails"**
+- Run: `curl http://localhost:5000/health`
+- Verwacht: `{"status":"ok","database":"connected","spiderfoot":"connected"}`
+- Check logs: `journalctl -u osint-dashboard -n 50`
+
+**"502 Bad Gateway" (via Nginx)**
+- Iveras of SpiderFoot is gestopt
+- Check: `systemctl status osint-dashboard spiderfoot`
 
 ### Database Issues
 
@@ -649,6 +703,18 @@ Log files (`spiderfoot.log`, `app.log`) groeien na verloop van tijd. Logrotate r
 ---
 
 ## Changelog
+
+### Version 3.2.0 - May 2026
+
+**Production Deployment:**
+- `install.sh` v3.0 — one-command server setup voor Ubuntu/Debian
+- Automatische SpiderFoot installatie met digest auth (random password)
+- PostgreSQL random password generatie (i.p.v. hardcoded)
+- `CMS_ENCRYPTION_KEY` auto-generatie in `.env`
+- Nginx reverse proxy met `/spiderfoot/` route en SSL via certbot
+- Systemd services voor zowel Iveras als SpiderFoot
+- `/health` endpoint voor monitoring (DB + SpiderFoot status)
+- `.env.example` met alle configuratie variabelen gedocumenteerd
 
 ### Version 3.1.0 - May 2026
 
