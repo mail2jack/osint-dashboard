@@ -4595,6 +4595,7 @@ def kadaster_lookup():
         
         docs = result.get('response', {}).get('docs', [])
         if not docs:
+            logger.warning(f"Kadaster lookup not found: {query}")
             return jsonify({
                 'found': False,
                 'message': 'Address not found in BAG registry',
@@ -4602,6 +4603,7 @@ def kadaster_lookup():
             }), 200
         
         doc = docs[0]
+        logger.info(f"Kadaster lookup OK: {query} → {doc.get('straatnaam')} {doc.get('huisnummer')}, {doc.get('postcode')} {doc.get('woonplaatsnaam')} (status={doc.get('status')}, type={doc.get('type')}, surface={doc.get('oppervlakte')})")
         return jsonify({
             'found': True,
             'query': query,
