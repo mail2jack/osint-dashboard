@@ -47,31 +47,74 @@
 
 {% set status_lower = scan.status|lower if scan.status else '' %}
 {% if status_lower == 'running' %}
-<div class="alert alert-info">
+<div class="alert alert-info" id="scanProgress">
     <strong>Scan in Progress</strong><br>
-    <div class="progress-bar">
-        <div class="progress-fill" style="width: {{ scan.progress }}%"></div>
+    <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill" style="width: {{ scan.progress }}%"></div>
     </div>
-    <p>Progress: {{ scan.progress }}%</p>
-    <button onclick="refreshScan()" class="btn btn-small">Refresh Status</button>
+    <p>Progress: <span id="progressText">{{ scan.progress }}</span>%</p>
+    <button onclick="location.reload()" class="btn btn-small">Refresh Page</button>
 </div>
 
 <script>
-function refreshScan() {
-    fetch('{{ url_for("cms.spiderfoot_refresh_scan", scan_id=scan.id) }}', {
-        method: 'POST'
-    })
-    .then(r => r.json())
-    .then(data => {
-        location.reload();
-    })
-    .catch(err => {
-        alert('Failed to refresh: ' + err);
-    });
-}
-
-// Auto-refresh every 30 seconds
-setInterval(refreshScan, 30000);
+(function() {
+    const scanId = '{{ scan.id }}';
+    const refreshUrl = '{{ url_for("cms.spiderfoot_refresh_scan", scan_id=scan.id) }}';
+    let notified = false;
+    
+    function poll() {
+        fetch(refreshUrl, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            const status = (data.status || '').toLowerCase();
+            const progress = data.progress || 0;
+            
+            const fill = document.getElementById('progressFill');
+            const text = document.getElementById('progressText');
+            if (fill) fill.style.width = progress + '%';
+            if (text) text.textContent = progress;
+            
+            if (status === 'completed' || status === 'finished') {
+                if (!notified) {
+                    notified = true;
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('Scan Complete', {
+                            body: 'Scan "' + (data.scan_name || '') + '" is finished!',
+                            icon: '/favicon.ico'
+                        });
+                    }
+                }
+                setTimeout(() => location.reload(), 1500);
+                return;
+            }
+            
+            if (status === 'failed' || status === 'error') {
+                if (!notified) {
+                    notified = true;
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('Scan Failed', {
+                            body: 'Scan "' + (data.scan_name || '') + '" has failed.',
+                            icon: '/favicon.ico'
+                        });
+                    }
+                }
+                setTimeout(() => location.reload(), 2000);
+                return;
+            }
+            
+            setTimeout(poll, 10000);
+        })
+        .catch(() => {
+            setTimeout(poll, 15000);
+        });
+    }
+    
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    setTimeout(poll, 3000);
+})();
 </script>
 {% endif %}
 

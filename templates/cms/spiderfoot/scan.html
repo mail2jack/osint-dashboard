@@ -10,33 +10,46 @@
     </div>
 </div>
 
+{% if recent_targets %}
+<div class="card">
+    <h3>Recent Targets</h3>
+    <div class="recent-targets">
+        {% for rt in recent_targets %}
+        <button class="target-chip" onclick="document.getElementById('target').value='{{ rt.target|e }}';detectType(this)">
+            {{ rt.target }}
+            <small>{{ rt.type }}</small>
+        </button>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <form method="POST" action="{{ url_for('cms.spiderfoot_scan') }}">
         <div class="form-group">
             <label for="target">Target *</label>
-            <input type="text" id="target" name="target" required placeholder="e.g., example.com, user@email.com, 192.168.1.1">
+            <input type="text" id="target" name="target" required placeholder="e.g., example.com, user@email.com, 192.168.1.1" oninput="detectType(this)">
             <p class="help-text">
-                Supported targets: domains (example.com), emails (user@email.com), IPs (8.8.8.8), or URLs.<br>
-                <strong>Note:</strong> For username lookups, use an email address or search via SpiderFoot directly.
+                Type wordt automatisch herkend. Je kunt ook een recent target kiezen hierboven.
             </p>
         </div>
 
         <div class="form-group">
             <label for="target_type">Target Type *</label>
             <select id="target_type" name="target_type" required>
-                <option value="DOMAIN_NAME">Domain Name (e.g., example.com)</option>
-                <option value="EMAILADDR">Email Address</option>
-                <option value="IP_ADDRESS">IP Address</option>
-                <option value="IPV6_ADDRESS">IPv6 Address</option>
-                <option value="PHONE_NUMBER">Phone Number</option>
-                <option value="USERNAME">Username</option>
-                <option value="BITCOIN_ADDRESS">Bitcoin Address</option>
-                <option value="NAME">Person Name</option>
-                <option value="COMPANY_NAME">Company Name</option>
-                <option value="INTERNET_NAME">Internet Name/Subdomain</option>
-                <option value="VESSEL">Vessel Name/IMO</option>
-                <option value="PLATE_NUMBER">License Plate</option>
-                <option value="VEHICLE_VIN">Vehicle VIN</option>
+                <option value="DOMAIN_NAME">🌐 Domain Name (e.g., example.com)</option>
+                <option value="EMAILADDR">✉ Email Address</option>
+                <option value="IP_ADDRESS">🌍 IP Address</option>
+                <option value="IPV6_ADDRESS">🌍 IPv6 Address</option>
+                <option value="PHONE_NUMBER">📞 Phone Number</option>
+                <option value="USERNAME">🏷 Username</option>
+                <option value="BITCOIN_ADDRESS">₿ Bitcoin Address</option>
+                <option value="NAME">👤 Person Name</option>
+                <option value="COMPANY_NAME">🏢 Company Name</option>
+                <option value="INTERNET_NAME">🔗 Internet Name/Subdomain</option>
+                <option value="VESSEL">🚢 Vessel Name/IMO</option>
+                <option value="PLATE_NUMBER">🚗 License Plate</option>
+                <option value="VEHICLE_VIN">🔧 Vehicle VIN</option>
             </select>
         </div>
 
@@ -55,16 +68,16 @@
                 {% endif %}
                 {% endfor %}
             </select>
-            <p class="help-text">Profiles define which SpiderFoot modules will run. Choose based on your investigation type.</p>
+            <p class="help-text">Profiles define which SpiderFoot modules will run.</p>
         </div>
 
         <div class="form-group">
             <label for="use_case">Scan Intensity</label>
             <select id="use_case" name="use_case">
-                <option value="passive">Passive (no direct contact) - Recommended</option>
-                <option value="footprint">Footprint (limited contact)</option>
-                <option value="investigate">Investigate (some active scans)</option>
-                <option value="all">All (including aggressive) - Use with caution</option>
+                <option value="passive">🕵️ Passive (no direct contact) - Recommended</option>
+                <option value="footprint">👣 Footprint (limited contact)</option>
+                <option value="investigate">🔍 Investigate (some active scans)</option>
+                <option value="all">⚡ All (including aggressive) - Use with caution</option>
             </select>
         </div>
 
@@ -76,7 +89,6 @@
                 <option value="{{ case.id }}">{{ case.case_number }} - {{ case.title }}</option>
                 {% endfor %}
             </select>
-            <p class="help-text">Link the scan to a case to import findings later</p>
         </div>
 
         <div class="form-actions">
@@ -107,6 +119,33 @@
 </div>
 
 <style>
+.recent-targets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+.target-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    transition: all 0.15s;
+}
+.target-chip:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-card);
+}
+.target-chip small {
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+}
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -194,4 +233,49 @@ summary {
     border: 1px solid var(--border-color);
 }
 </style>
+
+<script>
+function detectType(el) {
+    const val = el.value || el.textContent || '';
+    const sel = document.getElementById('target_type');
+    const targetInput = document.getElementById('target');
+    
+    // If called from chip click, set the input value first
+    if (el.tagName === 'BUTTON') {
+        targetInput.value = val;
+    }
+    
+    const trimmed = targetInput.value.trim();
+    if (!trimmed) return;
+    
+    let type = 'DOMAIN_NAME';
+    
+    // Email
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        type = 'EMAILADDR';
+    }
+    // IPv4
+    else if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(trimmed)) {
+        type = 'IP_ADDRESS';
+    }
+    // IPv6
+    else if (/^[a-fA-F0-9:]+$/.test(trimmed) && trimmed.includes(':')) {
+        type = 'IPV6_ADDRESS';
+    }
+    // Phone (digits, optional +, 7-15 chars)
+    else if (/^\+?\d{7,15}$/.test(trimmed.replace(/[\s\-\(\)]/g, ''))) {
+        type = 'PHONE_NUMBER';
+    }
+    // Bitcoin address
+    else if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(trimmed)) {
+        type = 'BITCOIN_ADDRESS';
+    }
+    // Domain
+    else if (/^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
+        type = 'DOMAIN_NAME';
+    }
+    
+    sel.value = type;
+}
+</script>
 {% endblock %}

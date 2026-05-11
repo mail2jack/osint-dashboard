@@ -5430,9 +5430,14 @@ def get_spiderfoot_service():
 @roles_required('admin', 'senior_investigator')
 def spiderfoot_index():
     """SpiderFoot integration dashboard."""
-    sf_service = get_spiderfoot_service()
-    available = sf_service.is_available() if sf_service else False
-    server_info = sf_service.get_server_info() if sf_service and available else None
+    try:
+        sf_service = get_spiderfoot_service()
+        available = sf_service.is_available() if sf_service else False
+        server_info = sf_service.get_server_info() if sf_service and available else None
+    except Exception:
+        sf_service = None
+        available = False
+        server_info = None
     
     db.session.rollback()  # Clear any stale state from previous requests
     
@@ -5550,12 +5555,24 @@ def spiderfoot_scan():
         use_cases = SpiderFootService.USE_CASES if SpiderFootService else {}
         target_types = SpiderFootService.TARGET_TYPES if SpiderFootService else {}
         
+        # Get recent unique targets for quick-select
+        recent_scans = SpiderFootScan.query.filter_by(is_deleted=False)\
+            .order_by(SpiderFootScan.created_at.desc()).limit(20).all()
+        seen = set()
+        recent_targets = []
+        for s in recent_scans:
+            key = (s.target_value or '', s.target_type or '')
+            if key not in seen:
+                seen.add(key)
+                recent_targets.append({'target': s.target_value, 'type': s.target_type})
+        
         return render_template('cms/spiderfoot/scan.html',
             cases=cases,
             subjects=subjects,
             profiles=profiles,
             use_cases=use_cases,
-            target_types=target_types
+            target_types=target_types,
+            recent_targets=recent_targets
         )
     
     # POST - Start scan

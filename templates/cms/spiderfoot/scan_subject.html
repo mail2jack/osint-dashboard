@@ -10,26 +10,26 @@
     </div>
 </div>
 
-<div class="subject-info">
+<div class="subject-info" style="--subject-accent: {% if subject.subject_type == 'person' %}#2980b9{% elif subject.subject_type == 'company' %}#1abc9c{% elif subject.subject_type == 'vehicle' %}#e67e22{% else %}#666{% endif %};">
     <div class="info-grid">
         <div class="info-item">
-            <label>Subject Name</label>
+            <label>👤 Name</label>
             <span><strong>{{ subject.name }}</strong></span>
         </div>
         <div class="info-item">
-            <label>Type</label>
-            <span>{{ subject.subject_type }}</span>
+            <label>🏷 Type</label>
+            <span><span class="type-badge">{{ subject.subject_type }}</span></span>
         </div>
         <div class="info-item">
-            <label>Email</label>
-            <span>{{ subject.email or 'N/A' }}</span>
+            <label>✉ Email</label>
+            <span>{% if subject.email %}<a href="mailto:{{ subject.email }}">{{ subject.email }}</a>{% else %}<span class="na">N/A</span>{% endif %}</span>
         </div>
         <div class="info-item">
-            <label>Phone</label>
-            <span>{{ subject.phone or 'N/A' }}</span>
+            <label>📞 Phone</label>
+            <span>{% if subject.phone %}<a href="tel:{{ subject.phone }}">{{ subject.phone }}</a>{% else %}<span class="na">N/A</span>{% endif %}</span>
         </div>
         <div class="info-item">
-            <label>Address</label>
+            <label>📍 Address</label>
             <span>{{ subject.address or 'N/A' }}</span>
         </div>
     </div>
@@ -136,6 +136,7 @@
     padding: 1.25rem;
     border-radius: 8px;
     margin-bottom: 1rem;
+    border-left: 4px solid var(--subject-accent);
 }
 .info-grid {
     display: grid;
@@ -149,6 +150,27 @@
 .info-item label {
     font-size: 0.75rem;
     color: var(--text-secondary);
+    margin-bottom: 0.2rem;
+}
+.info-item a {
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+.info-item a:hover {
+    text-decoration: underline;
+}
+.na {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+.type-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: var(--subject-accent);
+    color: white;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
     text-transform: uppercase;
 }
 .card {

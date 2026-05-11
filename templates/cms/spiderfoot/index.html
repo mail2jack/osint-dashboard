@@ -15,8 +15,10 @@
 {% if not available %}
 <div class="alert alert-warning">
     <strong>⚠️ SpiderFoot Not Connected</strong><br>
-    SpiderFoot server is not available at {{ url_for('cms.spiderfoot_settings')|replace('http://', '')|replace('https://', '')|replace('/cms/spiderfoot/settings', '') }}. 
-    Please check the <a href="{{ url_for('cms.spiderfoot_settings') }}">settings</a> and ensure SpiderFoot is running.
+    De SpiderFoot server is niet bereikbaar. Dit kan komen door:<br>
+    • SpiderFoot is niet gestart — run <code>python3 sf.py -l 127.0.0.1:5001</code> in de spiderfoot map<br>
+    • Verkeerde URL in de <a href="{{ url_for('cms.spiderfoot_settings') }}">instellingen</a><br>
+    • SpiderFoot is nog aan het opstarten — wacht een paar seconden en <a href="{{ url_for('cms.spiderfoot_index') }}">ververs</a>
 </div>
 {% endif %}
 
@@ -72,6 +74,9 @@
 
 <div class="section">
     <h2>Recent Scans</h2>
+    <div class="search-bar">
+        <input type="text" id="scanSearch" placeholder="Search scans by name, target, or status..." oninput="filterScans(this.value)">
+    </div>
     {% if recent_scans %}
     <div class="scan-list">
         {% for scan in recent_scans %}
@@ -282,5 +287,31 @@
 }
 .text-small { font-size: 0.75rem; }
 .text-muted { color: var(--text-secondary); }
+.search-bar {
+    margin-bottom: 0.75rem;
+}
+.search-bar input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    box-sizing: border-box;
+}
+.search-bar input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
 </style>
+<script>
+function filterScans(query) {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll('.scan-card').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = !q || text.includes(q) ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}
