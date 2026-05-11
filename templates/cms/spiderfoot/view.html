@@ -102,8 +102,9 @@ setInterval(refreshScan, 30000);
 
 <div class="card">
     <div class="card-header">
-        <h3>Results (showing first {{ results|length }})</h3>
+        <h3>Results</h3>
         <div class="quick-links">
+            <span class="text-muted">{{ results|length }} results</span>
             <a href="{{ url_for('cms.spiderfoot_scan_results', scan_id=scan.id) }}" class="btn btn-small" target="_blank">View All JSON</a>
             {% if scan.case_id %}
             <form method="POST" action="{{ url_for('cms.spiderfoot_import_results', scan_id=scan.id) }}" style="display: inline;">
@@ -114,32 +115,66 @@ setInterval(refreshScan, 30000);
             {% endif %}
         </div>
     </div>
+    <div class="search-bar">
+        <input type="text" id="resultFilter" placeholder="Filter results..." oninput="filterResults(this.value)">
+    </div>
     
     {% if results %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Type</th>
-                <th>Data</th>
-                <th>Source Module</th>
-                <th>Source URL</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in results %}
-            <tr>
-                <td><span class="type-badge">{{ result.type }}</span></td>
-                <td class="result-data">{{ result.data|truncate(100) if result.data else result.dataTransformed|truncate(100) if result.dataTransformed else 'N/A' }}</td>
-                <td>{{ result.sourceModule }}</td>
-                <td>
-                    {% if result.sourceUrl %}
-                    <a href="{{ result.sourceUrl }}" target="_blank" rel="noopener">Link</a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="results-list" id="resultsList">
+        {% set grouped = results|groupby('type') %}
+        {% for group, items in grouped %}
+        <div class="result-group" data-type="{{ group }}">
+            <div class="result-group-header" onclick="toggleGroup(this)">
+                <span class="result-group-title">
+                    <span class="type-icon type-{{ group.lower()[:10] }}">{{ group[:2] }}</span>
+                    <strong>{{ group }}</strong>
+                    <span class="badge badge-count">{{ items|length }}</span>
+                </span>
+                <span class="toggle-icon">▾</span>
+            </div>
+            <div class="result-group-body">
+                {% if group == 'ACCOUNT' %}
+                <div class="account-grid">
+                    {% for item in items %}
+                    {% set profile_url = (item.data or item.dataTransformed or item.value or '')|string %}
+                    {% set platform = profile_url|platform_name %}
+                    {% set platform_color = profile_url|platform_color %}
+                    <a href="{{ profile_url }}" target="_blank" rel="noopener" class="account-card" style="--accent: {{ platform_color }};">
+                        <div class="account-icon">{{ platform[:2]|upper }}</div>
+                        <div class="account-info">
+                            <span class="account-platform">{{ platform }}</span>
+                            <span class="account-username">{{ profile_url|replace('https://', '')|replace('http://', '')|truncate(40) }}</span>
+                        </div>
+                        <span class="account-arrow">↗</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                {% for item in items %}
+                <div class="result-item">
+                    <div class="result-main">
+                        <span class="result-data">{{ (item.data or item.dataTransformed or item.value or '')|string|truncate(150) }}</span>
+                        {% set display_val = (item.data or item.dataTransformed or item.value or '')|string %}
+                        {% if display_val %}
+                        <span class="result-value">{{ display_val|result_link(group) }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="result-meta">
+                        <span class="result-source">{{ item.sourceModule or '?' }}</span>
+                        {% if item.sourceUrl %}
+                        <a href="{{ item.sourceUrl }}" target="_blank" rel="noopener" class="result-url">🔗 Source</a>
+                        {% endif %}
+                        {% if item.timestamp %}
+                        <span class="result-time">{{ item.timestamp }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
     {% else %}
     <p class="text-muted">No results found</p>
     {% endif %}
@@ -207,31 +242,6 @@ setInterval(refreshScan, 30000);
 .summary-count {
     font-weight: bold;
 }
-.type-badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    background: var(--info-bg);
-    color: var(--info-text);
-    border-radius: 4px;
-    font-size: 0.75rem;
-}
-.result-data {
-    max-width: 400px;
-    word-break: break-all;
-}
-.table {
-    width: 100%;
-    border-collapse: collapse;
-}
-.table th, .table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-}
-.table th {
-    font-weight: bold;
-    background: var(--bg-secondary);
-}
 .progress-bar {
     height: 8px;
     background: var(--bg-secondary);
@@ -265,6 +275,11 @@ setInterval(refreshScan, 30000);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-size: 0.75rem;
+}
+.badge-count {
+    background: var(--bg-secondary);
+    font-size: 0.7rem;
+    margin-left: 0.5rem;
 }
 .btn {
     display: inline-block;
@@ -302,5 +317,222 @@ setInterval(refreshScan, 30000);
 .text-muted {
     color: var(--text-secondary);
 }
+
+/* Result List Styles */
+.search-bar {
+    margin-bottom: 1rem;
+}
+.search-bar input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    box-sizing: border-box;
+}
+.result-group {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+.result-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+.result-group-header:hover {
+    opacity: 0.8;
+}
+.result-group-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.type-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: bold;
+    color: white;
+    flex-shrink: 0;
+}
+.type-emailaddr { background: #4a90d9; }
+.type-domain_nam { background: #27ae60; }
+.type-internet_n { background: #2c3e50; }
+.type-ip_address { background: #8e44ad; }
+.type-phone_numb { background: #e67e22; }
+.type-interne_1 { background: #16a085; }
+.type-dns_record { background: #7f8c8d; }
+.type-netblock_m { background: #c0392b; }
+.type-human_name { background: #2980b9; }
+.type-account { background: #f39c12; }
+.type-username { background: #d35400; }
+.type-social_med { background: #3498db; }
+.type-btc { background: #f7931a; }
+.type-company_n { background: #1abc9c; }
+.type-physical_a { background: #e74c3c; }
+.type-webserver_ { background: #95a5a6; }
+.type-affiliate_ { background: #9b59b6; }
+.type-co-hosted_ { background: #34495e; }
+.type-leak { background: #c0392b; }
+.type-breach { background: #e74c3c; }
+
+.toggle-icon {
+    font-size: 0.8rem;
+    transition: transform 0.2s;
+    color: var(--text-secondary);
+}
+.result-group-header.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+.result-group-body {
+    padding: 0;
+}
+.result-group-header.collapsed + .result-group-body {
+    display: none;
+}
+.result-item {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+}
+.result-item:hover {
+    background: var(--bg-secondary);
+}
+.result-data {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    word-break: break-all;
+}
+.result-value {
+    display: block;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+.result-value a {
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+.result-value a:hover {
+    text-decoration: underline;
+}
+.result-meta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+.result-source {
+    background: var(--bg-secondary);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-family: monospace;
+}
+.result-url {
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+.result-url:hover {
+    text-decoration: underline;
+}
+.result-time {
+    color: var(--text-secondary);
+}
+
+/* Account Card Grid */
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+    padding: 0.75rem;
+}
+.account-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s;
+    background: var(--bg-primary);
+}
+.account-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+    transform: translateY(-1px);
+}
+.account-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+.account-info {
+    flex: 1;
+    min-width: 0;
+}
+.account-platform {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.account-username {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+.account-arrow {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.account-card:hover .account-arrow {
+    opacity: 1;
+}
 </style>
+<script>
+function toggleGroup(header) {
+    header.classList.toggle('collapsed');
+}
+function filterResults(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('.result-group').forEach(group => {
+        const items = group.querySelectorAll('.result-item');
+        let visible = 0;
+        items.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            const match = !q || text.includes(q);
+            item.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        group.style.display = visible > 0 ? '' : 'none';
+        group.querySelector('.badge-count').textContent = visible;
+    });
+}
+</script>
 {% endblock %}

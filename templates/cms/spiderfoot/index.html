@@ -73,52 +73,44 @@
 <div class="section">
     <h2>Recent Scans</h2>
     {% if recent_scans %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Scan Name</th>
-                <th>Target</th>
-                <th>Profile</th>
-                <th>Status</th>
-                <th>Progress</th>
-                <th>Created</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for scan in recent_scans %}
-            <tr>
-                <td>
-                    <a href="{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}">
-                        {{ scan.scan_name or 'Scan' }}
-                    </a>
-                </td>
-                <td>{{ scan.target_value }}</td>
-                <td>{{ scan.profile or scan.use_case }}</td>
-                <td>
-                    {% set status_lower = scan.status|lower if scan.status else '' %}
-                    <span class="badge badge-{% if status_lower in ['completed', 'finished'] %}success{% elif status_lower == 'running' %}info{% elif status_lower in ['failed', 'error'] %}danger{% else %}warning{% endif %}">
-                        {{ scan.status }}
-                    </span>
-                </td>
-                <td>
-                    {% if scan.status == 'running' %}
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: {{ scan.progress }}%"></div>
-                    </div>
-                    <span class="text-small">{{ scan.progress }}%</span>
-                    {% else %}
-                    {{ scan.result_count }} results
-                    {% endif %}
-                </td>
-                <td>{{ scan.created_at.strftime('%Y-%m-%d %H:%M') if scan.created_at else 'N/A' }}</td>
-                <td>
-                    <a href="{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}" class="btn btn-small">View</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="scan-list">
+        {% for scan in recent_scans %}
+        {% if scan is mapping %}
+        {% set sid = scan.scan_id %}
+        {% set sl = (scan.status or '')|lower %}
+        <a href="{{ url_for('cms.spiderfoot_scan_status', scan_id=sid) }}" class="scan-card">
+            <div class="scan-card-top">
+                <span class="scan-name">{{ scan.scan_name or 'Scan' }}</span>
+                <span class="scan-badge badge-{{ 'success' if sl in ['completed', 'finished'] else 'info' if sl == 'running' else 'danger' if sl in ['failed', 'error'] else 'warning' }}">{{ scan.status }}</span>
+            </div>
+            <div class="scan-card-meta">
+                <span class="scan-detail">🎯 {{ scan.target_value }}</span>
+                <span class="scan-detail">📊 {{ scan.result_count or 0 }} results</span>
+                <span class="scan-detail">🕐 {{ scan.created_at[:10] if scan.created_at else '' }}</span>
+            </div>
+        </a>
+        {% else %}
+        {% set sl = (scan.status or '')|lower %}
+        <a href="{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}" class="scan-card">
+            <div class="scan-card-top">
+                <span class="scan-name">{{ scan.scan_name or 'Scan' }}</span>
+                <span class="scan-badge badge-{{ 'success' if sl in ['completed', 'finished'] else 'info' if sl == 'running' else 'danger' if sl in ['failed', 'error'] else 'warning' }}">{{ scan.status }}</span>
+            </div>
+            <div class="scan-card-meta">
+                <span class="scan-detail">🎯 {{ scan.target_value }}</span>
+                {% if sl == 'running' %}
+                <span class="scan-detail">
+                    <span class="progress-dot"></span> {{ scan.progress }}%
+                </span>
+                {% else %}
+                <span class="scan-detail">📊 {{ scan.result_count or 0 }} results</span>
+                {% endif %}
+                <span class="scan-detail">🕐 {{ scan.created_at.strftime('%Y-%m-%d %H:%M') if scan.created_at else '' }}</span>
+            </div>
+        </a>
+        {% endif %}
+        {% endfor %}
+    </div>
     {% else %}
     <p class="text-muted">No scans yet. <a href="{{ url_for('cms.spiderfoot_scan') }}">Start your first scan</a></p>
     {% endif %}
@@ -149,6 +141,33 @@
 </div>
 
 <style>
+.stats-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.stat-card {
+    flex: 1;
+    min-width: 120px;
+    background: var(--bg-card);
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
 .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -168,6 +187,77 @@
     margin: 0.25rem 0;
     color: var(--text-secondary);
 }
+
+/* Scan Card List */
+.scan-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+}
+.scan-card {
+    display: block;
+    padding: 1rem 1.25rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s;
+}
+.scan-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 2px 8px var(--shadow);
+    transform: translateY(-1px);
+}
+.scan-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.scan-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+.scan-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+}
+.badge-success { background: var(--success-bg); color: var(--success-text); }
+.badge-danger { background: var(--danger-bg); color: var(--danger-text); }
+.badge-info { background: var(--info-bg); color: var(--info-text); }
+.badge-warning { background: var(--warning-bg); color: var(--warning-text); }
+.scan-card-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+.scan-detail {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+.progress-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--info-bg);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
 .btn {
     display: inline-block;
     padding: 0.5rem 1rem;
@@ -180,9 +270,7 @@
 .btn:hover {
     background: var(--accent-hover);
 }
-.btn-primary {
-    background: var(--accent-primary);
-}
+.btn-primary { background: var(--accent-primary); }
 .btn-secondary {
     background: var(--bg-secondary);
     color: var(--text-primary);
@@ -192,72 +280,7 @@
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
 }
-.badge-success {
-    background: var(--success-bg);
-    color: var(--success-text);
-}
-.badge-danger {
-    background: var(--danger-bg);
-    color: var(--danger-text);
-}
-.badge-info {
-    background: var(--info-bg);
-    color: var(--info-text);
-}
-.badge-warning {
-    background: var(--warning-bg);
-    color: var(--warning-text);
-}
-.progress-bar {
-    height: 8px;
-    background: var(--bg-secondary);
-    border-radius: 4px;
-    overflow: hidden;
-}
-.progress-fill {
-    height: 100%;
-    background: var(--accent-primary);
-}
-.text-small {
-    font-size: 0.75rem;
-}
-.text-muted {
-    color: var(--text-secondary);
-}
-.info-card {
-    background: var(--bg-card);
-    padding: 1.25rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
-}
-.info-item {
-    display: flex;
-    flex-direction: column;
-}
-.info-item label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-}
-.stats-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 1rem;
-    margin: 1rem 0;
-}
-.stat-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-}
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-}
+.text-small { font-size: 0.75rem; }
+.text-muted { color: var(--text-secondary); }
 </style>
 {% endblock %}

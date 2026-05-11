@@ -542,6 +542,15 @@ find . -type d -name __pycache__ -exec rm -rf {} +
 find . -name "*.pyc" -delete
 ```
 
+### Clean Up Logs
+
+Log files (`spiderfoot.log`, `app.log`) groeien na verloop van tijd. Logrotate ruimt ze automatisch op, maar je kunt ook handmatig leegmaken:
+
+```bash
+# Vanuit de monitor directory:
+: > spiderfoot.log && : > app.log
+```
+
 ---
 
 ## Changelog

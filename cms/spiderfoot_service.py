@@ -595,12 +595,32 @@ class SpiderFootService:
             return result
         
         if isinstance(result, list) and len(result) >= 3:
+            data_raw = result[1] if len(result) > 1 else None
+            source_url = None
+            clean_data = None
+            
+            if data_raw and isinstance(data_raw, str):
+                import html
+                import re
+                # Unescape HTML entities first (SpiderFoot escapes < > in data)
+                data_raw = html.unescape(data_raw)
+                # Parse <SFURL> tags and extract URL
+                url_match = re.search(r'<SFURL>(.*?)</SFURL>', data_raw)
+                if url_match:
+                    source_url = url_match.group(1)
+                    clean_data = re.sub(r'<SFURL>.*?</SFURL>', '', data_raw).strip()
+                    clean_data = re.sub(r'\n+', ' | ', clean_data).strip(' |').strip()
+                else:
+                    clean_data = data_raw
+            
             return {
                 'timestamp': result[0] if len(result) > 0 else None,
-                'data': result[1] if len(result) > 1 else None,
+                'data': clean_data or data_raw,
+                'dataTransformed': source_url or (result[2] if len(result) > 2 else None),
                 'value': result[2] if len(result) > 2 else None,
                 'sourceModule': result[3] if len(result) > 3 else None,
-                'type': result[-1] if result else 'UNKNOWN',  # type is usually last
+                'type': result[-1] if result else 'UNKNOWN',
+                'sourceUrl': source_url,
                 'raw': result
             }
         

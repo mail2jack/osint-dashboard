@@ -30,74 +30,45 @@
 </div>
 
 {% if scans %}
-<table class="table">
-    <thead>
-        <tr>
-            <th>Scan Name</th>
-            <th>Target</th>
-            <th>Type</th>
-            <th>Profile</th>
-            <th>Status</th>
-            <th>Results</th>
-            <th>Case</th>
-            <th>Created</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for scan in scans %}
-        {% set status_lower = scan.status|lower if scan.status else '' %}
-        <tr>
-            <td>
-                <a href="{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}">
-                    {{ scan.scan_name or 'Scan' }}
-                </a>
-            </td>
-            <td>{{ scan.target_value }}</td>
-            <td><span class="type-badge">{{ scan.target_type }}</span></td>
-            <td>{{ scan.profile or scan.use_case }}</td>
-            <td>
-                <span class="badge badge-{% if status_lower in ['completed', 'finished'] %}success{% elif status_lower == 'running' %}info{% elif status_lower in ['failed', 'error'] %}danger{% else %}warning{% endif %}">
-                    {{ scan.status }}
-                </span>
-                {% if status_lower == 'running' %}
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {{ scan.progress }}%"></div>
-                </div>
-                {% endif %}
-            </td>
-            <td>
-                {% if scan.result_count > 0 %}
-                {{ scan.result_count }}
-                {% else %}
-                -
-                {% endif %}
-            </td>
-            <td>
-                {% if scan.case_id %}
-                <a href="{{ url_for('cms.view_case', case_id=scan.case_id) }}">{{ scan.case.case_number if scan.case else scan.case_id[:8] }}</a>
-                {% else %}
-                -
-                {% endif %}
-            </td>
-            <td>{{ scan.created_at.strftime('%Y-%m-%d %H:%M') if scan.created_at else 'N/A' }}</td>
-            <td>
-                <a href="{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}" class="btn btn-small">View</a>
-                {% if scan.status == 'running' %}
-                <form method="POST" action="{{ url_for('cms.spiderfoot_stop_scan', scan_id=scan.id) }}" style="display: inline;">
-                    <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Stop scan?')">Stop</button>
-                </form>
-                {% endif %}
-                {% if current_user.is_admin and scan.status != 'running' %}
-                <form method="POST" action="{{ url_for('cms.spiderfoot_delete_scan', scan_id=scan.id) }}" style="display: inline;">
-                    <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this scan record?')">Delete</button>
-                </form>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="scan-list">
+    {% for scan in scans %}
+    {% set sl = (scan.status or '')|lower %}
+    <a href="{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}" class="scan-card">
+        <div class="scan-card-top">
+            <span class="scan-name">{{ scan.scan_name or 'Scan' }}</span>
+            <span class="scan-badge badge-{{ 'success' if sl in ['completed', 'finished'] else 'info' if sl == 'running' else 'danger' if sl in ['failed', 'error'] else 'warning' }}">{{ scan.status }}</span>
+        </div>
+        <div class="scan-card-meta">
+            <span class="scan-detail">🎯 {{ scan.target_value }}</span>
+            <span class="scan-detail">📁 {{ scan.target_type or '?' }}</span>
+            {% if sl == 'running' %}
+            <span class="scan-detail">
+                <span class="progress-dot"></span> {{ scan.progress }}%
+            </span>
+            {% else %}
+            <span class="scan-detail">📊 {{ scan.result_count or 0 }} results</span>
+            {% endif %}
+            <span class="scan-detail">🕐 {{ scan.created_at.strftime('%Y-%m-%d %H:%M') if scan.created_at else '' }}</span>
+            {% if scan.case %}
+            <span class="scan-detail">📋 {{ scan.case.case_number if scan.case else '' }}</span>
+            {% endif %}
+        </div>
+        <div class="scan-card-actions">
+            <span class="btn btn-small" onclick="event.stopPropagation(); window.location.href='{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}'">View</span>
+            {% if scan.status == 'running' %}
+            <form method="POST" action="{{ url_for('cms.spiderfoot_stop_scan', scan_id=scan.id) }}" style="display: inline;" onclick="event.stopPropagation()">
+                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Stop scan?')">Stop</button>
+            </form>
+            {% endif %}
+            {% if current_user.is_admin and scan.status != 'running' %}
+            <form method="POST" action="{{ url_for('cms.spiderfoot_delete_scan', scan_id=scan.id) }}" style="display: inline;" onclick="event.stopPropagation()">
+                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this scan record?')">Delete</button>
+            </form>
+            {% endif %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
 
 {% if pagination.pages > 1 %}
 <div class="pagination">
@@ -131,6 +102,13 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.quick-links {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
 }
 .filters {
     margin-bottom: 1rem;
@@ -149,57 +127,88 @@
     background: var(--bg-card);
     color: var(--text-primary);
 }
-.table {
-    width: 100%;
-    border-collapse: collapse;
+.scan-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
 }
-.table th, .table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
+.scan-card {
+    display: block;
+    padding: 1rem 1.25rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s;
 }
-.table th {
-    font-weight: bold;
-    background: var(--bg-secondary);
+.scan-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 2px 8px var(--shadow);
+    transform: translateY(-1px);
 }
-.table tr:hover {
-    background: var(--table-hover);
+.scan-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
 }
-.type-badge {
+.scan-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+.scan-badge {
     display: inline-block;
-    padding: 0.25rem 0.5rem;
-    background: var(--info-bg);
-    color: var(--info-text);
+    padding: 0.2rem 0.6rem;
     border-radius: 4px;
     font-size: 0.7rem;
-}
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
 }
 .badge-success { background: var(--success-bg); color: var(--success-text); }
 .badge-danger { background: var(--danger-bg); color: var(--danger-text); }
 .badge-info { background: var(--info-bg); color: var(--info-text); }
 .badge-warning { background: var(--warning-bg); color: var(--warning-text); }
-.progress-bar {
-    height: 4px;
-    background: var(--bg-secondary);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 0.25rem;
-    width: 60px;
+.scan-card-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
 }
-.progress-fill {
-    height: 100%;
-    background: var(--accent-primary);
+.scan-detail {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+.progress-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--info-bg);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+.scan-card-actions {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.5rem;
 }
 .pagination {
     display: flex;
     gap: 0.5rem;
     justify-content: center;
     margin-top: 1rem;
+    flex-wrap: wrap;
 }
 .pagination a, .pagination span {
     padding: 0.5rem 0.75rem;

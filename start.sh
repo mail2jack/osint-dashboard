@@ -283,20 +283,24 @@ start_spiderfoot() {
     
     print_info "Starting SpiderFoot on port $port..."
     cd "$SF_DIR"
-    python3 ./sf.py -l 127.0.0.1:$port >> "$SF_LOG" 2>&1 &
+    python3 ./sf.py -l 127.0.0.1:$port > "$SF_LOG" 2>&1 &
+
     echo $! > "$SF_PID_FILE"
     save_sf_port "$port"
     
     sleep 2
     
-    # Verify it started
-    if is_port_in_use $port; then
-        print_success "SpiderFoot started on http://localhost:$port"
-        return 0
-    else
-        print_error "SpiderFoot failed to start. Check $SF_LOG"
-        return 1
-    fi
+    # Verify it started with retries
+    for i in 1 2 3 4 5; do
+        if is_port_in_use $port; then
+            print_success "SpiderFoot started on http://localhost:$port"
+            return 0
+        fi
+        sleep 2
+    done
+    
+    print_error "SpiderFoot failed to start. Check $SF_LOG"
+    return 1
 }
 
 start_iveras() {
@@ -316,14 +320,17 @@ start_iveras() {
     
     sleep 3
     
-    # Verify it started
-    if is_port_in_use $port; then
-        print_success "Iveras started on http://localhost:$port"
-        return 0
-    else
-        print_error "Iveras failed to start. Check $APP_LOG"
-        return 1
-    fi
+    # Verify it started with retries
+    for i in 1 2 3 4 5; do
+        if is_port_in_use $port; then
+            print_success "Iveras started on http://localhost:$port"
+            return 0
+        fi
+        sleep 2
+    done
+    
+    print_error "Iveras failed to start. Check $APP_LOG"
+    return 1
 }
 
 update_spiderfoot_config() {

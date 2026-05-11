@@ -100,6 +100,143 @@ from cms import create_cms_module
 create_cms_module(app)
 logger.info("CMS initialized successfully")
 
+@app.template_filter('urlize_target')
+def urlize_target_filter(text):
+    if not text:
+        return ''
+    import re
+    text = str(text)
+    url_pattern = re.compile(r'(https?://[^\s<>"\'\]\)]+|www\.[^\s<>"\'\]\)]+)')
+    def make_url(m):
+        url = m.group(1)
+        href = url if url.startswith('http') else f'https://{url}'
+        return f'<a href="{href}" target="_blank" rel="noopener">{url}</a>'
+    return url_pattern.sub(make_url, text)
+
+@app.template_filter('result_link')
+def result_link_filter(data, type_name):
+    if not data:
+        return ''
+    data = str(data)
+    type_links = {
+        'EMAILADDR': lambda v: f'<a href="mailto:{v}" target="_blank">{v}</a>',
+        'DOMAIN_NAME': lambda v: f'<a href="https://{v}" target="_blank" rel="noopener">{v} ↗</a>',
+        'INTERNET_NAME': lambda v: f'<a href="https://{v}" target="_blank" rel="noopener">{v} ↗</a>',
+        'IP_ADDRESS': lambda v: f'<a href="https://www.shodan.io/host/{v}" target="_blank" rel="noopener">{v} 🔍</a>',
+        'IPV6_ADDRESS': lambda v: f'<a href="https://www.shodan.io/host/{v}" target="_blank" rel="noopener">{v} 🔍</a>',
+        'PHONE_NUMBER': lambda v: f'<a href="tel:{v}" target="_blank">{v}</a>',
+        'URL': lambda v: f'<a href="{v}" target="_blank" rel="noopener">{v} ↗</a>',
+        'BITCOIN_ADDRESS': lambda v: f'<a href="https://www.blockchain.com/explorer/address/btc/{v}" target="_blank" rel="noopener">{v[:16]}... 🔍</a>',
+    }
+    fn = type_links.get(type_name)
+    if fn:
+        return fn(data)
+    url_pattern = re.compile(r'(https?://[^\s<>"\'\]\)]+)')
+    if url_pattern.search(data):
+        return urlize_target_filter(data)
+    return data
+
+@app.template_filter('platform_name')
+def platform_name_filter(url):
+    if not url:
+        return 'Website'
+    url = str(url).lower()
+    platforms = {
+        'facebook.com': 'Facebook', 'fb.com': 'Facebook',
+        'twitter.com': 'X (Twitter)', 'x.com': 'X (Twitter)',
+        'instagram.com': 'Instagram',
+        'linkedin.com': 'LinkedIn',
+        'youtube.com': 'YouTube', 'youtu.be': 'YouTube',
+        'tiktok.com': 'TikTok',
+        'snapchat.com': 'SnapChat',
+        'reddit.com': 'Reddit',
+        'pinterest.com': 'Pinterest',
+        'tumblr.com': 'Tumblr',
+        'whatsapp.com': 'WhatsApp',
+        'telegram.org': 'Telegram', 't.me': 'Telegram',
+        'discord.com': 'Discord', 'discord.gg': 'Discord',
+        'github.com': 'GitHub',
+        'gitlab.com': 'GitLab',
+        'bitbucket.org': 'Bitbucket',
+        'stackoverflow.com': 'StackOverflow',
+        'medium.com': 'Medium',
+        'wordpress.com': 'WordPress',
+        'blogspot.com': 'Blogger',
+        'patreon.com': 'Patreon',
+        'kickstarter.com': 'Kickstarter',
+        'etsy.com': 'Etsy',
+        'amazon.com': 'Amazon',
+        'ebay.com': 'eBay',
+        'paypal.com': 'PayPal',
+        'venmo.com': 'Venmo',
+        'spotify.com': 'Spotify',
+        'soundcloud.com': 'SoundCloud',
+        'twitch.tv': 'Twitch',
+        'flickr.com': 'Flickr',
+        'deviantart.com': 'DeviantArt',
+        'behance.net': 'Behance',
+        'dribbble.com': 'Dribbble',
+        'vimeo.com': 'Vimeo',
+        'imdb.com': 'IMDb',
+        'foursquare.com': 'Foursquare',
+        'meetup.com': 'Meetup',
+        'quora.com': 'Quora',
+        'about.me': 'About.me',
+        'angel.co': 'AngelList',
+        'crunchbase.com': 'CrunchBase',
+        'keybase.io': 'Keybase',
+        'gravatar.com': 'Gravatar',
+        'last.fm': 'Last.fm',
+        'myspace.com': 'MySpace',
+        'weibo.com': 'Weibo',
+        'vk.com': 'VK',
+        'ok.ru': 'Odnoklassniki',
+        'telegram.org': 'Telegram',
+        'signal.org': 'Signal',
+        'slack.com': 'Slack',
+        'trello.com': 'Trello',
+    }
+    for domain, name in platforms.items():
+        if domain in url:
+            return name
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc or parsed.path
+        domain = domain.replace('www.', '').split('.')[0].capitalize()
+        return domain if domain else 'Website'
+    except:
+        return 'Website'
+
+@app.template_filter('platform_color')
+def platform_color_filter(url):
+    if not url:
+        return '#666'
+    url = str(url).lower()
+    colors = {
+        'facebook': '#1877F2', 'twitter': '#1DA1F2', 'x.com': '#000000',
+        'instagram': '#E4405F', 'linkedin': '#0A66C2',
+        'youtube': '#FF0000', 'tiktok': '#000000',
+        'reddit': '#FF4500', 'pinterest': '#E60023',
+        'github': '#181717', 'snapchat': '#FFFC00',
+        'twitch': '#9146FF', 'discord': '#5865F2',
+        'telegram': '#26A5E4', 'whatsapp': '#25D366',
+        'spotify': '#1DB954', 'medium': '#000000',
+        'tumblr': '#36465D', 'flickr': '#0063DC',
+        'deviantart': '#05CC47', 'behance': '#1769FF',
+        'dribbble': '#EA4C89', 'vimeo': '#1AB7EA',
+        'vk': '#4A76A8', 'weibo': '#E6162D',
+        'etsy': '#F16521', 'ebay': '#E53238',
+        'paypal': '#00457C', 'amazon': '#FF9900',
+        'imdb': '#F5C518', 'quora': '#B92B27',
+        'keybase': '#33A0FF', 'gravatar': '#1E8CBE',
+        'wordpress': '#21759B', 'blogspot': '#F57D00',
+    }
+    for key, color in colors.items():
+        if key in url:
+            return color
+    return '#666'
+
 # =============================================================================
 # End CMS Integration
 # =============================================================================

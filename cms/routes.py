@@ -5407,9 +5407,9 @@ def get_spiderfoot_config():
     """Get SpiderFoot configuration from settings."""
     from .spiderfoot_service import SpiderFootConfig, SpiderFootService
     
-    base_url = Setting.get('spiderfoot_url', 'http://localhost:5001')
-    username = Setting.get('spiderfoot_username', 'admin')
-    password = Setting.get('spiderfoot_password', '')
+    base_url = Setting.get('spiderfoot_url', 'http://localhost:5001') or 'http://localhost:5001'
+    username = Setting.get('spiderfoot_username', 'admin') or 'admin'
+    password = Setting.get('spiderfoot_password', '') or ''
     
     return SpiderFootConfig(
         base_url=base_url,
@@ -5434,18 +5434,92 @@ def spiderfoot_index():
     available = sf_service.is_available() if sf_service else False
     server_info = sf_service.get_server_info() if sf_service and available else None
     
-    # Get recent scans
-    recent_scans = SpiderFootScan.query.filter_by(
+    db.session.rollback()  # Clear any stale state from previous requests
+    
+    db_scans = SpiderFootScan.query.filter_by(
         is_deleted=False
     ).order_by(SpiderFootScan.created_at.desc()).limit(10).all()
     
-    # Get scans grouped by status
-    status_counts = {
+    # Also fetch scans directly from SpiderFoot API and merge
+    sf_scans = []
+    if available:
+        try:
+            sf_scans = sf_service.get_scan_list() or []
+        except:
+            pass
+    
+    # Merge: DB scan IDs we already have
+    db_sf_ids = {s.scan_id for s in db_scans}
+    
+    # Add SF API scans not yet in DB (as dicts for template)
+    recent_scans = list(db_scans)
+    for sf_scan in sf_scans:
+        if isinstance(sf_scan, list) and len(sf_scan) >= 7:
+            sf_id = sf_scan[0]
+            if sf_id and sf_id not in db_sf_ids:
+                status_raw = sf_scan[6]
+                api_status = status_raw.lower() if status_raw else 'unknown'
+                mapped_status = {'finished': 'completed', 'error': 'failed', 'aborted': 'cancelled'}.get(api_status, api_status)
+                recent_scans.append({
+                    'id': sf_id,
+                    'scan_id': sf_id,
+                    'scan_name': sf_scan[1] if len(sf_scan) > 1 else 'SpiderFoot Scan',
+                    'target_value': sf_scan[2] if len(sf_scan) > 2 else '',
+                    'target_type': '',
+                    'status': mapped_status,
+                    'progress': 100 if mapped_status == 'completed' else 0,
+                    'result_count': sf_scan[7] if len(sf_scan) > 7 else 0,
+                    'profile': '',
+                    'use_case': '',
+                    'created_at': sf_scan[3] if len(sf_scan) > 3 else None,
+                    'from_spiderfoot': True,
+                })
+        elif isinstance(sf_scan, dict):
+            sf_id = sf_scan.get('scan_id') or sf_scan.get('id')
+            if sf_id and sf_id not in db_sf_ids:
+                recent_scans.append({
+                    'id': sf_id,
+                    'scan_id': sf_id,
+                    'scan_name': sf_scan.get('scan_name', sf_scan.get('title', 'SpiderFoot Scan')),
+                    'target_value': sf_scan.get('target', sf_scan.get('target_value', '')),
+                    'target_type': sf_scan.get('target_type', ''),
+                    'status': (sf_scan.get('status') or '').lower(),
+                    'progress': sf_scan.get('progress', 0),
+                    'result_count': sf_scan.get('resultCount', sf_scan.get('result_count', 0)),
+                    'profile': sf_scan.get('profile', ''),
+                    'use_case': sf_scan.get('use_case', ''),
+                    'created_at': None,
+                    'from_spiderfoot': True,
+                })
+    # Normalize created_at for sorting (convert datetimes to strings for dicts only)
+    for s in recent_scans:
+        if isinstance(s, dict):
+            if isinstance(s.get('created_at'), datetime):
+                s['created_at'] = s['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+    recent_scans.sort(key=lambda s: s.get('created_at', '') if isinstance(s, dict) else (s.created_at.strftime('%Y-%m-%d %H:%M:%S') if s.created_at else ''), reverse=True)
+    recent_scans = recent_scans[:10]
+    
+    # Get status counts including SF scans
+    status_counts = {'running': 0, 'completed': 0, 'pending': 0, 'failed': 0}
+    db_counts = {
         'running': SpiderFootScan.query.filter_by(status='running', is_deleted=False).count(),
         'completed': SpiderFootScan.query.filter_by(status='completed', is_deleted=False).count(),
         'pending': SpiderFootScan.query.filter_by(status='pending', is_deleted=False).count(),
         'failed': SpiderFootScan.query.filter_by(status='failed', is_deleted=False).count(),
     }
+    status_map = {'finished': 'completed', 'running': 'running', 'pending': 'pending', 'failed': 'failed', 'error': 'failed', 'aborted': 'cancelled', 'cancelled': 'cancelled'}
+    for s in sf_scans:
+        if isinstance(s, list) and len(s) >= 7:
+            raw_st = (s[6] or '').lower()
+        elif isinstance(s, dict):
+            raw_st = (s.get('status') or '').lower()
+        else:
+            raw_st = ''
+        mapped_st = status_map.get(raw_st, raw_st)
+        if mapped_st in status_counts:
+            status_counts[mapped_st] += 1
+    for k in status_counts:
+        status_counts[k] += db_counts.get(k, 0)
     
     profiles = SpiderFootService.INVESTIGATION_PROFILES if SpiderFootService else {}
     use_cases = SpiderFootService.USE_CASES if SpiderFootService else {}
@@ -5568,42 +5642,76 @@ def spiderfoot_scan():
 @roles_required('admin', 'senior_investigator')
 def spiderfoot_scan_status(scan_id: str):
     """View SpiderFoot scan status and results."""
-    scan_record = SpiderFootScan.query.get_or_404(scan_id)
+    from datetime import datetime as dt
+
+    # Try Iveras DB record first, fall back to direct SpiderFoot scan ID
+    scan_record = SpiderFootScan.query.get(scan_id)
     
     sf_service = get_spiderfoot_service()
+    if not sf_service:
+        if scan_record:
+            return render_template('cms/spiderfoot/view.html',
+                scan=scan_record, sf_status=None, results=[], result_summary={}, available=False)
+        abort(503)
+    
+    # Determine the actual SpiderFoot scan_id
+    sf_scan_id = scan_record.scan_id if scan_record else scan_id
     
     # Refresh status from SpiderFoot
-    sf_status = sf_service.get_scan_status(scan_record.scan_id)
+    sf_status = sf_service.get_scan_status(sf_scan_id)
     
     if sf_status:
         status = sf_status.get('status', 'unknown')
-        status_lower = status.lower()  # Normalize to lowercase
+        status_lower = status.lower()
         progress = sf_status.get('progress', 0)
-        scan_record.status = status
-        scan_record.progress = progress
         
-        # Map SpiderFoot status to our status
+        # Create or update DB record
+        if not scan_record:
+            scan_record = SpiderFootScan(
+                id=scan_id,
+                scan_id=sf_scan_id,
+                scan_name=sf_status.get('scan_name', sf_status.get('title', f'Scan {sf_scan_id[:8]}')),
+                target_value=sf_status.get('target', sf_status.get('target_value', '')),
+                target_type=sf_status.get('target_type', ''),
+                status=status,
+                progress=progress,
+                created_by='system'
+            )
+            scan_record.created_at = dt.utcnow()
+            db.session.add(scan_record)
+        else:
+            scan_record.status = status
+            scan_record.progress = progress
+        
+        # Map status
         if status_lower in ['completed', 'finished']:
             scan_record.update_status('completed')
         elif status_lower == 'running':
-            pass  # Keep running status
+            scan_record.update_status('running', progress)
         elif status_lower in ['failed', 'error']:
             scan_record.update_status('failed')
         elif status_lower in ['aborted', 'cancelled']:
             scan_record.update_status('cancelled')
         
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     
     # Get results if completed
     results = []
     result_summary = {}
-    status_lower = scan_record.status.lower() if scan_record.status else ''
+    status_lower = (scan_record.status or '').lower()
     if status_lower in ['completed', 'finished']:
-        results = sf_service.get_scan_results(scan_record.scan_id, limit=5000)
+        results = sf_service.get_scan_results(sf_scan_id, limit=5000)
         result_summary = sf_service.get_result_summary(results)
-        scan_record.result_count = len(results)
-        scan_record.result_summary = result_summary
-        db.session.commit()
+        if scan_record:
+            scan_record.result_count = len(results)
+            scan_record.result_summary = result_summary
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
     
     return render_template('cms/spiderfoot/view.html',
         scan=scan_record,
