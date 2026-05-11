@@ -1,7 +1,7 @@
 # Iveras OSINT Case Management System - Manual
 
-**Version:** 3.0.0  
-**Last Updated:** April 2026
+**Version:** 3.1.0  
+**Last Updated:** May 2026
 
 ---
 
@@ -16,7 +16,8 @@
 7. [Subjects](#subjects)
 8. [Search](#search)
 9. [OSINT Tools](#osint-tools)
-10. [Face Recognition](#face-recognition)
+10. [SpiderFoot Integration](#spiderfoot-integration)
+11. [Face Recognition](#face-recognition)
 11. [Vehicle Data (RDW)](#vehicle-data-rdw)
 12. [Reminders](#reminders)
 13. [Settings](#settings)
@@ -43,6 +44,7 @@ Iveras OSINT Case Management System combines open-source intelligence gathering 
 - **Vehicle Data** - Dutch RDW vehicle registry lookup
 - **Social Media ID** - Extract social media IDs from profile pages
 - **Screenshot Capture** - Save and manage evidence screenshots
+- **SpiderFoot Integration** - OSINT scanning via local SpiderFoot instance
 - **Reminders** - Set follow-up reminders for cases and subjects
 - **Audit Logging** - Track all user actions for compliance
 - **Role-Based Access** - Admin, Senior Investigator, Junior Investigator roles
@@ -267,6 +269,95 @@ After OSINT search:
 2. Select relevant findings
 3. Click **Add Selected to Findings**
 4. Findings are saved to the case
+
+---
+
+## SpiderFoot Integration
+
+SpiderFoot is een open-source OSINT tool die automatisch informatie verzamelt over domains, emailadressen, IPs, en meer. De Iveras CMS integreert met een lokale SpiderFoot instance.
+
+### Setup
+
+1. **Clone SpiderFoot**:
+   ```bash
+   git clone https://github.com/smicallef/spiderfoot.git
+   cd spiderfoot
+   pip3 install -r requirements.txt
+   ```
+
+2. **Start SpiderFoot**:
+   ```bash
+   python3 ./sf.py -l 127.0.0.1:5001
+   ```
+
+3. **Configureer in Iveras**: Ga naar **SpiderFoot** → **Settings** en vul de URL in (`http://localhost:5001`)
+
+### Password Auth (aanbevolen)
+
+```bash
+echo "admin:jouw_wachtwoord" > ~/.spiderfoot/passwd
+# Herstart SpiderFoot
+python3 ./sf.py -l 127.0.0.1:5001
+```
+
+Vul daarna dezelfde credentials in bij Iveras Settings.
+
+### Een Scan Starten
+
+1. Ga naar **SpiderFoot → Start New Scan**
+2. **Target** — typ een domain, email, IP, telefoonnummer, etc.
+   - Het type wordt **automatisch herkend** (bv. `test@email.com` → EMAILADDR)
+   - Of klik op een **Recent Target** om snel een eerder target te herscannen
+3. Kies een **Investigation Profile** (Basic OSINT, Person, Company, etc.)
+4. Kies **Scan Intensity** (Passive wordt aanbevolen)
+5. Optioneel: **Link to Case** om resultaten later te importeren
+6. Klik **Start Scan**
+
+### Tijdens de Scan
+
+- De pagina toont een **progress bar** die automatisch ververst
+- Je krijgt een **browser notificatie** wanneer de scan klaar is
+- Polling elke 10 seconden, geen volledige pagina refresh
+
+### Resultaten Bekijken
+
+Na voltooiing toont de scan pagina:
+
+- **Result Summary** — aantal resultaten per type
+- **Rich Result Cards** — elk resultaat heeft een type-specifiek icoon en kleur:
+  - ✉ Email → blauw
+  - 🌐 Domein → groen
+  - 🌍 IP → paars
+  - 📞 Telefoon → oranje
+  - 👤 Naam → blauw
+  - 🏷 Username → oranje
+  - 🏢 Bedrijf → mint
+  - 📍 Adres → rood
+  - 🔴 Breach → donkerrood
+  - ⚙ Technisch → grijs
+- **📋 Copy-knop** — klik om een waarde te kopiëren
+- **Filter balk** — filter resultaten op tekst
+- **Account Cards** — social media accounts (Pinterest, Facebook, etc.) met platform-specifieke kleuren
+- **Collapsible groepen** — klik op een type header om de groep open/dicht te klappen
+
+### Resultaten Importeren in een Case
+
+Als de scan gelinkt is aan een case, klik **Import to Case** om alle resultaten als findings toe te voegen.
+
+### Alle Scans Bekijken
+
+- **Dashboard** (`/cms/spiderfoot`) — recente scans met status badges
+- **All Scans** (`/cms/spiderfoot/scans`) — volledige lijst met filter- en zoekmogelijkheden
+- **Zoek op dashboard** — filter scans op naam, target of status
+
+### Troubleshooting
+
+| Probleem | Oplossing |
+|----------|-----------|
+| "SpiderFoot Not Connected" | Start SpiderFoot: `python3 sf.py -l 127.0.0.1:5001` |
+| 401 Unauthorized | Check username/password in Iveras Settings |
+| Scan start niet | Check of SpiderFoot draait en of de URL klopt |
+| Geen resultaten | Kies een uitgebreider profile of scan intensity |
 
 ---
 
@@ -524,6 +615,10 @@ Go to **Audit Log** (Admin) to see:
 **"PDF export not working"**
 - Check reportlab is installed: `pip install reportlab`
 
+**"SpiderFoot 401 Unauthorized"**
+- SpiderFoot auth staat aan maar credentials kloppen niet
+- Check `~/.spiderfoot/passwd` en Iveras Settings
+
 ### Database Issues
 
 If you see database errors:
@@ -554,6 +649,29 @@ Log files (`spiderfoot.log`, `app.log`) groeien na verloop van tijd. Logrotate r
 ---
 
 ## Changelog
+
+### Version 3.1.0 - May 2026
+
+**New Features:**
+- SpiderFoot OSINT Integration — scan domains, emails, IPs, phones, etc.
+- SpiderFoot Dashboard met scan cards, status badges, real-time progress
+- Rich result cards met type-specifieke iconen/kleuren per resultaat
+- Copy-to-clipboard buttons op alle resultaten
+- Auto-detect target type bij starten scan (email → EMAILADDR, etc.)
+- Recent targets quick-select knoppen
+- Auto-refresh met browser notificaties tijdens running scans
+- Account cards met platform-specifieke kleuren voor social media resultaten
+- Filter balk op resultaten en scan lijsten
+- SpiderFoot password auth ondersteuning (digest auth)
+- Scan subject pagina met type-specifieke accentkleuren
+
+**Improvements:**
+- Alle spiderfoot pagina's naar card-style layout (i.p.v. tabellen)
+- Stats row compacter gemaakt (Open, Active, Suspended, Closed, etc.)
+- SFURL parsing met HTML entity unescaping in resultaten
+- Error handling — try/except rond SpiderFoot API calls
+- Dashboard search voor scans
+- Logrotate config voor log management
 
 ### Version 3.0.0 - April 2026
 
