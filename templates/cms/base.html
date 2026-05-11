@@ -342,6 +342,9 @@
             <a href="{{ url_for('cms.clients') }}">Clients</a>
             <a href="{{ url_for('cms.subjects') }}">Subjects</a>
             <a href="{{ url_for('cms.reminders') }}">Reminders</a>
+            {% if current_user.has_role('admin', 'senior_investigator') %}
+            <a href="{{ url_for('cms.spiderfoot_index') }}">SpiderFoot</a>
+            {% endif %}
             {% if current_user.is_admin %}
             <a href="{{ url_for('users.list_users') }}">Users</a>
             {% endif %}

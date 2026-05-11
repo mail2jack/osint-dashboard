@@ -1,0 +1,229 @@
+{% extends "cms/base.html" %}
+
+{% block title %}SpiderFoot Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>SpiderFoot Settings</h1>
+    <div class="quick-links">
+        <a href="{{ url_for('cms.spiderfoot_index') }}" class="btn btn-secondary">← Back</a>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Connection Settings</h3>
+    <form method="POST" id="settingsForm">
+        <div class="form-group">
+            <label for="url">SpiderFoot Server URL</label>
+            <input type="url" id="url" name="url" value="{{ settings.url }}" placeholder="http://localhost:5001" required>
+            <p class="help-text">The URL where SpiderFoot is running. Default is http://localhost:5001</p>
+        </div>
+
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" value="{{ settings.username }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" value="{{ settings.password }}" placeholder="Leave blank to keep current password">
+            <p class="help-text">Leave blank to keep the current stored password</p>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+            <button type="button" class="btn btn-secondary" onclick="testConnection()">Test Connection</button>
+        </div>
+    </form>
+</div>
+
+<div id="connectionResult" class="alert" style="display: none;"></div>
+
+<div class="card">
+    <h3>Connection Status</h3>
+    {% if connection_ok %}
+    <div class="status-ok">
+        <span class="status-icon">✓</span>
+        <span>Connected to SpiderFoot server</span>
+    </div>
+    {% if server_info %}
+    <div class="server-info">
+        <p><strong>Version:</strong> {{ server_info.get('version', 'N/A') }}</p>
+        <p><strong>Modules:</strong> {{ server_info.get('moduleCount', server_info.get('modules', 'N/A')) }}</p>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="status-error">
+        <span class="status-icon">✗</span>
+        <span>Could not connect to SpiderFoot server</span>
+    </div>
+    <p class="help-text">Make sure SpiderFoot is running and the URL/credentials are correct.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>How to Install SpiderFoot</h3>
+    <ol>
+        <li><strong>Install SpiderFoot:</strong>
+            <pre>git clone https://github.com/smicallef/spiderfoot.git
+cd spiderfoot
+pip3 install -r requirements.txt</pre>
+        </li>
+        <li><strong>Start SpiderFoot Server:</strong>
+            <pre>python3 ./sf.py -l 127.0.0.1:5001</pre>
+        </li>
+        <li><strong>Access Web UI:</strong> Open http://localhost:5001 in your browser</li>
+        <li><strong>Set Admin Password:</strong> Log in and set an admin password in Settings</li>
+        <li><strong>Configure API Access:</strong> Enable API access if not already enabled</li>
+        <li><strong>Update Iveras Settings:</strong> Enter the URL and credentials above</li>
+    </ol>
+    <p>For more information, visit: <a href="https://www.spiderfoot.org/" target="_blank">https://www.spiderfoot.org/</a></p>
+</div>
+
+<div class="card">
+    <h3>Security Notes</h3>
+    <ul>
+        <li>The password is encrypted before storing</li>
+        <li>SpiderFoot should be on the same network or accessible via VPN</li>
+        <li>Consider firewall rules to restrict access to SpiderFoot</li>
+        <li>API access should be secured with strong credentials</li>
+    </ul>
+</div>
+
+<style>
+.card {
+    background: var(--bg-card);
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.form-group {
+    margin-bottom: 1.5rem;
+}
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+.form-group input {
+    width: 100%;
+    max-width: 400px;
+    padding: 0.75rem;
+    border: 1px solid var(--border-input);
+    border-radius: 4px;
+    font-size: 1rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.help-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+.status-ok, .status-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+.status-ok {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+.status-error {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+.status-icon {
+    font-size: 1.5rem;
+}
+.server-info {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+.server-info p {
+    margin: 0.5rem 0;
+}
+pre {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+}
+.alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+.alert-success {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+.alert-error {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    border: none;
+    cursor: pointer;
+}
+.btn:hover {
+    background: var(--accent-hover);
+}
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+</style>
+
+<script>
+function testConnection() {
+    const form = document.getElementById('settingsForm');
+    const formData = new FormData(form);
+    const resultDiv = document.getElementById('connectionResult');
+    
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'alert';
+    resultDiv.textContent = 'Testing connection...';
+    
+    fetch('{{ url_for("cms.spiderfoot_test_connection") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.className = 'alert alert-success';
+            resultDiv.innerHTML = '<strong>✓ Connection successful!</strong><br>' + 
+                (data.server_info ? 'Server version: ' + data.server_info.version : '');
+            location.reload();
+        } else {
+            resultDiv.className = 'alert alert-error';
+            resultDiv.innerHTML = '<strong>✗ Connection failed:</strong><br>' + data.message;
+        }
+    })
+    .catch(err => {
+        resultDiv.className = 'alert alert-error';
+        resultDiv.textContent = 'Error: ' + err;
+    });
+}
+</script>
+{% endblock %}

@@ -13,9 +13,10 @@ Design Decisions:
 """
 
 import uuid
+import logging
 from datetime import datetime
 from enum import Enum as PyEnum
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
@@ -1272,3 +1273,200 @@ class Reminder(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+# =============================================================================
+# Settings Model
+# =============================================================================
+
+class Setting(db.Model):
+    """
+    Application settings stored in database for easy management.
+    
+    Allows configuration of external services like SpiderFoot.
+    """
+    __tablename__ = 'settings'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    key = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    value = db.Column(db.Text)
+    description = db.Column(db.String(500))
+    category = db.Column(db.String(50), default='general')  # general, spiderfoot, api, etc.
+    is_encrypted = db.Column(db.Boolean, default=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @staticmethod
+    def get(key: str, default: Any = None) -> Any:
+        """Get a setting value by key."""
+        setting = Setting.query.filter_by(key=key).first()
+        if setting is None:
+            return default
+        if setting.is_encrypted:
+            from .encryption_utils import encryptor
+            try:
+                return encryptor.decrypt(setting.value)
+            except:
+                return default
+        return setting.value
+    
+    @staticmethod
+    def set(key: str, value: Any, description: str = None, category: str = 'general', encrypt: bool = False) -> bool:
+        """Set a setting value."""
+        setting = Setting.query.filter_by(key=key).first()
+        
+        if setting is None:
+            setting = Setting(key=key, category=category, description=description)
+            db.session.add(setting)
+        
+        if encrypt and value:
+            from .encryption_utils import encryptor
+            value = encryptor.encrypt(str(value))
+            setting.is_encrypted = True
+        else:
+            setting.value = str(value) if value is not None else None
+            setting.is_encrypted = False
+        
+        if description:
+            setting.description = description
+        if category:
+            setting.category = category
+        
+        setting.updated_at = datetime.utcnow()
+        
+        try:
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Failed to save setting {key}: {e}")
+            return False
+    
+    @staticmethod
+    def get_category(category: str) -> List['Setting']:
+        """Get all settings in a category."""
+        return Setting.query.filter_by(category=category).order_by(Setting.key).all()
+    
+    @staticmethod
+    def delete(key: str) -> bool:
+        """Delete a setting."""
+        setting = Setting.query.filter_by(key=key).first()
+        if setting:
+            db.session.delete(setting)
+            db.session.commit()
+            return True
+        return False
+    
+    def to_dict(self) -> dict:
+        """Serialize setting (doesn't decrypt encrypted values)."""
+        return {
+            'id': self.id,
+            'key': self.key,
+            'value': '[encrypted]' if self.is_encrypted else self.value,
+            'description': self.description,
+            'category': self.category,
+            'is_encrypted': self.is_encrypted,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+# =============================================================================
+# SpiderFoot Scan Model
+# =============================================================================
+
+class SpiderFootScan(db.Model):
+    """
+    Model for tracking SpiderFoot scans linked to Iveras cases.
+    
+    Provides a local record of SpiderFoot scans for audit and linking purposes.
+    """
+    __tablename__ = 'spiderfoot_scans'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # SpiderFoot reference
+    scan_id = db.Column(db.String(100), nullable=False, index=True)  # SpiderFoot's scan ID
+    scan_name = db.Column(db.String(300))
+    
+    # Target information
+    target_value = db.Column(db.String(500), nullable=False)
+    target_type = db.Column(db.String(50))  # DOMAIN_NAME, EMAILADDR, etc.
+    
+    # Iveras linking
+    case_id = db.Column(db.String(36), db.ForeignKey('cases.id'))
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'))
+    
+    # Scan configuration
+    use_case = db.Column(db.String(50), default='passive')
+    profile = db.Column(db.String(50))  # basic, full, threat_hunt, investigation, company
+    module_ids = db.Column(db.JSON)  # List of module IDs used
+    
+    # Status tracking
+    status = db.Column(db.String(50), default='pending')  # pending, running, completed, failed, cancelled
+    progress = db.Column(db.Integer, default=0)  # 0-100
+    
+    # Results summary (cached)
+    result_count = db.Column(db.Integer, default=0)
+    result_summary = db.Column(db.JSON)  # {type: count, ...}
+    
+    # Timing
+    started_at = db.Column(db.DateTime)
+    finished_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Ownership
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
+    creator = db.relationship('User', foreign_keys=[created_by], backref='spiderfoot_scans')
+    
+    # Relationships
+    case = db.relationship('Case', backref='spiderfoot_scans', foreign_keys=[case_id])
+    subject = db.relationship('Subject', backref='spiderfoot_scans', foreign_keys=[subject_id])
+    
+    # Soft delete
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime)
+    
+    def update_status(self, status: str, progress: int = None):
+        """Update scan status."""
+        self.status = status
+        if progress is not None:
+            self.progress = progress
+        if status == 'running' and not self.started_at:
+            self.started_at = datetime.utcnow()
+        elif status in ['completed', 'failed', 'cancelled']:
+            self.finished_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
+    
+    def soft_delete(self):
+        """Soft delete the scan record."""
+        self.is_deleted = True
+        self.deleted_at = datetime.utcnow()
+    
+    def to_dict(self) -> dict:
+        """Serialize scan record."""
+        return {
+            'id': self.id,
+            'scan_id': self.scan_id,
+            'scan_name': self.scan_name,
+            'target_value': self.target_value,
+            'target_type': self.target_type,
+            'case_id': self.case_id,
+            'subject_id': self.subject_id,
+            'use_case': self.use_case,
+            'profile': self.profile,
+            'module_ids': self.module_ids,
+            'status': self.status,
+            'progress': self.progress,
+            'result_count': self.result_count,
+            'result_summary': self.result_summary,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'finished_at': self.finished_at.isoformat() if self.finished_at else None,
+            'created_by': self.created_by,
+            'creator_name': self.creator.full_name if self.creator else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+logger = logging.getLogger(__name__)

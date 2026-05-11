@@ -1,0 +1,197 @@
+{% extends "cms/base.html" %}
+
+{% block title %}Start SpiderFoot Scan{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Start SpiderFoot Scan</h1>
+    <div class="quick-links">
+        <a href="{{ url_for('cms.spiderfoot_index') }}" class="btn btn-secondary">← Back</a>
+    </div>
+</div>
+
+<div class="card">
+    <form method="POST" action="{{ url_for('cms.spiderfoot_scan') }}">
+        <div class="form-group">
+            <label for="target">Target *</label>
+            <input type="text" id="target" name="target" required placeholder="e.g., example.com, user@email.com, 192.168.1.1">
+            <p class="help-text">
+                Supported targets: domains (example.com), emails (user@email.com), IPs (8.8.8.8), or URLs.<br>
+                <strong>Note:</strong> For username lookups, use an email address or search via SpiderFoot directly.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label for="target_type">Target Type *</label>
+            <select id="target_type" name="target_type" required>
+                <option value="DOMAIN_NAME">Domain Name (e.g., example.com)</option>
+                <option value="EMAILADDR">Email Address</option>
+                <option value="IP_ADDRESS">IP Address</option>
+                <option value="IPV6_ADDRESS">IPv6 Address</option>
+                <option value="PHONE_NUMBER">Phone Number</option>
+                <option value="USERNAME">Username</option>
+                <option value="BITCOIN_ADDRESS">Bitcoin Address</option>
+                <option value="NAME">Person Name</option>
+                <option value="COMPANY_NAME">Company Name</option>
+                <option value="INTERNET_NAME">Internet Name/Subdomain</option>
+                <option value="VESSEL">Vessel Name/IMO</option>
+                <option value="PLATE_NUMBER">License Plate</option>
+                <option value="VEHICLE_VIN">Vehicle VIN</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="scan_name">Scan Name (optional)</label>
+            <input type="text" id="scan_name" name="scan_name" placeholder="Auto-generated if empty">
+        </div>
+
+        <div class="form-group">
+            <label for="profile">Investigation Profile</label>
+            <select id="profile" name="profile">
+                <option value="basic" selected>Basic OSINT - Essential passive reconnaissance</option>
+                {% for key, profile in profiles.items() %}
+                {% if key != 'basic' %}
+                <option value="{{ key }}">{{ profile.name }} - {{ profile.description }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+            <p class="help-text">Profiles define which SpiderFoot modules will run. Choose based on your investigation type.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="use_case">Scan Intensity</label>
+            <select id="use_case" name="use_case">
+                <option value="passive">Passive (no direct contact) - Recommended</option>
+                <option value="footprint">Footprint (limited contact)</option>
+                <option value="investigate">Investigate (some active scans)</option>
+                <option value="all">All (including aggressive) - Use with caution</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Link to Case (optional)</label>
+            <select name="case_id">
+                <option value="">-- No Case --</option>
+                {% for case in cases %}
+                <option value="{{ case.id }}">{{ case.case_number }} - {{ case.title }}</option>
+                {% endfor %}
+            </select>
+            <p class="help-text">Link the scan to a case to import findings later</p>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Start Scan</button>
+            <a href="{{ url_for('cms.spiderfoot_index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="section">
+    <h3>Profile Details</h3>
+    <div class="card-grid">
+        {% for key, profile in profiles.items() %}
+        <div class="card">
+            <h4>{{ profile.name }}</h4>
+            <p>{{ profile.description }}</p>
+            <details>
+                <summary>View Modules ({{ profile.modules|length }})</summary>
+                <ul class="module-list">
+                    {% for module in profile.modules %}
+                    <li>{{ module }}</li>
+                    {% endfor %}
+                </ul>
+            </details>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.form-group {
+    margin-bottom: 1.5rem;
+}
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    max-width: 500px;
+    padding: 0.75rem;
+    border: 1px solid var(--border-input);
+    border-radius: 4px;
+    font-size: 1rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.help-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+.card {
+    background: var(--bg-card);
+    padding: 1.25rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+.card h4 {
+    margin-bottom: 0.5rem;
+}
+.card p {
+    color: var(--text-secondary);
+    margin: 0.25rem 0;
+}
+details {
+    margin-top: 0.5rem;
+}
+summary {
+    cursor: pointer;
+    color: var(--link-color);
+    font-size: 0.875rem;
+}
+.module-list {
+    list-style: none;
+    padding: 0.5rem 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.module-list li {
+    padding: 0.25rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    border: none;
+    cursor: pointer;
+}
+.btn:hover {
+    background: var(--accent-hover);
+}
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+</style>
+{% endblock %}

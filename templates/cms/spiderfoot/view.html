@@ -1,0 +1,306 @@
+{% extends "cms/base.html" %}
+
+{% block title %}Scan: {{ scan.scan_name or scan.target_value }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ scan.scan_name or 'SpiderFoot Scan' }}</h1>
+    <div class="quick-links">
+        <a href="{{ url_for('cms.spiderfoot_index') }}" class="btn btn-secondary">← Back</a>
+        {% if scan.case_id %}
+        <a href="{{ url_for('cms.view_case', case_id=scan.case_id) }}" class="btn btn-secondary">View Case</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="info-card">
+    <div class="info-grid">
+        <div class="info-item">
+            <label>Target</label>
+            <span><strong>{{ scan.target_value }}</strong> ({{ scan.target_type }})</span>
+        </div>
+        <div class="info-item">
+            <label>Status</label>
+            {% set status_lower = scan.status|lower if scan.status else '' %}
+            <span class="badge badge-{% if status_lower in ['completed', 'finished'] %}success{% elif status_lower == 'running' %}info{% elif status_lower in ['failed', 'error'] %}danger{% else %}warning{% endif %}">
+                {{ scan.status }}{% if status_lower == 'running' %} - {{ scan.progress }}%{% endif %}
+            </span>
+        </div>
+        <div class="info-item">
+            <label>Profile</label>
+            <span>{{ scan.profile or scan.use_case or 'Custom' }}</span>
+        </div>
+        <div class="info-item">
+            <label>Results</label>
+            <span>{{ scan.result_count }}</span>
+        </div>
+        <div class="info-item">
+            <label>Started</label>
+            <span>{{ scan.started_at.strftime('%Y-%m-%d %H:%M') if scan.started_at else 'N/A' }}</span>
+        </div>
+        <div class="info-item">
+            <label>Finished</label>
+            <span>{{ scan.finished_at.strftime('%Y-%m-%d %H:%M') if scan.finished_at else 'N/A' }}</span>
+        </div>
+    </div>
+</div>
+
+{% set status_lower = scan.status|lower if scan.status else '' %}
+{% if status_lower == 'running' %}
+<div class="alert alert-info">
+    <strong>Scan in Progress</strong><br>
+    <div class="progress-bar">
+        <div class="progress-fill" style="width: {{ scan.progress }}%"></div>
+    </div>
+    <p>Progress: {{ scan.progress }}%</p>
+    <button onclick="refreshScan()" class="btn btn-small">Refresh Status</button>
+</div>
+
+<script>
+function refreshScan() {
+    fetch('{{ url_for("cms.spiderfoot_refresh_scan", scan_id=scan.id) }}', {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        location.reload();
+    })
+    .catch(err => {
+        alert('Failed to refresh: ' + err);
+    });
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshScan, 30000);
+</script>
+{% endif %}
+
+{% if scan.status == 'pending' or status_lower == 'running' %}
+<div class="form-actions">
+    <form method="POST" action="{{ url_for('cms.spiderfoot_stop_scan', scan_id=scan.id) }}" style="display: inline;">
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Stop this scan?')">Stop Scan</button>
+    </form>
+</div>
+{% endif %}
+
+{% if scan.status == 'completed' %}
+<div class="card">
+    <h3>Result Summary</h3>
+    {% if result_summary %}
+    <div class="summary-grid">
+        {% for type, count in result_summary.items()|sort(attribute='1', reverse=true) %}
+        <div class="summary-item">
+            <span class="summary-type">{{ type }}</span>
+            <span class="summary-count">{{ count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">No results</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Results (showing first {{ results|length }})</h3>
+        <div class="quick-links">
+            <a href="{{ url_for('cms.spiderfoot_scan_results', scan_id=scan.id) }}" class="btn btn-small" target="_blank">View All JSON</a>
+            {% if scan.case_id %}
+            <form method="POST" action="{{ url_for('cms.spiderfoot_import_results', scan_id=scan.id) }}" style="display: inline;">
+                <button type="submit" class="btn btn-primary btn-small" onclick="return confirm('Import all results as findings to case {{ scan.case_id }}?')">
+                    Import to Case
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if results %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Data</th>
+                <th>Source Module</th>
+                <th>Source URL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results %}
+            <tr>
+                <td><span class="type-badge">{{ result.type }}</span></td>
+                <td class="result-data">{{ result.data|truncate(100) if result.data else result.dataTransformed|truncate(100) if result.dataTransformed else 'N/A' }}</td>
+                <td>{{ result.sourceModule }}</td>
+                <td>
+                    {% if result.sourceUrl %}
+                    <a href="{{ result.sourceUrl }}" target="_blank" rel="noopener">Link</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No results found</p>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if not available %}
+<div class="alert alert-warning">
+    <strong>Note:</strong> SpiderFoot server appears to be offline. Some features may not work.
+</div>
+{% endif %}
+
+<style>
+.info-card {
+    background: var(--bg-card);
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+.info-item label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+.card {
+    background: var(--bg-card);
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.card-header h3 {
+    margin: 0;
+}
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem;
+}
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+.summary-type {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.summary-count {
+    font-weight: bold;
+}
+.type-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: var(--info-bg);
+    color: var(--info-text);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.result-data {
+    max-width: 400px;
+    word-break: break-all;
+}
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.table th, .table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+.table th {
+    font-weight: bold;
+    background: var(--bg-secondary);
+}
+.progress-bar {
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+.progress-fill {
+    height: 100%;
+    background: var(--accent-primary);
+}
+.alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+.alert-info {
+    background: var(--info-bg);
+    color: var(--info-text);
+}
+.alert-warning {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+.badge-success { background: var(--success-bg); color: var(--success-text); }
+.badge-danger { background: var(--danger-bg); color: var(--danger-text); }
+.badge-info { background: var(--info-bg); color: var(--info-text); }
+.badge-warning { background: var(--warning-bg); color: var(--warning-text); }
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    border: none;
+    cursor: pointer;
+}
+.btn:hover {
+    background: var(--accent-hover);
+}
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+.btn-danger {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+.btn-primary {
+    background: var(--accent-primary);
+}
+.btn-small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+.form-actions {
+    margin: 1rem 0;
+}
+.text-muted {
+    color: var(--text-secondary);
+}
+</style>
+{% endblock %}

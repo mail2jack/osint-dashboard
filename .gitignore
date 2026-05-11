@@ -6,3 +6,10 @@ dorks_log.txt
 *.json
 .obsidian/
 .pytest_cache/
+*.db
+*.pid
+.app_port
+.sf_port
+instance/
+static/uploads/
+spiderfoot/

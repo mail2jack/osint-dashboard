@@ -31,3 +31,6 @@ dnspython>=2.0.0
 email-validator>=2.0.0
 reportlab>=4.0.0
 werkzeug>=2.0.0
+
+# SpiderFoot OSINT Integration
+spiderfoot-client>=1.0.0
