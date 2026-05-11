@@ -426,7 +426,40 @@ systemctl enable $SF_SERVICE_NAME
 print_success "Systemd services created"
 
 # ============================================================================
-# STEP 12: Start Services
+# STEP 12: Store SpiderFoot Settings in Database
+# ============================================================================
+print_step "Storing SpiderFoot settings in database..."
+
+systemctl start $SERVICE_NAME 2>/dev/null || true
+sleep 3
+
+cd "$APP_DIR"
+source venv/bin/activate
+python3 << PYEOF
+import os
+import sys
+os.environ.setdefault('FLASK_APP', 'app.py')
+os.environ.setdefault('SECRET_KEY', '$SECRET_KEY')
+os.environ.setdefault('CMS_ENCRYPTION_KEY', '$CMS_ENCRYPTION_KEY')
+
+from app import app
+from cms.models import Setting, db
+
+with app.app_context():
+    db.create_all()
+    Setting.set('spiderfoot_url', 'http://127.0.0.1:5001',
+               description='SpiderFoot server URL', category='spiderfoot')
+    Setting.set('spiderfoot_username', 'admin',
+               description='SpiderFoot username', category='spiderfoot')
+    Setting.set('spiderfoot_password', '$SF_PASSWORD',
+               description='SpiderFoot password', category='spiderfoot')
+    print('SpiderFoot settings stored in database')
+PYEOF
+deactivate
+print_success "SpiderFoot settings configured in database"
+
+# ============================================================================
+# STEP 13: Start Services
 # ============================================================================
 print_step "Starting services..."
 
@@ -434,7 +467,7 @@ print_step "Starting services..."
 systemctl start $SF_SERVICE_NAME
 sleep 3
 
-systemctl start $SERVICE_NAME
+systemctl restart $SERVICE_NAME
 sleep 2
 
 # Check status
@@ -457,7 +490,7 @@ systemctl status $SERVICE_NAME --no-pager || true
 systemctl status $SF_SERVICE_NAME --no-pager || true
 
 # ============================================================================
-# STEP 13: Health Check Test
+# STEP 14: Health Check Test
 # ============================================================================
 print_step "Running health check..."
 sleep 2
@@ -477,7 +510,7 @@ else
 fi
 
 # ============================================================================
-# STEP 14: Get Server IP Addresses
+# STEP 15: Get Server IP Addresses
 # ============================================================================
 echo -e "\n${CYAN}========================================${NC}"
 echo -e "${CYAN}  Installation Complete!${NC}"
