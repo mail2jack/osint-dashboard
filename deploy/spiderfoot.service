@@ -1,0 +1,24 @@
+[Unit]
+Description=SpiderFoot OSINT Automation Tool
+Documentation=https://www.spiderfoot.net/documentation/
+After=network.target
+
+[Service]
+Type=simple
+User=osint
+Group=osint
+WorkingDirectory=/opt/spiderfoot
+Environment="PATH=/opt/spiderfoot/venv/bin"
+# Listen on localhost only - Nginx reverse proxy handles external access
+ExecStart=/opt/spiderfoot/venv/bin/python3 /opt/spiderfoot/sf.py -l 127.0.0.1:5001
+Restart=always
+RestartSec=10s
+
+# Security hardening
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Iveras OSINT Dashboard - Installation Script (v2.0)
-# Fixed version with all troubleshooting included
+# Iveras OSINT Dashboard - Installation Script (v3.0)
+# Production-ready: SpiderFoot, Nginx, PostgreSQL, SSL, systemd
 #
 # Usage:
 #   wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/main/install.sh
@@ -16,13 +16,16 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Configuration
 REPO_URL="https://github.com/mail2jack/osint-dashboard.git"
 BRANCH="master"
 APP_DIR="/opt/osint-dashboard"
+SF_DIR="/opt/spiderfoot"
 SERVICE_NAME="osint-dashboard"
+SF_SERVICE_NAME="spiderfoot"
 
 # Print functions
 print_step() { echo -e "${YELLOW}[STEP]${NC} $1"; }
@@ -31,10 +34,10 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 
 # Header
-echo -e "\n${BLUE}========================================${NC}"
-echo -e "${BLUE}  Iveras OSINT Dashboard Installation${NC}"
-echo -e "${BLUE}  Version 2.0 - Fixed & Improved${NC}"
-echo -e "${BLUE}========================================${NC}\n"
+echo -e "\n${CYAN}========================================${NC}"
+echo -e "${CYAN}  Iveras OSINT Dashboard Installation${NC}"
+echo -e "${CYAN}  Version 3.0 - Production Ready${NC}"
+echo -e "${CYAN}========================================${NC}\n"
 
 # Check root
 if [[ $EUID -ne 0 ]]; then
@@ -67,7 +70,9 @@ apt install -y \
     postgresql-contrib \
     nginx \
     ufw \
-    software-properties-common
+    software-properties-common \
+    certbot \
+    python3-certbot-nginx
 print_success "System dependencies installed"
 
 # ============================================================================
@@ -97,50 +102,25 @@ chown -R osint:osint "$APP_DIR"
 print_success "Repository cloned"
 
 # ============================================================================
-# STEP 5: Setup Python Virtual Environment
+# STEP 5: Setup Python Virtual Environment (Iveras)
 # ============================================================================
-print_step "Setting up Python virtual environment..."
+print_step "Setting up Iveras Python virtual environment..."
 
 cd "$APP_DIR"
 
-# Remove old venv if exists
 if [[ -d "venv" ]]; then
     rm -rf venv
 fi
 
-# Create fresh venv
 python3 -m venv venv
 source venv/bin/activate
 
-# Upgrade pip
 pip install --upgrade pip
 pip install --upgrade setuptools wheel
 
-# Install Flask and extensions
-print_step "Installing Flask and extensions..."
-pip install flask flask-sqlalchemy flask-login flask-migrate flask-wtf flask-cors flask-bcrypt werkzeug
+print_step "Installing Python packages from requirements.txt..."
+pip install -r requirements.txt
 
-# Install HTTP clients
-print_step "Installing HTTP clients..."
-pip install requests httpx urllib3
-
-# Install data processing
-print_step "Installing data processing packages..."
-pip install beautifulsoup4 lxml Pillow bleach markdown python-dateutil
-
-# Install database packages
-print_step "Installing database packages..."
-pip install psycopg2-binary cryptography
-
-# Install utilities
-print_step "Installing utilities..."
-pip install python-dotenv dnspython email-validator reportlab
-
-# Install Gunicorn (REQUIRED for systemd)
-print_step "Installing Gunicorn..."
-pip install gunicorn
-
-# Verify gunicorn is installed
 if ! "$APP_DIR/venv/bin/gunicorn" --version &>/dev/null; then
     print_error "Gunicorn installation failed!"
     exit 1
@@ -149,58 +129,106 @@ fi
 chown -R osint:osint "$APP_DIR"
 deactivate
 
-print_success "Virtual environment ready with all packages"
+print_success "Iveras virtual environment ready with all packages"
 
 # ============================================================================
-# STEP 6: Setup PostgreSQL
+# STEP 6: Install SpiderFoot
+# ============================================================================
+print_step "Installing SpiderFoot..."
+
+if [[ -d "$SF_DIR" ]]; then
+    print_info "Directory exists - removing old SpiderFoot..."
+    systemctl stop $SF_SERVICE_NAME 2>/dev/null || true
+    rm -rf $SF_DIR
+fi
+
+git clone https://github.com/smicallef/spiderfoot.git "$SF_DIR"
+chown -R osint:osint "$SF_DIR"
+
+# Create SpiderFoot venv (separate to avoid dependency conflicts)
+python3 -m venv "$SF_DIR/venv"
+source "$SF_DIR/venv/bin/activate"
+pip install --upgrade pip
+pip install -r "$SF_DIR/requirements.txt"
+deactivate
+
+# Create SpiderFoot passwd file for digest auth
+SF_PASSWORD=$(openssl rand -base64 12 | tr -d '=+/')
+mkdir -p /home/osint/.spiderfoot
+cat > /home/osint/.spiderfoot/passwd << PASSEOF
+admin:$SF_PASSWORD
+PASSEOF
+chown -R osint:osint /home/osint/.spiderfoot
+chmod 600 /home/osint/.spiderfoot/passwd
+
+print_success "SpiderFoot installed and configured"
+
+# ============================================================================
+# STEP 7: Setup PostgreSQL
 # ============================================================================
 print_step "Setting up PostgreSQL..."
 
 systemctl enable postgresql
 systemctl start postgresql
 
+DB_PASSWORD=$(openssl rand -base64 18 | tr -d '=+/')
+
 # Create database and user
-sudo -u postgres psql << 'EOF'
--- Create user if not exists
-DO 
-$do$
+sudo -u postgres psql << EOF
+DO \$\$
 BEGIN
-   IF NOT EXISTS (
-      SELECT FROM pg_catalog.pg_roles
-      WHERE  rolname = 'osint') THEN
-      CREATE USER osint WITH PASSWORD 'ChangeThisPassword123!';
+   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'osint') THEN
+      CREATE USER osint WITH PASSWORD '$DB_PASSWORD';
+   ELSE
+      ALTER USER osint WITH PASSWORD '$DB_PASSWORD';
    END IF;
 END
-$do$;
+\$\$;
 
--- Create database
 SELECT 'CREATE DATABASE osint_db'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'osint_db')\gexec
 
--- Grant privileges
 GRANT ALL PRIVILEGES ON DATABASE osint_db TO osint;
 ALTER DATABASE osint_db OWNER TO osint;
+\c osint_db
+GRANT ALL ON SCHEMA public TO osint;
 EOF
 
 print_success "PostgreSQL configured"
 
 # ============================================================================
-# STEP 7: Create Environment File
+# STEP 8: Create Environment File
 # ============================================================================
 print_step "Creating environment configuration..."
 
 SECRET_KEY=$(openssl rand -hex 32)
+CMS_ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 
 cat > "$APP_DIR/.env" << EOF
 # Flask Configuration
 FLASK_APP=app.py
 SECRET_KEY=$SECRET_KEY
 
-# Database
-DATABASE_URL=postgresql://osint:ChangeThisPassword123!@localhost:5432/osint_db
+# Database (PostgreSQL)
+DATABASE_URL=postgresql://osint:$DB_PASSWORD@localhost:5432/osint_db
 
 # Server
 PORT=5000
+
+# CMS Encryption
+CMS_ENCRYPTION_KEY=$CMS_ENCRYPTION_KEY
+
+# SpiderFoot
+SPIDERFOOT_URL=http://127.0.0.1:5001
+SPIDERFOOT_USERNAME=admin
+SPIDERFOOT_PASSWORD=$SF_PASSWORD
+
+# API Keys (fill in your own keys)
+OVERHEID_API_KEY=
+BRAVE_API_KEY=
+TWOCHAT_API_KEY=
+TWOCHAT_WHATSAPP_NUMBER=
+HIBP_API_KEY=
 EOF
 
 chown osint:osint "$APP_DIR/.env"
@@ -208,16 +236,67 @@ chmod 600 "$APP_DIR/.env"
 print_success "Environment file created"
 
 # ============================================================================
-# STEP 8: Configure Nginx
+# STEP 9: Configure Nginx
 # ============================================================================
 print_step "Configuring Nginx..."
 
-# Remove old configs
+DOMAIN=""
+print_info "Enter your domain name if you want SSL (or leave blank for IP-only):"
+read -p "Domain name: " DOMAIN
+
 rm -f /etc/nginx/sites-enabled/*
 rm -f /etc/nginx/sites-available/*
 
-# Create Nginx config
-cat > /etc/nginx/sites-available/default << 'EOF'
+if [[ -n "$DOMAIN" ]]; then
+    # With domain - will get SSL later
+    cat > /etc/nginx/sites-available/default << 'NGINXEOF'
+server {
+    listen 80 default_server;
+    server_name _ DOMAIN_PLACEHOLDER;
+
+    client_max_body_size 50M;
+
+    # Iveras OSINT Dashboard
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Health check friendly
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+    }
+
+    # SpiderFoot via reverse proxy
+    location /spiderfoot/ {
+        proxy_pass http://127.0.0.1:5001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Increase timeouts for long scans
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 10s;
+    }
+
+    location /static {
+        alias /opt/osint-dashboard/static;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+NGINXEOF
+    sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" /etc/nginx/sites-available/default
+else
+    # IP-only, no domain
+    cat > /etc/nginx/sites-available/default << 'NGINXEOF'
 server {
     listen 80 default_server;
     server_name _;
@@ -231,11 +310,22 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_redirect off;
-        
-        # WebSocket support
+
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+    }
+
+    location /spiderfoot/ {
+        proxy_pass http://127.0.0.1:5001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 10s;
     }
 
     location /static {
@@ -244,90 +334,164 @@ server {
         add_header Cache-Control "public, immutable";
     }
 }
-EOF
+NGINXEOF
+fi
 
 ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
-
-# Test and start nginx
 nginx -t && systemctl restart nginx
 print_success "Nginx configured"
 
 # ============================================================================
-# STEP 9: Configure Firewall
+# STEP 9b: SSL via Let's Encrypt (if domain provided)
+# ============================================================================
+if [[ -n "$DOMAIN" ]]; then
+    print_step "Setting up SSL certificate for $DOMAIN..."
+    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "admin@$DOMAIN" || {
+        print_warning "SSL setup failed. You can run it later:"
+        print_info "  sudo certbot --nginx -d $DOMAIN"
+    }
+    print_success "SSL configured"
+fi
+
+# ============================================================================
+# STEP 10: Configure Firewall
 # ============================================================================
 print_step "Configuring firewall..."
 
-# Allow SSH, HTTP, HTTPS
 ufw allow ssh
 ufw allow http
 ufw allow https
 
-# Enable firewall
 echo "y" | ufw enable || true
 print_success "Firewall configured"
 
 # ============================================================================
-# STEP 10: Create Systemd Service
+# STEP 11: Create Systemd Services
 # ============================================================================
-print_step "Creating systemd service..."
+print_step "Creating systemd services..."
 
-cat > /etc/systemd/system/$SERVICE_NAME.service << 'EOF'
+# Iveras service
+cat > /etc/systemd/system/$SERVICE_NAME.service << 'SERVICEEOF'
 [Unit]
 Description=Iveras OSINT Dashboard
-After=network.target postgresql.service
+After=network.target postgresql.service spiderfoot.service
+Wants=spiderfoot.service
 
 [Service]
 Type=simple
 User=osint
+Group=osint
 WorkingDirectory=/opt/osint-dashboard
 Environment="PATH=/opt/osint-dashboard/venv/bin"
-Environment="FLASK_APP=app.py"
 ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 --timeout 120 "app:app"
 Restart=always
 RestartSec=10s
 
 [Install]
 WantedBy=multi-user.target
-EOF
+SERVICEEOF
+
+# SpiderFoot service
+cat > /etc/systemd/system/$SF_SERVICE_NAME.service << 'SFEOF'
+[Unit]
+Description=SpiderFoot OSINT Automation Tool
+Documentation=https://www.spiderfoot.net/documentation/
+After=network.target
+
+[Service]
+Type=simple
+User=osint
+Group=osint
+WorkingDirectory=/opt/spiderfoot
+Environment="PATH=/opt/spiderfoot/venv/bin"
+ExecStart=/opt/spiderfoot/venv/bin/python3 /opt/spiderfoot/sf.py -l 127.0.0.1:5001 --passwd /home/osint/.spiderfoot/passwd
+Restart=always
+RestartSec=10s
+
+# Security
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+SFEOF
 
 chmod 644 /etc/systemd/system/$SERVICE_NAME.service
+chmod 644 /etc/systemd/system/$SF_SERVICE_NAME.service
 systemctl daemon-reload
 systemctl enable $SERVICE_NAME
+systemctl enable $SF_SERVICE_NAME
+print_success "Systemd services created"
 
 # ============================================================================
-# STEP 11: Start Services
+# STEP 12: Start Services
 # ============================================================================
 print_step "Starting services..."
+
+# Start SpiderFoot first (Iveras depends on it)
+systemctl start $SF_SERVICE_NAME
+sleep 3
 
 systemctl start $SERVICE_NAME
 sleep 2
 
 # Check status
+echo ""
 if systemctl is-active --quiet $SERVICE_NAME; then
-    print_success "Service started successfully"
+    print_success "Iveras started successfully"
 else
-    print_error "Service failed to start!"
-    print_info "Check logs with: journalctl -u $SERVICE_NAME -n 50"
+    print_error "Iveras failed to start!"
+    print_info "Check logs: journalctl -u $SERVICE_NAME -n 50"
+fi
+
+if systemctl is-active --quiet $SF_SERVICE_NAME; then
+    print_success "SpiderFoot started successfully"
+else
+    print_error "SpiderFoot failed to start!"
+    print_info "Check logs: journalctl -u $SF_SERVICE_NAME -n 50"
 fi
 
 systemctl status $SERVICE_NAME --no-pager || true
+systemctl status $SF_SERVICE_NAME --no-pager || true
 
 # ============================================================================
-# STEP 12: Get Server IP Addresses
+# STEP 13: Health Check Test
 # ============================================================================
-echo -e "\n${BLUE}========================================${NC}"
-echo -e "${BLUE}  Installation Complete!${NC}"
-echo -e "${BLUE}========================================${NC}\n"
+print_step "Running health check..."
+sleep 2
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health 2>/dev/null || echo "failed")
+if [[ "$HTTP_CODE" == "200" ]]; then
+    print_success "Health check passed (HTTP $HTTP_CODE)"
+else
+    print_warning "Health check returned HTTP $HTTP_CODE"
+    print_info "The app may still be starting up - check: curl http://localhost:5000/health"
+fi
 
-print_info "Server IP Addresses:"
+SF_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5001 2>/dev/null || echo "failed")
+if [[ "$SF_CODE" == "200" || "$SF_CODE" == "401" ]]; then
+    print_success "SpiderFoot reachable (HTTP $SF_CODE - auth required, which is correct)"
+else
+    print_warning "SpiderFoot returned HTTP $SF_CODE"
+fi
+
+# ============================================================================
+# STEP 14: Get Server IP Addresses
+# ============================================================================
+echo -e "\n${CYAN}========================================${NC}"
+echo -e "${CYAN}  Installation Complete!${NC}"
+echo -e "${CYAN}========================================${NC}\n"
+
+print_info "Server URLs:"
 echo ""
 hostname -I | tr ' ' '\n' | while read ip; do
-    echo -e "  ${GREEN}http://$ip:5000${NC}"
+    echo -e "  ${GREEN}http://$ip${NC}"
 done
-echo ""
-
-# Also show localhost
-echo -e "  ${GREEN}http://localhost:5000${NC}"
+echo -e "  ${GREEN}http://localhost${NC}"
+if [[ -n "$DOMAIN" ]]; then
+    echo -e "  ${GREEN}https://$DOMAIN${NC}"
+fi
 echo ""
 
 # ============================================================================
@@ -338,25 +502,45 @@ echo -e "${GREEN}  Iveras OSINT Dashboard Installed${NC}"
 echo -e "${GREEN}========================================${NC}\n"
 
 echo -e "Installation Directory: ${BLUE}$APP_DIR${NC}"
-echo ""
-echo -e "Default Login:"
-echo -e "  Username: ${YELLOW}admin${NC}"
-echo -e "  Password: ${YELLOW}changeme123${NC}"
-echo ""
-echo -e "${RED}IMPORTANT:${NC} Change these credentials immediately!"
+echo -e "SpiderFoot Directory:   ${BLUE}$SF_DIR${NC}"
 echo ""
 
-echo -e "Useful Commands:"
-echo -e "  ${BLUE}sudo systemctl status $SERVICE_NAME${NC}    - Check status"
-echo -e "  ${BLUE}sudo systemctl restart $SERVICE_NAME${NC}  - Restart service"
-echo -e "  ${BLUE}sudo journalctl -u $SERVICE_NAME -f${NC}     - View live logs"
-echo -e "  ${BLUE}sudo systemctl stop $SERVICE_NAME${NC}    - Stop service"
-echo ""
-echo -e "Database:"
-echo -e "  Host: ${BLUE}localhost${NC}"
-echo -e "  Database: ${BLUE}osint_db${NC}"
-echo -e "  User: ${BLUE}osint${NC}"
-echo -e "  Password: ${RED}ChangeThisPassword123!${NC} (change this!)"
+echo -e "${YELLOW}--- SpiderFoot Credentials ---${NC}"
+echo -e "  URL:       http://localhost/spiderfoot/"
+echo -e "  Username:  admin"
+echo -e "  Password:  ${RED}$SF_PASSWORD${NC}"
+echo -e "  Passwd:    ${BLUE}/home/osint/.spiderfoot/passwd${NC}"
 echo ""
 
-echo -e "${BLUE}========================================${NC}\n"
+echo -e "${YELLOW}--- PostgreSQL Database ---${NC}"
+echo -e "  Host:     localhost"
+echo -e "  Database: osint_db"
+echo -e "  User:     osint"
+echo -e "  Password: ${RED}$DB_PASSWORD${NC}"
+echo -e "  URL:      ${BLUE}postgresql://osint:$DB_PASSWORD@localhost:5432/osint_db${NC}"
+echo ""
+
+echo -e "${YELLOW}--- Default App Login ---${NC}"
+echo -e "  Username: ${BLUE}admin${NC}"
+echo -e "  Password: ${RED}changeme123${NC} (change immediately after first login!)"
+echo ""
+
+echo -e "${RED}IMPORTANT:${NC}"
+echo -e "  1. Change the default admin password immediately after first login"
+echo -e "  2. Save the SpiderFoot password above - you'll need it for API access"
+echo -e "  3. Edit ${BLUE}$APP_DIR/.env${NC} and add your API keys (OVERHEID, BRAVE, etc.)"
+echo -e "  4. The .env file contains sensitive credentials - keep it secure"
+echo ""
+
+echo -e "${YELLOW}--- Useful Commands ---${NC}"
+echo -e "  ${BLUE}sudo systemctl status $SERVICE_NAME${NC}      - Iveras status"
+echo -e "  ${BLUE}sudo systemctl status $SF_SERVICE_NAME${NC}    - SpiderFoot status"
+echo -e "  ${BLUE}sudo journalctl -u $SERVICE_NAME -f${NC}       - Iveras live logs"
+echo -e "  ${BLUE}sudo journalctl -u $SF_SERVICE_NAME -f${NC}    - SpiderFoot live logs"
+echo -e "  ${BLUE}sudo systemctl restart $SERVICE_NAME${NC}     - Restart Iveras"
+echo -e "  ${BLUE}curl http://localhost:5000/health${NC}         - Health check"
+echo ""
+
+echo -e "${CYAN}========================================${NC}"
+echo -e "${CYAN}  Happy OSINT-ing!${NC}"
+echo -e "${CYAN}========================================${NC}\n"

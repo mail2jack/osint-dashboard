@@ -4080,5 +4080,34 @@ def rate_limit_status():
     })
 
 
+@app.route('/health')
+def health_check():
+    from cms import db
+    from cms.spiderfoot_service import get_spiderfoot_service
+
+    db_ok = False
+    try:
+        db.session.execute(db.text('SELECT 1'))
+        db.session.rollback()
+        db_ok = True
+    except Exception as e:
+        logger.warning(f"Health check - DB error: {e}")
+
+    sf_ok = False
+    try:
+        sf = get_spiderfoot_service()
+        sf_ok = sf.is_available()
+    except Exception as e:
+        logger.warning(f"Health check - SpiderFoot error: {e}")
+
+    status = 'ok' if db_ok else 'error'
+    return jsonify({
+        'status': status,
+        'database': 'connected' if db_ok else 'error',
+        'spiderfoot': 'connected' if sf_ok else 'disconnected',
+        'version': '3.1.0'
+    }), 200 if status == 'ok' else 503
+
+
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000)
