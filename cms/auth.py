@@ -875,8 +875,11 @@ def edit_user(user_id: str):
             for field in admin_editable:
                 if field in data and getattr(user, field) != data[field]:
                     old_values[field] = getattr(user, field)
-                    changes[field] = {'old': old_values[field], 'new': data[field]}
-                    setattr(user, field, data[field])
+                    value = data[field]
+                    if field == 'is_active' and isinstance(value, str):
+                        value = value.lower() in ('1', 'true', 'yes', 'on')
+                    changes[field] = {'old': old_values[field], 'new': value}
+                    setattr(user, field, value)
             
             # Password change (admin can set without old password)
             if data.get('password'):

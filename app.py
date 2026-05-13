@@ -100,6 +100,18 @@ from cms import create_cms_module
 create_cms_module(app)
 logger.info("CMS initialized successfully")
 
+def normalize_phone_number(phone: str) -> str:
+    if not phone:
+        return phone
+    cleaned = re.sub(r'[^\d+]', '', phone)
+    if cleaned.startswith('+'):
+        cleaned = cleaned[1:]
+    if cleaned.startswith('00'):
+        cleaned = cleaned[2:]
+    elif cleaned.startswith('0'):
+        cleaned = cleaned[1:]
+    return cleaned
+
 @app.template_filter('urlize_target')
 def urlize_target_filter(text):
     if not text:
