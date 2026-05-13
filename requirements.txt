@@ -16,7 +16,7 @@ urllib3>=1.26.0
 
 # Data processing
 beautifulsoup4>=4.9.0
-lxml>=4.9.0
+lxml>=5.0.0
 Pillow>=9.0.0
 bleach>=5.0.0
 markdown>=3.4.0

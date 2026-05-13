@@ -66,6 +66,8 @@ apt install -y \
     python3-venv \
     python3-dev \
     build-essential \
+    libxml2-dev \
+    libxslt1-dev \
     postgresql \
     postgresql-contrib \
     nginx \
