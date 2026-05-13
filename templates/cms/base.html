@@ -353,7 +353,11 @@
         </div>
         <div>
             {% if current_user.is_authenticated %}
-                {{ current_user.full_name }} | <a href="{{ url_for('auth.logout') }}">Logout</a>
+                <a href="{{ url_for('users.view_user', user_id=current_user.id) }}" style="color:white;text-decoration:none;margin-left:0;">{{ current_user.full_name }}</a>
+                {% if current_user.totp_enabled %}
+                <span style="color:#6ee7b7;font-size:0.75rem;margin-left:0.25rem;" title="2FA enabled">✓</span>
+                {% endif %}
+                | <a href="{{ url_for('auth.logout') }}">Logout</a>
                 <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
                     <span id="theme-icon">🌙</span>
                 </button>

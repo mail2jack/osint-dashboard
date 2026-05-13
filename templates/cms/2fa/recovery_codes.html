@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recovery Codes</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 500px;
+        }
+        h1 { color: #1a1a2e; margin-bottom: 0.25rem; }
+        .subtitle { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        .warning {
+            background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px;
+            padding: 0.75rem; margin-bottom: 1.5rem; color: #92400e; font-size: 0.9rem;
+        }
+        .warning strong { display: block; margin-bottom: 0.25rem; }
+        .codes {
+            background: #f5f5f5; border-radius: 8px; padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .code {
+            font-family: monospace; font-size: 1.1rem; letter-spacing: 2px;
+            padding: 0.4rem 0; text-align: center;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .code:last-child { border-bottom: none; }
+        .btn { width: 100%; padding: 0.75rem; background: #16213e; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 500; text-decoration: none; display: block; text-align: center; }
+        .btn:hover { background: #1a1a2e; }
+        .btn-secondary { background: #6c757d; margin-top: 0.5rem; }
+        .btn-secondary:hover { background: #5a6268; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Recovery Codes</h1>
+        <p class="subtitle">Save these codes in a safe place. Each code can only be used once.</p>
+
+        <div class="warning">
+            <strong>Important</strong>
+            These codes are your only way to access your account if you lose your phone. 
+            Store them somewhere secure (password manager, safe, etc.). They will not be shown again.
+        </div>
+
+        <div class="codes">
+            {% for code in codes %}
+            <div class="code">{{ code }}</div>
+            {% endfor %}
+        </div>
+
+        <p style="text-align:center;margin-bottom:1rem;">
+            <button onclick="copyCodes()" class="btn btn-secondary" style="display:inline-block;width:auto;padding:0.5rem 1.5rem;">Copy all</button>
+            <button onclick="downloadCodes()" class="btn btn-secondary" style="display:inline-block;width:auto;padding:0.5rem 1.5rem;">Download</button>
+        </p>
+
+        <a href="{{ url_for('cms.dashboard') }}" class="btn">Done — go to dashboard</a>
+    </div>
+
+    <script>
+        const codes = {{ codes | tojson }};
+
+        function copyCodes() {
+            navigator.clipboard.writeText(codes.join('\n')).then(() => {
+                alert('Recovery codes copied to clipboard!');
+            });
+        }
+
+        function downloadCodes() {
+            const blob = new Blob([codes.join('\n')], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cms-recovery-codes-{{ username }}.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

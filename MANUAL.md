@@ -1,6 +1,6 @@
 # Iveras OSINT Case Management System - Manual
 
-**Version:** 3.1.0  
+**Version:** 3.3.0  
 **Last Updated:** May 2026
 
 ---
@@ -22,7 +22,8 @@
 13. [Reminders](#reminders)
 14. [Settings](#settings)
 15. [User Management](#user-management)
-16. [Audit Log](#audit-log)
+16. [Two-Factor Authentication (2FA)](#two-factor-authentication-2fa)
+17. [Audit Log](#audit-log)
 17. [Keyboard Shortcuts](#keyboard-shortcuts)
 18. [API Endpoints](#api-endpoints)
 19. [Troubleshooting](#troubleshooting)
@@ -48,6 +49,12 @@ Iveras OSINT Case Management System combines open-source intelligence gathering 
 - **Reminders** - Set follow-up reminders for cases and subjects
 - **Audit Logging** - Track all user actions for compliance
 - **Role-Based Access** - Admin, Senior Investigator, Junior Investigator roles
+- **Two-Factor Authentication** - TOTP-based 2FA met authenticator app, optioneel per gebruiker
+- **Kadaster BAG Lookup** — Verify Dutch addresses against the national BAG registry
+- **Phone Enrichment** — Validate and enrich phone numbers (carrier, region, WhatsApp/Telegram)
+- **Interpol Check** — Check subject names against INTERPOL Red Notices (wanted) and Yellow Notices (missing)
+- **Politiebureau Lookup** — Find nearest police station for any address
+- **Update Notifications** — In-app banner when a new version is available, with one-click update
 
 ---
 
@@ -184,9 +191,25 @@ Clients are organizations or individuals who commission investigations.
 - **Name** - Company or individual name
 - **Contact Person** - Primary contact
 - **Email / Phone** - Contact details
+- **Address** - Structured fields (Street, Number, Zipcode, Town, Country) with 🔍 postcode check button
 - **Contract Number** - Reference number
 - **Is Company** - Toggle for company/individual
 - **Is Active** - Active/inactive status
+
+### Postcode Check
+
+Both client and subject address forms have a **🔍 button** next to the zipcode field:
+1. Enter **Zipcode** + **Number**
+2. Click **🔍**
+3. Calls the PDOK BAG API
+4. Street and Town are auto-filled from the national registry
+
+### Politiebureau Lookup
+
+On the client and subject view pages, each address has a **🚔 Politiebureau** button that:
+1. Looks up the address in the BAG registry to get coordinates
+2. Calls `api.politie.nl/politiebureaus/v1` with those coordinates
+3. Displays the nearest police station: name, address, phone, opening hours, OSM map link
 
 ---
 
@@ -216,14 +239,48 @@ Subjects are entities being investigated: persons, companies, vehicles, etc.
 
 **All Subjects:**
 - Name
-- Address
+- Address(es) — structured: Street, Number, Zipcode, Town, Country (multiple per subject)
 - Risk Score (0-100)
 - Notes
 
 **Persons:**
 - Email
-- Phone
+- Phone (with **📞 Check** button)
 - ID/Passport Number
+
+### Address Verification (Kadaster BAG)
+
+Each subject can have multiple addresses. On the subject view page:
+- Each address card has a **🏛 Kadaster** button
+- Clicking it looks up the address in the PDOK BAG API (Dutch cadastre)
+- Returns: status, type, purpose, surface area, year built, municipality, coordinates
+- Verified addresses show a **✓ KADASTER** badge
+
+### Address Form (Create/Edit)
+
+Address forms use a 5-column grid with separate fields:
+- **Street** — street name
+- **Number** — house number (with addition)
+- **Zipcode** — Dutch postal code
+- **Town** — city/town
+- **🔍** — postcode check button (fills street + town from zipcode + number)
+- **Primary** checkbox — marks the primary address
+
+### Phone Enrichment
+
+Each person subject has a **📞 Check** button next to the phone number:
+- Validates the number using the `phonenumbers` library
+- Returns: formatted number, country, region, carrier, line type, timezone
+- Checks WhatsApp and Telegram presence via web URLs
+- Uses a free Dutch API (bedrijfsdata.nl) for NL number enrichment
+
+### Interpol + Politie Check
+
+Person subjects have a **🌍 Check Interpol** button that:
+1. Searches INTERPOL **Red Notices** (wanted persons) by name
+2. Searches INTERPOL **Yellow Notices** (missing persons)
+3. Falls back to scraping `politie.nl/vermist` if Interpol is rate-limited
+4. Displays matches with name, DOB, nationality, charge/description, and source URL
 
 **Vehicles:**
 - License Plate (Kenteken)
@@ -534,6 +591,7 @@ Configure the application via ⚙️ Settings (Admin only).
 - Case number prefix
 - Default risk score
 - Organization name
+- **Update Check Repo** — GitHub repo (user/repo) for update notifications (leave empty to disable)
 
 **🔒 Security**
 - Session timeout
@@ -566,6 +624,46 @@ Manage team members and access levels.
 2. Fill in details
 3. Assign role
 4. User receives login credentials
+
+---
+
+## Two-Factor Authentication (2FA)
+
+The system supports optional TOTP-based two-factor authentication using any authenticator app (Google Authenticator, Authy, 1Password, etc.).
+
+### Enabling 2FA
+
+1. Go to your **profile page** (click your name in the top-right corner)
+2. Click **Enable 2FA**
+3. **Scan the QR code** with your authenticator app, or manually enter the key
+4. Enter the **6-digit verification code** from the app to confirm
+5. **Save the 8 recovery codes** — each can be used once if you lose your phone
+
+### Logging in with 2FA
+
+1. Enter your **username + password** as usual
+2. If 2FA is enabled, you are redirected to the **2FA verification page**
+3. Enter the **6-digit code** from your authenticator app
+4. Login completes after successful verification
+
+### Recovery Codes
+
+- **8 codes** in `XXXX-XXXX-XXXX` format, generated during setup
+- **Each code can be used once** — after that it is consumed
+- Use the **"Use a recovery code instead"** link on the verification page
+- Store them securely (password manager, safe, etc.)
+
+### Disabling 2FA
+
+- **Yourself:** profile page → enter password → click **Disable 2FA**
+- **Admin:** can reset 2FA for any user from that user's profile page
+
+### Technical Details
+
+- Implements **TOTP** (Time-based One-Time Password, RFC 6238)
+- Codes are valid for **30 seconds** (with a ±1 period grace window)
+- Recovery codes are stored as **SHA-256 hashes** — never in plaintext
+- 2FA is **optional per user** — existing users without 2FA are unaffected
 
 ---
 
@@ -623,6 +721,12 @@ Go to **Audit Log** (Admin) to see:
 | GET | `/cms/api/search` | Search API |
 | POST | `/cms/check-rdw-vehicle` | RDW lookup |
 | POST | `/cms/subjects/compare-faces` | Face matching |
+| POST | `/cms/api/kadaster-lookup` | Address verification via PDOK BAG |
+| POST | `/cms/api/phone-lookup` | Phone number enrichment |
+| POST | `/cms/check-policie-data` | Interpol Red/Yellow Notice check |
+| GET | `/cms/check-policie-data-status` | Interpol API status |
+| POST | `/cms/api/politiebureau-lookup` | Nearest police station lookup |
+| GET | `/cms/api/check-update` | Check for newer version on GitHub |
 
 ### OSINT Endpoints
 
@@ -664,6 +768,29 @@ Go to **Audit Log** (Admin) to see:
 - Check `~/.spiderfoot/passwd` en Iveras Settings
 - Na install.sh: check `/opt/osint-dashboard/.env` voor `SPIDERFOOT_PASSWORD`
 
+**"Kadaster lookup not found"**
+- Alleen Nederlandse adressen worden ondersteund (PDOK BAG)
+- Controleer postcode formaat (1234 AB) en huisnummer
+
+**"Phone lookup failed"**
+- Alleen Nederlandse nummers worden uitgebreid geënrich
+- Basisvalidatie werkt voor alle landen via phonenumbers library
+- WhatsApp/Telegram check vereist internettoegang
+
+**"Interpol rate limited"**
+- Akamai CDN blokkeert na ~5-10 requests
+- Wacht een paar minuten of gebruik de politie.nl/vermist fallback
+- De politie.nl scraping is stabieler maar minder uitgebreid
+
+**"Politiebureau not found"**
+- Alleen Nederlandse politiebureaus worden opgehaald
+- Het adres moet geldige coördinaten hebben (via PDOK BAG of kadaster_data)
+
+**"Update check fails"**
+- Zet `update_check_repo` in Settings (bv. `mail2jack/osint-dashboard`)
+- De app checkt via raw.githubusercontent.com of er een nieuwere VERSION is
+- Resultaat wordt 1 uur gecachet
+
 **"Health check fails"**
 - Run: `curl http://localhost:5000/health`
 - Verwacht: `{"status":"ok","database":"connected","spiderfoot":"connected"}`
@@ -704,9 +831,25 @@ Log files (`spiderfoot.log`, `app.log`) groeien na verloop van tijd. Logrotate r
 
 ## Changelog
 
+### Version 3.3.0 - May 2026
+
+**Two-Factor Authentication:**
+- TOTP-based 2FA met authenticator app (Google Authenticator, Authy, 1Password)
+- QR-code setup met verificatie-stap
+- 8 eenmalige recovery codes (gehasht opgeslagen)
+- Login-flow met 2FA-check na wachtwoord-verificatie
+- Optioneel per gebruiker — geen impact op bestaande accounts
+- Admin kan 2FA resetten voor andere gebruikers
+- 2FA-status zichtbaar in navigatiebalk (groen ✓-icoon)
+
+**Migraties:**
+- Automatische `ALTER TABLE` migraties voor nieuwe kolommen (`totp_secret`, `totp_enabled`, `backup_codes` op users; `social_media_ids`, `rdw_data`, `face_encoding` op subjects)
+
+---
+
 ### Version 3.2.0 - May 2026
 
-**Production Deployment:**
+**Production Deployment:****
 - `install.sh` v3.0 — one-command server setup voor Ubuntu/Debian
 - Automatische SpiderFoot installatie met digest auth (random password)
 - PostgreSQL random password generatie (i.p.v. hardcoded)

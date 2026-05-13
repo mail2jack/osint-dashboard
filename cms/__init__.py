@@ -66,6 +66,44 @@ def create_cms_module(app: Flask):
             app.logger.warning(f"Migration note: {e}")
             db.session.rollback()
         
+        # Migration: add 2FA columns to users table if missing
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            columns = [c['name'] for c in inspector.get_columns('users')]
+            if 'totp_secret' not in columns:
+                db.session.execute(text('ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64)'))
+                app.logger.info("Migration: added totp_secret column to users table")
+            if 'totp_enabled' not in columns:
+                db.session.execute(text('ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN DEFAULT 0'))
+                app.logger.info("Migration: added totp_enabled column to users table")
+            if 'backup_codes' not in columns:
+                db.session.execute(text('ALTER TABLE users ADD COLUMN backup_codes TEXT'))
+                app.logger.info("Migration: added backup_codes column to users table")
+            db.session.commit()
+        except Exception as e:
+            app.logger.warning(f"2FA migration note: {e}")
+            db.session.rollback()
+
+        # Migration: add missing subjects columns
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            columns = [c['name'] for c in inspector.get_columns('subjects')]
+            if 'social_media_ids' not in columns:
+                db.session.execute(text('ALTER TABLE subjects ADD COLUMN social_media_ids TEXT'))
+                app.logger.info("Migration: added social_media_ids column to subjects table")
+            if 'rdw_data' not in columns:
+                db.session.execute(text('ALTER TABLE subjects ADD COLUMN rdw_data TEXT'))
+                app.logger.info("Migration: added rdw_data column to subjects table")
+            if 'face_encoding' not in columns:
+                db.session.execute(text('ALTER TABLE subjects ADD COLUMN face_encoding TEXT'))
+                app.logger.info("Migration: added face_encoding column to subjects table")
+            db.session.commit()
+        except Exception as e:
+            app.logger.warning(f"subjects migration note: {e}")
+            db.session.rollback()
+
         # Initialize default settings
         from .models import Setting, init_default_settings
         init_default_settings()

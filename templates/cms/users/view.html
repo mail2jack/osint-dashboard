@@ -81,6 +81,40 @@
         </div>
     </div>
     
+    <div class="card">
+        <h2 style="margin-top:0;font-size:1.1rem;">Two-Factor Authentication</h2>
+        <div class="info-row">
+            <span class="info-label">Status:</span>
+            <span class="info-value">
+                {% if user.totp_enabled %}
+                <span class="badge" style="background:#d1fae5;color:#065f46;">Enabled</span>
+                {% else %}
+                <span class="badge" style="background:#e5e5e5;color:#666;">Disabled</span>
+                {% endif %}
+            </span>
+        </div>
+        <div style="margin-top:0.75rem;">
+            {% if current_user.id == user.id %}
+                {% if user.totp_enabled %}
+                <form method="POST" action="{{ url_for('auth.disable_2fa') }}" style="display:inline;">
+                    <label style="display:block;margin-bottom:0.25rem;font-size:0.85rem;color:#666;">Enter your password to disable:</label>
+                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                        <input type="password" name="password" placeholder="Password" required style="padding:0.4rem;border:1px solid #ddd;border-radius:4px;font-size:0.9rem;">
+                        <button type="submit" class="btn btn-danger" style="padding:0.4rem 0.75rem;font-size:0.85rem;">Disable 2FA</button>
+                    </div>
+                </form>
+                {% else %}
+                <a href="{{ url_for('auth.setup_2fa') }}" class="btn" style="padding:0.4rem 0.75rem;font-size:0.85rem;">Enable 2FA</a>
+                {% endif %}
+            {% endif %}
+            {% if current_user.is_admin and user.id != current_user.id and user.totp_enabled %}
+            <form method="POST" action="{{ url_for('auth.reset_2fa', user_id=user.id) }}" style="display:inline;" onsubmit="return confirm('Reset 2FA for this user? They will need to set it up again.');">
+                <button type="submit" class="btn btn-danger" style="padding:0.4rem 0.75rem;font-size:0.85rem;">Reset 2FA</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="actions">
         {% if current_user.is_admin and user.id != current_user.id %}
         <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn">Edit User</a>

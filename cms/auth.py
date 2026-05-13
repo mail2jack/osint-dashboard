@@ -11,9 +11,17 @@ Design Decisions:
 """
 
 import functools
+import hashlib
+import io
+import json
+import base64
+import secrets
 import logging
 from datetime import datetime
 from typing import Callable, List, Optional, Union
+
+import pyotp
+import qrcode
 
 from flask import (
     Blueprint, request, jsonify, render_template, 
@@ -358,10 +366,29 @@ def login():
                 flash('Your account has been disabled. Contact an administrator.', 'danger')
                 return render_template('cms/login.html')
             
-            # Update last login
-            user.last_login = datetime.utcnow()
+            # Log successful password verification
+            AuditLog.log(
+                user_id=user.id,
+                action='password_verified',
+                entity_type='user',
+                entity_id=user.id,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string,
+                description=f"Password verified for user {username}"
+            )
+            db.session.commit()
             
-            # Log successful login
+            # 2FA check: if user has TOTP enabled, require second factor
+            if user.totp_enabled:
+                session['_2fa_user_id'] = user.id
+                session['_2fa_remember'] = remember
+                return redirect(url_for('auth.verify_2fa'))
+            
+            # No 2FA — complete login immediately
+            user.last_login = datetime.utcnow()
+            login_user(user, remember=remember)
+            
+            # Log full login
             AuditLog.log(
                 user_id=user.id,
                 action='login',
@@ -372,8 +399,6 @@ def login():
                 description=f"User {username} logged in"
             )
             db.session.commit()
-            
-            login_user(user, remember=remember)
             
             # Redirect to intended page or dashboard
             next_page = request.args.get('next')
@@ -415,6 +440,225 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('auth.login'))
+
+
+# =============================================================================
+# 2FA (TOTP) Routes
+# =============================================================================
+
+@auth_bp.route('/2fa/verify', methods=['GET', 'POST'])
+def verify_2fa():
+    """Verify TOTP code as second factor during login."""
+    user_id = session.get('_2fa_user_id')
+    if not user_id:
+        flash('No pending 2FA verification. Please log in first.', 'warning')
+        return redirect(url_for('auth.login'))
+
+    user = User.query.get(user_id)
+    if not user or not user.totp_enabled:
+        session.pop('_2fa_user_id', None)
+        session.pop('_2fa_remember', None)
+        flash('2FA is not enabled for this account.', 'warning')
+        return redirect(url_for('auth.login'))
+
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip()
+        recovery_code = request.form.get('recovery_code', '').strip()
+
+        # Try TOTP code first
+        totp = pyotp.TOTP(user.totp_secret)
+        if code and totp.verify(code, valid_window=1):
+            return _complete_2fa_login(user)
+
+        # Try recovery code
+        if recovery_code:
+            codes = _get_backup_codes(user)
+            for i, stored_hash in enumerate(codes):
+                if secrets.compare_digest(
+                    hashlib.sha256(recovery_code.encode()).hexdigest(),
+                    stored_hash
+                ):
+                    codes.pop(i)
+                    user.backup_codes = json.dumps(codes)
+                    db.session.commit()
+                    flash('Recovery code used — please set up a new device.', 'info')
+                    return _complete_2fa_login(user)
+
+        flash('Invalid code. Please try again.', 'danger')
+
+    return render_template('cms/2fa/verify.html')
+
+
+def _complete_2fa_login(user):
+    """Complete the second-factor login and clear the pending session."""
+    user.last_login = datetime.utcnow()
+    remember = session.pop('_2fa_remember', False)
+    session.pop('_2fa_user_id', None)
+
+    login_user(user, remember=remember)
+
+    AuditLog.log(
+        user_id=user.id,
+        action='login',
+        entity_type='user',
+        entity_id=user.id,
+        ip_address=request.remote_addr,
+        user_agent=request.user_agent.string,
+        description=f"User {user.username} logged in (2FA)"
+    )
+    db.session.commit()
+
+    next_page = request.args.get('next') or session.pop('_2fa_next', None)
+    if next_page and next_page.startswith('/'):
+        return redirect(next_page)
+    return redirect(url_for('cms.dashboard'))
+
+
+@auth_bp.route('/2fa/setup', methods=['GET', 'POST'])
+@login_required
+def setup_2fa():
+    """Set up TOTP two-factor authentication."""
+    if current_user.totp_enabled:
+        flash('2FA is already enabled. Disable it first to reconfigure.', 'info')
+        return redirect(url_for('users.view_user', user_id=current_user.id))
+
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip()
+        secret = session.get('_2fa_pending_secret')
+
+        if not secret:
+            flash('Session expired. Please start again.', 'warning')
+            return redirect(url_for('auth.setup_2fa'))
+
+        totp = pyotp.TOTP(secret)
+        if not code or not totp.verify(code, valid_window=1):
+            flash('Invalid code. Please try again.', 'danger')
+            return render_template('cms/2fa/setup.html',
+                secret=secret,
+                provisioning_uri=totp.provisioning_uri(current_user.username, issuer_name='CMS'))
+
+        # Generate backup codes
+        backup_codes = _generate_backup_codes()
+
+        # Save to user
+        current_user.totp_secret = secret
+        current_user.totp_enabled = True
+        current_user.backup_codes = json.dumps([
+            hashlib.sha256(c.encode()).hexdigest() for c in backup_codes
+        ])
+        db.session.commit()
+
+        session.pop('_2fa_pending_secret', None)
+
+        AuditLog.log(
+            user_id=current_user.id,
+            action='2fa_enabled',
+            entity_type='user',
+            entity_id=current_user.id,
+            ip_address=request.remote_addr,
+            description=f"User {current_user.username} enabled 2FA"
+        )
+        db.session.commit()
+
+        return render_template('cms/2fa/recovery_codes.html',
+            codes=backup_codes,
+            username=current_user.username)
+
+    # GET: generate secret and show QR
+    secret = pyotp.random_base32()
+    session['_2fa_pending_secret'] = secret
+    totp = pyotp.TOTP(secret)
+    provisioning_uri = totp.provisioning_uri(current_user.username, issuer_name='CMS')
+
+    # Generate QR code as base64 PNG
+    qr = qrcode.make(provisioning_uri)
+    buf = io.BytesIO()
+    qr.save(buf, format='PNG')
+    qr_b64 = base64.b64encode(buf.getvalue()).decode()
+
+    return render_template('cms/2fa/setup.html',
+        secret=secret,
+        qr_b64=qr_b64,
+        provisioning_uri=provisioning_uri)
+
+
+@auth_bp.route('/2fa/disable', methods=['POST'])
+@login_required
+def disable_2fa():
+    """Disable 2FA for the current user."""
+    password = request.form.get('password', '')
+
+    if not current_user.check_password(password):
+        flash('Incorrect password.', 'danger')
+        return redirect(url_for('users.view_user', user_id=current_user.id))
+
+    current_user.totp_secret = None
+    current_user.totp_enabled = False
+    current_user.backup_codes = None
+    db.session.commit()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action='2fa_disabled',
+        entity_type='user',
+        entity_id=current_user.id,
+        ip_address=request.remote_addr,
+        description=f"User {current_user.username} disabled 2FA"
+    )
+    db.session.commit()
+
+    flash('2FA has been disabled.', 'success')
+    return redirect(url_for('users.view_user', user_id=current_user.id))
+
+
+@auth_bp.route('/2fa/reset/<user_id>', methods=['POST'])
+@login_required
+@admin_required
+def reset_2fa(user_id):
+    """Admin: reset 2FA for another user."""
+    user = User.query.get_or_404(user_id)
+    user.totp_secret = None
+    user.totp_enabled = False
+    user.backup_codes = None
+    db.session.commit()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action='2fa_reset',
+        entity_type='user',
+        entity_id=user.id,
+        ip_address=request.remote_addr,
+        description=f"Admin {current_user.username} reset 2FA for user {user.username}"
+    )
+    db.session.commit()
+
+    flash(f'2FA reset for user {user.username}.', 'success')
+    return redirect(url_for('users.view_user', user_id=user.id))
+
+
+# =============================================================================
+# 2FA Helper Functions
+# =============================================================================
+
+def _get_backup_codes(user) -> list:
+    """Return list of hashed backup codes from user model."""
+    if not user.backup_codes:
+        return []
+    try:
+        return json.loads(user.backup_codes)
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+def _generate_backup_codes(count: int = 8) -> list:
+    """Generate count backup codes in XXXX-XXXX-XXXX format."""
+    codes = []
+    for _ in range(count):
+        part1 = secrets.token_hex(2).upper()[:4]
+        part2 = secrets.token_hex(2).upper()[:4]
+        part3 = secrets.token_hex(2).upper()[:4]
+        codes.append(f"{part1}-{part2}-{part3}")
+    return codes
 
 
 # =============================================================================
