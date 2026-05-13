@@ -22,7 +22,19 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$SCRIPT_DIR"
-SF_DIR="/Users/gast/Documents/spiderfoot"
+
+# Find SpiderFoot in common locations
+if [ -d "/opt/spiderfoot" ]; then
+    SF_DIR="/opt/spiderfoot"
+elif [ -d "$SCRIPT_DIR/../spiderfoot" ]; then
+    SF_DIR="$(cd "$SCRIPT_DIR/../spiderfoot" && pwd)"
+elif [ -d "$HOME/spiderfoot" ]; then
+    SF_DIR="$HOME/spiderfoot"
+elif [ -d "/usr/local/spiderfoot" ]; then
+    SF_DIR="/usr/local/spiderfoot"
+else
+    SF_DIR=""  # Will prompt user
+fi
 
 # Configuration files
 APP_CONFIG="$SCRIPT_DIR/.app_port"
@@ -262,15 +274,18 @@ start_spiderfoot() {
     
     # Check if SpiderFoot directory exists
     if [ ! -d "$SF_DIR" ]; then
-        print_warning "SpiderFoot not found at $SF_DIR"
-        read -p "Should I clone SpiderFoot? (Y/n): " -n 1 -r
+        print_warning "SpiderFoot not found."
+        read -p "Enter path to clone or install SpiderFoot [../spiderfoot]: " sf_path
+        sf_path="${sf_path:-$SCRIPT_DIR/../spiderfoot}"
+        sf_path="$(cd "$(dirname "$sf_path")" 2>/dev/null && pwd)/$(basename "$sf_path")"
+        read -p "Clone SpiderFoot to $sf_path? (Y/n): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Nn]$ ]]; then
             return 1
         fi
-        print_info "Cloning SpiderFoot..."
-        cd /Users/gast/Documents
-        git clone https://github.com/smicallef/spiderfoot.git 2>/dev/null
+        print_info "Cloning SpiderFoot to $sf_path..."
+        git clone https://github.com/smicallef/spiderfoot.git "$sf_path" 2>/dev/null
+        SF_DIR="$sf_path"
         cd "$SF_DIR" && pip3 install -r requirements.txt 2>/dev/null
         print_success "SpiderFoot installed"
     fi
@@ -314,7 +329,11 @@ start_iveras() {
     
     print_info "Starting Iveras on port $port..."
     cd "$APP_DIR"
-    nohup python3 app.py > "$APP_LOG" 2>&1 &
+    PYTHON_BIN="python3"
+    if [ -f "$APP_DIR/venv/bin/python3" ]; then
+        PYTHON_BIN="$APP_DIR/venv/bin/python3"
+    fi
+    nohup "$PYTHON_BIN" app.py > "$APP_LOG" 2>&1 &
     echo $! > "$APP_PID_FILE"
     save_app_port "$port"
     
@@ -338,7 +357,11 @@ update_spiderfoot_config() {
     print_info "Updating Iveras SpiderFoot configuration..."
     
     cd "$APP_DIR"
-    python3 << EOF
+    PYTHON_BIN="python3"
+    if [ -f "$APP_DIR/venv/bin/python3" ]; then
+        PYTHON_BIN="$APP_DIR/venv/bin/python3"
+    fi
+    "$PYTHON_BIN" << EOF
 import os
 import sys
 sys.path.insert(0, '$APP_DIR')
