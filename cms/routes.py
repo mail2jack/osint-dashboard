@@ -12,7 +12,10 @@ Design Decisions:
 
 import json
 import logging
+import os
+import re
 import threading
+import time
 import uuid
 from datetime import datetime, date
 from typing import Optional, Dict, Any
@@ -545,7 +548,7 @@ def create_client():
         
         # Set encrypted fields
         encrypted_fields = ['contact_person', 'contact_email', 'contact_phone',
-                          'address_street', 'address_city', 'address_postal', 'address_country',
+                          'address_street', 'address_number', 'address_city', 'address_postal', 'address_country',
                           'social_security_number', 'bank_account']
         for field in encrypted_fields:
             if data.get(field):
@@ -603,7 +606,7 @@ def edit_client(client_id: str):
         
         # Update encrypted fields
         encrypted_fields = ['contact_person', 'contact_email', 'contact_phone',
-                          'address_street', 'address_city', 'address_postal', 'address_country',
+                          'address_street', 'address_number', 'address_city', 'address_postal', 'address_country',
                           'social_security_number', 'bank_account']
         for field in encrypted_fields:
             if field in data:
@@ -4232,15 +4235,18 @@ def update_subject_social_ids(subject_id: str):
 # Politie Open Data Routes
 # =============================================================================
 
-POLITIE_API_BASE = 'https://data.politie.nl'
+INTERPOL_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json'
+}
 
 
 @cms_bp.route('/check-policie-data', methods=['POST'])
 @login_required
 def check_policie_data():
     """
-    Check if a subject matches data in Dutch Police open data.
-    Searches missing persons and wanted persons.
+    Check subject against INTERPOL Red Notices (wanted) and Yellow Notices (missing).
+    Also checks politie.nl/vermist for Dutch missing persons.
     """
     data = request.get_json()
     
@@ -4253,67 +4259,140 @@ def check_policie_data():
     if not subject_name:
         return jsonify({'error': 'Subject name is required'}), 400
     
-    # Split name into parts for matching
     name_parts = subject_name.lower().split()
+    forename = name_parts[0] if len(name_parts) > 0 else ''
+    surname = name_parts[-1] if len(name_parts) > 1 else ''
     
     results = {
         'subject_name': subject_name,
         'subject_id': subject_id,
         'missing_persons': [],
         'wanted_persons': [],
-        'api_available': False,
+        'api_available': True,
+        'source': 'interpol',
         'error': None
     }
     
     try:
-        # Try to fetch from Politie open data
-        missing_found = False
-        wanted_found = False
+        import httpx
+        client = httpx.Client(headers=INTERPOL_HEADERS, timeout=15)
         
+        # --- Interpol Red Notices (wanted) ---
         try:
-            # Try CBS OData API for Politie data
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
-                'Accept': 'application/json'
-            }
-            
-            # Check missing persons
-            missing_url = f'{POLITIE_API_BASE}/api/v1/vermisten'
-            r = http_requests.get(missing_url, headers=headers, timeout=15)
-            
-            if r.status_code == 200 and 'application/json' in r.headers.get('Content-Type', ''):
-                results['api_available'] = True
-                data = r.json()
-                # Process missing persons data
-                if 'value' in data:
-                    for person in data['value']:
-                        person_name = person.get('naam', '').lower()
-                        if any(part in person_name for part in name_parts):
-                            results['missing_persons'].append({
-                                'name': person.get('naam', 'Unknown'),
-                                'description': person.get('omschrijving', ''),
-                                'location': person.get('laatste_locatie', ''),
-                                'date_missing': person.get('datum_vermisting', ''),
-                                'url': f"{POLITIE_API_BASE}/vermist/{person.get('id', '')}"
-                            })
-                            missing_found = True
-            elif r.status_code == 200:
-                # HTML response - API not available
-                results['api_available'] = False
-                results['error'] = 'Politie open data API is temporarily unavailable (returning HTML instead of JSON)'
-                
-        except http_requests.exceptions.RequestException as e:
-            results['error'] = f'Failed to connect to Politie API: {str(e)}'
+            red_params = {'resultPerPage': 10}
+            if surname:
+                red_params['name'] = surname
+            if forename:
+                red_params['forename'] = forename
+            r = client.get('https://ws-public.interpol.int/notices/v1/red', params=red_params)
+            if r.status_code == 200:
+                red_data = r.json()
+                for notice in red_data.get('_embedded', {}).get('notices', []):
+                    nid = notice['entity_id'].replace('/', '-')
+                    # Get detail for charges
+                    detail = None
+                    try:
+                        dr = client.get(f'https://ws-public.interpol.int/notices/v1/red/{nid}')
+                        if dr.status_code == 200:
+                            detail = dr.json()
+                    except:
+                        pass
+                    charge = ''
+                    issuing = ''
+                    if detail and detail.get('arrest_warrants'):
+                        aw = detail['arrest_warrants'][0]
+                        charge = aw.get('charge', '')
+                        issuing = aw.get('issuing_country_id', '')
+                    results['wanted_persons'].append({
+                        'name': f"{notice.get('forename', '')} {notice.get('name', '')}".strip(),
+                        'forename': notice.get('forename', ''),
+                        'surname': notice.get('name', ''),
+                        'date_of_birth': notice.get('date_of_birth', ''),
+                        'nationality': ', '.join(notice.get('nationalities', [])),
+                        'charge': charge,
+                        'issuing_country': issuing,
+                        'url': notice.get('_links', {}).get('self', {}).get('href', ''),
+                        'thumbnail': notice.get('_links', {}).get('thumbnail', {}).get('href', ''),
+                        'type': 'Red Notice (Wanted)',
+                        'source': 'INTERPOL'
+                    })
+        except Exception as e:
+            logger.warning(f"Interpol Red Notice lookup error: {e}")
         
-        # Note: opsporingsberichten (wanted persons) typically requires specific access
-        # We'll check if available later
+        # --- Interpol Yellow Notices (missing) ---
+        try:
+            yellow_params = {'resultPerPage': 10}
+            if surname:
+                yellow_params['name'] = surname
+            if forename:
+                yellow_params['forename'] = forename
+            r = client.get('https://ws-public.interpol.int/notices/v1/yellow', params=yellow_params)
+            if r.status_code == 200:
+                yellow_data = r.json()
+                for notice in yellow_data.get('_embedded', {}).get('notices', []):
+                    nid = notice['entity_id'].replace('/', '-')
+                    detail = None
+                    try:
+                        dr = client.get(f'https://ws-public.interpol.int/notices/v1/yellow/{nid}')
+                        if dr.status_code == 200:
+                            detail = dr.json()
+                    except:
+                        pass
+                    results['missing_persons'].append({
+                        'name': f"{notice.get('forename', '')} {notice.get('name', '')}".strip(),
+                        'forename': notice.get('forename', ''),
+                        'surname': notice.get('name', ''),
+                        'date_of_birth': notice.get('date_of_birth', ''),
+                        'nationality': ', '.join(notice.get('nationalities', [])),
+                        'date_missing': detail.get('date_of_event', '') if detail else '',
+                        'place': detail.get('place', '') if detail else '',
+                        'countries_likely_to_visit': ', '.join(detail.get('countries_likely_to_be_visited', [])) if detail else '',
+                        'url': notice.get('_links', {}).get('self', {}).get('href', ''),
+                        'thumbnail': notice.get('_links', {}).get('thumbnail', {}).get('href', ''),
+                        'type': 'Yellow Notice (Missing)',
+                        'source': 'INTERPOL'
+                    })
+        except Exception as e:
+            logger.warning(f"Interpol Yellow Notice lookup error: {e}")
         
+        # If Interpol returned no results and search was specific enough, try politie.nl/vermist
+        if len(results['wanted_persons']) == 0 and len(results['missing_persons']) == 0 and len(name_parts) >= 1:
+            try:
+                vermist_resp = httpx.get('https://www.politie.nl/vermist',
+                    headers=INTERPOL_HEADERS, timeout=10, follow_redirects=True)
+                if vermist_resp.status_code == 200:
+                    import re as re2
+                    # Extract case links from the page
+                    case_links = re2.findall(r'href="(/vermist/[^"]+)"', vermist_resp.text)
+                    for link in case_links[:20]:  # Check first 20 cases
+                        try:
+                            detail = httpx.get(f'https://www.politie.nl{link}',
+                                headers=INTERPOL_HEADERS, timeout=10, follow_redirects=True)
+                            if detail.status_code == 200:
+                                text_lower = detail.text.lower()
+                                # Simple name match
+                                if any(part in text_lower for part in name_parts):
+                                    title_match = re2.search(r'<h1[^>]*>([^<]+)</h1>', detail.text)
+                                    title = title_match.group(1).strip() if title_match else 'Unknown'
+                                    results['missing_persons'].append({
+                                        'name': title,
+                                        'source': 'politie.nl/vermist',
+                                        'url': f'https://www.politie.nl{link}',
+                                        'type': 'Missing Person (Netherlands)',
+                                        'description': f'Matching name parts found on politie.nl'
+                                    })
+                        except:
+                            pass
+            except:
+                pass
+        
+        logger.info(f"Check for {subject_name}: {len(results['wanted_persons'])} wanted, {len(results['missing_persons'])} missing")
         return jsonify(results), 200
         
     except Exception as e:
-        logger.error(f"Politie data check error: {e}")
+        logger.error(f"Interpol data check error: {e}")
         return jsonify({
-            'error': f'Failed to check Politie data: {str(e)}',
+            'error': f'Failed to check data: {str(e)}',
             'api_available': False
         }), 500
 
@@ -4321,21 +4400,19 @@ def check_policie_data():
 @cms_bp.route('/check-policie-data-status', methods=['GET'])
 @login_required
 def check_policie_api_status():
-    """Check if Politie open data API is available."""
+    """Check if INTERPOL API is available."""
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (compatible; OSINT-CMS/1.0)',
-            'Accept': 'application/json'
-        }
-        
-        r = http_requests.head(f'{POLITIE_API_BASE}/api/v1/vermisten', headers=headers, timeout=10)
-        
+        import httpx
+        r = httpx.get('https://ws-public.interpol.int/notices/v1/red',
+            params={'resultPerPage': 1},
+            headers=INTERPOL_HEADERS,
+            timeout=10)
         return jsonify({
             'available': r.status_code == 200,
             'status_code': r.status_code,
-            'api_url': POLITIE_API_BASE
+            'api_url': 'https://ws-public.interpol.int/notices/v1/',
+            'source': 'INTERPOL'
         }), 200
-        
     except Exception as e:
         return jsonify({
             'available': False,
@@ -4634,6 +4711,394 @@ def kadaster_lookup():
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
+@cms_bp.route('/api/politiebureau-lookup', methods=['POST'])
+@login_required
+def politiebureau_lookup():
+    """
+    Look up nearest police station (politiebureau) for an address.
+    
+    Accepts {address_id} or {lat, lon}. Looks up coordinates from
+    kadaster_data or PDOK BAG, then calls api.politie.nl/politiebureaus/v1.
+    """
+    data = request.get_json() if request.is_json else request.form
+
+    lat = lon = None
+    address_info = {}
+
+    address_id = data.get('address_id')
+    if address_id:
+        addr = Address.query.get(address_id)
+        if not addr:
+            return jsonify({'error': 'Address not found'}), 404
+        addr.decrypt_fields()
+        address_info = {
+            'street': addr.street, 'number': addr.number,
+            'zipcode': addr.zipcode, 'town': addr.town,
+            'country': addr.country
+        }
+
+        # Check kadaster_data for stored coordinates
+        if addr.kadaster_data:
+            coords_str = addr.kadaster_data.get('coordinates')
+            if coords_str and 'POINT(' in coords_str:
+                c = coords_str.replace('POINT(', '').replace(')', '').strip().split(' ')
+                if len(c) == 2:
+                    lon, lat = float(c[0]), float(c[1])
+
+            # Fallback: direct lat/lon keys
+            if not lat and addr.kadaster_data.get('lat') and addr.kadaster_data.get('lon'):
+                lat = float(addr.kadaster_data['lat'])
+                lon = float(addr.kadaster_data['lon'])
+
+        # Fallback: PDOK BAG lookup
+        if not lat or not lon:
+            query = ' '.join(filter(None, [
+                addr.street, addr.number, addr.zipcode, addr.town
+            ]))
+            if query:
+                try:
+                    import httpx
+                    pdok_url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free'
+                    r = httpx.get(pdok_url, params={'q': query, 'rows': 1, 'fl': '*'}, timeout=10)
+                    r.raise_for_status()
+                    docs = r.json().get('response', {}).get('docs', [])
+                    if docs:
+                        cs = docs[0].get('centroide_ll')
+                        if cs and 'POINT(' in cs:
+                            c = cs.replace('POINT(', '').replace(')', '').strip().split(' ')
+                            if len(c) == 2:
+                                lon, lat = float(c[0]), float(c[1])
+                except Exception:
+                    pass
+    # Direct coordinates
+    if not lat or not lon:
+        lat = data.get('lat')
+        lon = data.get('lon')
+
+    # Free-text query → PDOK BAG lookup
+    if not lat or not lon:
+        query = data.get('query') or ''
+        if query:
+            try:
+                import httpx
+                pdok_url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free'
+                r = httpx.get(pdok_url, params={'q': query, 'rows': 1, 'fl': '*'}, timeout=10)
+                r.raise_for_status()
+                docs = r.json().get('response', {}).get('docs', [])
+                if docs and docs[0].get('centroide_ll'):
+                    cs = docs[0]['centroide_ll']
+                    if 'POINT(' in cs:
+                        c = cs.replace('POINT(', '').replace(')', '').strip().split(' ')
+                        if len(c) == 2:
+                            lon, lat = float(c[0]), float(c[1])
+            except Exception:
+                pass
+
+    if not lat or not lon:
+        return jsonify({'error': 'Could not determine coordinates for this address'}), 400
+
+    try:
+        import httpx
+        r = httpx.get('https://api.politie.nl/politiebureaus/v1',
+                       params={'lat': lat, 'lon': lon}, timeout=10)
+        r.raise_for_status()
+        result = r.json()
+
+        stations = result.get('politiebureaus', [])
+        if not stations:
+            return jsonify({'found': False,
+                            'message': 'Geen politiebureaus gevonden in de buurt'}), 200
+
+        s = stations[0]
+        addr_bezoek = s.get('bezoekadres', {})
+        station_addr = None
+        if addr_bezoek.get('adres'):
+            station_addr = (f"{addr_bezoek['adres']}, "
+                           f"{addr_bezoek.get('postcode', '')} "
+                           f"{addr_bezoek.get('plaats', '')}")
+
+        return jsonify({
+            'found': True,
+            'station': {
+                'name': s.get('naam'),
+                'address': station_addr,
+                'phone': s.get('telefoonnummer'),
+                'opening_hours': s.get('openingstijden'),
+                'url': s.get('url'),
+                'location': s.get('locaties', [{}])[0] if s.get('locaties') else None
+            },
+            'address': address_info,
+            'coordinates': {'lat': lat, 'lon': lon}
+        }), 200
+
+    except httpx.RequestError as e:
+        return jsonify({'error': f'Failed to lookup police station: {str(e)}'}), 502
+    except Exception as e:
+        logger.error(f"Politiebureau lookup error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@cms_bp.route('/api/check-update', methods=['GET'])
+@login_required
+def check_update():
+    """
+    Check if a newer version is available on GitHub.
+    Compares current version (from version.py) against remote VERSION file.
+    Results are cached in-memory for 1 hour.
+    """
+    from version import get_version
+    current_ver = get_version()
+
+    repo = Setting.get('update_check_repo')
+    if not repo:
+        return jsonify({
+            'update_available': False,
+            'current_version': current_ver,
+            'latest_version': current_ver,
+            'check_enabled': False,
+            'message': 'Update checking is disabled. Set update_check_repo in Settings.'
+        })
+
+    # In-memory cache on the app
+    cache_key = '_update_check_cache'
+    cache = current_app.config.get(cache_key, {})
+    now = time.time()
+
+    if cache.get('cached_at') and (now - cache['cached_at']) < 3600:
+        return jsonify(cache['data'])
+
+    try:
+        import httpx
+        url = f'https://raw.githubusercontent.com/{repo}/master/VERSION'
+        r = httpx.get(url, timeout=10)
+        r.raise_for_status()
+        latest_ver = r.text.strip()
+
+        current_parts = [int(x) for x in current_ver.split('.')]
+        latest_parts = [int(x) for x in latest_ver.split('.')]
+        update_available = latest_parts > current_parts
+
+        data = {
+            'update_available': update_available,
+            'current_version': current_ver,
+            'latest_version': latest_ver,
+            'check_enabled': True,
+            'repo': repo
+        }
+
+        current_app.config[cache_key] = {'data': data, 'cached_at': now}
+        return jsonify(data)
+
+    except Exception as e:
+        logger.warning(f"Update check failed: {e}")
+        return jsonify({
+            'update_available': False,
+            'current_version': current_ver,
+            'latest_version': None,
+            'check_enabled': True,
+            'error': str(e)
+        })
+
+
+@cms_bp.route('/admin/do-update', methods=['POST'])
+@login_required
+@admin_required
+def do_update():
+    """
+    Run update: backup, git pull, pip upgrade, restart services.
+    Admin only. Runs synchronously and streams status via JSON responses.
+    """
+    import subprocess
+    import sys
+    from version import get_version
+
+    current_ver = get_version()
+    results = []
+
+    def step(msg, cmd, cwd=None):
+        results.append({'step': msg, 'status': 'running'})
+        try:
+            r = subprocess.run(cmd, shell=True, capture_output=True, text=True,
+                             cwd=cwd or current_app.root_path, timeout=120)
+            if r.returncode == 0:
+                results[-1] = {'step': msg, 'status': 'ok', 'output': r.stdout.strip()}
+            else:
+                results[-1] = {'step': msg, 'status': 'error', 'output': r.stderr.strip()}
+        except Exception as e:
+            results[-1] = {'step': msg, 'status': 'error', 'output': str(e)}
+
+    project_root = current_app.root_path
+
+    # Step 1: Database backup
+    db_path = current_app.config.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///cms.db')
+    if db_path.startswith('sqlite'):
+        db_file = db_path.replace('sqlite:///', '')
+        step('Backup database', f'cp "{db_file}" "{db_file}.backup.$(date +%Y%m%d_%H%M%S)"')
+
+    # Step 2: Git pull
+    step('Pull latest code', 'git pull origin master', cwd=project_root)
+
+    # Step 3: Install dependencies
+    step('Update Python packages', f'{sys.executable} -m pip install -r requirements.txt --upgrade',
+         cwd=project_root)
+
+    # Step 4: Clear cache / run migrations
+    step('Apply database migrations',
+         f'{sys.executable} -c "from app import app; from cms.__init__ import create_cms_module; create_cms_module(app); print(\'Migrations OK\')"',
+         cwd=project_root)
+
+    # Step 5: Restart
+    step('Restart services', 'sudo systemctl restart osint-dashboard',
+         cwd=project_root)
+
+    success = all(r['status'] == 'ok' for r in results)
+
+    return jsonify({
+        'success': success,
+        'current_version': current_ver,
+        'results': results,
+        'message': 'Update completed successfully' if success else 'Update had errors, check results'
+    }), 200 if success else 500
+
+
+@cms_bp.route('/api/phone-lookup', methods=['POST'])
+@login_required
+def phone_lookup():
+    """
+    Look up a phone number: validation, carrier, location, line type, WhatsApp/Telegram.
+    Uses phonenumbers library + free Bedrijfsdata API for NL numbers.
+    """
+    data = request.get_json() if request.is_json else request.form
+    phone = (data.get('phone') or '').strip()
+
+    if not phone:
+        return jsonify({'error': 'Phone number required'}), 400
+
+    result = {
+        'phone': phone,
+        'valid': False,
+        'formatted': None,
+        'country': None,
+        'country_code': None,
+        'region': None,
+        'carrier': None,
+        'line_type': None,
+        'timezone': None,
+        'normalized': None,
+        'services': {},
+        'nl_info': None
+    }
+
+    try:
+        import httpx
+        import phonenumbers
+        from phonenumbers import geocoder, carrier, timezone as pn_tz
+
+        parsed = phonenumbers.parse(phone, 'NL')
+        result['valid'] = phonenumbers.is_valid_number(parsed)
+        result['formatted'] = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        result['country_code'] = f"+{parsed.country_code}"
+
+        try:
+            result['country'] = geocoder.description_for_number(parsed, 'en')
+        except:
+            pass
+
+        try:
+            result['region'] = geocoder.description_for_number(parsed, 'nl')
+        except:
+            pass
+
+        try:
+            result['carrier'] = carrier.name_for_number(parsed, 'nl')
+        except:
+            pass
+
+        try:
+            ntype = phonenumbers.number_type(parsed)
+            line_map = {
+                phonenumbers.PhoneNumberType.MOBILE: 'Mobile',
+                phonenumbers.PhoneNumberType.FIXED_LINE: 'Fixed Line',
+                phonenumbers.PhoneNumberType.FIXED_LINE_OR_MOBILE: 'Fixed Line or Mobile',
+                phonenumbers.PhoneNumberType.PAGER: 'Pager',
+                phonenumbers.PhoneNumberType.PERSONAL_NUMBER: 'Personal Number',
+                phonenumbers.PhoneNumberType.PREMIUM_RATE: 'Premium Rate',
+                phonenumbers.PhoneNumberType.SHARED_COST: 'Shared Cost',
+                phonenumbers.PhoneNumberType.TOLL_FREE: 'Toll Free',
+                phonenumbers.PhoneNumberType.UAN: 'UAN',
+                phonenumbers.PhoneNumberType.VOIP: 'VoIP',
+            }
+            result['line_type'] = line_map.get(ntype, str(ntype))
+        except:
+            pass
+
+        try:
+            tz = pn_tz.time_zones_for_number(parsed)
+            result['timezone'] = tz[0] if tz else None
+        except:
+            pass
+
+        normalized = re.sub(r'[^0-9]', '', result['formatted'])
+        result['normalized'] = normalized
+
+        # WhatsApp check
+        with httpx.Client(follow_redirects=True, timeout=10) as client:
+            try:
+                wa_url = f'https://api.whatsapp.com/send?phone={normalized}'
+                wa_resp = client.get(wa_url, headers={'User-Agent': 'Mozilla/5.0'})
+                wa_text = wa_resp.text.lower()
+                if 'phone number is not on whatsapp' in wa_text:
+                    result['services']['whatsapp'] = {'exists': False}
+                else:
+                    result['services']['whatsapp'] = {'exists': True, 'url': f'https://wa.me/{normalized}'}
+            except:
+                result['services']['whatsapp'] = {'exists': None, 'note': 'Check failed'}
+
+            # Telegram check
+            try:
+                tg_url = f'https://t.me/+{normalized}'
+                tg_resp = client.get(tg_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
+                tg_text = tg_resp.text.lower()
+                if tg_resp.status_code == 400 or 'join' in tg_text or 'subscribe' in tg_text:
+                    result['services']['telegram'] = {'exists': True, 'url': tg_url}
+                elif tg_resp.status_code == 200:
+                    result['services']['telegram'] = {'exists': False}
+                else:
+                    result['services']['telegram'] = {'exists': None, 'note': 'Unable to verify'}
+            except:
+                result['services']['telegram'] = {'exists': None, 'note': 'Check failed'}
+
+        # Free NL-specific lookup via Bedrijfsdata API
+        if result['country_code'] == '+31':
+            try:
+                bd_url = 'https://free.bedrijfsdata.nl/v1.1/phone'
+                bd_params = {'country_code': 'nl', 'phone': phone.lstrip('+').lstrip('00')}
+                bd_resp = httpx.get(bd_url, params=bd_params, timeout=10)
+                if bd_resp.status_code == 200:
+                    bd_data = bd_resp.json().get('phone', {})
+                    result['nl_info'] = {
+                        'valid': bd_data.get('valid') == 1,
+                        'region': bd_data.get('region'),
+                        'carrier': bd_data.get('carrier'),
+                        'is_mobile': bd_data.get('ismobile') == 1
+                    }
+                    if bd_data.get('region') and not result.get('region'):
+                        result['region'] = bd_data['region']
+                    if bd_data.get('carrier') and not result.get('carrier'):
+                        result['carrier'] = bd_data['carrier']
+            except:
+                pass
+
+        logger.info(f"Phone lookup: {phone} → valid={result['valid']}, carrier={result['carrier']}, region={result['region']}, wa={result['services'].get('whatsapp', {}).get('exists')}")
+        return jsonify(result), 200
+
+    except ImportError:
+        return jsonify({'error': 'phonenumbers library not installed'}), 500
+    except Exception as e:
+        logger.error(f"Phone lookup error: {e}")
+        return jsonify({'error': f'Phone lookup failed: {str(e)}'}), 500
+
+
 @cms_bp.route('/cases/<case_id>/screenshots/capture', methods=['POST'])
 @login_required
 @case_access_required
@@ -4865,8 +5330,6 @@ def delete_screenshot(case_id: str, screenshot_id: str):
 # Document Upload Routes
 # =============================================================================
 
-import os
-import uuid
 from werkzeug.utils import secure_filename
 
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv'}

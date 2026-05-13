@@ -31,8 +31,8 @@
                 🔍 OSINT Search
             </button>
             {% endif %}
-            <button onclick="checkPolitieData()" id="policieCheckBtn" class="btn-osint" style="background: #dc2626; border: none; cursor: pointer;">
-                🚔 Check Politie Data
+            <button onclick="checkPolitieData()" id="policieCheckBtn" class="btn-osint" style="background: #1e40af; border: none; cursor: pointer;">
+                🌍 Check Interpol
             </button>
             {% endif %}
             {% if subject.photo_path %}
@@ -65,7 +65,12 @@
             <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
             {% if subject.subject_type != 'vehicle' %}
             <div class="info-item"><label>Email</label><span>{{ subject.email if subject.email else '-' }}</span></div>
-            <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span></div>
+            <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span>
+                {% if subject.phone %}
+                <button onclick="phoneLookup(this, '{{ subject.phone }}')" class="btn-sm" style="background: #7c3aed; margin-left: 0.5rem; font-size: 0.7rem;">📞 Check</button>
+                <div class="phone-result" style="margin-top:0.25rem;display:none;"></div>
+                {% endif %}
+            </div>
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
             <div class="info-item"><label>License Plate (Kenteken)</label>
@@ -162,16 +167,22 @@
                                     {% if addr.is_primary %}<span style="background:#16a34a;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.5rem;">PRIMARY</span>{% endif %}
                                     {% if addr.kadaster_verified %}<span style="background:#2563eb;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;">✓ KADASTER</span>{% endif %}
                                     <br>
-                                    <span style="color:#666;font-size:0.875rem;">
+                                    <span class="addr-zip-town" style="color:#666;font-size:0.875rem;">
                                         {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
                                         {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
                                     </span>
                                 </div>
-                                <button type="button" onclick="kadasterLookup(this, '{{ addr.id }}')" class="kadaster-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
-                                    🏛 Check Kadaster
-                                </button>
+                                <div style="display:flex;gap:0.35rem;">
+                                    <button type="button" onclick="kadasterLookup(this, '{{ addr.id }}')" class="kadaster-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                        🏛 Kadaster
+                                    </button>
+                                    <button type="button" onclick="politiebureauLookup(this, '{{ addr.id }}')" class="politie-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                        🚔 Politiebureau
+                                    </button>
+                                </div>
                             </div>
                             <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
+                            <div class="politiebureau-result" style="margin-top:0.5rem;display:none;"></div>
                         </div>
                         {% endfor %}
                     {% else %}
@@ -705,13 +716,13 @@
         .catch(err => alert('Upload failed: ' + err.message));
     }
     
-    // Politie Data Check Functions
+    // Interpol + Politie Data Check
     function checkPolitieData() {
         const btn = document.getElementById('policieCheckBtn');
         const subjectName = '{{ subject.name }}';
         
         btn.disabled = true;
-        btn.textContent = 'Checking...';
+        btn.textContent = 'Checking INTERPOL...';
         
         fetch('/cms/check-policie-data', {
             method: 'POST',
@@ -720,30 +731,60 @@
         })
         .then(r => r.json())
         .then(data => {
+            let message = '';
+            
             if (data.error) {
-                alert('Error: ' + data.error);
-            } else if (!data.api_available) {
-                alert('Politie Open Data is currently unavailable.\n\nThe Dutch Police open data service is temporarily down.\nPlease try again later.\n\nError: ' + (data.error || 'API returned HTML instead of JSON'));
-            } else if (data.missing_persons && data.missing_persons.length > 0) {
-                let message = '⚠️ MOGELIJKE MATCH GEVONDEN!\n\n';
-                message += 'Potentially matching missing persons:\n\n';
-                data.missing_persons.forEach((p, i) => {
-                    message += (i + 1) + '. ' + p.name + '\n';
-                    if (p.description) message += '   Info: ' + p.description + '\n';
-                    if (p.location) message += '   Locatie: ' + p.location + '\n';
-                });
-                message += '\nGa naar ' + data.missing_persons[0].url + ' voor meer info';
+                message = 'Error: ' + data.error;
                 alert(message);
-            } else {
-                alert('Geen matches gevonden in Politie data.\n\nNo matches found in Dutch Police open data.');
+                return;
             }
+            
+            const wanted = data.wanted_persons || [];
+            const missing = data.missing_persons || [];
+            const total = wanted.length + missing.length;
+            
+            if (total === 0) {
+                message = '🌍 Geen matches gevonden in INTERPOL data.\n\nNo matches found in INTERPOL Red Notices (wanted) or Yellow Notices (missing).';
+                alert(message);
+                return;
+            }
+            
+            message = '⚠️ ' + total + ' POTENTIELE MATCH(S) GEVONDEN!\n\n';
+            
+            if (wanted.length > 0) {
+                message += '=== RED NOTICES (WANTED) ===\n';
+                wanted.forEach((p, i) => {
+                    message += (i + 1) + '. ' + p.name + '\n';
+                    if (p.date_of_birth) message += '   DOB: ' + p.date_of_birth + '\n';
+                    if (p.nationality) message += '   Nationality: ' + p.nationality + '\n';
+                    if (p.charge) message += '   Charge: ' + p.charge + '\n';
+                    if (p.issuing_country) message += '   Issued by: ' + p.issuing_country + '\n';
+                    message += '   ' + p.url + '\n\n';
+                });
+            }
+            
+            if (missing.length > 0) {
+                message += '=== YELLOW NOTICES / POLITIE VERMIST (MISSING) ===\n';
+                missing.forEach((p, i) => {
+                    message += (i + 1) + '. ' + p.name + '\n';
+                    if (p.source) message += '   Source: ' + p.source + '\n';
+                    if (p.date_of_birth) message += '   DOB: ' + p.date_of_birth + '\n';
+                    if (p.nationality) message += '   Nationality: ' + p.nationality + '\n';
+                    if (p.date_missing) message += '   Missing since: ' + p.date_missing + '\n';
+                    if (p.place) message += '   Place: ' + p.place + '\n';
+                    if (p.description) message += '   Info: ' + p.description + '\n';
+                    message += '   ' + p.url + '\n\n';
+                });
+            }
+            
+            alert(message);
         })
         .catch(err => {
-            alert('Failed to check Politie data: ' + err.message);
+            alert('Failed to check data: ' + err.message);
         })
         .finally(() => {
             btn.disabled = false;
-            btn.textContent = '🚔 Check Politie Data';
+            btn.textContent = '🌍 Check Interpol';
         });
     }
     
@@ -1178,8 +1219,59 @@
         window.open(tineyeUrl, '_blank');
     }
     
+    async function phoneLookup(btn, phone) {
+        const resultDiv = btn.parentElement.querySelector('.phone-result');
+        const origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Checking...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Looking up phone number...</span>';
+
+        try {
+            const resp = await fetch('/cms/api/phone-lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            let html = '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
+            html += '<div><strong>Formatted:</strong> ' + (data.formatted || '-') + '</div>';
+            html += '<div><strong>Country:</strong> ' + (data.country || '-') + '</div>';
+            html += '<div><strong>Region:</strong> ' + (data.region || '-') + '</div>';
+            html += '<div><strong>Carrier:</strong> ' + (data.carrier || '-') + '</div>';
+            html += '<div><strong>Line Type:</strong> ' + (data.line_type || '-') + '</div>';
+            if (data.services && data.services.whatsapp) {
+                const wa = data.services.whatsapp;
+                html += '<div><strong>WhatsApp:</strong> ' + (wa.exists ? '✅ <a href="' + wa.url + '" target="_blank">Chat</a>' : (wa.exists === false ? '❌ Not found' : '⚠ ' + (wa.note || 'Unknown'))) + '</div>';
+            }
+            if (data.services && data.services.telegram) {
+                const tg = data.services.telegram;
+                html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + tg.url + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + (tg.note || 'Unknown'))) + '</div>';
+            }
+            html += '</div></div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Done';
+            btn.style.background = '#16a34a';
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    }
+
     async function kadasterLookup(btn, addressId) {
-        const entry = btn.closest('[style*="background"]');
+        const entry = btn.closest('div[style*="background"]');
         const resultDiv = entry.querySelector('.kadaster-result');
         const origText = btn.textContent;
         
@@ -1189,7 +1281,8 @@
         resultDiv.innerHTML = '<span style="color: #666;">Looking up address in BAG registry...</span>';
         
         const street = entry.querySelector('strong')?.textContent.trim() || '';
-        const town = entry.querySelector('span[style*="color: #666"]')?.textContent.trim() || '';
+        const townSpan = entry.querySelector('.addr-zip-town');
+        const town = townSpan ? townSpan.textContent.trim() : '';
         
         try {
             const resp = await fetch('/cms/api/kadaster-lookup', {
@@ -1223,6 +1316,64 @@
                 btn.textContent = '✅ Verified';
                 btn.style.background = '#16a34a';
             }
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    }
+
+    async function politiebureauLookup(btn, addressId) {
+        const entry = btn.closest('div[style*="background"]');
+        const resultDiv = entry.querySelector('.politiebureau-result');
+        const origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Looking up...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Contacting politie.nl...</span>';
+
+        try {
+            const resp = await fetch('/cms/api/politiebureau-lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address_id: addressId })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            if (!data.found) {
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'No police station found') + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            const s = data.station;
+            let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + (s.name || 'Politiebureau') + '</div>';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Address:</strong> ' + (s.address || '-') + '</div>';
+            html += '<div><strong>Phone:</strong> ' + (s.phone || '-') + '</div>';
+            if (s.opening_hours) {
+                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + s.opening_hours + '</div>';
+            }
+            if (s.location && s.location.latitude && s.location.longitude) {
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + s.location.latitude + '&mlon=' + s.location.longitude + '&zoom=16" target="_blank">📍 View on map</a></div>';
+            }
+            if (s.url) {
+                html += '<div style="grid-column:1/-1;"><a href="' + s.url + '" target="_blank">🔗 Politie.nl page</a></div>';
+            }
+            html += '</div></div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Station found';
+            btn.style.background = '#16a34a';
         } catch (err) {
             resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
             btn.disabled = false;

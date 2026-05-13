@@ -155,10 +155,14 @@
             {% if subject.addresses.count() > 0 %}
                 {% for addr in subject.addresses %}
                 <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
-                    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0.5rem;align-items:end;">
+                    <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
                         <div>
-                            <label style="font-size:0.75rem;">Street + Number</label>
-                            <input type="text" class="addr-street" value="{{ addr.street or '' }} {{ addr.number or '' }}" placeholder="Street + house number" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">Street</label>
+                            <input type="text" class="addr-street" value="{{ addr.street or '' }}" placeholder="Street name" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem;">Number</label>
+                            <input type="text" class="addr-number" value="{{ addr.number or '' }}" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">Zipcode</label>
@@ -168,7 +172,8 @@
                             <label style="font-size:0.75rem;">Town</label>
                             <input type="text" class="addr-town" value="{{ addr.town or '' }}" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
-                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <div style="display:flex;align-items:center;gap:0.25rem;">
+                            <button type="button" onclick="postcodeCheck(this)" title="Look up zipcode + number" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
                             <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
                                 <input type="checkbox" class="addr-primary" {% if addr.is_primary %}checked{% endif %}> Primary
                             </label>
@@ -180,10 +185,14 @@
                 {% endfor %}
             {% else %}
             <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
-                <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0.5rem;align-items:end;">
+                <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
                     <div>
-                        <label style="font-size:0.75rem;">Street + Number</label>
-                        <input type="text" class="addr-street" placeholder="Street + house number" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <label style="font-size:0.75rem;">Street</label>
+                        <input type="text" class="addr-street" placeholder="Street name" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;">Number</label>
+                        <input type="text" class="addr-number" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
                         <label style="font-size:0.75rem;">Zipcode</label>
@@ -193,7 +202,8 @@
                         <label style="font-size:0.75rem;">Town</label>
                         <input type="text" class="addr-town" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
-                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <div style="display:flex;align-items:center;gap:0.25rem;">
+                        <button type="button" onclick="postcodeCheck(this)" title="Look up zipcode + number" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
                         <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
                             <input type="checkbox" class="addr-primary" checked> Primary
                         </label>
@@ -314,11 +324,12 @@ function serializeAddresses() {
     const addresses = [];
     entries.forEach(entry => {
         const street = entry.querySelector('.addr-street').value.trim();
+        const number = entry.querySelector('.addr-number').value.trim();
         const zipcode = entry.querySelector('.addr-zipcode').value.trim();
-        if (!street && !zipcode) return;
+        if (!street && !number && !zipcode) return;
         addresses.push({
             street: street,
-            number: '',
+            number: number,
             zipcode: zipcode,
             town: entry.querySelector('.addr-town').value.trim(),
             country: entry.querySelector('.addr-country').value || 'Netherlands',
@@ -326,6 +337,43 @@ function serializeAddresses() {
         });
     });
     document.getElementById('addresses-data').value = JSON.stringify(addresses);
+}
+
+function postcodeCheck(btn) {
+    const entry = btn.closest('.address-entry');
+    const zipcode = entry.querySelector('.addr-zipcode').value.trim();
+    const number = entry.querySelector('.addr-number').value.trim();
+
+    if (!zipcode || !number) {
+        alert('Enter zipcode and house number first');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳';
+
+    fetch('/cms/api/kadaster-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zipcode: zipcode, number: number })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.found && data.bag_data) {
+            const b = data.bag_data;
+            if (b.street) entry.querySelector('.addr-street').value = b.street;
+            if (b.town) entry.querySelector('.addr-town').value = b.town;
+            if (b.number) entry.querySelector('.addr-number').value = b.number;
+            btn.textContent = '✅';
+        } else {
+            btn.textContent = '❌';
+        }
+        setTimeout(() => { btn.textContent = '🔍'; btn.disabled = false; }, 2000);
+    })
+    .catch(() => {
+        btn.textContent = '❌';
+        setTimeout(() => { btn.textContent = '🔍'; btn.disabled = false; }, 2000);
+    });
 }
 
 function addAddress() {

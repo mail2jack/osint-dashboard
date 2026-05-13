@@ -53,6 +53,19 @@ def create_cms_module(app: Flask):
     with app.app_context():
         db.create_all()
         
+        # Migration: add address_number column to clients if missing
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            columns = [c['name'] for c in inspector.get_columns('clients')]
+            if 'address_number' not in columns:
+                db.session.execute(text('ALTER TABLE clients ADD COLUMN address_number VARCHAR(20)'))
+                db.session.commit()
+                app.logger.info("Migration: added address_number column to clients table")
+        except Exception as e:
+            app.logger.warning(f"Migration note: {e}")
+            db.session.rollback()
+        
         # Initialize default settings
         from .models import Setting, init_default_settings
         init_default_settings()

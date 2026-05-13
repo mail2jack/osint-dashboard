@@ -71,14 +71,18 @@
         <div class="info-item">
             <label>Phone</label>
             <span>{{ client.contact_phone if client.contact_phone else '-' }}</span>
+            {% if client.contact_phone %}
+            <button onclick="phoneLookup(this, '{{ client.contact_phone }}')" class="btn-sm" style="background: #7c3aed; margin-left: 0.5rem; font-size: 0.7rem;">📞 Check</button>
+            <div class="phone-result" style="margin-top:0.25rem;display:none;"></div>
+            {% endif %}
         </div>
     </div>
     
     <div class="card">
         <h2>Address</h2>
         <div class="info-item">
-            <label>Street</label>
-            <span>{{ client.address_street if client.address_street else '-' }}</span>
+            <label>Street + Number</label>
+            <span>{{ client.address_street if client.address_street else '' }}{% if client.address_street and client.address_number %}, {% endif %}{{ client.address_number if client.address_number else '' }}{% if not client.address_street and not client.address_number %}-{% endif %}</span>
         </div>
         <div class="info-item">
             <label>Postal Code</label>
@@ -92,6 +96,14 @@
             <label>Country</label>
             <span>{{ client.address_country if client.address_country else '-' }}</span>
         </div>
+        {% if client.address_street or client.address_city %}
+        <div style="margin-top:0.75rem;">
+            <button type="button" onclick="clientPolitiebureauLookup(this)" class="politie-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                🚔 Politiebureau
+            </button>
+        </div>
+        <div class="politiebureau-result" style="margin-top:0.5rem;display:none;"></div>
+        {% endif %}
     </div>
     
     <div class="card">
@@ -162,6 +174,126 @@
             }
         })
         .catch(err => alert('Error: ' + err.message));
+    }
+
+    async function phoneLookup(btn, phone) {
+        const resultDiv = btn.parentElement.querySelector('.phone-result');
+        const origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Checking...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Looking up phone number...</span>';
+
+        try {
+            const resp = await fetch('/cms/api/phone-lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phone })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            let html = '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
+            html += '<div><strong>Formatted:</strong> ' + (data.formatted || '-') + '</div>';
+            html += '<div><strong>Country:</strong> ' + (data.country || '-') + '</div>';
+            html += '<div><strong>Region:</strong> ' + (data.region || '-') + '</div>';
+            html += '<div><strong>Carrier:</strong> ' + (data.carrier || '-') + '</div>';
+            html += '<div><strong>Line Type:</strong> ' + (data.line_type || '-') + '</div>';
+            if (data.services && data.services.whatsapp) {
+                const wa = data.services.whatsapp;
+                html += '<div><strong>WhatsApp:</strong> ' + (wa.exists ? '✅ <a href="' + wa.url + '" target="_blank">Chat</a>' : (wa.exists === false ? '❌ Not found' : '⚠ ' + (wa.note || 'Unknown'))) + '</div>';
+            }
+            if (data.services && data.services.telegram) {
+                const tg = data.services.telegram;
+                html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + tg.url + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + (tg.note || 'Unknown'))) + '</div>';
+            }
+            html += '</div></div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Done';
+            btn.style.background = '#16a34a';
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    }
+
+    async function clientPolitiebureauLookup(btn) {
+        const card = btn.closest('.card');
+        const resultDiv = card.querySelector('.politiebureau-result');
+        const origText = btn.textContent;
+
+        const street = {{ client.address_street|tojson or '' }};
+        const postal = {{ client.address_postal|tojson or '' }};
+        const city = {{ client.address_city|tojson or '' }};
+        const country = {{ client.address_country|tojson or '' }};
+        const query = [street, postal, city, country].filter(Boolean).join(', ');
+
+        if (!query) {
+            alert('No address available for this client.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Looking up...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Contacting politie.nl...</span>';
+
+        try {
+            const resp = await fetch('/cms/api/politiebureau-lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            if (!data.found) {
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'No police station found') + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            const s = data.station;
+            let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + (s.name || 'Politiebureau') + '</div>';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Address:</strong> ' + (s.address || '-') + '</div>';
+            html += '<div><strong>Phone:</strong> ' + (s.phone || '-') + '</div>';
+            if (s.opening_hours) {
+                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + s.opening_hours + '</div>';
+            }
+            if (s.location && s.location.latitude && s.location.longitude) {
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + s.location.latitude + '&mlon=' + s.location.longitude + '&zoom=16" target="_blank">📍 View on map</a></div>';
+            }
+            if (s.url) {
+                html += '<div style="grid-column:1/-1;"><a href="' + s.url + '" target="_blank">🔗 Politie.nl page</a></div>';
+            }
+            html += '</div></div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Station found';
+            btn.style.background = '#16a34a';
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
     }
     </script>
     </div>

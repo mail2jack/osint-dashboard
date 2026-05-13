@@ -252,6 +252,18 @@ platform_rate_limits = {}
 search_request_counts = {}
 
 # =============================================================================
+# =============================================================================
+# Context Processor — inject version + update info into all templates
+# =============================================================================
+
+@app.context_processor
+def inject_globals():
+    from version import get_version
+    return {
+        'current_version': get_version(),
+    }
+
+
 # API Rate Limiter
 # =============================================================================
 

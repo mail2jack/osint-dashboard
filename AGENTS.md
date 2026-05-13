@@ -32,6 +32,36 @@
 - Template filters in `app.py:103-270`: `urlize_target`, `result_link`, `platform_name`, `platform_color`.
 - Rich result cards use `.rich-card` with `--card-color` CSS custom property (no separate classes per type).
 
+## Phone Lookup (`routes.py:phone_lookup`)
+- `POST /cms/api/phone-lookup` — validates + enriches phone numbers using `phonenumbers` library + free `bedrijfsdata.nl` API (NL only).
+- Returns: valid, formatted, country, region, carrier, line_type, timezone, WhatsApp/Telegram presence.
+- Button "📞 Check" appears next to phone fields in subject/client view pages (hidden if no phone).
+- Requires `phonenumbers` (`pip install phonenumbers`).
+- Depends on `httpx` (already in requirements).
+- `re` imported globally in routes.py for number normalization.
+
+## Interpol + Politie Check (`routes.py:check_policie_data`)
+- `POST /cms/check-policie-data` — checks subject name against INTERPOL Red Notices (wanted) + Yellow Notices (missing) + politie.nl/vermist (NL missing persons).
+- **Button** "🌍 Check Interpol" on subject view page (was "🚔 Check Politie Data").
+- Interpol API: `ws-public.interpol.int` (Akamai rate-limited, may return 403 after many calls).
+- Fallback: scrapes `politie.nl/vermist` for matching names when Interpol returns no results.
+- Status check: `GET /cms/check-policie-data-status`.
+
+## Address Form — Postcode Check
+- Create/edit subject forms have **separate** `Street`, `Number`, `Zipcode`, `Town` fields (was "Street + Number" combined before May 11).
+- **🔍 button** next to zipcode: calls `POST /cms/api/kadaster-lookup` with `{zipcode, number}` → fills in street + town + number from PDOK BAG.
+- JS functions: `postcodeCheck(btn)` in both `create.html` and `edit.html`.
+- `serializeAddresses()` now includes the `number` field (was always empty before).
+- The Address model already has separate `street` and `number` columns, so no DB migration needed.
+
+## Politiebureau Lookup (`routes.py:politiebureau_lookup`)
+- `POST /cms/api/politiebureau-lookup` — finds nearest police station for an address.
+- Accepts `{address_id}` (resolves from DB) or `{lat, lon}` directly.
+- Uses coordinates from `kadaster_data` (if stored) or falls back to PDOK BAG lookup, then calls `api.politie.nl/politiebureaus/v1`.
+- Returns: station name, address, phone, opening hours, OSM map link, politie.nl page URL.
+- **Button** "🚔 Politiebureau" on each address card in subject view page (`view.html`), next to the Kadaster button.
+- Result displayed in a red-themed card below the address.
+
 ## Testing
 ```bash
 python tests/test_core.py

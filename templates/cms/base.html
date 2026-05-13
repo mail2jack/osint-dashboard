@@ -361,6 +361,34 @@
         </div>
     </div>
     
+    <div id="updateBanner" style="display:none;background:#1e40af;color:white;text-align:center;padding:0.5rem;font-size:0.875rem;cursor:pointer;" onclick="document.getElementById('updateModal').classList.add('show')">
+        ⬆️ <span id="updateBannerText">Update available</span>
+    </div>
+
+    <div id="updateModal" class="modal">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h2>⬆️ Update Available</h2>
+                <span class="close" onclick="this.closest('.modal').classList.remove('show')">&times;</span>
+            </div>
+            <div id="updateInfo">
+                <p>Current version: <strong id="updCurrent"></strong></p>
+                <p>Latest version: <strong id="updLatest"></strong></p>
+            </div>
+            <div id="updateProgress" style="display:none;">
+                <div id="updateSteps"></div>
+            </div>
+            <div id="updateResult" style="display:none;"></div>
+            <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+                <button id="updateNowBtn" onclick="runUpdate()" class="btn" style="background:#16a34a;">⬆️ Update Now</button>
+                <button onclick="this.closest('.modal').classList.remove('show')" class="btn" style="background:#666;">Later</button>
+            </div>
+            <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted);">
+                The update runs git pull, pip install, and restarts services. Database is backed up first.
+            </p>
+        </div>
+    </div>
+
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -377,6 +405,70 @@
         <kbd>s</kbd> Search &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigate &nbsp; <kbd>Enter</kbd> View &nbsp; <kbd>?</kbd> Help
     </div>
     
+    <script>
+    // Update check — runs once on page load for admin users
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/cms/api/check-update')
+            .then(r => r.json())
+            .then(data => {
+                if (data.update_available) {
+                    const banner = document.getElementById('updateBanner');
+                    document.getElementById('updateBannerText').textContent =
+                        'Update ' + data.current_version + ' → ' + data.latest_version + ' available. Click to update.';
+                    banner.style.display = 'block';
+                    document.getElementById('updCurrent').textContent = data.current_version;
+                    document.getElementById('updLatest').textContent = data.latest_version;
+                }
+            })
+            .catch(() => {});
+    });
+
+    function runUpdate() {
+        const btn = document.getElementById('updateNowBtn');
+        const progress = document.getElementById('updateProgress');
+        const steps = document.getElementById('updateSteps');
+        const result = document.getElementById('updateResult');
+        const info = document.getElementById('updateInfo');
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Running...';
+        info.style.display = 'none';
+        progress.style.display = 'block';
+        steps.innerHTML = '<div style="color:#666;">Starting update...</div>';
+
+        fetch('/cms/admin/do-update', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                progress.style.display = 'none';
+                result.style.display = 'block';
+                let html = '';
+                (data.results || []).forEach(r => {
+                    const icon = r.status === 'ok' ? '✅' : r.status === 'error' ? '❌' : '⏳';
+                    html += '<div style="margin-bottom:0.5rem;">' + icon + ' <strong>' + r.step + '</strong>';
+                    if (r.output) html += '<br><span style="font-size:0.75rem;color:#666;">' + r.output + '</span>';
+                    html += '</div>';
+                });
+                if (data.success) {
+                    html += '<div style="margin-top:1rem;padding:0.75rem;background:var(--success-bg);border-radius:6px;color:var(--success-text);">✅ ' + data.message + '</div>';
+                    setTimeout(() => location.reload(), 3000);
+                } else {
+                    html += '<div style="margin-top:1rem;padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">❌ Update had errors. Check the server logs.</div>';
+                    btn.disabled = false;
+                    btn.textContent = '⬆️ Retry';
+                }
+                result.innerHTML = html;
+            })
+            .catch(err => {
+                progress.style.display = 'none';
+                result.style.display = 'block';
+                result.innerHTML = '<div style="padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">❌ Error: ' + err.message + '</div>';
+                btn.disabled = false;
+                btn.textContent = '⬆️ Retry';
+            });
+    }
+    {% endif %}
+    </script>
     <script>
         function toggleTheme() {
             const html = document.documentElement;

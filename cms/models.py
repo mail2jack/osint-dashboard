@@ -267,6 +267,7 @@ class Client(db.Model):
     contact_email = db.Column(db.String(200))   # Encrypted
     contact_phone = db.Column(db.String(50))    # Encrypted
     address_street = db.Column(db.String(300)) # Encrypted
+    address_number = db.Column(db.String(20))  # Encrypted
     address_city = db.Column(db.String(100))    # Encrypted
     address_postal = db.Column(db.String(20))   # Encrypted
     address_country = db.Column(db.String(100)) # Encrypted
@@ -288,7 +289,7 @@ class Client(db.Model):
     # Encrypted fields list for reference
     ENCRYPTED_FIELDS = [
         'contact_person', 'contact_email', 'contact_phone',
-        'address_street', 'address_city', 'address_postal', 'address_country',
+        'address_street', 'address_number', 'address_city', 'address_postal', 'address_country',
         'social_security_number', 'bank_account'
     ]
     
@@ -328,6 +329,7 @@ class Client(db.Model):
             'contact_phone': self.contact_phone,
             'address': {
                 'street': self.address_street,
+                'number': self.address_number,
                 'city': self.address_city,
                 'postal': self.address_postal,
                 'country': self.address_country
@@ -1571,6 +1573,7 @@ def init_default_settings():
         {'key': 'smtp_password', 'category': 'email', 'description': 'SMTP password', 'value_type': 'password', 'is_sensitive': True, 'display_order': 43},
         {'key': 'smtp_from_email', 'category': 'email', 'description': 'From email', 'value_type': 'text', 'display_order': 44},
         {'key': 'smtp_from_name', 'category': 'email', 'description': 'From name', 'value_type': 'text', 'display_order': 45},
+        {'key': 'update_check_repo', 'category': 'general', 'description': 'GitHub repo for update checks (e.g. user/repo). Leave empty to disable.', 'value_type': 'text', 'display_order': 50},
     ]
     for default in defaults:
         existing = Setting.query.filter_by(key=default['key']).first()
