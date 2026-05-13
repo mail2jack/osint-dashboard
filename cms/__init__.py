@@ -49,9 +49,21 @@ def create_cms_module(app: Flask):
     app.register_blueprint(auth_bp)
     app.register_blueprint(users_bp)
     
+    # Inject theme_style into all templates
+    @app.context_processor
+    def inject_theme():
+        from .models import Setting
+        style = Setting.get('theme_style', 'classic')
+        return {'theme_style': style}
+    
     # Create tables if they don't exist
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as e:
+            if 'already exists' not in str(e):
+                raise
+            app.logger.warning(f"Table creation race (harmless): {e}")
         
         # Migration: add address_number column to clients if missing
         try:
