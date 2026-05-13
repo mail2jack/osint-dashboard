@@ -11,7 +11,7 @@ import httpx
 import requests
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from functools import lru_cache
 from urllib.parse import quote
 from io import BytesIO
@@ -99,6 +99,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 from cms import create_cms_module
 create_cms_module(app)
 logger.info("CMS initialized successfully")
+
+@app.route('/')
+def index():
+    return redirect(url_for('cms.dashboard'))
 
 def normalize_phone_number(phone: str) -> str:
     if not phone:
@@ -4107,7 +4111,7 @@ def rate_limit_status():
 @app.route('/health')
 def health_check():
     from cms import db
-    from cms.spiderfoot_service import get_spiderfoot_service
+    from cms.spiderfoot_service import SpiderFootConfig, get_spiderfoot_service
 
     db_ok = False
     try:
@@ -4119,7 +4123,12 @@ def health_check():
 
     sf_ok = False
     try:
-        sf = get_spiderfoot_service()
+        from cms.models import Setting
+        sf = get_spiderfoot_service(SpiderFootConfig(
+            base_url=Setting.get('spiderfoot_url', 'http://localhost:5001') or 'http://localhost:5001',
+            username=Setting.get('spiderfoot_username', 'admin') or 'admin',
+            password=Setting.get('spiderfoot_password', '') or '',
+        ))
         sf_ok = sf.is_available()
     except Exception as e:
         logger.warning(f"Health check - SpiderFoot error: {e}")
