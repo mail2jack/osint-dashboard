@@ -5219,6 +5219,22 @@ def check_update():
         except Exception:
             pass
 
+        # If no stored local SHA, try to get it from the git repo and store it now
+        if not local_sha and remote_sha:
+            import subprocess as sp
+            import shutil
+            try:
+                git_path = shutil.which('git') or '/usr/bin/git'
+                r = sp.run(f'{git_path} rev-parse HEAD', shell=True,
+                          capture_output=True, text=True, cwd=current_app.root_path, timeout=10)
+                if r.returncode == 0:
+                    local_sha = r.stdout.strip()
+                    Setting.set('last_update_commit', local_sha,
+                               'Last pulled commit SHA (auto-updated)', 'general')
+                    logger.info(f"Stored initial commit SHA: {local_sha[:12]}")
+            except Exception:
+                pass
+
         current_parts = [int(x) for x in current_ver.split('.')]
         latest_parts = [int(x) for x in latest_ver.split('.')]
         version_update = latest_parts > current_parts
