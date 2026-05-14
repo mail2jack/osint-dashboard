@@ -478,6 +478,8 @@ with app.app_context():
                description='SpiderFoot username', category='spiderfoot')
     Setting.set('spiderfoot_password', '$SF_PASSWORD',
                description='SpiderFoot password', category='spiderfoot')
+    Setting.set('update_check_repo', 'mail2jack/osint-dashboard',
+               description='GitHub repo for update checks', category='general')
     print('SpiderFoot settings stored in database')
 PYEOF
 print_success "SpiderFoot settings configured in database"
