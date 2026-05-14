@@ -327,6 +327,9 @@
             to { transform: rotate(360deg); }
         }
     </style>
+    {% if theme_style == 'professional' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cms-professional.css') }}">
+    {% endif %}
 </head>
 <body>
     <div class="app-loader" id="appLoader">

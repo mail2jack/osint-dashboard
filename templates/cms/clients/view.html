@@ -47,10 +47,14 @@
         <div class="back"><a href="{{ url_for('cms.clients') }}">← Back to Clients</a></div>
         
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>{{ client.name }}{% if client.is_company %} <span style="font-size: 0.6em; color: #666;">(Company)</span>{% endif %}</h1>
+            <h1>{{ client.name }}{% if client.is_company %} <span style="font-size: 0.6em; color: #666;">(Company)</span>{% endif %}
+                {% if not client.is_active %}<span style="background: #6b7280; color: white; font-size: 0.6em; padding: 0.2rem 0.5rem; border-radius: 4px; vertical-align: middle;">GEARCHIVEERD</span>{% endif %}
+            </h1>
         <div style="display: flex; gap: 0.5rem;">
-            {% if cases|length == 0 %}
-            <button onclick="archiveClient('{{ client.id }}')" class="btn-sm" style="background: #dc2626; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">📁 Archive</button>
+            {% if active_cases_count == 0 and client.is_active %}
+            <button onclick="archiveClient('{{ client.id }}')" class="btn-sm" style="background: #dc2626; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">📁 Archiveer</button>
+            {% elif not client.is_active %}
+            <button onclick="restoreClient('{{ client.id }}')" class="btn-sm" style="background: #059669; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">↩️ Herstellen</button>
             {% endif %}
             <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-sm" style="text-decoration: none;">✏️ Edit</a>
         </div>
@@ -65,16 +69,52 @@
         </div>
         {% endif %}
         <div class="info-item">
-            <label>Email</label>
-            <span>{{ client.contact_email if client.contact_email else '-' }}</span>
+            <label>Email(s)</label>
+            <div style="margin-top: 0.25rem;">
+                {% set cl_emails = client.contacts.filter_by(contact_type='email') if client.contacts else [] %}
+                {% if cl_emails.count() > 0 %}
+                    {% for c in cl_emails %}
+                    <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
+                        <span>{{ c.value }}</span>
+                        {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
+                        <button onclick="emailCheck(this, '{{ c.value }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                        <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                    </div>
+                    {% endfor %}
+                {% elif client.contact_email %}
+                    <div style="display:flex;align-items:center;gap:0.35rem;">
+                        <span>{{ client.contact_email }}</span>
+                        <button onclick="emailCheck(this, '{{ client.contact_email }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                        <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                    </div>
+                {% else %}
+                    <span>-</span>
+                {% endif %}
+            </div>
         </div>
         <div class="info-item">
-            <label>Phone</label>
-            <span>{{ client.contact_phone if client.contact_phone else '-' }}</span>
-            {% if client.contact_phone %}
-            <button onclick="phoneLookup(this, '{{ client.contact_phone }}')" class="btn-sm" style="background: #7c3aed; margin-left: 0.5rem; font-size: 0.7rem;">📞 Check</button>
-            <div class="phone-result" style="margin-top:0.25rem;display:none;"></div>
-            {% endif %}
+            <label>Phone(s)</label>
+            <div style="margin-top: 0.25rem;">
+                {% set cl_phones = client.contacts.filter_by(contact_type='phone') if client.contacts else [] %}
+                {% if cl_phones.count() > 0 %}
+                    {% for c in cl_phones %}
+                    <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
+                        <span>{{ c.value }}</span>
+                        {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
+                        <button onclick="phoneLookup(this, '{{ c.value }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                        <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                    </div>
+                    {% endfor %}
+                {% elif client.contact_phone %}
+                    <div style="display:flex;align-items:center;gap:0.35rem;">
+                        <span>{{ client.contact_phone }}</span>
+                        <button onclick="phoneLookup(this, '{{ client.contact_phone }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                        <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                    </div>
+                {% else %}
+                    <span>-</span>
+                {% endif %}
+            </div>
         </div>
     </div>
     
@@ -176,6 +216,23 @@
         .catch(err => alert('Error: ' + err.message));
     }
 
+    function restoreClient(clientId) {
+        if (!confirm('Weet u zeker dat u deze client wilt herstellen?')) return;
+        
+        fetch('/cms/clients/' + clientId + '/restore', {
+            method: 'POST'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Fout: ' + data.error);
+            } else {
+                location.reload();
+            }
+        })
+        .catch(err => alert('Fout: ' + err.message));
+    }
+
     async function phoneLookup(btn, phone) {
         const resultDiv = btn.parentElement.querySelector('.phone-result');
         const origText = btn.textContent;
@@ -216,6 +273,81 @@
                 const tg = data.services.telegram;
                 html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + tg.url + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + (tg.note || 'Unknown'))) + '</div>';
             }
+            html += '</div></div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Done';
+            btn.style.background = '#16a34a';
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    }
+
+    async function emailCheck(btn, email) {
+        const resultDiv = btn.parentElement.querySelector('.email-result');
+        const origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Checking...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Checking email...</span>';
+
+        try {
+            const resp = await fetch('/cms/api/email-check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Valid Format:</strong> ' + (data.valid_format ? '✅ Yes' : '❌ No') + '</div>';
+            html += '<div><strong>Domain:</strong> ' + (data.domain || '-') + '</div>';
+            html += '<div><strong>MX Records:</strong> ' + (data.has_mx ? '✅ Found' : '❌ None') + '</div>';
+            html += '<div><strong>Disposable:</strong> ' + (data.disposable ? '⚠️ Yes' : '✅ No') + '</div>';
+
+            if (data.hibp_breaches && data.hibp_breaches.length > 0) {
+                html += '<div style="grid-column:1/-1;"><strong>🔴 Breaches (' + data.hibp_breaches.length + '):</strong></div>';
+                data.hibp_breaches.forEach(b => {
+                    html += '<div style="grid-column:1/-1;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:0.4rem;margin-bottom:0.2rem;">';
+                    html += '<strong>' + b.name + '</strong> (' + (b.date || 'unknown') + ')';
+                    if (b.data_classes && b.data_classes.length > 0) {
+                        html += '<br><span style="font-size:0.75rem;color:#666;">Data: ' + b.data_classes.join(', ') + '</span>';
+                    }
+                    html += '</div>';
+                });
+            } else {
+                html += '<div style="grid-column:1/-1;"><strong>Breaches:</strong> ' + (data.hibp_found === false ? '✅ None found' : '⚠️ Not checked') + '</div>';
+            }
+
+            if (data.emailrep) {
+                const rep = data.emailrep;
+                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
+                html += '<strong>EmailRep:</strong> ' + (rep.reputation || 'unknown') + ' | ';
+                html += 'Suspicious: ' + (rep.suspicious ? '⚠️ Yes' : '✅ No') + ' | ';
+                html += 'Details: ' + (rep.details ? rep.details.join(', ') : '-');
+                html += '</div>';
+            }
+
+            if (data.search_links && data.search_links.length > 0) {
+                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
+                html += '<strong>🔍 Investigate further:</strong> ';
+                data.search_links.forEach(function(link, i) {
+                    if (i > 0) html += ' | ';
+                    html += '<a href="' + link.url + '" target="_blank" style="color:#2563eb;">' + link.label + '</a>';
+                });
+                html += '</div>';
+            }
+
             html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Done';

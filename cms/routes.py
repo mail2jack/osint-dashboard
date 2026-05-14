@@ -13,6 +13,7 @@ Design Decisions:
 import json
 import logging
 import os
+import random
 import re
 import threading
 import time
@@ -30,7 +31,7 @@ from .models import (
     AuditLog, Document, User, CaseStatus, CasePriority,
     SubjectType, VerificationStatus, subject_relations, Comment,
     CommentEditHistory, DocumentTemplate, Reminder, ReminderType, ReminderRecurrence,
-    Screenshot, Setting, SpiderFootScan, Address, init_default_settings
+    Screenshot, Setting, SpiderFootScan, Address, Contact, init_default_settings
 )
 from .auth import (
     roles_required, admin_required, senior_required,
@@ -439,15 +440,17 @@ def clients():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     search = request.args.get('search', '')
+    show_archived = request.args.get('show_archived', '').lower() in ('1', 'true', 'yes')
     sort = request.args.get('sort', 'name')
     order = request.args.get('order', 'asc')
     
     query = Client.query.filter_by(is_deleted=False)
+    if not show_archived:
+        query = query.filter_by(is_active=True)
     
     if search:
         query = query.filter(Client.name.ilike(f'%{search}%'))
     
-    # Sorting
     sort_columns = {
         'name': Client.name,
         'contact': Client.contact_person,
@@ -467,7 +470,8 @@ def clients():
         pagination=pagination,
         search=search,
         sort=sort,
-        order=order
+        order=order,
+        show_archived=show_archived
     )
 
 
@@ -478,11 +482,19 @@ def view_client(client_id: str):
     """View client details with all associated cases."""
     client = Client.query.get_or_404(client_id)
     client.decrypt_naw()  # Decrypt for display
+    for c in client.contacts:
+        c.decrypt_fields()
     
     cases = Case.query.filter_by(
         client_id=client_id,
         is_deleted=False
     ).order_by(Case.created_at.desc()).all()
+    
+    active_cases_count = Case.query.filter(
+        Case.client_id == client_id,
+        Case.is_deleted == False,
+        Case.status.in_(['open', 'active', 'suspended'])
+    ).count()
     
     # Log read access for sensitive data
     AuditLog.log(
@@ -495,7 +507,7 @@ def view_client(client_id: str):
     )
     db.session.commit()
     
-    return render_template('cms/clients/view.html', client=client, cases=cases)
+    return render_template('cms/clients/view.html', client=client, cases=cases, active_cases_count=active_cases_count)
 
 
 @cms_bp.route('/clients/create', methods=['GET', 'POST'])
@@ -553,6 +565,28 @@ def create_client():
         for field in encrypted_fields:
             if data.get(field):
                 setattr(client, field, encryptor.encrypt(data[field]))
+        
+        # Handle structured contacts
+        if data.get('contacts_data'):
+            try:
+                contacts_data = json.loads(data['contacts_data']) if isinstance(data['contacts_data'], str) else data['contacts_data']
+                for c_data in contacts_data:
+                    if c_data.get('value'):
+                        contact = Contact(
+                            client_id=client.id,
+                            contact_type=c_data.get('contact_type', 'email'),
+                            value=c_data.get('value'),
+                            is_primary=c_data.get('is_primary', False)
+                        )
+                        contact.encrypt_fields()
+                        db.session.add(contact)
+                        # Also set legacy fields for backward compat
+                        if c_data.get('contact_type') == 'email' and c_data.get('is_primary'):
+                            client.contact_email = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
+                        elif c_data.get('contact_type') == 'phone' and c_data.get('is_primary'):
+                            client.contact_phone = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse contacts_data: {e}")
         
         # Set other fields
         client.contract_number = data.get('contract_number')
@@ -619,6 +653,32 @@ def edit_client(client_id: str):
                     else:
                         setattr(client, field, None)
         
+        # Handle structured contacts
+        if data.get('contacts_data'):
+            try:
+                contacts_data = json.loads(data['contacts_data']) if isinstance(data['contacts_data'], str) else data['contacts_data']
+                old_contacts = list(client.contacts)
+                for c in old_contacts:
+                    db.session.delete(c)
+                for c_data in contacts_data:
+                    if c_data.get('value'):
+                        contact = Contact(
+                            client_id=client.id,
+                            contact_type=c_data.get('contact_type', 'email'),
+                            value=c_data.get('value'),
+                            is_primary=c_data.get('is_primary', False)
+                        )
+                        contact.encrypt_fields()
+                        db.session.add(contact)
+                        # Update legacy fields for backward compat
+                        if c_data.get('contact_type') == 'email' and c_data.get('is_primary'):
+                            client.contact_email = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
+                        elif c_data.get('contact_type') == 'phone' and c_data.get('is_primary'):
+                            client.contact_phone = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
+                changes['contacts'] = {'old': f'{len(old_contacts)} contact(s)', 'new': f'{len(contacts_data)} contact(s)'}
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse contacts_data: {e}")
+        
         # Update contract info
         if data.get('contract_number') != client.contract_number:
             changes['contract_number'] = {'old': client.contract_number, 'new': data.get('contract_number')}
@@ -650,6 +710,8 @@ def edit_client(client_id: str):
         return redirect(url_for('cms.view_client', client_id=client.id))
     
     client.decrypt_naw()
+    for c in client.contacts:
+        c.decrypt_fields()
     return render_template('cms/clients/edit.html', client=client)
 
 
@@ -683,16 +745,22 @@ def delete_client(client_id: str):
 @login_required
 @roles_required('admin', 'senior_investigator')
 def archive_client(client_id: str):
-    """Archive a client if no cases exist."""
+    """Archive a client if no active cases exist."""
     client = Client.query.get_or_404(client_id)
     
-    # Check if client has any cases
-    active_cases = Case.query.filter_by(client_id=client_id, is_deleted=False).count()
-    if active_cases > 0:
-        return jsonify({'error': f'Cannot archive: client has {active_cases} active case(s)'}), 400
+    if not client.is_active:
+        return jsonify({'error': 'Client is already archived'}), 400
     
-    client.is_deleted = True
-    client.deleted_at = datetime.utcnow()
+    # Check if client has any non-closed/non-archived cases
+    active_cases = Case.query.filter(
+        Case.client_id == client_id,
+        Case.is_deleted == False,
+        Case.status.in_(['open', 'active', 'suspended'])
+    ).count()
+    if active_cases > 0:
+        return jsonify({'error': f'Kan niet archiveren: client heeft {active_cases} actieve za(a)k(en)'}), 400
+    
+    client.is_active = False
     
     AuditLog.log(
         user_id=current_user.id,
@@ -704,11 +772,40 @@ def archive_client(client_id: str):
     )
     db.session.commit()
     
-    flash(f'Client {client.name} has been archived.', 'info')
+    flash(f'Client {client.name} is gearchiveerd.', 'info')
     
     if request.is_json:
         return jsonify({'message': 'Client archived'})
     return redirect(url_for('cms.clients'))
+
+
+@cms_bp.route('/clients/<client_id>/restore', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def restore_client(client_id: str):
+    """Restore an archived client."""
+    client = Client.query.get_or_404(client_id)
+    
+    if client.is_active:
+        return jsonify({'error': 'Client is already active'}), 400
+    
+    client.is_active = True
+    
+    AuditLog.log(
+        user_id=current_user.id,
+        action='restore',
+        entity_type='client',
+        entity_id=client_id,
+        ip_address=request.remote_addr,
+        description=f"Restored client: {client.name}"
+    )
+    db.session.commit()
+    
+    flash(f'Client {client.name} is hersteld.', 'info')
+    
+    if request.is_json:
+        return jsonify({'message': 'Client restored'})
+    return redirect(url_for('cms.view_client', client_id=client.id))
 
 
 # =============================================================================
@@ -1455,6 +1552,8 @@ def view_subject(subject_id: str):
     subject.decrypt_identifiers()
     for addr in subject.addresses:
         addr.decrypt_fields()
+    for c in subject.contacts:
+        c.decrypt_fields()
     
     financials = subject.financial_records.filter_by(is_deleted=False).all()
     findings = subject.findings.filter_by(is_deleted=False).order_by(Finding.created_at.desc()).all()
@@ -1865,6 +1964,28 @@ def create_subject():
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse addresses_data: {e}")
         
+        # Handle structured contacts
+        if data.get('contacts_data'):
+            try:
+                contacts_data = json.loads(data['contacts_data']) if isinstance(data['contacts_data'], str) else data['contacts_data']
+                for c_data in contacts_data:
+                    if c_data.get('value'):
+                        contact = Contact(
+                            subject_id=subject.id,
+                            contact_type=c_data.get('contact_type', 'email'),
+                            value=c_data.get('value'),
+                            is_primary=c_data.get('is_primary', False)
+                        )
+                        contact.encrypt_fields()
+                        db.session.add(contact)
+                        # Also set legacy fields for backward compat
+                        if c_data.get('contact_type') == 'email' and c_data.get('is_primary'):
+                            subject.email = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
+                        elif c_data.get('contact_type') == 'phone' and c_data.get('is_primary'):
+                            subject.phone = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse contacts_data: {e}")
+        
         # Link to case if specified
         if data.get('case_id'):
             case = Case.query.get(data['case_id'])
@@ -2001,6 +2122,43 @@ def edit_subject(subject_id: str):
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse addresses_data: {e}")
         
+        # Handle structured contacts
+        if data.get('contacts_data'):
+            try:
+                contacts_data = json.loads(data['contacts_data']) if isinstance(data['contacts_data'], str) else data['contacts_data']
+                old_contacts = list(subject.contacts)
+                contact_count_before = len(old_contacts)
+                for c in old_contacts:
+                    db.session.delete(c)
+                for c_data in contacts_data:
+                    if c_data.get('value'):
+                        contact = Contact(
+                            subject_id=subject.id,
+                            contact_type=c_data.get('contact_type', 'email'),
+                            value=c_data.get('value'),
+                            is_primary=c_data.get('is_primary', False)
+                        )
+                        contact.encrypt_fields()
+                        db.session.add(contact)
+                        # Update legacy fields for backward compat
+                        if c_data.get('contact_type') == 'email' and c_data.get('is_primary'):
+                            try:
+                                current = encryptor.decrypt(subject.email) if subject.email else None
+                            except Exception:
+                                current = subject.email  # may already be plaintext
+                            if c_data.get('value') != current:
+                                subject.email = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
+                        elif c_data.get('contact_type') == 'phone' and c_data.get('is_primary'):
+                            try:
+                                current = encryptor.decrypt(subject.phone) if subject.phone else None
+                            except Exception:
+                                current = subject.phone  # may already be plaintext
+                            if c_data.get('value') != current:
+                                subject.phone = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
+                changes['contacts'] = {'old': f'{contact_count_before} contact(s)', 'new': f'{len(contacts_data)} contact(s)'}
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse contacts_data: {e}")
+        
         # Update RDW data if provided
         rdw_fields = [
             'handelsbenaming', 'voertuigsoort', 'eerste_kleur', 'tweede_kleur',
@@ -2055,6 +2213,8 @@ def edit_subject(subject_id: str):
     subject.decrypt_identifiers()
     for addr in subject.addresses:
         addr.decrypt_fields()
+    for c in subject.contacts:
+        c.decrypt_fields()
     return render_template('cms/subjects/edit.html', subject=subject)
 
 
@@ -2758,6 +2918,116 @@ def create_finding():
     return jsonify({'message': 'Finding created', 'finding': finding.to_dict()})
 
 
+@cms_bp.route('/api/findings/from-interpol', methods=['POST'])
+@login_required
+def create_findings_from_interpol():
+    """Save Interpol/politie check results as findings."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    case_id = data.get('case_id')
+    subject_id = data.get('subject_id')
+    wanted = data.get('wanted_persons', [])
+    missing = data.get('missing_persons', [])
+
+    if not case_id:
+        return jsonify({'error': 'case_id is required'}), 400
+    if not wanted and not missing:
+        return jsonify({'error': 'No results to save'}), 400
+
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+
+    created = []
+    for p in wanted:
+        content_parts = [
+            f"Type: Red Notice (Wanted)",
+        ]
+        if p.get('date_of_birth'):
+            content_parts.append(f"DOB: {p['date_of_birth']}")
+        if p.get('nationality'):
+            content_parts.append(f"Nationality: {p['nationality']}")
+        if p.get('charge'):
+            content_parts.append(f"Charge: {p['charge']}")
+        if p.get('issuing_country'):
+            content_parts.append(f"Issued by: {p['issuing_country']}")
+        if p.get('url'):
+            content_parts.append(f"URL: {p['url']}")
+
+        finding = Finding(
+            case_id=case_id,
+            subject_id=subject_id,
+            title=f"INTERPOL Red Notice: {p.get('name', 'Unknown')}",
+            content='\n'.join(content_parts),
+            source_url=p.get('url', ''),
+            source_type='interpol',
+            finding_type='identity',
+            reliability_score=7,
+            confidence_level='medium',
+            tags=['interpol', 'red_notice', 'wanted'],
+            created_by=current_user.id
+        )
+        db.session.add(finding)
+        created.append(finding)
+
+    for p in missing:
+        content_parts = [
+            f"Type: {p.get('type', 'Missing Person')}",
+        ]
+        if p.get('date_of_birth'):
+            content_parts.append(f"DOB: {p['date_of_birth']}")
+        if p.get('nationality'):
+            content_parts.append(f"Nationality: {p['nationality']}")
+        if p.get('date_missing'):
+            content_parts.append(f"Missing since: {p['date_missing']}")
+        if p.get('place'):
+            content_parts.append(f"Place: {p['place']}")
+        if p.get('countries_likely_to_visit'):
+            content_parts.append(f"Likely locations: {p['countries_likely_to_visit']}")
+        if p.get('source') and p['source'] != 'INTERPOL':
+            content_parts.append(f"Source: {p['source']}")
+        if p.get('description'):
+            content_parts.append(f"Info: {p['description']}")
+        if p.get('url'):
+            content_parts.append(f"URL: {p['url']}")
+
+        finding = Finding(
+            case_id=case_id,
+            subject_id=subject_id,
+            title=f"INTERPOL / Vermist: {p.get('name', 'Unknown')}",
+            content='\n'.join(content_parts),
+            source_url=p.get('url', ''),
+            source_type='interpol',
+            finding_type='identity',
+            reliability_score=7,
+            confidence_level='medium',
+            tags=['interpol', 'yellow_notice', 'missing'] if p.get('source') == 'INTERPOL' else ['interpol', 'vermist', 'missing'],
+            created_by=current_user.id
+        )
+        db.session.add(finding)
+        created.append(finding)
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action='create',
+        entity_type='finding',
+        entity_id=None,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        new_values={'count': len(created), 'source': 'interpol_check'},
+        description=f"Added {len(created)} Interpol findings to case {case.case_number}"
+    )
+    db.session.commit()
+
+    return jsonify({
+        'message': f'{len(created)} bevinding(en) opgeslagen',
+        'count': len(created),
+        'findings': [f.to_dict() for f in created]
+    }), 201
+
+
 # =============================================================================
 # Search Routes
 # =============================================================================
@@ -3038,6 +3308,7 @@ def settings():
         'general': {'name': '⚙️ General', 'icon': '⚙️'},
         'security': {'name': '🔒 Security', 'icon': '🔒'},
         'email': {'name': '📧 Email', 'icon': '📧'},
+        'appearance': {'name': '🎨 Appearance', 'icon': '🎨'},
     }
     
     settings_list = Setting.query.filter_by(
@@ -4235,10 +4506,34 @@ def update_subject_social_ids(subject_id: str):
 # Politie Open Data Routes
 # =============================================================================
 
-INTERPOL_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'application/json'
-}
+_INTERPOL_USER_AGENTS = [
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:126.0) Gecko/20100101 Firefox/126.0',
+]
+
+_LAST_INTERPOL_CALL = 0
+_INTERPOL_LOCK = threading.Lock()
+_INTERPOL_MIN_INTERVAL = 30  # seconds between requests to avoid Akamai rate limiting
+
+def _interpol_headers():
+    return {
+        'User-Agent': random.choice(_INTERPOL_USER_AGENTS),
+        'Accept': 'application/json'
+    }
+
+def _check_interpol_rate_limit():
+    global _LAST_INTERPOL_CALL
+    with _INTERPOL_LOCK:
+        now = time.time()
+        elapsed = now - _LAST_INTERPOL_CALL
+        if elapsed < _INTERPOL_MIN_INTERVAL:
+            return _INTERPOL_MIN_INTERVAL - elapsed
+        _LAST_INTERPOL_CALL = now
+        return 0
 
 
 @cms_bp.route('/check-policie-data', methods=['POST'])
@@ -4273,9 +4568,25 @@ def check_policie_data():
         'error': None
     }
     
+    # Rate limit check
+    wait = _check_interpol_rate_limit()
+    if wait > 0:
+        logger.warning(f"Interpol rate limited: retry in {wait:.0f}s")
+        return jsonify({
+            'subject_name': subject_name,
+            'subject_id': subject_id,
+            'missing_persons': [],
+            'wanted_persons': [],
+            'api_available': False,
+            'source': 'interpol',
+            'error': f'Interpol API rate limit: wacht {wait:.0f} seconden voor volgende aanvraag',
+            'retry_after': int(wait)
+        }), 429
+
+    interpol_403 = False
     try:
         import httpx
-        client = httpx.Client(headers=INTERPOL_HEADERS, timeout=15)
+        client = httpx.Client(headers=_interpol_headers(), timeout=15)
         
         # --- Interpol Red Notices (wanted) ---
         try:
@@ -4316,6 +4627,9 @@ def check_policie_data():
                         'type': 'Red Notice (Wanted)',
                         'source': 'INTERPOL'
                     })
+            elif r.status_code == 403:
+                interpol_403 = True
+                logger.warning(f"Interpol Red Notice 403 Forbidden (Akamai block)")
         except Exception as e:
             logger.warning(f"Interpol Red Notice lookup error: {e}")
         
@@ -4352,25 +4666,27 @@ def check_policie_data():
                         'type': 'Yellow Notice (Missing)',
                         'source': 'INTERPOL'
                     })
+            elif r.status_code == 403:
+                interpol_403 = True
+                logger.warning(f"Interpol Yellow Notice 403 Forbidden (Akamai block)")
         except Exception as e:
             logger.warning(f"Interpol Yellow Notice lookup error: {e}")
         
-        # If Interpol returned no results and search was specific enough, try politie.nl/vermist
-        if len(results['wanted_persons']) == 0 and len(results['missing_persons']) == 0 and len(name_parts) >= 1:
+        # If Interpol returned no results (or was blocked), try politie.nl/vermist fallback
+        if (len(results['wanted_persons']) == 0 and len(results['missing_persons']) == 0
+                and len(name_parts) >= 1):
             try:
                 vermist_resp = httpx.get('https://www.politie.nl/vermist',
-                    headers=INTERPOL_HEADERS, timeout=10, follow_redirects=True)
+                    headers=_interpol_headers(), timeout=10, follow_redirects=True)
                 if vermist_resp.status_code == 200:
                     import re as re2
-                    # Extract case links from the page
                     case_links = re2.findall(r'href="(/vermist/[^"]+)"', vermist_resp.text)
-                    for link in case_links[:20]:  # Check first 20 cases
+                    for link in case_links[:20]:
                         try:
                             detail = httpx.get(f'https://www.politie.nl{link}',
-                                headers=INTERPOL_HEADERS, timeout=10, follow_redirects=True)
+                                headers=_interpol_headers(), timeout=10, follow_redirects=True)
                             if detail.status_code == 200:
                                 text_lower = detail.text.lower()
-                                # Simple name match
                                 if any(part in text_lower for part in name_parts):
                                     title_match = re2.search(r'<h1[^>]*>([^<]+)</h1>', detail.text)
                                     title = title_match.group(1).strip() if title_match else 'Unknown'
@@ -4386,7 +4702,13 @@ def check_policie_data():
             except:
                 pass
         
-        logger.info(f"Check for {subject_name}: {len(results['wanted_persons'])} wanted, {len(results['missing_persons'])} missing")
+        results['api_available'] = not interpol_403
+        if interpol_403 and len(results['wanted_persons']) == 0 and len(results['missing_persons']) == 0:
+            results['error'] = 'INTERPOL API is tijdelijk geblokkeerd (Akamai). Politie.nl check uitgevoerd als fallback.'
+            results['source'] = 'politie.nl (fallback)'
+            logger.warning(f"Interpol blocked (403), fell back to politie.nl for {subject_name}")
+        else:
+            logger.info(f"Check for {subject_name}: {len(results['wanted_persons'])} wanted, {len(results['missing_persons'])} missing")
         return jsonify(results), 200
         
     except Exception as e:
@@ -4401,11 +4723,19 @@ def check_policie_data():
 @login_required
 def check_policie_api_status():
     """Check if INTERPOL API is available."""
+    wait = _check_interpol_rate_limit()
+    if wait > 0:
+        return jsonify({
+            'available': False,
+            'status_code': 429,
+            'error': f'Rate limited, retry in {wait:.0f}s',
+            'retry_after': int(wait)
+        }), 200
     try:
         import httpx
         r = httpx.get('https://ws-public.interpol.int/notices/v1/red',
             params={'resultPerPage': 1},
-            headers=INTERPOL_HEADERS,
+            headers=_interpol_headers(),
             timeout=10)
         return jsonify({
             'available': r.status_code == 200,
@@ -5099,6 +5429,124 @@ def phone_lookup():
         return jsonify({'error': f'Phone lookup failed: {str(e)}'}), 500
 
 
+@cms_bp.route('/api/email-check', methods=['POST'])
+@login_required
+def email_check():
+    """
+    Validate an email address and check for known breaches.
+
+    Checks:
+    - Email format validity (regex)
+    - MX record resolution (domain can receive mail)
+    - Disposable domain detection
+    - Have I Been Pwned breaches (if HIBP_API_KEY is set)
+    - EmailRep reputation (free tier, public API)
+    """
+    data = request.get_json() if request.is_json else request.form
+    email = (data.get('email') or '').strip().lower()
+
+    if not email:
+        return jsonify({'error': 'Email address required'}), 400
+
+    import socket
+    import httpx
+
+    result = {
+        'email': email,
+        'valid_format': False,
+        'domain': None,
+        'has_mx': False,
+        'disposable': False,
+        'hibp_found': False,
+        'hibp_breaches': [],
+        'emailrep': None,
+        'search_links': [],
+        'error': None
+    }
+
+    # --- Format validation ---
+    pattern = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
+    if not re.match(pattern, email):
+        result['error'] = 'Invalid email format'
+        return jsonify(result), 200
+
+    result['valid_format'] = True
+    domain = email.split('@')[1]
+    result['domain'] = domain
+
+    # --- Disposable domain check ---
+    disposable_domains = {
+        'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwaway.email',
+        'yopmail.com', 'sharklasers.com', 'trashmail.com', '10minutemail.com',
+        'mailnator.com', 'temp-mail.org', 'getairmail.com', 'tempinbox.com',
+        'spamgourmet.com', 'mailexpire.com', 'maildrop.cc', 'burnermail.io',
+        'inboxbear.com', 'discard.email', 'mintemail.com', 'mailforspam.com',
+    }
+    if domain.lower() in disposable_domains:
+        result['disposable'] = True
+
+    # --- MX record check ---
+    try:
+        socket.getaddrinfo(domain, 25)
+        result['has_mx'] = True
+    except socket.gaierror:
+        result['has_mx'] = False
+
+    # --- Have I Been Pwned ---
+    hibp_key = os.environ.get('HIBP_API_KEY', '')
+    if hibp_key:
+        try:
+            resp = httpx.get(
+                f'https://haveibeenpwned.com/api/v3/breachedaccount/{email}?truncateResponse=false',
+                headers={
+                    'hibp-api-key': hibp_key,
+                    'User-Agent': 'Iveras-OSINT-Dashboard/3.0'
+                },
+                timeout=15
+            )
+            if resp.status_code == 200:
+                breaches = resp.json()
+                result['hibp_found'] = True
+                result['hibp_breaches'] = [{
+                    'name': b.get('Name'),
+                    'domain': b.get('Domain'),
+                    'date': b.get('BreachDate'),
+                    'data_classes': b.get('DataClasses', []),
+                    'description': b.get('Description', '')[:200],
+                } for b in breaches]
+            elif resp.status_code == 404:
+                result['hibp_found'] = False
+            elif resp.status_code == 401:
+                result['hibp_found'] = False
+                logger.warning("HIBP API key rejected")
+        except Exception as e:
+            logger.warning(f"HIBP lookup failed: {e}")
+
+    # --- EmailRep ---
+    try:
+        eresp = httpx.get(
+            f'https://emailrep.io/{email}',
+            headers={'User-Agent': 'Iveras-OSINT-Dashboard/3.0'},
+            timeout=10
+        )
+        if eresp.status_code == 200:
+            result['emailrep'] = eresp.json()
+    except Exception as e:
+        logger.warning(f"EmailRep lookup failed: {e}")
+
+    # --- Search links ---
+    result['search_links'] = [
+        {'label': 'Have I Been Pwned', 'url': f'https://haveibeenpwned.com/account/{email}'},
+        {'label': 'EmailRep', 'url': f'https://emailrep.io/{email}'},
+        {'label': 'Hunter.io', 'url': f'https://hunter.io/search/{domain}'},
+        {'label': 'Dehashed', 'url': f'https://dehashed.com/search?query={email}'},
+        {'label': 'Google', 'url': f'https://www.google.com/search?q={email}'},
+    ]
+
+    logger.info(f"Email check: {email} → valid={result['valid_format']}, mx={result['has_mx']}, hibp={result['hibp_found']}")
+    return jsonify(result), 200
+
+
 @cms_bp.route('/cases/<case_id>/screenshots/capture', methods=['POST'])
 @login_required
 @case_access_required
@@ -5500,6 +5948,9 @@ def download_document(document_id: str):
     
     from flask import send_from_directory, abort
     import os
+    
+    if not document.storage_path:
+        return jsonify({'error': 'Document file not found on server'}), 404
     
     file_path = os.path.join(current_app.root_path, 'static', document.storage_path)
     

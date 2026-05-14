@@ -52,6 +52,9 @@
     </div>
 </div>
 
+<!-- Interpol check results container -->
+<div id="interpolResults" class="card" style="display: none;"></div>
+
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="margin: 0;">
@@ -64,12 +67,53 @@
             <div class="info-item"><label>Type</label><span>{{ subject.subject_type }}</span></div>
             <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
             {% if subject.subject_type != 'vehicle' %}
-            <div class="info-item"><label>Email</label><span>{{ subject.email if subject.email else '-' }}</span></div>
-            <div class="info-item"><label>Phone</label><span>{{ subject.phone if subject.phone else '-' }}</span>
-                {% if subject.phone %}
-                <button onclick="phoneLookup(this, '{{ subject.phone }}')" class="btn-sm" style="background: #7c3aed; margin-left: 0.5rem; font-size: 0.7rem;">📞 Check</button>
-                <div class="phone-result" style="margin-top:0.25rem;display:none;"></div>
-                {% endif %}
+            <div class="info-item">
+                <label>Email(s)</label>
+                <div style="margin-top: 0.25rem;">
+                    {% set emails = subject.contacts.filter_by(contact_type='email') if subject.contacts else [] %}
+                    {% if emails.count() > 0 %}
+                        {% for c in emails %}
+                        <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
+                            <span>{{ c.value }}</span>
+                            {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
+                            <button onclick="emailCheck(this, '{{ c.value }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                            <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        </div>
+                        {% endfor %}
+                    {% elif subject.email %}
+                        <div style="display:flex;align-items:center;gap:0.35rem;">
+                            <span>{{ subject.email }}</span>
+                            <button onclick="emailCheck(this, '{{ subject.email }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                            <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        </div>
+                    {% else %}
+                        <span>-</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="info-item">
+                <label>Phone(s)</label>
+                <div style="margin-top: 0.25rem;">
+                    {% set phones = subject.contacts.filter_by(contact_type='phone') if subject.contacts else [] %}
+                    {% if phones.count() > 0 %}
+                        {% for c in phones %}
+                        <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
+                            <span>{{ c.value }}</span>
+                            {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
+                            <button onclick="phoneLookup(this, '{{ c.value }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                            <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        </div>
+                        {% endfor %}
+                    {% elif subject.phone %}
+                        <div style="display:flex;align-items:center;gap:0.35rem;">
+                            <span>{{ subject.phone }}</span>
+                            <button onclick="phoneLookup(this, '{{ subject.phone }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                            <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        </div>
+                    {% else %}
+                        <span>-</span>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
@@ -363,6 +407,40 @@
                 <button onclick="closeAddRelationForm()" class="btn-sm" style="background: var(--text-muted);">Cancel</button>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Findings Section -->
+<div class="card" id="findingsSection">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">📋 Bevindingen (Findings)</h3>
+    </div>
+    <div id="findingsList">
+        {% if findings and findings|length > 0 %}
+            {% for finding in findings %}
+            <div class="finding-item" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div>
+                        <strong style="color:#1a1a2e;">{{ finding.title }}</strong>
+                        <span class="finding-badge" style="display:inline-block;background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.5rem;">{{ finding.source_type }}</span>
+                        {% if finding.confidence_level %}
+                        <span class="finding-confidence" style="display:inline-block;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;
+                            {% if finding.confidence_level == 'high' or finding.confidence_level == 'verified' %}background:#dcfce7;color:#16a34a;
+                            {% elif finding.confidence_level == 'medium' %}background:#fef3c7;color:#92400e;
+                            {% else %}background:#f3f4f6;color:#6b7280;{% endif %}">{{ finding.confidence_level }}</span>
+                        {% endif %}
+                    </div>
+                    <span style="color:#9ca3af;font-size:0.75rem;">{{ finding.created_at.strftime('%d-%m-%Y') if finding.created_at else '' }}</span>
+                </div>
+                <div style="margin-top:0.5rem;color:#4b5563;font-size:0.875rem;white-space:pre-wrap;">{{ finding.content }}</div>
+                {% if finding.source_url %}
+                <div style="margin-top:0.25rem;"><a href="{{ finding.source_url }}" target="_blank" style="font-size:0.8rem;color:#2563eb;">🔗 {{ finding.source_url }}</a></div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+        <p style="color:#888;font-size:0.875rem;">Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan.</p>
+        {% endif %}
     </div>
 </div>
 
@@ -717,12 +795,17 @@
     }
     
     // Interpol + Politie Data Check
+    let _lastInterpolData = null;
+
     function checkPolitieData() {
         const btn = document.getElementById('policieCheckBtn');
+        const container = document.getElementById('interpolResults');
         const subjectName = '{{ subject.name }}';
         
         btn.disabled = true;
-        btn.textContent = 'Checking INTERPOL...';
+        btn.textContent = ' Checking INTERPOL...';
+        container.style.display = 'block';
+        container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;"> Checking INTERPOL and politie.nl...</div>';
         
         fetch('/cms/check-policie-data', {
             method: 'POST',
@@ -731,11 +814,10 @@
         })
         .then(r => r.json())
         .then(data => {
-            let message = '';
+            _lastInterpolData = data;
             
             if (data.error) {
-                message = 'Error: ' + data.error;
-                alert(message);
+                container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> ' + data.error + '</div>';
                 return;
             }
             
@@ -744,47 +826,106 @@
             const total = wanted.length + missing.length;
             
             if (total === 0) {
-                message = '🌍 Geen matches gevonden in INTERPOL data.\n\nNo matches found in INTERPOL Red Notices (wanted) or Yellow Notices (missing).';
-                alert(message);
+                container.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:1rem;color:#166534;"> Geen matches gevonden in INTERPOL data.</div>';
                 return;
             }
             
-            message = '⚠️ ' + total + ' POTENTIELE MATCH(S) GEVONDEN!\n\n';
+            let html = '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:1rem;color:#92400e;font-weight:600;"> ' + total + ' POTENTIELE MATCH(S) GEVONDEN!</div>';
             
             if (wanted.length > 0) {
-                message += '=== RED NOTICES (WANTED) ===\n';
+                html += '<h4 style="margin:0 0 0.5rem 0;color:#991b1b;"> Red Notices (Wanted)</h4>';
                 wanted.forEach((p, i) => {
-                    message += (i + 1) + '. ' + p.name + '\n';
-                    if (p.date_of_birth) message += '   DOB: ' + p.date_of_birth + '\n';
-                    if (p.nationality) message += '   Nationality: ' + p.nationality + '\n';
-                    if (p.charge) message += '   Charge: ' + p.charge + '\n';
-                    if (p.issuing_country) message += '   Issued by: ' + p.issuing_country + '\n';
-                    message += '   ' + p.url + '\n\n';
+                    html += '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
+                    html += '<div><strong style="color:#991b1b;">' + p.name + '</strong>';
+                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + p.date_of_birth + '</span>';
+                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + p.nationality + '</span>';
+                    if (p.charge) html += '<br><span style="color:#666;font-size:0.85rem;">Charge: ' + p.charge + '</span>';
+                    if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">Issued by: ' + p.issuing_country + '</span>';
+                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> INTERPOL link</a>';
+                    html += '</div>';
+                    html += '<button onclick="saveInterpolFinding(&#39;wanted&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
+                    html += '</div></div>';
                 });
             }
             
             if (missing.length > 0) {
-                message += '=== YELLOW NOTICES / POLITIE VERMIST (MISSING) ===\n';
+                html += '<h4 style="margin:0 0 0.5rem 0;color:#92400e;"> Yellow Notices / Vermist (Missing)</h4>';
                 missing.forEach((p, i) => {
-                    message += (i + 1) + '. ' + p.name + '\n';
-                    if (p.source) message += '   Source: ' + p.source + '\n';
-                    if (p.date_of_birth) message += '   DOB: ' + p.date_of_birth + '\n';
-                    if (p.nationality) message += '   Nationality: ' + p.nationality + '\n';
-                    if (p.date_missing) message += '   Missing since: ' + p.date_missing + '\n';
-                    if (p.place) message += '   Place: ' + p.place + '\n';
-                    if (p.description) message += '   Info: ' + p.description + '\n';
-                    message += '   ' + p.url + '\n\n';
+                    html += '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
+                    html += '<div><strong style="color:#92400e;">' + p.name + '</strong>';
+                    if (p.source) html += '<br><span style="color:#666;font-size:0.85rem;">Source: ' + p.source + '</span>';
+                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + p.date_of_birth + '</span>';
+                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + p.nationality + '</span>';
+                    if (p.date_missing) html += '<br><span style="color:#666;font-size:0.85rem;">Missing since: ' + p.date_missing + '</span>';
+                    if (p.place) html += '<br><span style="color:#666;font-size:0.85rem;">Place: ' + p.place + '</span>';
+                    if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">Info: ' + p.description + '</span>';
+                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Link</a>';
+                    html += '</div>';
+                    html += '<button onclick="saveInterpolFinding(&#39;missing&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
+                    html += '</div></div>';
                 });
             }
             
-            alert(message);
+            if (data.source === 'politie.nl (fallback)') {
+                html += '<div style="margin-top:0.5rem;font-size:0.8rem;color:#6b7280;font-style:italic;"> INTERPOL API was blocked (Akamai). Results from politie.nl fallback.</div>';
+            }
+            
+            container.innerHTML = html;
         })
         .catch(err => {
-            alert('Failed to check data: ' + err.message);
+            container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> Failed to check data: ' + err.message + '</div>';
         })
         .finally(() => {
             btn.disabled = false;
-            btn.textContent = '🌍 Check Interpol';
+            btn.textContent = ' Check Interpol';
+        });
+    }
+
+    function saveInterpolFinding(type, index, btn) {
+        const data = _lastInterpolData;
+        if (!data) return;
+
+        const subjectId = '{{ subject.id }}';
+        const firstCaseId = '{{ first_case_id or '' }}';
+        
+        if (!firstCaseId) {
+            alert('Dit subject is niet gekoppeld aan een zaak. Koppel eerst aan een zaak om bevindingen op te slaan.');
+            return;
+        }
+
+        const person = type === 'wanted' ? data.wanted_persons[index] : data.missing_persons[index];
+        if (!person) return;
+
+        btn.disabled = true;
+        btn.textContent = ' Bezig met opslaan...';
+
+        fetch('/cms/api/findings/from-interpol', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                case_id: firstCaseId,
+                subject_id: subjectId,
+                wanted_persons: type === 'wanted' ? [person] : [],
+                missing_persons: type === 'missing' ? [person] : []
+            })
+        })
+        .then(r => {
+            if (!r.ok) {
+                return r.json().then(err => { throw new Error(err.error || 'Onbekende fout'); });
+            }
+            return r.json();
+        })
+        .then(result => {
+            btn.textContent = ' Opgeslagen!';
+            btn.style.background = '#16a34a';
+            setTimeout(() => location.reload(), 800);
+        })
+        .catch(err => {
+            alert('Fout: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = ' Bewaar als bevinding';
         });
     }
     
@@ -1259,6 +1400,81 @@
                 const tg = data.services.telegram;
                 html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + tg.url + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + (tg.note || 'Unknown'))) + '</div>';
             }
+            html += '</div></div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Done';
+            btn.style.background = '#16a34a';
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    }
+
+    async function emailCheck(btn, email) {
+        const resultDiv = btn.parentElement.querySelector('.email-result');
+        const origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Checking...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Checking email...</span>';
+
+        try {
+            const resp = await fetch('/cms/api/email-check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Valid Format:</strong> ' + (data.valid_format ? '✅ Yes' : '❌ No') + '</div>';
+            html += '<div><strong>Domain:</strong> ' + (data.domain || '-') + '</div>';
+            html += '<div><strong>MX Records:</strong> ' + (data.has_mx ? '✅ Found' : '❌ None') + '</div>';
+            html += '<div><strong>Disposable:</strong> ' + (data.disposable ? '⚠️ Yes' : '✅ No') + '</div>';
+
+            if (data.hibp_breaches && data.hibp_breaches.length > 0) {
+                html += '<div style="grid-column:1/-1;"><strong>🔴 Breaches (' + data.hibp_breaches.length + '):</strong></div>';
+                data.hibp_breaches.forEach(b => {
+                    html += '<div style="grid-column:1/-1;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:0.4rem;margin-bottom:0.2rem;">';
+                    html += '<strong>' + b.name + '</strong> (' + (b.date || 'unknown') + ')';
+                    if (b.data_classes && b.data_classes.length > 0) {
+                        html += '<br><span style="font-size:0.75rem;color:#666;">Data: ' + b.data_classes.join(', ') + '</span>';
+                    }
+                    html += '</div>';
+                });
+            } else {
+                html += '<div style="grid-column:1/-1;"><strong>Breaches:</strong> ' + (data.hibp_found === false ? '✅ None found' : '⚠️ Not checked') + '</div>';
+            }
+
+            if (data.emailrep) {
+                const rep = data.emailrep;
+                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
+                html += '<strong>EmailRep:</strong> ' + (rep.reputation || 'unknown') + ' | ';
+                html += 'Suspicious: ' + (rep.suspicious ? '⚠️ Yes' : '✅ No') + ' | ';
+                html += 'Details: ' + (rep.details ? rep.details.join(', ') : '-');
+                html += '</div>';
+            }
+
+            if (data.search_links && data.search_links.length > 0) {
+                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
+                html += '<strong>🔍 Investigate further:</strong> ';
+                data.search_links.forEach(function(link, i) {
+                    if (i > 0) html += ' | ';
+                    html += '<a href="' + link.url + '" target="_blank" style="color:#2563eb;">' + link.label + '</a>';
+                });
+                html += '</div>';
+            }
+
             html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Done';

@@ -49,7 +49,7 @@
         <h1>Edit Client</h1>
     
     <div class="card">
-        <form method="POST">
+        <form method="POST" onsubmit="serializeContacts()">
             <div class="form-group">
                 <label for="name">Client Name *</label>
                 <input type="text" name="name" id="name" value="{{ client.name }}" required>
@@ -67,14 +67,57 @@
                 </div>
             </div>
             
+            <input type="hidden" name="contacts_data" id="contacts-data" value="">
             <div class="form-group">
-                <label for="contact_email">Email</label>
-                <input type="email" name="contact_email" id="contact_email" value="{{ client.contact_email or '' }}">
-            </div>
-            
-            <div class="form-group">
-                <label for="contact_phone">Phone</label>
-                <input type="text" name="contact_phone" id="contact_phone" value="{{ client.contact_phone or '' }}">
+                <label>Contact(s)</label>
+                <div id="contacts-container">
+                    {% if client.contacts.count() > 0 %}
+                        {% for c in client.contacts %}
+                        <div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
+                            <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
+                                <div>
+                                    <label style="font-size:0.75rem;">Type</label>
+                                    <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                                        <option value="email" {% if c.contact_type == 'email' %}selected{% endif %}>Email</option>
+                                        <option value="phone" {% if c.contact_type == 'phone' %}selected{% endif %}>Phone</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem;">Value</label>
+                                    <input type="text" class="contact-value" value="{{ c.value }}" placeholder="email@example.com or +31612345678" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                                </div>
+                                <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
+                                    <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                                        <input type="checkbox" class="contact-primary" {% if c.is_primary %}checked{% endif %}> Primary
+                                    </label>
+                                    <button type="button" onclick="this.closest('.contact-entry').remove()" style="font-size:0.75rem;padding:0.25rem 0.5rem;background:#fee2e2;border:1px solid #fecaca;border-radius:4px;cursor:pointer;color:#991b1b;">✕</button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    <div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;{% if client.contacts.count() > 0 %}display:none;{% endif %}">
+                        <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
+                            <div>
+                                <label style="font-size:0.75rem;">Type</label>
+                                <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                                    <option value="email">Email</option>
+                                    <option value="phone">Phone</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem;">Value</label>
+                                <input type="text" class="contact-value" placeholder="email@example.com or +31612345678" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            </div>
+                            <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
+                                <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                                    <input type="checkbox" class="contact-primary" checked> Primary
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="addContact()" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another contact</button>
             </div>
             
             <h3>Address</h3>
@@ -150,6 +193,34 @@
             companyFields.style.display = 'none';
             vatField.style.display = 'none';
         }
+    }
+
+    function serializeContacts() {
+        const entries = document.querySelectorAll('.contact-entry');
+        const contacts = [];
+        entries.forEach(entry => {
+            const value = entry.querySelector('.contact-value').value.trim();
+            if (!value) return;
+            contacts.push({
+                contact_type: entry.querySelector('.contact-type').value,
+                value: value,
+                is_primary: entry.querySelector('.contact-primary').checked
+            });
+        });
+        document.getElementById('contacts-data').value = JSON.stringify(contacts);
+    }
+
+    function addContact() {
+        const container = document.getElementById('contacts-container');
+        const template = container.querySelector('.contact-entry');
+        const clone = template.cloneNode(true);
+        clone.querySelectorAll('input').forEach(el => {
+            if (el.type !== 'checkbox') el.value = '';
+            else el.checked = false;
+        });
+        clone.querySelector('.contact-type').selectedIndex = 0;
+        clone.style.display = '';
+        container.appendChild(clone);
     }
 
     function postcodeCheck() {

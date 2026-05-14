@@ -290,6 +290,9 @@ class Client(db.Model):
     
     # Relationships
     cases = db.relationship('Case', backref='client', lazy='dynamic')
+    contacts = db.relationship('Contact', backref='client', lazy='dynamic',
+                              foreign_keys='Contact.client_id',
+                              order_by='Contact.is_primary.desc(), Contact.created_at')
     
     # Encrypted fields list for reference
     ENCRYPTED_FIELDS = [
@@ -341,6 +344,7 @@ class Client(db.Model):
             },
             'contract_number': self.contract_number,
             'contract_info': self.contract_info,
+            'contacts': [c.to_dict(decrypted=decrypted) for c in self.contacts],
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
@@ -563,6 +567,9 @@ class Subject(db.Model):
     addresses = db.relationship('Address', backref='subject', lazy='dynamic',
                                foreign_keys='Address.subject_id',
                                order_by='Address.is_primary.desc(), Address.created_at')
+    contacts = db.relationship('Contact', backref='subject', lazy='dynamic',
+                              foreign_keys='Contact.subject_id',
+                              order_by='Contact.is_primary.desc(), Contact.created_at')
     
     # Relations with other subjects
     related_subjects = db.relationship(
@@ -633,6 +640,7 @@ class Subject(db.Model):
             'social_media_ids': self.social_media_ids or {},
             'rdw_data': self.rdw_data or {},
             'addresses': [a.to_dict(decrypted=decrypted) for a in self.addresses],
+            'contacts': [c.to_dict(decrypted=decrypted) for c in self.contacts],
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         
@@ -729,6 +737,61 @@ class Address(db.Model):
         if self.country:
             parts.append(self.country)
         return ', '.join(parts)
+
+
+# =============================================================================
+# Contact Model (Email/Phone)
+# =============================================================================
+
+class Contact(db.Model):
+    """
+    Structured contact entry for subjects and clients.
+
+    Supports multiple emails and phones per entity (home, work, etc.)
+    with verification/check status.
+    """
+    __tablename__ = 'contacts'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'), nullable=True, index=True)
+    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=True, index=True)
+
+    contact_type = db.Column(db.String(10), nullable=False)  # 'email' or 'phone'
+    value = db.Column(db.String(500))  # Encrypted
+    is_primary = db.Column(db.Boolean, default=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    ENCRYPTED_FIELDS = ['value']
+
+    def encrypt_fields(self):
+        for field in self.ENCRYPTED_FIELDS:
+            value = getattr(self, field)
+            if value:
+                setattr(self, field, encryptor.encrypt(value))
+
+    def decrypt_fields(self):
+        for field in self.ENCRYPTED_FIELDS:
+            value = getattr(self, field)
+            if value:
+                try:
+                    setattr(self, field, encryptor.decrypt(value))
+                except:
+                    pass
+
+    def to_dict(self, decrypted=True):
+        if decrypted:
+            self.decrypt_fields()
+        return {
+            'id': self.id,
+            'subject_id': self.subject_id,
+            'client_id': self.client_id,
+            'contact_type': self.contact_type,
+            'value': self.value,
+            'is_primary': self.is_primary,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
 
 
 # =============================================================================
@@ -1579,6 +1642,7 @@ def init_default_settings():
         {'key': 'smtp_from_email', 'category': 'email', 'description': 'From email', 'value_type': 'text', 'display_order': 44},
         {'key': 'smtp_from_name', 'category': 'email', 'description': 'From name', 'value_type': 'text', 'display_order': 45},
         {'key': 'update_check_repo', 'category': 'general', 'description': 'GitHub repo for update checks (e.g. user/repo). Leave empty to disable.', 'value_type': 'text', 'display_order': 50},
+        {'key': 'theme_style', 'category': 'appearance', 'value': 'classic', 'description': 'Visual style and layout', 'value_type': 'select', 'options': {'options': [{'value': 'classic', 'label': 'Classic'}, {'value': 'professional', 'label': 'Professional'}]}, 'display_order': 1},
     ]
     for default in defaults:
         existing = Setting.query.filter_by(key=default['key']).first()

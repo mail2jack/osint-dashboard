@@ -1,112 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Users - CMS</title>
-    <script>
-        (function() {
-            const theme = localStorage.getItem('cms-theme') || 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
-    <style>
-        body { font-family: -apple-system, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-        .top-header { background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .top-header a { color: white; text-decoration: none; margin-left: 1.5rem; }
-        .top-header a:hover { opacity: 0.8; }
-        .top-header .nav-link.active { border-bottom: 2px solid white; padding-bottom: 2px; }
-        .page-header { display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 2rem 1rem; }
-        h1 { color: #1a1a2e; margin: 0; }
-        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 2rem 1rem; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
-        th { font-weight: 600; color: #666; }
-        .btn { padding: 0.5rem 1rem; background: #16213e; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; display: inline-block; }
-        .btn-danger { background: #dc2626; }
-        .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
-        .badge-admin { background: #fee2e2; color: #dc2626; }
-        .badge-senior { background: #fef3c7; color: #92400e; }
-        .badge-junior { background: #dbeafe; color: #1e40af; }
-        .badge-viewer { background: #d1fae5; color: #065f46; }
-        .pagination { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
-        .pagination a, .pagination span { padding: 0.5rem 1rem; border-radius: 4px; }
-        .pagination a { background: #16213e; color: white; text-decoration: none; }
-        .pagination span { background: #e5e7eb; }
-    </style>
-</head>
-<body>
-    <div class="top-header" style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
-        <div style="display: flex; gap: 0; align-items: center;">
-            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
-            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
-            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
-            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Clients</a>
-            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
-            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
-            {% if current_user.is_admin %}
-            <a href="{{ url_for('users.list_users') }}" class="nav-link active" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Users</a>
-            {% endif %}
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
-            <span style="color: #888;">|</span>
-            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
-        </div>
-    </div>
-    
-    <div class="page-header">
-        <h1>Users</h1>
-        <a href="{{ url_for('users.create_user') }}" class="btn">+ New User</a>
-    </div>
-    
-    <div class="card">
-        <form method="GET" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-            <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}" 
-                   style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-            <button type="submit" class="btn">Search</button>
-            {% if search %}
-            <a href="{{ url_for('users.list_users') }}" class="btn" style="background: #888;">Clear</a>
-            {% endif %}
-        </form>
-        
-        {% if users %}
-        <table>
-            <thead>
-                <tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr>
-                    <td><strong>{{ user.full_name }}</strong></td>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.email }}</td>
-                    <td><span class="badge badge-{{ user.role }}">{{ user.role|replace('_', ' ') }}</span></td>
-                    <td>
-                        <a href="{{ url_for('users.view_user', user_id=user.id) }}">View</a>
-                        | <a href="{{ url_for('users.user_activity', user_id=user.id) }}">Activity</a>
-                        {% if current_user.is_admin and user.id != current_user.id %}
-                        | <a href="{{ url_for('users.edit_user', user_id=user.id) }}">Edit</a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>No users found.</p>
+{% extends "cms/base.html" %}
+
+{% block title %}Users - CMS{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 1rem;">
+    <h1 style="margin: 0;">Users</h1>
+    <a href="{{ url_for('users.create_user') }}" class="btn">+ New User</a>
+</div>
+
+<div class="card">
+    <form method="GET" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+        <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}" 
+               style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+        <button type="submit" class="btn">Search</button>
+        {% if search %}
+        <a href="{{ url_for('users.list_users') }}" class="btn" style="background: #888;">Clear</a>
         {% endif %}
-        
-        {% if pagination.pages > 1 %}
-        <div class="pagination">
-            {% if pagination.has_prev %}
-            <a href="{{ url_for('users.list_users', page=pagination.prev_num, search=search) }}">Previous</a>
-            {% endif %}
-            <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
-            {% if pagination.has_next %}
-            <a href="{{ url_for('users.list_users', page=pagination.next_num, search=search) }}">Next</a>
-            {% endif %}
-        </div>
+    </form>
+    
+    {% if users %}
+    <table>
+        <thead>
+            <tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td><strong>{{ user.full_name }}</strong></td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.email }}</td>
+                <td><span class="badge badge-{{ user.role }}">{{ user.role|replace('_', ' ') }}</span></td>
+                <td>
+                    <a href="{{ url_for('users.view_user', user_id=user.id) }}">View</a>
+                    | <a href="{{ url_for('users.user_activity', user_id=user.id) }}">Activity</a>
+                    {% if current_user.is_admin and user.id != current_user.id %}
+                    | <a href="{{ url_for('users.edit_user', user_id=user.id) }}">Edit</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No users found.</p>
+    {% endif %}
+    
+    {% if pagination.pages > 1 %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('users.list_users', page=pagination.prev_num, search=search) }}">Previous</a>
+        {% endif %}
+        <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+        <a href="{{ url_for('users.list_users', page=pagination.next_num, search=search) }}">Next</a>
         {% endif %}
     </div>
-</body>
-</html>
+    {% endif %}
+</div>
+{% endblock %}
