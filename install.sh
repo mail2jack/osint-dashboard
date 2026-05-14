@@ -97,7 +97,7 @@ print_step "Cloning repository to $APP_DIR..."
 if [[ -d "$APP_DIR" ]]; then
     print_info "Directory exists - removing old installation..."
     systemctl stop $SERVICE_NAME 2>/dev/null || true
-    rm -rf $APP_DIR
+    cd / && rm -rf $APP_DIR
 fi
 
 git clone -b $BRANCH $REPO_URL "$APP_DIR"
