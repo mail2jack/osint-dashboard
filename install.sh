@@ -450,6 +450,10 @@ SFEOF
 chmod 644 /etc/systemd/system/$SERVICE_NAME.service
 chmod 644 /etc/systemd/system/$SF_SERVICE_NAME.service
 systemctl daemon-reload
+
+# Allow osint user to restart services without password (for one-click update)
+echo "osint ALL=(root) NOPASSWD: /usr/bin/systemctl restart osint-dashboard, /usr/bin/systemctl stop osint-dashboard, /usr/bin/systemctl start osint-dashboard" > /etc/sudoers.d/osint-services
+chmod 440 /etc/sudoers.d/osint-services
 systemctl enable $SERVICE_NAME
 systemctl enable $SF_SERVICE_NAME
 print_success "Systemd services created"

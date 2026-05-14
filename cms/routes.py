@@ -5281,9 +5281,8 @@ def do_update():
          f'{sys.executable} -c "from app import app; from cms.models import db; import flask; app.app_context().push(); db.create_all(); print(\'Migrations OK\')"',
          cwd=project_root)
 
-    # Step 5: Restart (runs as osint user, needs passwordless sudo or polkit)
-    systemctl_path = shutil.which('systemctl') or '/usr/bin/systemctl'
-    step('Restart services', f'{systemctl_path} restart osint-dashboard',
+    # Step 5: Restart (uses sudo via sudoers rule set by install.sh)
+    step('Restart services', 'sudo /usr/bin/systemctl restart osint-dashboard',
          cwd=project_root)
 
     success = all(r['status'] == 'ok' for r in results)
