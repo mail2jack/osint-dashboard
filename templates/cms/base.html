@@ -202,6 +202,11 @@
             margin: 0 0.1rem;
             color: var(--text-primary);
         }
+        .changelog-content { padding: 1rem 0; }
+        .changelog-content .cl-version { font-size:1.1rem;font-weight:700;margin:1.5rem 0 0.5rem;padding:0.5rem 0;border-bottom:2px solid var(--accent-primary);color:var(--text-primary); }
+        .changelog-content .cl-section { font-weight:600;margin:0.75rem 0 0.25rem;color:var(--text-primary); }
+        .changelog-content .cl-item { padding:0.15rem 0 0.15rem 1rem;color:var(--text-secondary);font-size:0.875rem; }
+        .changelog-content .cl-bullet { color:var(--accent-primary);margin-right:0.5rem; }
         
         /* Priority case colors for dark mode */
         [data-theme="dark"] .priority-case { background: #78350f; }
@@ -421,7 +426,7 @@
                 <h2>📋 Changelog</h2>
                 <span class="close" onclick="document.getElementById('changelogModal').classList.remove('show')">&times;</span>
             </div>
-            <div id="changelogContent" style="padding:1rem 0;"></div>
+            <div id="changelogContent" class="changelog-content"></div>
         </div>
     </div>
     

@@ -827,16 +827,23 @@ def get_changelog():
             return jsonify({'html': '<div class="empty">No changelog found</div>'})
         
         changelog_section = content[changelog_start:]
-        html = changelog_section.replace('## ', '<h4>').replace('### ', '<h5>').replace('\n##', '</h4>\n##').replace('\n###', '</h5>\n###')
-        html = f'<div class="changelog-content">{html.replace(chr(10), "<br>")}</div>'
-        html = html.replace('<h4>', '</div><h4>').replace('<h4>', '<div class="changelog-version">').replace('</h4>', '</h4>')
-        html = html.replace('<h5>', '<div class="changelog-item">').replace('</h5>', '</h5></div>')
-        html = html.replace('- ', '<span class="bullet">•</span> ')
-        html = html.replace('<br><br>', '<br>')
+        html_parts = []
+        for line in changelog_section.split('\n'):
+            line = line.strip()
+            if line.startswith('### '):
+                html_parts.append(f'<div class="cl-version">{line[4:].strip()}</div>')
+            elif line.startswith('**') and line.endswith('**'):
+                html_parts.append(f'<div class="cl-section">{line.strip("*")}</div>')
+            elif line.startswith('- '):
+                html_parts.append(f'<div class="cl-item"><span class="cl-bullet">•</span>{line[2:]}</div>')
+            elif line.startswith('---') or not line:
+                continue
+            else:
+                html_parts.append(f'<div style="padding:0.15rem 0 0.15rem 1rem;color:var(--text-secondary);font-size:0.875rem;">{line}</div>')
         
-        return jsonify({'html': html})
+        return jsonify({'html': ''.join(html_parts)})
     except Exception as e:
-        return jsonify({'html': f'<div class="empty">Error loading changelog: {str(e)}</div>'}), 500
+        return jsonify({'html': f'<div style="text-align:center;padding:2rem;color:#dc2626;">Error: {str(e)}</div>'}), 500
 
 
 @app.route('/api/config', methods=['GET'])
