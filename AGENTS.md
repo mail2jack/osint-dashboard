@@ -8,9 +8,11 @@
 
 ## Database
 - `install.sh` sets up PostgreSQL by default (`DATABASE_URL` in `.env`). Falls back to SQLite (`cms.db`) if `DATABASE_URL` is unset.
+- Local dev uses PostgreSQL too. Setup: `brew install postgresql@16 && brew services start postgresql@16 && createdb cms_dev && echo 'DATABASE_URL=postgresql:///cms_dev' >> .env && pip install psycopg2-binary`.
 - `db.create_all()` runs on first startup — tables + default admin (`admin`/`changeme123`) auto-created.
 - Never mutate `created_at` on ORM objects directly (crashes SQLite). Sort with `strftime()` in sort key lambda.
 - `instr()` in queries is dialect-agnostic (uses `instr` for SQLite, `strpos` for PostgreSQL) — see `cms/routes.py`.
+- **CRITICAL — PostgreSQL vs SQLite diff**: PostgreSQL enforces `VARCHAR(n)` length limits; SQLite ignores them. Fernet-encrypted values are ~100-140 chars, so ALL encrypted columns MUST be `String(500)` minimum. The app auto-migrates column sizes on startup via `ALTER COLUMN TYPE VARCHAR(500)` (PostgreSQL only, see `cms/__init__.py`).
 
 ## SpiderFoot Integration (`cms/spiderfoot_service.py`)
 
