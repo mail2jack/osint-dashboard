@@ -5259,28 +5259,31 @@ def do_update():
         except Exception as e:
             results[-1] = {'step': msg, 'status': 'error', 'output': str(e)}
 
+    import shutil
     project_root = current_app.root_path
 
-    # Step 1: Database backup
+    # Step 1: Database backup (SQLite only)
     db_path = current_app.config.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///cms.db')
     if db_path.startswith('sqlite'):
         db_file = db_path.replace('sqlite:///', '')
         step('Backup database', f'cp "{db_file}" "{db_file}.backup.$(date +%Y%m%d_%H%M%S)"')
 
-    # Step 2: Git pull
-    step('Pull latest code', 'git pull origin master', cwd=project_root)
+    # Step 2: Git pull (use full path, systemd PATH may not include /usr/bin)
+    git_path = shutil.which('git') or '/usr/bin/git'
+    step('Pull latest code', f'{git_path} pull origin master', cwd=project_root)
 
     # Step 3: Install dependencies
     step('Update Python packages', f'{sys.executable} -m pip install -r requirements.txt --upgrade',
          cwd=project_root)
 
-    # Step 4: Clear cache / run migrations
+    # Step 4: Run db.create_all() for any new tables
     step('Apply database migrations',
-         f'{sys.executable} -c "from app import app; from cms.__init__ import create_cms_module; create_cms_module(app); print(\'Migrations OK\')"',
+         f'{sys.executable} -c "from app import app; from cms.models import db; import flask; app.app_context().push(); db.create_all(); print(\'Migrations OK\')"',
          cwd=project_root)
 
-    # Step 5: Restart
-    step('Restart services', 'sudo systemctl restart osint-dashboard',
+    # Step 5: Restart (runs as osint user, needs passwordless sudo or polkit)
+    systemctl_path = shutil.which('systemctl') or '/usr/bin/systemctl'
+    step('Restart services', f'{systemctl_path} restart osint-dashboard',
          cwd=project_root)
 
     success = all(r['status'] == 'ok' for r in results)
