@@ -827,19 +827,46 @@ def get_changelog():
             return jsonify({'html': '<div class="empty">No changelog found</div>'})
         
         changelog_section = content[changelog_start:]
-        html_parts = []
+        versions = []
+        current_version = None
+        current_section = None
+        current_items = []
+        
         for line in changelog_section.split('\n'):
             line = line.strip()
             if line.startswith('### '):
-                html_parts.append(f'<div class="cl-version">{line[4:].strip()}</div>')
+                if current_version:
+                    current_version['sections'].append({'title': current_section, 'items': current_items})
+                if current_version:
+                    versions.append(current_version)
+                current_version = {'title': line[4:], 'sections': []}
+                current_section = None
+                current_items = []
             elif line.startswith('**') and line.endswith('**'):
-                html_parts.append(f'<div class="cl-section">{line.strip("*")}</div>')
+                if current_section:
+                    current_version['sections'].append({'title': current_section, 'items': current_items})
+                current_section = line.strip('*')
+                current_items = []
             elif line.startswith('- '):
-                html_parts.append(f'<div class="cl-item"><span class="cl-bullet">•</span>{line[2:]}</div>')
+                current_items.append(line[2:])
             elif line.startswith('---') or not line:
                 continue
-            else:
-                html_parts.append(f'<div style="padding:0.15rem 0 0.15rem 1rem;color:var(--text-secondary);font-size:0.875rem;">{line}</div>')
+        
+        if current_version:
+            if current_section:
+                current_version['sections'].append({'title': current_section, 'items': current_items})
+            versions.append(current_version)
+        
+        html_parts = []
+        for ver in versions:
+            html_parts.append('<div style="border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:1rem;">')
+            html_parts.append(f'<div style="font-size:1rem;font-weight:700;margin-bottom:0.75rem;color:var(--accent-primary);">{ver["title"]}</div>')
+            for sec in ver['sections']:
+                if sec['title']:
+                    html_parts.append(f'<div style="font-weight:600;margin:0.5rem 0 0.25rem;font-size:0.875rem;color:var(--text-primary);">{sec["title"]}</div>')
+                for item in sec['items']:
+                    html_parts.append(f'<div style="padding:0.1rem 0 0.1rem 1rem;font-size:0.8125rem;color:var(--text-secondary);"><span style="color:var(--accent-primary);margin-right:0.4rem;">•</span>{item}</div>')
+            html_parts.append('</div>')
         
         return jsonify({'html': ''.join(html_parts)})
     except Exception as e:
