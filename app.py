@@ -89,10 +89,13 @@ if not os.environ.get('CMS_ENCRYPTION_KEY'):
 if not app.config.get('SECRET_KEY'):
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Use SQLite for CMS (can migrate to PostgreSQL later)
-# Use absolute path to prevent Flask-SQLAlchemy from using instance/ folder
-CMS_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'cms.db'))
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{CMS_DB_PATH}'
+# Database: PostgreSQL if DATABASE_URL is set, fallback to SQLite
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    CMS_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'cms.db'))
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{CMS_DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize CMS using create_cms_module
