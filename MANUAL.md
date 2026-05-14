@@ -793,6 +793,15 @@ Go to **Audit Log** (Admin) to see:
 - SpiderFoot auth staat aan maar credentials kloppen niet
 - Check `~/.spiderfoot/passwd` en Iveras Settings
 - Na install.sh: check `/opt/osint-dashboard/.env` voor `SPIDERFOOT_PASSWORD`
+- Herstel settings in PostgreSQL: `Setting.set('spiderfoot_password', '<pass>')`
+
+**"SpiderFoot start niet (PermissionError: /home/osint)"**
+- `ProtectHome=true` in systemd service blokkeert toegang — verwijder deze regel
+- Fix: `sudo sed -i '/ProtectHome=true/d' /etc/systemd/system/spiderfoot.service && sudo systemctl daemon-reload && sudo systemctl restart spiderfoot`
+
+**"SpiderFoot start niet (unrecognized arguments: --passwd)"**
+- SpiderFoot 4.0 heeft `--passwd` flag verwijderd — de passwd file wordt automatisch geladen
+- Fix: `sudo sed -i 's/ --passwd [^ ]*//' /etc/systemd/system/spiderfoot.service && sudo systemctl daemon-reload && sudo systemctl restart spiderfoot`
 
 **"Kadaster lookup not found"**
 - Alleen Nederlandse adressen worden ondersteund (PDOK BAG)
@@ -825,6 +834,31 @@ Go to **Audit Log** (Admin) to see:
 **"502 Bad Gateway" (via Nginx)**
 - Iveras of SpiderFoot is gestopt
 - Check: `systemctl status osint-dashboard spiderfoot`
+
+### Upgrading from v3.3 to v3.4 (PostgreSQL migration)
+
+If you upgrade from an older version that used SQLite (`cms.db`), settings stored in the old SQLite database (like SpiderFoot credentials) are **not** automatically migrated to PostgreSQL.
+
+After upgrading, re-save the SpiderFoot settings:
+
+```bash
+cd /opt/osint-dashboard
+sudo -u osint ./venv/bin/python3 -c "
+import os
+os.environ['FLASK_APP'] = 'app.py'
+from app import app
+from cms.models import Setting
+with app.app_context():
+    Setting.set('spiderfoot_url', 'http://127.0.0.1:5001')
+    Setting.set('spiderfoot_username', 'admin')
+    Setting.set('spiderfoot_password', '<password>')
+    print('Settings migrated to PostgreSQL')
+"
+```
+
+The SpiderFoot password is in `/opt/osint-dashboard/.env` (`SPIDERFOOT_PASSWORD`) and `/home/osint/.spiderfoot/passwd`.
+
+---
 
 ### Database Issues
 
@@ -879,9 +913,13 @@ Log files (`spiderfoot.log`, `app.log`) groeien na verloop van tijd. Logrotate r
 - SpiderFoot's `lxml<5` pin is removed from `requirements.txt` after clone to prevent source-build failures
 - Swap file auto-created to prevent OOM during dependency installation
 
+**SpiderFoot v4 Fixes:**
+- Removed `ProtectHome=true` from systemd service (blocked write access to `/home/osint`)
+- Removed deprecated `--passwd` flag from service ExecStart (removed in SF 4.0 — passwd file is auto-loaded)
+- `start.sh` uses SpiderFoot venv Python and correct database path
+
 **Bug Fixes:**
 - Root redirect `/` → `/cms/dashboard` (removed duplicate `index` endpoint)
-- `start.sh` uses SpiderFoot venv Python and correct database path
 - `requirements.txt`: `lxml` unpinned to prefer wheels over source builds
 
 ---
