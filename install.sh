@@ -72,6 +72,7 @@ apt install -y \
     postgresql-contrib \
     nginx \
     ufw \
+    fail2ban \
     software-properties-common \
     certbot \
     python3-certbot-nginx
@@ -368,7 +369,38 @@ echo "y" | ufw enable || true
 print_success "Firewall configured"
 
 # ============================================================================
-# STEP 11: Create Systemd Services
+# STEP 11: Configure Fail2ban
+# ============================================================================
+print_step "Configuring fail2ban..."
+
+# Enable SSH jail
+if [ -f /etc/fail2ban/jail.conf ]; then
+    cat > /etc/fail2ban/jail.local << 'FAIL2EOF'
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 5
+
+[sshd]
+enabled = true
+
+[nginx-http-auth]
+enabled = true
+
+[nginx-botsearch]
+enabled = true
+logpath = /var/log/nginx/error.log
+maxretry = 2
+findtime = 600
+bantime = 86400
+FAIL2EOF
+    systemctl enable fail2ban
+    systemctl restart fail2ban
+    print_success "Fail2ban configured"
+fi
+
+# ============================================================================
+# STEP 12: Create Systemd Services
 # ============================================================================
 print_step "Creating systemd services..."
 
@@ -428,7 +460,7 @@ systemctl enable $SF_SERVICE_NAME
 print_success "Systemd services created"
 
 # ============================================================================
-# STEP 12: Store SpiderFoot Settings in Database
+# STEP 13: Store SpiderFoot Settings in Database
 # ============================================================================
 print_step "Storing SpiderFoot settings in database..."
 
@@ -461,7 +493,7 @@ deactivate
 print_success "SpiderFoot settings configured in database"
 
 # ============================================================================
-# STEP 13: Start Services
+# STEP 14: Start Services
 # ============================================================================
 print_step "Starting services..."
 
@@ -492,7 +524,7 @@ systemctl status $SERVICE_NAME --no-pager || true
 systemctl status $SF_SERVICE_NAME --no-pager || true
 
 # ============================================================================
-# STEP 14: Health Check Test
+# STEP 15: Health Check Test
 # ============================================================================
 print_step "Running health check..."
 sleep 2
@@ -512,7 +544,7 @@ else
 fi
 
 # ============================================================================
-# STEP 15: Get Server IP Addresses
+# STEP 16: Get Server IP Addresses
 # ============================================================================
 echo -e "\n${CYAN}========================================${NC}"
 echo -e "${CYAN}  Installation Complete!${NC}"
