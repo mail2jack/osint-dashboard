@@ -1,6 +1,6 @@
 # Iveras OSINT Case Management System - Manual
 
-**Version:** 3.3.0  
+**Version:** 3.4.0  
 **Last Updated:** May 2026
 
 ---
@@ -71,32 +71,55 @@ sudo ./install.sh
 
 The script installs everything automatically:
 
-- Python + pip + virtualenv
-- PostgreSQL (random password generated)
+- Python + pip + virtualenv (compatible with Python 3.14 — uses system `lxml` wheel)
+- PostgreSQL (random password generated, auto-configured)
 - Nginx reverse proxy (Iveras + SpiderFoot routes)
-- SpiderFoot (git clone + venv + digest auth)
-- SSL via Let's Encrypt (optional, if domain provided)
+- SpiderFoot (git clone + venv + digest auth + lxml pin removed for Python 3.14)
+- SSL via Let's Encrypt (optional, for one or more domains)
 - Systemd services (`osint-dashboard` and `spiderfoot`)
 - UFW firewall (SSH/HTTP/HTTPS)
+- Fail2ban (SSH + Nginx jails)
 - Health check endpoint verification
 
-During installation you'll be asked for a **domain name** (for SSL) or can press Enter for IP-only access.
+During installation you'll be asked for **domain name(s)** — enter one or more space-separated domains for SSL (e.g. `joost.iveras.nl joost.iveras.com`), or press Enter for IP-only access.
 
 After installation, edit the API keys in `/opt/osint-dashboard/.env` and the SpiderFoot password is shown in the install output.
 
 #### Prerequisites
 
-- **Ubuntu 20.04+** or **Debian 11+**
+- **Ubuntu 20.04+** or **Debian 11+** (Python 3.14 supported)
 - Root access (sudo)
 - Ports 80/443 open (or access to the server's IP)
-- Optional: a domain name pointing to the server for SSL
+- Optional: one or more domain names pointing to the server for SSL
+
+#### Service Management
+
+After installation, use `start-server` to manage services:
+
+```bash
+sudo ./start-server          # Show status (default)
+sudo ./start-server start    # Start all services
+sudo ./start-server stop     # Stop all services
+sudo ./start-server restart  # Restart all services
+sudo ./start-server logs     # Live logs voor Iveras
+sudo ./start-server logs-sf  # Live logs voor SpiderFoot
+sudo ./start-server update   # Git pull + pip install + restart
+```
+
+Or use systemd directly:
+
+```bash
+sudo systemctl status osint-dashboard
+sudo systemctl status spiderfoot
+sudo journalctl -u osint-dashboard -f
+```
 
 ### Option B: Manual Setup (Development / macOS)
 
 #### Prerequisites
 
 - Python 3.9+
-- PostgreSQL (optional, SQLite default)
+- PostgreSQL (optional — SQLite used by default if `DATABASE_URL` not set)
 - Git
 
 #### Steps
@@ -121,6 +144,8 @@ python app.py
 ```
 
 The application will be available at: `http://localhost:5000`
+
+For PostgreSQL, add `DATABASE_URL=postgresql://user:pass@localhost/dbname` to `.env`.
 
 ### Default Login
 
@@ -805,7 +830,13 @@ Go to **Audit Log** (Admin) to see:
 If you see database errors:
 
 ```bash
-# Reset database (WARNING: loses all data)
+# Check which database is being used
+grep DATABASE_URL /opt/osint-dashboard/.env
+
+# With PostgreSQL: check connection
+sudo -u postgres psql -d osint_db -c "\dt"
+
+# Reset SQLite (WARNING: loses all data)
 rm cms.db
 python app.py
 ```
@@ -830,6 +861,29 @@ Log files (`spiderfoot.log`, `app.log`) groeien na verloop van tijd. Logrotate r
 ---
 
 ## Changelog
+
+### Version 3.4.0 — May 2026
+
+**PostgreSQL & Production Stability:**
+- App now respects `DATABASE_URL` env var — `install.sh` sets up PostgreSQL by default, falls back to SQLite if unset
+- `func.instr()` replaced with dialect-agnostic variant (SQLite `instr` / PostgreSQL `strpos`)
+- `install.sh` accepts space-separated domain list for multi-domain SSL (e.g. `joost.iveras.nl joost.iveras.com`)
+- Merged Nginx templates into one with dynamic `server_names` substitution
+- Certbot registers all domains in a single certificate
+- STEP 13 (`db.create_all()`) runs as `osint` user instead of root, preventing file ownership issues
+- `start-server update` now reinstalls Python packages
+
+**Python 3.14 Compatibility:**
+- System `python3-lxml` (apt) is copied into each venv before pip install
+- SpiderFoot's `lxml<5` pin is removed from `requirements.txt` after clone to prevent source-build failures
+- Swap file auto-created to prevent OOM during dependency installation
+
+**Bug Fixes:**
+- Root redirect `/` → `/cms/dashboard` (removed duplicate `index` endpoint)
+- `start.sh` uses SpiderFoot venv Python and correct database path
+- `requirements.txt`: `lxml` unpinned to prefer wheels over source builds
+
+---
 
 ### Version 3.3.0 - May 2026
 
