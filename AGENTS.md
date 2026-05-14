@@ -71,6 +71,12 @@ python tests/test_core.py
 ```
 One test file: `tests/test_core.py` (email, IP, domain validation; phone normalization). Uses pytest.
 
+## Update Notifications
+- `check_update()` at `routes.py:5175` checks both VERSION file AND latest commit SHA from GitHub.
+- Banner shows for version bumps OR any new commits (bugfixes without version change).
+- `last_update_commit` Setting stores the local HEAD SHA after each successful `do_update()`.
+- If remote SHA differs from stored SHA, a "New commits available" notification appears.
+
 ## Health Check
 `curl http://localhost:5000/health` — returns `{"status":"ok","database":"connected","spiderfoot":"connected"}`.
 
