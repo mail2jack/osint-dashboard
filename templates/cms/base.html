@@ -416,7 +416,7 @@
     // Update check — runs once on page load for admin users
     {% if current_user.is_authenticated and current_user.is_admin %}
     document.addEventListener('DOMContentLoaded', function() {
-        fetch('/cms/api/check-update')
+        fetch('/cms/api/check-update', { headers: { 'Accept': 'application/json' } })
             .then(r => r.json())
             .then(data => {
                 if (data.update_available) {

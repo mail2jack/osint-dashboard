@@ -55,7 +55,7 @@ def load_user(user_id: str) -> Optional[User]:
 @login_manager.unauthorized_handler
 def unauthorized():
     """Handle unauthorized access."""
-    if request.is_json:
+    if request.is_json or request.accept_mimetypes.accept_json:
         return jsonify({'error': 'Authentication required'}), 401
     return redirect(url_for('auth.login'))
 
