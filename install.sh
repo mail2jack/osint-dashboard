@@ -180,6 +180,12 @@ chown -R osint:osint "$SF_DIR"
 # Create SpiderFoot venv (separate to avoid dependency conflicts)
 python3 -m venv "$SF_DIR/venv"
 copy_system_lxml "$SF_DIR/venv"
+
+# Remove lxml from requirements.txt — we already injected system lxml and
+# SpiderFoot pins lxml<5 which blocks the pre-installed 6.x wheel from PyPI.
+# Removing the pin lets pip skip the source build entirely.
+sed -i '/^lxml/d' "$SF_DIR/requirements.txt"
+
 source "$SF_DIR/venv/bin/activate"
 pip install --upgrade pip
 pip install -r "$SF_DIR/requirements.txt"
