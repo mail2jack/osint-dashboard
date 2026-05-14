@@ -18,7 +18,7 @@ Git integration (optional):
 
 from datetime import datetime
 
-VERSION = (3, 4, 1)
+VERSION = (3, 4, 2)
 VERSION_STRING = ".".join(map(str, VERSION))
 VERSION_NAME = "Iveras OSINT"
 
