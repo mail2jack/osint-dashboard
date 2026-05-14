@@ -185,6 +185,11 @@
             <span>{{ cat_info.name.replace(cat_info.icon + ' ', '') }}</span>
         </a>
         {% endfor %}
+        <hr style="border-color:var(--border-color);margin:1rem 0;">
+        <a href="{{ url_for('users.list_users') }}" class="category-item">
+            <span class="icon">👥</span>
+            <span>Users</span>
+        </a>
     </div>
     
     <div class="settings-content">
