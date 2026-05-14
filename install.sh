@@ -441,8 +441,6 @@ RestartSec=10s
 
 # Security
 NoNewPrivileges=true
-ProtectHome=true
-ProtectSystem=full
 PrivateTmp=true
 
 [Install]
