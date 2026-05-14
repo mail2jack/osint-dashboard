@@ -409,6 +409,20 @@
     
     <div class="keyboard-hint">
         <kbd>s</kbd> Search &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigate &nbsp; <kbd>Enter</kbd> View &nbsp; <kbd>?</kbd> Help
+        <span style="float:right;font-size:0.75rem;">
+            v<span id="footerVersion">-</span>
+            <a href="#" onclick="event.preventDefault();openChangelog()" style="color:var(--text-secondary);text-decoration:none;">changelog</a>
+        </span>
+    </div>
+
+    <div id="changelogModal" class="modal">
+        <div class="modal-content" style="max-width:600px;max-height:80vh;overflow-y:auto;">
+            <div class="modal-header">
+                <h2>📋 Changelog</h2>
+                <span class="close" onclick="document.getElementById('changelogModal').classList.remove('show')">&times;</span>
+            </div>
+            <div id="changelogContent" style="padding:1rem 0;"></div>
+        </div>
     </div>
     
     <script>
@@ -489,7 +503,30 @@
         document.addEventListener('DOMContentLoaded', function() {
             const theme = localStorage.getItem('cms-theme') || 'light';
             document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+            
+            // Load version
+            fetch('/api/version')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('footerVersion').textContent = data.version;
+                })
+                .catch(() => {});
         });
+        
+        function openChangelog() {
+            const modal = document.getElementById('changelogModal');
+            const content = document.getElementById('changelogContent');
+            modal.classList.add('show');
+            content.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-secondary);">Loading...</div>';
+            fetch('/api/changelog')
+                .then(r => r.json())
+                .then(data => {
+                    content.innerHTML = data.html || '<div style="text-align:center;padding:2rem;">No changelog available</div>';
+                })
+                .catch(() => {
+                    content.innerHTML = '<div style="text-align:center;padding:2rem;color:#dc2626;">Failed to load changelog</div>';
+                });
+        }
         
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
