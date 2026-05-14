@@ -435,7 +435,7 @@ User=osint
 Group=osint
 WorkingDirectory=/opt/spiderfoot
 Environment="PATH=/opt/spiderfoot/venv/bin"
-ExecStart=/opt/spiderfoot/venv/bin/python3 /opt/spiderfoot/sf.py -l 127.0.0.1:5001 --passwd /home/osint/.spiderfoot/passwd
+ExecStart=/opt/spiderfoot/venv/bin/python3 /opt/spiderfoot/sf.py -l 127.0.0.1:5001
 Restart=always
 RestartSec=10s
 

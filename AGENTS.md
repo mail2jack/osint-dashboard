@@ -21,7 +21,7 @@
 
 ### Auth
 - SpiderFoot v4 uses HTTP Digest auth. Credentials stored in `~/.spiderfoot/passwd` (`admin:<password>`).
-- Start with auth: `python3 sf.py -l 127.0.0.1:5001 --passwd ~/.spiderfoot/passwd`.
+- Start with auth: `python3 sf.py -l 127.0.0.1:5001` (passwd file auto-loaded from `~/.spiderfoot/passwd`).
 
 ### API data quirks
 - **Scan list format**: `[id, name, target, created, started, completed, status, resultCount, riskSummary]` — status is UPPERCASE (`RUNNING`, `FINISHED`, etc.).

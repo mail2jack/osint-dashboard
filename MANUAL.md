@@ -420,8 +420,9 @@ Als je `install.sh` hebt gedraaid, is SpiderFoot al geïnstalleerd en geconfigur
 
 3. **Start SpiderFoot met auth**:
    ```bash
-   python3 ./sf.py -l 127.0.0.1:5001 --passwd ~/.spiderfoot/passwd
+   python3 ./sf.py -l 127.0.0.1:5001
    ```
+   (passwd file wordt automatisch geladen uit `~/.spiderfoot/passwd`)
 
 4. **Configureer in Iveras**: Ga naar **SpiderFoot** → **Settings**
    - URL: `http://localhost:5001`
