@@ -87,7 +87,9 @@
             <button type="submit" class="btn">Verify &amp; Enable 2FA</button>
         </form>
 
-        <a href="{{ url_for('users.view_user', user_id=current_user.id) }}" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;">Cancel</a>
+        {% if not partial_login %}
+        <a href="{{ url_for('cms.dashboard') }}" class="btn btn-secondary" style="display:block;text-align:center;text-decoration:none;">Skip for now</a>
+        {% endif %}
     </div>
 </body>
 </html>
