@@ -78,6 +78,34 @@ def create_cms_module(app: Flask):
             app.logger.warning(f"Migration note: {e}")
             db.session.rollback()
         
+        # Migration: add client_id column to addresses table if missing
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            columns = [c['name'] for c in inspector.get_columns('addresses')]
+            if 'client_id' not in columns:
+                db.session.execute(text('ALTER TABLE addresses ADD COLUMN client_id VARCHAR(36)'))
+                db.session.execute(text('CREATE INDEX IF NOT EXISTS ix_addresses_client_id ON addresses(client_id)'))
+                db.session.commit()
+                app.logger.info("Migration: added client_id column to addresses table")
+        except Exception as e:
+            app.logger.warning(f"Migration note (addresses.client_id): {e}")
+            db.session.rollback()
+        
+        # Migration: allow subject_id to be nullable in addresses
+        try:
+            if db.engine.name == 'postgresql':
+                from sqlalchemy import inspect, text
+                inspector = inspect(db.engine)
+                col_info = {c['name']: c for c in inspector.get_columns('addresses')}
+                if col_info.get('subject_id', {}).get('nullable') == False:
+                    db.session.execute(text('ALTER TABLE addresses ALTER COLUMN subject_id DROP NOT NULL'))
+                    db.session.commit()
+                    app.logger.info("Migration: made subject_id nullable in addresses table")
+        except Exception as e:
+            app.logger.warning(f"Migration note (subject_id nullable): {e}")
+            db.session.rollback()
+        
         # Migration: add 2FA columns to users table if missing
         try:
             from sqlalchemy import inspect, text
