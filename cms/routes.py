@@ -294,8 +294,10 @@ def dashboard():
     
     # Cases by criminal code type (extract Niv3 code from case_type field)
     from sqlalchemy import func, case as sql_case
+    # instr on SQLite, strpos on PostgreSQL
+    _instr = func.instr if db.engine.dialect.name == 'sqlite' else func.strpos
     case_type_stats = db.session.query(
-        func.substr(Case.case_type, 1, func.instr(Case.case_type, '|') - 1).label('code'),
+        func.substr(Case.case_type, 1, _instr(Case.case_type, '|') - 1).label('code'),
         func.count(Case.id).label('count')
     ).filter(
         Case.is_deleted == False,
@@ -303,7 +305,7 @@ def dashboard():
         Case.case_type != '',
         Case.case_type.like('%|%')  # Only show cases with criminal code format
     ).group_by(
-        func.substr(Case.case_type, 1, func.instr(Case.case_type, '|') - 1)
+        func.substr(Case.case_type, 1, _instr(Case.case_type, '|') - 1)
     ).order_by(func.count(Case.id).desc()).limit(10).all()
     
     case_type_labels = [s.code if s.code else 'Unknown' for s in case_type_stats]
