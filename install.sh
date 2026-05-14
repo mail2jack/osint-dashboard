@@ -54,6 +54,19 @@ apt upgrade -y -qq
 print_success "System updated"
 
 # ============================================================================
+# STEP 1b: Ensure swap (prevents OOM during lxml compilation)
+# ============================================================================
+if ! swapon --show | grep -q .; then
+    print_step "Creating 2GB swap file..."
+    fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    print_success "Swap file created"
+fi
+
+# ============================================================================
 # STEP 2: Install System Dependencies
 # ============================================================================
 print_step "Installing system dependencies..."
@@ -152,6 +165,8 @@ chown -R osint:osint "$SF_DIR"
 python3 -m venv "$SF_DIR/venv"
 source "$SF_DIR/venv/bin/activate"
 pip install --upgrade pip
+# Pre-install lxml>=5.0.0 voor Python 3.14 compatibiliteit (SpiderFoot's req heeft oude versie)
+pip install "lxml>=5.0.0" 2>/dev/null || true
 pip install -r "$SF_DIR/requirements.txt"
 deactivate
 
