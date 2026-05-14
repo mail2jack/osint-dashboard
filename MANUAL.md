@@ -85,6 +85,8 @@ During installation you'll be asked for **domain name(s)** — enter one or more
 
 After installation, edit the API keys in `/opt/osint-dashboard/.env` and the SpiderFoot password is shown in the install output.
 
+**Update notifications** are automatically enabled — the app checks GitHub for new versions and shows a banner on the dashboard when an update is available. The one-click update button runs `git pull`, `pip install`, and restarts services.
+
 #### Prerequisites
 
 - **Ubuntu 20.04+** or **Debian 11+** (Python 3.14 supported)
@@ -917,6 +919,13 @@ Log files (`spiderfoot.log`, `app.log`) groeien na verloop van tijd. Logrotate r
 - Removed `ProtectHome=true` from systemd service (blocked write access to `/home/osint`)
 - Removed deprecated `--passwd` flag from service ExecStart (removed in SF 4.0 — passwd file is auto-loaded)
 - `start.sh` uses SpiderFoot venv Python and correct database path
+
+**Update Notifications:**
+- `install.sh` now auto-sets `update_check_repo` in the database — banner works out-of-the-box
+- Fixed JS fetch to send `Accept: application/json` header so the API isn't redirected to login
+- Fixed `unauthorized` handler to also check `Accept` header for API detection
+- Fixed `do-update` endpoint: uses full paths for git/systemctl, fixed db migration call
+- Version bumped to 3.4.0 (VERSION file + version.py synced)
 
 **Bug Fixes:**
 - Root redirect `/` → `/cms/dashboard` (removed duplicate `index` endpoint)
