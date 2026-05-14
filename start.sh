@@ -298,7 +298,12 @@ start_spiderfoot() {
     
     print_info "Starting SpiderFoot on port $port..."
     cd "$SF_DIR"
-    python3 ./sf.py -l 127.0.0.1:$port > "$SF_LOG" 2>&1 &
+    if [ -f "$SF_DIR/venv/bin/python3" ]; then
+        SF_PYTHON="$SF_DIR/venv/bin/python3"
+    else
+        SF_PYTHON="python3"
+    fi
+    $SF_PYTHON ./sf.py -l 127.0.0.1:$port > "$SF_LOG" 2>&1 &
 
     echo $! > "$SF_PID_FILE"
     save_sf_port "$port"
@@ -371,13 +376,15 @@ from cms.models import Setting, db
 from flask import Flask
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///iveras.db'
+DB_PATH = os.path.abspath(os.path.join('$APP_DIR', 'cms.db'))
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'dev-key'
 
 db.init_app(app)
 
 with app.app_context():
+    db.create_all()
     Setting.set('spiderfoot_url', 'http://localhost:$sf_port',
                description='SpiderFoot server URL', category='spiderfoot')
     print('SpiderFoot URL updated to http://localhost:$sf_port')
