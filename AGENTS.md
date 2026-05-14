@@ -4,12 +4,13 @@
 - `app.py` is the single Flask entrypoint. Dev: `python app.py` (port 5000).
 - CMS module initialized via `cms/__init__.py::create_cms_module(app)`.
 - Dev with SpiderFoot: `./start.sh start`. Stops: `./start.sh stop`.
-- Production: `sudo ./install.sh` (Debian/Ubuntu — sets up Nginx, PostgreSQL, SpiderFoot, systemd, SSL).
+- Production: `sudo ./install.sh` (Debian/Ubuntu — sets up Nginx, PostgreSQL, SpiderFoot, systemd, SSL). Accepts space-separated domain list for multi-domain SSL.
 
 ## Database
-- Default: SQLite at project root `cms.db`. PostgreSQL: set `DATABASE_URL` in `.env`.
+- `install.sh` sets up PostgreSQL by default (`DATABASE_URL` in `.env`). Falls back to SQLite (`cms.db`) if `DATABASE_URL` is unset.
 - `db.create_all()` runs on first startup — tables + default admin (`admin`/`changeme123`) auto-created.
 - Never mutate `created_at` on ORM objects directly (crashes SQLite). Sort with `strftime()` in sort key lambda.
+- `instr()` in queries is dialect-agnostic (uses `instr` for SQLite, `strpos` for PostgreSQL) — see `cms/routes.py`.
 
 ## SpiderFoot Integration (`cms/spiderfoot_service.py`)
 
