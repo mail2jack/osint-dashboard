@@ -279,79 +279,36 @@ print_success "Environment file created"
 # ============================================================================
 print_step "Configuring Nginx..."
 
-DOMAIN=""
-print_info "Enter your domain name if you want SSL (or leave blank for IP-only):"
-read -p "Domain name: " DOMAIN
+DOMAINS=()
+print_info "Enter your domain name(s) if you want SSL (space-separated, or leave blank for IP-only):"
+read -p "Domain names: " -a DOMAINS
 
 rm -f /etc/nginx/sites-enabled/*
 rm -f /etc/nginx/sites-available/*
 
-if [[ -n "$DOMAIN" ]]; then
-    # With domain - will get SSL later
-    cat > /etc/nginx/sites-available/default << 'NGINXEOF'
-server {
-    listen 80 default_server;
-    server_name _ DOMAIN_PLACEHOLDER;
-
-    client_max_body_size 50M;
-
-    # Iveras OSINT Dashboard
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_redirect off;
-
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-
-        # Health check friendly
-        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
-    }
-
-    # SpiderFoot via reverse proxy
-    location /spiderfoot/ {
-        proxy_pass http://127.0.0.1:5001/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Increase timeouts for long scans
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 10s;
-    }
-
-    location /static {
-        alias /opt/osint-dashboard/static;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-}
-NGINXEOF
-    sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" /etc/nginx/sites-available/default
+if [[ ${#DOMAINS[@]} -gt 0 && -n "${DOMAINS[0]}" ]]; then
+    SERVER_NAMES="${DOMAINS[*]}"
 else
-    # IP-only, no domain
-    cat > /etc/nginx/sites-available/default << 'NGINXEOF'
+    SERVER_NAMES="_"
+fi
+
+cat > /etc/nginx/sites-available/default << NGINXEOF
 server {
     listen 80 default_server;
-    server_name _;
+    server_name ${SERVER_NAMES};
 
     client_max_body_size 50M;
 
     location / {
         proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_redirect off;
 
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
 
         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
@@ -359,10 +316,10 @@ server {
 
     location /spiderfoot/ {
         proxy_pass http://127.0.0.1:5001/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_read_timeout 300s;
         proxy_connect_timeout 10s;
     }
@@ -374,7 +331,6 @@ server {
     }
 }
 NGINXEOF
-fi
 
 ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 nginx -t && systemctl restart nginx
@@ -383,11 +339,16 @@ print_success "Nginx configured"
 # ============================================================================
 # STEP 9b: SSL via Let's Encrypt (if domain provided)
 # ============================================================================
-if [[ -n "$DOMAIN" ]]; then
-    print_step "Setting up SSL certificate for $DOMAIN..."
-    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "admin@$DOMAIN" || {
+if [[ ${#DOMAINS[@]} -gt 0 && -n "${DOMAINS[0]}" ]]; then
+    print_step "Setting up SSL certificate for ${DOMAINS[*]}..."
+    CERTBOT_ARGS=""
+    for d in "${DOMAINS[@]}"; do
+        CERTBOT_ARGS="$CERTBOT_ARGS -d $d"
+    done
+    FIRST_DOMAIN="${DOMAINS[0]}"
+    certbot --nginx $CERTBOT_ARGS --non-interactive --agree-tos --email "admin@$FIRST_DOMAIN" || {
         print_warning "SSL setup failed. You can run it later:"
-        print_info "  sudo certbot --nginx -d $DOMAIN"
+        print_info "  sudo certbot --nginx $CERTBOT_ARGS"
     }
     print_success "SSL configured"
 fi
@@ -500,12 +461,8 @@ print_success "Systemd services created"
 # ============================================================================
 print_step "Storing SpiderFoot settings in database..."
 
-systemctl start $SERVICE_NAME 2>/dev/null || true
-sleep 3
-
 cd "$APP_DIR"
-source venv/bin/activate
-python3 << PYEOF
+sudo -u osint ./venv/bin/python3 << PYEOF
 import os
 import sys
 os.environ.setdefault('FLASK_APP', 'app.py')
@@ -525,7 +482,6 @@ with app.app_context():
                description='SpiderFoot password', category='spiderfoot')
     print('SpiderFoot settings stored in database')
 PYEOF
-deactivate
 print_success "SpiderFoot settings configured in database"
 
 # ============================================================================
@@ -592,8 +548,10 @@ hostname -I | tr ' ' '\n' | while read ip; do
     echo -e "  ${GREEN}http://$ip${NC}"
 done
 echo -e "  ${GREEN}http://localhost${NC}"
-if [[ -n "$DOMAIN" ]]; then
-    echo -e "  ${GREEN}https://$DOMAIN${NC}"
+if [[ ${#DOMAINS[@]} -gt 0 && -n "${DOMAINS[0]}" ]]; then
+    for d in "${DOMAINS[@]}"; do
+        echo -e "  ${GREEN}https://$d${NC}"
+    done
 fi
 echo ""
 

@@ -91,6 +91,8 @@ cmd_update() {
     info "Code pullen van GitHub..."
     cd /opt/osint-dashboard
     sudo -u osint git pull
+    info "Python packages updaten..."
+    sudo -u osint ./venv/bin/pip install -r requirements.txt -q
     info "Herstarten..."
     cmd_stop
     sleep 2
