@@ -2764,10 +2764,6 @@ def person_search_stream():
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/api/email', methods=['POST'])
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix='email')
 def email_lookup():
