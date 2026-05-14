@@ -5174,8 +5174,8 @@ def politiebureau_lookup():
 @login_required
 def check_update():
     """
-    Check if a newer version is available on GitHub.
-    Compares current version (from version.py) against remote VERSION file.
+    Check if a newer version or new commits are available on GitHub.
+    Compares version + commit SHA to detect updates even without version bumps.
     Results are cached in-memory for 1 hour.
     """
     from version import get_version
@@ -5201,21 +5201,40 @@ def check_update():
 
     try:
         import httpx
-        url = f'https://raw.githubusercontent.com/{repo}/master/VERSION'
-        r = httpx.get(url, timeout=10)
+
+        # Fetch remote VERSION file
+        ver_url = f'https://raw.githubusercontent.com/{repo}/master/VERSION'
+        r = httpx.get(ver_url, timeout=10)
         r.raise_for_status()
         latest_ver = r.text.strip()
 
+        # Fetch remote HEAD commit SHA via GitHub API
+        local_sha = Setting.get('last_update_commit', '')
+        remote_sha = local_sha
+        try:
+            api_url = f'https://api.github.com/repos/{repo}/commits/master'
+            api_r = httpx.get(api_url, timeout=10, headers={'Accept': 'application/vnd.github.v3.sha'})
+            if api_r.status_code == 200:
+                remote_sha = api_r.text.strip()
+        except Exception:
+            pass
+
         current_parts = [int(x) for x in current_ver.split('.')]
         latest_parts = [int(x) for x in latest_ver.split('.')]
-        update_available = latest_parts > current_parts
+        version_update = latest_parts > current_parts
+        commits_update = bool(remote_sha and local_sha and remote_sha != local_sha and not version_update)
+        update_available = version_update or commits_update
 
         data = {
             'update_available': update_available,
+            'version_update': version_update,
+            'commits_update': commits_update,
             'current_version': current_ver,
-            'latest_version': latest_ver,
+            'latest_version': latest_ver if version_update else current_ver,
             'check_enabled': True,
-            'repo': repo
+            'repo': repo,
+            'remote_sha': remote_sha,
+            'local_sha': local_sha,
         }
 
         current_app.config[cache_key] = {'data': data, 'cached_at': now}
@@ -5286,6 +5305,21 @@ def do_update():
          cwd=project_root)
 
     success = all(r['status'] == 'ok' for r in results)
+
+    # Store local HEAD SHA after successful update for commit-based change detection
+    if success:
+        try:
+            import subprocess as sp
+            git_path = shutil.which('git') or '/usr/bin/git'
+            sha_result = sp.run(f'{git_path} rev-parse HEAD', shell=True,
+                              capture_output=True, text=True, cwd=project_root, timeout=15)
+            if sha_result.returncode == 0:
+                head_sha = sha_result.stdout.strip()
+                Setting.set('last_update_commit', head_sha,
+                           'Last pulled commit SHA (auto-updated)', 'general')
+                logger.info(f"Stored last update commit: {head_sha[:12]}")
+        except Exception as e:
+            logger.warning(f"Failed to store commit SHA: {e}")
 
     return jsonify({
         'success': success,
