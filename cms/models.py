@@ -1557,7 +1557,7 @@ class Setting(db.Model):
             db.session.add(setting)
         if encrypt and value:
             from .encryption_utils import encryptor
-            value = encryptor.encrypt(str(value))
+            setting.value = encryptor.encrypt(str(value))
             setting.is_encrypted = True
         else:
             setting.value = str(value) if value is not None else None
