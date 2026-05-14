@@ -293,6 +293,9 @@ class Client(db.Model):
     contacts = db.relationship('Contact', backref='client', lazy='dynamic',
                               foreign_keys='Contact.client_id',
                               order_by='Contact.is_primary.desc(), Contact.created_at')
+    addresses = db.relationship('Address', backref='client', lazy='dynamic',
+                               foreign_keys='Address.client_id',
+                               order_by='Address.is_primary.desc(), Address.created_at')
     
     # Encrypted fields list for reference
     ENCRYPTED_FIELDS = [
@@ -661,15 +664,16 @@ class Subject(db.Model):
 
 class Address(db.Model):
     """
-    Structured address for a subject.
+    Structured address for a subject or client.
     
-    Supports multiple addresses per subject (home, work, etc.)
+    Supports multiple addresses per entity (home, work, etc.)
     with Kadaster verification status.
     """
     __tablename__ = 'addresses'
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'), nullable=False, index=True)
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'), nullable=True, index=True)
+    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=True, index=True)
     
     # Structured address fields (all encrypted)
     street = db.Column(db.String(500))   # Encrypted
@@ -711,6 +715,7 @@ class Address(db.Model):
         return {
             'id': self.id,
             'subject_id': self.subject_id,
+            'client_id': self.client_id,
             'street': self.street,
             'number': self.number,
             'zipcode': self.zipcode,

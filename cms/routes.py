@@ -486,6 +486,8 @@ def view_client(client_id: str):
     client.decrypt_naw()  # Decrypt for display
     for c in client.contacts:
         c.decrypt_fields()
+    for addr in client.addresses:
+        addr.decrypt_fields()
     
     cases = Case.query.filter_by(
         client_id=client_id,
@@ -562,7 +564,6 @@ def create_client():
         
         # Set encrypted fields
         encrypted_fields = ['contact_person', 'contact_email', 'contact_phone',
-                          'address_street', 'address_number', 'address_city', 'address_postal', 'address_country',
                           'social_security_number', 'bank_account']
         for field in encrypted_fields:
             if data.get(field):
@@ -589,6 +590,26 @@ def create_client():
                             client.contact_phone = encryptor.encrypt(c_data.get('value')) if c_data.get('value') else None
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse contacts_data: {e}")
+        
+        # Handle structured addresses
+        if data.get('addresses_data'):
+            try:
+                addresses_data = json.loads(data['addresses_data']) if isinstance(data['addresses_data'], str) else data['addresses_data']
+                for addr_data in addresses_data:
+                    if addr_data.get('street') or addr_data.get('zipcode'):
+                        address = Address(
+                            client_id=client.id,
+                            street=addr_data.get('street'),
+                            number=addr_data.get('number'),
+                            zipcode=addr_data.get('zipcode'),
+                            town=addr_data.get('town'),
+                            country=addr_data.get('country', 'Netherlands'),
+                            is_primary=addr_data.get('is_primary', False)
+                        )
+                        address.encrypt_fields()
+                        db.session.add(address)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse addresses_data: {e}")
         
         # Set other fields
         client.contract_number = data.get('contract_number')
@@ -642,7 +663,6 @@ def edit_client(client_id: str):
         
         # Update encrypted fields
         encrypted_fields = ['contact_person', 'contact_email', 'contact_phone',
-                          'address_street', 'address_number', 'address_city', 'address_postal', 'address_country',
                           'social_security_number', 'bank_account']
         for field in encrypted_fields:
             if field in data:
@@ -681,6 +701,30 @@ def edit_client(client_id: str):
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse contacts_data: {e}")
         
+        # Handle structured addresses
+        if data.get('addresses_data'):
+            try:
+                addresses_data = json.loads(data['addresses_data']) if isinstance(data['addresses_data'], str) else data['addresses_data']
+                old_addresses = list(client.addresses)
+                for addr in old_addresses:
+                    db.session.delete(addr)
+                for addr_data in addresses_data:
+                    if addr_data.get('street') or addr_data.get('zipcode'):
+                        address = Address(
+                            client_id=client.id,
+                            street=addr_data.get('street'),
+                            number=addr_data.get('number'),
+                            zipcode=addr_data.get('zipcode'),
+                            town=addr_data.get('town'),
+                            country=addr_data.get('country', 'Netherlands'),
+                            is_primary=addr_data.get('is_primary', False)
+                        )
+                        address.encrypt_fields()
+                        db.session.add(address)
+                changes['addresses'] = {'old': f'{len(old_addresses)} address(es)', 'new': f'{len(addresses_data)} address(es)'}
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to parse addresses_data: {e}")
+        
         # Update contract info
         if data.get('contract_number') != client.contract_number:
             changes['contract_number'] = {'old': client.contract_number, 'new': data.get('contract_number')}
@@ -714,6 +758,8 @@ def edit_client(client_id: str):
     client.decrypt_naw()
     for c in client.contacts:
         c.decrypt_fields()
+    for addr in client.addresses:
+        addr.decrypt_fields()
     return render_template('cms/clients/edit.html', client=client)
 
 

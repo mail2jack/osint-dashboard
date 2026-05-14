@@ -119,31 +119,45 @@
     </div>
     
     <div class="card">
-        <h2>Address</h2>
+        <h2>Address(es)</h2>
         <div class="info-item">
-            <label>Street + Number</label>
-            <span>{{ client.address_street if client.address_street else '' }}{% if client.address_street and client.address_number %}, {% endif %}{{ client.address_number if client.address_number else '' }}{% if not client.address_street and not client.address_number %}-{% endif %}</span>
+            <div style="margin-top: 0.25rem;">
+                {% if client.addresses.count() > 0 %}
+                    {% for addr in client.addresses %}
+                    <div style="background:{% if addr.is_primary %}#f0fdf4{% else %}#f9fafb{% endif %};border:1px solid {% if addr.is_primary %}#bbf7d0{% else %}#e5e7eb{% endif %};border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                            <div>
+                                <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
+                                {% if addr.is_primary %}<span style="background:#16a34a;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.5rem;">PRIMARY</span>{% endif %}
+                                {% if addr.kadaster_verified %}<span style="background:#2563eb;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;">✓ KADASTER</span>{% endif %}
+                                <br>
+                                <span style="color:#666;font-size:0.875rem;">
+                                    {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
+                                    {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
+                                </span>
+                            </div>
+                            <div style="display:flex;gap:0.35rem;">
+                                <button type="button" onclick="kadasterLookup(this, '{{ addr.id }}')" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                    🏛 Kadaster
+                                </button>
+                                <button type="button" onclick="politiebureauLookup(this, '{{ addr.id }}')" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                    🚔 Politiebureau
+                                </button>
+                            </div>
+                        </div>
+                        <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
+                        <div class="politiebureau-result" style="margin-top:0.5rem;display:none;"></div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <span>{% if client.address_street or client.address_city %}
+                        {{ client.address_street or '' }}{% if client.address_street and client.address_number %}, {% endif %}{{ client.address_number or '' }}
+                        {% if client.address_postal or client.address_city %}<br>{{ client.address_postal or '' }}{% if client.address_postal and client.address_city %}, {% endif %}{{ client.address_city or '' }}{% endif %}
+                        {% if client.address_country and client.address_country != 'Netherlands' %}<br>{{ client.address_country }}{% endif %}
+                    {% else %}-{% endif %}</span>
+                {% endif %}
+            </div>
         </div>
-        <div class="info-item">
-            <label>Postal Code</label>
-            <span>{{ client.address_postal if client.address_postal else '-' }}</span>
-        </div>
-        <div class="info-item">
-            <label>City</label>
-            <span>{{ client.address_city if client.address_city else '-' }}</span>
-        </div>
-        <div class="info-item">
-            <label>Country</label>
-            <span>{{ client.address_country if client.address_country else '-' }}</span>
-        </div>
-        {% if client.address_street or client.address_city %}
-        <div style="margin-top:0.75rem;">
-            <button type="button" onclick="clientPolitiebureauLookup(this)" class="politie-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
-                🚔 Politiebureau
-            </button>
-        </div>
-        <div class="politiebureau-result" style="margin-top:0.5rem;display:none;"></div>
-        {% endif %}
     </div>
     
     <div class="card">
@@ -212,6 +226,137 @@
             } else {
                 window.location.href = '/cms/clients';
             }
+        })
+        .catch(err => alert('Error: ' + err.message));
+    }
+
+    function restoreClient(clientId) {
+        if (!confirm('Weet u zeker dat u deze client wilt herstellen?')) return;
+        
+        fetch('/cms/clients/' + clientId + '/restore', {
+            method: 'POST'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Fout: ' + data.error);
+            } else {
+                location.reload();
+            }
+        })
+        .catch(err => alert('Fout: ' + err.message));
+    }
+
+    async function kadasterLookup(btn, addrId) {
+        const card = btn.closest('[style*="border-radius:8px;padding:0.75rem"]');
+        const resultDiv = card.querySelector('.kadaster-result');
+        const origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Looking up...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Contacting PDOK BAG...</span>';
+
+        try {
+            const resp = await fetch('/cms/api/kadaster-lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address_id: addrId })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            if (!data.found) {
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'Address not found') + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            const b = data.bag_data;
+            let html = '<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Address:</strong> ' + (b.street || '') + ' ' + (b.number || '') + '</div>';
+            html += '<div><strong>Zipcode:</strong> ' + (b.zipcode || '-') + '</div>';
+            html += '<div><strong>Town:</strong> ' + (b.town || '-') + '</div>';
+            html += '<div><strong>Municipality:</strong> ' + (b.municipality || '-') + '</div>';
+            html += '<div><strong>Province:</strong> ' + (b.province || '-') + '</div>';
+            html += '<div><strong>Building year:</strong> ' + (b.building_year || '-') + '</div>';
+            html += '</div>';
+            if (b.purpose) html += '<div style="margin-top:0.5rem;"><strong>Purpose:</strong> ' + b.purpose + '</div>';
+            html += '</div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Verified';
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    }
+
+    async function politiebureauLookup(btn, addrId) {
+        const card = btn.closest('[style*="border-radius:8px;padding:0.75rem"]');
+        const resultDiv = card.querySelector('.politiebureau-result');
+        const origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Looking up...';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color: #666;">Contacting politie.nl...</span>';
+
+        try {
+            const resp = await fetch('/cms/api/politiebureau-lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address_id: addrId })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            if (!data.found) {
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'No police station found') + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            const s = data.station;
+            let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + (s.name || 'Politiebureau') + '</div>';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Address:</strong> ' + (s.address || '-') + '</div>';
+            html += '<div><strong>Phone:</strong> ' + (s.phone || '-') + '</div>';
+            if (s.opening_hours) {
+                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + s.opening_hours + '</div>';
+            }
+            if (s.location && s.location.latitude && s.location.longitude) {
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + s.location.latitude + '&mlon=' + s.location.longitude + '&zoom=16" target="_blank">📍 View on map</a></div>';
+            }
+            if (s.url) {
+                html += '<div style="grid-column:1/-1;"><a href="' + s.url + '" target="_blank">🔗 Politie.nl page</a></div>';
+            }
+            html += '</div></div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Station found';
+            btn.style.background = '#16a34a';
+        } catch (err) {
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    }
         })
         .catch(err => alert('Error: ' + err.message));
     }
