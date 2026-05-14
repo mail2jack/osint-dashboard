@@ -33,6 +33,20 @@ print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 
+# Copy system lxml into a venv (needed on Python 3.14+ where pip can't build from source)
+copy_system_lxml() {
+    local venv_dir="$1"
+    local sys_site py_ver sf_site
+    sys_site=$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null)
+    sf_site=$(find "$venv_dir/lib" -name site-packages -type d 2>/dev/null | head -1)
+    if [ -n "$sys_site" ] && [ -n "$sf_site" ]; then
+        for pkg in "$sys_site"/lxml*; do
+            [ -e "$pkg" ] && cp -r "$pkg" "$sf_site/" 2>/dev/null
+        done
+        print_success "System lxml gekopieerd naar $venv_dir"
+    fi
+}
+
 # Header
 echo -e "\n${CYAN}========================================${NC}"
 echo -e "${CYAN}  Iveras OSINT Dashboard Installation${NC}"
@@ -81,6 +95,7 @@ apt install -y \
     build-essential \
     libxml2-dev \
     libxslt1-dev \
+    python3-lxml \
     postgresql \
     postgresql-contrib \
     nginx \
@@ -129,6 +144,7 @@ if [[ -d "venv" ]]; then
 fi
 
 python3 -m venv venv
+copy_system_lxml "$APP_DIR/venv"
 source venv/bin/activate
 
 pip install --upgrade pip
@@ -163,10 +179,9 @@ chown -R osint:osint "$SF_DIR"
 
 # Create SpiderFoot venv (separate to avoid dependency conflicts)
 python3 -m venv "$SF_DIR/venv"
+copy_system_lxml "$SF_DIR/venv"
 source "$SF_DIR/venv/bin/activate"
 pip install --upgrade pip
-# Pre-install lxml>=5.0.0 voor Python 3.14 compatibiliteit (SpiderFoot's req heeft oude versie)
-pip install "lxml>=5.0.0" 2>/dev/null || true
 pip install -r "$SF_DIR/requirements.txt"
 deactivate
 
