@@ -268,19 +268,19 @@ class Client(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(200), nullable=False, index=True)
     is_company = db.Column(db.Boolean, default=False)
-    contact_person = db.Column(db.String(200))  # Encrypted
-    contact_email = db.Column(db.String(200))   # Encrypted
-    contact_phone = db.Column(db.String(50))    # Encrypted
-    address_street = db.Column(db.String(300)) # Encrypted
-    address_number = db.Column(db.String(20))  # Encrypted
-    address_city = db.Column(db.String(100))    # Encrypted
-    address_postal = db.Column(db.String(20))   # Encrypted
-    address_country = db.Column(db.String(100)) # Encrypted
-    contract_number = db.Column(db.String(100))
+    contact_person = db.Column(db.String(500))  # Encrypted
+    contact_email = db.Column(db.String(500))   # Encrypted
+    contact_phone = db.Column(db.String(500))    # Encrypted
+    address_street = db.Column(db.String(500)) # Encrypted
+    address_number = db.Column(db.String(500))  # Encrypted
+    address_city = db.Column(db.String(500))    # Encrypted
+    address_postal = db.Column(db.String(500))   # Encrypted
+    address_country = db.Column(db.String(500)) # Encrypted
+    contract_number = db.Column(db.String(500))
     contract_info = db.Column(db.Text)
-    social_security_number = db.Column(db.String(50))  # Encrypted
-    vat_number = db.Column(db.String(50))  # For companies
-    bank_account = db.Column(db.String(100))  # Encrypted
+    social_security_number = db.Column(db.String(500))  # Encrypted
+    vat_number = db.Column(db.String(500))  # For companies
+    bank_account = db.Column(db.String(500))  # Encrypted
     financial_notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
     is_deleted = db.Column(db.Boolean, default=False)  # Soft delete
@@ -512,13 +512,13 @@ class Subject(db.Model):
     subject_type = db.Column(db.String(20), nullable=False)
     
     # Encrypted identifying information
-    date_of_birth = db.Column(db.String(50))   # Encrypted (DOB can be sensitive)
-    place_of_birth = db.Column(db.String(200))  # Encrypted
-    nationality = db.Column(db.String(100))     # Encrypted
-    identification_number = db.Column(db.String(100))  # Encrypted (BSN, passport, etc.)
+    date_of_birth = db.Column(db.String(500))   # Encrypted (DOB can be sensitive)
+    place_of_birth = db.Column(db.String(500))  # Encrypted
+    nationality = db.Column(db.String(500))     # Encrypted
+    identification_number = db.Column(db.String(500))  # Encrypted (BSN, passport, etc.)
     address = db.Column(db.String(500))         # Encrypted
-    phone = db.Column(db.String(100))           # Encrypted
-    email = db.Column(db.String(200))           # Encrypted
+    phone = db.Column(db.String(500))           # Encrypted
+    email = db.Column(db.String(500))           # Encrypted
     
     # Additional metadata
     risk_score = db.Column(db.Integer, default=0)  # 0-100 risk assessment
@@ -539,9 +539,9 @@ class Subject(db.Model):
     social_media_ids = db.Column(db.JSON)
     
     # Vehicle-specific fields (encrypted)
-    license_plate = db.Column(db.String(20))  # Encrypted
-    vin = db.Column(db.String(50))  # Encrypted (Vehicle Identification Number)
-    insurance_company = db.Column(db.String(200))  # Encrypted
+    license_plate = db.Column(db.String(500))  # Encrypted
+    vin = db.Column(db.String(500))  # Encrypted (Vehicle Identification Number)
+    insurance_company = db.Column(db.String(500))  # Encrypted
     brand = db.Column(db.String(100))
     vehicle_type = db.Column(db.String(50))  # sedan, suv, truck, etc.
     
@@ -672,11 +672,11 @@ class Address(db.Model):
     subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'), nullable=False, index=True)
     
     # Structured address fields (all encrypted)
-    street = db.Column(db.String(200))   # Encrypted
-    number = db.Column(db.String(20))    # Encrypted (huisnummer + toevoeging)
-    zipcode = db.Column(db.String(20))  # Encrypted
-    town = db.Column(db.String(200))     # Encrypted
-    country = db.Column(db.String(100))  # Encrypted
+    street = db.Column(db.String(500))   # Encrypted
+    number = db.Column(db.String(500))    # Encrypted (huisnummer + toevoeging)
+    zipcode = db.Column(db.String(500))  # Encrypted
+    town = db.Column(db.String(500))     # Encrypted
+    country = db.Column(db.String(500))  # Encrypted
     
     is_primary = db.Column(db.Boolean, default=False)
     
@@ -815,10 +815,10 @@ class FinancialRecord(db.Model):
     currency = db.Column(db.String(3), default='EUR')
     
     # Encrypted counterparty details
-    counterparty_name = db.Column(db.String(300))    # Encrypted
-    counterparty_account = db.Column(db.String(100)) # Encrypted
-    counterparty_bank = db.Column(db.String(200))    # Encrypted
-    counterparty_country = db.Column(db.String(100))  # Encrypted
+    counterparty_name = db.Column(db.String(500))    # Encrypted
+    counterparty_account = db.Column(db.String(500)) # Encrypted
+    counterparty_bank = db.Column(db.String(500))    # Encrypted
+    counterparty_country = db.Column(db.String(500))  # Encrypted
     
     transaction_type = db.Column(db.String(50))  # transfer, cash, crypto, etc.
     source = db.Column(db.String(100))           # bank_statement, invoice, etc.

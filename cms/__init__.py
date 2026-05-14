@@ -116,6 +116,39 @@ def create_cms_module(app: Flask):
             app.logger.warning(f"subjects migration note: {e}")
             db.session.rollback()
 
+        # Migration: resize encrypted columns for PostgreSQL (SQLite ignores length)
+        try:
+            if db.engine.name == 'postgresql':
+                from sqlalchemy import inspect, text
+                encrypted_col_resizes = {
+                    'clients': ['contact_person', 'contact_email', 'contact_phone',
+                                'address_street', 'address_number', 'address_city',
+                                'address_postal', 'address_country', 'social_security_number',
+                                'vat_number', 'bank_account', 'contract_number'],
+                    'subjects': ['date_of_birth', 'place_of_birth', 'nationality',
+                                 'identification_number', 'phone', 'email',
+                                 'license_plate', 'vin', 'insurance_company'],
+                    'addresses': ['street', 'number', 'zipcode', 'town', 'country'],
+                    'financial_records': ['counterparty_name', 'counterparty_account',
+                                          'counterparty_bank', 'counterparty_country'],
+                }
+                for table, columns in encrypted_col_resizes.items():
+                    inspector = inspect(db.engine)
+                    col_info = {c['name']: c for c in inspector.get_columns(table)}
+                    for col in columns:
+                        if col in col_info:
+                            col_type = str(col_info[col]['type'])
+                            # Only resize varchar columns that are too small
+                            if col_type.startswith('VARCHAR') and col_type != 'VARCHAR(500)':
+                                db.session.execute(
+                                    text(f'ALTER TABLE {table} ALTER COLUMN {col} TYPE VARCHAR(500)')
+                                )
+                                app.logger.info(f"Migration: resized {table}.{col} to VARCHAR(500)")
+                db.session.commit()
+        except Exception as e:
+            app.logger.warning(f"Column resize migration note: {e}")
+            db.session.rollback()
+
         # Initialize default settings
         from .models import Setting, init_default_settings
         init_default_settings()
