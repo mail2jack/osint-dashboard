@@ -5317,7 +5317,7 @@ def do_update():
          cwd=project_root)
 
     # Step 5: Restart (uses sudo via sudoers rule set by install.sh)
-    step('Restart services', 'sudo /usr/bin/systemctl restart osint-dashboard',
+    step('Restart services', '/usr/bin/sudo /usr/bin/systemctl restart osint-dashboard',
          cwd=project_root)
 
     success = all(r['status'] == 'ok' for r in results)
