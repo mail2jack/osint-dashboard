@@ -1646,15 +1646,25 @@ function extractSocialId(url, subjectId) {
         if (data.error) {
             alert('Error: ' + data.error);
         } else if (data.extracted && Object.keys(data.extracted).length > 0) {
-            let message = 'Social media ID extracted!\n\n';
+            let message = 'Social media data extracted!\n\n';
             for (const [key, value] of Object.entries(data.extracted)) {
-                if (key.endsWith('_id') || ['facebook', 'vk', 'instagram', 'twitter'].includes(key)) {
+                if (key.endsWith('id') || ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit', 'username', 'profile_platform'].includes(key)) {
                     message += key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : value) + '\n';
                 }
             }
+            if (data.platform && !data.extracted.profile_platform) message += '\nPlatform: ' + data.platform;
+            if (data.username && !data.extracted.username) message += '\nUsername: ' + data.username;
+            message += '\n\nSaved to subject. Refreshing...';
             alert(message);
+            location.reload();
         } else {
-            alert('No social media IDs found on this page.');
+            let msg = 'No social media IDs found on this page.';
+            if (data.platform || data.username) {
+                msg += '\n\nDetected from URL:\n';
+                if (data.platform) msg += 'Platform: ' + data.platform + '\n';
+                if (data.username) msg += 'Username: ' + data.username;
+            }
+            alert(msg);
         }
     })
     .catch(err => {
