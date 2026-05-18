@@ -86,7 +86,7 @@
                     <td>{{ subject.subject_type }}</td>
                     <td>{{ subject.risk_score }}</td>
                     <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a>
-                        <button onclick="deleteSubject('{{ subject.id }}', {{ subject.name|tojson }})" class="btn-sm" style="background: #dc2626; color: white; border: none; cursor: pointer; margin-left: 0.5rem;">🗑️</button>
+                        <button onclick='deleteSubject("{{ subject.id }}", {{ subject.name|tojson }})' class="btn-sm" style="background: #dc2626; color: white; border: none; cursor: pointer; margin-left: 0.5rem;">🗑️</button>
                     </td>
                 </tr>
                 {% endfor %}
