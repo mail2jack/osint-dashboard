@@ -5697,7 +5697,8 @@ def do_update():
             if r.returncode == 0:
                 results[-1] = {'step': msg, 'status': 'ok', 'output': r.stdout.strip()}
             else:
-                results[-1] = {'step': msg, 'status': 'error', 'output': r.stderr.strip()}
+                output = r.stderr.strip() or r.stdout.strip() or f'Command failed (exit code {r.returncode})'
+                results[-1] = {'step': msg, 'status': 'error', 'output': output}
         except Exception as e:
             results[-1] = {'step': msg, 'status': 'error', 'output': str(e)}
 

@@ -489,7 +489,7 @@
                     const isErr = r.status === 'error';
                     const outputColor = isErr ? 'var(--danger-text)' : 'var(--text-secondary)';
                     const outputBg = isErr ? 'var(--danger-bg)' : 'transparent';
-                    if (isErr && r.output) errors.push(r.step + ': ' + r.output);
+                    if (isErr) errors.push(r.step + ': ' + (r.output || '(geen foutmelding)'));
                     html += '<div style="margin-bottom:0.5rem;">' + icon + ' <strong>' + r.step + '</strong>';
                     if (r.output) {
                         html += '<br><pre style="margin:0.25rem 0 0 0;padding:0.5rem;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;background:' + outputBg + ';color:' + outputColor + ';border-radius:4px;border:1px solid ' + (isErr ? 'var(--danger-text)' : 'var(--border-color)') + ';">' + escapeHtml(r.output) + '</pre>';
