@@ -473,8 +473,10 @@
                 <span id="resultsCount"></span>
             </div>
             <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
-            <div style="margin-top: 1rem;">
-                <button onclick="closeOsintModal()" class="btn-sm">Close</button>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button onclick="closeOsintModal()" class="btn-sm" style="background: #666;">Close</button>
+                <button onclick="saveSelectedAsSocialAccounts()" class="btn-sm" style="background: #8b5cf6;" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
+                <button onclick="addSelectedFindings()" class="btn-sm btn-success" id="addFindingsBtn" disabled>Add Selected to Findings (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
         
@@ -1531,7 +1533,11 @@
         for (const [cat, items] of Object.entries(grouped)) {
             const catDiv = document.createElement('div');
             catDiv.style.marginBottom = '1rem';
-            catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">${categoryLabels[cat] || cat} (${items.length})</h4>`;
+            catDiv.dataset.category = cat;
+            catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">${categoryLabels[cat] || cat} (${items.length})</h4>
+                <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">
+                    <input type="checkbox" class="cat-select-all" data-cat="${cat}" onchange="toggleCategory(this)"> Select all
+                </label>`;
             
             items.forEach(item => {
                 const div = document.createElement('div');
@@ -1540,9 +1546,14 @@
                                      item.source === 'duckduckgo' ? '<span style="background: #25D366; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">DDG</span>' : '';
                 div.innerHTML = `
                     <div class="result-content">
-                        <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
-                        ${item.query ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">${item.query}</div>` : ''}
-                        <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
+                        <label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;">
+                            <input type="checkbox" class="result-checkbox" data-url="${item.url}" data-domain="${item.domain || ''}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || 'general'}" onchange="updateSelectedCount()" style="margin-top:3px;">
+                            <div>
+                                <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
+                                ${item.query ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">${item.query}</div>` : ''}
+                                <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
+                            </div>
+                        </label>
                     </div>
                 `;
                 catDiv.appendChild(div);
@@ -1553,15 +1564,23 @@
         if (searchLinks.length > 0) {
             const searchDiv = document.createElement('div');
             searchDiv.style.marginBottom = '1rem';
-            searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (${searchLinks.length})</h4>`;
+            searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (${searchLinks.length})</h4>
+                <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">
+                    <input type="checkbox" class="cat-select-all" data-cat="search" onchange="toggleCategory(this)"> Select all
+                </label>`;
             
             searchLinks.forEach(link => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
                 div.innerHTML = `
                     <div class="result-content">
-                        <div class="result-engine">${link.engine || 'Unknown'}</div>
-                        <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
+                        <label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;">
+                            <input type="checkbox" class="result-checkbox" data-url="${link.url}" data-domain="${link.engine || 'Unknown'}" data-query="${link.name || ''}" data-source="search_link" data-category="search" onchange="updateSelectedCount()" style="margin-top:3px;">
+                            <div>
+                                <div class="result-engine">${link.engine || 'Unknown'}</div>
+                                <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
+                            </div>
+                        </label>
                     </div>
                 `;
                 searchDiv.appendChild(div);
@@ -1576,6 +1595,96 @@
         document.getElementById('osintResults').style.display = 'none';
         document.getElementById('osintError').style.display = 'block';
         document.getElementById('errorMessage').textContent = message;
+    }
+
+    function toggleCategory(checkbox) {
+        const cat = checkbox.dataset.cat;
+        document.querySelectorAll(`.result-checkbox[data-category="${cat}"]`).forEach(cb => {
+            cb.checked = checkbox.checked;
+        });
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const checked = document.querySelectorAll('.result-checkbox:checked').length;
+        document.getElementById('selectedCount').textContent = checked;
+        document.getElementById('addFindingsBtn').disabled = checked === 0;
+        document.getElementById('socialSelectedCount').textContent = checked;
+        document.getElementById('saveSocialBtn').disabled = checked === 0;
+    }
+
+    function addSelectedFindings() {
+        const checkboxes = document.querySelectorAll('.result-checkbox:checked');
+        if (checkboxes.length === 0) return;
+        const selectedResults = [];
+        checkboxes.forEach(cb => {
+            selectedResults.push({
+                url: cb.dataset.url,
+                domain: cb.dataset.domain,
+                query: cb.dataset.query,
+                source: cb.dataset.source,
+                category: cb.dataset.category
+            });
+        });
+        {% if first_case_id %}
+        fetch('/cms/cases/{{ first_case_id }}/add-findings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                results: selectedResults,
+                subject_id: '{{ subject.id }}'
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { showOsintError(data.error); return; }
+            alert(data.message);
+            closeOsintModal();
+            location.reload();
+        })
+        .catch(err => showOsintError('Failed to add findings: ' + err.message));
+        {% else %}
+        showOsintError('This subject is not linked to any case. Link the subject to a case first.');
+        {% endif %}
+    }
+
+    function saveSelectedAsSocialAccounts() {
+        const checkboxes = document.querySelectorAll('.result-checkbox:checked');
+        if (checkboxes.length === 0) return;
+        if (!confirm('Save ' + checkboxes.length + ' selected result(s) as social accounts?')) return;
+        let saved = 0, errors = 0, completed = 0;
+        const total = checkboxes.length;
+        checkboxes.forEach(cb => {
+            const url = cb.dataset.url || '';
+            const domain = cb.dataset.domain || '';
+            const query = cb.dataset.query || '';
+            const platform = domain.replace('www.', '').split('.')[0] || 'unknown';
+            const username = query || url.split('/').filter(s => s).pop() || domain;
+            fetch('/cms/api/findings/save-as-social-account', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: url,
+                    platform: platform,
+                    username: username,
+                    subject_id: '{{ subject.id }}'
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                completed++;
+                if (data.error) errors++; else saved++;
+                if (completed === total) {
+                    alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+                    if (saved > 0) location.reload();
+                }
+            })
+            .catch(() => {
+                completed++;
+                errors++;
+                if (completed === total) alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+            });
+        });
     }
     
     document.getElementById('osintModal').addEventListener('click', function(e) {
