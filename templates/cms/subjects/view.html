@@ -19,6 +19,7 @@
     <div>
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
             <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
+            <button onclick="confirmDeleteSubject()" class="btn-sm" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">🗑️ Delete</button>
         </h1>
         <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             {% if subject.subject_type == 'person' %}
@@ -1932,6 +1933,32 @@
             btn.disabled = false;
             btn.textContent = origText;
         }
+    }
+
+    function confirmDeleteSubject() {
+        if (!confirm('Weet je zeker dat je dit subject wilt verwijderen?')) return;
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch("{{ url_for('cms.delete_subject', subject_id=subject.id) }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                btn.disabled = false;
+                btn.textContent = '🗑️ Delete';
+            } else {
+                window.location.href = "{{ url_for('cms.subjects') }}";
+            }
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = '🗑️ Delete';
+        });
     }
 </script>
 {% endblock %}

@@ -2898,6 +2898,40 @@ def bulk_add_subjects_to_case(case_id: str):
     return redirect(url_for('cms.view_case', case_id=case_id))
 
 
+@cms_bp.route('/subjects/<subject_id>/delete', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def delete_subject(subject_id: str):
+    """Soft-delete a subject if not linked to any case."""
+    subject = Subject.query.get_or_404(subject_id)
+
+    # Check if subject is linked to any active case
+    linked_cases = [c for c in Case.query.filter_by(is_deleted=False).all() if subject in c.subjects.all()]
+    if linked_cases:
+        case_list = ', '.join([f'{c.case_number} ({c.title})' for c in linked_cases[:5]])
+        extra = f' and {len(linked_cases)-5} more' if len(linked_cases) > 5 else ''
+        return jsonify({
+            'error': f'Kan subject niet verwijderen: gekoppeld aan {len(linked_cases)} za(a)k(en): {case_list}{extra}'
+        }), 400
+
+    subject.soft_delete()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action='delete',
+        entity_type='subject',
+        entity_id=subject_id,
+        ip_address=request.remote_addr,
+        description=f"Deleted subject: {subject.name}"
+    )
+    db.session.commit()
+
+    if request.is_json:
+        return jsonify({'message': 'Subject verwijderd'})
+    flash(f'Subject {subject.name} is verwijderd.', 'info')
+    return redirect(url_for('cms.subjects'))
+
+
 @cms_bp.route('/cases/<case_id>/remove-subject/<subject_id>', methods=['POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')

@@ -85,7 +85,9 @@
                     <td><strong>{{ subject.name }}</strong></td>
                     <td>{{ subject.subject_type }}</td>
                     <td>{{ subject.risk_score }}</td>
-                    <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a></td>
+                    <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a>
+                        <button onclick="deleteSubject('{{ subject.id }}', {{ subject.name|tojson }})" class="btn-sm" style="background: #dc2626; color: white; border: none; cursor: pointer; margin-left: 0.5rem;">🗑️</button>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -246,5 +248,22 @@ function submitBulkLink() {
 document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
     if (e.target === this) closeBulkLinkModal();
 });
+
+function deleteSubject(id, name) {
+    if (!confirm('Weet je zeker dat je "' + name + '" wilt verwijderen?')) return;
+    fetch('/cms/subjects/' + id + '/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            location.reload();
+        }
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
 </script>
 {% endblock %}
