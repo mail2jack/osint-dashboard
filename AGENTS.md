@@ -107,3 +107,8 @@ One test file: `tests/test_core.py` (email, IP, domain validation; phone normali
 ## Git
 - Rollback: `git reset --hard <hash>`. Commits are safe to reset.
 - Push after production changes: `git push` (remote: `origin/master`).
+
+## Always Use Full Paths
+- Production commands MUST use the full path `/opt/osint-dashboard`:
+  - `cd /opt/osint-dashboard && git pull origin master && sudo systemctl restart osint-dashboard`
+- Never write relative production commands.
