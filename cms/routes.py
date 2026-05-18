@@ -1647,24 +1647,17 @@ def view_subject(subject_id: str):
     """View subject details."""
     subject = Subject.query.get_or_404(subject_id)
     subject.decrypt_identifiers()
-    # Parse vessel_data JSON string to dict for template
-    # Handles: JSON column returning raw string (double-encoded), Python repr, or valid dict
+    # Parse vessel_data to dict for template (SQLite JSON column may return string)
     vd = subject.vessel_data
-    if isinstance(vd, str):
+    while isinstance(vd, str):
         try:
             vd = json.loads(vd)
         except (json.JSONDecodeError, TypeError):
-            import ast
             try:
+                import ast
                 vd = ast.literal_eval(vd)
             except (ValueError, SyntaxError, TypeError):
                 vd = {}
-        # Second pass: if a JSON-encoded string was double-encoded, parse again
-        if isinstance(vd, str):
-            try:
-                vd = json.loads(vd)
-            except (json.JSONDecodeError, TypeError):
-                pass
     subject.vessel_data = vd if isinstance(vd, dict) else {}
     for addr in subject.addresses:
         addr.decrypt_fields()
