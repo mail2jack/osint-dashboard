@@ -1,7 +1,7 @@
 # Iveras OSINT Dashboard — Agent Guide
 
 ## Entrypoint & Run
-- `app.py` is the single Flask entrypoint. Dev: `python app.py` (port 5000).
+- `app.py` is the single Flask entrypoint. Dev: `/usr/local/bin/python3 app.py` (port 5000). **Python 3.12 required** — `python3` must resolve to `/usr/local/bin/python3` or use the full path.
 - CMS module initialized via `cms/__init__.py::create_cms_module(app)`.
 - Dev with SpiderFoot: `./start.sh start`. Stops: `./start.sh stop`.
 - Production: `sudo ./install.sh` (Debian/Ubuntu — sets up Nginx, PostgreSQL, SpiderFoot, systemd, SSL). Accepts space-separated domain list for multi-domain SSL.

@@ -4646,6 +4646,16 @@ def _extract_social_ids_from_url(url, subject=None):
                 m = re.findall(p, html)
                 if m: extracted['instagram_id'] = m[0]; break
 
+        # Add username from URL via social-links if not already extracted
+        if 'username' not in extracted:
+            from .social_extractor import extract_username as _extract_user
+            try:
+                uname = _extract_user(url)
+                if uname:
+                    extracted['username'] = uname
+            except Exception:
+                pass
+
         if extracted and subject:
             existing = subject.social_media_ids or {}
             for key, value in extracted.items():
@@ -4784,15 +4794,25 @@ def delete_social_account(subject_id: str, account_id: str):
 def create_subject_from_username():
     """Create a subject from just a username (no full name needed)."""
     from .models import SocialAccount
+    from .social_extractor import detect_platform, extract_username
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data'}), 400
     username = (data.get('username') or '').strip()
     platform = (data.get('platform') or '').strip().lower()
+    url = (data.get('url') or '').strip()
+
     if not username:
-        return jsonify({'error': 'username required'}), 400
+        if url:
+            username = extract_username(url) or ''
+        if not username:
+            return jsonify({'error': 'username required'}), 400
+
     if not platform:
-        platform = 'other'
+        if url:
+            platform = detect_platform(url) or ''
+        if not platform:
+            platform = 'other'
 
     display_name = f"{username} ({platform})" if platform != 'other' else username
     subject = Subject(
@@ -4807,7 +4827,7 @@ def create_subject_from_username():
         subject_id=subject.id,
         platform=platform,
         username=username,
-        url=(data.get('url') or '').strip(),
+        url=url,
     )
     db.session.add(account)
 
@@ -4828,6 +4848,7 @@ def create_subject_from_username():
 def save_finding_as_social_account():
     """Save an OSINT finding's source URL as a social account on the linked subject."""
     from .models import SocialAccount
+    from .social_extractor import detect_platform, extract_username
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data'}), 400
@@ -4855,6 +4876,9 @@ def save_finding_as_social_account():
             subj = Subject.query.get(subject_id)
             username = data.get('username') or (subj.name if subj else finding.title.strip())
 
+    # Smart detection via social-links, fall back to naive
+    if not username and url:
+        username = extract_username(url, platform=platform)
     if not username and url:
         import re
         path = re.sub(r'https?://', '', url).split('/')
@@ -4862,6 +4886,8 @@ def save_finding_as_social_account():
     if not username:
         username = url or 'unknown'
 
+    if not platform and url:
+        platform = detect_platform(url)
     if not platform:
         from urllib.parse import urlparse
         parsed = urlparse(url)
