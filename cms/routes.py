@@ -4645,6 +4645,19 @@ def _extract_social_ids_from_url(url, subject=None):
             for p in ig_patterns:
                 m = re.findall(p, html)
                 if m: extracted['instagram_id'] = m[0]; break
+            # Additional platform regex fallbacks
+            tw_patterns = [r'data-user-id="(\d+)"', r'"rest_id":"(\d+)"', r'\"id_str\":\"(\d+)\"']
+            for p in tw_patterns:
+                m = re.findall(p, html)
+                if m: extracted['twitter_id'] = m[0]; break
+            tk_patterns = [r'\"id\":\"(\d+)\".*uniqueId', r'user-id="(\d+)"', r'"uid_(\d+)"']
+            for p in tk_patterns:
+                m = re.findall(p, html)
+                if m: extracted['tiktok_id'] = m[0]; break
+            rd_patterns = [r'"id":"(\w+)"', r'"name":"\w+","id":"(\w+)"']
+            for p in rd_patterns:
+                m = re.findall(p, html)
+                if m: extracted['reddit_id'] = m[0]; break
 
         # Add username from URL via social-links if not already extracted
         if 'username' not in extracted:
@@ -4661,7 +4674,7 @@ def _extract_social_ids_from_url(url, subject=None):
             for key, value in extracted.items():
                 if key in ['links', 'created_at', 'updated_at', 'fullname', 'username', 'tagline']:
                     continue
-                if key.endswith('_id') or key in ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit']:
+                if key.endswith('id') or key in ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit']:
                     existing[key] = value
             subject.social_media_ids = existing
             db.session.commit()
@@ -4687,11 +4700,34 @@ def extract_social_id():
 
     extracted = _extract_social_ids_from_url(url, subject=subject)
 
+    # Always try social-links as fallback for platform + username
+    from .social_extractor import detect_platform, extract_username
+    sl_platform = detect_platform(url)
+    sl_username = extract_username(url, platform=sl_platform)
+
+    if not extracted and (sl_platform or sl_username):
+        # Save social-links results even without socid_extractor IDs
+        extracted = {}
+        if sl_username:
+            extracted['username'] = sl_username
+        if sl_platform:
+            extracted['profile_platform'] = sl_platform
+        if subject:
+            existing = subject.social_media_ids or {}
+            if sl_username:
+                existing['username'] = sl_username
+            if sl_platform:
+                existing['profile_platform'] = sl_platform
+            subject.social_media_ids = existing
+            db.session.commit()
+
     if not extracted:
         return jsonify({
             'message': 'No social media IDs found on this page',
             'url': url,
             'extracted': {},
+            'platform': sl_platform,
+            'username': sl_username,
             'note': 'Some sites (Facebook, Instagram) block automated access. Try manual extraction.'
         }), 200
 
@@ -4701,13 +4737,17 @@ def extract_social_id():
             'url': url,
             'extracted': extracted,
             'saved_to_subject': True,
-            'subject_id': subject_id
+            'subject_id': subject_id,
+            'platform': sl_platform,
+            'username': sl_username,
         }), 200
 
     return jsonify({
         'message': 'Social media IDs extracted',
         'url': url,
-        'extracted': extracted
+        'extracted': extracted,
+        'platform': sl_platform,
+        'username': sl_username,
     }), 200
 
 
