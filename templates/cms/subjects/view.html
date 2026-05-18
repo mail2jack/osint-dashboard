@@ -784,7 +784,7 @@
         const select = document.getElementById('relationSubject');
         
         if (!form || !select) {
-            alert('Form elements not found!');
+            alert('Form elements not found! Contact admin.');
             return;
         }
         
@@ -795,14 +795,22 @@
         .then(r => r.json())
         .then(data => {
             select.innerHTML = '<option value="">Select a subject...</option>';
-            (data.subjects || []).forEach(s => {
-                if (s.id !== {{ subject.id|tojson }}) {
-                    select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
+            const subs = data.subjects || [];
+            const currentId = {{ subject.id|tojson }};
+            let foundOther = false;
+            subs.forEach(s => {
+                if (s.id !== currentId) {
+                    select.innerHTML += `<option value="${s.id}">${s.name} (${s.type || s.subject_type})</option>`;
+                    foundOther = true;
                 }
             });
+            if (!foundOther) {
+                select.innerHTML = '<option value="">No other subjects available</option>';
+            }
         })
         .catch(err => {
-            select.innerHTML = '<option value="">Error loading</option>';
+            select.innerHTML = '<option value="">Error loading subjects</option>';
+            alert('Failed to load subjects list: ' + err.message);
         });
     }
     
@@ -817,8 +825,12 @@
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ related_subject_id: relatedId, relationship_type: relType })
         })
-        .then(r => r.json())
-        .then(data => { if (!data.error) { closeAddRelationForm(); loadNetwork(); } else alert(data.error); });
+        .then(r => r.json().then(data => ({ status: r.status, data: data })))
+        .then(({ status, data }) => {
+            if (data.error) alert('Error: ' + data.error);
+            else { closeAddRelationForm(); loadNetwork(); }
+        })
+        .catch(err => alert('Network error: ' + err.message));
     }
     
     function removeRelationship(relatedId) {
@@ -826,7 +838,13 @@
         fetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ related_subject_id: relatedId })
-        }).then(() => loadNetwork());
+        })
+        .then(r => r.json().then(data => ({ status: r.status, data: data })))
+        .then(({ status, data }) => {
+            if (data.error) alert('Error: ' + data.error);
+            else loadNetwork();
+        })
+        .catch(err => alert('Network error: ' + err.message));
     }
     
     document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });

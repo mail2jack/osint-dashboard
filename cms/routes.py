@@ -2761,75 +2761,80 @@ def get_subject_relationships(subject_id: str):
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
 def add_subject_relationship(subject_id: str):
     """Add a bidirectional relationship between two subjects."""
-    subject = Subject.query.get_or_404(subject_id)
-    data = request.get_json()
+    try:
+        subject = Subject.query.get_or_404(subject_id)
+        data = request.get_json()
+        if data is None:
+            return jsonify({'error': 'Invalid JSON'}), 400
 
-    related_id = data.get('related_subject_id')
-    relationship_type = data.get('relationship_type', 'related')
+        related_id = data.get('related_subject_id')
+        relationship_type = data.get('relationship_type', 'related')
 
-    if not related_id:
-        return jsonify({'error': 'Related subject ID required'}), 400
+        if not related_id:
+            return jsonify({'error': 'Related subject ID required'}), 400
 
-    if related_id == subject_id:
-        return jsonify({'error': 'Cannot create relationship with self'}), 400
+        if related_id == subject_id:
+            return jsonify({'error': 'Cannot create relationship with self'}), 400
 
-    related = Subject.query.get(related_id)
-    if not related:
-        return jsonify({'error': 'Related subject not found'}), 404
+        related = Subject.query.get(related_id)
+        if not related:
+            return jsonify({'error': 'Related subject not found'}), 404
 
-    # Check if relationship already exists in EITHER direction
-    existing_a = db.session.execute(
-        subject_relations.select().where(
-            (subject_relations.c.subject_id == subject.id) &
-            (subject_relations.c.related_subject_id == related_id)
+        existing_a = db.session.execute(
+            subject_relations.select().where(
+                (subject_relations.c.subject_id == subject.id) &
+                (subject_relations.c.related_subject_id == related_id)
+            )
+        ).first()
+
+        existing_b = db.session.execute(
+            subject_relations.select().where(
+                (subject_relations.c.subject_id == related_id) &
+                (subject_relations.c.related_subject_id == subject.id)
+            )
+        ).first()
+
+        if existing_a or existing_b:
+            return jsonify({'error': 'Relationship already exists'}), 400
+
+        db.session.execute(
+            subject_relations.insert().values(
+                subject_id=subject.id,
+                related_subject_id=related_id,
+                relationship_type=relationship_type
+            )
         )
-    ).first()
-
-    existing_b = db.session.execute(
-        subject_relations.select().where(
-            (subject_relations.c.subject_id == related_id) &
-            (subject_relations.c.related_subject_id == subject.id)
+        db.session.execute(
+            subject_relations.insert().values(
+                subject_id=related_id,
+                related_subject_id=subject.id,
+                relationship_type=relationship_type
+            )
         )
-    ).first()
 
-    if existing_a or existing_b:
-        return jsonify({'error': 'Relationship already exists'}), 400
-
-    # Add relationship in BOTH directions
-    db.session.execute(
-        subject_relations.insert().values(
-            subject_id=subject.id,
-            related_subject_id=related_id,
-            relationship_type=relationship_type
+        AuditLog.log(
+            user_id=current_user.id,
+            action='create',
+            entity_type='subject_relation',
+            entity_id=f"{subject.id}-{related_id}",
+            ip_address=request.remote_addr,
+            description=f"Added bidirectional {relationship_type} relationship between {subject.name} and {related.name}"
         )
-    )
-    db.session.execute(
-        subject_relations.insert().values(
-            subject_id=related_id,
-            related_subject_id=subject.id,
-            relationship_type=relationship_type
-        )
-    )
+        db.session.commit()
 
-    AuditLog.log(
-        user_id=current_user.id,
-        action='create',
-        entity_type='subject_relation',
-        entity_id=f"{subject.id}-{related_id}",
-        ip_address=request.remote_addr,
-        description=f"Added bidirectional {relationship_type} relationship between {subject.name} and {related.name}"
-    )
-    db.session.commit()
-
-    return jsonify({
-        'message': 'Relationship added',
-        'relationship': {
-            'subject_id': subject.id,
-            'related_subject_id': related_id,
-            'type': relationship_type,
-            'bidirectional': True
-        }
-    })
+        return jsonify({
+            'message': 'Relationship added',
+            'relationship': {
+                'subject_id': subject.id,
+                'related_subject_id': related_id,
+                'type': relationship_type,
+                'bidirectional': True
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding relationship: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @cms_bp.route('/subjects/<subject_id>/remove-relationship', methods=['POST'])
@@ -2837,35 +2842,41 @@ def add_subject_relationship(subject_id: str):
 @roles_required('admin', 'senior_investigator')
 def remove_subject_relationship(subject_id: str):
     """Remove a relationship between two subjects."""
-    subject = Subject.query.get_or_404(subject_id)
-    data = request.get_json()
+    try:
+        subject = Subject.query.get_or_404(subject_id)
+        data = request.get_json()
+        if data is None:
+            return jsonify({'error': 'Invalid JSON'}), 400
 
-    related_id = data.get('related_subject_id')
+        related_id = data.get('related_subject_id')
 
-    if not related_id:
-        return jsonify({'error': 'Related subject ID required'}), 400
+        if not related_id:
+            return jsonify({'error': 'Related subject ID required'}), 400
 
-    # Remove both directions
-    db.session.execute(
-        subject_relations.delete().where(
-            ((subject_relations.c.subject_id == subject.id) &
-             (subject_relations.c.related_subject_id == related_id)) |
-            ((subject_relations.c.subject_id == related_id) &
-             (subject_relations.c.related_subject_id == subject.id))
+        db.session.execute(
+            subject_relations.delete().where(
+                ((subject_relations.c.subject_id == subject.id) &
+                 (subject_relations.c.related_subject_id == related_id)) |
+                ((subject_relations.c.subject_id == related_id) &
+                 (subject_relations.c.related_subject_id == subject.id))
+            )
         )
-    )
 
-    AuditLog.log(
-        user_id=current_user.id,
-        action='delete',
-        entity_type='subject_relation',
-        entity_id=f"{subject.id}-{related_id}",
-        ip_address=request.remote_addr,
-        description=f"Removed relationship between {subject.name} and subject {related_id}"
-    )
-    db.session.commit()
+        AuditLog.log(
+            user_id=current_user.id,
+            action='delete',
+            entity_type='subject_relation',
+            entity_id=f"{subject.id}-{related_id}",
+            ip_address=request.remote_addr,
+            description=f"Removed relationship between {subject.name} and subject {related_id}"
+        )
+        db.session.commit()
 
-    return jsonify({'message': 'Relationship removed'})
+        return jsonify({'message': 'Relationship removed'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error removing relationship: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 # =============================================================================
