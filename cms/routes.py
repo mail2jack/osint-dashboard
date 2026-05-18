@@ -5699,8 +5699,10 @@ def do_update():
             else:
                 output = r.stderr.strip() or r.stdout.strip() or f'Command failed (exit code {r.returncode})'
                 results[-1] = {'step': msg, 'status': 'error', 'output': output}
+                logger.error(f"Update step failed: {msg}\n{output}")
         except Exception as e:
             results[-1] = {'step': msg, 'status': 'error', 'output': str(e)}
+            logger.error(f"Update step exception: {msg}\n{e}")
 
     import shutil
     project_root = current_app.root_path
