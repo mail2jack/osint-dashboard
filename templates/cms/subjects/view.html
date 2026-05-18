@@ -1627,7 +1627,7 @@
             });
         });
         {% if first_case_id %}
-        fetch('/cms/cases/{{ first_case_id }}/add-findings', {
+        fetch("{{ url_for('cms.add_osint_findings', case_id=first_case_id) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
