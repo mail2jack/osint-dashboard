@@ -5696,6 +5696,8 @@ def do_update():
                              cwd=cwd or current_app.root_path, timeout=120)
             if r.returncode == 0:
                 results[-1] = {'step': msg, 'status': 'ok', 'output': r.stdout.strip()}
+            elif r.returncode < 0 and 'restart' in msg.lower():
+                results[-1] = {'step': msg, 'status': 'ok', 'output': 'Service restarted (process killed by signal, expected)'}
             else:
                 output = r.stderr.strip() or r.stdout.strip() or f'Command failed (exit code {r.returncode})'
                 results[-1] = {'step': msg, 'status': 'error', 'output': output}
