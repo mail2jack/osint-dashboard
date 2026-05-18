@@ -268,6 +268,8 @@ class Client(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(200), nullable=False, index=True)
     is_company = db.Column(db.Boolean, default=False)
+    date_of_birth = db.Column(db.String(500))   # Encrypted (for persons)
+    place_of_birth = db.Column(db.String(500))  # Encrypted (for persons)
     contact_person = db.Column(db.String(500))  # Encrypted
     contact_email = db.Column(db.String(500))   # Encrypted
     contact_phone = db.Column(db.String(500))    # Encrypted
@@ -301,7 +303,8 @@ class Client(db.Model):
     ENCRYPTED_FIELDS = [
         'contact_person', 'contact_email', 'contact_phone',
         'address_street', 'address_number', 'address_city', 'address_postal', 'address_country',
-        'social_security_number', 'bank_account'
+        'social_security_number', 'bank_account',
+        'date_of_birth', 'place_of_birth'
     ]
     
     def encrypt_naw(self):
@@ -548,6 +551,15 @@ class Subject(db.Model):
     brand = db.Column(db.String(100))
     vehicle_type = db.Column(db.String(50))  # sedan, suv, truck, etc.
     
+    # Vessel-specific fields (encrypted)
+    imo_number = db.Column(db.String(500))  # Encrypted - IMO ship number
+    mmsi = db.Column(db.String(500))  # Encrypted - MMSI number
+    eni_number = db.Column(db.String(500))  # Encrypted - ENI inland vessel number
+    vessel_nationality = db.Column(db.String(500))  # Encrypted - flag state
+    
+    # Vessel data (full lookup result as JSON)
+    vessel_data = db.Column(db.JSON)
+    
     # RDW vehicle data (full RDW record as JSON)
     rdw_data = db.Column(db.JSON)
     
@@ -586,7 +598,8 @@ class Subject(db.Model):
     ENCRYPTED_FIELDS = [
         'date_of_birth', 'place_of_birth', 'nationality',
         'identification_number', 'address', 'phone', 'email',
-        'license_plate', 'vin', 'insurance_company'
+        'license_plate', 'vin', 'insurance_company',
+        'imo_number', 'mmsi', 'eni_number', 'vessel_nationality'
     ]
     
     def encrypt_identifiers(self):
@@ -642,6 +655,11 @@ class Subject(db.Model):
             'vehicle_type': self.vehicle_type,
             'social_media_ids': self.social_media_ids or {},
             'rdw_data': self.rdw_data or {},
+            'imo_number': self.imo_number,
+            'mmsi': self.mmsi,
+            'eni_number': self.eni_number,
+            'vessel_nationality': self.vessel_nationality,
+            'vessel_data': self.vessel_data or {},
             'addresses': [a.to_dict(decrypted=decrypted) for a in self.addresses],
             'contacts': [c.to_dict(decrypted=decrypted) for c in self.contacts],
             'created_at': self.created_at.isoformat() if self.created_at else None
@@ -1648,6 +1666,9 @@ def init_default_settings():
         {'key': 'smtp_from_name', 'category': 'email', 'description': 'From name', 'value_type': 'text', 'display_order': 45},
         {'key': 'update_check_repo', 'category': 'general', 'description': 'GitHub repo for update checks (e.g. user/repo). Leave empty to disable.', 'value_type': 'text', 'display_order': 50},
         {'key': 'theme_style', 'category': 'appearance', 'value': 'classic', 'description': 'Visual style and layout', 'value_type': 'select', 'options': {'options': [{'value': 'classic', 'label': 'Classic'}, {'value': 'professional', 'label': 'Professional'}]}, 'display_order': 1},
+        {'key': 'marineplan_api_key', 'category': 'api_keys', 'description': 'MarinePlan OpenShipData API Key (free: https://marineplan.com)', 'value_type': 'password', 'is_sensitive': True, 'display_order': 4},
+        {'key': 'equasis_email', 'category': 'api_keys', 'description': 'Equasis login email (free: https://equasis.org)', 'value_type': 'text', 'display_order': 5},
+        {'key': 'equasis_password', 'category': 'api_keys', 'description': 'Equasis login password', 'value_type': 'password', 'is_sensitive': True, 'display_order': 6},
     ]
     for default in defaults:
         existing = Setting.query.filter_by(key=default['key']).first()
@@ -1729,3 +1750,49 @@ class SpiderFootScan(db.Model):
 
 
 logger = logging.getLogger(__name__)
+
+
+class OsintSearch(db.Model):
+    """DB-backed OSINT search state — survives gunicorn worker restarts and multi-worker setups."""
+    __tablename__ = 'osint_searches'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    search_id = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    case_id = db.Column(db.String(36), db.ForeignKey('cases.id', ondelete='SET NULL'), nullable=True)
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id', ondelete='SET NULL'), nullable=True)
+    search_query = db.Column('query', db.String(500), nullable=False)
+    status = db.Column(db.String(20), default='running', index=True)  # running, completed, cancelled, failed
+    results = db.Column(db.JSON, nullable=True)
+    error = db.Column(db.Text, nullable=True)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    cancelled_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    started_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
+
+    def to_dict(self):
+        return {
+            'search_id': self.search_id,
+            'case_id': self.case_id,
+            'subject_id': self.subject_id,
+            'query': self.search_query,
+            'status': self.status,
+            'results': self.results,
+            'error': self.error,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'cancelled_at': self.cancelled_at.isoformat() if self.cancelled_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def get_status_dict(self):
+        return {
+            'status': self.status,
+            'results': self.results,
+            'error': self.error,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'cancelled_at': self.cancelled_at.isoformat() if self.cancelled_at else None,
+        }

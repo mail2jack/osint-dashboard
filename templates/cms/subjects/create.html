@@ -148,9 +148,15 @@
     </div>
     
     <div id="person-fields" style="display: none;">
-        <div class="form-group">
-            <label for="identification_number">ID/Passport Number</label>
-            <input type="text" name="identification_number" id="identification_number">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="date_of_birth">Date of Birth</label>
+                <input type="date" name="date_of_birth" id="date_of_birth">
+            </div>
+            <div class="form-group">
+                <label for="place_of_birth">Place of Birth</label>
+                <input type="text" name="place_of_birth" id="place_of_birth" placeholder="e.g. Amsterdam, Netherlands">
+            </div>
         </div>
         <div class="form-group">
             <label for="identification_number">ID/Passport Number</label>
@@ -245,6 +251,55 @@
             <input type="text" name="insurance_company" id="insurance_company">
         </div>
     </div>
+
+    <div id="vessel-fields" style="display: none;">
+        <div style="background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 style="margin: 0 0 0.25rem 0;">🚢 Vessel Information</h3>
+                    <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Enter IMO, MMSI, ENI or ship name to look up vessel data</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="vessel_lookup_imo" placeholder="IMO number"
+                           style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 160px;">
+                    <input type="text" id="vessel_lookup_mmsi" placeholder="MMSI"
+                           style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 160px;">
+                    <input type="text" id="vessel_lookup_eni" placeholder="ENI"
+                           style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 140px;">
+                    <button type="button" onclick="lookupVesselCreate()" id="fetchVesselBtn"
+                            style="padding: 0.75rem 1.5rem; background: white; color: #0e7490; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                        🔍 Zoek Schip
+                    </button>
+                </div>
+            </div>
+            <div id="vesselLookupStatus" style="margin-top: 0.75rem; font-size: 0.875rem;"></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="form-group">
+                <label for="imo_number">IMO Nummer</label>
+                <input type="text" name="imo_number" id="imo_number" placeholder="e.g. 9175717">
+            </div>
+            <div class="form-group">
+                <label for="mmsi_id">MMSI</label>
+                <input type="text" name="mmsi" id="mmsi_id" placeholder="9 digits">
+            </div>
+            <div class="form-group">
+                <label for="eni_number">ENI (Binnenvaart)</label>
+                <input type="text" name="eni_number" id="eni_number" placeholder="7 or 8 digits">
+            </div>
+            <div class="form-group">
+                <label for="vessel_nationality">Vlag / Flag State</label>
+                <input type="text" name="vessel_nationality" id="vessel_nationality" placeholder="e.g. Netherlands">
+            </div>
+        </div>
+
+        <div style="background: #ecfeff; border: 1px solid #0e7490; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+            <p style="margin: 0; font-size: 0.875rem; color: #155e75;">
+                💡 Leave the name field empty to auto-fill from lookup results.
+            </p>
+        </div>
+    </div>
     
     <div class="form-group">
         <label for="notes_vehicle" id="notes_label">Notes</label>
@@ -272,6 +327,7 @@ function selectType(type) {
     document.getElementById('general-fields').style.display = 'block';
     document.getElementById('person-fields').style.display = type === 'person' ? 'block' : 'none';
     document.getElementById('vehicle-fields').style.display = type === 'vehicle' ? 'block' : 'none';
+    document.getElementById('vessel-fields').style.display = type === 'vessel' ? 'block' : 'none';
     
     if (type === 'vehicle') {
         document.getElementById('kenteken_lookup').focus();
@@ -279,6 +335,10 @@ function selectType(type) {
         document.getElementById('name').required = false;
         document.getElementById('name').placeholder = 'Vehicle name (e.g. Toyota Aygo) or leave empty';
         document.getElementById('license_plate').required = true;
+    } else if (type === 'vessel') {
+        document.getElementById('vessel_lookup_imo').focus();
+        document.getElementById('name').required = false;
+        document.getElementById('name').placeholder = 'Ship name or leave empty to fill from lookup';
     } else {
         document.getElementById('name').required = true;
         document.getElementById('name').placeholder = '';
@@ -362,6 +422,72 @@ function fetchRDWData() {
     });
 }
 
+function lookupVesselCreate() {
+    const imo = document.getElementById('vessel_lookup_imo').value.trim();
+    const mmsi = document.getElementById('vessel_lookup_mmsi').value.trim();
+    const eni = document.getElementById('vessel_lookup_eni').value.trim();
+    const name = document.getElementById('name').value.trim();
+    const statusDiv = document.getElementById('vesselLookupStatus');
+    const btn = document.getElementById('fetchVesselBtn');
+
+    if (!imo && !mmsi && !eni && !name) {
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">Enter IMO, MMSI, ENI, or name</span>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    statusDiv.innerHTML = '<span style="color: white;">Looking up vessel...</span>';
+
+    fetch('/cms/api/vessel-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imo: imo, mmsi: mmsi, eni: eni, name: name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + data.error + '</span>';
+            btn.disabled = false;
+            btn.textContent = '🔍 Zoek Schip';
+            return;
+        }
+
+        if (!data.found) {
+            statusDiv.innerHTML = '<span style="color: #fcd34d;">No vessel found</span>';
+            btn.disabled = false;
+            btn.textContent = '🔍 Zoek Schip';
+            return;
+        }
+
+        if (data.name) document.getElementById('name').value = data.name;
+        if (data.imo) document.getElementById('imo_number').value = data.imo;
+        if (data.mmsi) document.getElementById('mmsi_id').value = data.mmsi;
+        if (data.eni) document.getElementById('eni_number').value = data.eni;
+        if (data.flag) document.getElementById('vessel_nationality').value = data.flag;
+
+        let sources = (data.sources || []).join(', ');
+        statusDiv.innerHTML = '<span style="color: #86efac;">✅ Found: ' + data.name + ' (' + sources + ')</span>';
+        btn.disabled = false;
+        btn.textContent = '🔍 Zoek Schip';
+    })
+    .catch(err => {
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + err.message + '</span>';
+        btn.disabled = false;
+        btn.textContent = '🔍 Zoek Schip';
+    });
+}
+
+document.getElementById('vessel_lookup_imo').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); lookupVesselCreate(); }
+});
+document.getElementById('vessel_lookup_mmsi').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); lookupVesselCreate(); }
+});
+document.getElementById('vessel_lookup_eni').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); lookupVesselCreate(); }
+});
+
 document.getElementById('kenteken_lookup').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -429,7 +555,7 @@ function validateForm() {
     
     console.log('Validating form - name:', name, 'type:', subjectType);
     
-    if (!name && subjectType !== 'vehicle') {
+    if (!name && subjectType !== 'vehicle' && subjectType !== 'vessel') {
         alert('Please enter a name');
         return false;
     }

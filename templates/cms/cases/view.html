@@ -880,16 +880,28 @@ function startOsintSearch() {
 function pollSearchStatus() {
     pollInterval = setInterval(() => {
         fetch("/cms/osint-search/" + currentSearchId + "/status")
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) {
+                return r.text().then(text => {
+                    try { return JSON.parse(text); }
+                    catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200)); }
+                });
+            }
+            return r.json();
+        })
         .then(data => {
-            if (data.status === 'completed') {
+            if (data.error) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+                showOsintError(data.error);
+            } else if (data.status === 'completed') {
                 clearInterval(pollInterval);
                 pollInterval = null;
                 loadSearchResults();
-            } else if (data.status === 'cancelled') {
+            } else if (data.status === 'cancelled' || data.status === 'failed') {
                 clearInterval(pollInterval);
                 pollInterval = null;
-                showOsintError('Search was cancelled');
+                showOsintError(data.status === 'cancelled' ? 'Search was cancelled' : data.message || 'Search failed');
             }
         })
         .catch(() => {});

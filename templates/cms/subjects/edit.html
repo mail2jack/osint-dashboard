@@ -8,7 +8,7 @@
     </div>
     <div class="form-group">
         <label for="subject_type">Type *</label>
-        <select name="subject_type" id="subject_type" required onchange="toggleVehicleFields()">
+        <select name="subject_type" id="subject_type" required onchange="toggleTypeFields()">
             <option value="person" {% if subject.subject_type == 'person' %}selected{% endif %}>Person</option>
             <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>Company</option>
             <option value="organization" {% if subject.subject_type == 'organization' %}selected{% endif %}>Organization</option>
@@ -18,7 +18,22 @@
         </select>
     </div>
     
-    <div id="person-fields" style="display:none;"></div>
+    <div id="person-fields" style="display:none;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="date_of_birth">Date of Birth</label>
+                <input type="date" name="date_of_birth" id="date_of_birth" value="{{ subject.date_of_birth or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="place_of_birth">Place of Birth</label>
+                <input type="text" name="place_of_birth" id="place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="e.g. Amsterdam, Netherlands">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="identification_number">ID/Passport Number</label>
+            <input type="text" name="identification_number" id="identification_number" value="{{ subject.identification_number or '' }}">
+        </div>
+    </div>
     
     <div id="vehicle-fields" style="display:none;">
         <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
@@ -137,6 +152,47 @@
                 All fields above are fetched from RDW (open data). 
                 The kenteken and merk are also saved to the basic vehicle fields.
             </span>
+        </div>
+    </div>
+
+    <div id="vessel-fields" style="display:none;">
+        <div style="background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 style="margin: 0 0 0.25rem 0;">🚢 Vessel Information</h3>
+                    <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Look up vessel data from MarinePlan, KVNR, Binnenvaart.eu</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="vessel_lookup_imo" placeholder="IMO" value="{{ subject.imo_number or '' }}"
+                           style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 140px;">
+                    <input type="text" id="vessel_lookup_mmsi" placeholder="MMSI" value="{{ subject.mmsi or '' }}"
+                           style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 140px;">
+                    <button type="button" onclick="lookupVesselEdit()" id="fetchVesselBtn"
+                            style="padding: 0.75rem 1.5rem; background: white; color: #0e7490; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                        🔍 Zoek Schip
+                    </button>
+                </div>
+            </div>
+            <div id="vesselLookupStatus" style="margin-top: 0.75rem; font-size: 0.875rem;"></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="form-group">
+                <label for="imo_number">IMO Nummer</label>
+                <input type="text" name="imo_number" id="imo_number" value="{{ subject.imo_number or '' }}" placeholder="e.g. 9175717">
+            </div>
+            <div class="form-group">
+                <label for="mmsi_id">MMSI</label>
+                <input type="text" name="mmsi" id="mmsi_id" value="{{ subject.mmsi or '' }}" placeholder="9 digits">
+            </div>
+            <div class="form-group">
+                <label for="eni_number">ENI (Binnenvaart)</label>
+                <input type="text" name="eni_number" id="eni_number" value="{{ subject.eni_number or '' }}" placeholder="7 or 8 digits">
+            </div>
+            <div class="form-group">
+                <label for="vessel_nationality">Vlag / Flag State</label>
+                <input type="text" name="vessel_nationality" id="vessel_nationality" value="{{ subject.vessel_nationality or '' }}" placeholder="e.g. Netherlands">
+            </div>
         </div>
     </div>
     
@@ -271,18 +327,11 @@
     <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
 </form>
 <script>
-function toggleVehicleFields() {
+function toggleTypeFields() {
     const type = document.getElementById('subject_type').value;
-    const personFields = document.getElementById('person-fields');
-    const vehicleFields = document.getElementById('vehicle-fields');
-    
-    if (type === 'vehicle') {
-        personFields.style.display = 'none';
-        vehicleFields.style.display = 'block';
-    } else {
-        personFields.style.display = 'block';
-        vehicleFields.style.display = 'none';
-    }
+    document.getElementById('person-fields').style.display = type === 'person' ? 'block' : 'none';
+    document.getElementById('vehicle-fields').style.display = type === 'vehicle' ? 'block' : 'none';
+    document.getElementById('vessel-fields').style.display = type === 'vessel' ? 'block' : 'none';
 }
 
 function fetchRDWData() {
@@ -458,6 +507,67 @@ function addContact() {
     container.appendChild(clone);
 }
 
-document.addEventListener('DOMContentLoaded', toggleVehicleFields);
+function lookupVesselEdit() {
+    const imo = document.getElementById('vessel_lookup_imo').value.trim() || document.getElementById('imo_number').value.trim();
+    const mmsi = document.getElementById('vessel_lookup_mmsi').value.trim() || document.getElementById('mmsi_id').value.trim();
+    const name = document.getElementById('name').value.trim();
+    const statusDiv = document.getElementById('vesselLookupStatus');
+    const btn = document.getElementById('fetchVesselBtn');
+
+    if (!imo && !mmsi && !name) {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">Enter IMO, MMSI, or name</span>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    statusDiv.innerHTML = '<span style="color: #0891b2;">Looking up vessel...</span>';
+
+    fetch('/cms/api/vessel-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imo: imo, mmsi: mmsi, name: name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+            btn.disabled = false;
+            btn.textContent = '🔍 Zoek Schip';
+            return;
+        }
+
+        if (!data.found) {
+            statusDiv.innerHTML = '<span style="color: #f59e0b;">No vessel found</span>';
+            btn.disabled = false;
+            btn.textContent = '🔍 Zoek Schip';
+            return;
+        }
+
+        if (data.name) document.getElementById('name').value = data.name;
+        if (data.imo) document.getElementById('imo_number').value = data.imo;
+        if (data.mmsi) document.getElementById('mmsi_id').value = data.mmsi;
+        if (data.flag) document.getElementById('vessel_nationality').value = data.flag;
+
+        let sources = (data.sources || []).join(', ');
+        statusDiv.innerHTML = '<span style="color: #16a34a;">✅ Found: ' + data.name + ' (' + sources + ')</span>';
+        btn.disabled = false;
+        btn.textContent = '🔍 Zoek Schip';
+    })
+    .catch(err => {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+        btn.disabled = false;
+        btn.textContent = '🔍 Zoek Schip';
+    });
+}
+
+document.getElementById('vessel_lookup_imo').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); lookupVesselEdit(); }
+});
+document.getElementById('vessel_lookup_mmsi').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); lookupVesselEdit(); }
+});
+
+document.addEventListener('DOMContentLoaded', toggleTypeFields);
 </script>
 {% endblock %}

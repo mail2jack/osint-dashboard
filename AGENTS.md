@@ -48,6 +48,7 @@
 - **Button** "🌍 Check Interpol" on subject view page (was "🚔 Check Politie Data").
 - Interpol API: `ws-public.interpol.int` (Akamai rate-limited, may return 403 after many calls).
 - Fallback: scrapes `politie.nl/vermist` for matching names when Interpol returns no results.
+- **Politie.nl/gezocht**: Also checks `politie.nl/gezocht` for Dutch wanted bulletins ("opsporingsberichten") via `cms/politie_scraper.py`. Extracts Nuxt SSR payload, resolves reactive refs, and searches titles/locations for name matches.
 - Status check: `GET /cms/check-policie-data-status`.
 
 ## Address Form — Postcode Check
@@ -65,6 +66,26 @@
 - **Button** "🚔 Politiebureau" on each address card in subject view page (`view.html`), next to the Kadaster button.
 - Result displayed in a red-themed card below the address.
 
+## Vessel / Ship Lookup (`cms/vessel_service.py`, `routes.py:vessel_lookup`)
+- `POST /cms/api/vessel-lookup` — searches VesselFinder (free, MMSI/name), MarinePlan (AIS by name/MMSI, API key), KVNR Schepenzoeker (IMO/name, public), Binnenvaart.eu (ENI/name, public), Equasis (IMO, requires free account credentials).
+- `POST /cms/api/vessel/update-subject` — updates subject with IMO/MMSI/ENI/flag (encrypted) + `vessel_data` JSON.
+- `POST /cms/api/findings/from-vessel` — creates a Finding from vessel lookup data (needs `case_id`).
+- **Button** "🚢 Check Vessel" on subject view page (only for `subject_type == 'vessel'`).
+- Vessel fields (IMO, MMSI, ENI, flag) encrypted via Fernet like `license_plate`.
+- `lookupVesselCreate()` (create.html) / `lookupVesselEdit()` (edit.html) — auto-fills IMO/MMSI/ENI/name from lookup.
+- MarinePlan key: `Setting.set('marineplan_api_key', 'your-key')` (get at https://marineplan.com). Without it, MarinePlan source is skipped.
+- Equasis: `Setting.set('equasis_email', '...')` + `Setting.set('equasis_password', '...')` (free registration at equasis.org). Without credentials, Equasis source is skipped.
+- `lookup_marineplan()` is rate-limited (2s between calls via `_LAST_MARINEPLAN_CALL`).
+- Binnenvaart.eu and KVNR are public scrapes (no auth needed).
+- Binnenvaart.eu: ENI numbers searched via `zoeken` query param; scrapes table rows for name, ENI, type, year.
+- KVNR: IMO extracted via regex `IMO[:\s]*(\d{7})`, flag via `(Flag|Vlag)[:\s]*(\w+)`.
+- **Combined orchestrator** `lookup_vessel()` in vessel_service.py tries all sources in order (VesselFinder → MarinePlan → KVNR → Binnenvaart → Equasis), merging non-None fields.
+
+### DB Migration
+- New columns added to `subjects` table: `imo_number VARCHAR(500)`, `mmsi VARCHAR(500)`, `eni_number VARCHAR(500)`, `vessel_nationality VARCHAR(500)`, `vessel_data TEXT`.
+- Auto-migration in `cms/__init__.py` (ALTER TABLE ADD COLUMN) for existing DBs.
+- New encrypted cols also listed in the ALTER COLUMN resize migration for PostgreSQL.
+
 ## Testing
 ```bash
 python tests/test_core.py
@@ -76,6 +97,9 @@ One test file: `tests/test_core.py` (email, IP, domain validation; phone normali
 - Banner shows for version bumps OR any new commits (bugfixes without version change).
 - `last_update_commit` Setting stores the local HEAD SHA after each successful `do_update()`.
 - If remote SHA differs from stored SHA, a "New commits available" notification appears.
+- **CRITICAL — `update_check_repo` must be set** in the DB (`Setting.set('update_check_repo', 'mail2jack/osint-dashboard')`). Without it, the API returns `check_enabled: False` and the banner NEVER shows. `install.sh` sets this automatically; manual setups MUST set it.
+- **Auto-detect**: If `last_update_commit` is empty, `check_update()` runs `git rev-parse HEAD` and stores the result. This means the banner can only detect commits pushed AFTER the first page visit — visiting AFTER a manual `git pull` will silently store the new HEAD and show no diff.
+- **Diagnostic**: Run `sudo -u osint /opt/osint-dashboard/venv/bin/python -c "from app import app; from cms.models import Setting; app.app_context().push(); print('repo:', Setting.get('update_check_repo')); print('last_sha:', Setting.get('last_update_commit','(empty)'))"`
 
 ## Health Check
 `curl http://localhost:5000/health` — returns `{"status":"ok","database":"connected","spiderfoot":"connected"}`.

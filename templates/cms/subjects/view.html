@@ -35,6 +35,11 @@
                 🌍 Check Interpol
             </button>
             {% endif %}
+            {% if subject.subject_type == 'vessel' %}
+            <button onclick="checkVessel()" id="vesselCheckBtn" class="btn-osint" style="background: #0e7490; border: none; cursor: pointer;">
+                🚢 Check Vessel
+            </button>
+            {% endif %}
             {% if subject.photo_path %}
             <button onclick="encodeFace()" id="encodeFaceBtn" class="btn-osint" style="background: #7c3aed; border: none; cursor: pointer;">
                 👤 Encode Face
@@ -55,10 +60,13 @@
 <!-- Interpol check results container -->
 <div id="interpolResults" class="card" style="display: none;"></div>
 
+<!-- Vessel check results container -->
+<div id="vesselResults" class="card" style="display: none;"></div>
+
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="margin: 0;">
-            {% if subject.subject_type == 'vehicle' %}🚗 Vehicle Details{% else %}Subject Details{% endif %}
+            {% if subject.subject_type == 'vehicle' %}🚗 Vehicle Details{% elif subject.subject_type == 'vessel' %}🚢 Vessel Details{% else %}Subject Details{% endif %}
         </h3>
         <button onclick="openNetworkModal()" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
     </div>
@@ -76,14 +84,14 @@
                         <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
                             <span>{{ c.value }}</span>
                             {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                            <button onclick="emailCheck(this, '{{ c.value }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                            <button onclick='emailCheck(this, {{ c.value|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
                             <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                         </div>
                         {% endfor %}
                     {% elif subject.email %}
                         <div style="display:flex;align-items:center;gap:0.35rem;">
                             <span>{{ subject.email }}</span>
-                            <button onclick="emailCheck(this, '{{ subject.email }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                            <button onclick='emailCheck(this, {{ subject.email|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
                             <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                         </div>
                     {% else %}
@@ -100,14 +108,14 @@
                         <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
                             <span>{{ c.value }}</span>
                             {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                            <button onclick="phoneLookup(this, '{{ c.value }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                            <button onclick='phoneLookup(this, {{ c.value|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
                             <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                         </div>
                         {% endfor %}
                     {% elif subject.phone %}
                         <div style="display:flex;align-items:center;gap:0.35rem;">
                             <span>{{ subject.phone }}</span>
-                            <button onclick="phoneLookup(this, '{{ subject.phone }}')" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                            <button onclick='phoneLookup(this, {{ subject.phone|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
                             <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                         </div>
                     {% else %}
@@ -116,11 +124,15 @@
                 </div>
             </div>
             {% endif %}
+            {% if subject.subject_type == 'person' %}
+            <div class="info-item"><label>Date of Birth</label><span>{{ subject.date_of_birth if subject.date_of_birth else '-' }}</span></div>
+            <div class="info-item"><label>Place of Birth</label><span>{{ subject.place_of_birth if subject.place_of_birth else '-' }}</span></div>
+            {% endif %}
             {% if subject.subject_type == 'vehicle' %}
             <div class="info-item"><label>License Plate (Kenteken)</label>
                 <span style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate if subject.license_plate else '-' }}</span>
                 {% if subject.license_plate %}
-                <button onclick="checkRDWVehicle('{{ subject.license_plate }}', '{{ subject.id }}')" class="btn-sm" style="background: #f59e0b; margin-left: 0.5rem; font-size: 0.7rem;">🚗 Check RDW</button>
+                <button onclick='checkRDWVehicle({{ subject.license_plate|tojson }}, {{ subject.id|tojson }})' class="btn-sm" style="background: #f59e0b; margin-left: 0.5rem; font-size: 0.7rem;">🚗 Check RDW</button>
                 {% else %}
                 <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">(Add license plate first)</span>
                 {% endif %}
@@ -199,6 +211,32 @@
             </div>
             {% endif %}
             {% endif %}
+            {% if subject.subject_type == 'vessel' %}
+            <div class="info-item"><label>IMO Nummer</label><span>{{ subject.imo_number if subject.imo_number else '-' }}</span></div>
+            <div class="info-item"><label>MMSI</label><span>{{ subject.mmsi if subject.mmsi else '-' }}</span></div>
+            <div class="info-item"><label>ENI (Binnenvaart)</label><span>{{ subject.eni_number if subject.eni_number else '-' }}</span></div>
+            <div class="info-item"><label>Vlag (Flag State)</label><span>{{ subject.vessel_nationality if subject.vessel_nationality else '-' }}</span></div>
+
+            {% if subject.vessel_data %}
+            <div style="margin-top: 1rem; padding: 1rem; background: #ecfeff; border: 1px solid #0e7490; border-radius: 8px;">
+                <h4 style="margin: 0 0 0.75rem 0; color: #0e7490;">🚢 Vessel Data</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+                    {% for source_key, source_val in subject.vessel_data.items() %}
+                        {% if source_val is mapping %}
+                            {% for k, v in source_val.items() %}
+                                {% if v and k not in ('source', 'source_url') %}
+                                <div class="info-item"><label>{{ k|capitalize|replace('_', ' ') }}</label><span>{{ v }}</span></div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div style="margin-top: 0.75rem;">
+                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="background: #0e7490; text-decoration: none;">✏️ Edit Vessel Data</a>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
             <div class="info-item">
                 <label>Address(es)</label>
                 <div style="margin-top: 0.25rem;">
@@ -217,10 +255,10 @@
                                     </span>
                                 </div>
                                 <div style="display:flex;gap:0.35rem;">
-                                    <button type="button" onclick="kadasterLookup(this, '{{ addr.id }}')" class="kadaster-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                    <button type="button" onclick='kadasterLookup(this, {{ addr.id|tojson }})' class="kadaster-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
                                         🏛 Kadaster
                                     </button>
-                                    <button type="button" onclick="politiebureauLookup(this, '{{ addr.id }}')" class="politie-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                    <button type="button" onclick='politiebureauLookup(this, {{ addr.id|tojson }})' class="politie-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
                                         🚔 Politiebureau
                                     </button>
                                 </div>
@@ -274,8 +312,8 @@
                         {% endif %}
                     </td>
                     <td>
-                        <button onclick="editSocialId('{{ platform }}')" class="btn-sm" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">Edit</button>
-                        <button onclick="deleteSocialId('{{ platform }}')" class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
+                        <button onclick='editSocialId({{ platform|tojson }})' class="btn-sm" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">Edit</button>
+                        <button onclick='deleteSocialId({{ platform|tojson }})' class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -656,7 +694,7 @@
         .then(data => {
             select.innerHTML = '<option value="">Select a subject...</option>';
             (data.subjects || []).forEach(s => {
-                if (s.id !== '{{ subject.id }}') {
+                if (s.id !== {{ subject.id|tojson }}) {
                     select.innerHTML += `<option value="${s.id}">${s.name} (${s.subject_type})</option>`;
                 }
             });
@@ -800,7 +838,7 @@
     function checkPolitieData() {
         const btn = document.getElementById('policieCheckBtn');
         const container = document.getElementById('interpolResults');
-        const subjectName = '{{ subject.name }}';
+        const subjectName = {{ subject.name|tojson }};
         
         btn.disabled = true;
         btn.textContent = ' Checking INTERPOL...';
@@ -810,7 +848,7 @@
         fetch('/cms/check-policie-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: subjectName, subject_id: '{{ subject.id }}' })
+            body: JSON.stringify({ name: subjectName, subject_id: {{ subject.id|tojson }} })
         })
         .then(r => r.json())
         .then(data => {
@@ -823,7 +861,8 @@
             
             const wanted = data.wanted_persons || [];
             const missing = data.missing_persons || [];
-            const total = wanted.length + missing.length;
+            const opsporingen = data.opsporingsberichten || [];
+            const total = wanted.length + missing.length + opsporingen.length;
             
             if (total === 0) {
                 container.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:1rem;color:#166534;"> Geen matches gevonden in INTERPOL data.</div>';
@@ -868,6 +907,27 @@
                 });
             }
             
+            if (opsporingen.length > 0) {
+                html += '<h4 style="margin:1rem 0 0.5rem 0;color:#1e40af;"> Opsporingsberichten (Politie.nl)</h4>';
+                opsporingen.forEach((p, i) => {
+                    html += '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
+                    html += '<div style="display:flex;gap:0.75rem;">';
+                    if (p.image_url) {
+                        html += '<div style="flex-shrink:0;width:80px;height:80px;border-radius:6px;overflow:hidden;background:#dbeafe;">';
+                        html += '<img src="' + p.image_url + '" alt="' + (p.image_alt || '') + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">';
+                        html += '</div>';
+                    }
+                    html += '<div style="flex:1;min-width:0;">';
+                    html += '<strong style="color:#1e40af;">' + p.title + '</strong>';
+                    if (p.location) html += '<br><span style="color:#666;font-size:0.85rem;"> Locatie: ' + p.location + '</span>';
+                    if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;"> Datum: ' + p.date + '</span>';
+                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Bekijk op politie.nl</a>';
+                    html += '</div>';
+                    html += '<button onclick="saveInterpolFinding(&#39;opsporing&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;align-self:flex-start;"> Bewaar als bevinding</button>';
+                    html += '</div></div>';
+                });
+            }
+
             if (data.source === 'politie.nl (fallback)') {
                 html += '<div style="margin-top:0.5rem;font-size:0.8rem;color:#6b7280;font-style:italic;"> INTERPOL API was blocked (Akamai). Results from politie.nl fallback.</div>';
             }
@@ -887,15 +947,18 @@
         const data = _lastInterpolData;
         if (!data) return;
 
-        const subjectId = '{{ subject.id }}';
-        const firstCaseId = '{{ first_case_id or '' }}';
+        const subjectId = {{ subject.id|tojson }};
+        const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
         
         if (!firstCaseId) {
             alert('Dit subject is niet gekoppeld aan een zaak. Koppel eerst aan een zaak om bevindingen op te slaan.');
             return;
         }
 
-        const person = type === 'wanted' ? data.wanted_persons[index] : data.missing_persons[index];
+        let person;
+        if (type === 'wanted') person = data.wanted_persons[index];
+        else if (type === 'missing') person = data.missing_persons[index];
+        else if (type === 'opsporing') person = data.opsporingsberichten[index];
         if (!person) return;
 
         btn.disabled = true;
@@ -908,7 +971,8 @@
                 case_id: firstCaseId,
                 subject_id: subjectId,
                 wanted_persons: type === 'wanted' ? [person] : [],
-                missing_persons: type === 'missing' ? [person] : []
+                missing_persons: type === 'missing' ? [person] : [],
+                opsporingsberichten: type === 'opsporing' ? [person] : []
             })
         })
         .then(r => {
@@ -928,7 +992,268 @@
             btn.textContent = ' Bewaar als bevinding';
         });
     }
-    
+
+    // Vessel Check Functions
+    let _lastVesselData = null;
+
+    function checkVessel() {
+        const btn = document.getElementById('vesselCheckBtn');
+        const container = document.getElementById('vesselResults');
+        const origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '🔍 Checking vessel...';
+        container.style.display = 'block';
+        container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;">🔍 Looking up vessel data...</div>';
+
+        fetch('/cms/api/vessel-lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                subject_id: {{ subject.id|tojson }},
+                name: {{ subject.name|tojson }},
+                imo: {{ subject.imo_number|tojson if subject.imo_number else 'null' }},
+                mmsi: {{ subject.mmsi|tojson if subject.mmsi else 'null' }},
+                eni: {{ subject.eni_number|tojson if subject.eni_number else 'null' }}
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            _lastVesselData = data;
+
+            if (data.error) {
+                container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + data.error + '</div>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            if (!data.found) {
+                container.innerHTML = '<div style="padding:1rem;color:#f59e0b;">⚠ No vessel data found</div>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+
+            let html = '<div style="padding:1rem;">';
+
+            // Unified summary section (shown when ANY source found data)
+            html += '<div style="background:linear-gradient(135deg,#0e7490,#0891b2);color:white;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
+            html += '<h4 style="margin:0 0 0.75rem 0;">🚢 ' + (data.name || 'Unknown') + '</h4>';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
+            html += '<div><strong>Type:</strong> ' + (data.ship_type || '-') + '</div>';
+            html += '<div><strong>MMSI:</strong> ' + (data.mmsi || '-') + '</div>';
+            if (data.imo) {
+                html += '<div><strong>IMO:</strong> ' + data.imo + '</div>';
+            }
+            if (data.flag) {
+                html += '<div><strong>Flag:</strong> ' + data.flag + '</div>';
+            }
+            if (data.position) {
+                html += '<div><strong>Positie:</strong> ' + data.position.lat + ', ' + data.position.lon +
+                    ' <a href="https://www.openstreetmap.org/?mlat=' + data.position.lat + '&mlon=' + data.position.lon + '&zoom=12" target="_blank" style="color:#bae6fd;">📍 Map</a></div>';
+            }
+            let srcListSummary = (data.sources || []).join(', ');
+            html += '<div style="grid-column:1/-1;font-size:0.8rem;opacity:0.8;margin-top:0.25rem;">Bronnen: ' + srcListSummary + '</div>';
+            html += '</div></div>';
+
+            // Per-source detail cards
+            // VesselFinder card
+            if (data.source_data && data.source_data.vesselfinder) {
+                const vf = data.source_data.vesselfinder;
+                html += '<div style="background:#f0f9ff;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#3b82f6;">🔍 VesselFinder</h4>';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
+                html += '<div><strong>Name:</strong> ' + (vf.name || '-') + '</div>';
+                html += '<div><strong>MMSI:</strong> ' + (vf.mmsi || '-') + '</div>';
+                html += '<div><strong>IMO:</strong> ' + (vf.imo || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + (vf.ship_type || '-') + '</div>';
+                if (vf.position) {
+                    html += '<div style="grid-column:1/-1;"><strong>Position:</strong> ' +
+                        vf.position.lat + ', ' + vf.position.lon +
+                        ' <a href="https://www.openstreetmap.org/?mlat=' + vf.position.lat + '&mlon=' + vf.position.lon + '&zoom=12" target="_blank">📍 Map</a></div>';
+                }
+                html += '</div></div>';
+            }
+
+            // MarinePlan card
+            if (data.source_data && data.source_data.marineplan) {
+                const mp = data.source_data.marineplan;
+                html += '<div style="background:#ecfeff;border:1px solid #0e7490;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#0e7490;">🛰️ MarinePlan (AIS)</h4>';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
+                html += '<div><strong>Name:</strong> ' + (mp.name || '-') + '</div>';
+                html += '<div><strong>MMSI:</strong> ' + (mp.mmsi || '-') + '</div>';
+                html += '<div><strong>Callsign:</strong> ' + (mp.callsign || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + (mp.ship_type || '-') + '</div>';
+                html += '<div><strong>Length:</strong> ' + (mp.length || '-') + ' m</div>';
+                html += '<div><strong>Beam:</strong> ' + (mp.beam || '-') + ' m</div>';
+                html += '<div><strong>Speed:</strong> ' + (mp.speed || '-') + ' km/h</div>';
+                html += '<div><strong>Destination:</strong> ' + (mp.destination || '-') + '</div>';
+                if (mp.position) {
+                    html += '<div style="grid-column:1/-1;"><strong>Position:</strong> ' +
+                        mp.position.lat + ', ' + mp.position.lon +
+                        ' <a href="https://www.openstreetmap.org/?mlat=' + mp.position.lat + '&mlon=' + mp.position.lon + '&zoom=12" target="_blank">📍 Map</a></div>';
+                }
+                html += '</div></div>';
+            }
+
+            // KVNR card
+            if (data.source_data && data.source_data.kvnr) {
+                const kv = data.source_data.kvnr;
+                html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">🇳🇱 KVNR Schepenzoeker</h4>';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
+                html += '<div><strong>Name:</strong> ' + (kv.name || '-') + '</div>';
+                html += '<div><strong>IMO:</strong> ' + (kv.imo || '-') + '</div>';
+                html += '<div><strong>Flag:</strong> ' + (kv.flag || '-') + '</div>';
+                html += '</div></div>';
+            }
+
+            // Binnenvaart.eu card
+            if (data.source_data && data.source_data.binnenvaart) {
+                const bv = data.source_data.binnenvaart;
+                html += '<div style="background:#fefce8;border:1px solid #ca8a04;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#ca8a04;">🌊 Binnenvaart.eu</h4>';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
+                html += '<div><strong>Name:</strong> ' + (bv.name || '-') + '</div>';
+                html += '<div><strong>ENI:</strong> ' + (bv.eni || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + (bv.ship_type || '-') + '</div>';
+                html += '<div><strong>Year Built:</strong> ' + (bv.year_built || '-') + '</div>';
+                html += '</div></div>';
+            }
+
+            // DeBinnenvaart.nl card
+            if (data.source_data && data.source_data.debinnenvaart) {
+                const dbv = data.source_data.debinnenvaart;
+                html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">🚢 DeBinnenvaart.nl</h4>';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
+                html += '<div><strong>Name:</strong> ' + (dbv.name || '-') + '</div>';
+                html += '<div><strong>ENI:</strong> ' + (dbv.eni || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + (dbv.ship_type || '-') + '</div>';
+                html += '<div><strong>Year Built:</strong> ' + (dbv.year_built || '-') + '</div>';
+                html += '</div></div>';
+            }
+
+            // Equasis card
+            if (data.source_data && data.source_data.equasis) {
+                const eq = data.source_data.equasis;
+                html += '<div style="background:#f3e8ff;border:1px solid #9333ea;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#9333ea;">📋 Equasis</h4>';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
+                html += '<div><strong>Name:</strong> ' + (eq.name || '-') + '</div>';
+                html += '<div><strong>IMO:</strong> ' + (eq.imo || '-') + '</div>';
+                html += '<div><strong>Flag:</strong> ' + (eq.flag || '-') + '</div>';
+                html += '<div><strong>GT:</strong> ' + (eq.gt || '-') + '</div>';
+                html += '<div><strong>DWT:</strong> ' + (eq.dwt || '-') + '</div>';
+                html += '<div><strong>Year:</strong> ' + (eq.year_built || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + (eq.ship_type || '-') + '</div>';
+                html += '<div><strong>Owner:</strong> ' + (eq.owner || '-') + '</div>';
+                html += '<div><strong>Manager:</strong> ' + (eq.manager || '-') + '</div>';
+                html += '</div></div>';
+            }
+
+            // Sources list + suggested update
+            let srcList = (data.sources || []).join(', ');
+            html += '<div style="font-size:0.8rem;color:#666;margin-bottom:1rem;">Sources: ' + srcList + '</div>';
+
+            // Save as finding button
+            const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
+            if (firstCaseId) {
+                html += '<button onclick="saveVesselFinding(this)" class="btn-sm" style="background:#0e7490;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">📥 Bewaar als bevinding</button>';
+
+                // Update subject button
+                html += ' <button onclick="updateVesselFromCheck()" class="btn-sm" style="background:#0891b2;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;margin-left:0.5rem;">💾 Update vessel fields</button>';
+            } else {
+                html += '<div style="font-size:0.8rem;color:#888;">Link subject to a case to save findings.</div>';
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+            btn.textContent = '✅ Checked (' + srcList + ')';
+        })
+        .catch(err => {
+            container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + err.message + '</div>';
+            btn.disabled = false;
+            btn.textContent = origText;
+        });
+    }
+
+    function saveVesselFinding(btn) {
+        const data = _lastVesselData;
+        if (!data || !data.found) return;
+
+        const subjectId = {{ subject.id|tojson }};
+        const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
+
+        if (!firstCaseId) {
+            alert('This subject is not linked to a case.');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Bezig met opslaan...';
+
+        fetch('/cms/api/findings/from-vessel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                case_id: firstCaseId,
+                subject_id: subjectId,
+                vessel_data: data,
+                source: (data.sources || ['vessel_lookup']).join('_'),
+                source_url: ''
+            })
+        })
+        .then(r => {
+            if (!r.ok) return r.json().then(err => { throw new Error(err.error || 'Unknown error'); });
+            return r.json();
+        })
+        .then(result => {
+            btn.textContent = '✅ Opgeslagen!';
+            btn.style.background = '#16a34a';
+            setTimeout(() => location.reload(), 800);
+        })
+        .catch(err => {
+            alert('Fout: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = '📥 Bewaar als bevinding';
+        });
+    }
+
+    function updateVesselFromCheck() {
+        const data = _lastVesselData;
+        if (!data || !data.found) return;
+
+        const subjectId = {{ subject.id|tojson }};
+
+        fetch('/cms/api/vessel/update-subject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                subject_id: subjectId,
+                imo_number: data.imo || '',
+                mmsi: data.mmsi || '',
+                eni_number: data.eni || '',
+                vessel_nationality: data.flag || '',
+                vessel_data: data.source_data || {}
+            })
+        })
+        .then(r => r.json())
+        .then(result => {
+            if (result.error) {
+                alert('Error: ' + result.error);
+            } else {
+                alert('✅ Vessel fields updated!');
+                location.reload();
+            }
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+        });
+    }
+
     // OSINT Search Functions
     let currentSearchId = null;
     let pollInterval = null;
@@ -964,7 +1289,7 @@
     }
     
     function startOsintSearch() {
-        const name = "{{ subject.name }}";
+        const name = {{ subject.name|tojson }};
         
         document.getElementById('osintSearchForm').style.display = 'none';
         document.getElementById('osintSearching').style.display = 'block';
@@ -976,9 +1301,6 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name })
         })
-        {% else %}
-        showOsintError('This subject is not linked to any case. Link the subject to a case first.');
-        {% endif %}
         .then(r => r.json())
         .then(data => {
             if (data.error) {
@@ -991,21 +1313,36 @@
         .catch(err => {
             showOsintError('Failed to start search: ' + err.message);
         });
+        {% else %}
+        showOsintError('This subject is not linked to any case. Link the subject to a case first.');
+        {% endif %}
     }
     
     function pollSearchStatus() {
         pollInterval = setInterval(() => {
             fetch(osintBase + currentSearchId + '/status')
-            .then(r => r.json())
+        .then(r => {
+            if (!r.ok) {
+                return r.text().then(text => {
+                    try { return JSON.parse(text); }
+                    catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200)); }
+                });
+            }
+            return r.json();
+        })
             .then(data => {
-                if (data.status === 'completed') {
+                if (data.error) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    showOsintError(data.error);
+                } else if (data.status === 'completed') {
                     clearInterval(pollInterval);
                     pollInterval = null;
                     loadSearchResults();
-                } else if (data.status === 'cancelled') {
+                } else if (data.status === 'cancelled' || data.status === 'failed') {
                     clearInterval(pollInterval);
                     pollInterval = null;
-                    showOsintError('Search was cancelled');
+                    showOsintError(data.status === 'cancelled' ? 'Search was cancelled' : data.message || 'Search failed');
                 }
             })
             .catch(() => {});
@@ -1283,7 +1620,7 @@
             
             const img = new Image();
             img.crossOrigin = 'anonymous';
-            img.src = '/static' + '{{ subject.photo_path }}' + '?t=' + new Date().getTime();
+            img.src = '/static' + {{ subject.photo_path|tojson }} + '?t=' + new Date().getTime();
             
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
@@ -1347,7 +1684,7 @@
     }
     
     function searchTinEye() {
-        const photoPath = '{{ subject.photo_path }}';
+        const photoPath = {{ subject.photo_path|tojson }};
         if (!photoPath) {
             alert('No photo available for this subject');
             return;

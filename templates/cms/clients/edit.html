@@ -67,6 +67,19 @@
                 </div>
             </div>
             
+            <div id="person-fields" style="{% if client.is_company %}display: none;{% endif %}">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="date_of_birth">Date of Birth</label>
+                        <input type="date" name="date_of_birth" id="date_of_birth" value="{{ client.date_of_birth or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="place_of_birth">Place of Birth</label>
+                        <input type="text" name="place_of_birth" id="place_of_birth" value="{{ client.place_of_birth or '' }}" placeholder="e.g. Amsterdam, Netherlands">
+                    </div>
+                </div>
+            </div>
+            
             <input type="hidden" name="contacts_data" id="contacts-data" value="">
             <div class="form-group">
                 <label>Contact(s)</label>
@@ -225,13 +238,16 @@
         const isCompany = document.getElementById('is_company').checked;
         const companyFields = document.getElementById('company-fields');
         const vatField = document.getElementById('vat-field');
+        const personFields = document.getElementById('person-fields');
         
         if (isCompany) {
             companyFields.style.display = 'block';
             vatField.style.display = 'block';
+            if (personFields) personFields.style.display = 'none';
         } else {
             companyFields.style.display = 'none';
             vatField.style.display = 'none';
+            if (personFields) personFields.style.display = 'block';
         }
     }
 

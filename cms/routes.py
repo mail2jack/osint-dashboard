@@ -31,7 +31,8 @@ from .models import (
     AuditLog, Document, User, CaseStatus, CasePriority,
     SubjectType, VerificationStatus, subject_relations, Comment,
     CommentEditHistory, DocumentTemplate, Reminder, ReminderType, ReminderRecurrence,
-    Screenshot, Setting, SpiderFootScan, Address, Contact, init_default_settings
+    Screenshot, Setting, SpiderFootScan, Address, Contact, init_default_settings,
+    OsintSearch
 )
 from .auth import (
     roles_required, admin_required, senior_required,
@@ -45,6 +46,13 @@ try:
 except ImportError:
     SPIDERFOOT_AVAILABLE = False
     SpiderFootService = None
+
+try:
+    from .vessel_service import lookup_vessel
+    VESSEL_SERVICE_AVAILABLE = True
+except ImportError:
+    VESSEL_SERVICE_AVAILABLE = False
+    lookup_vessel = None
 
 
 logger = logging.getLogger(__name__)
@@ -168,69 +176,108 @@ def check_for_exact_match(name: str, entity_type: str) -> Optional[dict]:
 # =============================================================================
 
 class SearchManager:
-    """Manages background OSINT searches with cancellation support."""
+    """Manages background OSINT searches — DB-backed for multi-worker gunicorn.
+
+    Cancel events stay in-memory (per-worker) since threads share the same process.
+    All persistent state (status, results, timestamps) lives in the database.
+    """
     
     def __init__(self):
-        self._searches: Dict[str, Dict[str, Any]] = {}
+        self._cancel_events: Dict[str, threading.Event] = {}
         self._lock = threading.Lock()
     
-    def create_search(self, case_id: str, search_id: str, query: str) -> threading.Event:
-        """Create a new search with cancellation event."""
+    def create_search(self, case_id: str, search_id: str, query: str, subject_id: str = None) -> threading.Event:
+        """Create a new search: DB record + in-memory cancel event."""
         cancel_event = threading.Event()
         with self._lock:
-            self._searches[search_id] = {
-                'case_id': case_id,
-                'query': query,
-                'cancel_event': cancel_event,
-                'status': 'running',
-                'results': None,
-                'started_at': datetime.utcnow(),
-                'thread': None
-            }
+            self._cancel_events[search_id] = cancel_event
+        
+        row = OsintSearch(
+            search_id=search_id,
+            case_id=case_id,
+            subject_id=subject_id,
+            search_query=query,
+            status='running',
+            started_at=datetime.utcnow(),
+        )
+        db.session.add(row)
+        db.session.commit()
         return cancel_event
     
     def get_search(self, search_id: str) -> Optional[Dict[str, Any]]:
-        """Get search info by ID."""
+        """Get search info (DB row + in-memory cancel event)."""
+        row = OsintSearch.query.filter_by(search_id=search_id).first()
+        if not row:
+            return None
         with self._lock:
-            return self._searches.get(search_id)
+            cancel_event = self._cancel_events.get(search_id)
+        return {
+            'cancel_event': cancel_event,
+            'db_row': row,
+            'search_id': row.search_id,
+            'case_id': row.case_id,
+            'query': row.search_query,
+            'status': row.status,
+            'results': row.results,
+        }
     
     def set_results(self, search_id: str, results: Any):
-        """Set search results."""
-        with self._lock:
-            if search_id in self._searches:
-                self._searches[search_id]['results'] = results
-                self._searches[search_id]['status'] = 'completed'
-                self._searches[search_id]['completed_at'] = datetime.utcnow()
+        """Persist results to DB."""
+        row = OsintSearch.query.filter_by(search_id=search_id).first()
+        if not row:
+            return
+        row.results = results
+        row.status = 'completed'
+        row.completed_at = datetime.utcnow()
+        db.session.commit()
+    
+    def set_error(self, search_id: str, error: str):
+        """Persist error state to DB."""
+        row = OsintSearch.query.filter_by(search_id=search_id).first()
+        if not row:
+            return
+        row.status = 'failed'
+        row.error = error
+        row.completed_at = datetime.utcnow()
+        db.session.commit()
     
     def cancel_search(self, search_id: str) -> bool:
-        """Cancel a running search."""
+        """Cancel a running search — sets cancel event + DB state."""
+        row = OsintSearch.query.filter_by(search_id=search_id).first()
+        if not row:
+            return False
+        
         with self._lock:
-            if search_id in self._searches:
-                self._searches[search_id]['cancel_event'].set()
-                self._searches[search_id]['status'] = 'cancelled'
-                self._searches[search_id]['cancelled_at'] = datetime.utcnow()
-                return True
-        return False
+            cancel_event = self._cancel_events.get(search_id)
+        if cancel_event:
+            cancel_event.set()
+        
+        if row.status == 'running':
+            row.status = 'cancelled'
+            row.cancelled_at = datetime.utcnow()
+            db.session.commit()
+        return True
     
     def cleanup(self, search_id: str):
-        """Remove search from tracking."""
+        """Remove in-memory cancel event. DB row stays for history."""
         with self._lock:
-            if search_id in self._searches:
-                del self._searches[search_id]
+            self._cancel_events.pop(search_id, None)
     
     def get_status(self, search_id: str) -> Optional[Dict[str, Any]]:
-        """Get current search status."""
+        """Get current search status from DB."""
+        row = OsintSearch.query.filter_by(search_id=search_id).first()
+        if not row:
+            return None
+        return row.get_status_dict()
+    
+    def is_cancelled(self, search_id: str) -> bool:
+        """Check if search was cancelled (in-memory event + DB)."""
         with self._lock:
-            search = self._searches.get(search_id)
-            if not search:
-                return None
-            return {
-                'status': search['status'],
-                'results': search.get('results'),
-                'started_at': search['started_at'].isoformat() if search.get('started_at') else None,
-                'completed_at': search.get('completed_at').isoformat() if search.get('completed_at') else None,
-                'cancelled_at': search.get('cancelled_at').isoformat() if search.get('cancelled_at') else None
-            }
+            cancel_event = self._cancel_events.get(search_id)
+        if cancel_event and cancel_event.is_set():
+            return True
+        row = OsintSearch.query.filter_by(search_id=search_id).first()
+        return row.status == 'cancelled' if row else False
 
 
 search_manager = SearchManager()
@@ -564,7 +611,8 @@ def create_client():
         
         # Set encrypted fields
         encrypted_fields = ['contact_person', 'contact_email', 'contact_phone',
-                          'social_security_number', 'bank_account']
+                          'social_security_number', 'bank_account',
+                          'date_of_birth', 'place_of_birth']
         for field in encrypted_fields:
             if data.get(field):
                 setattr(client, field, encryptor.encrypt(data[field]))
@@ -663,7 +711,8 @@ def edit_client(client_id: str):
         
         # Update encrypted fields
         encrypted_fields = ['contact_person', 'contact_email', 'contact_phone',
-                          'social_security_number', 'bank_account']
+                          'social_security_number', 'bank_account',
+                          'date_of_birth', 'place_of_birth']
         for field in encrypted_fields:
             if field in data:
                 new_value = data[field] if data[field] else None
@@ -1598,6 +1647,25 @@ def view_subject(subject_id: str):
     """View subject details."""
     subject = Subject.query.get_or_404(subject_id)
     subject.decrypt_identifiers()
+    # Parse vessel_data JSON string to dict for template
+    # Handles: JSON column returning raw string (double-encoded), Python repr, or valid dict
+    vd = subject.vessel_data
+    if isinstance(vd, str):
+        try:
+            vd = json.loads(vd)
+        except (json.JSONDecodeError, TypeError):
+            import ast
+            try:
+                vd = ast.literal_eval(vd)
+            except (ValueError, SyntaxError, TypeError):
+                vd = {}
+        # Second pass: if a JSON-encoded string was double-encoded, parse again
+        if isinstance(vd, str):
+            try:
+                vd = json.loads(vd)
+            except (json.JSONDecodeError, TypeError):
+                pass
+    subject.vessel_data = vd if isinstance(vd, dict) else {}
     for addr in subject.addresses:
         addr.decrypt_fields()
     for c in subject.contacts:
@@ -1958,7 +2026,11 @@ def create_subject():
             vin=data.get('vin'),
             insurance_company=data.get('insurance_company'),
             brand=data.get('brand'),
-            vehicle_type=data.get('vehicle_type')
+            vehicle_type=data.get('vehicle_type'),
+            imo_number=data.get('imo_number'),
+            mmsi=data.get('mmsi'),
+            eni_number=data.get('eni_number'),
+            vessel_nationality=data.get('vessel_nationality')
         )
         
         if data['subject_type'] == 'vehicle':
@@ -1982,12 +2054,14 @@ def create_subject():
                     rdw_data['kleur'] = data.get('eerste_kleur')
                 subject.rdw_data = rdw_data
         
-        # Encrypt identifying information
-        encrypted_fields = ['date_of_birth', 'place_of_birth', 'nationality',
-                          'identification_number', 'address', 'phone', 'email']
-        for field in encrypted_fields:
-            if data.get(field):
-                setattr(subject, field, encryptor.encrypt(data[field]))
+        if data['subject_type'] == 'vessel' and data.get('vessel_data'):
+            try:
+                subject.vessel_data = json.loads(data['vessel_data'])
+            except (json.JSONDecodeError, TypeError):
+                subject.vessel_data = data['vessel_data']
+        
+        # Encrypt all identifying fields (person + vehicle + vessel)
+        subject.encrypt_identifiers()
         
         db.session.add(subject)
         db.session.flush()  # Get subject ID before adding addresses
@@ -2145,6 +2219,24 @@ def edit_subject(subject_id: str):
                     changes[field] = {'old': getattr(subject, field) or '[empty]', 'new': new_value or '[empty]'}
                     setattr(subject, field, new_value)
         
+        # Encrypted vessel fields
+        encrypted_vessel_fields = ['imo_number', 'mmsi', 'eni_number', 'vessel_nationality']
+        for field in encrypted_vessel_fields:
+            if field in data:
+                new_value = data[field] if data[field] else None
+                old_value = getattr(subject, field)
+                try:
+                    if old_value:
+                        old_value = encryptor.decrypt(old_value)
+                except:
+                    pass
+                if new_value != old_value:
+                    changes[field] = {'old': old_value or '[empty]', 'new': new_value or '[empty]'}
+                    if new_value:
+                        setattr(subject, field, encryptor.encrypt(new_value))
+                    else:
+                        setattr(subject, field, None)
+        
         # Handle structured addresses
         if data.get('addresses_data'):
             try:
@@ -2234,10 +2326,17 @@ def edit_subject(subject_id: str):
         
         if rdw_data:
             existing_rdw = subject.rdw_data or {}
-            # Merge with existing RDW data
             existing_rdw.update(rdw_data)
             subject.rdw_data = existing_rdw
             changes['rdw_data'] = {'old': 'updated', 'new': 'RDW fields updated'}
+        
+        # Update vessel data if provided
+        if data.get('vessel_data'):
+            try:
+                subject.vessel_data = json.loads(data['vessel_data'])
+            except (json.JSONDecodeError, TypeError):
+                subject.vessel_data = data['vessel_data']
+            changes['vessel_data'] = {'old': 'updated', 'new': 'Vessel data updated'}
         
         subject.updated_at = datetime.utcnow()
         
@@ -2978,10 +3077,11 @@ def create_findings_from_interpol():
     subject_id = data.get('subject_id')
     wanted = data.get('wanted_persons', [])
     missing = data.get('missing_persons', [])
+    opsporingen = data.get('opsporingsberichten', [])
 
     if not case_id:
         return jsonify({'error': 'case_id is required'}), 400
-    if not wanted and not missing:
+    if not wanted and not missing and not opsporingen:
         return jsonify({'error': 'No results to save'}), 400
 
     case = Case.query.get(case_id)
@@ -3052,6 +3152,33 @@ def create_findings_from_interpol():
             reliability_score=7,
             confidence_level='medium',
             tags=['interpol', 'yellow_notice', 'missing'] if p.get('source') == 'INTERPOL' else ['interpol', 'vermist', 'missing'],
+            created_by=current_user.id
+        )
+        db.session.add(finding)
+        created.append(finding)
+
+    for p in opsporingen:
+        content_parts = [
+            f"Type: Opsporingsbericht (Politie.nl)",
+        ]
+        if p.get('location'):
+            content_parts.append(f"Locatie: {p['location']}")
+        if p.get('date'):
+            content_parts.append(f"Datum: {p['date']}")
+        if p.get('url'):
+            content_parts.append(f"URL: {p['url']}")
+
+        finding = Finding(
+            case_id=case_id,
+            subject_id=subject_id,
+            title=f"Opsporingsbericht: {p.get('title', 'Unknown')}",
+            content='\n'.join(content_parts),
+            source_url=p.get('url', ''),
+            source_type='politie',
+            finding_type='identity',
+            reliability_score=6,
+            confidence_level='medium',
+            tags=['politie', 'opsporingsbericht', 'gezocht'],
             created_by=current_user.id
         )
         db.session.add(finding)
@@ -3953,49 +4080,52 @@ def render_template_preview():
 
 def run_osint_search(search_id: str, case_id: str, query: str, name: str):
     """Run OSINT search in background thread."""
-    from app import person_dorks_search
-    
-    search_info = search_manager.get_search(search_id)
-    if not search_info:
-        return
-    
-    cancel_event = search_info['cancel_event']
-    results = None
-    
-    try:
-        logger.info(f"OSINT search {search_id} started for query: {name}")
+    import app as flask_app
+    with flask_app.app.app_context():
+        from app import person_dorks_search
         
-        # Run the dorks search
-        results = person_dorks_search(name)
-        
-        # Check if cancelled before setting results
-        if cancel_event.is_set():
-            logger.info(f"OSINT search {search_id} was cancelled")
-            search_manager.cleanup(search_id)
+        search_info = search_manager.get_search(search_id)
+        if not search_info:
             return
         
-        # Count results
-        total_results = 0
-        if results and 'categories' in results:
-            for cat, items in results.get('categories', {}).items():
-                total_results += len(items) if items else 0
+        cancel_event = search_info['cancel_event']
+        results = None
         
-        # Set results
-        search_manager.set_results(search_id, results)
-        logger.info(f"OSINT search {search_id} completed with {total_results} dork results, {len(results.get('search_links', []))} search links")
-        
-        # Cleanup after a delay (give client time to fetch results)
-        def delayed_cleanup():
-            import time
-            time.sleep(300)  # Keep results for 5 minutes
-            search_manager.cleanup(search_id)
-        
-        cleanup_thread = threading.Thread(target=delayed_cleanup, daemon=True)
-        cleanup_thread.start()
-        
-    except Exception as e:
-        logger.error(f"OSINT search {search_id} failed: {str(e)}")
-        search_manager.cleanup(search_id)
+        try:
+            logger.info(f"OSINT search {search_id} started for query: {name}")
+            
+            # Run the dorks search
+            results = person_dorks_search(name)
+            
+            # Check if cancelled before setting results
+            if cancel_event and cancel_event.is_set():
+                logger.info(f"OSINT search {search_id} was cancelled")
+                search_manager.cleanup(search_id)
+                return
+            
+            # Count results
+            total_results = 0
+            if results and 'categories' in results:
+                for cat, items in results.get('categories', {}).items():
+                    total_results += len(items) if items else 0
+            
+            # Persist to DB
+            search_manager.set_results(search_id, results)
+            logger.info(f"OSINT search {search_id} completed with {total_results} dork results, {len(results.get('search_links', []))} search links")
+            
+        except Exception as e:
+            logger.error(f"OSINT search {search_id} failed: {str(e)}")
+            logger.exception(e)
+            search_manager.set_error(search_id, str(e))
+        finally:
+            # Cleanup cancel event after a delay
+            def delayed_cleanup():
+                import time
+                time.sleep(300)
+                search_manager.cleanup(search_id)
+            
+            cleanup_thread = threading.Thread(target=delayed_cleanup, daemon=True)
+            cleanup_thread.start()
 
 
 @cms_bp.route('/cases/<case_id>/osint-search', methods=['POST'])
@@ -4036,12 +4166,7 @@ def start_osint_search(case_id: str):
         daemon=True
     )
     thread.start()
-    
-    # Update search info with thread reference
-    with search_manager._lock:
-        if search_id in search_manager._searches:
-            search_manager._searches[search_id]['thread'] = thread
-    
+
     return jsonify({
         'search_id': search_id,
         'status': 'started',
@@ -4611,6 +4736,7 @@ def check_policie_data():
         'subject_id': subject_id,
         'missing_persons': [],
         'wanted_persons': [],
+        'opsporingsberichten': [],
         'api_available': True,
         'source': 'interpol',
         'error': None
@@ -4757,6 +4883,17 @@ def check_policie_data():
             logger.warning(f"Interpol blocked (403), fell back to politie.nl for {subject_name}")
         else:
             logger.info(f"Check for {subject_name}: {len(results['wanted_persons'])} wanted, {len(results['missing_persons'])} missing")
+
+        # Check politie.nl/gezocht for Dutch wanted bulletins
+        try:
+            from cms.politie_scraper import search_opsporingsberichten
+            gezocht = search_opsporingsberichten(forename=forename, surname=surname, max_pages=2)
+            results['opsporingsberichten'] = gezocht.get('matches', [])
+            if gezocht['match_count'] > 0:
+                logger.info(f"Found {gezocht['match_count']} opsporingsberichten for {subject_name}")
+        except Exception as e:
+            logger.warning(f"Opsporingsberichten check error: {e}")
+
         return jsonify(results), 200
         
     except Exception as e:
@@ -5010,6 +5147,203 @@ def update_subject_from_rdw(subject_id: str):
         logger.error(f"RDW update error: {e}")
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+# =========================================================================
+# Vessel Lookup Endpoints
+# =========================================================================
+
+
+@cms_bp.route('/api/vessel-lookup', methods=['POST'])
+@login_required
+def vessel_lookup():
+    """Look up vessel data from MarinePlan, KVNR, Binnenvaart.eu, and optionally Equasis.
+
+    Accepts: {subject_id, name, imo, mmsi, eni}
+    Returns merged vessel data from all available sources.
+    """
+    if not VESSEL_SERVICE_AVAILABLE:
+        return jsonify({'error': 'Vessel service not available'}), 503
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        name = (data.get('name') or '').strip()
+        imo = (data.get('imo') or '').strip()
+        mmsi = (data.get('mmsi') or '').strip()
+        eni = (data.get('eni') or '').strip()
+
+        if not name and not imo and not mmsi and not eni:
+            return jsonify({'error': 'Provide at least name, IMO, MMSI, or ENI'}), 400
+
+        result = lookup_vessel(imo=imo or None, mmsi=mmsi or None,
+                               eni=eni or None, name=name or None)
+
+        subject_id = data.get('subject_id')
+        if subject_id and result.get('found'):
+            subject = Subject.query.get(subject_id)
+            if subject:
+                result['suggested_update'] = {
+                    'imo_number': result.get('imo'),
+                    'mmsi': result.get('mmsi'),
+                    'eni_number': result.get('eni'),
+                    'vessel_nationality': result.get('flag'),
+                    'vessel_data': result.get('source_data')
+                }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.exception(f"Vessel lookup error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@cms_bp.route('/api/vessel/update-subject', methods=['POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def update_subject_from_vessel():
+    """Update subject with vessel data from lookup."""
+    data = request.get_json()
+    if not data or not data.get('subject_id'):
+        return jsonify({'error': 'subject_id is required'}), 400
+
+    subject = Subject.query.get_or_404(data['subject_id'])
+    if subject.subject_type != 'vessel':
+        return jsonify({'error': 'Subject is not a vessel'}), 400
+
+    changes = {}
+
+    vessel_fields = ['imo_number', 'mmsi', 'eni_number', 'vessel_nationality']
+    for field in vessel_fields:
+        if data.get(field):
+            setattr(subject, field, encryptor.encrypt(str(data[field])))
+            changes[field] = {'old': 'updated', 'new': str(data[field])}
+
+    if data.get('vessel_data'):
+        vd = data['vessel_data']
+        # Ensure it's a dict (JSON column handles serialization)
+        if isinstance(vd, str):
+            try:
+                vd = json.loads(vd)
+            except json.JSONDecodeError:
+                pass
+        subject.vessel_data = vd if isinstance(vd, dict) else {}
+        changes['vessel_data'] = {'old': 'updated', 'new': 'Vessel data updated'}
+
+    subject.updated_at = datetime.utcnow()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action='update',
+        entity_type='subject',
+        entity_id=subject.id,
+        changes=changes,
+        ip_address=request.remote_addr,
+        description=f"Updated vessel subject: {subject.name}"
+    )
+    db.session.commit()
+
+    return jsonify({'message': 'Vessel subject updated', 'subject': subject.to_dict()}), 200
+
+
+@cms_bp.route('/api/findings/from-vessel', methods=['POST'])
+@login_required
+def create_finding_from_vessel():
+    """Create a Finding from vessel lookup data.
+
+    Accepts: {case_id, subject_id, vessel_data, source}
+    """
+    data = request.get_json()
+    case_id = data.get('case_id')
+    subject_id = data.get('subject_id')
+
+    if not case_id:
+        return jsonify({'error': 'case_id is required'}), 400
+
+    vessel_info = data.get('vessel_data', {})
+    source = data.get('source', 'vessel_lookup')
+
+    if not vessel_info or not isinstance(vessel_info, dict):
+        return jsonify({'error': 'vessel_data is required'}), 400
+
+    # Build content from vessel data
+    content_parts = ['Vessel Lookup Results', '=' * 30]
+    name = vessel_info.get('name') or 'Unknown'
+    content_parts.append(f"Name: {name}")
+    content_parts.append(f"IMO: {vessel_info.get('imo', 'N/A')}")
+    content_parts.append(f"MMSI: {vessel_info.get('mmsi', 'N/A')}")
+    content_parts.append(f"ENI: {vessel_info.get('eni', 'N/A')}")
+    content_parts.append(f"Flag: {vessel_info.get('flag', 'N/A')}")
+    content_parts.append(f"Ship Type: {vessel_info.get('ship_type', 'N/A')}")
+    content_parts.append(f"Length: {vessel_info.get('length', 'N/A')}")
+    content_parts.append(f"Beam: {vessel_info.get('beam', 'N/A')}")
+    content_parts.append(f"Year Built: {vessel_info.get('year_built', 'N/A')}")
+    content_parts.append(f"Callsign: {vessel_info.get('callsign', 'N/A')}")
+    content_parts.append(f"Destination: {vessel_info.get('destination', 'N/A')}")
+
+    pos = vessel_info.get('position')
+    if pos:
+        content_parts.append(f"Position: {pos.get('lat', '?')}, {pos.get('lon', '?')}")
+    if vessel_info.get('speed'):
+        content_parts.append(f"Speed: {vessel_info['speed']} km/h")
+    if vessel_info.get('builder'):
+        content_parts.append(f"Builder: {vessel_info['builder']}")
+
+    sources = vessel_info.get('sources', [])
+    content_parts.append(f"\nSources: {', '.join(sources)}")
+
+    sources_data = vessel_info.get('source_data', {})
+    if sources_data.get('vesselfinder'):
+        vf = sources_data['vesselfinder']
+        content_parts.append(f"\nVesselFinder: {vf.get('source_url', '')}")
+    if sources_data.get('marineplan'):
+        mp = sources_data['marineplan']
+        content_parts.append(f"\nMarinePlan: {mp.get('source_url', '')}")
+    if sources_data.get('kvnr'):
+        kvnr = sources_data['kvnr']
+        content_parts.append(f"KVNR: {kvnr.get('source_url', '')}")
+    if sources_data.get('binnenvaart'):
+        bv = sources_data['binnenvaart']
+        content_parts.append(f"Binnenvaart.eu: {bv.get('source_url', '')}")
+    if sources_data.get('equasis'):
+        eq = sources_data['equasis']
+        content_parts.append(f"Equasis: {eq.get('source_url', '')}")
+
+    title = f"Vessel Check: {name}"
+
+    finding = Finding(
+        case_id=case_id,
+        subject_id=subject_id,
+        title=title[:300],
+        content='\n'.join(content_parts),
+        source_url=data.get('source_url', ''),
+        source_type=source,
+        finding_type='vessel',
+        reliability_score=6,
+        confidence_level='medium',
+        tags=['vessel', source] + [f'imo:{vessel_info.get("imo")}'] if vessel_info.get('imo') else ['vessel', source],
+        created_by=current_user.id
+    )
+    db.session.add(finding)
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action='create',
+        entity_type='finding',
+        entity_id=finding.id,
+        new_values={'title': finding.title, 'source_type': source},
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Created vessel finding: {finding.title}"
+    )
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Bevinding opgeslagen: {title}',
+        'finding': finding.to_dict()
+    }), 201
 
 
 @cms_bp.route('/api/kadaster-lookup', methods=['POST'])

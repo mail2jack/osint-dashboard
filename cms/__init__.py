@@ -74,6 +74,13 @@ def create_cms_module(app: Flask):
                 db.session.execute(text('ALTER TABLE clients ADD COLUMN address_number VARCHAR(20)'))
                 db.session.commit()
                 app.logger.info("Migration: added address_number column to clients table")
+            if 'date_of_birth' not in columns:
+                db.session.execute(text('ALTER TABLE clients ADD COLUMN date_of_birth VARCHAR(500)'))
+                app.logger.info("Migration: added date_of_birth column to clients table")
+            if 'place_of_birth' not in columns:
+                db.session.execute(text('ALTER TABLE clients ADD COLUMN place_of_birth VARCHAR(500)'))
+                app.logger.info("Migration: added place_of_birth column to clients table")
+            db.session.commit()
         except Exception as e:
             app.logger.warning(f"Migration note: {e}")
             db.session.rollback()
@@ -139,6 +146,21 @@ def create_cms_module(app: Flask):
             if 'face_encoding' not in columns:
                 db.session.execute(text('ALTER TABLE subjects ADD COLUMN face_encoding TEXT'))
                 app.logger.info("Migration: added face_encoding column to subjects table")
+            if 'imo_number' not in columns:
+                db.session.execute(text('ALTER TABLE subjects ADD COLUMN imo_number VARCHAR(500)'))
+                app.logger.info("Migration: added imo_number column to subjects table")
+            if 'mmsi' not in columns:
+                db.session.execute(text('ALTER TABLE subjects ADD COLUMN mmsi VARCHAR(500)'))
+                app.logger.info("Migration: added mmsi column to subjects table")
+            if 'eni_number' not in columns:
+                db.session.execute(text('ALTER TABLE subjects ADD COLUMN eni_number VARCHAR(500)'))
+                app.logger.info("Migration: added eni_number column to subjects table")
+            if 'vessel_nationality' not in columns:
+                db.session.execute(text('ALTER TABLE subjects ADD COLUMN vessel_nationality VARCHAR(500)'))
+                app.logger.info("Migration: added vessel_nationality column to subjects table")
+            if 'vessel_data' not in columns:
+                db.session.execute(text('ALTER TABLE subjects ADD COLUMN vessel_data TEXT'))
+                app.logger.info("Migration: added vessel_data column to subjects table")
             db.session.commit()
         except Exception as e:
             app.logger.warning(f"subjects migration note: {e}")
@@ -152,10 +174,12 @@ def create_cms_module(app: Flask):
                     'clients': ['contact_person', 'contact_email', 'contact_phone',
                                 'address_street', 'address_number', 'address_city',
                                 'address_postal', 'address_country', 'social_security_number',
-                                'vat_number', 'bank_account', 'contract_number'],
+                                'vat_number', 'bank_account', 'contract_number',
+                                'date_of_birth', 'place_of_birth'],
                     'subjects': ['date_of_birth', 'place_of_birth', 'nationality',
                                  'identification_number', 'phone', 'email',
-                                 'license_plate', 'vin', 'insurance_company'],
+                                 'license_plate', 'vin', 'insurance_company',
+                                 'imo_number', 'mmsi', 'eni_number', 'vessel_nationality'],
                     'addresses': ['street', 'number', 'zipcode', 'town', 'country'],
                     'financial_records': ['counterparty_name', 'counterparty_account',
                                           'counterparty_bank', 'counterparty_country'],

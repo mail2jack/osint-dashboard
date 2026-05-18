@@ -2521,6 +2521,19 @@ def brave_search(query, api_key):
         return []
 
 
+def _get_brave_key():
+    """Get Brave API key: env var first, then DB Setting as fallback."""
+    key = os.environ.get('BRAVE_API_KEY', '')
+    if not key:
+        try:
+            with app.app_context():
+                from cms.models import Setting
+                key = Setting.get('brave_api_key', '')
+        except Exception:
+            pass
+    return key
+
+
 def person_dorks_search(full_name):
     """Search using Google dorks to find person info across web.
     
@@ -2648,7 +2661,8 @@ def person_dorks_search(full_name):
         except Exception:
             pass
     
-    if BRAVE_API_KEY:
+    brave_api_key = _get_brave_key()
+    if brave_api_key:
         logger.info("Using Brave Search API")
         results['sources_used'].append('brave')
         
@@ -2657,7 +2671,7 @@ def person_dorks_search(full_name):
         for query in dork_queries[:6]:  # Reduced from 10 to 6
             results['queries_run'].append(query)
             try:
-                brave_results = brave_search(query, BRAVE_API_KEY)
+                brave_results = brave_search(query, brave_api_key)
                 log_ddg(f"Brave Query: {query}")
                 log_ddg(f"  Brave found {len(brave_results)} results")
                 if brave_results:
