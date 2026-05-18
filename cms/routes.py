@@ -4601,153 +4601,104 @@ def upload_screenshot(case_id: str):
 import requests as http_requests
 
 
+def _extract_social_ids_from_url(url, subject=None):
+    """Extract social media IDs from a URL. Returns dict of extracted IDs.
+    Optionally merges into subject.social_media_ids if subject is provided.
+    """
+    extracted = {}
+    try:
+        try:
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.goto(url, wait_until='networkidle', timeout=30000)
+                page.wait_for_timeout(2000)
+                page_content = page.content()
+                browser.close()
+            import socid_extractor
+            extracted = socid_extractor.extract(page_content)
+        except ImportError:
+            headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'}
+            response = http_requests.get(url, headers=headers, timeout=15)
+            if response.status_code != 200:
+                return extracted
+            import socid_extractor
+            extracted = socid_extractor.extract(response.text)
+        except Exception as e:
+            logger.warning(f"Playwright extraction failed, trying HTTP: {e}")
+            headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'}
+            response = http_requests.get(url, headers=headers, timeout=15)
+            if response.status_code != 200:
+                return extracted
+            import socid_extractor
+            extracted = socid_extractor.extract(response.text)
+
+        if not extracted:
+            import re
+            html = page_content if 'page_content' in dir() else response.text
+            fb_patterns = [r'"entity_id":"(\d+)"', r'"profile_id":"(\d+)"', r'fb://page/\?id=(\d+)', r'&amp;id=(\d{10,})', r'"uid":(\d{10,})']
+            for p in fb_patterns:
+                m = re.findall(p, html)
+                if m: extracted['facebook_id'] = m[0]; break
+            ig_patterns = [r'"user_id":"(\d+)"', r'"id":"(\d{10,})"']
+            for p in ig_patterns:
+                m = re.findall(p, html)
+                if m: extracted['instagram_id'] = m[0]; break
+
+        if extracted and subject:
+            existing = subject.social_media_ids or {}
+            for key, value in extracted.items():
+                if key in ['links', 'created_at', 'updated_at', 'fullname', 'username', 'tagline']:
+                    continue
+                if key.endswith('_id') or key in ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit']:
+                    existing[key] = value
+            subject.social_media_ids = existing
+            db.session.commit()
+    except Exception:
+        pass
+    return extracted
+
+
 @cms_bp.route('/extract-social-id', methods=['POST'])
 @login_required
 def extract_social_id():
     """
     Extract social media IDs from a URL using socid_extractor.
-    Returns extracted information like Facebook ID, VK ID, etc.
     Uses Playwright for JS-heavy sites.
     """
     data = request.get_json()
-
     if not data or not data.get('url'):
         return jsonify({'error': 'URL is required'}), 400
 
     url = data.get('url')
-    subject_id = data.get('subject_id')  # Optional: save to subject
-    extracted = {}
+    subject_id = data.get('subject_id')
+    subject = Subject.query.get(subject_id) if subject_id else None
 
-    try:
-        # Try Playwright first (for JS-heavy sites like Facebook)
-        try:
-            from playwright.sync_api import sync_playwright
+    extracted = _extract_social_ids_from_url(url, subject=subject)
 
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
-                page.goto(url, wait_until='networkidle', timeout=30000)
-                page.wait_for_timeout(2000)  # Extra wait for dynamic content
-                page_content = page.content()
-                browser.close()
-
-            # Try to extract from rendered HTML
-            import socid_extractor
-            extracted = socid_extractor.extract(page_content)
-
-        except ImportError:
-            # Fallback to simple HTTP request
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-            }
-            response = http_requests.get(url, headers=headers, timeout=15)
-
-            if response.status_code != 200:
-                return jsonify({
-                    'error': f'Failed to fetch URL (status {response.status_code})',
-                    'url': url
-                }), 400
-
-            # Try to extract from HTML
-            import socid_extractor
-            extracted = socid_extractor.extract(response.text)
-
-        except Exception as e:
-            logger.warning(f"Playwright extraction failed, trying HTTP: {e}")
-            # Fallback to simple HTTP request
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-            }
-            response = http_requests.get(url, headers=headers, timeout=15)
-
-            if response.status_code != 200:
-                return jsonify({
-                    'error': f'Failed to fetch URL (status {response.status_code})',
-                    'url': url
-                }), 400
-
-            import socid_extractor
-            extracted = socid_extractor.extract(response.text)
-
-        # Try to extract IDs from page content if socid_extractor didn't find anything
-        if not extracted:
-            import re
-
-            # Look for Facebook ID patterns
-            fb_id_patterns = [
-                r'"entity_id":"(\d+)"',
-                r'"profile_id":"(\d+)"',
-                r'fb://page/\?id=(\d+)',
-                r'&amp;id=(\d{10,})',
-                r'"uid":(\d{10,})',
-            ]
-
-            for pattern in fb_id_patterns:
-                matches = re.findall(
-                    pattern, page_content if 'page_content' in dir() else response.text)
-                if matches:
-                    extracted['facebook_id'] = matches[0]
-                    break
-
-            # Look for Instagram numeric ID
-            ig_patterns = [
-                r'"user_id":"(\d+)"',
-                r'"id":"(\d{10,})"',
-            ]
-
-            for pattern in ig_patterns:
-                matches = re.findall(
-                    pattern, page_content if 'page_content' in dir() else response.text)
-                if matches:
-                    extracted['instagram_id'] = matches[0]
-                    break
-
-        if not extracted:
-            return jsonify({
-                'message': 'No social media IDs found on this page',
-                'url': url,
-                'extracted': {},
-                'note': 'Some sites (Facebook, Instagram) block automated access. Try manual extraction.'
-            }), 200
-
-        # If subject_id provided, save to subject
-        if subject_id:
-            subject = Subject.query.get(subject_id)
-            if subject:
-                # Merge with existing social_media_ids
-                existing = subject.social_media_ids or {}
-
-                # Add new extracted data
-                for key, value in extracted.items():
-                    # Skip generic fields
-                    if key in ['links', 'created_at', 'updated_at', 'fullname', 'username', 'tagline']:
-                        continue
-                    if key.endswith('_id') or key in ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit']:
-                        existing[key] = value
-
-                subject.social_media_ids = existing
-                db.session.commit()
-
-                return jsonify({
-                    'message': 'Social media IDs extracted and saved',
-                    'url': url,
-                    'extracted': extracted,
-                    'saved_to_subject': True,
-                    'subject_id': subject_id
-                }), 200
-
+    if not extracted:
         return jsonify({
-            'message': 'Social media IDs extracted',
+            'message': 'No social media IDs found on this page',
             'url': url,
-            'extracted': extracted
+            'extracted': {},
+            'note': 'Some sites (Facebook, Instagram) block automated access. Try manual extraction.'
         }), 200
 
-    except Exception as e:
-        logger.error(f"Social ID extraction error: {e}")
+    if subject:
         return jsonify({
-            'error': f'Failed to extract: {str(e)}',
-            'url': url
-        }), 500
+            'message': 'Social media IDs extracted and saved',
+            'url': url,
+            'extracted': extracted,
+            'saved_to_subject': True,
+            'subject_id': subject_id
+        }), 200
+
+    return jsonify({
+        'message': 'Social media IDs extracted',
+        'url': url,
+        'extracted': extracted
+    }), 200
 
 
 @cms_bp.route('/subjects/<subject_id>/social-ids', methods=['GET'])
@@ -4925,6 +4876,38 @@ def save_finding_as_social_account():
     db.session.add(account)
     db.session.commit()
     return jsonify({'message': 'Social account created', 'account': account.to_dict()}), 201
+
+
+@cms_bp.route('/subjects/<subject_id>/bulk-extract-social-ids', methods=['POST'])
+@login_required
+def bulk_extract_social_ids(subject_id: str):
+    """Extract social media IDs from all findings linked to a subject."""
+    from .models import Finding
+    subject = Subject.query.get_or_404(subject_id)
+    findings = Finding.query.filter_by(subject_id=subject_id).filter(Finding.source_url.isnot(None)).filter(Finding.source_url != '').all()
+
+    if not findings:
+        return jsonify({'message': 'No findings with URLs to scan', 'found': 0, 'total': 0}), 200
+
+    total_found = 0
+    skipped = 0
+
+    for finding in findings:
+        try:
+            result = _extract_social_ids_from_url(finding.source_url, subject=subject)
+            if result:
+                total_found += 1
+            else:
+                skipped += 1
+        except Exception:
+            skipped += 1
+
+    return jsonify({
+        'message': f'Scanned {len(findings)} findings. Found IDs in {total_found}, skipped {skipped}.',
+        'found': total_found,
+        'total': len(findings),
+        'skipped': skipped
+    }), 200
 
 
 # =============================================================================

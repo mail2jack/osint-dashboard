@@ -292,7 +292,10 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="margin: 0;">Social Media IDs</h3>
-        <button onclick="openAddSocialIdModal()" class="btn-sm" style="background: #8b5cf6;">+ Add ID</button>
+        <div style="display: flex; gap: 0.5rem;">
+            <button onclick="bulkExtractSocialIds()" class="btn-sm" style="background: #059669;" id="bulkExtractBtn">🔍 Bulk Extract from Findings</button>
+            <button onclick="openAddSocialIdModal()" class="btn-sm" style="background: #8b5cf6;">+ Add ID</button>
+        </div>
     </div>
     <div id="socialIdsList">
         {% if subject.social_media_ids and subject.social_media_ids|length > 0 %}
@@ -681,7 +684,28 @@
             displayRelationships(data);
         })
         .catch(err => {
-            document.getElementById('relationshipsList').innerHTML = 'Failed to load relationships: ' + err.message;
+            alert('Error: ' + err.message);
+        });
+    }
+
+    function bulkExtractSocialIds() {
+        if (!confirm('Extract social media IDs from all findings linked to this subject? This may take a while.')) return;
+        const btn = document.getElementById('bulkExtractBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Extracting...';
+        fetch('/cms/subjects/{{ subject.id }}/bulk-extract-social-ids', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.textContent = '🔍 Bulk Extract from Findings';
+            if (data.error) { alert('Error: ' + data.error); return; }
+            alert(data.message);
+            if (data.found > 0) location.reload();
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.textContent = '🔍 Bulk Extract from Findings';
+            alert('Error: ' + err.message);
         });
     }
     
