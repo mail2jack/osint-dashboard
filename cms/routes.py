@@ -4604,8 +4604,20 @@ import requests as http_requests
 def _extract_social_ids_from_url(url, subject=None):
     """Extract social media IDs from a URL. Returns dict of extracted IDs.
     Optionally merges into subject.social_media_ids if subject is provided.
+    Always adds username/platform from social-links when URL is a known social profile.
     """
     extracted = {}
+    html = None
+
+    # Pre-check: is this a social media URL?
+    from .social_extractor import detect_platform, extract_username
+    sl_platform = detect_platform(url)
+    sl_username = extract_username(url, platform=sl_platform)
+
+    # Skip scraping entirely for non-social URLs
+    if not sl_platform and not sl_username:
+        return extracted
+
     try:
         try:
             from playwright.sync_api import sync_playwright
@@ -4614,72 +4626,73 @@ def _extract_social_ids_from_url(url, subject=None):
                 page = browser.new_page()
                 page.goto(url, wait_until='networkidle', timeout=30000)
                 page.wait_for_timeout(2000)
-                page_content = page.content()
+                html = page.content()
                 browser.close()
             import socid_extractor
-            extracted = socid_extractor.extract(page_content)
+            extracted = socid_extractor.extract(html)
         except ImportError:
             headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'}
-            response = http_requests.get(url, headers=headers, timeout=15)
-            if response.status_code != 200:
-                return extracted
-            import socid_extractor
-            extracted = socid_extractor.extract(response.text)
+            r = http_requests.get(url, headers=headers, timeout=15)
+            if r.status_code == 200:
+                html = r.text
+                try:
+                    import socid_extractor
+                    extracted = socid_extractor.extract(html)
+                except ImportError:
+                    pass
         except Exception as e:
             logger.warning(f"Playwright extraction failed, trying HTTP: {e}")
             headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'}
-            response = http_requests.get(url, headers=headers, timeout=15)
-            if response.status_code != 200:
-                return extracted
-            import socid_extractor
-            extracted = socid_extractor.extract(response.text)
+            r = http_requests.get(url, headers=headers, timeout=15)
+            if r.status_code == 200:
+                html = r.text
+                try:
+                    import socid_extractor
+                    extracted = socid_extractor.extract(html)
+                except ImportError:
+                    pass
 
-        if not extracted:
+        if not extracted and html:
             import re
-            html = page_content if 'page_content' in dir() else response.text
-            fb_patterns = [r'"entity_id":"(\d+)"', r'"profile_id":"(\d+)"', r'fb://page/\?id=(\d+)', r'&amp;id=(\d{10,})', r'"uid":(\d{10,})']
-            for p in fb_patterns:
+            fb_p = [r'"entity_id":"(\d+)"', r'"profile_id":"(\d+)"', r'fb://page/\?id=(\d+)', r'&amp;id=(\d{10,})', r'"uid":(\d{10,})']
+            for p in fb_p:
                 m = re.findall(p, html)
                 if m: extracted['facebook_id'] = m[0]; break
-            ig_patterns = [r'"user_id":"(\d+)"', r'"id":"(\d{10,})"']
-            for p in ig_patterns:
+            ig_p = [r'"user_id":"(\d+)"', r'"id":"(\d{10,})"']
+            for p in ig_p:
                 m = re.findall(p, html)
                 if m: extracted['instagram_id'] = m[0]; break
-            # Additional platform regex fallbacks
-            tw_patterns = [r'data-user-id="(\d+)"', r'"rest_id":"(\d+)"', r'\"id_str\":\"(\d+)\"']
-            for p in tw_patterns:
+            tw_p = [r'data-user-id="(\d+)"', r'"rest_id":"(\d+)"', r'\"id_str\":\"(\d+)\"']
+            for p in tw_p:
                 m = re.findall(p, html)
                 if m: extracted['twitter_id'] = m[0]; break
-            tk_patterns = [r'\"id\":\"(\d+)\".*uniqueId', r'user-id="(\d+)"', r'"uid_(\d+)"']
-            for p in tk_patterns:
+            tk_p = [r'\"id\":\"(\d+)\".*uniqueId', r'user-id="(\d+)"', r'"uid_(\d+)"']
+            for p in tk_p:
                 m = re.findall(p, html)
                 if m: extracted['tiktok_id'] = m[0]; break
-            rd_patterns = [r'"id":"(\w+)"', r'"name":"\w+","id":"(\w+)"']
-            for p in rd_patterns:
+            rd_p = [r'"id":"(\w+)"', r'"name":"\w+","id":"(\w+)"']
+            for p in rd_p:
                 m = re.findall(p, html)
                 if m: extracted['reddit_id'] = m[0]; break
-
-        # Add username from URL via social-links if not already extracted
-        if 'username' not in extracted:
-            from .social_extractor import extract_username as _extract_user
-            try:
-                uname = _extract_user(url)
-                if uname:
-                    extracted['username'] = uname
-            except Exception:
-                pass
-
-        if extracted and subject:
-            existing = subject.social_media_ids or {}
-            for key, value in extracted.items():
-                if key in ['links', 'created_at', 'updated_at', 'fullname', 'username', 'tagline']:
-                    continue
-                if key.endswith('id') or key in ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit']:
-                    existing[key] = value
-            subject.social_media_ids = existing
-            db.session.commit()
     except Exception:
         pass
+
+    # Always add social-links username when URL is a known social profile
+    if sl_username and 'username' not in extracted:
+        extracted['username'] = sl_username
+    if not any(k.endswith('id') for k in extracted):
+        extracted['source_platform'] = sl_platform or 'unknown'
+
+    if subject:
+        existing = subject.social_media_ids or {}
+        for key, value in extracted.items():
+            if key in ['links', 'created_at', 'updated_at', 'fullname', 'tagline']:
+                continue
+            if key.endswith('id') or key in ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit', 'platform', 'username', 'source_platform']:
+                existing[key] = value
+        subject.social_media_ids = existing
+        db.session.commit()
+
     return extracted
 
 
@@ -4949,6 +4962,7 @@ def save_finding_as_social_account():
 def bulk_extract_social_ids(subject_id: str):
     """Extract social media IDs from all findings linked to a subject."""
     from .models import Finding
+    from .social_extractor import detect_platform
     subject = Subject.query.get_or_404(subject_id)
     findings = Finding.query.filter_by(subject_id=subject_id).filter(Finding.source_url.isnot(None)).filter(Finding.source_url != '').all()
 
@@ -4957,10 +4971,15 @@ def bulk_extract_social_ids(subject_id: str):
 
     total_found = 0
     skipped = 0
+    not_social = 0
 
     for finding in findings:
+        url = finding.source_url
+        if not detect_platform(url):
+            not_social += 1
+            continue
         try:
-            result = _extract_social_ids_from_url(finding.source_url, subject=subject)
+            result = _extract_social_ids_from_url(url, subject=subject)
             if result:
                 total_found += 1
             else:
@@ -4968,11 +4987,20 @@ def bulk_extract_social_ids(subject_id: str):
         except Exception:
             skipped += 1
 
+    parts = [f'Scanned {len(findings)} findings.']
+    if total_found:
+        parts.append(f'IDs saved from {total_found} social profile(s).')
+    if not_social:
+        parts.append(f'{not_social} non-social URL(s) skipped.')
+    if skipped:
+        parts.append(f'{skipped} social URL(s) yielded no IDs.')
+
     return jsonify({
-        'message': f'Scanned {len(findings)} findings. Found IDs in {total_found}, skipped {skipped}.',
+        'message': ' '.join(parts),
         'found': total_found,
         'total': len(findings),
-        'skipped': skipped
+        'skipped': skipped,
+        'not_social': not_social,
     }), 200
 
 
