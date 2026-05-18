@@ -1642,7 +1642,13 @@ def subjects():
     query = Subject.query.filter_by(is_deleted=False)
 
     if search:
-        query = query.filter(Subject.name.ilike(f'%{search}%'))
+        from .models import SocialAccount
+        query = query.outerjoin(SocialAccount, SocialAccount.subject_id == Subject.id).filter(
+            db.or_(
+                Subject.name.ilike(f'%{search}%'),
+                SocialAccount.username.ilike(f'%{search}%'),
+            )
+        ).distinct()
 
     if subject_type:
         query = query.filter_by(subject_type=subject_type)
@@ -4780,6 +4786,145 @@ def update_subject_social_ids(subject_id: str):
         'message': 'Social media IDs updated',
         'social_media_ids': subject.social_media_ids
     })
+
+
+# =============================================================================
+# Social Account Routes (searchable usernames per subject)
+# =============================================================================
+
+@cms_bp.route('/api/subjects/<subject_id>/social-accounts', methods=['POST'])
+@login_required
+def add_social_account(subject_id: str):
+    """Add a social account (username) to a subject."""
+    from .models import SocialAccount
+    subject = Subject.query.get_or_404(subject_id)
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+    platform = (data.get('platform') or '').strip().lower()
+    username = (data.get('username') or '').strip()
+    if not platform or not username:
+        return jsonify({'error': 'platform and username required'}), 400
+    account = SocialAccount(
+        subject_id=subject.id,
+        platform=platform,
+        username=username,
+        url=(data.get('url') or '').strip(),
+        account_id=(data.get('account_id') or '').strip(),
+    )
+    db.session.add(account)
+    db.session.commit()
+    return jsonify({'message': 'Social account added', 'account': account.to_dict()}), 201
+
+
+@cms_bp.route('/api/subjects/<subject_id>/social-accounts/<account_id>', methods=['DELETE'])
+@login_required
+def delete_social_account(subject_id: str, account_id: str):
+    """Delete a social account."""
+    from .models import SocialAccount
+    account = SocialAccount.query.filter_by(id=account_id, subject_id=subject_id).first_or_404()
+    db.session.delete(account)
+    db.session.commit()
+    return jsonify({'message': 'Social account deleted'})
+
+
+@cms_bp.route('/api/subjects/create-from-username', methods=['POST'])
+@login_required
+def create_subject_from_username():
+    """Create a subject from just a username (no full name needed)."""
+    from .models import SocialAccount
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+    username = (data.get('username') or '').strip()
+    platform = (data.get('platform') or '').strip().lower()
+    if not username:
+        return jsonify({'error': 'username required'}), 400
+    if not platform:
+        platform = 'other'
+
+    display_name = f"{username} ({platform})" if platform != 'other' else username
+    subject = Subject(
+        name=display_name,
+        subject_type='person',
+        notes=f"Created from username '{username}' on {platform}",
+    )
+    db.session.add(subject)
+    db.session.flush()
+
+    account = SocialAccount(
+        subject_id=subject.id,
+        platform=platform,
+        username=username,
+        url=(data.get('url') or '').strip(),
+    )
+    db.session.add(account)
+
+    # Optionally link to a case
+    case_id = data.get('case_id')
+    if case_id:
+        from .models import Case
+        case = Case.query.get(case_id)
+        if case:
+            subject.cases.append(case)
+
+    db.session.commit()
+    return jsonify({'message': 'Subject created', 'subject': subject.to_dict(), 'account': account.to_dict()}), 201
+
+
+@cms_bp.route('/api/findings/save-as-social-account', methods=['POST'])
+@login_required
+def save_finding_as_social_account():
+    """Save an OSINT finding's source URL as a social account on the linked subject."""
+    from .models import SocialAccount
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+
+    finding_id = data.get('finding_id')
+    subject_id = data.get('subject_id')
+
+    if not finding_id and not subject_id:
+        return jsonify({'error': 'finding_id or subject_id required'}), 400
+
+    url = data.get('url') or ''
+    platform = (data.get('platform') or '').strip().lower()
+    username = (data.get('username') or '').strip()
+
+    if finding_id:
+        from .models import Finding
+        finding = Finding.query.get_or_404(finding_id)
+        if not finding.subject_id:
+            return jsonify({'error': 'Finding not linked to a subject'}), 400
+        subject_id = finding.subject_id
+        if not url:
+            url = finding.source_url
+        if not username:
+            from .models import Subject
+            subj = Subject.query.get(subject_id)
+            username = data.get('username') or (subj.name if subj else finding.title.strip())
+
+    if not username and url:
+        import re
+        path = re.sub(r'https?://', '', url).split('/')
+        username = path[-1] if len(path) > 1 else path[0]
+    if not username:
+        username = url or 'unknown'
+
+    if not platform:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        platform = parsed.netloc.replace('www.', '').split('.')[0] if parsed.netloc else 'unknown'
+
+    account = SocialAccount(
+        subject_id=subject_id,
+        platform=platform,
+        username=username,
+        url=url,
+    )
+    db.session.add(account)
+    db.session.commit()
+    return jsonify({'message': 'Social account created', 'account': account.to_dict()}), 201
 
 
 # =============================================================================

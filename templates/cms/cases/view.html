@@ -215,6 +215,7 @@
     <div style="margin-bottom: 1rem;">
         <button onclick="showAddSubjectForm()" class="btn btn-sm">+ Add Subject</button>
         <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Create New Subject</a>
+        <button onclick="openCreateFromUsernameModal()" class="btn btn-sm" style="background: #8b5cf6;">@ Create from Username</button>
         <button onclick="openOsintModal()" class="btn btn-sm" style="background: #7c3aed;">OSINT Search</button>
     </div>
     
@@ -242,14 +243,26 @@
     {% if subjects %}
     <table>
         <thead>
-            <tr><th>Name</th><th>Type</th><th>Risk Score</th><th>Actions</th></tr>
+            <tr><th>Name</th><th>Type</th><th>Social Accounts</th><th>Risk Score</th><th>Actions</th></tr>
         </thead>
         <tbody>
             {% for subject in subjects %}
             <tr>
                 <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">{{ subject.name }}</a></td>
                 <td>{{ subject.subject_type }}</td>
-                <td>{{ subject.risk_score }}</td>
+                <td style="font-size:0.8rem;">
+                    {% set accts = subject.social_accounts.all() if subject.social_accounts else [] %}
+                    {% if accts %}
+                        {% for a in accts[:3] %}
+                            <span style="display:inline-block;background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:0.1rem 0.35rem;margin:0.1rem;font-size:0.7rem;">{{ a.platform }}: {{ a.username }}</span>
+                        {% endfor %}
+                        {% if accts|length > 3 %}
+                            <span style="color:#888;font-size:0.7rem;">+{{ accts|length - 3 }} more</span>
+                        {% endif %}
+                    {% else %}
+                        <span style="color:#9ca3af;">-</span>
+                    {% endif %}
+                </td>
                 <td>
                     {% if case.status not in ['closed', 'archived'] %}
                     <form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display: inline;">
@@ -659,6 +672,46 @@
     </div>
 </div>
 
+<!-- Create from Username Modal -->
+<div id="createFromUsernameModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2>@ Create Subject from Username</h2>
+            <span class="close" onclick="closeCreateFromUsernameModal()">&times;</span>
+        </div>
+        <form id="createFromUsernameForm" onsubmit="return createSubjectFromUsername(event)">
+            <div class="form-group">
+                <label for="cuUsername">Username *</label>
+                <input type="text" id="cuUsername" style="width:100%;padding:0.5rem;" placeholder="@username or profile name" required>
+            </div>
+            <div class="form-group">
+                <label for="cuPlatform">Platform</label>
+                <select id="cuPlatform" style="width:100%;padding:0.5rem;">
+                    <option value="twitter">Twitter/X</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="reddit">Reddit</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="github">GitHub</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="signal">Signal</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="cuUrl">Profile URL (optional)</label>
+                <input type="url" id="cuUrl" style="width:100%;padding:0.5rem;" placeholder="https://...">
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+                <button type="submit" class="btn btn-success">Create Subject</button>
+                <button type="button" onclick="closeCreateFromUsernameModal()" class="btn" style="background:#666;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- OSINT Search Modal -->
 <div id="osintModal" class="modal">
     <div class="modal-content">
@@ -718,6 +771,7 @@
             
             <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.5rem; justify-content: flex-end;">
                 <button onclick="closeOsintModal()" class="btn" style="background: #666;">Close</button>
+                <button onclick="saveSelectedAsSocialAccounts()" class="btn" style="background: #8b5cf6;" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
                 <button onclick="addSelectedFindings()" class="btn btn-success" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
@@ -1049,6 +1103,9 @@ function updateSelectedCount() {
     const checked = document.querySelectorAll('.result-checkbox:checked').length;
     document.getElementById('selectedCount').textContent = checked;
     document.getElementById('addFindingsBtn').disabled = checked === 0;
+    document.getElementById('socialSelectedCount').textContent = checked;
+    const subjectId = document.getElementById('osintSubject')?.value;
+    document.getElementById('saveSocialBtn').disabled = checked === 0 || !subjectId;
 }
 
 function addSelectedFindings() {
@@ -1091,6 +1148,83 @@ function addSelectedFindings() {
     });
 }
 
+function saveSelectedAsSocialAccounts() {
+    const checkboxes = document.querySelectorAll('.result-checkbox:checked');
+    if (checkboxes.length === 0) return;
+    const subjectId = document.getElementById('osintSubject')?.value;
+    if (!subjectId) { alert('Please select a subject first.'); return; }
+    if (!confirm('Save ' + checkboxes.length + ' selected result(s) as social accounts on the selected subject?')) return;
+    let saved = 0;
+    let errors = 0;
+    let completed = 0;
+    const total = checkboxes.length;
+    checkboxes.forEach(cb => {
+        const url = cb.dataset.url || '';
+        const domain = cb.dataset.domain || '';
+        const query = cb.dataset.query || '';
+        const platform = domain.replace('www.', '').split('.')[0] || 'unknown';
+        const username = query || url.split('/').filter(s => s).pop() || domain;
+        fetch('/cms/api/findings/save-as-social-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: url,
+                platform: platform,
+                username: username,
+                subject_id: subjectId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            completed++;
+            if (data.error) errors++; else saved++;
+            if (completed === total) {
+                alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+                if (saved > 0) location.reload();
+            }
+        })
+        .catch(() => {
+            completed++;
+            errors++;
+            if (completed === total) alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+        });
+    });
+}
+
+// Create from Username functions
+function openCreateFromUsernameModal() {
+    document.getElementById('createFromUsernameModal').classList.add('show');
+}
+function closeCreateFromUsernameModal() {
+    document.getElementById('createFromUsernameModal').classList.remove('show');
+}
+function createSubjectFromUsername(event) {
+    event.preventDefault();
+    const username = document.getElementById('cuUsername').value.trim();
+    if (!username) { alert('Username is required'); return false; }
+    const platform = document.getElementById('cuPlatform').value;
+    const url = document.getElementById('cuUrl').value.trim();
+    fetch('/cms/api/subjects/create-from-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            username: username,
+            platform: platform,
+            url: url,
+            case_id: '{{ case.id }}'
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { alert('Error: ' + data.error); return; }
+        alert('Subject created: ' + data.subject.name);
+        closeCreateFromUsernameModal();
+        location.reload();
+    })
+    .catch(err => alert('Error: ' + err.message));
+    return false;
+}
+
 function showOsintError(message) {
     document.getElementById('osintSearching').style.display = 'none';
     document.getElementById('osintResults').style.display = 'none';
@@ -1102,6 +1236,14 @@ document.getElementById('osintModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeOsintModal();
     }
+});
+
+document.getElementById('osintSubject')?.addEventListener('change', function() {
+    updateSelectedCount();
+});
+
+document.getElementById('createFromUsernameModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeCreateFromUsernameModal();
 });
 
 // Findings Filter Functions

@@ -327,6 +327,81 @@
     </div>
 </div>
 
+<!-- Social Accounts (Usernames) Section -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">🌐 Social Accounts (Usernames)</h3>
+        <button onclick="openAddSocialAccountModal()" class="btn-sm" style="background: #8b5cf6;">+ Add Username</button>
+    </div>
+    <div id="socialAccountsList">
+        {% if subject.social_accounts and subject.social_accounts.count() > 0 %}
+        <table style="width: 100%;">
+            <thead>
+                <tr><th>Platform</th><th>Username</th><th>URL</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for acct in subject.social_accounts %}
+                <tr>
+                    <td style="text-transform: capitalize;">{{ acct.platform }}</td>
+                    <td><strong>{{ acct.username }}</strong></td>
+                    <td>{% if acct.url %}<a href="{{ acct.url }}" target="_blank" style="font-size:0.8rem;">🔗 link</a>{% else %}-{% endif %}</td>
+                    <td>
+                        <button onclick="deleteSocialAccount('{{ acct.id }}')" class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #666;">No social accounts recorded yet.</p>
+        <p style="color: #888; font-size: 0.875rem;">Tip: Found a username during OSINT search? Save it here so you can search by it later.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Social Account Modal -->
+<div id="addSocialAccountModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Add Social Account</h2>
+            <span onclick="closeAddSocialAccountModal()" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+        </div>
+        <form id="addSocialAccountForm" onsubmit="return saveSocialAccount(event)">
+            <div class="form-group">
+                <label for="saPlatform">Platform</label>
+                <select id="saPlatform" style="width: 100%; padding: 0.5rem;">
+                    <option value="twitter">Twitter/X</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="reddit">Reddit</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="github">GitHub</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="signal">Signal</option>
+                    <option value="discord">Discord</option>
+                    <option value="snapchat">Snapchat</option>
+                    <option value="pinterest">Pinterest</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="saUsername">Username</label>
+                <input type="text" id="saUsername" style="width: 100%; padding: 0.5rem;" placeholder="@username or profile name" required>
+            </div>
+            <div class="form-group">
+                <label for="saUrl">Profile URL (optional)</label>
+                <input type="url" id="saUrl" style="width: 100%; padding: 0.5rem;" placeholder="https://...">
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button type="submit" class="btn-sm" style="background: #059669;">Save</button>
+                <button type="button" onclick="closeAddSocialAccountModal()" class="btn-sm" style="background: #666;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Add Social ID Modal -->
 <div id="addSocialIdModal" class="modal">
     <div class="modal-content" style="max-width: 400px;">
@@ -1572,6 +1647,44 @@
     
     document.getElementById('addSocialIdModal').addEventListener('click', function(e) {
         if (e.target === this) closeAddSocialIdModal();
+    });
+    
+    // Social Account Functions
+    function openAddSocialAccountModal() {
+        document.getElementById('addSocialAccountModal').classList.add('show');
+    }
+    function closeAddSocialAccountModal() {
+        document.getElementById('addSocialAccountModal').classList.remove('show');
+    }
+    function saveSocialAccount(event) {
+        event.preventDefault();
+        const platform = document.getElementById('saPlatform').value;
+        const username = document.getElementById('saUsername').value.trim();
+        const url = document.getElementById('saUrl').value.trim();
+        if (!username) { alert('Username is required'); return; }
+        fetch('/cms/api/subjects/{{ subject.id }}/social-accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform: platform, username: username, url: url })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert('Error: ' + data.error); return; }
+            location.reload();
+        })
+        .catch(err => alert('Error: ' + err.message));
+    }
+    function deleteSocialAccount(accountId) {
+        if (!confirm('Delete this social account?')) return;
+        fetch('/cms/api/subjects/{{ subject.id }}/social-accounts/' + accountId, {
+            method: 'DELETE'
+        })
+        .then(r => r.json())
+        .then(data => location.reload())
+        .catch(err => alert('Error: ' + err.message));
+    }
+    document.getElementById('addSocialAccountModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddSocialAccountModal();
     });
     
     // Face Recognition Functions

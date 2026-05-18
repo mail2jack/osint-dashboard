@@ -583,8 +583,11 @@ class Subject(db.Model):
                                foreign_keys='Address.subject_id',
                                order_by='Address.is_primary.desc(), Address.created_at')
     contacts = db.relationship('Contact', backref='subject', lazy='dynamic',
-                              foreign_keys='Contact.subject_id',
-                              order_by='Contact.is_primary.desc(), Contact.created_at')
+                               foreign_keys='Contact.subject_id',
+                               order_by='Contact.is_primary.desc(), Contact.created_at')
+    social_accounts = db.relationship('SocialAccount', backref='subject', lazy='dynamic',
+                                      foreign_keys='SocialAccount.subject_id',
+                                      order_by='SocialAccount.platform, SocialAccount.username')
     
     # Relations with other subjects
     related_subjects = db.relationship(
@@ -1611,6 +1614,32 @@ class Setting(db.Model):
             'is_sensitive': self.is_sensitive,
             'display_order': self.display_order,
             'is_active': self.is_active
+        }
+
+
+class SocialAccount(db.Model):
+    __tablename__ = 'social_accounts'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'), nullable=True, index=True)
+
+    platform = db.Column(db.String(50), nullable=False, index=True)
+    username = db.Column(db.String(200), nullable=False, index=True)
+    url = db.Column(db.String(500))
+    account_id = db.Column(db.String(200))
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'subject_id': self.subject_id,
+            'platform': self.platform,
+            'username': self.username,
+            'url': self.url,
+            'account_id': self.account_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
 

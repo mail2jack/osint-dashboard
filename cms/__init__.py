@@ -166,6 +166,33 @@ def create_cms_module(app: Flask):
             app.logger.warning(f"subjects migration note: {e}")
             db.session.rollback()
 
+        # Migration: create social_accounts table for existing DBs
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            if 'social_accounts' not in tables:
+                db.session.execute(text('''
+                    CREATE TABLE social_accounts (
+                        id VARCHAR(36) PRIMARY KEY,
+                        subject_id VARCHAR(36) REFERENCES subjects(id),
+                        platform VARCHAR(50) NOT NULL,
+                        username VARCHAR(200) NOT NULL,
+                        url VARCHAR(500),
+                        account_id VARCHAR(200),
+                        created_at TIMESTAMP,
+                        updated_at TIMESTAMP
+                    )
+                '''))
+                db.session.execute(text('CREATE INDEX IF NOT EXISTS ix_social_accounts_subject_id ON social_accounts(subject_id)'))
+                db.session.execute(text('CREATE INDEX IF NOT EXISTS ix_social_accounts_platform ON social_accounts(platform)'))
+                db.session.execute(text('CREATE INDEX IF NOT EXISTS ix_social_accounts_username ON social_accounts(username)'))
+                db.session.commit()
+                app.logger.info("Migration: created social_accounts table")
+        except Exception as e:
+            app.logger.warning(f"social_accounts migration note: {e}")
+            db.session.rollback()
+
         # Migration: resize encrypted columns for PostgreSQL (SQLite ignores length)
         try:
             if db.engine.name == 'postgresql':
