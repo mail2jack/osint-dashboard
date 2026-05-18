@@ -321,7 +321,7 @@ class Client(db.Model):
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
-                except:
+                except Exception:
                     pass  # Handle corrupted data gracefully
     
     def soft_delete(self):
@@ -429,7 +429,7 @@ class Case(db.Model):
             try:
                 last_num = int(last_case.case_number.split('-')[1])
                 next_num = last_num + 1
-            except:
+            except Exception:
                 next_num = 1
         else:
             next_num = 1
@@ -616,7 +616,7 @@ class Subject(db.Model):
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
-                except:
+                except Exception:
                     pass
     
     def soft_delete(self):
@@ -724,7 +724,7 @@ class Address(db.Model):
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
-                except:
+                except Exception:
                     pass
     
     def to_dict(self, decrypted=True):
@@ -800,7 +800,7 @@ class Contact(db.Model):
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
-                except:
+                except Exception:
                     pass
 
     def to_dict(self, decrypted=True):
@@ -880,7 +880,7 @@ class FinancialRecord(db.Model):
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
-                except:
+                except Exception:
                     pass
     
     def verify(self, user_id: str, notes: str = None):
@@ -1568,7 +1568,7 @@ class Setting(db.Model):
             from .encryption_utils import encryptor
             try:
                 return encryptor.decrypt(setting.value)
-            except:
+            except Exception:
                 return default
         return setting.value
     

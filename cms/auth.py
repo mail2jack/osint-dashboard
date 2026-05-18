@@ -317,7 +317,7 @@ def audit_log(action: str, entity_type: str, get_entity_id: Callable = None):
             if get_entity_id:
                 try:
                     entity_id = get_entity_id(response)
-                except:
+                except Exception:
                     pass
             
             # Log the action

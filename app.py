@@ -224,7 +224,7 @@ def platform_name_filter(url):
         domain = parsed.netloc or parsed.path
         domain = domain.replace('www.', '').split('.')[0].capitalize()
         return domain if domain else 'Website'
-    except:
+    except Exception:
         return 'Website'
 
 @app.template_filter('platform_color')
@@ -585,7 +585,7 @@ def check_ollama_available():
     try:
         response = requests.get("http://localhost:11434/api/tags", timeout=5)
         return response.status_code == 200
-    except:
+    except Exception:
         return False
 
 
@@ -664,7 +664,7 @@ Determine what the user is searching for and extract the key information."""
     if result:
         try:
             return json.loads(result)
-        except:
+        except Exception:
             pass
     
     return {"type": None, "query": user_query, "confidence": 0}
@@ -765,6 +765,12 @@ HEADERS = {
     'Sec-Fetch-Site': 'none',
     'Sec-Fetch-User': '?1',
     'Cache-Control': 'max-age=0'
+}
+
+WHATSAPP_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
 }
 
 SHERLOCK_DATA_URL = "https://raw.githubusercontent.com/sherlock-project/sherlock/master/sherlock_project/resources/data.json"
@@ -1077,7 +1083,7 @@ async def check_twitter(client, email, url):
             headers={'Authorization': 'Basic cmVhZDphcGk='},
             timeout=10
         )
-    except:
+    except Exception:
         pass
     return {
         'name': 'Twitter/X',
@@ -1118,7 +1124,7 @@ async def check_discord(client, email, url):
             return {'name': 'Discord', 'domain': 'discord.com', 'exists': True, 'rateLimit': False}
         elif 'captcha' in str(data).lower() or response.status_code == 400:
             return {'name': 'Discord', 'domain': 'discord.com', 'exists': False, 'rateLimit': False}
-    except:
+    except Exception:
         pass
     return {'name': 'Discord', 'domain': 'discord.com', 'exists': None, 'rateLimit': True}
 
@@ -1129,7 +1135,7 @@ async def check_reddit(client, email, url):
             headers=HEADERS,
             timeout=10
         )
-    except:
+    except Exception:
         pass
     return {
         'name': 'Reddit',
@@ -1147,7 +1153,7 @@ async def check_netflix(client, email, url):
             headers=HEADERS,
             timeout=10
         )
-    except:
+    except Exception:
         pass
     return {
         'name': 'Netflix',
@@ -1171,7 +1177,7 @@ async def check_spotify(client, email, url):
                 return {'name': 'Spotify', 'domain': 'spotify.com', 'exists': True, 'rateLimit': False}
             elif data.get('status') == 1:
                 return {'name': 'Spotify', 'domain': 'spotify.com', 'exists': False, 'rateLimit': False}
-    except:
+    except Exception:
         pass
     return {'name': 'Spotify', 'domain': 'spotify.com', 'exists': None, 'rateLimit': True}
 
@@ -1183,7 +1189,7 @@ async def check_steam(client, email, url):
             headers=HEADERS,
             timeout=10
         )
-    except:
+    except Exception:
         pass
     return {
         'name': 'Steam',
@@ -1293,7 +1299,7 @@ async def search_email_async(email, progress_callback=None, limit=30):
     try:
         mx_records = socket.getaddrinfo(domain, 25)
         result['mx_records'] = [r[3][0] for r in mx_records[:3]]
-    except:
+    except Exception:
         result['mx_records'] = []
     
     disposable_domains = ['tempmail.com', 'guerrillamail.com', 'mailinator.com', '10minutemail.com', 'throwaway.email', 'temp-mail.org', 'fakeinbox.com', 'maildrop.cc', 'yopmail.com', 'sharklasers.com']
@@ -1519,7 +1525,7 @@ async def search_email_combined(email, progress_callback=None):
         try:
             mx_records = socket.getaddrinfo(domain, 25)
             combined['mx_records'] = [r[3][0] for r in mx_records[:3]]
-        except:
+        except Exception:
             combined['mx_records'] = []
         
         disposable_domains = ['tempmail.com', 'guerrillamail.com', 'mailinator.com', '10minutemail.com', 'throwaway.email', 'temp-mail.org', 'fakeinbox.com', 'maildrop.cc', 'yopmail.com', 'sharklasers.com']
@@ -1688,7 +1694,7 @@ def lookup_ip(ip_address):
     if result['valid']:
         try:
             result['reverse_dns'] = socket.gethostbyaddr(ip_address)[0]
-        except:
+        except Exception:
             result['reverse_dns'] = 'N/A'
         
         try:
@@ -1743,7 +1749,7 @@ def lookup_ip(ip_address):
             try:
                 if sock.connect_ex((ip_address, port)) == 0:
                     result['ports'].append(port)
-            except:
+            except Exception:
                 pass
             finally:
                 sock.close()
@@ -1774,7 +1780,7 @@ def lookup_domain(domain):
         try:
             result['ip_addresses'] = list(set(socket.getaddrinfo(domain, 80, socket.AF_INET, socket.SOCK_STREAM)))
             result['ip_addresses'] = [r[4][0] for r in result['ip_addresses']]
-        except:
+        except Exception:
             result['ip_addresses'] = []
         
         try:
@@ -1787,7 +1793,7 @@ def lookup_domain(domain):
                     elif dns_type == 'AAAA':
                         try:
                             result['dns_records']['AAAA'] = socket.getaddrinfo(domain, 80, socket.AF_INET6)[0][4][0]
-                        except:
+                        except Exception:
                             result['dns_records']['AAAA'] = 'N/A'
                     else:
                         try:
@@ -1802,9 +1808,9 @@ def lookup_domain(domain):
                                 result['dns_records']['CAA'] = [str(r) for r in answers]
                             else:
                                 result['dns_records'][dns_type] = [str(r) for r in answers]
-                        except:
+                        except Exception:
                             result['dns_records'][dns_type] = 'N/A'
-                except:
+                except Exception:
                     result['dns_records'][dns_type] = 'N/A'
         except ImportError:
             for dns_type in ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME']:
@@ -1814,11 +1820,11 @@ def lookup_domain(domain):
                     elif dns_type == 'AAAA':
                         try:
                             result['dns_records']['AAAA'] = socket.getaddrinfo(domain, 80, socket.AF_INET6)[0][4][0]
-                        except:
+                        except Exception:
                             result['dns_records']['AAAA'] = 'N/A'
                     else:
                         result['dns_records'][dns_type] = 'Not available'
-                except:
+                except Exception:
                     result['dns_records'][dns_type] = 'N/A'
         except Exception as e:
             result['error'] = str(e)
@@ -1875,7 +1881,7 @@ def lookup_domain(domain):
                 full_domain = f"{sub}.{domain}"
                 socket.getaddrinfo(full_domain, 80, socket.AF_INET)
                 result['subdomains'].append(full_domain)
-            except:
+            except Exception:
                 pass
         
         try:
@@ -1891,7 +1897,7 @@ def lookup_domain(domain):
                         'not_before': cert['notBefore'],
                         'not_after': cert['notAfter']
                     }
-        except:
+        except Exception:
             result['ssl_info'] = 'SSL info unavailable'
     
     return result
@@ -1957,7 +1963,7 @@ async def check_sherlock_site(client, site_name, site_info, username):
                 finding['status'] = 'invalid_username'
                 finding['exists'] = False
                 return finding
-        except:
+        except Exception:
             pass
     
     url = interpolate_string(site_info.get('url', ''), username)
@@ -2277,7 +2283,7 @@ def extract_google_results(html):
                         'url': href,
                         'snippet': snippet_elem.get_text()[:300] if snippet_elem else ''
                     })
-    except:
+    except Exception:
         pass
     return results
 
@@ -2299,7 +2305,7 @@ def extract_yandex_results(html):
                     'url': link_elem.get('href', '') if link_elem else '',
                     'snippet': snippet_elem.get_text()[:300] if snippet_elem else ''
                 })
-    except:
+    except Exception:
         pass
     return results
 
@@ -2321,7 +2327,7 @@ def extract_bing_results(html):
                     'url': link_elem.get('href', '') if link_elem else '',
                     'snippet': snippet_elem.get_text()[:300] if snippet_elem else ''
                 })
-    except:
+    except Exception:
         pass
     return results
 
@@ -2343,7 +2349,7 @@ def extract_duckduckgo_results(html):
                     'url': link_elem.get('href', '') if link_elem else '',
                     'snippet': snippet_elem.get_text()[:300] if snippet_elem else ''
                 })
-    except:
+    except Exception:
         pass
     return results
 
@@ -2366,7 +2372,7 @@ def extract_generic_results(html):
                     })
                     if len(results) >= 10:
                         break
-    except:
+    except Exception:
         pass
     return results
 
@@ -2887,7 +2893,7 @@ def openkvk_lookup():
                         if detail_resp.status_code == 200:
                             detail = detail_resp.json()
                             company.update(detail)
-                    except:
+                    except Exception:
                         pass
                 
                 result['results'].append({
@@ -3515,24 +3521,24 @@ def phone_osint():
         try:
             country = geocoder.description_for_number(parsed, 'en')
             result['country'] = country
-        except:
+        except Exception:
             pass
         
         try:
             result['country_code'] = f"+{parsed.country_code}"
-        except:
+        except Exception:
             pass
         
         try:
             region = geocoder.description_for_number(parsed, None)
             result['region'] = region
-        except:
+        except Exception:
             pass
         
         try:
             carrier_name = carrier.name_for_number(parsed, 'en')
             result['carrier'] = carrier_name
-        except:
+        except Exception:
             pass
         
         try:
@@ -3540,13 +3546,13 @@ def phone_osint():
             if callable(line_type):
                 line_type = line_type(parsed)
             result['line_type'] = str(line_type)
-        except:
+        except Exception:
             pass
         
         try:
             tz = timezone.time_zones_for_number(parsed)
             result['timezone'] = tz[0] if tz else None
-        except:
+        except Exception:
             pass
         
         normalized = normalize_phone_number(phone)
@@ -3890,14 +3896,14 @@ def carrier_lookup():
                 location = geocoder.description_for_number(parsed, 'en')
                 if location:
                     result['country'] = location
-            except:
+            except Exception:
                 pass
             
             try:
                 carrier_name = carrier.name_for_number(parsed, 'en')
                 if carrier_name:
                     result['carrier'] = carrier_name
-            except:
+            except Exception:
                 pass
             
             number_type = phonenumbers.number_type(parsed)
