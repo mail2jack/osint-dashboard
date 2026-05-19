@@ -704,13 +704,17 @@
     .searching { animation: blink 1.5s infinite; }
     
     .result-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card); }
-    .result-item input[type="checkbox"] { margin-top: 0.25rem; }
-    .result-content { flex: 1; }
-    .result-engine { font-weight: 600; color: var(--text-primary); }
+    .result-item input[type="checkbox"] { margin-top: 0.35rem; flex-shrink: 0; accent-color: var(--accent-primary); }
+    .result-content { flex: 1; min-width: 0; }
+    .result-engine { font-weight: 600; color: var(--text-primary); margin-bottom: 0.15rem; }
     .result-name { color: var(--accent-primary); margin-bottom: 0.25rem; }
+    .result-query { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.2rem; line-height: 1.4; }
     .result-url { font-size: 0.75rem; color: var(--link-color); word-break: break-all; }
     .result-url a { color: var(--link-color); text-decoration: none; }
     .result-url a:hover { text-decoration: underline; }
+    .source-badge { display:inline-block; padding:2px 7px; border-radius:4px; font-size:0.65rem; font-weight:500; margin-left:0.5rem; vertical-align:middle; }
+    .source-badge.brave { background:#f97316; color:#fff; }
+    .source-badge.ddg { background:#25D366; color:#fff; }
     
     .btn-success { background: #059669; }
     .btn-success:hover { background: #047857; }
@@ -1618,18 +1622,14 @@
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
-                const sourceBadge = item.source === 'brave' ? '<span style="background: #f97316; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">Brave</span>' : 
-                                     item.source === 'duckduckgo' ? '<span style="background: #25D366; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">DDG</span>' : '';
+                const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">Brave</span>' : 
+                                     item.source === 'duckduckgo' ? '<span class="source-badge ddg">DDG</span>' : '';
                 div.innerHTML = `
+                    <input type="checkbox" class="result-checkbox" data-url="${item.url}" data-domain="${item.domain || ''}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || 'general'}" onchange="updateSelectedCount()">
                     <div class="result-content">
-                        <label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;">
-                            <input type="checkbox" class="result-checkbox" data-url="${item.url}" data-domain="${item.domain || ''}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || 'general'}" onchange="updateSelectedCount()" style="margin-top:3px;">
-                            <div>
-                                <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
-                                ${item.query ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">${item.query}</div>` : ''}
-                                <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
-                            </div>
-                        </label>
+                        <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
+                        ${item.query ? `<div class="result-query">${item.query}</div>` : ''}
+                        <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
                     </div>
                 `;
                 catDiv.appendChild(div);
@@ -1649,14 +1649,10 @@
                 const div = document.createElement('div');
                 div.className = 'result-item';
                 div.innerHTML = `
+                    <input type="checkbox" class="result-checkbox" data-url="${link.url}" data-domain="${link.engine || 'Unknown'}" data-query="${link.name || ''}" data-source="search_link" data-category="search" onchange="updateSelectedCount()">
                     <div class="result-content">
-                        <label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;">
-                            <input type="checkbox" class="result-checkbox" data-url="${link.url}" data-domain="${link.engine || 'Unknown'}" data-query="${link.name || ''}" data-source="search_link" data-category="search" onchange="updateSelectedCount()" style="margin-top:3px;">
-                            <div>
-                                <div class="result-engine">${link.engine || 'Unknown'}</div>
-                                <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
-                            </div>
-                        </label>
+                        <div class="result-engine">${link.engine || 'Unknown'}</div>
+                        <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
                     </div>
                 `;
                 searchDiv.appendChild(div);
