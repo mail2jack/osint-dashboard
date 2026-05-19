@@ -4454,8 +4454,20 @@ def add_osint_findings(case_id: str):
         if category:
             tags.append(category.lower())
         if domain:
-            # e.g., 'linkedin' from 'linkedin.com'
             tags.append(domain.split('.')[0])
+
+        # Dedup: skip if same (case_id, source_url) saved within last 60 seconds
+        from datetime import timedelta
+        url = result.get('url', '')
+        if url:
+            recent = Finding.query.filter(
+                Finding.case_id == case_id,
+                Finding.source_url == url,
+                Finding.created_at >= datetime.utcnow() - timedelta(seconds=60),
+                Finding.is_deleted == False
+            ).first()
+            if recent:
+                continue
 
         finding = Finding(
             case_id=case_id,
@@ -4491,6 +4503,25 @@ def add_osint_findings(case_id: str):
         'message': f'{len(created_findings)} findings added',
         'findings': [f.to_dict() for f in created_findings]
     }), 201
+
+
+@cms_bp.route('/api/findings/check-existing-urls', methods=['POST'])
+@login_required
+def check_existing_finding_urls():
+    """Check which OSINT result URLs already have findings."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+    case_id = data.get('case_id')
+    urls = data.get('urls', [])
+    if not case_id or not urls:
+        return jsonify({'existing': []})
+    existing = Finding.query.filter(
+        Finding.case_id == case_id,
+        Finding.source_url.in_(urls),
+        Finding.is_deleted == False
+    ).with_entities(Finding.source_url).distinct().all()
+    return jsonify({'existing': [r[0] for r in existing]})
 
 
 # =============================================================================

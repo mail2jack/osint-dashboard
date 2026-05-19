@@ -1089,6 +1089,28 @@ function displayResults(results) {
         resultsList.appendChild(linksDiv);
     }
     
+    // Phase 3: Mark already-saved URLs
+    const existingUrls = new Set();
+    fetch('/cms/api/findings/check-existing-urls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_id: '{{ case.id }}', urls: Array.from(document.querySelectorAll('.result-checkbox')).map(cb => cb.dataset.url) })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.existing) data.existing.forEach(u => existingUrls.add(u));
+        document.querySelectorAll('.result-checkbox').forEach(cb => {
+            if (existingUrls.has(cb.dataset.url)) {
+                const badge = document.createElement('span');
+                badge.className = 'already-saved-badge';
+                badge.textContent = '📌 Already saved';
+                badge.style.cssText = 'font-size:0.65rem;padding:0.1rem 0.4rem;border-radius:4px;background:var(--success-bg,#dcfce7);color:var(--success-text,#16a34a);margin-left:0.5rem;';
+                cb.parentElement.querySelector('.result-content').appendChild(badge);
+            }
+        });
+    })
+    .catch(() => {});
+    
     updateSelectedCount();
 }
 
@@ -1109,6 +1131,10 @@ function updateSelectedCount() {
 }
 
 function addSelectedFindings() {
+    const btn = document.getElementById('addFindingsBtn');
+    if (btn && btn.disabled) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+    
     const checkboxes = document.querySelectorAll('.result-checkbox:checked');
     if (checkboxes.length === 0) return;
     
@@ -1137,6 +1163,7 @@ function addSelectedFindings() {
     .then(data => {
         if (data.error) {
             showOsintError(data.error);
+            if (btn) { btn.disabled = false; btn.textContent = 'Add Selected to Findings'; }
             return;
         }
         alert(data.message);
@@ -1145,6 +1172,7 @@ function addSelectedFindings() {
     })
     .catch(err => {
         showOsintError('Failed to add findings: ' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Add Selected to Findings'; }
     });
 }
 

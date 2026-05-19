@@ -1663,6 +1663,33 @@
             });
             resultsList.appendChild(searchDiv);
         }
+        
+        // Phase 3: Mark already-saved URLs
+        {% if first_case_id %}
+        (function() {
+            const urls = Array.from(document.querySelectorAll('.result-checkbox')).map(cb => cb.dataset.url);
+            if (urls.length === 0) return;
+            fetch('/cms/api/findings/check-existing-urls', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ case_id: '{{ first_case_id }}', urls: urls })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.existing) return;
+                const existingSet = new Set(data.existing);
+                document.querySelectorAll('.result-checkbox').forEach(cb => {
+                    if (existingSet.has(cb.dataset.url)) {
+                        const badge = document.createElement('span');
+                        badge.textContent = '📌 Already saved';
+                        badge.style.cssText = 'font-size:0.65rem;padding:0.1rem 0.4rem;border-radius:4px;background:var(--success-bg,#dcfce7);color:var(--success-text,#16a34a);margin-left:0.5rem;white-space:nowrap;';
+                        cb.closest('.result-content')?.querySelector('.result-engine')?.after(badge);
+                    }
+                });
+            })
+            .catch(() => {});
+        })();
+        {% endif %}
     }
     
     function showOsintError(message) {
@@ -1690,6 +1717,9 @@
     }
 
     function addSelectedFindings() {
+        const btn = document.getElementById('addFindingsBtn');
+        if (btn && btn.disabled) return;
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
         const checkboxes = document.querySelectorAll('.result-checkbox:checked');
         if (checkboxes.length === 0) return;
         const selectedResults = [];
@@ -1713,12 +1743,12 @@
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) { showOsintError(data.error); return; }
+            if (data.error) { showOsintError(data.error); if (btn) { btn.disabled = false; btn.textContent = 'Add Selected to Findings (<span id=\"selectedCount\">0</span>)'; } return; }
             alert(data.message);
             closeOsintModal();
             location.reload();
         })
-        .catch(err => showOsintError('Failed to add findings: ' + err.message));
+        .catch(err => { showOsintError('Failed to add findings: ' + err.message); if (btn) { btn.disabled = false; btn.textContent = 'Add Selected to Findings (<span id=\"selectedCount\">0</span>)'; } });
         {% else %}
         showOsintError('This subject is not linked to any case. Link the subject to a case first.');
         {% endif %}
