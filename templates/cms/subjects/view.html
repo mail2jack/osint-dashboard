@@ -521,6 +521,7 @@
                 <option value="neighbor">Neighbor</option>
                 <option value="related">Related</option>
             </select>
+            <div id="relationError" style="color:#dc2626;font-size:0.85rem;margin-bottom:0.5rem;word-break:break-all;"></div>
             <div style="display: flex; gap: 0.5rem;">
                 <button onclick="addRelationship()" class="btn-sm" style="background: #059669;">Save</button>
                 <button onclick="closeAddRelationForm()" class="btn-sm" style="background: var(--text-muted);">Cancel</button>
@@ -782,9 +783,11 @@
     function openAddRelationForm() {
         const form = document.getElementById('addRelationForm');
         const select = document.getElementById('relationSubject');
+        const errDiv = document.getElementById('relationError');
+        if (errDiv) errDiv.textContent = '';
         
         if (!form || !select) {
-            alert('Form elements not found! Contact admin.');
+            if (errDiv) errDiv.textContent = 'Form elements not found! Contact admin.';
             return;
         }
         
@@ -810,7 +813,7 @@
         })
         .catch(err => {
             select.innerHTML = '<option value="">Error loading subjects</option>';
-            alert('Failed to load subjects list: ' + err.message);
+            if (errDiv) errDiv.textContent = 'Failed to load subjects list: ' + err.message;
         });
     }
     
@@ -819,7 +822,9 @@
     function addRelationship() {
         const relatedId = document.getElementById('relationSubject').value;
         const relType = document.getElementById('relationType').value;
-        if (!relatedId) return alert('Select a subject');
+        const errDiv = document.getElementById('relationError');
+        errDiv.textContent = '';
+        if (!relatedId) { errDiv.textContent = 'Select a subject'; return; }
         
         fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -827,10 +832,10 @@
         })
         .then(r => r.json().then(data => ({ status: r.status, data: data })))
         .then(({ status, data }) => {
-            if (data.error) alert('Error: ' + data.error);
+            if (data.error) errDiv.textContent = 'Error: ' + data.error;
             else { closeAddRelationForm(); loadNetwork(); }
         })
-        .catch(err => alert('Network error: ' + err.message));
+        .catch(err => { errDiv.textContent = 'Network error: ' + err.message; });
     }
     
     function removeRelationship(relatedId) {
