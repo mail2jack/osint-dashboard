@@ -321,7 +321,7 @@
     </div>
     <div class="form-group">
         <label for="notes">Notes</label>
-        <textarea name="notes" id="notes" rows="3" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;">{{ subject.notes or '' }}</textarea>
+        <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)</p>
     </div>
     <button type="submit" class="btn">Save Changes</button>
     <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
