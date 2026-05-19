@@ -107,10 +107,28 @@ def create_cms_module(app: Flask):
                 col_info = {c['name']: c for c in inspector.get_columns('addresses')}
                 if col_info.get('subject_id', {}).get('nullable') == False:
                     db.session.execute(text('ALTER TABLE addresses ALTER COLUMN subject_id DROP NOT NULL'))
-                    db.session.commit()
-                    app.logger.info("Migration: made subject_id nullable in addresses table")
+                db.session.commit()
+                app.logger.info("Migration: made subject_id nullable in addresses table")
         except Exception as e:
             app.logger.warning(f"Migration note (subject_id nullable): {e}")
+            db.session.rollback()
+        
+        # Migration: resize audit_logs.entity_id for two-UUID entity IDs
+        try:
+            if db.engine.name == 'postgresql':
+                from sqlalchemy import inspect, text
+                inspector = inspect(db.engine)
+                audit_cols = {c['name']: c for c in inspector.get_columns('audit_logs')}
+                if 'entity_id' in audit_cols:
+                    col_type = str(audit_cols['entity_id']['type'])
+                    if col_type.startswith('VARCHAR') and col_type not in ('VARCHAR(128)', 'VARCHAR(500)'):
+                        db.session.execute(
+                            text('ALTER TABLE audit_logs ALTER COLUMN entity_id TYPE VARCHAR(128)')
+                        )
+                        app.logger.info("Migration: resized audit_logs.entity_id to VARCHAR(128)")
+                db.session.commit()
+        except Exception as e:
+            app.logger.warning(f"audit_logs.entity_id resize note: {e}")
             db.session.rollback()
         
         # Migration: add 2FA columns to users table if missing

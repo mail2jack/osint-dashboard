@@ -1067,7 +1067,7 @@ class AuditLog(db.Model):
     action = db.Column(db.String(20), nullable=False, index=True)
     
     entity_type = db.Column(db.String(50), nullable=False, index=True)  # case, client, subject, etc.
-    entity_id = db.Column(db.String(36), index=True)
+    entity_id = db.Column(db.String(128), index=True)
     
     changes_made = db.Column(db.JSON)  # {"field": {"old": "x", "new": "y"}}
     old_values = db.Column(db.JSON)     # Previous state snapshot
