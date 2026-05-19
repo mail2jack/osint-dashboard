@@ -1359,6 +1359,102 @@ def case_timeline(case_id: str):
     })
 
 
+@cms_bp.route('/cases/<case_id>/report')
+@login_required
+@case_access_required
+def case_report(case_id: str):
+    """Chronological report merging Findings + Comments for a case."""
+    case = Case.query.get_or_404(case_id)
+    from_date = request.args.get('from')
+    to_date = request.args.get('to')
+    subject_filter = request.args.get('subject_id')
+
+    findings_q = Finding.query.filter_by(case_id=case_id, is_deleted=False)
+    comments_q = Comment.query.filter_by(case_id=case_id, is_deleted=False)
+
+    if from_date:
+        try:
+            fd = datetime.strptime(from_date, '%Y-%m-%d')
+            findings_q = findings_q.filter(Finding.created_at >= fd)
+            comments_q = comments_q.filter(Comment.created_at >= fd)
+        except ValueError:
+            pass
+    if to_date:
+        try:
+            td = datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1)
+            findings_q = findings_q.filter(Finding.created_at < td)
+            comments_q = comments_q.filter(Comment.created_at < td)
+        except ValueError:
+            pass
+    if subject_filter:
+        findings_q = findings_q.filter_by(subject_id=subject_filter)
+        comments_q = comments_q.filter_by(subject_id=subject_filter)
+
+    findings = findings_q.order_by(Finding.created_at.asc()).all()
+    comments = comments_q.order_by(Comment.created_at.asc()).all()
+
+    # Merge into single chronologically sorted list
+    entries = []
+    for f in findings:
+        subject = Subject.query.get(f.subject_id) if f.subject_id else None
+        entries.append({
+            'type': 'finding',
+            'icon': '🔍',
+            'timestamp': f.created_at,
+            'title': f.title,
+            'content': f.content,
+            'source_type': f.source_type,
+            'confidence': f.confidence_level,
+            'source_url': f.source_url,
+            'author': f.author.full_name if f.author else '-',
+            'subject_name': subject.name if subject else '-',
+            'subject_id': f.subject_id,
+            'finding_type': f.finding_type
+        })
+    for c in comments:
+        subject = Subject.query.get(c.subject_id) if c.subject_id else None
+        entries.append({
+            'type': 'note',
+            'icon': '📝' if c.comment_type == 'note' else '💬',
+            'timestamp': c.created_at,
+            'title': c.comment_type.capitalize(),
+            'content': c.content,
+            'source_type': c.comment_type,
+            'confidence': None,
+            'source_url': None,
+            'author': c.author.full_name if c.author else '-',
+            'subject_name': subject.name if subject else '-',
+            'subject_id': c.subject_id,
+            'finding_type': None
+        })
+
+    entries.sort(key=lambda e: e['timestamp'] or datetime.min)
+
+    # Group by date
+    from itertools import groupby
+    grouped = {}
+    for e in entries:
+        date_key = e['timestamp'].strftime('%Y-%m-%d') if e['timestamp'] else 'Unknown'
+        if date_key not in grouped:
+            grouped[date_key] = []
+        grouped[date_key].append(e)
+
+    subjects = Subject.query.filter(
+        Subject.cases.any(id=case_id),
+        Subject.is_deleted == False
+    ).all()
+
+    return render_template(
+        'cms/cases/report.html',
+        case=case,
+        grouped_entries=grouped,
+        subjects=subjects,
+        from_date=from_date,
+        to_date=to_date,
+        subject_filter=subject_filter
+    )
+
+
 @cms_bp.route('/cases/create', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')

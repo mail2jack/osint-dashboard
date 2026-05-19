@@ -1,0 +1,106 @@
+{% extends "cms/base.html" %}
+{% block title %}Report - {{ case.case_number }}{% endblock %}
+{% block content %}
+<div class="back"><a href="{{ url_for('cms.view_case', case_id=case.id) }}">← Back to Case</a></div>
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+        <div>
+            <h1 style="margin:0 0 0.25rem 0;">📋 Case Report</h1>
+            <p style="margin:0;color:var(--text-secondary);">
+                <strong>{{ case.case_number }}</strong> — {{ case.title }}
+                {% if case.client %}<br>Client: {{ case.client.name }}{% endif %}
+            </p>
+        </div>
+        <button onclick="window.print()" class="btn btn-sm" style="background:#16213e;">🖨️ Print / PDF</button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <form method="GET" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:end;">
+        <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">Van</label>
+            <input type="date" name="from" value="{{ from_date or '' }}" style="padding:0.4rem;border:1px solid var(--border-input);border-radius:6px;">
+        </div>
+        <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">Tot</label>
+            <input type="date" name="to" value="{{ to_date or '' }}" style="padding:0.4rem;border:1px solid var(--border-input);border-radius:6px;">
+        </div>
+        <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">Subject</label>
+            <select name="subject_id" style="padding:0.4rem;border:1px solid var(--border-input);border-radius:6px;">
+                <option value="">Alle subjects</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}" {% if subject_filter == s.id %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-sm" style="background:#059669;">Filter</button>
+        {% if from_date or to_date or subject_filter %}
+        <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-sm" style="background:#6b7280;text-decoration:none;">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+{% if grouped_entries %}
+<div class="card" style="padding:0;">
+    {% for date_key, entries in grouped_entries|dictsort(false) %}
+    <div style="border-bottom:1px solid var(--border-color);padding:1.5rem;">
+        <h3 style="margin:0 0 1rem 0;color:var(--accent-primary);display:flex;align-items:center;gap:0.5rem;">
+            <span style="background:var(--accent-primary);color:white;width:10px;height:10px;border-radius:50%;display:inline-block;"></span>
+            {{ date_key }}
+            <span style="font-size:0.8rem;color:var(--text-muted);font-weight:normal;">({{ entries|length }})</span>
+        </h3>
+        <div style="border-left:2px solid var(--border-color);padding-left:1.5rem;margin-left:5px;">
+            {% for entry in entries %}
+            <div style="margin-bottom:1rem;position:relative;">
+                <div style="position:absolute;left:-1.85rem;top:0.5rem;width:12px;height:12px;border-radius:50%;background:
+                    {% if entry.type == 'finding' %}#f59e0b{% else %}#3b82f6{% endif %};border:2px solid var(--bg-card);"></div>
+                <div class="card" style="padding:1rem;margin-bottom:0;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.25rem;">
+                        <div>
+                            <span style="font-weight:600;color:var(--text-primary);">{{ entry.icon }} {{ entry.title }}</span>
+                            {% if entry.source_type %}
+                            <span class="finding-badge" style="display:inline-block;background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.35rem;">{{ entry.source_type }}</span>
+                            {% endif %}
+                            {% if entry.confidence %}
+                            <span style="display:inline-block;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;
+                                background:{% if entry.confidence in ('high','verified') %}#dcfce7;color:#16a34a{% elif entry.confidence == 'medium' %}#fef3c7;color:#92400e{% else %}#f3f4f6;color:#6b7280{% endif %};">{{ entry.confidence }}</span>
+                            {% endif %}
+                        </div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap;">
+                            {{ entry.timestamp.strftime('%H:%M') if entry.timestamp else '' }}
+                        </div>
+                    </div>
+                    <div style="margin-top:0.5rem;color:var(--text-primary);font-size:0.9rem;white-space:pre-wrap;">{{ entry.content }}</div>
+                    {% if entry.source_url %}
+                    <div style="margin-top:0.25rem;"><a href="{{ entry.source_url }}" target="_blank" style="font-size:0.8rem;color:var(--link-color);">🔗 {{ entry.source_url }}</a></div>
+                    {% endif %}
+                    <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-muted);display:flex;gap:1rem;flex-wrap:wrap;">
+                        <span>👤 {{ entry.author }}</span>
+                        {% if entry.subject_name != '-' %}<span>📎 {{ entry.subject_name }}</span>{% endif %}
+                        {% if entry.finding_type %}<span>🏷️ {{ entry.finding_type }}</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:3rem;">
+    <p style="color:var(--text-muted);font-size:1.1rem;">Geen entries gevonden voor deze filters.</p>
+    <p style="color:var(--text-muted);font-size:0.9rem;">Voeg findings of notities toe aan deze case om het rapport te vullen.</p>
+</div>
+{% endif %}
+
+<style>
+@media print {
+    .back, form, button, .btn, .btn-sm, .no-print { display: none !important; }
+    body { background: white; padding: 0.5in; }
+    .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+}
+</style>
+{% endblock %}
