@@ -273,8 +273,36 @@
                     {% endif %}
                 </div>
             </div>
-            {% if subject.notes %}<div class="info-item"><label>Notes</label><p>{{ subject.notes }}</p></div>{% endif %}
+            <!-- Subject.notes is deprecated. Use Comments section below instead. -->
         </div>
+
+<!-- DEPRECATED Subject.notes: Kept for rollback. Comments now use the Comment model with timestamps -->
+<div class="card subject-comments-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">📝 Notities & Comments <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h3>
+        <button onclick="loadSubjectComments()" class="btn btn-sm">🔄 Refresh</button>
+    </div>
+    <div class="comment-form">
+        <textarea id="newComment" placeholder="Add a note or comment about this subject..." style="width:100%;padding:0.75rem;border:1px solid var(--border-input);border-radius:8px;resize:vertical;min-height:80px;background:var(--bg-card);color:var(--text-primary);"></textarea>
+        <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap;">
+            <select id="commentType" style="width:auto;padding:0.4rem;border:1px solid var(--border-input);border-radius:4px;background:var(--bg-card);color:var(--text-primary);">
+                <option value="note">Note</option>
+                <option value="discussion">Discussion</option>
+                <option value="update">Update</option>
+                <option value="phone">📞 Phone Call</option>
+                <option value="email">📧 Email</option>
+                <option value="meeting">🤝 Meeting</option>
+            </select>
+            <label style="font-size:0.875rem;display:flex;align-items:center;gap:0.25rem;">
+                <input type="checkbox" id="commentPinned"> Pin
+            </label>
+            <button onclick="addSubjectComment()" class="btn-sm" style="background:#059669;">Add Note</button>
+        </div>
+    </div>
+    <div id="commentsList" style="margin-top:1rem;">
+        <p style="color: var(--text-muted); text-align: center; padding: 1rem;">Loading notes...</p>
+    </div>
+</div>
         {% if linked_cases %}
         <div>
             <h4 style="margin: 0 0 0.5rem 0;">Linked Cases</h4>
@@ -609,6 +637,34 @@
     .relation-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border-color); color: var(--text-primary); }
     .relation-item:last-child { border-bottom: none; }
     .relation-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-secondary); color: var(--text-secondary); }
+
+    /* Comments Section - same style as case view */
+    .subject-comments-section { margin-top: 1.5rem; }
+    .subject-comments-section .comment-form textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-input); border-radius: 8px; resize: vertical; min-height: 80px; background: var(--bg-card); color: var(--text-primary); }
+    .subject-comments-section .comment-item { padding: 1rem; border-bottom: 1px solid var(--border-color); }
+    .subject-comments-section .comment-item:last-child { border-bottom: none; }
+    .subject-comments-section .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .subject-comments-section .comment-author { font-weight: 600; color: var(--text-primary); }
+    .subject-comments-section .comment-time { font-size: 0.8rem; color: var(--text-muted); }
+    .subject-comments-section .comment-content { color: var(--text-primary); line-height: 1.5; white-space: pre-wrap; }
+    .subject-comments-section .comment-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+    .subject-comments-section .comment-actions button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; padding: 0; }
+    .subject-comments-section .comment-actions button:hover { color: var(--accent-primary); }
+    .subject-comments-section .comment-pinned { background: #fef3c7; border-left: 3px solid #f59e0b; }
+    .subject-comments-section .comment-type-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; background: var(--bg-secondary); color: var(--text-muted); }
+    .subject-comments-section .comment-edited { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
+    .subject-comments-section .comment-edit-history { margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.8rem; }
+    .subject-comments-section .comment-edit-history summary { cursor: pointer; color: var(--text-muted); font-weight: 500; }
+    .subject-comments-section .comment-edit-entry { padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); }
+    .subject-comments-section .comment-edit-entry:last-child { border-bottom: none; }
+    .subject-comments-section .comment-edit-entry .edit-by { font-weight: 500; color: var(--text-primary); }
+    .subject-comments-section .comment-edit-entry .edit-date { color: var(--text-muted); font-size: 0.75rem; }
+    .subject-comments-section .comment-edit-entry .edit-diff { margin-top: 0.25rem; padding: 0.4rem; background: var(--bg-card); border-radius: 4px; font-size: 0.8rem; }
+    .subject-comments-section .comment-edit-entry .edit-old { color: var(--danger-text); text-decoration: line-through; }
+    .subject-comments-section .comment-edit-entry .edit-new { color: var(--success-text); }
+    .subject-comments-section .comment-edit-form { margin-top: 0.5rem; }
+    .subject-comments-section .comment-edit-form textarea { width: 100%; padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 6px; resize: vertical; min-height: 60px; font-family: inherit; background: var(--bg-card); color: var(--text-primary); }
+    .subject-comments-section .comment-edit-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
     
     .subject-photo-container { display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 1.5rem; }
     .photo-frame {
@@ -691,1518 +747,127 @@
         });
     }
 
-    function bulkExtractSocialIds() {
-        if (!confirm('Extract social media IDs from all findings linked to this subject? This may take a while.')) return;
-        const btn = document.getElementById('bulkExtractBtn');
-        btn.disabled = true;
-        btn.textContent = '⏳ Extracting...';
-        fetch('/cms/subjects/{{ subject.id }}/bulk-extract-social-ids', { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.textContent = '🔍 Bulk Extract from Findings';
-            if (data.error) { alert('Error: ' + data.error); return; }
-            alert(data.message);
-            if (data.found > 0) location.reload();
-        })
-        .catch(err => {
-            btn.disabled = false;
-            btn.textContent = '🔍 Bulk Extract from Findings';
-            alert('Error: ' + err.message);
-        });
-    }
-    
-    function displayNetwork(data) {
-        const container = document.getElementById('networkSvg');
-        container.innerHTML = '';
-        
-        const width = container.clientWidth || 800;
-        const height = container.clientHeight || 400;
-        const centerX = width / 2;
-        const centerY = height / 2;
-        
-        const nodes = data.nodes.map((node, i) => {
-            const angle = (2 * Math.PI * i) / data.nodes.length;
-            const radius = data.nodes.length > 1 ? Math.min(width, height) / 3 : 0;
-            return { ...node, x: centerX + radius * Math.cos(angle), y: centerY + radius * Math.sin(angle) };
-        });
-        
-        const nodeMap = {};
-        nodes.forEach(n => nodeMap[n.id] = n);
-        
-        const colors = { 'person': '#3b82f6', 'company': '#10b981', 'organization': '#8b5cf6', 'vehicle': '#f59e0b', 'vessel': '#06b6d4', 'property': '#ec4899' };
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        const lineColor = isDark ? '#4b5563' : '#d1d5db';
-        
-        let svg = `<svg width="${width}" height="${height}" style="overflow: visible;">`;
-        
-        data.edges.forEach(edge => {
-            const s = nodeMap[edge.source], t = nodeMap[edge.target];
-            if (s && t) svg += `<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="${lineColor}" stroke-width="2"/>`;
-        });
-        
-        nodes.forEach(node => {
-            const r = node.isMain ? 25 : 18;
-            const color = colors[node.type] || '#6b7280';
-            svg += `
-                <a href="/cms/subjects/${node.id}">
-                    <circle cx="${node.x}" cy="${node.y}" r="${r}" fill="${color}" stroke="${node.isMain ? (isDark ? '#fff' : '#1a1a2e') : '#fff'}" stroke-width="${node.isMain ? 3 : 2}"/>
-                    <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${node.name.substring(0, 10)}</text>
-                    <text x="${node.x}" y="${node.y + r + 12}" text-anchor="middle" fill="${isDark ? '#9ca3af' : '#6b7280'}" font-size="9">${node.type}</text>
-                </a>`;
-        });
-        
-        svg += '</svg>';
-        container.innerHTML = svg;
-    }
-    
-    function displayRelationships(data) {
-        const list = document.getElementById('relationshipsList');
-        const mainNode = data.nodes.find(n => n.isMain);
-        const directEdges = data.edges.filter(e => e.source === mainNode?.id || e.target === mainNode?.id);
-        
-        if (!directEdges.length) {
-            list.innerHTML = '<p style="color: var(--text-muted);">No relationships yet.</p>';
-            return;
-        }
-        
-        let html = '';
-        directEdges.forEach(edge => {
-            const otherId = edge.source === mainNode?.id ? edge.target : edge.source;
-            const other = data.nodes.find(n => n.id === otherId);
-            if (other) {
-                html += `<div class="relation-item">
-                    <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || 'related'}</span></div>
-                    <button onclick="removeRelationship('${other.id}')" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
-                </div>`;
-            }
-        });
-        list.innerHTML = html;
-    }
-    
-    function openAddRelationForm() {
-        const form = document.getElementById('addRelationForm');
-        const select = document.getElementById('relationSubject');
-        const errDiv = document.getElementById('relationError');
-        if (errDiv) errDiv.textContent = '';
-        
-        if (!form || !select) {
-            if (errDiv) errDiv.textContent = 'Form elements not found! Contact admin.';
-            return;
-        }
-        
-        form.style.display = 'block';
-        select.innerHTML = '<option value="">Loading...</option>';
-        
-        fetch("{{ url_for('cms.subjects') }}?format=json")
-        .then(r => r.json())
-        .then(data => {
-            select.innerHTML = '<option value="">Select a subject...</option>';
-            const subs = data.subjects || [];
-            const currentId = {{ subject.id|tojson }};
-            let foundOther = false;
-            subs.forEach(s => {
-                if (s.id !== currentId) {
-                    select.innerHTML += `<option value="${s.id}">${s.name} (${s.type || s.subject_type})</option>`;
-                    foundOther = true;
-                }
-            });
-            if (!foundOther) {
-                select.innerHTML = '<option value="">No other subjects available</option>';
-            }
-        })
-        .catch(err => {
-            select.innerHTML = '<option value="">Error loading subjects</option>';
-            if (errDiv) errDiv.textContent = 'Failed to load subjects list: ' + err.message;
-        });
-    }
-    
-    function closeAddRelationForm() { document.getElementById('addRelationForm').style.display = 'none'; }
-    
-    function addRelationship() {
-        const relatedId = document.getElementById('relationSubject').value;
-        const relType = document.getElementById('relationType').value;
-        const errDiv = document.getElementById('relationError');
-        errDiv.textContent = '';
-        if (!relatedId) { errDiv.textContent = 'Select a subject'; return; }
-        
-        fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ related_subject_id: relatedId, relationship_type: relType })
-        })
-        .then(r => r.json().then(data => ({ status: r.status, data: data })))
-        .then(({ status, data }) => {
-            if (data.error) errDiv.textContent = 'Error: ' + data.error;
-            else { closeAddRelationForm(); loadNetwork(); }
-        })
-        .catch(err => { errDiv.textContent = 'Network error: ' + err.message; });
-    }
-    
-    function removeRelationship(relatedId) {
-        if (!confirm('Remove this relationship?')) return;
-        fetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ related_subject_id: relatedId })
-        })
-        .then(r => r.json().then(data => ({ status: r.status, data: data })))
-        .then(({ status, data }) => {
-            if (data.error) alert('Error: ' + data.error);
-            else loadNetwork();
-        })
-        .catch(err => alert('Network error: ' + err.message));
-    }
-    
-    document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });
-    
-    // RDW Vehicle Check Functions
-    function checkRDWVehicle(kenteken, subjectId) {
-        if (!kenteken) {
-            alert('No license plate (kenteken) available for this vehicle.');
-            return;
-        }
-        
-        const confirmed = confirm(
-            'Check RDW (Dutch Vehicle Authority) data for:\n' +
-            'Kenteken: ' + kenteken + '\n\n' +
-            'This will fetch official vehicle data and offer to update the subject.'
-        );
-        
-        if (!confirmed) return;
-        
-        fetch('/cms/check-rdw-vehicle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kenteken: kenteken, subject_id: subjectId })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                alert('Error: ' + data.error);
-                return;
-            }
-            
-            if (!data.found) {
-                alert('No vehicle found in RDW database for: ' + kenteken);
-                return;
-            }
-            
-            // Show vehicle data and offer to update
-            let message = 'RDW Data Found:\n\n';
-            message += 'Kenteken: ' + data.kenteken_display + '\n';
-            message += 'Merk: ' + data.merk + '\n';
-            message += 'Model: ' + data.handelsbenaming + '\n';
-            message += 'Type: ' + data.voertuigsoort + '\n';
-            message += 'Inrichting: ' + data.inrichting + '\n';
-            message += 'Kleur: ' + data.kleur + '\n';
-            if (data.vervaldatum_apk) message += 'APK vervalt: ' + data.vervaldatum_apk + '\n';
-            message += 'Verzekerd (WAM): ' + data.wam_verzekerd + '\n';
-            message += '\n\nUpdate subject with this data?';
-            
-            if (confirm(message)) {
-                updateSubjectFromRDW(data.kenteken);
-            }
-        })
-        .catch(err => {
-            alert('Failed to check RDW: ' + err.message);
-        });
-    }
-    
-    function updateSubjectFromRDW(kenteken) {
-        fetch('/cms/subjects/{{ subject.id }}/update-from-rdw', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kenteken: kenteken })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                alert('Error updating: ' + data.error);
-            } else {
-                alert('Subject updated successfully!');
-                location.reload();
-            }
-        })
-        .catch(err => {
-            alert('Failed to update: ' + err.message);
-        });
-    }
-
-    function uploadPhoto(input) {
-        const file = input.files[0];
-        if (!file) return;
-        
-        const formData = new FormData();
-        formData.append('photo', file);
-        
-        fetch("{{ url_for('cms.upload_subject_photo', subject_id=subject.id) }}", {
-            method: 'POST',
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                alert('Error: ' + data.error);
-            } else {
-                const photoFrame = document.getElementById('photoFrame');
-                const existingImg = photoFrame.querySelector('img');
-                if (existingImg) {
-                    existingImg.src = '/static' + data.photo_path + '?t=' + new Date().getTime();
-                } else {
-                    photoFrame.innerHTML = `<img src="/static${data.photo_path}?t=${new Date().getTime()}" alt="Photo">
-                        <label class="photo-upload-btn" for="photoInput">📷 Change</label>
-                        <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">`;
-                }
-            }
-        })
-        .catch(err => alert('Upload failed: ' + err.message));
-    }
-    
-    // Interpol + Politie Data Check
-    let _lastInterpolData = null;
-
-    function checkPolitieData() {
-        const btn = document.getElementById('policieCheckBtn');
-        const container = document.getElementById('interpolResults');
-        const subjectName = {{ subject.name|tojson }};
-        
-        btn.disabled = true;
-        btn.textContent = ' Checking INTERPOL...';
-        container.style.display = 'block';
-        container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;"> Checking INTERPOL and politie.nl...</div>';
-        
-        fetch('/cms/check-policie-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: subjectName, subject_id: {{ subject.id|tojson }} })
-        })
-        .then(r => r.json())
-        .then(data => {
-            _lastInterpolData = data;
-            
-            if (data.error) {
-                container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> ' + data.error + '</div>';
-                return;
-            }
-            
-            const wanted = data.wanted_persons || [];
-            const missing = data.missing_persons || [];
-            const opsporingen = data.opsporingsberichten || [];
-            const total = wanted.length + missing.length + opsporingen.length;
-            
-            if (total === 0) {
-                container.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:1rem;color:#166534;"> Geen matches gevonden in INTERPOL data.</div>';
-                return;
-            }
-            
-            let html = '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:1rem;color:#92400e;font-weight:600;"> ' + total + ' POTENTIELE MATCH(S) GEVONDEN!</div>';
-            
-            if (wanted.length > 0) {
-                html += '<h4 style="margin:0 0 0.5rem 0;color:#991b1b;"> Red Notices (Wanted)</h4>';
-                wanted.forEach((p, i) => {
-                    html += '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
-                    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-                    html += '<div><strong style="color:#991b1b;">' + p.name + '</strong>';
-                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + p.date_of_birth + '</span>';
-                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + p.nationality + '</span>';
-                    if (p.charge) html += '<br><span style="color:#666;font-size:0.85rem;">Charge: ' + p.charge + '</span>';
-                    if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">Issued by: ' + p.issuing_country + '</span>';
-                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> INTERPOL link</a>';
-                    html += '</div>';
-                    html += '<button onclick="saveInterpolFinding(&#39;wanted&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
-                    html += '</div></div>';
-                });
-            }
-            
-            if (missing.length > 0) {
-                html += '<h4 style="margin:0 0 0.5rem 0;color:#92400e;"> Yellow Notices / Vermist (Missing)</h4>';
-                missing.forEach((p, i) => {
-                    html += '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
-                    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-                    html += '<div><strong style="color:#92400e;">' + p.name + '</strong>';
-                    if (p.source) html += '<br><span style="color:#666;font-size:0.85rem;">Source: ' + p.source + '</span>';
-                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + p.date_of_birth + '</span>';
-                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + p.nationality + '</span>';
-                    if (p.date_missing) html += '<br><span style="color:#666;font-size:0.85rem;">Missing since: ' + p.date_missing + '</span>';
-                    if (p.place) html += '<br><span style="color:#666;font-size:0.85rem;">Place: ' + p.place + '</span>';
-                    if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">Info: ' + p.description + '</span>';
-                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Link</a>';
-                    html += '</div>';
-                    html += '<button onclick="saveInterpolFinding(&#39;missing&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
-                    html += '</div></div>';
-                });
-            }
-            
-            if (opsporingen.length > 0) {
-                html += '<h4 style="margin:1rem 0 0.5rem 0;color:#1e40af;"> Opsporingsberichten (Politie.nl)</h4>';
-                opsporingen.forEach((p, i) => {
-                    html += '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
-                    html += '<div style="display:flex;gap:0.75rem;">';
-                    if (p.image_url) {
-                        html += '<div style="flex-shrink:0;width:80px;height:80px;border-radius:6px;overflow:hidden;background:#dbeafe;">';
-                        html += '<img src="' + p.image_url + '" alt="' + (p.image_alt || '') + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">';
-                        html += '</div>';
-                    }
-                    html += '<div style="flex:1;min-width:0;">';
-                    html += '<strong style="color:#1e40af;">' + p.title + '</strong>';
-                    if (p.location) html += '<br><span style="color:#666;font-size:0.85rem;"> Locatie: ' + p.location + '</span>';
-                    if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;"> Datum: ' + p.date + '</span>';
-                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Bekijk op politie.nl</a>';
-                    html += '</div>';
-                    html += '<button onclick="saveInterpolFinding(&#39;opsporing&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;align-self:flex-start;"> Bewaar als bevinding</button>';
-                    html += '</div></div>';
-                });
-            }
-
-            if (data.source === 'politie.nl (fallback)') {
-                html += '<div style="margin-top:0.5rem;font-size:0.8rem;color:#6b7280;font-style:italic;"> INTERPOL API was blocked (Akamai). Results from politie.nl fallback.</div>';
-            }
-            
-            container.innerHTML = html;
-        })
-        .catch(err => {
-            container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> Failed to check data: ' + err.message + '</div>';
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.textContent = ' Check Interpol';
-        });
-    }
-
-    function saveInterpolFinding(type, index, btn) {
-        const data = _lastInterpolData;
-        if (!data) return;
-
-        const subjectId = {{ subject.id|tojson }};
-        const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
-        
-        if (!firstCaseId) {
-            alert('Dit subject is niet gekoppeld aan een zaak. Koppel eerst aan een zaak om bevindingen op te slaan.');
-            return;
-        }
-
-        let person;
-        if (type === 'wanted') person = data.wanted_persons[index];
-        else if (type === 'missing') person = data.missing_persons[index];
-        else if (type === 'opsporing') person = data.opsporingsberichten[index];
-        if (!person) return;
-
-        btn.disabled = true;
-        btn.textContent = ' Bezig met opslaan...';
-
-        fetch('/cms/api/findings/from-interpol', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                case_id: firstCaseId,
-                subject_id: subjectId,
-                wanted_persons: type === 'wanted' ? [person] : [],
-                missing_persons: type === 'missing' ? [person] : [],
-                opsporingsberichten: type === 'opsporing' ? [person] : []
-            })
-        })
-        .then(r => {
-            if (!r.ok) {
-                return r.json().then(err => { throw new Error(err.error || 'Onbekende fout'); });
-            }
-            return r.json();
-        })
-        .then(result => {
-            btn.textContent = ' Opgeslagen!';
-            btn.style.background = '#16a34a';
-            setTimeout(() => location.reload(), 800);
-        })
-        .catch(err => {
-            alert('Fout: ' + err.message);
-            btn.disabled = false;
-            btn.textContent = ' Bewaar als bevinding';
-        });
-    }
-
-    // Vessel Check Functions
-    let _lastVesselData = null;
-
-    function checkVessel() {
-        const btn = document.getElementById('vesselCheckBtn');
-        const container = document.getElementById('vesselResults');
-        const origText = btn.textContent;
-
-        btn.disabled = true;
-        btn.textContent = '🔍 Checking vessel...';
-        container.style.display = 'block';
-        container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;">🔍 Looking up vessel data...</div>';
-
-        fetch('/cms/api/vessel-lookup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                subject_id: {{ subject.id|tojson }},
-                name: {{ subject.name|tojson }},
-                imo: {{ subject.imo_number|tojson if subject.imo_number else 'null' }},
-                mmsi: {{ subject.mmsi|tojson if subject.mmsi else 'null' }},
-                eni: {{ subject.eni_number|tojson if subject.eni_number else 'null' }}
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            _lastVesselData = data;
-
-            if (data.error) {
-                container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + data.error + '</div>';
-                btn.disabled = false;
-                btn.textContent = origText;
-                return;
-            }
-
-            if (!data.found) {
-                container.innerHTML = '<div style="padding:1rem;color:#f59e0b;">⚠ No vessel data found</div>';
-                btn.disabled = false;
-                btn.textContent = origText;
-                return;
-            }
-
-            let html = '<div style="padding:1rem;">';
-
-            // Unified summary section (shown when ANY source found data)
-            html += '<div style="background:linear-gradient(135deg,#0e7490,#0891b2);color:white;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-            html += '<h4 style="margin:0 0 0.75rem 0;">🚢 ' + (data.name || 'Unknown') + '</h4>';
-            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-            html += '<div><strong>Type:</strong> ' + (data.ship_type || '-') + '</div>';
-            html += '<div><strong>MMSI:</strong> ' + (data.mmsi || '-') + '</div>';
-            if (data.imo) {
-                html += '<div><strong>IMO:</strong> ' + data.imo + '</div>';
-            }
-            if (data.flag) {
-                html += '<div><strong>Flag:</strong> ' + data.flag + '</div>';
-            }
-            if (data.position) {
-                html += '<div><strong>Positie:</strong> ' + data.position.lat + ', ' + data.position.lon +
-                    ' <a href="https://www.openstreetmap.org/?mlat=' + data.position.lat + '&mlon=' + data.position.lon + '&zoom=12" target="_blank" style="color:#bae6fd;">📍 Map</a></div>';
-            }
-            let srcListSummary = (data.sources || []).join(', ');
-            html += '<div style="grid-column:1/-1;font-size:0.8rem;opacity:0.8;margin-top:0.25rem;">Bronnen: ' + srcListSummary + '</div>';
-            html += '</div></div>';
-
-            // Per-source detail cards
-            // VesselFinder card
-            if (data.source_data && data.source_data.vesselfinder) {
-                const vf = data.source_data.vesselfinder;
-                html += '<div style="background:#f0f9ff;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#3b82f6;">🔍 VesselFinder</h4>';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (vf.name || '-') + '</div>';
-                html += '<div><strong>MMSI:</strong> ' + (vf.mmsi || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + (vf.imo || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (vf.ship_type || '-') + '</div>';
-                if (vf.position) {
-                    html += '<div style="grid-column:1/-1;"><strong>Position:</strong> ' +
-                        vf.position.lat + ', ' + vf.position.lon +
-                        ' <a href="https://www.openstreetmap.org/?mlat=' + vf.position.lat + '&mlon=' + vf.position.lon + '&zoom=12" target="_blank">📍 Map</a></div>';
-                }
-                html += '</div></div>';
-            }
-
-            // MarinePlan card
-            if (data.source_data && data.source_data.marineplan) {
-                const mp = data.source_data.marineplan;
-                html += '<div style="background:#ecfeff;border:1px solid #0e7490;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#0e7490;">🛰️ MarinePlan (AIS)</h4>';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (mp.name || '-') + '</div>';
-                html += '<div><strong>MMSI:</strong> ' + (mp.mmsi || '-') + '</div>';
-                html += '<div><strong>Callsign:</strong> ' + (mp.callsign || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (mp.ship_type || '-') + '</div>';
-                html += '<div><strong>Length:</strong> ' + (mp.length || '-') + ' m</div>';
-                html += '<div><strong>Beam:</strong> ' + (mp.beam || '-') + ' m</div>';
-                html += '<div><strong>Speed:</strong> ' + (mp.speed || '-') + ' km/h</div>';
-                html += '<div><strong>Destination:</strong> ' + (mp.destination || '-') + '</div>';
-                if (mp.position) {
-                    html += '<div style="grid-column:1/-1;"><strong>Position:</strong> ' +
-                        mp.position.lat + ', ' + mp.position.lon +
-                        ' <a href="https://www.openstreetmap.org/?mlat=' + mp.position.lat + '&mlon=' + mp.position.lon + '&zoom=12" target="_blank">📍 Map</a></div>';
-                }
-                html += '</div></div>';
-            }
-
-            // KVNR card
-            if (data.source_data && data.source_data.kvnr) {
-                const kv = data.source_data.kvnr;
-                html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">🇳🇱 KVNR Schepenzoeker</h4>';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (kv.name || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + (kv.imo || '-') + '</div>';
-                html += '<div><strong>Flag:</strong> ' + (kv.flag || '-') + '</div>';
-                html += '</div></div>';
-            }
-
-            // Binnenvaart.eu card
-            if (data.source_data && data.source_data.binnenvaart) {
-                const bv = data.source_data.binnenvaart;
-                html += '<div style="background:#fefce8;border:1px solid #ca8a04;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#ca8a04;">🌊 Binnenvaart.eu</h4>';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (bv.name || '-') + '</div>';
-                html += '<div><strong>ENI:</strong> ' + (bv.eni || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (bv.ship_type || '-') + '</div>';
-                html += '<div><strong>Year Built:</strong> ' + (bv.year_built || '-') + '</div>';
-                html += '</div></div>';
-            }
-
-            // DeBinnenvaart.nl card
-            if (data.source_data && data.source_data.debinnenvaart) {
-                const dbv = data.source_data.debinnenvaart;
-                html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">🚢 DeBinnenvaart.nl</h4>';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (dbv.name || '-') + '</div>';
-                html += '<div><strong>ENI:</strong> ' + (dbv.eni || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (dbv.ship_type || '-') + '</div>';
-                html += '<div><strong>Year Built:</strong> ' + (dbv.year_built || '-') + '</div>';
-                html += '</div></div>';
-            }
-
-            // Equasis card
-            if (data.source_data && data.source_data.equasis) {
-                const eq = data.source_data.equasis;
-                html += '<div style="background:#f3e8ff;border:1px solid #9333ea;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#9333ea;">📋 Equasis</h4>';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (eq.name || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + (eq.imo || '-') + '</div>';
-                html += '<div><strong>Flag:</strong> ' + (eq.flag || '-') + '</div>';
-                html += '<div><strong>GT:</strong> ' + (eq.gt || '-') + '</div>';
-                html += '<div><strong>DWT:</strong> ' + (eq.dwt || '-') + '</div>';
-                html += '<div><strong>Year:</strong> ' + (eq.year_built || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (eq.ship_type || '-') + '</div>';
-                html += '<div><strong>Owner:</strong> ' + (eq.owner || '-') + '</div>';
-                html += '<div><strong>Manager:</strong> ' + (eq.manager || '-') + '</div>';
-                html += '</div></div>';
-            }
-
-            // Sources list + suggested update
-            let srcList = (data.sources || []).join(', ');
-            html += '<div style="font-size:0.8rem;color:#666;margin-bottom:1rem;">Sources: ' + srcList + '</div>';
-
-            // Save as finding button
-            const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
-            if (firstCaseId) {
-                html += '<button onclick="saveVesselFinding(this)" class="btn-sm" style="background:#0e7490;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">📥 Bewaar als bevinding</button>';
-
-                // Update subject button
-                html += ' <button onclick="updateVesselFromCheck()" class="btn-sm" style="background:#0891b2;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;margin-left:0.5rem;">💾 Update vessel fields</button>';
-            } else {
-                html += '<div style="font-size:0.8rem;color:#888;">Link subject to a case to save findings.</div>';
-            }
-
-            html += '</div>';
-            container.innerHTML = html;
-            btn.textContent = '✅ Checked (' + srcList + ')';
-        })
-        .catch(err => {
-            container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + err.message + '</div>';
-            btn.disabled = false;
-            btn.textContent = origText;
-        });
-    }
-
-    function saveVesselFinding(btn) {
-        const data = _lastVesselData;
-        if (!data || !data.found) return;
-
-        const subjectId = {{ subject.id|tojson }};
-        const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
-
-        if (!firstCaseId) {
-            alert('This subject is not linked to a case.');
-            return;
-        }
-
-        btn.disabled = true;
-        btn.textContent = '⏳ Bezig met opslaan...';
-
-        fetch('/cms/api/findings/from-vessel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                case_id: firstCaseId,
-                subject_id: subjectId,
-                vessel_data: data,
-                source: (data.sources || ['vessel_lookup']).join('_'),
-                source_url: ''
-            })
-        })
-        .then(r => {
-            if (!r.ok) return r.json().then(err => { throw new Error(err.error || 'Unknown error'); });
-            return r.json();
-        })
-        .then(result => {
-            btn.textContent = '✅ Opgeslagen!';
-            btn.style.background = '#16a34a';
-            setTimeout(() => location.reload(), 800);
-        })
-        .catch(err => {
-            alert('Fout: ' + err.message);
-            btn.disabled = false;
-            btn.textContent = '📥 Bewaar als bevinding';
-        });
-    }
-
-    function updateVesselFromCheck() {
-        const data = _lastVesselData;
-        if (!data || !data.found) return;
-
-        const subjectId = {{ subject.id|tojson }};
-
-        fetch('/cms/api/vessel/update-subject', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                subject_id: subjectId,
-                imo_number: data.imo || '',
-                mmsi: data.mmsi || '',
-                eni_number: data.eni || '',
-                vessel_nationality: data.flag || '',
-                vessel_data: data.source_data || {}
-            })
-        })
-        .then(r => r.json())
-        .then(result => {
-            if (result.error) {
-                alert('Error: ' + result.error);
-            } else {
-                alert('✅ Vessel fields updated!');
-                location.reload();
-            }
-        })
-        .catch(err => {
-            alert('Error: ' + err.message);
-        });
-    }
-
-    // OSINT Search Functions
-    let currentSearchId = null;
-    let pollInterval = null;
-    const osintBase = "/cms/osint-search/";
-    
-    function openOsintModal() {
-        document.getElementById('osintModal').classList.add('show');
-        resetOsintModal();
-    }
-    
-    function openOsintModalNoCase() {
-        alert('This subject is not linked to any case yet.\n\nPlease link this subject to a case first before using OSINT search.\nYou can do this from the Case view.');
-    }
-    
-    function closeOsintModal() {
-        if (currentSearchId) {
-            cancelOsintSearch();
-        }
-        document.getElementById('osintModal').classList.remove('show');
-        resetOsintModal();
-    }
-    
-    function resetOsintModal() {
-        document.getElementById('osintSearchForm').style.display = 'block';
-        document.getElementById('osintSearching').style.display = 'none';
-        document.getElementById('osintResults').style.display = 'none';
-        document.getElementById('osintError').style.display = 'none';
-        currentSearchId = null;
-        if (pollInterval) {
-            clearInterval(pollInterval);
-            pollInterval = null;
-        }
-    }
-    
-    function startOsintSearch() {
-        const name = {{ subject.name|tojson }};
-        
-        document.getElementById('osintSearchForm').style.display = 'none';
-        document.getElementById('osintSearching').style.display = 'block';
-        document.getElementById('osintError').style.display = 'none';
-        
-        {% if first_case_id %}
-        fetch("{{ url_for('cms.start_osint_search', case_id=first_case_id) }}", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                showOsintError(data.error);
-                return;
-            }
-            currentSearchId = data.search_id;
-            pollSearchStatus();
-        })
-        .catch(err => {
-            showOsintError('Failed to start search: ' + err.message);
-        });
-        {% else %}
-        showOsintError('This subject is not linked to any case. Link the subject to a case first.');
-        {% endif %}
-    }
-    
-    function pollSearchStatus() {
-        pollInterval = setInterval(() => {
-            fetch(osintBase + currentSearchId + '/status')
-        .then(r => {
-            if (!r.ok) {
-                return r.text().then(text => {
-                    try { return JSON.parse(text); }
-                    catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200)); }
-                });
-            }
-            return r.json();
-        })
-            .then(data => {
-                if (data.error) {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
-                    showOsintError(data.error);
-                } else if (data.status === 'completed') {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
-                    loadSearchResults();
-                } else if (data.status === 'cancelled' || data.status === 'failed') {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
-                    showOsintError(data.status === 'cancelled' ? 'Search was cancelled' : data.message || 'Search failed');
-                }
-            })
-            .catch(() => {});
-        }, 1000);
-    }
-    
-    function cancelOsintSearch() {
-        if (!currentSearchId) return;
-        
-        fetch(osintBase + currentSearchId + '/cancel', {
-            method: 'POST'
-        })
-        .then(r => r.json())
-        .then(() => {
-            if (pollInterval) {
-                clearInterval(pollInterval);
-                pollInterval = null;
-            }
-            currentSearchId = null;
-        })
-        .catch(() => {
-            currentSearchId = null;
-        });
-    }
-    
-    function loadSearchResults() {
-        fetch(osintBase + currentSearchId + '/results')
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                showOsintError(data.error);
-                return;
-            }
-            displayOsintResults(data.results);
-        })
-        .catch(err => {
-            showOsintError('Failed to load results: ' + err.message);
-        });
-    }
-    
-    function displayOsintResults(results) {
-        document.getElementById('osintSearching').style.display = 'none';
-        document.getElementById('osintResults').style.display = 'block';
-        
-        const dorksResults = results.dorks_results || [];
-        const searchLinks = results.search_links || [];
-        
-        const braveCount = results.brave_results_count || 0;
-        const ddgCount = results.ddg_results_count || 0;
-        let sourceInfo = '';
-        if (braveCount > 0 || ddgCount > 0) {
-            sourceInfo = `<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem;">Brave: ${braveCount}</span>`;
-            if (ddgCount > 0) {
-                sourceInfo += `<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem;">DDG: ${ddgCount}</span>`;
-            }
-        }
-        
-        const totalCount = dorksResults.length + searchLinks.length;
-        document.getElementById('resultsCount').innerHTML = `${totalCount} results found${sourceInfo}`;
-        
-        const resultsList = document.getElementById('resultsList');
-        resultsList.innerHTML = '';
-        
-        if (totalCount === 0) {
-            resultsList.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">No results found.</p>';
-            return;
-        }
-        
-        const categoryLabels = {
-            'social_media': 'Social Media',
-            'files': 'Documents',
-            'public_records': 'Public Records',
-            'news': 'News',
-            'people_search': 'People Search',
-            'general': 'Other',
-            'search': 'Search Links'
-        };
-        
-        const grouped = {};
-        dorksResults.forEach(item => {
-            const cat = item.category || 'general';
-            if (!grouped[cat]) grouped[cat] = [];
-            grouped[cat].push(item);
-        });
-        
-        for (const [cat, items] of Object.entries(grouped)) {
-            const catDiv = document.createElement('div');
-            catDiv.style.marginBottom = '1rem';
-            catDiv.dataset.category = cat;
-            catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">${categoryLabels[cat] || cat} (${items.length})</h4>
-                <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">
-                    <input type="checkbox" class="cat-select-all" data-cat="${cat}" onchange="toggleCategory(this)"> Select all
-                </label>`;
-            
-            items.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                const sourceBadge = item.source === 'brave' ? '<span style="background: #f97316; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">Brave</span>' : 
-                                     item.source === 'duckduckgo' ? '<span style="background: #25D366; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.5rem;">DDG</span>' : '';
-                div.innerHTML = `
-                    <div class="result-content">
-                        <label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;">
-                            <input type="checkbox" class="result-checkbox" data-url="${item.url}" data-domain="${item.domain || ''}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || 'general'}" onchange="updateSelectedCount()" style="margin-top:3px;">
-                            <div>
-                                <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
-                                ${item.query ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">${item.query}</div>` : ''}
-                                <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
-                            </div>
-                        </label>
-                    </div>
-                `;
-                catDiv.appendChild(div);
-            });
-            resultsList.appendChild(catDiv);
-        }
-        
-        if (searchLinks.length > 0) {
-            const searchDiv = document.createElement('div');
-            searchDiv.style.marginBottom = '1rem';
-            searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (${searchLinks.length})</h4>
-                <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">
-                    <input type="checkbox" class="cat-select-all" data-cat="search" onchange="toggleCategory(this)"> Select all
-                </label>`;
-            
-            searchLinks.forEach(link => {
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                div.innerHTML = `
-                    <div class="result-content">
-                        <label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;">
-                            <input type="checkbox" class="result-checkbox" data-url="${link.url}" data-domain="${link.engine || 'Unknown'}" data-query="${link.name || ''}" data-source="search_link" data-category="search" onchange="updateSelectedCount()" style="margin-top:3px;">
-                            <div>
-                                <div class="result-engine">${link.engine || 'Unknown'}</div>
-                                <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
-                            </div>
-                        </label>
-                    </div>
-                `;
-                searchDiv.appendChild(div);
-            });
-            resultsList.appendChild(searchDiv);
-        }
-    }
-    
-    function showOsintError(message) {
-        document.getElementById('osintSearchForm').style.display = 'none';
-        document.getElementById('osintSearching').style.display = 'none';
-        document.getElementById('osintResults').style.display = 'none';
-        document.getElementById('osintError').style.display = 'block';
-        document.getElementById('errorMessage').textContent = message;
-    }
-
-    function toggleCategory(checkbox) {
-        const cat = checkbox.dataset.cat;
-        document.querySelectorAll(`.result-checkbox[data-category="${cat}"]`).forEach(cb => {
-            cb.checked = checkbox.checked;
-        });
-        updateSelectedCount();
-    }
-
-    function updateSelectedCount() {
-        const checked = document.querySelectorAll('.result-checkbox:checked').length;
-        document.getElementById('selectedCount').textContent = checked;
-        document.getElementById('addFindingsBtn').disabled = checked === 0;
-        document.getElementById('socialSelectedCount').textContent = checked;
-        document.getElementById('saveSocialBtn').disabled = checked === 0;
-    }
-
-    function addSelectedFindings() {
-        const checkboxes = document.querySelectorAll('.result-checkbox:checked');
-        if (checkboxes.length === 0) return;
-        const selectedResults = [];
-        checkboxes.forEach(cb => {
-            selectedResults.push({
-                url: cb.dataset.url,
-                domain: cb.dataset.domain,
-                query: cb.dataset.query,
-                source: cb.dataset.source,
-                category: cb.dataset.category
-            });
-        });
-        {% if first_case_id %}
-        fetch("{{ url_for('cms.add_osint_findings', case_id=first_case_id) }}", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                results: selectedResults,
-                subject_id: '{{ subject.id }}'
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) { showOsintError(data.error); return; }
-            alert(data.message);
-            closeOsintModal();
-            location.reload();
-        })
-        .catch(err => showOsintError('Failed to add findings: ' + err.message));
-        {% else %}
-        showOsintError('This subject is not linked to any case. Link the subject to a case first.');
-        {% endif %}
-    }
-
-    function saveSelectedAsSocialAccounts() {
-        const checkboxes = document.querySelectorAll('.result-checkbox:checked');
-        if (checkboxes.length === 0) return;
-        if (!confirm('Save ' + checkboxes.length + ' selected result(s) as social accounts?')) return;
-        let saved = 0, errors = 0, completed = 0;
-        const total = checkboxes.length;
-        checkboxes.forEach(cb => {
-            const url = cb.dataset.url || '';
-            const domain = cb.dataset.domain || '';
-            const query = cb.dataset.query || '';
-            const platform = domain.replace('www.', '').split('.')[0] || 'unknown';
-            const username = query || url.split('/').filter(s => s).pop() || domain;
-            fetch('/cms/api/findings/save-as-social-account', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url: url,
-                    platform: platform,
-                    username: username,
-                    subject_id: '{{ subject.id }}'
-                })
-            })
+    // ★ Phase 1 — Subject Comments Functions
+    function loadSubjectComments() {
+        fetch(`/cms/api/comments/for-entity?type=subject&id={{ subject.id }}`)
             .then(r => r.json())
             .then(data => {
-                completed++;
-                if (data.error) errors++; else saved++;
-                if (completed === total) {
-                    alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
-                    if (saved > 0) location.reload();
-                }
+                displaySubjectComments(data.comments);
+                const el = document.getElementById('commentCount');
+                if (el) el.textContent = `(${data.count})`;
             })
             .catch(() => {
-                completed++;
-                errors++;
-                if (completed === total) alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+                document.getElementById('commentsList').innerHTML = '<p style="color: var(--danger-text); text-align: center; padding: 1rem;">Failed to load comments.</p>';
             });
-        });
     }
-    
-    document.getElementById('osintModal').addEventListener('click', function(e) {
-        if (e.target === this) closeOsintModal();
-    });
-    
-    // Social Media ID Functions
-    let editingPlatform = null;
-    
-    function openAddSocialIdModal(platform = null, data = null) {
-        editingPlatform = platform;
-        document.getElementById('socialIdModalTitle').textContent = platform ? 'Edit Social Media ID' : 'Add Social Media ID';
-        document.getElementById('socialPlatform').value = platform || 'facebook';
-        document.getElementById('socialPlatform').disabled = !!platform;
-        
-        if (data) {
-            if (typeof data === 'object') {
-                document.getElementById('socialId').value = data.id || data.username || '';
-                document.getElementById('socialUrl').value = data.url || '';
-            } else {
-                document.getElementById('socialId').value = data;
-                document.getElementById('socialUrl').value = '';
-            }
-        } else {
-            document.getElementById('socialId').value = '';
-            document.getElementById('socialUrl').value = '';
-        }
-        
-        document.getElementById('addSocialIdModal').classList.add('show');
-    }
-    
-    function closeAddSocialIdModal() {
-        document.getElementById('addSocialIdModal').classList.remove('show');
-        editingPlatform = null;
-    }
-    
-    function saveSocialId() {
-        const platform = document.getElementById('socialPlatform').value;
-        const id = document.getElementById('socialId').value.trim();
-        const url = document.getElementById('socialUrl').value.trim();
-        
-        if (!id && !url) {
-            alert('Please enter an ID or URL');
+    function displaySubjectComments(comments) {
+        const container = document.getElementById('commentsList');
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem;">No notes yet. Add one above.</p>';
             return;
         }
-        
-        const data = {};
-        if (id) data.id = id;
-        if (url) data.url = url;
-        
-        const socialIds = {{ subject.social_media_ids|tojson }} || {};
-        socialIds[platform] = data;
-        
-        fetch('/cms/subjects/{{ subject.id }}/social-ids', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ social_media_ids: socialIds })
-        })
-        .then(r => r.json())
-        .then(data => {
-            alert('Social media ID saved!');
-            location.reload();
-        })
-        .catch(err => {
-            alert('Error: ' + err.message);
+        let html = '';
+        comments.forEach(c => {
+            const pinnedClass = c.is_pinned ? 'comment-pinned' : '';
+            const date = new Date(c.created_at);
+            const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const canEdit = c.author_id === '{{ current_user.id }}' || {{ 'true' if current_user.is_admin else 'false' }};
+            let editInfo = '';
+            if (c.edit_count > 0) {
+                const editDate = c.last_edited_at ? new Date(c.last_edited_at) : null;
+                const editDateStr = editDate ? editDate.toLocaleDateString()+' '+editDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+                editInfo = `<div class="comment-edited">Edited ${c.edit_count} time${c.edit_count>1?'s':''}${c.last_edited_by_name?' by '+c.last_edited_by_name:''}${editDateStr?' on '+editDateStr:''}</div>`;
+            }
+            let editHistory = '';
+            if (c.edit_history && c.edit_history.length > 0) {
+                editHistory = `<details class="comment-edit-history"><summary>View edit history (${c.edit_history.length})</summary>${c.edit_history.map(h => {
+                    const hDate = new Date(h.edited_at);
+                    const hDateStr = hDate.toLocaleDateString()+' '+hDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+                    return `<div class="comment-edit-entry"><div><span class="edit-by">${h.edited_by_name}</span> <span class="edit-date">${hDateStr}</span></div><div class="edit-diff"><div class="edit-old">- ${escapeHtml(h.previous_content.substring(0,100))}${h.previous_content.length>100?'...':''}</div><div class="edit-new">+ ${escapeHtml(h.new_content.substring(0,100))}${h.new_content.length>100?'...':''}</div></div></div>`;
+                }).join('')}</details>`;
+            }
+            html += `
+                <div class="comment-item ${pinnedClass}" id="comment-${c.id}">
+                    <div class="comment-header">
+                        <div>
+                            <span class="comment-author">${c.author_name}</span>
+                            <span class="comment-type-badge">${c.comment_type}</span>
+                            ${c.is_pinned ? '📌' : ''}
+                        </div>
+                        <div class="comment-time">${timeStr}</div>
+                    </div>
+                    ${editInfo}
+                    <div class="comment-content" id="content-${c.id}">${escapeHtml(c.content)}</div>
+                    ${editHistory}
+                    <div class="comment-edit-form" id="edit-form-${c.id}" style="display:none;">
+                        <textarea id="edit-content-${c.id}">${escapeHtml(c.content)}</textarea>
+                        <div class="comment-edit-actions">
+                            <button onclick="saveSubjectComment('${c.id}')" class="btn btn-sm" style="background:#059669;">Save</button>
+                            <button onclick="cancelSubjectCommentEdit('${c.id}')" class="btn btn-sm" style="background:#666;">Cancel</button>
+                        </div>
+                    </div>
+                    <div class="comment-actions">
+                        ${canEdit ? `<button onclick="showSubjectCommentEditForm('${c.id}')">Edit</button>` : ''}
+                        <button onclick="deleteSubjectComment('${c.id}')">Delete</button>
+                    </div>
+                </div>
+            `;
         });
+        container.innerHTML = html;
     }
-    
-    function editSocialId(platform) {
-        const socialIds = {{ subject.social_media_ids|tojson }} || {};
-        openAddSocialIdModal(platform, socialIds[platform]);
-    }
-    
-    function deleteSocialId(platform) {
-        if (!confirm('Delete ' + platform + ' ID?')) return;
-        
-        const socialIds = {{ subject.social_media_ids|tojson }} || {};
-        delete socialIds[platform];
-        
-        fetch('/cms/subjects/{{ subject.id }}/social-ids', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ social_media_ids: socialIds })
-        })
-        .then(r => r.json())
-        .then(data => {
-            location.reload();
-        })
-        .catch(err => {
-            alert('Error: ' + err.message);
-        });
-    }
-    
-    document.getElementById('addSocialIdModal').addEventListener('click', function(e) {
-        if (e.target === this) closeAddSocialIdModal();
-    });
-    
-    // Social Account Functions
-    function openAddSocialAccountModal() {
-        document.getElementById('addSocialAccountModal').classList.add('show');
-    }
-    function closeAddSocialAccountModal() {
-        document.getElementById('addSocialAccountModal').classList.remove('show');
-    }
-    function saveSocialAccount(event) {
-        event.preventDefault();
-        const platform = document.getElementById('saPlatform').value;
-        const username = document.getElementById('saUsername').value.trim();
-        const url = document.getElementById('saUrl').value.trim();
-        if (!username) { alert('Username is required'); return; }
-        fetch('/cms/api/subjects/{{ subject.id }}/social-accounts', {
+    function addSubjectComment() {
+        const content = document.getElementById('newComment').value.trim();
+        if (!content) { alert('Please enter a note.'); return; }
+        const commentType = document.getElementById('commentType').value;
+        const isPinned = document.getElementById('commentPinned').checked;
+        fetch('/cms/api/comments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ platform: platform, username: username, url: url })
+            body: JSON.stringify({
+                subject_id: '{{ subject.id }}',
+                content: content,
+                comment_type: commentType,
+                is_pinned: isPinned
+            })
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) { alert('Error: ' + data.error); return; }
-            location.reload();
+            document.getElementById('newComment').value = '';
+            document.getElementById('commentPinned').checked = false;
+            loadSubjectComments();
         })
         .catch(err => alert('Error: ' + err.message));
     }
-    function deleteSocialAccount(accountId) {
-        if (!confirm('Delete this social account?')) return;
-        fetch('/cms/api/subjects/{{ subject.id }}/social-accounts/' + accountId, {
-            method: 'DELETE'
+    function showSubjectCommentEditForm(commentId) {
+        document.getElementById('edit-form-'+commentId).style.display = 'block';
+        document.getElementById('content-'+commentId).style.display = 'none';
+    }
+    function cancelSubjectCommentEdit(commentId) {
+        document.getElementById('edit-form-'+commentId).style.display = 'none';
+        document.getElementById('content-'+commentId).style.display = 'block';
+    }
+    function saveSubjectComment(commentId) {
+        const newContent = document.getElementById('edit-content-'+commentId).value.trim();
+        if (!newContent) { alert('Comment cannot be empty.'); return; }
+        fetch('/cms/api/comments/'+commentId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: newContent })
         })
         .then(r => r.json())
-        .then(data => location.reload())
+        .then(data => {
+            if (data.error) alert('Error: ' + data.error);
+            else loadSubjectComments();
+        })
         .catch(err => alert('Error: ' + err.message));
     }
-    document.getElementById('addSocialAccountModal').addEventListener('click', function(e) {
-        if (e.target === this) closeAddSocialAccountModal();
-    });
-    
-    // Face Recognition Functions
-    let faceApiLoaded = false;
-    let faceDescriptor = null;
-    
-    async function loadFaceApi() {
-        if (faceApiLoaded) return true;
-        
-        const statusEl = document.getElementById('faceStatus');
-        try {
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">Loading face recognition models...</span>';
-            
-            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
-            
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-            
-            faceApiLoaded = true;
-            statusEl.innerHTML = '<span style="color: #059669;">Face recognition ready</span>';
-            return true;
-        } catch (err) {
-            statusEl.innerHTML = '<span style="color: #dc2626;">Failed to load face recognition</span>';
-            console.error('Face API error:', err);
-            return false;
-        }
+    function deleteSubjectComment(commentId) {
+        if (!confirm('Delete this comment?')) return;
+        fetch('/cms/api/comments/'+commentId, { method: 'DELETE' })
+        .then(() => loadSubjectComments())
+        .catch(err => alert('Error: ' + err.message));
     }
-    
-    async function encodeFace() {
-        const btn = document.getElementById('encodeFaceBtn');
-        const statusEl = document.getElementById('faceStatus');
-        const photoImg = document.getElementById('subjectPhoto');
-        
-        btn.disabled = true;
-        btn.textContent = 'Processing...';
-        
-        const loaded = await loadFaceApi();
-        if (!loaded) {
-            btn.disabled = false;
-            btn.textContent = '👤 Encode Face';
-            return;
-        }
-        
-        try {
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">Detecting face...</span>';
-            
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.src = '/static' + {{ subject.photo_path|tojson }} + '?t=' + new Date().getTime();
-            
-            await new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = reject;
-            });
-            
-            const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
-            const detection = await faceapi.detectSingleFace(img, options)
-                .withFaceLandmarks(true)
-                .withFaceDescriptor();
-            
-            if (!detection) {
-                statusEl.innerHTML = '<span style="color: #f59e0b;">No face detected. Try a clearer photo.</span>';
-                btn.disabled = false;
-                btn.textContent = '👤 Encode Face';
-                return;
-            }
-            
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">Saving face encoding...</span>';
-            
-            const encoding = Array.from(detection.descriptor);
-            
-            const response = await fetch('/cms/subjects/{{ subject.id }}/face-encoding', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ encoding: encoding })
-            });
-            
-            const data = await response.json();
-            
-            if (data.error) {
-                statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
-            } else {
-                statusEl.innerHTML = '<span style="color: #059669;">✅ Face encoding saved!</span>';
-                setTimeout(() => location.reload(), 1000);
-            }
-        } catch (err) {
-            statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
-            console.error('Face encoding error:', err);
-        }
-        
-        btn.disabled = false;
-        btn.textContent = '👤 Encode Face';
-    }
-    
-    async function deleteFaceEncoding() {
-        if (!confirm('Remove face encoding for this subject?')) return;
-        
-        try {
-            const response = await fetch('/cms/subjects/{{ subject.id }}/face-encoding', {
-                method: 'DELETE'
-            });
-            
-            const data = await response.json();
-            if (!data.error) {
-                location.reload();
-            }
-        } catch (err) {
-            alert('Error: ' + err.message);
-        }
-    }
-    
-    function searchTinEye() {
-        const photoPath = {{ subject.photo_path|tojson }};
-        if (!photoPath) {
-            alert('No photo available for this subject');
-            return;
-        }
-        
-        const baseUrl = window.location.origin;
-        const imageUrl = encodeURIComponent(baseUrl + '/static' + photoPath);
-        const tineyeUrl = `https://tineye.com/search?url=${imageUrl}`;
-        
-        window.open(tineyeUrl, '_blank');
-    }
-    
-    async function phoneLookup(btn, phone) {
-        const resultDiv = btn.parentElement.querySelector('.phone-result');
-        const origText = btn.textContent;
-
-        btn.disabled = true;
-        btn.textContent = '🔍 Checking...';
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Looking up phone number...</span>';
-
-        try {
-            const resp = await fetch('/cms/api/phone-lookup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phone })
-            });
-            const data = await resp.json();
-
-            if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
-                btn.disabled = false;
-                btn.textContent = origText;
-                return;
-            }
-
-            let html = '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Formatted:</strong> ' + (data.formatted || '-') + '</div>';
-            html += '<div><strong>Country:</strong> ' + (data.country || '-') + '</div>';
-            html += '<div><strong>Region:</strong> ' + (data.region || '-') + '</div>';
-            html += '<div><strong>Carrier:</strong> ' + (data.carrier || '-') + '</div>';
-            html += '<div><strong>Line Type:</strong> ' + (data.line_type || '-') + '</div>';
-            if (data.services && data.services.whatsapp) {
-                const wa = data.services.whatsapp;
-                html += '<div><strong>WhatsApp:</strong> ' + (wa.exists ? '✅ <a href="' + wa.url + '" target="_blank">Chat</a>' : (wa.exists === false ? '❌ Not found' : '⚠ ' + (wa.note || 'Unknown'))) + '</div>';
-            }
-            if (data.services && data.services.telegram) {
-                const tg = data.services.telegram;
-                html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + tg.url + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + (tg.note || 'Unknown'))) + '</div>';
-            }
-            html += '</div></div>';
-            resultDiv.innerHTML = html;
-            btn.textContent = '✅ Done';
-            btn.style.background = '#16a34a';
-        } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
-            btn.disabled = false;
-            btn.textContent = origText;
-        }
-    }
-
-    async function emailCheck(btn, email) {
-        const resultDiv = btn.parentElement.querySelector('.email-result');
-        const origText = btn.textContent;
-
-        btn.disabled = true;
-        btn.textContent = '🔍 Checking...';
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Checking email...</span>';
-
-        try {
-            const resp = await fetch('/cms/api/email-check', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email })
-            });
-            const data = await resp.json();
-
-            if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
-                btn.disabled = false;
-                btn.textContent = origText;
-                return;
-            }
-
-            let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Valid Format:</strong> ' + (data.valid_format ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Domain:</strong> ' + (data.domain || '-') + '</div>';
-            html += '<div><strong>MX Records:</strong> ' + (data.has_mx ? '✅ Found' : '❌ None') + '</div>';
-            html += '<div><strong>Disposable:</strong> ' + (data.disposable ? '⚠️ Yes' : '✅ No') + '</div>';
-
-            if (data.hibp_breaches && data.hibp_breaches.length > 0) {
-                html += '<div style="grid-column:1/-1;"><strong>🔴 Breaches (' + data.hibp_breaches.length + '):</strong></div>';
-                data.hibp_breaches.forEach(b => {
-                    html += '<div style="grid-column:1/-1;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:0.4rem;margin-bottom:0.2rem;">';
-                    html += '<strong>' + b.name + '</strong> (' + (b.date || 'unknown') + ')';
-                    if (b.data_classes && b.data_classes.length > 0) {
-                        html += '<br><span style="font-size:0.75rem;color:#666;">Data: ' + b.data_classes.join(', ') + '</span>';
-                    }
-                    html += '</div>';
-                });
-            } else {
-                html += '<div style="grid-column:1/-1;"><strong>Breaches:</strong> ' + (data.hibp_found === false ? '✅ None found' : '⚠️ Not checked') + '</div>';
-            }
-
-            if (data.emailrep) {
-                const rep = data.emailrep;
-                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
-                html += '<strong>EmailRep:</strong> ' + (rep.reputation || 'unknown') + ' | ';
-                html += 'Suspicious: ' + (rep.suspicious ? '⚠️ Yes' : '✅ No') + ' | ';
-                html += 'Details: ' + (rep.details ? rep.details.join(', ') : '-');
-                html += '</div>';
-            }
-
-            if (data.search_links && data.search_links.length > 0) {
-                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
-                html += '<strong>🔍 Investigate further:</strong> ';
-                data.search_links.forEach(function(link, i) {
-                    if (i > 0) html += ' | ';
-                    html += '<a href="' + link.url + '" target="_blank" style="color:#2563eb;">' + link.label + '</a>';
-                });
-                html += '</div>';
-            }
-
-            html += '</div></div>';
-            resultDiv.innerHTML = html;
-            btn.textContent = '✅ Done';
-            btn.style.background = '#16a34a';
-        } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
-            btn.disabled = false;
-            btn.textContent = origText;
-        }
-    }
-
-    async function kadasterLookup(btn, addressId) {
-        const entry = btn.closest('div[style*="background"]');
-        const resultDiv = entry.querySelector('.kadaster-result');
-        const origText = btn.textContent;
-        
-        btn.disabled = true;
-        btn.textContent = '🔍 Checking...';
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Looking up address in BAG registry...</span>';
-        
-        const street = entry.querySelector('strong')?.textContent.trim() || '';
-        const townSpan = entry.querySelector('.addr-zip-town');
-        const town = townSpan ? townSpan.textContent.trim() : '';
-        
-        try {
-            const resp = await fetch('/cms/api/kadaster-lookup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: street + ' ' + town })
-            });
-            const data = await resp.json();
-            
-            if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
-            } else if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ Address not found in Kadaster/BAG</span>';
-            } else {
-                const b = data.bag_data;
-                let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-                html += '<div><strong>Status:</strong> ' + (b.status || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (b.type || '-') + '</div>';
-                html += '<div><strong>Purpose:</strong> ' + (b.purpose || '-') + '</div>';
-                html += '<div><strong>Surface:</strong> ' + (b.surface ? b.surface + ' m²' : '-') + '</div>';
-                html += '<div><strong>Year built:</strong> ' + (b.building_year || '-') + '</div>';
-                html += '<div><strong>Municipality:</strong> ' + (b.municipality || '-') + '</div>';
-                if (b.coordinates) {
-                    const coords = b.coordinates.replace('POINT(', '').replace(')', '');
-                    const [lng, lat] = coords.split(' ');
-                    html += '<div style="grid-column: 1 / -1;"><strong>Coordinates:</strong> ' + lat + ', ' + lng + ' (<a href="https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '&zoom=16" target="_blank">View on map</a>)</div>';
-                }
-                html += '</div></div>';
-                resultDiv.innerHTML = html;
-                btn.textContent = '✅ Verified';
-                btn.style.background = '#16a34a';
-            }
-        } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
-            btn.disabled = false;
-            btn.textContent = origText;
-        }
-    }
-
-    async function politiebureauLookup(btn, addressId) {
-        const entry = btn.closest('div[style*="background"]');
-        const resultDiv = entry.querySelector('.politiebureau-result');
-        const origText = btn.textContent;
-
-        btn.disabled = true;
-        btn.textContent = '🔍 Looking up...';
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Contacting politie.nl...</span>';
-
-        try {
-            const resp = await fetch('/cms/api/politiebureau-lookup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ address_id: addressId })
-            });
-            const data = await resp.json();
-
-            if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
-                btn.disabled = false;
-                btn.textContent = origText;
-                return;
-            }
-
-            if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'No police station found') + '</span>';
-                btn.disabled = false;
-                btn.textContent = origText;
-                return;
-            }
-
-            const s = data.station;
-            let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + (s.name || 'Politiebureau') + '</div>';
-            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + (s.address || '-') + '</div>';
-            html += '<div><strong>Phone:</strong> ' + (s.phone || '-') + '</div>';
-            if (s.opening_hours) {
-                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + s.opening_hours + '</div>';
-            }
-            if (s.location && s.location.latitude && s.location.longitude) {
-                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + s.location.latitude + '&mlon=' + s.location.longitude + '&zoom=16" target="_blank">📍 View on map</a></div>';
-            }
-            if (s.url) {
-                html += '<div style="grid-column:1/-1;"><a href="' + s.url + '" target="_blank">🔗 Politie.nl page</a></div>';
-            }
-            html += '</div></div>';
-            resultDiv.innerHTML = html;
-            btn.textContent = '✅ Station found';
-            btn.style.background = '#16a34a';
-        } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
-            btn.disabled = false;
-            btn.textContent = origText;
-        }
-    }
+    document.addEventListener('DOMContentLoaded', loadSubjectComments);
 
     function confirmDeleteSubject() {
         if (!confirm('Weet je zeker dat je dit subject wilt verwijderen?')) return;
