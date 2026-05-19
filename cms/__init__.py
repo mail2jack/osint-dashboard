@@ -246,6 +246,39 @@ def create_cms_module(app: Flask):
             app.logger.warning(f"Column resize migration note: {e}")
             db.session.rollback()
 
+        # Migration: migrate Subject.notes free-text → Comment model
+        try:
+            from .models import Subject, Comment
+            from datetime import datetime
+            subjects_with_notes = Subject.query.filter(
+                Subject.notes.isnot(None),
+                Subject.notes != ''
+            ).all()
+            migrated_count = 0
+            for s in subjects_with_notes:
+                existing = Comment.query.filter_by(
+                    subject_id=s.id,
+                    content=s.notes,
+                    comment_type='note'
+                ).first()
+                if not existing:
+                    comment = Comment(
+                        subject_id=s.id,
+                        content=s.notes,
+                        comment_type='note',
+                        author_id=User.query.filter_by(role='admin').first().id,
+                        created_at=s.created_at or datetime.utcnow(),
+                        updated_at=s.updated_at or datetime.utcnow()
+                    )
+                    db.session.add(comment)
+                    migrated_count += 1
+            if migrated_count:
+                db.session.commit()
+                app.logger.info(f"Migration: migrated {migrated_count} Subject.notes → Comment")
+        except Exception as e:
+            app.logger.warning(f"Subject.notes migration note: {e}")
+            db.session.rollback()
+
         # Initialize default settings
         from .models import Setting, init_default_settings
         init_default_settings()

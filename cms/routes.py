@@ -3460,6 +3460,24 @@ def search():
                 'note_preview': s.notes[:150] + ('...' if len(s.notes) > 150 else '') if s.notes else None,
                 'entity_type': 'subject'
             } for s in subject_notes]
+            # Also search Comment model for subject notes (timestamped version)
+            from cms.models import Comment
+            comment_results = Comment.query.filter(
+                Comment.is_deleted == False,
+                Comment.subject_id.isnot(None),
+                Comment.content.ilike(f'%{query}%')
+            ).order_by(Comment.created_at.desc()).limit(10).all()
+            for c in comment_results:
+                sub = Subject.query.get(c.subject_id)
+                if sub and not sub.is_deleted:
+                    results['notes'].append({
+                        'id': sub.id,
+                        'name': sub.name + f' (comment: {c.comment_type})',
+                        'subject_type': sub.subject_type,
+                        'note_preview': c.content[:150] + ('...' if len(c.content) > 150 else '') if c.content else None,
+                        'entity_type': 'subject',
+                        'comment_date': c.created_at.isoformat() if c.created_at else None
+                    })
 
         AuditLog.log(
             user_id=current_user.id,
@@ -5479,10 +5497,13 @@ def update_subject_from_rdw(subject_id: str):
             rdw_notes.append(
                 f"Verzekerd (WAM): {vehicle.get('wam_verzekerd')}")
 
-        existing_notes = subject.notes or ''
-        new_notes = '[RDW Data]\n' + '\n'.join(rdw_notes)
-        subject.notes = new_notes + '\n\n' + \
-            existing_notes if existing_notes else new_notes
+        rdw_comment = Comment(
+            subject_id=subject.id,
+            content='[RDW Data]\n' + '\n'.join(rdw_notes),
+            comment_type='note',
+            author_id=current_user.id
+        )
+        db.session.add(rdw_comment)
 
         # Log the action
         AuditLog.log(
