@@ -822,59 +822,27 @@ def get_version():
 
 @app.route('/api/changelog', methods=['GET'])
 def get_changelog():
-    """Return changelog from MANUAL.md"""
+    """Return changelog from CHANGELOG.md rendered to simple HTML."""
     try:
-        changelog_path = os.path.join(os.path.dirname(__file__), 'MANUAL.md')
+        changelog_path = os.path.join(os.path.dirname(__file__), 'CHANGELOG.md')
         with open(changelog_path, 'r') as f:
-            content = f.read()
-        
-        changelog_start = content.find('## Changelog')
-        if changelog_start == -1:
-            return jsonify({'html': '<div class="empty">No changelog found</div>'})
-        
-        changelog_section = content[changelog_start:]
-        versions = []
-        current_version = None
-        current_section = None
-        current_items = []
-        
-        for line in changelog_section.split('\n'):
-            line = line.strip()
-            if line.startswith('### '):
-                if current_version:
-                    current_version['sections'].append({'title': current_section, 'items': current_items})
-                if current_version:
-                    versions.append(current_version)
-                current_version = {'title': line[4:], 'sections': []}
-                current_section = None
-                current_items = []
-            elif line.startswith('**') and line.endswith('**'):
-                if current_section:
-                    current_version['sections'].append({'title': current_section, 'items': current_items})
-                current_section = line.strip('*')
-                current_items = []
-            elif line.startswith('- '):
-                current_items.append(line[2:])
-            elif line.startswith('---') or not line:
-                continue
-        
-        if current_version:
-            if current_section:
-                current_version['sections'].append({'title': current_section, 'items': current_items})
-            versions.append(current_version)
-        
+            raw = f.read()
+        lines = raw.split('\n')
         html_parts = []
-        for ver in versions:
-            html_parts.append('<div style="border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:1rem;">')
-            html_parts.append(f'<div style="font-size:1rem;font-weight:700;margin-bottom:0.75rem;color:var(--accent-primary);">{ver["title"]}</div>')
-            for sec in ver['sections']:
-                if sec['title']:
-                    html_parts.append(f'<div style="font-weight:600;margin:0.5rem 0 0.25rem;font-size:0.875rem;color:var(--text-primary);">{sec["title"]}</div>')
-                for item in sec['items']:
-                    html_parts.append(f'<div style="padding:0.1rem 0 0.1rem 1rem;font-size:0.8125rem;color:var(--text-secondary);"><span style="color:var(--accent-primary);margin-right:0.4rem;">•</span>{item}</div>')
-            html_parts.append('</div>')
-        
+        for l in lines:
+            if l.startswith('### '):
+                html_parts.append(f'<p><strong>{l[4:]}</strong></p>')
+            elif l.startswith('## '):
+                html_parts.append(f'<h3>{l[3:]}</h3>')
+            elif l.startswith('- '):
+                html_parts.append(f'<li style="padding:0.1rem 0;font-size:0.85rem;">{l[2:]}</li>')
+            elif l.strip() == '':
+                html_parts.append('<br>')
+            else:
+                html_parts.append(f'<p>{l}</p>')
         return jsonify({'html': ''.join(html_parts)})
+    except FileNotFoundError:
+        return jsonify({'html': '<div class="empty">No changelog found</div>'})
     except Exception as e:
         return jsonify({'html': f'<div style="text-align:center;padding:2rem;color:#dc2626;">Error: {str(e)}</div>'}), 500
 

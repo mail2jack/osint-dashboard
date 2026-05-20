@@ -6273,14 +6273,14 @@ def do_update():
          f'{sys.executable} -c "from app import app; from cms.models import db; import flask; app.app_context().push(); db.create_all(); print(\'Migrations OK\')"',
          cwd=project_root)
 
-    # Step 5: Restart (uses sudo via sudoers rule set by install.sh)
+    # Step 5: Restart (uses sudo via sudoers rule set by install.sh; ok if it fails — dev mode)
     step('Restart services', '/usr/bin/sudo /usr/bin/systemctl restart osint-dashboard',
          cwd=project_root)
 
-    success = all(r['status'] == 'ok' for r in results)
-
-    # Store local HEAD SHA after successful update for commit-based change detection
-    if success:
+    # Store local HEAD SHA after pull (even if restart fails — e.g. dev mode)
+    pull_ok = any(
+        r['step'] == 'Pull latest code' and r['status'] == 'ok' for r in results)
+    if pull_ok:
         try:
             import subprocess as sp
             git_path = shutil.which('git') or '/usr/bin/git'
