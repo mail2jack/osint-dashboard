@@ -208,6 +208,20 @@
     </a>
 </div>
 
+<div class="grid-2" style="margin-bottom:1rem;">
+    <div class="card">
+        <h2 style="display: flex; justify-content: space-between; align-items: center;">
+            <span>🔍 Username Search</span>
+            <span id="usernameUsageBadge" style="font-size:0.75rem;color:var(--text-secondary);display:none;"></span>
+        </h2>
+        <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="usernameSearchInput" placeholder="Enter username (e.g. rapidapi)..." style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
+            <button onclick="searchUsername()" class="btn" style="padding:0.5rem 1rem;">🔍 Check</button>
+        </div>
+        <div id="usernameResults" style="margin-top:0.75rem;"></div>
+    </div>
+</div>
+
 <div class="grid-2">
     <div class="card">
         <h2>Cases by Status</h2>
@@ -421,4 +435,100 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+async function searchUsername() {
+    const input = document.getElementById('usernameSearchInput');
+    const resultsDiv = document.getElementById('usernameResults');
+    const username = input.value.trim();
+    if (!username) return;
+
+    resultsDiv.innerHTML = '<div style="color:var(--text-secondary);">Searching...</div>';
+
+    try {
+        const res = await fetch('/api/username/rapidapi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+        const data = await res.json();
+
+        if (data.fallback_to_sherlock) {
+            resultsDiv.innerHTML = `<div style="padding:0.75rem;background:var(--warning-bg);border-radius:6px;color:var(--warning-text);">
+                ⚠️ RapidAPI maandlimiet bereikt (${data.api_usage.used}/${data.api_usage.limit}). Gebruik de Sherlock knop op het hoofd dashboard.
+            </div>`;
+            return;
+        }
+
+        const results = data.results || {};
+        const platforms = results.results || [];
+
+        let html = `<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">
+            ${results.total_platforms || platforms.length} platforms gecheckt via RapidAPI`;
+        if (data.api_usage) {
+            const pct = Math.round((data.api_usage.used / data.api_usage.limit) * 100);
+            html += ` | Gebruik: ${data.api_usage.used}/${data.api_usage.limit}`;
+        }
+        html += '</div>';
+
+        if (platforms.length === 0) {
+            html += '<div class="empty">Geen resultaten</div>';
+        } else {
+            const taken = platforms.filter(p => p.available === true);
+            const available = platforms.filter(p => p.available === false);
+            const errors = platforms.filter(p => p.available === null);
+
+            if (taken.length > 0) {
+                html += `<h4 style="margin:0.5rem 0 0.25rem 0;color:#22c55e;">🎯 Taken (${taken.length})</h4>`;
+                taken.forEach(p => {
+                    html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0;font-size:0.85rem;border-bottom:1px solid var(--border-color);">
+                        <span>🟢</span><strong>${p.platform}</strong>
+                        ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:0.75rem;">🔗</a>` : ''}
+                    </div>`;
+                });
+            }
+            if (available.length > 0) {
+                html += `<h4 style="margin:0.5rem 0 0.25rem 0;color:var(--text-secondary);">❌ Available (${available.length})</h4>
+                    <details><summary style="cursor:pointer;font-size:0.85rem;">Toon ${available.length} beschikbare platforms</summary>`;
+                available.forEach(p => {
+                    html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.2rem 0;font-size:0.8rem;color:var(--text-muted);">
+                        <span>🔴</span>${p.platform}
+                        ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:0.7rem;">${p.url}</a>` : ''}
+                    </div>`;
+                });
+                html += '</details>';
+            }
+            if (errors.length > 0) {
+                html += `<h4 style="margin:0.5rem 0 0.25rem 0;color:#f59e0b;">⚠️ Errors (${errors.length})</h4>`;
+                errors.forEach(p => {
+                    html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.2rem 0;font-size:0.8rem;">
+                        <span>🟡</span>${p.platform} — ${p.error || 'Unknown error'}
+                    </div>`;
+                });
+            }
+        }
+
+        resultsDiv.innerHTML = html;
+    } catch (e) {
+        resultsDiv.innerHTML = `<div style="color:#dc2626;">Error: ${e.message}</div>`;
+    }
+}
+
+// Load usage badge on page load
+fetch('/api/username/rapidapi-status').then(r => r.json()).then(status => {
+    const badge = document.getElementById('usernameUsageBadge');
+    if (status.configured) {
+        badge.style.display = 'inline';
+        const pct = Math.round((status.used / status.limit) * 100);
+        const color = pct >= 80 ? '#f44336' : pct >= 50 ? '#f59e0b' : '#4caf50';
+        badge.textContent = `${status.remaining}/${status.limit} remaining`;
+        badge.style.color = color;
+    }
+}).catch(() => {});
+
+// Enter key support
+document.getElementById('usernameSearchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') searchUsername();
+});
+</script>
 {% endblock %}
