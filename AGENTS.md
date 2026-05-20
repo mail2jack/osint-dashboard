@@ -93,7 +93,13 @@
 - Auto-migration in `cms/__init__.py` (ALTER TABLE ADD COLUMN) for existing DBs.
 - New encrypted cols also listed in the ALTER COLUMN resize migration for PostgreSQL.
 
-## Testing
+## API Keys — Settings GUI (not .env)
+- Prefer Settings table over `.env` for API keys. Use `Setting.set('key_name', 'value')` via Flask shell or the Settings GUI.
+- Getter functions in `app.py`: `_get_overheid_key()`, `_get_twochat_credentials()`, `_get_brave_key()`. Pattern: env var override → Setting fallback.
+- Hardcoded `OVERHEID_API_KEY`, `TWOCHAT_API_KEY`, `TWOCHAT_WHATSAPP_NUMBER` at module level are deprecated — kept for backward compat but no longer used in routes (routes call getter functions instead).
+- One-time migration script `scripts/migrate_env_to_settings.py` copies existing `.env` values to DB.
+- Twitter Basic Auth (`read:api` at `app.py:1051`) is dead (Twitter v1.1 deprecated), ignore.
+- `.env` should only retain `DATABASE_URL`, `CMS_ENCRYPTION_KEY`, `FLASK_SECRET_KEY`. Move all API keys to Settings.
 ```bash
 python tests/test_core.py
 ```

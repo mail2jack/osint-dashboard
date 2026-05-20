@@ -851,7 +851,7 @@ def get_changelog():
 def get_config():
     """Return app configuration status"""
     return jsonify({
-        '2chat_enabled': bool(TWOCHAT_API_KEY and TWOCHAT_WHATSAPP_NUMBER),
+        '2chat_enabled': bool(_get_twochat_credentials()[0] and _get_twochat_credentials()[1]),
         'ollama_available': check_ollama_available(),
         'hibp_enabled': bool(HIBP_API_KEY)
     })
@@ -2508,6 +2508,36 @@ def _get_brave_key():
     return key
 
 
+def _get_overheid_key():
+    """Get Overheid.io API key: env var first, then DB Setting."""
+    key = os.environ.get('OVERHEID_API_KEY', '')
+    if not key:
+        try:
+            with app.app_context():
+                from cms.models import Setting
+                key = Setting.get('overheid_api_key', '')
+        except Exception:
+            pass
+    return key
+
+
+def _get_twochat_credentials():
+    """Get 2Chat credentials: env var first, then DB Setting."""
+    api_key = os.environ.get('TWOCHAT_API_KEY', '')
+    number = os.environ.get('TWOCHAT_WHATSAPP_NUMBER', '')
+    if not api_key or not number:
+        try:
+            with app.app_context():
+                from cms.models import Setting
+                if not api_key:
+                    api_key = Setting.get('twochat_api_key', '')
+                if not number:
+                    number = Setting.get('twochat_whatsapp_number', '')
+        except Exception:
+            pass
+    return api_key, number
+
+
 def person_dorks_search(full_name):
     """Search using Google dorks to find person info across web.
     
@@ -2824,16 +2854,17 @@ def openkvk_lookup():
     if not query:
         return jsonify({'error': 'Company name, KVK number, or postcode required'}), 400
     
+    api_key = _get_overheid_key()
     result = {
         'query': query,
         'results': [],
         'error': None,
-        'configured': bool(OVERHEID_API_KEY)
+        'configured': bool(api_key)
     }
     
-    if not OVERHEID_API_KEY:
+    if not api_key:
         result['error'] = 'Overheid.io API key not configured'
-        result['setup_hint'] = 'Set OVERHEID_API_KEY environment variable. Get free key at https://overheid.io'
+        result['setup_hint'] = 'Set via Settings > API Keys (overheid_api_key) or OVERHEID_API_KEY env var. Get free key at https://overheid.io'
         return jsonify(result)
     
     try:
@@ -2842,7 +2873,7 @@ def openkvk_lookup():
         
         headers = {
             'Accept': 'application/json',
-            'ovio-api-key': OVERHEID_API_KEY
+            'ovio-api-key': api_key
         }
         
         response = requests.get(search_url, headers=headers, timeout=15)
@@ -3553,12 +3584,13 @@ def phone_osint():
             except Exception as e:
                 result['services']['telegram'] = {'exists': None, 'note': 'Check blocked'}
         
-        if TWOCHAT_API_KEY and TWOCHAT_WHATSAPP_NUMBER:
+        _tck, _tcn = _get_twochat_credentials()
+        if _tck and _tcn:
             try:
                 phone_e164 = result.get('formatted') or f"+{normalized}"
-                url = f"https://api.p.2chat.io/open/whatsapp/check-number/{TWOCHAT_WHATSAPP_NUMBER}/{phone_e164}"
+                url = f"https://api.p.2chat.io/open/whatsapp/check-number/{_tcn}/{phone_e164}"
                 headers = {
-                    'X-User-API-Key': TWOCHAT_API_KEY,
+                    'X-User-API-Key': _tck,
                     'Accept': 'application/json'
                 }
                 response = requests.get(url, headers=headers, timeout=30)
@@ -3670,13 +3702,14 @@ def check_whatsapp_2chat():
     if not phone:
         return jsonify({'error': 'Phone number required'}), 400
     
-    if not TWOCHAT_API_KEY or not TWOCHAT_WHATSAPP_NUMBER:
+    _tck, _tcn = _get_twochat_credentials()
+    if not _tck or not _tcn:
         return jsonify({
             'error': '2Chat API not configured',
             'setup_required': True,
             'instructions': {
-                'api_key': 'Set TWOCHAT_API_KEY environment variable',
-                'whatsapp_number': 'Set TWOCHAT_WHATSAPP_NUMBER environment variable (your connected WhatsApp number)',
+                'api_key': 'Set via Settings > API Keys (twochat_api_key) or TWOCHAT_API_KEY env var',
+                'whatsapp_number': 'Set via Settings > API Keys (twochat_whatsapp_number) or TWOCHAT_WHATSAPP_NUMBER env var',
                 'docs': 'https://developers.2chat.co/docs/API/WhatsApp/Web/check-number'
             }
         }), 400
@@ -3701,10 +3734,10 @@ def check_whatsapp_2chat():
     }
     
     try:
-        url = f"https://api.p.2chat.io/open/whatsapp/check-number/{TWOCHAT_WHATSAPP_NUMBER}/{normalized}"
+        url = f"https://api.p.2chat.io/open/whatsapp/check-number/{_tcn}/{normalized}"
         
         headers = {
-            'X-User-API-Key': TWOCHAT_API_KEY,
+            'X-User-API-Key': _tck,
             'Accept': 'application/json'
         }
         
