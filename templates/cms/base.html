@@ -386,6 +386,7 @@
             <div id="updateInfo">
                 <p>Current version: <strong id="updCurrent"></strong></p>
                 <p>Latest version: <strong id="updLatest"></strong></p>
+                <div id="updateChangelog" style="margin-top:0.75rem;padding:0.75rem;background:var(--bg-card,#f9fafb);border-radius:6px;font-size:0.85rem;max-height:200px;overflow-y:auto;display:none;"></div>
             </div>
             <div id="updateProgress" style="display:none;">
                 <div id="updateSteps"></div>
@@ -441,17 +442,29 @@
                 if (data.update_available) {
                     const banner = document.getElementById('updateBanner');
                     const text = document.getElementById('updateBannerText');
-                    if (data.version_update) {
+                    const isVersion = data.version_update;
+                    if (isVersion) {
                         text.textContent = 'Update ' + data.current_version + ' → ' + data.latest_version + ' available. Click to update.';
                         document.getElementById('updCurrent').textContent = data.current_version;
                         document.getElementById('updLatest').textContent = data.latest_version;
-                        document.getElementById('updateInfo').style.display = 'block';
                     } else {
                         text.textContent = 'New commits available (bugfixes/improvements). Click to update.';
                         document.getElementById('updCurrent').textContent = data.current_version;
                         document.getElementById('updLatest').textContent = data.current_version + ' (+commits)';
-                        document.getElementById('updateInfo').style.display = 'block';
                     }
+                    if (data.changelog) {
+                        const clEl = document.getElementById('updateChangelog');
+                        const lines = data.changelog.split('\n').filter(Boolean);
+                        const clHtml = lines.map(l => {
+                            if (l.startsWith('### ')) return '<b>' + l.slice(4) + '</b>';
+                            if (l.startsWith('- ')) return '• ' + l.slice(2);
+                            if (l.startsWith('## ')) return '<b style="font-size:1.1rem;">' + l.replace(/[[\]]/g,'') + '</b>';
+                            return l;
+                        }).join('<br>');
+                        clEl.innerHTML = '<strong>📋 What\'s new:</strong><div style="margin-top:0.5rem;">' + clHtml + '</div>';
+                        clEl.style.display = 'block';
+                    }
+                    document.getElementById('updateInfo').style.display = 'block';
                     banner.style.display = 'block';
                 }
             })

@@ -6071,6 +6071,32 @@ def politiebureau_lookup():
         return jsonify({'error': str(e)}), 500
 
 
+@cms_bp.route('/api/changelog', methods=['GET'])
+@login_required
+def get_changelog():
+    """Return the full CHANGELOG.md rendered to simple HTML."""
+    import os
+    cl_path = os.path.join(current_app.root_path, 'CHANGELOG.md')
+    if not os.path.exists(cl_path):
+        return jsonify({'html': '<p>No changelog available.</p>'})
+    with open(cl_path) as f:
+        raw = f.read()
+    lines = raw.split('\n')
+    html_parts = []
+    for l in lines:
+        if l.startswith('### '):
+            html_parts.append(f'<p><strong>{l[4:]}</strong></p>')
+        elif l.startswith('## '):
+            html_parts.append(f'<h3>{l[3:]}</h3>')
+        elif l.startswith('- '):
+            html_parts.append(f'<li>{l[2:]}</li>')
+        elif l.strip() == '':
+            html_parts.append('<br>')
+        else:
+            html_parts.append(f'<p>{l}</p>')
+    return jsonify({'html': ''.join(html_parts)})
+
+
 @cms_bp.route('/api/check-update', methods=['GET'])
 @login_required
 def check_update():
@@ -6144,6 +6170,21 @@ def check_update():
             remote_sha and local_sha and remote_sha != local_sha and not version_update)
         update_available = version_update or commits_update
 
+        # Fetch changelog if update is available
+        changelog = None
+        if update_available:
+            try:
+                cl_url = f'https://raw.githubusercontent.com/{repo}/master/CHANGELOG.md'
+                cl_r = httpx.get(cl_url, timeout=10)
+                if cl_r.status_code == 200:
+                    cl_text = cl_r.text
+                    m = re.search(
+                        r'##\s*\[([^\]]+)\].*?(?=\n##\s|\Z)', cl_text, re.DOTALL)
+                    if m:
+                        changelog = m.group(0).strip()
+            except Exception:
+                pass
+
         data = {
             'update_available': update_available,
             'version_update': version_update,
@@ -6154,6 +6195,7 @@ def check_update():
             'repo': repo,
             'remote_sha': remote_sha,
             'local_sha': local_sha,
+            'changelog': changelog,
         }
 
         current_app.config[cache_key] = {'data': data, 'cached_at': now}
