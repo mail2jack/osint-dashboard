@@ -1825,3 +1825,16 @@ class OsintSearch(db.Model):
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'cancelled_at': self.cancelled_at.isoformat() if self.cancelled_at else None,
         }
+
+
+class PhoneLookup(db.Model):
+    __tablename__ = 'phone_lookups'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    phone = db.Column(db.String(50), nullable=False, index=True)
+    raw_response = db.Column(db.JSON, nullable=False)
+    profile_picture = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
+
+    creator = db.relationship('User', backref='phone_lookups', foreign_keys=[created_by])

@@ -6409,27 +6409,60 @@ def phone_lookup():
                     # API returns cached data with 503 — check body, not status
                     if 'isWAContact' in cl_data or 'isUser' in cl_data:
                         wa_exists = cl_data.get('isWAContact') or cl_data.get('isUser')
+                        tg = cl_data.get('telegram')
+                        tg_exists = not ('not on Telegram' in ((tg or {}).get('error') or '')) if tg else None
+
+                        profile_pic_b64 = None
+                        pic_status = cl_data.get('image_status')
+                        if pic_status and pic_status != 'item-not-found' and pic_status != 'not-authorized':
+                            try:
+                                pic_url = f'https://whatsapp-data1.p.rapidapi.com/picture/{normalized}'
+                                pic_resp = httpx.get(pic_url, headers=cl_headers, timeout=10)
+                                if pic_resp.status_code == 200 and pic_resp.headers.get('content-type', '').startswith('image/'):
+                                    import base64
+                                    profile_pic_b64 = 'data:' + pic_resp.headers['content-type'] + ';base64,' + base64.b64encode(pic_resp.content).decode()
+                            except Exception:
+                                pass
+
                         result['services']['whatsapp'] = {
                             'exists': bool(wa_exists),
                             'url': f'https://wa.me/{normalized}' if wa_exists else None,
                             'business': cl_data.get('isBusiness'),
+                            'enterprise': cl_data.get('isEnterprise'),
+                            'verified': cl_data.get('isVerified'),
                             'about': cl_data.get('about'),
+                            'about_set_at': cl_data.get('aboutSetAt'),
+                            'line_type': cl_data.get('type'),
+                            'cached': cl_data.get('cached'),
+                            'check_date': cl_data.get('date'),
+                            'banned': cl_data.get('checkMetadata', {}).get('isBanned'),
+                            'image_status': pic_status,
+                            'profile_picture': profile_pic_b64,
                         }
-                        tg = cl_data.get('telegram')
-                        if tg:
-                            tg_exists = not ('not on Telegram' in (tg.get('error') or ''))
-                            result['services']['telegram'] = {
-                                'exists': tg_exists,
-                                'url': f'https://t.me/+{normalized}' if tg_exists else None,
-                            }
-                        else:
-                            result['services']['telegram'] = {'exists': None, 'note': 'No Telegram data'}
+                        result['services']['telegram'] = {
+                            'exists': tg_exists if tg_exists is not None else None,
+                            'url': f'https://t.me/+{normalized}' if tg_exists else None,
+                            'error': (tg or {}).get('error') if tg else None,
+                        }
+                        result['raw_api_data'] = cl_data
+
+                        # Save to DB
+                        from .models import PhoneLookup
+                        lookup = PhoneLookup(
+                            phone=normalized,
+                            raw_response=cl_data,
+                            profile_picture=profile_pic_b64,
+                            created_by=current_user.id if current_user.is_authenticated else None,
+                        )
+                        db.session.add(lookup)
+                        db.session.commit()
 
                         # Increment usage counter
                         Setting.set('whatsapp_checkleaked_month', now_month)
                         Setting.set('whatsapp_checkleaked_used', str(used_count + 1))
                         result['api_usage']['used'] = used_count + 1
                         result['api_usage']['remaining'] = max(0, limit - used_count - 1)
+                        result['lookup_id'] = lookup.id
                     else:
                         raise Exception(f'API returned {cl_resp.status_code}: {cl_data.get("error","no data")}')
                 except Exception:

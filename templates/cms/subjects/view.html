@@ -2096,20 +2096,48 @@
 
             let html = '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+
+            // Profile picture
+            if (data.services && data.services.whatsapp && data.services.whatsapp.profile_picture) {
+                html += '<div style="grid-column:1/-1;text-align:center;margin-bottom:0.5rem;">';
+                html += '<img src="' + data.services.whatsapp.profile_picture + '" style="width:80px;height:80px;border-radius:50%;border:2px solid #ddd6fe;object-fit:cover;">';
+                html += '</div>';
+            }
+
             html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Formatted:</strong> ' + (data.formatted || '-') + '</div>';
+            html += '<div><strong>Number:</strong> ' + (data.formatted || '-') + '</div>';
             html += '<div><strong>Country:</strong> ' + (data.country || '-') + '</div>';
             html += '<div><strong>Region:</strong> ' + (data.region || '-') + '</div>';
             html += '<div><strong>Carrier:</strong> ' + (data.carrier || '-') + '</div>';
             html += '<div><strong>Line Type:</strong> ' + (data.line_type || '-') + '</div>';
+
+            // WhatsApp details
             if (data.services && data.services.whatsapp) {
                 const wa = data.services.whatsapp;
-                html += '<div><strong>WhatsApp:</strong> ' + (wa.exists ? '✅ <a href="' + wa.url + '" target="_blank">Chat</a>' : (wa.exists === false ? '❌ Not found' : '⚠ ' + (wa.note || 'Unknown'))) + '</div>';
+                const exists = wa.exists;
+                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>📱 WhatsApp</strong></div>';
+                html += '<div><strong>Registered:</strong> ' + (exists ? '✅ Yes' : (exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
+                if (exists) html += '<div><strong>Chat:</strong> <a href="' + wa.url + '" target="_blank">Open</a></div>';
+                if (wa.about !== undefined && wa.about !== null) html += '<div style="grid-column:1/-1;"><strong>About:</strong> ' + escapeHtml(wa.about || '-') + '</div>';
+                if (wa.business !== undefined) html += '<div><strong>Business:</strong> ' + (wa.business ? '✅ Yes' : 'No') + '</div>';
+                if (wa.enterprise !== undefined) html += '<div><strong>Enterprise:</strong> ' + (wa.enterprise ? '✅ Yes' : 'No') + '</div>';
+                if (wa.verified !== undefined) html += '<div><strong>Verified:</strong> ' + (wa.verified ? '✅ Yes' : 'No') + '</div>';
+                if (wa.banned !== undefined) html += '<div><strong>Banned:</strong> ' + (wa.banned ? '⚠ Yes' : 'No') + '</div>';
+                if (wa.line_type) html += '<div><strong>API Type:</strong> ' + wa.line_type + '</div>';
+                if (wa.cached) html += '<div><strong>Cached:</strong> ' + (wa.cached ? 'Yes' : 'Fresh') + '</div>';
+                if (wa.check_date) html += '<div><strong>Checked:</strong> ' + new Date(wa.check_date).toLocaleString() + '</div>';
             }
+
+            // Telegram details
             if (data.services && data.services.telegram) {
                 const tg = data.services.telegram;
-                html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + tg.url + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + (tg.note || 'Unknown'))) + '</div>';
+                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>✈️ Telegram</strong></div>';
+                html += '<div><strong>Registered:</strong> ' + (tg.exists ? '✅ Yes' : (tg.exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
+                if (tg.exists) html += '<div><strong>Chat:</strong> <a href="' + tg.url + '" target="_blank">Open</a></div>';
+                if (tg.error) html += '<div style="grid-column:1/-1;"><strong>Detail:</strong> ' + tg.error + '</div>';
             }
+
+            // Usage counter
             if (data.api_usage) {
                 const u = data.api_usage;
                 const pct = Math.round(u.used / u.limit * 100);
@@ -2120,6 +2148,7 @@
                 if (u.note) html += ' — <em style="color:#dc2626;">' + u.note + '</em>';
                 html += '</div>';
             }
+
             html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Done';
