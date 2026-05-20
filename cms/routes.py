@@ -651,7 +651,7 @@ def create_client():
                                 c_data.get('value')) if c_data.get('value') else None
                         elif c_data.get('contact_type') == 'phone' and c_data.get('is_primary'):
                             client.contact_phone = encryptor.encrypt(
-                                c_data.get('value')) if c_data.get('value') else None
+                                normalize_phone(c_data.get('value'))) if c_data.get('value') else None
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse contacts_data: {e}")
 
@@ -767,7 +767,7 @@ def edit_client(client_id: str):
                                 c_data.get('value')) if c_data.get('value') else None
                         elif c_data.get('contact_type') == 'phone' and c_data.get('is_primary'):
                             client.contact_phone = encryptor.encrypt(
-                                c_data.get('value')) if c_data.get('value') else None
+                                normalize_phone(c_data.get('value'))) if c_data.get('value') else None
                 changes['contacts'] = {
                     'old': f'{len(old_contacts)} contact(s)', 'new': f'{len(contacts_data)} contact(s)'}
             except (json.JSONDecodeError, TypeError) as e:
@@ -2249,8 +2249,8 @@ def create_subject():
                             subject.email = encryptor.encrypt(c_data.get(
                                 'value')) if c_data.get('value') else None
                         elif c_data.get('contact_type') == 'phone' and c_data.get('is_primary'):
-                            subject.phone = encryptor.encrypt(c_data.get(
-                                'value')) if c_data.get('value') else None
+                            subject.phone = encryptor.encrypt(normalize_phone(
+                                c_data.get('value'))) if c_data.get('value') else None
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse contacts_data: {e}")
 
@@ -2331,6 +2331,8 @@ def edit_subject(subject_id: str):
                         old_value = encryptor.decrypt(old_value)
                 except Exception:
                     pass
+                if field == 'phone' and new_value:
+                    new_value = normalize_phone(new_value)
                 if new_value != old_value:
                     changes[field] = {
                         'old': old_value or '[empty]', 'new': new_value or '[empty]'}
@@ -2453,9 +2455,10 @@ def edit_subject(subject_id: str):
                                     subject.phone) if subject.phone else None
                             except Exception:
                                 current = subject.phone  # may already be plaintext
-                            if c_data.get('value') != current:
-                                subject.phone = encryptor.encrypt(c_data.get(
-                                    'value')) if c_data.get('value') else None
+                            new_val = normalize_phone(c_data.get('value'))
+                            if new_val != current:
+                                subject.phone = encryptor.encrypt(
+                                    new_val) if new_val else None
                 changes['contacts'] = {
                     'old': f'{contact_count_before} contact(s)', 'new': f'{len(contacts_data)} contact(s)'}
             except (json.JSONDecodeError, TypeError) as e:
@@ -6300,6 +6303,25 @@ def do_update():
         'results': results,
         'message': 'Update completed successfully' if success else 'Update had errors, check results'
     }), 200 if success else 500
+
+
+def normalize_phone(phone):
+    """Normalize any phone number format to E164 (+31634407404)."""
+    if not phone:
+        return phone
+    phone = phone.strip()
+    try:
+        import phonenumbers
+        parsed = phonenumbers.parse(phone, 'NL')
+        if phonenumbers.is_valid_number(parsed):
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+    except Exception:
+        pass
+    # Fallback: strip all non-digits, prepend +
+    digits = re.sub(r'[^0-9]', '', phone)
+    if digits.startswith('0'):
+        digits = '31' + digits[1:]  # assume NL
+    return '+' + digits
 
 
 @cms_bp.route('/api/phone-lookup-stored', methods=['GET'])
