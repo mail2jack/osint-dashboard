@@ -6329,7 +6329,7 @@ def phone_lookup_stored():
         'created_at': lookup.created_at.isoformat() if lookup.created_at else None,
         'raw_response': lookup.raw_response,
         'profile_picture': lookup.profile_picture,
-        'created_by_name': lookup.creator.name if lookup.creator else None,
+        'created_by_name': lookup.creator.full_name if lookup.creator else None,
     })
 
 
