@@ -20,6 +20,8 @@
 - Comments: sectie verplaatst naar tussen Subject Details en Social Media IDs
 - Subject.notes gemigreerd naar Comment model
 - OSINT scan resultaten: URL dedup (geen harde UNIQUE, <60s filter)
+- Telefoonnummers worden nu automatisch genormaliseerd naar E164 (+31634407404) bij create/edit
+- PhoneLookup model: opgeslagen checks tonen bij herbezoek, refresh knop voor nieuwe API call
 
 ## [3.4.2] — Before 2026-05-19
 

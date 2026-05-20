@@ -42,6 +42,7 @@
 - Requires `phonenumbers` (`pip install phonenumbers`).
 - Depends on `httpx` (already in requirements).
 - `re` imported globally in routes.py for number normalization.
+- **`normalize_phone()`** (routes.py:6307) — normaliseert elk telefoonformaat naar E164 (`+31634407404`). Wordt aangeroepen bij create/edit van subject + client (zowel los veld als contacts).
 - **WhatsApp/Telegram check**: Uses `whatsapp.checkleaked.cc` API (RapidAPI) when `whatsapp_checkleaked_key` Setting is set. Falls back to unreliable scraping (`api.whatsapp.com/send` + `t.me`) when API returns 503 or no key configured.
 - API key: `Setting.set('whatsapp_checkleaked_key', 'your-rapidapi-key')` (BASIC free tier: 50 req/month). Signs up at whatsapp.checkleaked.cc/pricing.
 - API response includes `isWAContact`/`isUser` for WhatsApp presence + `telegram` object with existence check.
