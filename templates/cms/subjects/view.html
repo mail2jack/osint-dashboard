@@ -2575,7 +2575,7 @@
         const username = input.value.trim();
         if (!username) return;
 
-        resultsDiv.innerHTML = '<div style="color:var(--text-secondary);padding:0.5rem;">Searching...</div>';
+        resultsDiv.innerHTML = '<div style="padding:1rem;color:var(--text-secondary);">Searching <span class="loading-dots">...</span></div>';
         saveBar.style.display = 'none';
 
         try {
@@ -2587,8 +2587,12 @@
             const data = await res.json();
 
             if (data.fallback_to_sherlock) {
-                resultsDiv.innerHTML = `<div style="padding:0.75rem;background:var(--warning-bg);border-radius:6px;color:var(--warning-text);">
-                    ⚠️ RapidAPI limiet bereikt (${data.api_usage.used}/${data.api_usage.limit}). Gebruik de Sherlock knop op het hoofd dashboard.
+                resultsDiv.innerHTML = `<div class="card" style="padding:1rem;border-left:4px solid #f59e0b;">
+                    <strong>⚠️ RapidAPI limit reached</strong><br>
+                    <span style="font-size:0.85rem;color:var(--text-secondary);">
+                        ${data.api_usage.used}/${data.api_usage.limit} used this month.
+                        Use the Sherlock button on the main dashboard.
+                    </span>
                 </div>`;
                 return;
             }
@@ -2597,58 +2601,91 @@
             const platforms = apiResults.results || [];
             _lastUsernameResults = platforms.filter(p => p.available === true && p.url);
 
-            let html = `<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">
-                ${apiResults.total_platforms || platforms.length} platforms checked via RapidAPI`;
+            // Usage bar
+            let html = '';
             if (data.api_usage) {
-                html += ` | <strong>API Usage:</strong> ${data.api_usage.used}/${data.api_usage.limit}`;
+                const pct = Math.min(100, Math.round((data.api_usage.used / data.api_usage.limit) * 100));
+                const color = pct >= 80 ? '#f44336' : pct >= 50 ? '#f59e0b' : '#4caf50';
+                html += `
+                    <div style="margin-bottom:1rem;padding:0.75rem;background:var(--bg-card);border-radius:8px;font-size:0.85rem;">
+                        <strong>API Usage:</strong> ${data.api_usage.used}/${data.api_usage.limit}
+                        <div style="height:6px;background:var(--border-color);border-radius:3px;margin-top:4px;max-width:200px;">
+                            <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
+                        </div>
+                    </div>`;
             }
-            html += '</div>';
 
             if (platforms.length === 0) {
-                html += '<div class="empty">No results found</div>';
-                resultsDiv.innerHTML = html;
+                resultsDiv.innerHTML = html + '<div class="empty">No results</div>';
                 return;
             }
 
-            const taken = platforms.filter(p => p.available === true);
-            const available = platforms.filter(p => p.available === false);
-            const errors = platforms.filter(p => p.available === null);
+            // Stats bar
+            const taken = platforms.filter(p => p.available === true && p.verified !== false);
+            const verifiedCount = platforms.filter(p => p.available === true && p.verified === true).length;
+            const fpCount = platforms.filter(p => p.available === false && p.verification_note === 'likely_false_positive').length;
+            html += `
+                <div class="stats" style="display:flex;gap:1rem;margin-bottom:1rem;">
+                    <div class="stat"><div class="stat-value" style="color:#22c55e;">${taken.length}</div><div class="stat-label">Found</div></div>
+                    <div class="stat"><div class="stat-value">${platforms.length}</div><div class="stat-label">Checked</div></div>
+                    <div class="stat"><div class="stat-value" style="color:var(--text-secondary);">${verifiedCount}</div><div class="stat-label">Verified</div></div>
+                    ${fpCount ? `<div class="stat"><div class="stat-value" style="color:#f59e0b;">${fpCount}</div><div class="stat-label">False Positives</div></div>` : ''}
+                </div>`;
 
-            if (taken.length > 0) {
-                html += `<h4 style="margin:0.75rem 0 0.25rem 0;color:#22c55e;">🎯 Accounts Found (${taken.length})</h4>`;
-                taken.forEach((p, i) => {
-                    html += `<label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;font-size:0.85rem;border-bottom:1px solid var(--border-color);cursor:pointer;">
-                        <input type="checkbox" class="username-result-cb" data-platform="${p.platform}" data-url="${p.url}" data-username="${username}" checked>
-                        <span>🟢</span>
-                        <strong>${p.platform}</strong>
-                        ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:0.75rem;margin-left:auto;">🔗 Open</a>` : ''}
-                    </label>`;
+            // Group by category
+            const categories = {};
+            platforms.forEach(p => {
+                const cat = p.category || 'Other';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(p);
+            });
+
+            for (const [cat, items] of Object.entries(categories)) {
+                html += `<h4 style="margin:1rem 0 0.5rem 0;color:var(--text-secondary);text-transform:uppercase;font-size:0.8rem;letter-spacing:0.5px;">${cat}</h4>`;
+
+                const takenInCat = items.filter(p => p.available === true);
+                const otherInCat = items.filter(p => p.available !== true);
+
+                // Taken items first, with checkboxes
+                takenInCat.forEach(p => {
+                    const isVerified = p.verified === true;
+                    const isUnconfirmed = p.verified === null || p.verified === undefined;
+                    html += `
+                        <label style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border-color);cursor:pointer;">
+                            <input type="checkbox" class="username-result-cb" data-platform="${p.platform}" data-url="${p.url}" data-username="${username}" checked>
+                            <span>🟢</span>
+                            <strong style="flex:1">${p.platform}</strong>
+                            ${isVerified ? '<span style="font-size:0.7rem;color:#22c55e;background:rgba(34,197,94,0.1);padding:1px 6px;border-radius:3px;">VERIFIED</span>' : ''}
+                            ${isUnconfirmed ? '<span style="font-size:0.7rem;color:#f59e0b;background:rgba(245,158,11,0.1);padding:1px 6px;border-radius:3px;">UNCONFIRMED</span>' : ''}
+                            ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:0.8rem;color:var(--accent);">🔗</a>` : ''}
+                        </label>`;
                 });
-            }
-            if (available.length > 0) {
-                html += `<h4 style="margin:0.75rem 0 0.25rem 0;color:var(--text-secondary);">❌ Available (${available.length})</h4>`;
-                const limited = available.slice(0, 20);
-                limited.forEach(p => {
-                    html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.2rem 0;font-size:0.8rem;color:var(--text-muted);">
-                        <span>🔴</span>${p.platform}
-                    </div>`;
-                });
-                if (available.length > 20) {
-                    html += `<div style="font-size:0.75rem;color:var(--text-secondary);padding:0.2rem 0;">...en ${available.length - 20} meer</div>`;
+
+                // Non-taken (available + errors) collapsed
+                if (otherInCat.length > 0) {
+                    const availCount = otherInCat.filter(p => p.available === false && !p.verification_note).length;
+                    const fpInCat = otherInCat.filter(p => p.verification_note === 'likely_false_positive').length;
+                    html += `<details style="font-size:0.85rem;"><summary style="cursor:pointer;color:var(--text-secondary);padding:0.3rem 0;">
+                        ${availCount} available${fpInCat ? `, ${fpInCat} filtered false positives` : ''} <span style="font-size:0.75rem;">(click to expand)</span>
+                    </summary>`;
+                    otherInCat.forEach(p => {
+                        const isFp = p.verification_note === 'likely_false_positive';
+                        const icon = isFp ? '🟠' : '🔴';
+                        const label = isFp ? 'False Positive' : 'Available';
+                        html += `
+                            <div style="display:flex;align-items:center;gap:0.75rem;padding:0.3rem 0;font-size:0.85rem;color:var(--text-muted);padding-left:1.5rem;">
+                                <span>${icon}</span>
+                                <span style="flex:1;">${p.platform}</span>
+                                <span style="font-size:0.75rem;">${label}</span>
+                            </div>`;
+                    });
+                    html += '</details>';
                 }
-            }
-            if (errors.length > 0) {
-                html += `<h4 style="margin:0.75rem 0 0.25rem 0;color:#f59e0b;">⚠️ Errors (${errors.length})</h4>`;
-                errors.slice(0, 5).forEach(p => {
-                    html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.2rem 0;font-size:0.8rem;">
-                        <span>🟡</span>${p.platform} — ${(p.error || '').substring(0, 50)}
-                    </div>`;
-                });
             }
 
             resultsDiv.innerHTML = html;
 
-            // Show save bar if there are taken accounts
+            // Show save bar
             if (taken.length > 0) {
                 saveBar.style.display = 'block';
                 updateUsernameSelectedCount();
@@ -2664,7 +2701,8 @@
     function updateUsernameSelectedCount() {
         const count = document.querySelectorAll('.username-result-cb:checked').length;
         document.getElementById('usernameSelectedCount').textContent = count;
-        document.getElementById('saveUsernameBtn').disabled = count === 0;
+        const btn = document.getElementById('saveUsernameBtn');
+        if (btn) btn.disabled = count === 0;
     }
 
     function saveUsernameFindings() {
@@ -2697,7 +2735,7 @@
             if (data.error) {
                 alert('Error: ' + data.error);
             } else {
-                alert(data.message || 'Saved successfully!');
+                alert(data.message || 'Saved!');
                 if (data.findings_count > 0) location.reload();
             }
         })
@@ -2716,13 +2754,12 @@
         if (status.configured) {
             badge.style.display = 'inline';
             const pct = Math.round((status.used / status.limit) * 100);
-            const color = pct >= 80 ? '#f44336' : pct >= 50 ? '#f59e0b' : '#4caf50';
             badge.textContent = `${status.remaining}/${status.limit} remaining`;
-            badge.style.color = color;
+            badge.style.color = pct >= 80 ? '#f44336' : pct >= 50 ? '#f59e0b' : '#4caf50';
         }
     }).catch(() => {});
 
-    // Enter key for username search
+    // Enter key
     document.getElementById('usernameSearchInput').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') searchUsername();
     });

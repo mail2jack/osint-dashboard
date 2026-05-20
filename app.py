@@ -3510,6 +3510,54 @@ def username_rapidapi():
             usage_info['used'] = used_count + 1
             usage_info['remaining'] = max(0, USAGE_LIMIT - used_count - 1)
 
+            # Verify "taken" results to reduce false positives
+            try:
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                results_list = data.get('results', [])
+                taken = [r for r in results_list if r.get('available') is True and r.get('url')]
+                if taken:
+                    fp_patterns = [
+                        rb'\b(not found|no results?|doesn\'t exist|profile not found)\b',
+                        rb'\b(404|page not found|this page doesn\'t exist)\b',
+                        rb'\b(invalid user|user invalid|username not|user not found)\b',
+                        rb'\b(removed this|content removed|deleted account|this account)\b',
+                        rb'(sign up|create account|log in|login).{0,50}(to view|to see)',
+                        rb'(view profile|profile).{0,30}(requires|need).{0,30}(login|sign in)',
+                        rb'\b(error|404|403|400)\b.{0,20}\b(page|content)',
+                    ]
+                    fp_compiled = [re.compile(p, re.I) for p in fp_patterns]
+
+                    def _verify(url, timeout=5):
+                        try:
+                            r = requests.get(url, timeout=timeout, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+                            body = r.content[:2048].lower()
+                            # Check false-positive patterns
+                            for pat in fp_compiled:
+                                if pat.search(body):
+                                    return False, 'likely_false_positive'
+                            # Check if username appears in response
+                            username_bytes = username.lower().encode()
+                            if username_bytes in body:
+                                return True, 'verified'
+                            # Tiny response (<500 bytes) likely a generic page
+                            if len(body) < 500:
+                                return False, 'too_small'
+                            return True, 'unconfirmed'
+                        except Exception:
+                            return None, 'unreachable'
+
+                    with ThreadPoolExecutor(max_workers=10) as pool:
+                        fut_map = {pool.submit(_verify, r['url']): r for r in taken}
+                        for fut in as_completed(fut_map):
+                            r = fut_map[fut]
+                            verified, note = fut.result()
+                            if verified is False:
+                                r['available'] = False
+                            r['verified'] = verified
+                            r['verification_note'] = note
+            except Exception as ve:
+                logger.warning(f"RapidAPI verification failed: {ve}")
+
             return jsonify({
                 'source': 'rapidapi',
                 'username': username,
