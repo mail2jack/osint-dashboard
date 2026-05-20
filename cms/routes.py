@@ -6341,39 +6341,74 @@ def phone_lookup():
         normalized = re.sub(r'[^0-9]', '', result['formatted'])
         result['normalized'] = normalized
 
-        # WhatsApp check
-        with httpx.Client(follow_redirects=True, timeout=10) as client:
+        # WhatsApp + Telegram check via checkleaked API
+        api_key = Setting.get('whatsapp_checkleaked_key')
+        if api_key:
             try:
-                wa_url = f'https://api.whatsapp.com/send?phone={normalized}'
-                wa_resp = client.get(
-                    wa_url, headers={'User-Agent': 'Mozilla/5.0'})
-                wa_text = wa_resp.text.lower()
-                if 'phone number is not on whatsapp' in wa_text:
-                    result['services']['whatsapp'] = {'exists': False}
-                else:
+                cl_url = f'https://whatsapp-data1.p.rapidapi.com/number/{normalized}?telegram=1'
+                cl_headers = {
+                    'x-rapidapi-key': api_key,
+                    'x-rapidapi-host': 'whatsapp-data1.p.rapidapi.com',
+                }
+                cl_resp = httpx.get(cl_url, headers=cl_headers, timeout=15)
+                if cl_resp.status_code == 200:
+                    cl_data = cl_resp.json()
+                    wa_exists = cl_data.get('isWAContact') or cl_data.get('isUser')
                     result['services']['whatsapp'] = {
-                        'exists': True, 'url': f'https://wa.me/{normalized}'}
-            except Exception:
-                result['services']['whatsapp'] = {
-                    'exists': None, 'note': 'Check failed'}
-
-            # Telegram check
-            try:
-                tg_url = f'https://t.me/+{normalized}'
-                tg_resp = client.get(
-                    tg_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
-                tg_text = tg_resp.text.lower()
-                if tg_resp.status_code == 400 or 'join' in tg_text or 'subscribe' in tg_text:
-                    result['services']['telegram'] = {
-                        'exists': True, 'url': tg_url}
-                elif tg_resp.status_code == 200:
-                    result['services']['telegram'] = {'exists': False}
+                        'exists': bool(wa_exists),
+                        'url': f'https://wa.me/{normalized}' if wa_exists else None,
+                        'business': cl_data.get('isBusiness'),
+                        'about': cl_data.get('about'),
+                    }
+                    tg = cl_data.get('telegram')
+                    if tg:
+                        tg_exists = not ('not on Telegram' in (tg.get('error') or ''))
+                        result['services']['telegram'] = {
+                            'exists': tg_exists,
+                            'url': f'https://t.me/+{normalized}' if tg_exists else None,
+                        }
+                    else:
+                        result['services']['telegram'] = {'exists': None, 'note': 'No Telegram data'}
                 else:
-                    result['services']['telegram'] = {
-                        'exists': None, 'note': 'Unable to verify'}
+                    raise Exception(f'API returned {cl_resp.status_code}')
             except Exception:
-                result['services']['telegram'] = {
-                    'exists': None, 'note': 'Check failed'}
+                pass
+
+        # Fallback: scrape-based checks
+        if 'whatsapp' not in result['services'] or result['services']['whatsapp'].get('exists') is None:
+            with httpx.Client(follow_redirects=True, timeout=10) as client:
+                try:
+                    wa_url = f'https://api.whatsapp.com/send?phone={normalized}'
+                    wa_resp = client.get(
+                        wa_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    wa_text = wa_resp.text.lower()
+                    if 'phone number is not on whatsapp' in wa_text:
+                        result['services']['whatsapp'] = {'exists': False}
+                    else:
+                        result['services']['whatsapp'] = {
+                            'exists': True, 'url': f'https://wa.me/{normalized}'}
+                except Exception:
+                    result['services']['whatsapp'] = {
+                        'exists': None, 'note': 'Check failed'}
+
+        if 'telegram' not in result['services'] or result['services']['telegram'].get('exists') is None:
+            with httpx.Client(follow_redirects=True, timeout=10) as client:
+                try:
+                    tg_url = f'https://t.me/+{normalized}'
+                    tg_resp = client.get(
+                        tg_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
+                    tg_text = tg_resp.text.lower()
+                    if tg_resp.status_code == 400 or 'join' in tg_text or 'subscribe' in tg_text:
+                        result['services']['telegram'] = {
+                            'exists': True, 'url': tg_url}
+                    elif tg_resp.status_code == 200:
+                        result['services']['telegram'] = {'exists': False}
+                    else:
+                        result['services']['telegram'] = {
+                            'exists': None, 'note': 'Unable to verify'}
+                except Exception:
+                    result['services']['telegram'] = {
+                        'exists': None, 'note': 'Check failed'}
 
         # Free NL-specific lookup via Bedrijfsdata API
         if result['country_code'] == '+31':
