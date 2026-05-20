@@ -6477,11 +6477,13 @@ def phone_lookup():
                         }
                         result['raw_api_data'] = cl_data
 
-                        # Save to DB
+                        # Save to DB — store the full enriched result
                         from .models import PhoneLookup
+                        import copy
+                        stored_result = copy.deepcopy(result)
                         lookup = PhoneLookup(
                             phone=normalized,
-                            raw_response=cl_data,
+                            raw_response=stored_result,
                             profile_picture=profile_pic_b64,
                             created_by=current_user.id if current_user.is_authenticated else None,
                         )

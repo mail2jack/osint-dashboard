@@ -513,14 +513,16 @@
                     html += '<div style="margin-top:1rem;padding:0.75rem;background:var(--success-bg);border-radius:6px;color:var(--success-text);">✅ ' + data.message + '</div>';
                     setTimeout(() => location.reload(), 3000);
                 } else {
-                    html += '<div style="margin-top:1rem;padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">❌ Update had errors.</div>';
+                    const errorCount = errors.length;
+                    html += '<div style="margin-top:1rem;padding:0.75rem;background:#fef2f2;border:2px solid #dc2626;border-radius:6px;color:#991b1b;">❌ <strong>Update had errors' + (errorCount ? ' (' + errorCount + ' ' + (errorCount === 1 ? 'fout' : 'fouten') + ')' : '') + '.</strong></div>';
                     if (errors.length) {
-                        html += '<div style="margin-top:0.5rem;padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">';
-                        html += '<strong style="display:block;margin-bottom:0.5rem;">Error details:</strong>';
+                        html += '<div style="margin-top:0.5rem;">';
                         errors.forEach(e => {
-                            html += '<pre style="margin:0.25rem 0;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;">' + escapeHtml(e) + '</pre>';
+                            html += '<pre style="margin:0.25rem 0;padding:0.5rem;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;color:#991b1b;">❌ ' + escapeHtml(e) + '</pre>';
                         });
                         html += '</div>';
+                    } else {
+                        html += '<div style="margin-top:0.5rem;padding:0.75rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;color:#991b1b;">⚠️ Geen gedetailleerde foutmelding beschikbaar. Controleer de stappen hieronder voor rode ❌ indicators.</div>';
                     }
                     btn.disabled = false;
                     btn.textContent = '⬆️ Retry';

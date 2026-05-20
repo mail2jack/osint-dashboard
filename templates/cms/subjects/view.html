@@ -2147,14 +2147,7 @@
                 if (storedData.created_by_name) html += ' by ' + storedData.created_by_name;
                 html += ' <button onclick="phoneLookupRefresh(\'' + phone.replace(/'/g, "\\'") + '\', this)" style="background:#7c3aed;color:white;border:none;border-radius:4px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">🔄 Refresh</button>';
                 html += '</div>';
-                // Build a synthetic data object for the renderer
-                const data = Object.assign({}, raw, {
-                    valid: raw.valid !== false,
-                    formatted: raw.formatted || raw.phone || phone,
-                    services: raw.services || {},
-                    api_usage: raw.api_usage || null,
-                });
-                html += renderPhoneResult(data);
+                html += renderPhoneResult(raw);
                 resultDiv.innerHTML = html;
                 btn.textContent = '✅ Cached';
                 btn.style.background = '#16a34a';
