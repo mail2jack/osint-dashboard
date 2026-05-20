@@ -6405,8 +6405,9 @@ def phone_lookup():
                         'x-rapidapi-host': 'whatsapp-data1.p.rapidapi.com',
                     }
                     cl_resp = httpx.get(cl_url, headers=cl_headers, timeout=15)
-                    if cl_resp.status_code == 200:
-                        cl_data = cl_resp.json()
+                    cl_data = cl_resp.json()
+                    # API returns cached data with 503 — check body, not status
+                    if 'isWAContact' in cl_data or 'isUser' in cl_data:
                         wa_exists = cl_data.get('isWAContact') or cl_data.get('isUser')
                         result['services']['whatsapp'] = {
                             'exists': bool(wa_exists),
@@ -6430,7 +6431,7 @@ def phone_lookup():
                         result['api_usage']['used'] = used_count + 1
                         result['api_usage']['remaining'] = max(0, limit - used_count - 1)
                     else:
-                        raise Exception(f'API returned {cl_resp.status_code}')
+                        raise Exception(f'API returned {cl_resp.status_code}: {cl_data.get("error","no data")}')
                 except Exception:
                     pass
 
