@@ -2168,7 +2168,10 @@ def create_subject():
             imo_number=data.get('imo_number'),
             mmsi=data.get('mmsi'),
             eni_number=data.get('eni_number'),
-            vessel_nationality=data.get('vessel_nationality')
+            vessel_nationality=data.get('vessel_nationality'),
+            date_of_birth=data.get('date_of_birth'),
+            place_of_birth=data.get('place_of_birth'),
+            identification_number=data.get('identification_number')
         )
 
         if data['subject_type'] == 'vehicle':
@@ -2178,7 +2181,8 @@ def create_subject():
                 'aantal_deuren', 'aantal_zitplaatsen', 'cilinderinhoud', 'aantal_cilinders',
                 'massa_ledig', 'maximum_massa', 'vervaldatum_apk', 'wam_verzekerd',
                 'taxi_indicator', 'export_indicator', 'europese_voertuigcategorie',
-                'zuinigheidsclassificatie', 'catalogusprijs', 'datum_eerste_toelating'
+                'zuinigheidsclassificatie', 'catalogusprijs', 'datum_eerste_toelating',
+                'type', 'variant', 'uitvoering', 'typegoedkeuringsnummer', 'wielbasis'
             ]
             for field in rdw_fields:
                 if data.get(field):

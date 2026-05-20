@@ -128,6 +128,7 @@
             {% if subject.subject_type == 'person' %}
             <div class="info-item"><label>Date of Birth</label><span>{{ subject.date_of_birth if subject.date_of_birth else '-' }}</span></div>
             <div class="info-item"><label>Place of Birth</label><span>{{ subject.place_of_birth if subject.place_of_birth else '-' }}</span></div>
+            <div class="info-item"><label>ID/Passport Number</label><span>{{ subject.identification_number if subject.identification_number else '-' }}</span></div>
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
             <div class="info-item"><label>License Plate (Kenteken)</label>
