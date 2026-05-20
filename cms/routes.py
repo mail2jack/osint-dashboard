@@ -3526,11 +3526,11 @@ def search():
             results['financials'] = [{
                 'id': f.id,
                 'amount': float(f.amount) if f.amount else 0,
-                'currency': f.currency,
+                'currency': f.currency or 'EUR',
                 'case_id': f.case_id,
                 'case_number': f.case.case_number if f.case else None,
                 'transaction_type': f.transaction_type,
-                'transaction_date': f.transaction_date.strftime('%Y-%m-%d') if f.transaction_date else None,
+                'transaction_date': f.transaction_date.strftime('%Y-%m-%d') if f.transaction_date else '',
                 'description': f.description[:100] if f.description else None
             } for f in financials]
 
@@ -3539,17 +3539,20 @@ def search():
                 Comment.is_deleted == False,
                 Comment.content.ilike(f'%{query}%')
             ).limit(20).all()
-            results['comments'] = [{
-                'id': c.id,
-                'content': c.content[:200] + ('...' if len(c.content) > 200 else ''),
-                'comment_type': c.comment_type,
-                'case_id': c.case_id,
-                'subject_id': c.subject_id,
-                'client_id': c.client_id,
-                'case_number': Case.query.get(c.case_id).case_number if c.case_id else None,
-                'author_name': c.author.full_name if c.author else 'Unknown',
-                'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else None
-            } for c in comments]
+            results['comments'] = []
+            for c in comments:
+                _case = Case.query.get(c.case_id) if c.case_id else None
+                results['comments'].append({
+                    'id': c.id,
+                    'content': (c.content[:200] + '...') if c.content and len(c.content) > 200 else (c.content or ''),
+                    'comment_type': c.comment_type,
+                    'case_id': c.case_id,
+                    'subject_id': c.subject_id,
+                    'client_id': c.client_id,
+                    'case_number': _case.case_number if _case else None,
+                    'author_name': c.author.full_name if c.author else 'Unknown',
+                    'created_at': c.created_at.strftime('%Y-%m-%d') if c.created_at else None
+                })
 
         if entity_type in ['all', 'notes']:
             subject_notes = Subject.query.filter(

@@ -1044,23 +1044,6 @@ async def check_github(client, email, url):
         'rateLimit': response.status_code == 403
     }
 
-async def check_twitter(client, email, url):
-    try:
-        response = await client.post(
-            'https://api.twitter.com/1.1/account/settings.json',
-            headers={'Authorization': 'Basic cmVhZDphcGk='},
-            timeout=10
-        )
-    except Exception:
-        pass
-    return {
-        'name': 'Twitter/X',
-        'domain': 'twitter.com',
-        'exists': None,
-        'rateLimit': True,
-        'note': 'Direct API requires authentication. Use web search.'
-    }
-
 async def check_instagram(client, email, url):
     return {
         'name': 'Instagram',
