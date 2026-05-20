@@ -5122,6 +5122,82 @@ def save_finding_as_social_account():
     return jsonify({'message': 'Social account created', 'account': account.to_dict()}), 201
 
 
+@cms_bp.route('/api/subjects/<subject_id>/save-username-findings', methods=['POST'])
+@login_required
+def save_username_findings(subject_id: str):
+    """Save RapidAPI username check results as Findings + Social Accounts."""
+    from .models import SocialAccount
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+
+    results = data.get('results', [])
+    if not results:
+        return jsonify({'error': 'No results selected'}), 400
+
+    case_id = data.get('case_id') or ''
+    subject = Subject.query.get_or_404(subject_id)
+    findings_count = 0
+    social_count = 0
+
+    for r in results:
+        platform = r.get('platform', '')
+        url = r.get('url', '')
+        username = r.get('username', '')
+
+        if not platform or not url:
+            continue
+
+        # Create Finding
+        finding = Finding(
+            case_id=case_id if case_id else None,
+            subject_id=subject_id,
+            title=f"Username: {username} — {platform}",
+            content=f"Username found on {platform}\nURL: {url}\nUsername: {username}\nSource: RapidAPI username check",
+            source_url=url,
+            source_type='osint',
+            finding_type='identity',
+            reliability_score=5,
+            confidence_level='medium',
+            created_by=current_user.id,
+            tags=['username', platform.lower(), 'rapidapi']
+        )
+        db.session.add(finding)
+        findings_count += 1
+
+        # Also create SocialAccount
+        existing = SocialAccount.query.filter_by(
+            subject_id=subject_id,
+            platform=platform,
+            username=username
+        ).first()
+        if not existing:
+            account = SocialAccount(
+                subject_id=subject_id,
+                platform=platform,
+                username=username,
+                url=url,
+            )
+            db.session.add(account)
+            social_count += 1
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action='create',
+        entity_type='finding',
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Saved {findings_count} username findings + {social_count} social accounts for subject {subject.name}"
+    )
+    db.session.commit()
+
+    return jsonify({
+        'message': f'{findings_count} finding(s) added, {social_count} social account(s) created',
+        'findings_count': findings_count,
+        'social_count': social_count,
+    }), 201
+
+
 @cms_bp.route('/subjects/<subject_id>/bulk-extract-social-ids', methods=['POST'])
 @login_required
 def bulk_extract_social_ids(subject_id: str):

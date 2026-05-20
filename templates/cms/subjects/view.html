@@ -389,6 +389,22 @@
     </div>
 </div>
 
+<!-- Username Search Section -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">🔍 Username Search</h3>
+        <span id="usageBadge" style="font-size:0.75rem;color:var(--text-secondary);display:none;"></span>
+    </div>
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+        <input type="text" id="usernameSearchInput" placeholder="Enter username..." style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
+        <button onclick="searchUsername()" class="btn-sm" style="background:#8b5cf6;">🔍 Check</button>
+    </div>
+    <div id="usernameResults"></div>
+    <div id="usernameSaveBar" style="display:none; margin-top: 0.75rem;">
+        <button onclick="saveUsernameFindings()" class="btn-sm" style="background:#059669;" id="saveUsernameBtn">📥 Save Selected as Findings (<span id="usernameSelectedCount">0</span>)</button>
+    </div>
+</div>
+
 <!-- Add Social Account Modal -->
 <div id="addSocialAccountModal" class="modal">
     <div class="modal-content" style="max-width: 400px;">
@@ -2548,5 +2564,167 @@
             btn.textContent = '🗑️ Delete';
         });
     }
+
+    // ---- Username Search ----
+    let _lastUsernameResults = [];
+
+    async function searchUsername() {
+        const input = document.getElementById('usernameSearchInput');
+        const resultsDiv = document.getElementById('usernameResults');
+        const saveBar = document.getElementById('usernameSaveBar');
+        const username = input.value.trim();
+        if (!username) return;
+
+        resultsDiv.innerHTML = '<div style="color:var(--text-secondary);padding:0.5rem;">Searching...</div>';
+        saveBar.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/username/rapidapi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            const data = await res.json();
+
+            if (data.fallback_to_sherlock) {
+                resultsDiv.innerHTML = `<div style="padding:0.75rem;background:var(--warning-bg);border-radius:6px;color:var(--warning-text);">
+                    ⚠️ RapidAPI limiet bereikt (${data.api_usage.used}/${data.api_usage.limit}). Gebruik de Sherlock knop op het hoofd dashboard.
+                </div>`;
+                return;
+            }
+
+            const apiResults = data.results || {};
+            const platforms = apiResults.results || [];
+            _lastUsernameResults = platforms.filter(p => p.available === true && p.url);
+
+            let html = `<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">
+                ${apiResults.total_platforms || platforms.length} platforms checked via RapidAPI`;
+            if (data.api_usage) {
+                html += ` | <strong>API Usage:</strong> ${data.api_usage.used}/${data.api_usage.limit}`;
+            }
+            html += '</div>';
+
+            if (platforms.length === 0) {
+                html += '<div class="empty">No results found</div>';
+                resultsDiv.innerHTML = html;
+                return;
+            }
+
+            const taken = platforms.filter(p => p.available === true);
+            const available = platforms.filter(p => p.available === false);
+            const errors = platforms.filter(p => p.available === null);
+
+            if (taken.length > 0) {
+                html += `<h4 style="margin:0.75rem 0 0.25rem 0;color:#22c55e;">🎯 Accounts Found (${taken.length})</h4>`;
+                taken.forEach((p, i) => {
+                    html += `<label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;font-size:0.85rem;border-bottom:1px solid var(--border-color);cursor:pointer;">
+                        <input type="checkbox" class="username-result-cb" data-platform="${p.platform}" data-url="${p.url}" data-username="${username}" checked>
+                        <span>🟢</span>
+                        <strong>${p.platform}</strong>
+                        ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:0.75rem;margin-left:auto;">🔗 Open</a>` : ''}
+                    </label>`;
+                });
+            }
+            if (available.length > 0) {
+                html += `<h4 style="margin:0.75rem 0 0.25rem 0;color:var(--text-secondary);">❌ Available (${available.length})</h4>`;
+                const limited = available.slice(0, 20);
+                limited.forEach(p => {
+                    html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.2rem 0;font-size:0.8rem;color:var(--text-muted);">
+                        <span>🔴</span>${p.platform}
+                    </div>`;
+                });
+                if (available.length > 20) {
+                    html += `<div style="font-size:0.75rem;color:var(--text-secondary);padding:0.2rem 0;">...en ${available.length - 20} meer</div>`;
+                }
+            }
+            if (errors.length > 0) {
+                html += `<h4 style="margin:0.75rem 0 0.25rem 0;color:#f59e0b;">⚠️ Errors (${errors.length})</h4>`;
+                errors.slice(0, 5).forEach(p => {
+                    html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.2rem 0;font-size:0.8rem;">
+                        <span>🟡</span>${p.platform} — ${(p.error || '').substring(0, 50)}
+                    </div>`;
+                });
+            }
+
+            resultsDiv.innerHTML = html;
+
+            // Show save bar if there are taken accounts
+            if (taken.length > 0) {
+                saveBar.style.display = 'block';
+                updateUsernameSelectedCount();
+                document.querySelectorAll('.username-result-cb').forEach(cb => {
+                    cb.addEventListener('change', updateUsernameSelectedCount);
+                });
+            }
+        } catch (e) {
+            resultsDiv.innerHTML = `<div style="color:#dc2626;padding:0.5rem;">Error: ${e.message}</div>`;
+        }
+    }
+
+    function updateUsernameSelectedCount() {
+        const count = document.querySelectorAll('.username-result-cb:checked').length;
+        document.getElementById('usernameSelectedCount').textContent = count;
+        document.getElementById('saveUsernameBtn').disabled = count === 0;
+    }
+
+    function saveUsernameFindings() {
+        const btn = document.getElementById('saveUsernameBtn');
+        const checkboxes = document.querySelectorAll('.username-result-cb:checked');
+        if (checkboxes.length === 0) return;
+        if (!confirm(`Save ${checkboxes.length} selected account(s) as findings?`)) return;
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        const results = [];
+        checkboxes.forEach(cb => {
+            results.push({
+                url: cb.dataset.url,
+                platform: cb.dataset.platform,
+                username: cb.dataset.username,
+            });
+        });
+
+        fetch('/cms/api/subjects/{{ subject.id }}/save-username-findings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                results: results,
+                case_id: '{{ first_case_id or "" }}'
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                alert(data.message || 'Saved successfully!');
+                if (data.findings_count > 0) location.reload();
+            }
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = '📥 Save Selected as Findings';
+        });
+    }
+
+    // Load usage badge
+    fetch('/api/username/rapidapi-status').then(r => r.json()).then(status => {
+        const badge = document.getElementById('usageBadge');
+        if (status.configured) {
+            badge.style.display = 'inline';
+            const pct = Math.round((status.used / status.limit) * 100);
+            const color = pct >= 80 ? '#f44336' : pct >= 50 ? '#f59e0b' : '#4caf50';
+            badge.textContent = `${status.remaining}/${status.limit} remaining`;
+            badge.style.color = color;
+        }
+    }).catch(() => {});
+
+    // Enter key for username search
+    document.getElementById('usernameSearchInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') searchUsername();
+    });
 </script>
 {% endblock %}
