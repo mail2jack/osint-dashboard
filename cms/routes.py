@@ -6302,6 +6302,37 @@ def do_update():
     }), 200 if success else 500
 
 
+@cms_bp.route('/api/phone-lookup-stored', methods=['GET'])
+@login_required
+def phone_lookup_stored():
+    """Return the most recent stored lookup for a phone number."""
+    phone = (request.args.get('phone') or '').strip()
+    if not phone:
+        return jsonify({'found': False})
+    try:
+        import phonenumbers
+        parsed = phonenumbers.parse(phone, 'NL')
+        e164 = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        normalized = re.sub(r'[^0-9]', '', e164)
+    except Exception:
+        normalized = re.sub(r'[^0-9]', '', phone)
+    from .models import PhoneLookup
+    lookup = PhoneLookup.query.filter(
+        PhoneLookup.phone == normalized,
+        PhoneLookup.raw_response.isnot(None)
+    ).order_by(PhoneLookup.created_at.desc()).first()
+    if not lookup:
+        return jsonify({'found': False})
+    return jsonify({
+        'found': True,
+        'lookup_id': lookup.id,
+        'created_at': lookup.created_at.isoformat() if lookup.created_at else None,
+        'raw_response': lookup.raw_response,
+        'profile_picture': lookup.profile_picture,
+        'created_by_name': lookup.creator.name if lookup.creator else None,
+    })
+
+
 @cms_bp.route('/api/phone-lookup', methods=['POST'])
 @login_required
 def phone_lookup():

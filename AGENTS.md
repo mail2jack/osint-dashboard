@@ -45,6 +45,9 @@
 - **WhatsApp/Telegram check**: Uses `whatsapp.checkleaked.cc` API (RapidAPI) when `whatsapp_checkleaked_key` Setting is set. Falls back to unreliable scraping (`api.whatsapp.com/send` + `t.me`) when API returns 503 or no key configured.
 - API key: `Setting.set('whatsapp_checkleaked_key', 'your-rapidapi-key')` (BASIC free tier: 50 req/month). Signs up at whatsapp.checkleaked.cc/pricing.
 - API response includes `isWAContact`/`isUser` for WhatsApp presence + `telegram` object with existence check.
+- API response included in popup: about, business, enterprise, verified, banned, line_type, cached status, check date.
+- Profielfoto wordt automatisch gefetcht en als base64 weergegeven (indien beschikbaar).
+- Alle API responses worden opgeslagen in `PhoneLookup` model (tabel `phone_lookups`) met timestamp + raw JSON + profielfoto.
 
 ## Interpol + Politie Check (`routes.py:check_policie_data`)
 - `POST /cms/check-policie-data` — checks subject name against INTERPOL Red Notices (wanted) + Yellow Notices (missing) + politie.nl/vermist (NL missing persons).

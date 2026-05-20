@@ -2070,6 +2070,62 @@
         window.open(tineyeUrl, '_blank');
     }
     
+    function renderPhoneResult(data) {
+        let html = '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+
+        if (data.services && data.services.whatsapp && data.services.whatsapp.profile_picture) {
+            html += '<div style="grid-column:1/-1;text-align:center;margin-bottom:0.5rem;">';
+            html += '<img src="' + data.services.whatsapp.profile_picture + '" style="width:80px;height:80px;border-radius:50%;border:2px solid #ddd6fe;object-fit:cover;">';
+            html += '</div>';
+        }
+
+        html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
+        html += '<div><strong>Number:</strong> ' + (data.formatted || '-') + '</div>';
+        html += '<div><strong>Country:</strong> ' + (data.country || '-') + '</div>';
+        html += '<div><strong>Region:</strong> ' + (data.region || '-') + '</div>';
+        html += '<div><strong>Carrier:</strong> ' + (data.carrier || '-') + '</div>';
+        html += '<div><strong>Line Type:</strong> ' + (data.line_type || '-') + '</div>';
+
+        if (data.services && data.services.whatsapp) {
+            const wa = data.services.whatsapp;
+            const exists = wa.exists;
+            html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>📱 WhatsApp</strong></div>';
+            html += '<div><strong>Registered:</strong> ' + (exists ? '✅ Yes' : (exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
+            if (exists) html += '<div><strong>Chat:</strong> <a href="' + wa.url + '" target="_blank">Open</a></div>';
+            if (wa.about !== undefined && wa.about !== null) html += '<div style="grid-column:1/-1;"><strong>About:</strong> ' + escapeHtml(wa.about || '-') + '</div>';
+            if (wa.business !== undefined) html += '<div><strong>Business:</strong> ' + (wa.business ? '✅ Yes' : 'No') + '</div>';
+            if (wa.enterprise !== undefined) html += '<div><strong>Enterprise:</strong> ' + (wa.enterprise ? '✅ Yes' : 'No') + '</div>';
+            if (wa.verified !== undefined) html += '<div><strong>Verified:</strong> ' + (wa.verified ? '✅ Yes' : 'No') + '</div>';
+            if (wa.banned !== undefined) html += '<div><strong>Banned:</strong> ' + (wa.banned ? '⚠ Yes' : 'No') + '</div>';
+            if (wa.line_type) html += '<div><strong>API Type:</strong> ' + wa.line_type + '</div>';
+            if (wa.cached) html += '<div><strong>Cached:</strong> ' + (wa.cached ? 'Yes' : 'Fresh') + '</div>';
+            if (wa.check_date) html += '<div><strong>Checked:</strong> ' + new Date(wa.check_date).toLocaleString() + '</div>';
+        }
+
+        if (data.services && data.services.telegram) {
+            const tg = data.services.telegram;
+            html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>✈️ Telegram</strong></div>';
+            html += '<div><strong>Registered:</strong> ' + (tg.exists ? '✅ Yes' : (tg.exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
+            if (tg.exists) html += '<div><strong>Chat:</strong> <a href="' + tg.url + '" target="_blank">Open</a></div>';
+            if (tg.error) html += '<div style="grid-column:1/-1;"><strong>Detail:</strong> ' + tg.error + '</div>';
+        }
+
+        if (data.api_usage) {
+            const u = data.api_usage;
+            const pct = Math.round(u.used / u.limit * 100);
+            const color = pct >= 80 ? '#dc2626' : pct >= 50 ? '#d97706' : '#16a34a';
+            html += '<div style="grid-column:1/-1;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #ddd6fe;font-size:0.75rem;color:#666;">';
+            html += 'API: ' + u.used + '/' + u.limit + ' deze maand';
+            html += ' <span style="color:' + color + ';">(' + u.remaining + ' over)</span>';
+            if (u.note) html += ' — <em style="color:#dc2626;">' + u.note + '</em>';
+            html += '</div>';
+        }
+
+        html += '</div></div>';
+        return html;
+    }
+
     async function phoneLookup(btn, phone) {
         const resultDiv = btn.parentElement.querySelector('.phone-result');
         const origText = btn.textContent;
@@ -2078,6 +2134,36 @@
         btn.textContent = '🔍 Checking...';
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = '<span style="color: #666;">Looking up phone number...</span>';
+
+        // Eerst checken of er opgeslagen data is
+        try {
+            const storedResp = await fetch('/cms/api/phone-lookup-stored?phone=' + encodeURIComponent(phone));
+            const storedData = await storedResp.json();
+            if (storedData.found && storedData.raw_response) {
+                const raw = storedData.raw_response;
+                const ts = storedData.created_at ? new Date(storedData.created_at).toLocaleString() : 'onbekend';
+                let html = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.5rem;margin-bottom:0.5rem;font-size:0.8rem;text-align:center;color:#15803d;">';
+                html += '📦 Previously checked on ' + ts;
+                if (storedData.created_by_name) html += ' by ' + storedData.created_by_name;
+                html += ' <button onclick="phoneLookupRefresh(\'' + phone.replace(/'/g, "\\'") + '\', this)" style="background:#7c3aed;color:white;border:none;border-radius:4px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">🔄 Refresh</button>';
+                html += '</div>';
+                // Build a synthetic data object for the renderer
+                const data = Object.assign({}, raw, {
+                    valid: raw.valid !== false,
+                    formatted: raw.formatted || raw.phone || phone,
+                    services: raw.services || {},
+                    api_usage: raw.api_usage || null,
+                });
+                html += renderPhoneResult(data);
+                resultDiv.innerHTML = html;
+                btn.textContent = '✅ Cached';
+                btn.style.background = '#16a34a';
+                btn.disabled = false;
+                return;
+            }
+        } catch (e) {
+            // Stored check failed, proceed to live API
+        }
 
         try {
             const resp = await fetch('/cms/api/phone-lookup', {
@@ -2094,69 +2180,42 @@
                 return;
             }
 
-            let html = '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-
-            // Profile picture
-            if (data.services && data.services.whatsapp && data.services.whatsapp.profile_picture) {
-                html += '<div style="grid-column:1/-1;text-align:center;margin-bottom:0.5rem;">';
-                html += '<img src="' + data.services.whatsapp.profile_picture + '" style="width:80px;height:80px;border-radius:50%;border:2px solid #ddd6fe;object-fit:cover;">';
-                html += '</div>';
-            }
-
-            html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Number:</strong> ' + (data.formatted || '-') + '</div>';
-            html += '<div><strong>Country:</strong> ' + (data.country || '-') + '</div>';
-            html += '<div><strong>Region:</strong> ' + (data.region || '-') + '</div>';
-            html += '<div><strong>Carrier:</strong> ' + (data.carrier || '-') + '</div>';
-            html += '<div><strong>Line Type:</strong> ' + (data.line_type || '-') + '</div>';
-
-            // WhatsApp details
-            if (data.services && data.services.whatsapp) {
-                const wa = data.services.whatsapp;
-                const exists = wa.exists;
-                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>📱 WhatsApp</strong></div>';
-                html += '<div><strong>Registered:</strong> ' + (exists ? '✅ Yes' : (exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
-                if (exists) html += '<div><strong>Chat:</strong> <a href="' + wa.url + '" target="_blank">Open</a></div>';
-                if (wa.about !== undefined && wa.about !== null) html += '<div style="grid-column:1/-1;"><strong>About:</strong> ' + escapeHtml(wa.about || '-') + '</div>';
-                if (wa.business !== undefined) html += '<div><strong>Business:</strong> ' + (wa.business ? '✅ Yes' : 'No') + '</div>';
-                if (wa.enterprise !== undefined) html += '<div><strong>Enterprise:</strong> ' + (wa.enterprise ? '✅ Yes' : 'No') + '</div>';
-                if (wa.verified !== undefined) html += '<div><strong>Verified:</strong> ' + (wa.verified ? '✅ Yes' : 'No') + '</div>';
-                if (wa.banned !== undefined) html += '<div><strong>Banned:</strong> ' + (wa.banned ? '⚠ Yes' : 'No') + '</div>';
-                if (wa.line_type) html += '<div><strong>API Type:</strong> ' + wa.line_type + '</div>';
-                if (wa.cached) html += '<div><strong>Cached:</strong> ' + (wa.cached ? 'Yes' : 'Fresh') + '</div>';
-                if (wa.check_date) html += '<div><strong>Checked:</strong> ' + new Date(wa.check_date).toLocaleString() + '</div>';
-            }
-
-            // Telegram details
-            if (data.services && data.services.telegram) {
-                const tg = data.services.telegram;
-                html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>✈️ Telegram</strong></div>';
-                html += '<div><strong>Registered:</strong> ' + (tg.exists ? '✅ Yes' : (tg.exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
-                if (tg.exists) html += '<div><strong>Chat:</strong> <a href="' + tg.url + '" target="_blank">Open</a></div>';
-                if (tg.error) html += '<div style="grid-column:1/-1;"><strong>Detail:</strong> ' + tg.error + '</div>';
-            }
-
-            // Usage counter
-            if (data.api_usage) {
-                const u = data.api_usage;
-                const pct = Math.round(u.used / u.limit * 100);
-                const color = pct >= 80 ? '#dc2626' : pct >= 50 ? '#d97706' : '#16a34a';
-                html += '<div style="grid-column:1/-1;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #ddd6fe;font-size:0.75rem;color:#666;">';
-                html += 'API: ' + u.used + '/' + u.limit + ' deze maand';
-                html += ' <span style="color:' + color + ';">(' + u.remaining + ' over)</span>';
-                if (u.note) html += ' — <em style="color:#dc2626;">' + u.note + '</em>';
-                html += '</div>';
-            }
-
-            html += '</div></div>';
-            resultDiv.innerHTML = html;
+            resultDiv.innerHTML = renderPhoneResult(data);
             btn.textContent = '✅ Done';
             btn.style.background = '#16a34a';
         } catch (err) {
             resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
+        }
+    }
+
+    async function phoneLookupRefresh(phone, refreshBtn) {
+        const resultDiv = refreshBtn.closest('.phone-result') || refreshBtn.parentElement.querySelector('.phone-result');
+        const phoneBtn = refreshBtn.closest('.phone-result') ? null : null;
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = '⏳';
+        if (resultDiv) resultDiv.innerHTML = '<span style="color: #666;">Refreshing...</span>';
+        // Find the original button
+        const parent = refreshBtn.closest('[style*="display:flex"]') || refreshBtn.parentElement;
+        const origBtn = parent.querySelector('[onclick*="phoneLookup"]');
+        if (origBtn) {
+            phoneLookup(origBtn, phone);
+        } else {
+            // Fallback: direct API call
+            try {
+                const resp = await fetch('/cms/api/phone-lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phone })
+                });
+                const data = await resp.json();
+                if (resultDiv) {
+                    resultDiv.innerHTML = renderPhoneResult(data);
+                }
+            } catch (err) {
+                if (resultDiv) resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            }
         }
     }
 
