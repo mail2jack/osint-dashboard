@@ -1701,6 +1701,7 @@ def init_default_settings():
         {'key': 'overheid_api_key', 'category': 'api_keys', 'description': 'Overheid.io API Key (gratis: https://overheid.io)', 'value_type': 'password', 'is_sensitive': True, 'display_order': 7},
         {'key': 'twochat_api_key', 'category': 'api_keys', 'description': '2Chat API Key (https://app.2chat.io/api)', 'value_type': 'password', 'is_sensitive': True, 'display_order': 8},
         {'key': 'twochat_whatsapp_number', 'category': 'api_keys', 'description': '2Chat WhatsApp nummer (E164, bv +31612345678)', 'value_type': 'text', 'display_order': 9},
+        {'key': 'rapidapi_username_key', 'category': 'api_keys', 'description': 'RapidAPI Key voor Username Check (osint-username-availability-brand-checker-api)', 'value_type': 'password', 'is_sensitive': True, 'display_order': 10},
     ]
     for default in defaults:
         existing = Setting.query.filter_by(key=default['key']).first()

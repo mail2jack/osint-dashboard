@@ -3468,6 +3468,83 @@ def username_search():
     return jsonify(search_username(username))
 
 
+@app.route('/api/username/rapidapi', methods=['POST'])
+@rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix='username_rapidapi')
+def username_rapidapi():
+    """Check username availability via RapidAPI, fallback to Sherlock."""
+    from cms.models import Setting
+    data = request.get_json()
+    username = data.get('username', '')
+    if not username:
+        return jsonify({'error': 'Username required'}), 400
+
+    USAGE_LIMIT = 100
+    now_month = datetime.utcnow().strftime('%Y-%m')
+    stored_month = Setting.get('rapidapi_username_month')
+    used_count = int(Setting.get('rapidapi_username_used') or '0') if stored_month == now_month else 0
+    api_key = Setting.get('rapidapi_username_key')
+
+    usage_info = {
+        'used': used_count,
+        'limit': USAGE_LIMIT,
+        'remaining': max(0, USAGE_LIMIT - used_count),
+    }
+
+    # Try RapidAPI
+    if api_key and used_count < USAGE_LIMIT:
+        try:
+            headers = {
+                'x-rapidapi-key': api_key,
+                'x-rapidapi-host': 'osint-username-availability-brand-checker-api.p.rapidapi.com',
+            }
+            resp = requests.get(
+                f'https://osint-username-availability-brand-checker-api.p.rapidapi.com/check?username={username}',
+                headers=headers,
+                timeout=15
+            )
+            data = resp.json()
+
+            # Increment counter
+            Setting.set('rapidapi_username_month', now_month)
+            Setting.set('rapidapi_username_used', str(used_count + 1))
+            usage_info['used'] = used_count + 1
+            usage_info['remaining'] = max(0, USAGE_LIMIT - used_count - 1)
+
+            return jsonify({
+                'source': 'rapidapi',
+                'username': username,
+                'results': data,
+                'api_usage': usage_info,
+            })
+        except Exception as e:
+            logger.error(f"RapidAPI username check failed for '{username}': {e}")
+
+    # Fallback to Sherlock
+    usage_info['note'] = 'Maandlimiet bereikt of API niet geconfigureerd - gebruik Sherlock'
+    return jsonify({
+        'source': 'sherlock',
+        'username': username,
+        'fallback_to_sherlock': True,
+        'api_usage': usage_info,
+    })
+
+
+@app.route('/api/username/rapidapi-status', methods=['GET'])
+def username_rapidapi_status():
+    """Return current RapidAPI usage status."""
+    from cms.models import Setting
+    now_month = datetime.utcnow().strftime('%Y-%m')
+    stored_month = Setting.get('rapidapi_username_month')
+    used_count = int(Setting.get('rapidapi_username_used') or '0') if stored_month == now_month else 0
+    api_key = Setting.get('rapidapi_username_key')
+    return jsonify({
+        'configured': bool(api_key),
+        'used': used_count,
+        'limit': 100,
+        'remaining': max(0, 100 - used_count),
+    })
+
+
 @app.route('/api/phone', methods=['POST'])
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix='phone')
 def phone_osint():
