@@ -6280,6 +6280,8 @@ def do_update():
     step('Restart services', '/usr/bin/sudo /usr/bin/systemctl restart osint-dashboard',
          cwd=project_root)
 
+    success = all(r['status'] == 'ok' for r in results)
+
     # Store local HEAD SHA after pull (even if restart fails — e.g. dev mode)
     pull_ok = any(
         r['step'] == 'Pull latest code' and r['status'] == 'ok' for r in results)
