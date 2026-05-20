@@ -3567,7 +3567,6 @@ def search():
                 'entity_type': 'subject'
             } for s in subject_notes]
             # Also search Comment model for subject notes (timestamped version)
-            from cms.models import Comment
             comment_results = Comment.query.filter(
                 Comment.is_deleted == False,
                 Comment.subject_id.isnot(None),
