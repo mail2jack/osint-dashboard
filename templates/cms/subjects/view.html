@@ -2110,6 +2110,16 @@
                 const tg = data.services.telegram;
                 html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + tg.url + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + (tg.note || 'Unknown'))) + '</div>';
             }
+            if (data.api_usage) {
+                const u = data.api_usage;
+                const pct = Math.round(u.used / u.limit * 100);
+                const color = pct >= 80 ? '#dc2626' : pct >= 50 ? '#d97706' : '#16a34a';
+                html += '<div style="grid-column:1/-1;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #ddd6fe;font-size:0.75rem;color:#666;">';
+                html += 'API: ' + u.used + '/' + u.limit + ' deze maand';
+                html += ' <span style="color:' + color + ';">(' + u.remaining + ' over)</span>';
+                if (u.note) html += ' — <em style="color:#dc2626;">' + u.note + '</em>';
+                html += '</div>';
+            }
             html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Done';

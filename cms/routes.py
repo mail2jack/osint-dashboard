@@ -6344,35 +6344,53 @@ def phone_lookup():
         # WhatsApp + Telegram check via checkleaked API
         api_key = Setting.get('whatsapp_checkleaked_key')
         if api_key:
-            try:
-                cl_url = f'https://whatsapp-data1.p.rapidapi.com/number/{normalized}?telegram=1'
-                cl_headers = {
-                    'x-rapidapi-key': api_key,
-                    'x-rapidapi-host': 'whatsapp-data1.p.rapidapi.com',
-                }
-                cl_resp = httpx.get(cl_url, headers=cl_headers, timeout=15)
-                if cl_resp.status_code == 200:
-                    cl_data = cl_resp.json()
-                    wa_exists = cl_data.get('isWAContact') or cl_data.get('isUser')
-                    result['services']['whatsapp'] = {
-                        'exists': bool(wa_exists),
-                        'url': f'https://wa.me/{normalized}' if wa_exists else None,
-                        'business': cl_data.get('isBusiness'),
-                        'about': cl_data.get('about'),
+            now_month = datetime.utcnow().strftime('%Y-%m')
+            stored_month = Setting.get('whatsapp_checkleaked_month')
+            used_count = int(Setting.get('whatsapp_checkleaked_used') or '0') if stored_month == now_month else 0
+            limit = 50
+            result['api_usage'] = {
+                'used': used_count,
+                'limit': limit,
+                'remaining': max(0, limit - used_count),
+            }
+            if used_count >= limit:
+                result['api_usage']['note'] = 'Maandlimiet bereikt, gebruik fallback'
+            else:
+                try:
+                    cl_url = f'https://whatsapp-data1.p.rapidapi.com/number/{normalized}?telegram=1'
+                    cl_headers = {
+                        'x-rapidapi-key': api_key,
+                        'x-rapidapi-host': 'whatsapp-data1.p.rapidapi.com',
                     }
-                    tg = cl_data.get('telegram')
-                    if tg:
-                        tg_exists = not ('not on Telegram' in (tg.get('error') or ''))
-                        result['services']['telegram'] = {
-                            'exists': tg_exists,
-                            'url': f'https://t.me/+{normalized}' if tg_exists else None,
+                    cl_resp = httpx.get(cl_url, headers=cl_headers, timeout=15)
+                    if cl_resp.status_code == 200:
+                        cl_data = cl_resp.json()
+                        wa_exists = cl_data.get('isWAContact') or cl_data.get('isUser')
+                        result['services']['whatsapp'] = {
+                            'exists': bool(wa_exists),
+                            'url': f'https://wa.me/{normalized}' if wa_exists else None,
+                            'business': cl_data.get('isBusiness'),
+                            'about': cl_data.get('about'),
                         }
+                        tg = cl_data.get('telegram')
+                        if tg:
+                            tg_exists = not ('not on Telegram' in (tg.get('error') or ''))
+                            result['services']['telegram'] = {
+                                'exists': tg_exists,
+                                'url': f'https://t.me/+{normalized}' if tg_exists else None,
+                            }
+                        else:
+                            result['services']['telegram'] = {'exists': None, 'note': 'No Telegram data'}
+
+                        # Increment usage counter
+                        Setting.set('whatsapp_checkleaked_month', now_month)
+                        Setting.set('whatsapp_checkleaked_used', str(used_count + 1))
+                        result['api_usage']['used'] = used_count + 1
+                        result['api_usage']['remaining'] = max(0, limit - used_count - 1)
                     else:
-                        result['services']['telegram'] = {'exists': None, 'note': 'No Telegram data'}
-                else:
-                    raise Exception(f'API returned {cl_resp.status_code}')
-            except Exception:
-                pass
+                        raise Exception(f'API returned {cl_resp.status_code}')
+                except Exception:
+                    pass
 
         # Fallback: scrape-based checks
         if 'whatsapp' not in result['services'] or result['services']['whatsapp'].get('exists') is None:
