@@ -210,8 +210,8 @@
             <tbody>
                 {% for case in cases %}
                 <tr>
-                    <td>{{ case.case_number }}</td>
-                    <td>{{ case.title }}</td>
+                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}" style="color: var(--link-color); text-decoration: none;">{{ case.case_number }}</a></td>
+                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}" style="color: var(--link-color); text-decoration: none;">{{ case.title }}</a></td>
                     <td>{{ case.status }}</td>
                 </tr>
                 {% endfor %}
