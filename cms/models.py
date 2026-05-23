@@ -14,7 +14,7 @@ Design Decisions:
 
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from typing import Optional, List, Any
 
@@ -139,7 +139,7 @@ case_assignments = db.Table(
     'case_assignments',
     db.Column('case_id', db.String(36), db.ForeignKey('cases.id'), primary_key=True),
     db.Column('user_id', db.String(36), db.ForeignKey('users.id'), primary_key=True),
-    db.Column('assigned_at', db.DateTime, default=datetime.utcnow),
+    db.Column('assigned_at', db.DateTime, default=lambda: datetime.now(timezone.utc)),
     db.Column('assigned_by', db.String(36), db.ForeignKey('users.id'))
 )
 
@@ -154,7 +154,7 @@ subject_relations = db.Table(
     db.Column('subject_id', db.String(36), db.ForeignKey('subjects.id'), primary_key=True),
     db.Column('related_subject_id', db.String(36), db.ForeignKey('subjects.id'), primary_key=True),
     db.Column('relationship_type', db.String(100)),  # e.g., "family_member", "business_partner"
-    db.Column('created_at', db.DateTime, default=datetime.utcnow)
+    db.Column('created_at', db.DateTime, default=lambda: datetime.now(timezone.utc))
 )
 
 
@@ -181,8 +181,8 @@ class User(UserMixin, db.Model):
     full_name = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(30), nullable=False, default=UserRole.VIEWER.value)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime)
 
     # 2FA (TOTP)
@@ -286,8 +286,8 @@ class Client(db.Model):
     financial_notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
     is_deleted = db.Column(db.Boolean, default=False)  # Soft delete
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     deleted_at = db.Column(db.DateTime)
     
     # Relationships
@@ -327,7 +327,7 @@ class Client(db.Model):
     def soft_delete(self):
         """Soft delete the client."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
         self.is_active = False
     
     def to_dict(self, decrypted: bool = True) -> dict:
@@ -401,8 +401,8 @@ class Case(db.Model):
     deleted_at = db.Column(db.DateTime)
     
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
     subjects = db.relationship(
@@ -449,7 +449,7 @@ class Case(db.Model):
         if new_status in valid_transitions.get(self.status, []):
             self.status = new_status
             if new_status == CaseStatus.CLOSED.value:
-                self.actual_end_date = datetime.utcnow().date()
+                self.actual_end_date = datetime.now(timezone.utc).date()
             elif new_status == CaseStatus.ACTIVE.value and self.actual_end_date:
                 self.actual_end_date = None  # Clear end date when reopening
             return True
@@ -458,7 +458,7 @@ class Case(db.Model):
     def soft_delete(self):
         """Soft delete the case."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def to_dict(self, include_relations: bool = True) -> dict:
         """Serialize case data."""
@@ -573,8 +573,8 @@ class Subject(db.Model):
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
     financial_records = db.relationship('FinancialRecord', backref='subject', lazy='dynamic')
@@ -625,7 +625,7 @@ class Subject(db.Model):
     def soft_delete(self):
         """Soft delete the subject."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def to_dict(self, decrypted: bool = True, include_relations: bool = False) -> dict:
         """Serialize subject data."""
@@ -710,8 +710,8 @@ class Address(db.Model):
     kadaster_data = db.Column(db.JSON)  # Full BAG response
     kadaster_checked_at = db.Column(db.DateTime)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     ENCRYPTED_FIELDS = ['street', 'number', 'zipcode', 'town', 'country']
     
@@ -786,8 +786,8 @@ class Contact(db.Model):
     value = db.Column(db.String(500))  # Encrypted
     is_primary = db.Column(db.Boolean, default=False)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     ENCRYPTED_FIELDS = ['value']
 
@@ -859,8 +859,8 @@ class FinancialRecord(db.Model):
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
     attachments = db.relationship('Document', backref='financial_record', lazy='dynamic')
@@ -890,7 +890,7 @@ class FinancialRecord(db.Model):
         """Mark record as verified."""
         self.verification_status = VerificationStatus.VERIFIED.value
         self.verified_by = user_id
-        self.verified_at = datetime.utcnow()
+        self.verified_at = datetime.now(timezone.utc)
         if notes:
             self.verification_notes = notes
     
@@ -898,14 +898,14 @@ class FinancialRecord(db.Model):
         """Flag record for review."""
         self.verification_status = VerificationStatus.FLAGGED.value
         self.verified_by = user_id
-        self.verified_at = datetime.utcnow()
+        self.verified_at = datetime.now(timezone.utc)
         if notes:
             self.verification_notes = notes
     
     def soft_delete(self):
         """Soft delete the record."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def to_dict(self, decrypted: bool = True) -> dict:
         """Serialize financial record."""
@@ -962,8 +962,8 @@ class Finding(db.Model):
     tags = db.Column(db.JSON)
     
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
@@ -971,7 +971,7 @@ class Finding(db.Model):
     def soft_delete(self):
         """Soft delete the finding."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def to_dict(self) -> dict:
         """Serialize finding."""
@@ -1023,7 +1023,7 @@ class Screenshot(db.Model):
     extracted_data = db.Column(db.JSON)
     
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     case = db.relationship('Case', backref='screenshots')
@@ -1081,7 +1081,7 @@ class AuditLog(db.Model):
     case_id = db.Column(db.String(36))  # Related case for context
     description = db.Column(db.String(500))  # Human-readable description
     
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     # No soft delete - audit logs are immutable and permanent
     # No updated_at - logs should not be modified
@@ -1180,7 +1180,7 @@ class Document(db.Model):
     classification = db.Column(db.String(20), default='confidential')  # public, internal, confidential, restricted
     
     uploaded_by = db.Column(db.String(36), db.ForeignKey('users.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
@@ -1188,7 +1188,7 @@ class Document(db.Model):
     def soft_delete(self):
         """Soft delete the document."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def to_dict(self) -> dict:
         """Serialize document metadata."""
@@ -1249,8 +1249,8 @@ class Comment(db.Model):
     edit_history = db.relationship('CommentEditHistory', backref='comment', lazy='dynamic', cascade='all, delete-orphan')
     
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
@@ -1259,7 +1259,7 @@ class Comment(db.Model):
     def soft_delete(self):
         """Soft delete the comment."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def to_dict(self) -> dict:
         """Serialize comment."""
@@ -1306,7 +1306,7 @@ class CommentEditHistory(db.Model):
     edited_by_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     edited_by = db.relationship('User', backref='comment_edits')
     
-    edited_at = db.Column(db.DateTime, default=datetime.utcnow)
+    edited_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     def to_dict(self) -> dict:
         """Serialize edit history entry."""
@@ -1355,8 +1355,8 @@ class DocumentTemplate(db.Model):
     creator = db.relationship('User', backref='document_templates')
     
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     def to_dict(self) -> dict:
         """Serialize template."""
@@ -1383,14 +1383,14 @@ class DocumentTemplate(db.Model):
         """
         from jinja2 import Environment, BaseLoader
         import logging
-        from datetime import datetime
+        from datetime import datetime, timezone
         
         env = Environment(loader=BaseLoader())
         
         env.filters['default'] = lambda v, d: v if v else d
         env.filters['date'] = lambda v, fmt='%Y-%m-%d': v.strftime(fmt) if isinstance(v, datetime) else str(v)
         env.filters['currency'] = lambda v: f"€{v:,.2f}" if isinstance(v, (int, float)) else str(v)
-        env.globals['now'] = datetime.utcnow()
+        env.globals['now'] = datetime.now(timezone.utc)
         
         try:
             template = env.from_string(self.content)
@@ -1470,8 +1470,8 @@ class Reminder(db.Model):
     notify_dashboard = db.Column(db.Boolean, default=True)
     
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
@@ -1480,23 +1480,23 @@ class Reminder(db.Model):
     def complete(self):
         """Mark reminder as completed."""
         self.is_completed = True
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
     
     def snooze(self, minutes: int = 30):
         """Snooze reminder for specified minutes."""
         from datetime import timedelta
-        self.reminder_date = datetime.utcnow() + timedelta(minutes=minutes)
+        self.reminder_date = datetime.now(timezone.utc) + timedelta(minutes=minutes)
     
     def check_overdue(self):
         """Check and update overdue status."""
-        if not self.is_completed and self.reminder_date < datetime.utcnow():
+        if not self.is_completed and self.reminder_date < datetime.now(timezone.utc):
             self.is_overdue = True
         return self.is_overdue
     
     def soft_delete(self):
         """Soft delete the reminder."""
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def to_dict(self) -> dict:
         """Serialize reminder."""
@@ -1551,8 +1551,8 @@ class Setting(db.Model):
     display_order = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
     
     def get_masked_value(self) -> str:
@@ -1592,7 +1592,7 @@ class Setting(db.Model):
             setting.description = description
         if category:
             setting.category = category
-        setting.updated_at = datetime.utcnow()
+        setting.updated_at = datetime.now(timezone.utc)
         try:
             db.session.commit()
             return True
@@ -1628,8 +1628,8 @@ class SocialAccount(db.Model):
     url = db.Column(db.String(500))
     account_id = db.Column(db.String(200))
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -1655,7 +1655,7 @@ def set_setting(key: str, value: str, category: str = 'general', description: st
     setting = Setting.query.filter_by(key=key).first()
     if setting:
         setting.value = value
-        setting.updated_at = datetime.utcnow()
+        setting.updated_at = datetime.now(timezone.utc)
     else:
         setting = Setting(
             key=key,
@@ -1734,8 +1734,8 @@ class SpiderFootScan(db.Model):
     result_summary = db.Column(db.JSON)
     started_at = db.Column(db.DateTime)
     finished_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
@@ -1749,14 +1749,14 @@ class SpiderFootScan(db.Model):
         if progress is not None:
             self.progress = progress
         if status == 'running' and not self.started_at:
-            self.started_at = datetime.utcnow()
+            self.started_at = datetime.now(timezone.utc)
         elif status in ['completed', 'failed', 'cancelled']:
-            self.finished_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+            self.finished_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
     
     def soft_delete(self):
         self.is_deleted = True
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(timezone.utc)
     
     def to_dict(self) -> dict:
         return {
@@ -1797,11 +1797,11 @@ class OsintSearch(db.Model):
     status = db.Column(db.String(20), default='running', index=True)  # running, completed, cancelled, failed
     results = db.Column(db.JSON, nullable=True)
     error = db.Column(db.Text, nullable=True)
-    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime, nullable=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     started_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
 
@@ -1838,7 +1838,7 @@ class PhoneLookup(db.Model):
     phone = db.Column(db.String(50), nullable=False, index=True)
     raw_response = db.Column(db.JSON, nullable=False)
     profile_picture = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'))
 
     creator = db.relationship('User', backref='phone_lookups', foreign_keys=[created_by])

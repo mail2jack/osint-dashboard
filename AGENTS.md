@@ -100,10 +100,6 @@
 - One-time migration script `scripts/migrate_env_to_settings.py` copies existing `.env` values to DB.
 - Twitter Basic Auth (`read:api` at `app.py:1051`) is dead (Twitter v1.1 deprecated), ignore.
 - `.env` should only retain `DATABASE_URL`, `CMS_ENCRYPTION_KEY`, `FLASK_SECRET_KEY`. Move all API keys to Settings.
-```bash
-python tests/test_core.py
-```
-One test file: `tests/test_core.py` (email, IP, domain validation; phone normalization). Uses pytest.
 
 ## Update Notifications
 - `check_update()` at `routes.py:5175` checks both VERSION file AND latest commit SHA from GitHub.
@@ -125,3 +121,27 @@ One test file: `tests/test_core.py` (email, IP, domain validation; phone normali
 - Production commands MUST use the full path `/opt/osint-dashboard`:
   - `cd /opt/osint-dashboard && git pull origin master && sudo systemctl restart osint-dashboard`
 - Never write relative production commands.
+
+## Tests
+- Run: `/usr/local/bin/python3 -m pytest tests/ -v` (58 tests, ~2-3 min).
+- Files: `test_core.py` (10), `test_findings.py` (7), `test_phone_lookup.py` (8), `test_username_search.py` (6), `test_lookups.py` (27).
+- All mock external APIs (httpx, requests). No network calls.
+- `conftest.py`: SQLite temp file, `auth_client` via `session_transaction()` (omzeilt 2FA), `db_session`.
+- 37 third-party warnings remain (flask_login + flask_sqlalchemy internals).
+
+## Input Validation (`cms/validation.py`)
+- Pydantic `@validate(Schema)` decorator for POST routes.
+- Usage: `@validate(EmailCheckSchema)` after `@login_required`, then `request.validated_data`.
+- Returns 400 with `{"error": "Validation failed", "details": [...]}` on invalid input.
+- Schemas available for all lookups.py + social.py routes.
+
+## Routes Structure
+- `cms/legacy_routes.py` (~6819 lines, ~109 routes) — legacy routes, `cms_bp` definition.
+- `cms/routes/lookups.py` (13 routes) — phone, email, kadaster, politiebureau, RDW, vessel, Interpol/politie.
+- `cms/routes/social.py` (8 routes) — social account CRUD, username findings, social ID extraction.
+- Extracted routes use `request.validated_data`; legacy routes use `request.get_json()`.
+- `cms/routes/__init__.py` re-exports `cms_bp`; `cms/__init__.py::create_cms_module()` calls `register_modules()`.
+
+## Deprecations Fixed
+- `datetime.utcnow()` → `datetime.now(timezone.utc)` (Python 3.12 compat).
+- `Model.query.get(id)` → `db.session.get(Model, id)` (SQLAlchemy 2.0 compat).

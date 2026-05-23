@@ -43,6 +43,8 @@ def create_cms_module(app: Flask):
     
     # Register blueprints
     from .routes import cms_bp
+    from .routes import register_modules
+    register_modules()
     from .auth import auth_bp, users_bp
     
     app.register_blueprint(cms_bp)
@@ -249,7 +251,7 @@ def create_cms_module(app: Flask):
         # Migration: migrate Subject.notes free-text → Comment model
         try:
             from .models import Subject, Comment
-            from datetime import datetime
+            from datetime import datetime, timezone
             subjects_with_notes = Subject.query.filter(
                 Subject.notes.isnot(None),
                 Subject.notes != ''
@@ -267,8 +269,8 @@ def create_cms_module(app: Flask):
                         content=s.notes,
                         comment_type='note',
                         author_id=User.query.filter_by(role='admin').first().id,
-                        created_at=s.created_at or datetime.utcnow(),
-                        updated_at=s.updated_at or datetime.utcnow()
+                        created_at=s.created_at or datetime.now(timezone.utc),
+                        updated_at=s.updated_at or datetime.now(timezone.utc)
                     )
                     db.session.add(comment)
                     migrated_count += 1

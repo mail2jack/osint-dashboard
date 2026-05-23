@@ -1,0 +1,245 @@
+import logging
+import re
+import time
+
+from flask import request, jsonify, current_app
+from flask_login import login_required
+
+from . import cms_bp
+from ..models import db, Setting, AuditLog
+from ..auth import admin_required
+
+logger = logging.getLogger(__name__)
+
+
+@cms_bp.route('/api/changelog', methods=['GET'])
+@login_required
+def get_changelog():
+    """Return the full CHANGELOG.md rendered to simple HTML."""
+    import os
+    cl_path = os.path.join(current_app.root_path, 'CHANGELOG.md')
+    if not os.path.exists(cl_path):
+        return jsonify({'html': '<p>No changelog available.</p>'})
+    with open(cl_path) as f:
+        raw = f.read()
+    lines = raw.split('\n')
+    html_parts = []
+    for l in lines:
+        if l.startswith('### '):
+            html_parts.append(f'<p><strong>{l[4:]}</strong></p>')
+        elif l.startswith('## '):
+            html_parts.append(f'<h3>{l[3:]}</h3>')
+        elif l.startswith('- '):
+            html_parts.append(f'<li>{l[2:]}</li>')
+        elif l.strip() == '':
+            html_parts.append('<br>')
+        else:
+            html_parts.append(f'<p>{l}</p>')
+    return jsonify({'html': ''.join(html_parts)})
+
+
+@cms_bp.route('/api/check-update', methods=['GET'])
+@login_required
+def check_update():
+    """
+    Check if a newer version or new commits are available on GitHub.
+    Compares version + commit SHA to detect updates even without version bumps.
+    Results are cached in-memory for 1 hour.
+    """
+    from version import get_version
+    current_ver = get_version()
+
+    repo = Setting.get('update_check_repo')
+    if not repo:
+        return jsonify({
+            'update_available': False,
+            'current_version': current_ver,
+            'latest_version': current_ver,
+            'check_enabled': False,
+            'message': 'Update checking is disabled. Set update_check_repo in Settings.'
+        })
+
+    # In-memory cache on the app
+    cache_key = '_update_check_cache'
+    cache = current_app.config.get(cache_key, {})
+    now = time.time()
+
+    if cache.get('cached_at') and (now - cache['cached_at']) < 3600:
+        return jsonify(cache['data'])
+
+    try:
+        import httpx
+
+        # Fetch remote VERSION file
+        ver_url = f'https://raw.githubusercontent.com/{repo}/master/VERSION'
+        r = httpx.get(ver_url, timeout=10)
+        r.raise_for_status()
+        latest_ver = r.text.strip()
+
+        # Fetch remote HEAD commit SHA via GitHub API
+        local_sha = Setting.get('last_update_commit', '')
+        remote_sha = local_sha
+        try:
+            api_url = f'https://api.github.com/repos/{repo}/commits/master'
+            api_r = httpx.get(api_url, timeout=10, headers={
+                              'Accept': 'application/vnd.github.v3.sha'})
+            if api_r.status_code == 200:
+                remote_sha = api_r.text.strip()
+        except Exception as e:
+            logger.debug(f"Failed to fetch remote SHA from GitHub ({type(e).__name__}): {e}")
+
+        # If no stored local SHA, try to get it from the git repo and store it now
+        if not local_sha and remote_sha:
+            import subprocess as sp
+            import shutil
+            try:
+                git_path = shutil.which('git') or '/usr/bin/git'
+                r = sp.run(f'{git_path} rev-parse HEAD', shell=True,
+                           capture_output=True, text=True, cwd=current_app.root_path, timeout=10)
+                if r.returncode == 0:
+                    local_sha = r.stdout.strip()
+                    Setting.set('last_update_commit', local_sha,
+                                'Last pulled commit SHA (auto-updated)', 'general')
+                    logger.info(f"Stored initial commit SHA: {local_sha[:12]}")
+            except Exception as e:
+                logger.debug(f"Failed to run git rev-parse ({type(e).__name__}): {e}")
+
+        current_parts = [int(x) for x in current_ver.split('.')]
+        latest_parts = [int(x) for x in latest_ver.split('.')]
+        version_update = latest_parts > current_parts
+        commits_update = bool(
+            remote_sha and local_sha and remote_sha != local_sha and not version_update)
+        update_available = version_update or commits_update
+
+        # Fetch changelog if update is available
+        changelog = None
+        if update_available:
+            try:
+                cl_url = f'https://raw.githubusercontent.com/{repo}/master/CHANGELOG.md'
+                cl_r = httpx.get(cl_url, timeout=10)
+                if cl_r.status_code == 200:
+                    cl_text = cl_r.text
+                    m = re.search(
+                        r'##\s*\[([^\]]+)\].*?(?=\n##\s|\Z)', cl_text, re.DOTALL)
+                    if m:
+                        changelog = m.group(0).strip()
+            except Exception as e:
+                logger.debug(f"Failed to fetch CHANGELOG ({type(e).__name__}): {e}")
+
+        data = {
+            'update_available': update_available,
+            'version_update': version_update,
+            'commits_update': commits_update,
+            'current_version': current_ver,
+            'latest_version': latest_ver if version_update else current_ver,
+            'check_enabled': True,
+            'repo': repo,
+            'remote_sha': remote_sha,
+            'local_sha': local_sha,
+            'changelog': changelog,
+        }
+
+        current_app.config[cache_key] = {'data': data, 'cached_at': now}
+        return jsonify(data)
+
+    except Exception as e:
+        logger.warning(f"Update check failed ({type(e).__name__}): {e}")
+        return jsonify({
+            'update_available': False,
+            'current_version': current_ver,
+            'latest_version': None,
+            'check_enabled': True,
+            'error': str(e)
+        })
+
+
+@cms_bp.route('/admin/do-update', methods=['POST'])
+@login_required
+@admin_required
+def do_update():
+    """
+    Run update: backup, git pull, pip upgrade, restart services.
+    Admin only. Runs synchronously and streams status via JSON responses.
+    """
+    import subprocess
+    import sys
+    from version import get_version
+
+    current_ver = get_version()
+    results = []
+
+    def step(msg, cmd, cwd=None):
+        results.append({'step': msg, 'status': 'running'})
+        try:
+            r = subprocess.run(cmd, shell=True, capture_output=True, text=True,
+                               cwd=cwd or current_app.root_path, timeout=120)
+            if r.returncode == 0:
+                results[-1] = {'step': msg, 'status': 'ok',
+                               'output': r.stdout.strip()}
+            elif r.returncode < 0 and 'restart' in msg.lower():
+                results[-1] = {'step': msg, 'status': 'ok',
+                               'output': 'Service restarted (process killed by signal, expected)'}
+            else:
+                output = r.stderr.strip() or r.stdout.strip(
+                ) or f'Command failed (exit code {r.returncode})'
+                results[-1] = {'step': msg,
+                               'status': 'error', 'output': output}
+                logger.error(f"Update step failed: {msg}\n{output}")
+        except Exception as e:
+            results[-1] = {'step': msg, 'status': 'error', 'output': str(e)}
+            logger.error(f"Update step exception ({type(e).__name__}): {msg}\n{e}")
+
+    import shutil
+    project_root = current_app.root_path
+
+    # Step 1: Database backup (SQLite only)
+    db_path = current_app.config.get(
+        'SQLALCHEMY_DATABASE_URI', 'sqlite:///cms.db')
+    if db_path.startswith('sqlite'):
+        db_file = db_path.replace('sqlite:///', '')
+        step('Backup database',
+             f'cp "{db_file}" "{db_file}.backup.$(date +%Y%m%d_%H%M%S)"')
+
+    # Step 2: Git pull (use full path, systemd PATH may not include /usr/bin)
+    git_path = shutil.which('git') or '/usr/bin/git'
+    step('Pull latest code',
+         f'{git_path} pull origin master', cwd=project_root)
+
+    # Step 3: Install dependencies
+    step('Update Python packages', f'{sys.executable} -m pip install -r requirements.txt --upgrade',
+         cwd=project_root)
+
+    # Step 4: Run db.create_all() for any new tables
+    step('Apply database migrations',
+         f'{sys.executable} -c "from app import app; from cms.models import db; import flask; app.app_context().push(); db.create_all(); print(\'Migrations OK\')"',
+         cwd=project_root)
+
+    # Step 5: Restart (uses sudo via sudoers rule set by install.sh; ok if it fails — dev mode)
+    step('Restart services', '/usr/bin/sudo /usr/bin/systemctl restart osint-dashboard',
+         cwd=project_root)
+
+    success = all(r['status'] == 'ok' for r in results)
+
+    # Store local HEAD SHA after pull (even if restart fails — e.g. dev mode)
+    pull_ok = any(
+        r['step'] == 'Pull latest code' and r['status'] == 'ok' for r in results)
+    if pull_ok:
+        try:
+            import subprocess as sp
+            git_path = shutil.which('git') or '/usr/bin/git'
+            sha_result = sp.run(f'{git_path} rev-parse HEAD', shell=True,
+                                capture_output=True, text=True, cwd=project_root, timeout=15)
+            if sha_result.returncode == 0:
+                head_sha = sha_result.stdout.strip()
+                Setting.set('last_update_commit', head_sha,
+                            'Last pulled commit SHA (auto-updated)', 'general')
+                logger.info(f"Stored last update commit: {head_sha[:12]}")
+        except Exception as e:
+            logger.warning(f"Failed to store commit SHA ({type(e).__name__}): {e}")
+
+    return jsonify({
+        'success': success,
+        'current_version': current_ver,
+        'results': results,
+        'message': 'Update completed successfully' if success else 'Update had errors, check results'
+    }), 200 if success else 500

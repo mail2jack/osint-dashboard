@@ -17,7 +17,7 @@ import json
 import base64
 import secrets
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, List, Optional, Union
 
 import pyotp
@@ -25,7 +25,7 @@ import qrcode
 
 from flask import (
     Blueprint, request, jsonify, render_template, 
-    redirect, url_for, flash, session, g, current_app
+    redirect, url_for, flash, session, g, current_app, abort
 )
 from flask_login import (
     LoginManager, login_user, logout_user, 
@@ -49,7 +49,7 @@ login_manager = LoginManager()
 @login_manager.user_loader
 def load_user(user_id: str) -> Optional[User]:
     """Load user by ID for Flask-Login."""
-    return User.query.get(user_id)
+    return db.session.get(User, user_id)
 
 
 @login_manager.unauthorized_handler
@@ -180,7 +180,7 @@ def case_access_required(f: Callable) -> Callable:
             case_id = request.args.get('case_id')
         
         if case_id:
-            case = Case.query.get(case_id)
+            case = db.session.get(Case, case_id)
             if case and not current_user.can_access_case(case):
                 logger.warning(
                     f"Case access denied: User {current_user.username} "
@@ -234,7 +234,7 @@ def case_edit_required(f: Callable) -> Callable:
         if not case_id:
             return f(*args, **kwargs)  # No case to check
         
-        case = Case.query.get(case_id)
+        case = db.session.get(Case, case_id)
         if not case:
             return f(*args, **kwargs)  # Let the route handle 404
         
@@ -433,7 +433,7 @@ def verify_2fa():
         flash('No pending 2FA verification. Please log in first.', 'warning')
         return redirect(url_for('auth.login'))
 
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user or not user.totp_secret:
         session.pop('_2fa_user_id', None)
         session.pop('_2fa_remember', None)
@@ -470,7 +470,7 @@ def verify_2fa():
 
 def _complete_2fa_login(user):
     """Complete the second-factor login and clear the pending session."""
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
     remember = session.pop('_2fa_remember', False)
     session.pop('_2fa_user_id', None)
 
@@ -498,7 +498,7 @@ def setup_2fa():
     """Set up TOTP two-factor authentication."""
     # Allow setup during login flow (partial auth via _2fa_user_id) or when fully logged in
     user_id = session.get('_2fa_user_id')
-    user = User.query.get(user_id) if user_id else current_user
+    user = db.session.get(User, user_id) if user_id else current_user
     
     if not user or not user.is_authenticated:
         flash('Please log in first.', 'warning')
@@ -583,7 +583,7 @@ def setup_2fa():
 @admin_required
 def reset_2fa(user_id):
     """Admin: reset 2FA for another user (forces re-setup on next login)."""
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id) or abort(404)
     user.totp_secret = None
     user.totp_enabled = True
     user.backup_codes = None
@@ -674,7 +674,7 @@ def view_user(user_id: str):
     if user_id != current_user.id and not current_user.is_admin:
         return jsonify({'error': 'Access denied'}), 403
     
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id) or abort(404)
     return render_template('cms/users/view.html', user=user)
 
 
@@ -686,7 +686,7 @@ def user_activity(user_id: str):
     if user_id != current_user.id and not current_user.is_admin:
         return jsonify({'error': 'Access denied'}), 403
     
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id) or abort(404)
     
     # Get query parameters
     page = request.args.get('page', 1, type=int)
@@ -729,7 +729,7 @@ def user_activity(user_id: str):
     
     # Get statistics
     total_actions = AuditLog.query.filter_by(user_id=user_id).count()
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     today_actions = AuditLog.query.filter(
         AuditLog.user_id == user_id,
         db.func.date(AuditLog.timestamp) == today
@@ -737,7 +737,7 @@ def user_activity(user_id: str):
     
     # This week
     from datetime import timedelta
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     week_actions = AuditLog.query.filter(
         AuditLog.user_id == user_id,
         AuditLog.timestamp >= week_ago
@@ -852,7 +852,7 @@ def edit_user(user_id: str):
     if user_id != current_user.id and not current_user.is_admin:
         return jsonify({'error': 'Access denied'}), 403
     
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id) or abort(404)
     
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form
@@ -911,7 +911,7 @@ def edit_user(user_id: str):
 @admin_required
 def deactivate_user(user_id: str):
     """Deactivate a user account."""
-    user = User.query.get_or_404(user_id)
+    user = db.session.get(User, user_id) or abort(404)
     
     if user.id == current_user.id:
         return jsonify({'error': 'Cannot deactivate your own account'}), 400

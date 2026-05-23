@@ -9,7 +9,7 @@ import queue
 import logging
 import httpx
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from functools import lru_cache
@@ -3479,7 +3479,7 @@ def username_rapidapi():
         return jsonify({'error': 'Username required'}), 400
 
     USAGE_LIMIT = 100
-    now_month = datetime.utcnow().strftime('%Y-%m')
+    now_month = datetime.now(timezone.utc).strftime('%Y-%m')
     stored_month = Setting.get('rapidapi_username_month')
     used_count = int(Setting.get('rapidapi_username_used') or '0') if stored_month == now_month else 0
     api_key = Setting.get('rapidapi_username_key')
@@ -3581,7 +3581,7 @@ def username_rapidapi():
 def username_rapidapi_status():
     """Return current RapidAPI usage status."""
     from cms.models import Setting
-    now_month = datetime.utcnow().strftime('%Y-%m')
+    now_month = datetime.now(timezone.utc).strftime('%Y-%m')
     stored_month = Setting.get('rapidapi_username_month')
     used_count = int(Setting.get('rapidapi_username_used') or '0') if stored_month == now_month else 0
     api_key = Setting.get('rapidapi_username_key')

@@ -1,0 +1,303 @@
+import logging
+import os
+from datetime import datetime, timezone
+
+from flask import request, jsonify, render_template, redirect, url_for, flash, abort
+from flask_login import login_required, current_user
+
+from . import cms_bp
+from ..models import db, Case, DocumentTemplate, Document, AuditLog
+from ..auth import roles_required, case_access_required
+
+logger = logging.getLogger(__name__)
+
+
+@cms_bp.route('/templates')
+@login_required
+def list_templates():
+    """List all document templates."""
+    templates = DocumentTemplate.query.filter_by(
+        is_active=True).order_by(DocumentTemplate.name).all()
+    return render_template('cms/templates/list.html', templates=templates)
+
+
+@cms_bp.route('/templates/create', methods=['GET', 'POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def create_template():
+    """Create a new document template."""
+    if request.method == 'POST':
+        data = request.get_json() if request.is_json else request.form
+
+        template = DocumentTemplate(
+            name=data['name'],
+            description=data.get('description'),
+            template_type=data.get('template_type', 'report'),
+            content=data['content'],
+            category=data.get('category'),
+            is_default=bool(data.get('is_default')),
+            created_by=current_user.id
+        )
+
+        db.session.add(template)
+
+        AuditLog.log(
+            user_id=current_user.id,
+            action='create',
+            entity_type='document_template',
+            entity_id=template.id,
+            ip_address=request.remote_addr,
+            description=f"Created document template: {template.name}"
+        )
+        db.session.commit()
+
+        if request.is_json:
+            return jsonify(template.to_dict()), 201
+
+        flash(f'Template "{template.name}" created.', 'success')
+        return redirect(url_for('cms.list_templates'))
+
+    return render_template('cms/templates/create.html')
+
+
+@cms_bp.route('/templates/<template_id>/edit', methods=['GET', 'POST'])
+@login_required
+@roles_required('admin', 'senior_investigator')
+def edit_template(template_id: str):
+    """Edit a document template."""
+    template = db.session.get(DocumentTemplate, template_id) or abort(404)
+
+    if request.method == 'POST':
+        data = request.get_json() if request.is_json else request.form
+
+        template.name = data['name']
+        template.description = data.get('description')
+        template.template_type = data.get('template_type', 'report')
+        template.content = data['content']
+        template.category = data.get('category')
+        template.is_default = bool(data.get('is_default'))
+        template.updated_at = datetime.now(timezone.utc)
+
+        AuditLog.log(
+            user_id=current_user.id,
+            action='update',
+            entity_type='document_template',
+            entity_id=template.id,
+            ip_address=request.remote_addr,
+            description=f"Updated document template: {template.name}"
+        )
+        db.session.commit()
+
+        if request.is_json:
+            return jsonify(template.to_dict())
+
+        flash(f'Template "{template.name}" updated.', 'success')
+        return redirect(url_for('cms.list_templates'))
+
+    return render_template('cms/templates/edit.html', template=template)
+
+
+@cms_bp.route('/templates/<template_id>/delete', methods=['POST'])
+@login_required
+@roles_required('admin')
+def delete_template(template_id: str):
+    """Delete a document template."""
+    template = db.session.get(DocumentTemplate, template_id) or abort(404)
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action='delete',
+        entity_type='document_template',
+        entity_id=template.id,
+        ip_address=request.remote_addr,
+        description=f"Deleted document template: {template.name}"
+    )
+
+    db.session.delete(template)
+    db.session.commit()
+
+    flash('Template deleted.', 'success')
+    return redirect(url_for('cms.list_templates'))
+
+
+@cms_bp.route('/templates/<template_id>/preview')
+@login_required
+def preview_template(template_id: str):
+    """Preview a template with sample data."""
+    template = db.session.get(DocumentTemplate, template_id) or abort(404)
+
+    # Build sample context
+    context = _build_report_context(None)
+    rendered = template.render(context)
+
+    return jsonify({'rendered': rendered})
+
+
+@cms_bp.route('/cases/<case_id>/generate-report', methods=['GET', 'POST'])
+@login_required
+@case_access_required
+def generate_case_report(case_id: str):
+    """Generate a report from a template for a specific case."""
+    case = db.session.get(Case, case_id) or abort(404)
+
+    templates = DocumentTemplate.query.filter_by(
+        is_active=True).order_by(DocumentTemplate.name).all()
+
+    if request.method == 'POST':
+        template_id = request.form.get('template_id')
+        custom_fields = {
+            'conclusion': request.form.get('conclusion', ''),
+            'recommendation': request.form.get('recommendation', ''),
+            'classification': request.form.get('classification', 'Confidential')
+        }
+
+        template = db.session.get(DocumentTemplate, template_id) or abort(404)
+
+        # Build context from case
+        context = _build_report_context(case)
+        context.update(custom_fields)
+        context['user'] = current_user
+
+        rendered = template.render(context)
+
+        # Save as document
+        doc = Document(
+            case_id=case.id,
+            filename=f"report_{case.case_number}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+            original_filename=f"{template.name}_{case.case_number}.txt",
+            mime_type='text/plain',
+            file_size=len(rendered.encode('utf-8')),
+            document_type='report',
+            description=f"Generated from template: {template.name}",
+            classification='confidential',
+            uploaded_by=current_user.id
+        )
+        db.session.add(doc)
+        db.session.flush()
+
+        # Save the report content
+        doc_path = f"static/uploads/{doc.filename}"
+        os.makedirs(os.path.dirname(doc_path), exist_ok=True)
+        with open(doc_path, 'w') as f:
+            f.write(rendered)
+
+        AuditLog.log(
+            user_id=current_user.id,
+            action='create',
+            entity_type='document',
+            entity_id=doc.id,
+            ip_address=request.remote_addr,
+            case_id=case.id,
+            description=f"Generated report: {template.name}"
+        )
+        db.session.commit()
+
+        flash('Report generated and saved.', 'success')
+        return redirect(url_for('cms.view_case', case_id=case.id))
+
+    return render_template('cms/templates/generate_report.html', case=case, templates=templates)
+
+
+def _build_report_context(case: Case):
+    """Build context dictionary for template rendering."""
+    context = {
+        'case': None,
+        'client': None,
+        'subjects': [],
+        'findings': [],
+        'financials': {'summary': {}, 'by_type': {}},
+        'user': current_user,
+        'now': datetime.now(timezone.utc)
+    }
+
+    if case:
+        case.decrypt_all() if hasattr(case, 'decrypt_all') else None
+
+        context['case'] = {
+            'case_number': case.case_number,
+            'title': case.title,
+            'description': case.description,
+            'case_type': case.case_type,
+            'priority': case.priority,
+            'status': case.status,
+            'start_date': case.start_date,
+            'target_end_date': case.target_end_date,
+            'client': {'name': case.client.name} if case.client else None
+        }
+
+        context['subjects'] = []
+        for subject in case.subjects.all():
+            subject.decrypt_identifiers()
+            context['subjects'].append({
+                'name': subject.name,
+                'subject_type': subject.subject_type,
+                'risk_score': subject.risk_score,
+                'address': subject.address,
+                'email': subject.email,
+                'phone': subject.phone
+            })
+
+        context['findings'] = []
+        for finding in case.findings.filter_by(is_deleted=False).all():
+            context['findings'].append({
+                'title': finding.title,
+                'description': finding.content,  # Finding uses 'content' not 'description'
+                'finding_type': finding.finding_type,
+                # Map confidence_level to severity
+                'severity': finding.confidence_level or 'medium',
+                'status': 'active'
+            })
+
+        # Financial summary
+        fin_records = case.financial_records.filter_by(is_deleted=False).all()
+        total = sum(r.amount for r in fin_records)
+        by_type = {}
+        for r in fin_records:
+            if r.transaction_type not in by_type:
+                by_type[r.transaction_type] = {'count': 0, 'total': 0}
+            by_type[r.transaction_type]['count'] += 1
+            by_type[r.transaction_type]['total'] += float(r.amount)
+
+        context['financials'] = {
+            'summary': {'total_records': len(fin_records), 'total_amount': total},
+            'by_type': by_type
+        }
+
+    return context
+
+
+@cms_bp.route('/templates/api/all')
+@login_required
+def get_all_templates():
+    """Get all templates as JSON."""
+    templates = DocumentTemplate.query.filter_by(
+        is_active=True).order_by(DocumentTemplate.name).all()
+    return jsonify({'templates': [t.to_dict() for t in templates]})
+
+
+@cms_bp.route('/templates/api/render-preview', methods=['POST'])
+@login_required
+def render_template_preview():
+    """Render a template preview with case data."""
+    data = request.get_json()
+
+    template_id = data.get('template_id')
+    case_id = data.get('case_id')
+
+    template = db.session.get(DocumentTemplate, template_id)
+    if not template:
+        return jsonify({'error': 'Template not found'}), 404
+
+    case = db.session.get(Case, case_id) if case_id else None
+
+    context = _build_report_context(case)
+    context.update({
+        'conclusion': data.get('conclusion', ''),
+        'recommendation': data.get('recommendation', ''),
+        'classification': data.get('classification', 'Confidential')
+    })
+    context['user'] = current_user
+
+    rendered = template.render(context)
+
+    return jsonify({'rendered': rendered})
