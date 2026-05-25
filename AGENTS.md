@@ -9,16 +9,23 @@
 ## Database
 - `install.sh` sets up PostgreSQL by default (`DATABASE_URL` in `.env`). Falls back to SQLite (`cms.db`) if `DATABASE_URL` is unset.
 - Local dev uses PostgreSQL too. Setup: `brew install postgresql@16 && brew services start postgresql@16 && createdb cms_dev && echo 'DATABASE_URL=postgresql:///cms_dev' >> .env && pip install psycopg2-binary`.
-- `db.create_all()` runs on first startup — tables + default admin (`admin`/`changeme123`) auto-created.
+- Schema beheerd via **Alembic** (`migrations/`). `create_cms_module()` in `cms/__init__.py` voert bootstrap uit:
+  - **Nieuwe DB** (geen tabellen): `alembic upgrade head` — creëert alle tabellen
+  - **Bestaande DB** (wel tabellen, geen `alembic_version`): `alembic stamp head` — zet versie zonder migraties te draaien
+  - **Reeds gemigreerd**: idempotent (niets te doen)
+- Admin (`admin`/`changeme123`) wordt aangemaakt door `cms/__init__.py` data-migratie na schema bootstrap.
+- Alle handmatige `ALTER TABLE`-migraties verwijderd uit `cms/__init__.py` — zitten nu in Alembic.
+- **Alembic CLI**: `DATABASE_URL="sqlite:///test.db" python3 -m alembic upgrade head` (werkt standalone, geen Flask CLI nodig).
+- **Nieuwe migratie maken**: `DATABASE_URL="..." python3 -m alembic revision --autogenerate -m "description"`.
+- **CRITICAL — PostgreSQL vs SQLite diff**: PostgreSQL enforces `VARCHAR(n)` length limits; SQLite ignores them. Fernet-encrypted values are ~100-140 chars, so ALL encrypted columns MUST be `String(500)` minimum. Was vroeger auto-migrated op startup, nu vastgelegd in Alembic migration + modeldefinities.
 - Never mutate `created_at` on ORM objects directly (crashes SQLite). Sort with `strftime()` in sort key lambda.
-- `instr()` in queries is dialect-agnostic (uses `instr` for SQLite, `strpos` for PostgreSQL) — see `cms/routes.py`.
-- **CRITICAL — PostgreSQL vs SQLite diff**: PostgreSQL enforces `VARCHAR(n)` length limits; SQLite ignores them. Fernet-encrypted values are ~100-140 chars, so ALL encrypted columns MUST be `String(500)` minimum. The app auto-migrates column sizes on startup via `ALTER COLUMN TYPE VARCHAR(500)` (PostgreSQL only, see `cms/__init__.py`).
+- `instr()` in queries is dialect-agnostic (uses `instr` for SQLite, `strpos` for PostgreSQL) — helper in `cms/routes/search_fts.py`.
 
 ## SpiderFoot Integration (`cms/spiderfoot_service.py`)
 
 ### Config source (critical)
 - SpiderFoot config is read from the `Setting` model (DB table), NOT from `.env`.
-- `get_spiderfoot_config()` in `routes.py:5406` calls `Setting.get('spiderfoot_url')`, `Setting.get('spiderfoot_password')`, etc.
+- `get_spiderfoot_config()` in `cms/routes/spiderfoot.py` calls `Setting.get('spiderfoot_url')`, `Setting.get('spiderfoot_password')`, etc.
 - Setting values via Flask shell: `Setting.set('spiderfoot_url', 'http://...')`.
 
 ### Auth
@@ -39,14 +46,14 @@
 - `cms/email_utils.py`: SMTP with `ssl.create_default_context()` (TLS cert verification). `send_password_reset_email()` sends setup link; `send_new_user_credentials()` sends welcome without password.
 - `cms/services/ai_service.py`: `OLLAMA_URL`/`OLLAMA_MODEL` defined once here. `get_ollama_config()` reads Setting/env/hardcoded fallback. `app.py` imports from here — no duplicate constants.
 
-## Phone Lookup (`routes.py:phone_lookup`)
+## Phone Lookup (`cms/routes/phone.py`)
 - `POST /cms/api/phone-lookup` — validates + enriches phone numbers using `phonenumbers` library + free `bedrijfsdata.nl` API (NL only).
 - Returns: valid, formatted, country, region, carrier, line_type, timezone, WhatsApp/Telegram presence.
 - Button "📞 Check" appears next to phone fields in subject/client view pages (hidden if no phone).
 - Requires `phonenumbers` (`pip install phonenumbers`).
 - Depends on `httpx` (already in requirements).
 - `re` imported globally in routes.py for number normalization.
-- **`normalize_phone()`** (routes.py:6307) — normaliseert elk telefoonformaat naar E164 (`+31634407404`). Wordt aangeroepen bij create/edit van subject + client (zowel los veld als contacts).
+- **`normalize_phone()`** (cms/routes/phone.py) — normaliseert elk telefoonformaat naar E164 (`+31634407404`). Wordt aangeroepen bij create/edit van subject + client (zowel los veld als contacts).
 - **WhatsApp/Telegram check**: Uses `whatsapp.checkleaked.cc` API (RapidAPI) when `whatsapp_checkleaked_key` Setting is set. Falls back to unreliable scraping (`api.whatsapp.com/send` + `t.me`) when API returns 503 or no key configured.
 - API key: `Setting.set('whatsapp_checkleaked_key', 'your-rapidapi-key')` (BASIC free tier: 50 req/month). Signs up at whatsapp.checkleaked.cc/pricing.
 - API response includes `isWAContact`/`isUser` for WhatsApp presence + `telegram` object with existence check.
@@ -54,7 +61,7 @@
 - Profielfoto wordt automatisch gefetcht en als base64 weergegeven (indien beschikbaar).
 - Alle API responses worden opgeslagen in `PhoneLookup` model (tabel `phone_lookups`) met timestamp + raw JSON + profielfoto.
 
-## Interpol + Politie Check (`routes.py:check_policie_data`)
+## Interpol + Politie Check (`cms/routes/interpol.py` + `cms/politie_scraper.py`)
 - `POST /cms/check-policie-data` — checks subject name against INTERPOL Red Notices (wanted) + Yellow Notices (missing) + politie.nl/vermist (NL missing persons).
 - **Button** "🌍 Check Interpol" on subject view page (was "🚔 Check Politie Data").
 - Interpol API: `ws-public.interpol.int` (Akamai rate-limited, may return 403 after many calls).
@@ -69,7 +76,7 @@
 - `serializeAddresses()` now includes the `number` field (was always empty before).
 - The Address model already has separate `street` and `number` columns, so no DB migration needed.
 
-## Politiebureau Lookup (`routes.py:politiebureau_lookup`)
+## Politiebureau Lookup (`cms/routes/politiebureau.py`)
 - `POST /cms/api/politiebureau-lookup` — finds nearest police station for an address.
 - Accepts `{address_id}` (resolves from DB) or `{lat, lon}` directly.
 - Uses coordinates from `kadaster_data` (if stored) or falls back to PDOK BAG lookup, then calls `api.politie.nl/politiebureaus/v1`.
@@ -77,7 +84,7 @@
 - **Button** "🚔 Politiebureau" on each address card in subject view page (`view.html`), next to the Kadaster button.
 - Result displayed in a red-themed card below the address.
 
-## Vessel / Ship Lookup (`cms/vessel_service.py`, `routes.py:vessel_lookup`)
+## Vessel / Ship Lookup (`cms/vessel_service.py`, `cms/routes/vessel.py`)
 - `POST /cms/api/vessel-lookup` — searches VesselFinder (free, MMSI/name), MarinePlan (AIS by name/MMSI, API key), KVNR Schepenzoeker (IMO/name, public), Binnenvaart.eu (ENI/name, public), Equasis (IMO, requires free account credentials).
 - `POST /cms/api/vessel/update-subject` — updates subject with IMO/MMSI/ENI/flag (encrypted) + `vessel_data` JSON.
 - `POST /cms/api/findings/from-vessel` — creates a Finding from vessel lookup data (needs `case_id`).
@@ -94,8 +101,8 @@
 
 ### DB Migration
 - New columns added to `subjects` table: `imo_number VARCHAR(500)`, `mmsi VARCHAR(500)`, `eni_number VARCHAR(500)`, `vessel_nationality VARCHAR(500)`, `vessel_data TEXT`.
-- Auto-migration in `cms/__init__.py` (ALTER TABLE ADD COLUMN) for existing DBs.
-- New encrypted cols also listed in the ALTER COLUMN resize migration for PostgreSQL.
+- Auto-migration handled by Alembic (zie `migrations/versions/8c4bb90d2490_initial_schema.py`).
+- Encrypted columns (imo, mmsi, eni, nationality) zijn `String(500)` in de migratie — PostgreSQL-compatibel.
 
 ## API Keys — Settings GUI (not .env)
 - Prefer Settings table over `.env` for API keys. Use `Setting.set('key_name', 'value')` via Flask shell or the Settings GUI.
@@ -106,7 +113,7 @@
 - `.env` should only retain `DATABASE_URL`, `CMS_ENCRYPTION_KEY`, `FLASK_SECRET_KEY`. Move all API keys to Settings.
 
 ## Update Notifications
-- `check_update()` at `routes.py:5175` checks both VERSION file AND latest commit SHA from GitHub.
+- `check_update()` at `app.py` (routes section) checks both VERSION file AND latest commit SHA from GitHub.
 - Banner shows for version bumps OR any new commits (bugfixes without version change).
 - `last_update_commit` Setting stores the local HEAD SHA after each successful `do_update()`.
 - If remote SHA differs from stored SHA, a "New commits available" notification appears.
@@ -132,24 +139,21 @@
 - Auto-generation only happens if BOTH env var AND `.cms_key` file are missing. Once persisted, key survives restarts.
 - Key file is at project root (`.cms_key`), gitignored.
 - `cms/config.py` defines `Config`, `DevelopmentConfig`, `ProductionConfig`, `TestingConfig`.
-- Loaded in `app.py:56-58` via `app.config.from_object(get_config())` right after `Flask(__name__)`.
-- `cms/config.py` defines `Config`, `DevelopmentConfig`, `ProductionConfig`, `TestingConfig`.
-- Loaded in `app.py:56-58` via `app.config.from_object(get_config())` right after `Flask(__name__)`.
 - Picks config class based on `FLASK_ENV` env var (default: `development`).
 - `DevelopmentConfig`: `WTF_CSRF_ENABLED = False`, `SESSION_COOKIE_SECURE = False` — safe for local dev.
 - `ProductionConfig`: `WTF_CSRF_ENABLED = True`, `SESSION_COOKIE_SAMESITE = 'Strict'`, enforces `CMS_ENCRYPTION_KEY`.
 - `TestingConfig`: in-memory SQLite, CSRF off.
 - **Session**: `PERMANENT_SESSION_LIFETIME = 8h`, `SESSION_COOKIE_HTTPONLY = True`, `SESSION_COOKIE_SAMESITE = 'Lax'/'Strict'`.
 - **Uploads**: `MAX_CONTENT_LENGTH = 16MB` — enforces request body size limit across all endpoints.
-- **Security headers**: Added in `app.py:3241-3250` via `@app.after_request`: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Strict-Transport-Security` (non-localhost only).
-- **SQLite note**: `SQLALCHEMY_ENGINE_OPTIONS` (pool_size, pool_recycle, pool_pre_ping) from config is automatically removed for SQLite at `app.py:106-107` to prevent hangs.
+- **Security headers**: Added in `app.py` via `@app.after_request`: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Strict-Transport-Security` (non-localhost only).
+- **SQLite note**: `SQLALCHEMY_ENGINE_OPTIONS` (pool_size, pool_recycle, pool_pre_ping) from config is automatically removed for SQLite at `app.py` startup to prevent hangs.
 - **CSRF**: Active via `flask_wtf.CSRFProtect`. All 37 forms have `{{ csrf_token() }}` hidden inputs. All JSON API POST routes have `@csrf.exempt`. Dual routes (form + JSON) are auto-checked; form submissions work, JS calls that lack the token will 400. `WTF_CSRF_CHECK_DEFAULT=True` (removed the False override). `cms/__init__.py::__all__` exports `csrf`.
 
 ## Health Check
 `curl http://localhost:5000/health` — returns `{"status":"ok","database":"connected","spiderfoot":"connected"}`.
 
 ## Thread Safety
-- **`active_searches`** (`app.py:532-553`): Protected by `_searches_lock` (`threading.Lock()`). All three accessor functions (`deduplicate_request`, `mark_search_complete`, `cleanup_stale_searches`) acquire the lock before reading/writing.
+- **`active_searches`** (app.py routes section): Protected by `_searches_lock` (`threading.Lock()`). All three accessor functions (`deduplicate_request`, `mark_search_complete`, `cleanup_stale_searches`) acquire the lock before reading/writing.
 - **`_LAST_MARINEPLAN_CALL`** (`cms/vessel_service.py:28-30`): Protected by `_marineplan_lock`. The rate-limit check in `lookup_marineplan()` acquires the lock before calling `_rate_limit()`.
 - **Shell injection**: All `subprocess.run()` calls use list arguments (`[git_path, 'rev-parse', 'HEAD']`) instead of `shell=True` strings. The `step()` helper in `do_update()` now accepts `cmd_list` and omits `shell=True`. Shell expansion (e.g. `$(date)`) replaced with Python `datetime.strftime()`.
 
@@ -167,6 +171,8 @@
 - Files: `test_core.py` (10), `test_findings.py` (7), `test_phone_lookup.py` (8), `test_username_search.py` (6), `test_lookups.py` (27), `test_social.py` (23).
 - All mock external APIs (httpx, requests). No network calls.
 - `conftest.py`: SQLite temp file, `auth_client` via `session_transaction()` (omzeilt 2FA), `db_session`.
+- Schema via Alembic (`alembic upgrade head` in fixture setup, niet `db.create_all()`).
+- Teardown dropt ALL tabellen (inclusief `alembic_version`) zodat elke test schoon start.
 - Zero warnings (third-party warnings suppressed in `pytest.ini`).
 
 ## Input Validation (`cms/validation.py`)
