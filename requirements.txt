@@ -46,3 +46,6 @@ sentry-sdk>=2.0.0
 
 # SpiderFoot OSINT Integration
 spiderfoot-client>=1.0.0
+
+# Testing
+pytest-timeout>=2.3.1

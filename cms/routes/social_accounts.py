@@ -40,7 +40,9 @@ def check_existing_finding_urls() -> flask.Response:
 def add_social_account(subject_id: str) -> flask.Response:
     """Add a social account (username) to a subject."""
     from ..models import SocialAccount
-    subject = db.session.get(Subject, subject_id) or abort(404)
+    subject = db.session.get(Subject, subject_id)
+    if not subject:
+        return jsonify({'error': 'Subject not found'}), 404
     data = request.validated_data
     platform = (data.get('platform') or '').strip().lower()
     username = (data.get('username') or '').strip()
@@ -60,7 +62,7 @@ def delete_social_account(subject_id: str, account_id: str) -> flask.Response:
     from ..models import SocialAccount
     account = db.session.get(SocialAccount, account_id)
     if not account or str(account.subject_id) != subject_id:
-        abort(404)
+        return jsonify({'error': 'Social account not found'}), 404
     db.session.delete(account)
     db.session.commit()
     return jsonify({'message': 'Social account deleted'})
