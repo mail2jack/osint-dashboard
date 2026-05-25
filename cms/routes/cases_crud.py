@@ -116,7 +116,7 @@ def cases() -> str:
         page=page, per_page=per_page, error_out=False
     )
 
-    clients = Client.query.filter_by(is_deleted=False, is_active=True).all()
+    clients = Client.query.filter_by(is_deleted=False, is_active=True).limit(500).all()
 
     return render_template('cms/cases/list.html',
                            cases=pagination.items,
@@ -133,7 +133,7 @@ def cases() -> str:
 @validate(CreateCaseSchema)
 def create_case() -> flask.Response:
     """Create a new case."""
-    clients = Client.query.filter_by(is_deleted=False, is_active=True).all()
+    clients = Client.query.filter_by(is_deleted=False, is_active=True).limit(500).all()
     investigators = User.query.filter(
         User.is_active == True,
         User.role.in_(['admin', 'senior_investigator', 'junior_investigator'])
@@ -304,7 +304,7 @@ def edit_case(case_id: str) -> flask.Response:
         flash('Case updated successfully.', 'success')
         return redirect(url_for('cms.view_case', case_id=case.id))
 
-    clients = Client.query.filter_by(is_deleted=False, is_active=True).all()
+    clients = Client.query.filter_by(is_deleted=False, is_active=True).limit(500).all()
     investigators = User.query.filter(
         User.is_active == True,
         User.role.in_(['admin', 'senior_investigator', 'junior_investigator'])

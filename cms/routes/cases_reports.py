@@ -64,8 +64,11 @@ def view_case(case_id: str) -> str:
     ).order_by(Reminder.reminder_date.asc()).all()
 
     linked_ids = [s.id for s in subjects]
-    all_subjects = Subject.query.filter(Subject.is_deleted == False).all()
-    available_subjects = [s for s in all_subjects if s.id not in linked_ids]
+    all_subjects = Subject.query.filter(
+        Subject.is_deleted == False,
+        ~Subject.id.in_(linked_ids)
+    ).limit(500).all()
+    available_subjects = all_subjects
 
     AuditLog.log(
         user_id=current_user.id,
