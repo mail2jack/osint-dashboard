@@ -20,6 +20,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Callable, List, Optional, Union
 
+import flask
 import pyotp
 import qrcode
 
@@ -34,9 +35,20 @@ from flask_login import (
 
 from .models import db, User, AuditLog, Case, Client, Subject
 from .encryption_utils import encryptor
+from . import csrf
+from .validation import validate
+from .rate_limiting import is_rate_limited, set_rate_limited
+from .notifications import notify_login_failed, notify_login_success, notify_account_locked, notify_user_created
+from .validation import (
+    LoginSchema, SetPasswordSchema, Verify2FASchema, Setup2FASchema,
+    CreateUserSchema, EditUserSchema, ChangePasswordSchema,
+)
 
 
 logger = logging.getLogger(__name__)
+
+MAX_LOGIN_ATTEMPTS = 5
+ACCOUNT_LOCKOUT_MINUTES = 15
 
 
 # =============================================================================
@@ -53,7 +65,7 @@ def load_user(user_id: str) -> Optional[User]:
 
 
 @login_manager.unauthorized_handler
-def unauthorized():
+def unauthorized() -> flask.Response:
     """Handle unauthorized access."""
     if request.is_json:
         return jsonify({'error': 'Authentication required'}), 401
@@ -64,7 +76,7 @@ def unauthorized():
 # RBAC Decorators
 # =============================================================================
 
-def roles_required(*allowed_roles: str):
+def roles_required(*allowed_roles: str) -> Callable:
     """
     Decorator to restrict access to users with specific roles.
     
@@ -292,7 +304,7 @@ def case_edit_required(f: Callable) -> Callable:
     return decorated_function
 
 
-def audit_log(action: str, entity_type: str, get_entity_id: Callable = None):
+def audit_log(action: str, entity_type: str, get_entity_id: Callable = None) -> Callable:
     """
     Decorator to automatically log actions to audit trail.
     
@@ -318,7 +330,7 @@ def audit_log(action: str, entity_type: str, get_entity_id: Callable = None):
                 try:
                     entity_id = get_entity_id(response)
                 except Exception:
-                    pass
+                    logger.warning("Failed to get entity ID from response")
             
             # Log the action
             AuditLog.log(
@@ -345,15 +357,28 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-def login():
+def login() -> flask.Response:
     """User login page."""
     if current_user.is_authenticated:
         return redirect(url_for('cms.dashboard'))
     
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        remember = request.form.get('remember', False)
+        # IP-based rate limiting
+        rate_key = f"login_ip:{request.remote_addr or 'unknown'}"
+        limited, _ = is_rate_limited(rate_key)
+        if limited:
+            flash('Too many login attempts from this IP. Please wait before trying again.', 'danger')
+            return render_template('cms/login.html')
+        
+        d = request.form.to_dict() if request.form else {}
+        try:
+            validated = LoginSchema(**d)
+        except Exception:
+            flash('Please enter username and password.', 'warning')
+            return render_template('cms/login.html')
+        username = validated.username
+        password = validated.password
+        remember = validated.remember or False
         
         if not username or not password:
             flash('Please enter username and password.', 'warning')
@@ -361,7 +386,16 @@ def login():
         
         user = User.query.filter_by(username=username).first()
         
+        if user and user.locked_until and user.locked_until > datetime.now(timezone.utc):
+            remaining = int((user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60)
+            flash(f'Account locked due to too many failed attempts. Try again in {remaining} minutes.', 'danger')
+            return render_template('cms/login.html')
+        
         if user and user.check_password(password):
+            # Reset failed attempts on successful login
+            user.failed_login_attempts = 0
+            user.locked_until = None
+            
             if not user.is_active:
                 flash('Your account has been disabled. Contact an administrator.', 'danger')
                 return render_template('cms/login.html')
@@ -378,6 +412,9 @@ def login():
             )
             db.session.commit()
             
+            # Notify login success
+            notify_login_success(username, request.remote_addr)
+            
             # 2FA is mandatory — require verification or first-time setup
             session['_2fa_user_id'] = user.id
             session['_2fa_remember'] = remember
@@ -385,16 +422,21 @@ def login():
                 return redirect(url_for('auth.verify_2fa'))
             return redirect(url_for('auth.setup_2fa'))
         
-        # Log failed login attempt
-        AuditLog.log(
-            user_id=None,
-            action='login_failed',
-            entity_type='user',
-            ip_address=request.remote_addr,
-            user_agent=request.user_agent.string,
-            description=f"Failed login attempt for username: {username}"
-        )
+        # Increment failed login counter
+        if user:
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
+                from datetime import timedelta
+                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=ACCOUNT_LOCKOUT_MINUTES)
+                # Notify account locked
+                notify_account_locked(username, request.remote_addr, ACCOUNT_LOCKOUT_MINUTES)
         db.session.commit()
+        
+        # Notify login failed
+        notify_login_failed(username, request.remote_addr)
+        
+        # Set IP rate limit on failed login
+        set_rate_limited(rate_key, retry_after=60)
         
         flash('Invalid username or password.', 'danger')
     
@@ -403,7 +445,7 @@ def login():
 
 @auth_bp.route('/logout')
 @login_required
-def logout():
+def logout() -> flask.Response:
     """User logout."""
     AuditLog.log(
         user_id=current_user.id,
@@ -421,12 +463,45 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
+@auth_bp.route('/set-password/<token>', methods=['GET', 'POST'])
+def set_password(token) -> flask.Response:
+    """Set/reset password using a token from email."""
+    user = User.query.filter(User.password_reset_token.isnot(None)).all()
+    user = next((u for u in user if u.verify_reset_token(token)), None)
+    if not user:
+        flash('Invalid or expired password reset link.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    if request.method == 'POST':
+        raw = request.get_json() if request.is_json else request.form
+        try:
+            validated = SetPasswordSchema(**raw)
+        except Exception:
+            return jsonify({'error': 'Invalid input'}), 400
+        password = validated.password
+        confirm = validated.confirm_password
+
+        if not password or len(password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        if password != confirm:
+            return jsonify({'error': 'Passwords do not match'}), 400
+
+        user.set_password(password)
+        user.clear_reset_token()
+        db.session.commit()
+
+        flash('Password set successfully. You can now log in.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('cms/set_password.html', token=token)
+
+
 # =============================================================================
 # 2FA (TOTP) Routes
 # =============================================================================
 
 @auth_bp.route('/2fa/verify', methods=['GET', 'POST'])
-def verify_2fa():
+def verify_2fa() -> flask.Response:
     """Verify TOTP code as second factor during login."""
     user_id = session.get('_2fa_user_id')
     if not user_id:
@@ -468,7 +543,7 @@ def verify_2fa():
     return render_template('cms/2fa/verify.html')
 
 
-def _complete_2fa_login(user):
+def _complete_2fa_login(user) -> flask.Response:
     """Complete the second-factor login and clear the pending session."""
     user.last_login = datetime.now(timezone.utc)
     remember = session.pop('_2fa_remember', False)
@@ -494,7 +569,7 @@ def _complete_2fa_login(user):
 
 
 @auth_bp.route('/2fa/setup', methods=['GET', 'POST'])
-def setup_2fa():
+def setup_2fa() -> flask.Response:
     """Set up TOTP two-factor authentication."""
     # Allow setup during login flow (partial auth via _2fa_user_id) or when fully logged in
     user_id = session.get('_2fa_user_id')
@@ -581,7 +656,7 @@ def setup_2fa():
 @auth_bp.route('/2fa/reset/<user_id>', methods=['POST'])
 @login_required
 @admin_required
-def reset_2fa(user_id):
+def reset_2fa(user_id) -> flask.Response:
     """Admin: reset 2FA for another user (forces re-setup on next login)."""
     user = db.session.get(User, user_id) or abort(404)
     user.totp_secret = None
@@ -638,7 +713,7 @@ users_bp = Blueprint('users', __name__, url_prefix='/users')
 @users_bp.route('/')
 @login_required
 @roles_required('admin', 'senior_investigator')
-def list_users():
+def list_users() -> str:
     """List all users with pagination."""
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -668,7 +743,7 @@ def list_users():
 
 @users_bp.route('/<user_id>')
 @login_required
-def view_user(user_id: str):
+def view_user(user_id: str) -> str:
     """View user details."""
     # Users can view their own profile, admins can view anyone
     if user_id != current_user.id and not current_user.is_admin:
@@ -680,7 +755,7 @@ def view_user(user_id: str):
 
 @users_bp.route('/<user_id>/activity')
 @login_required
-def user_activity(user_id: str):
+def user_activity(user_id: str) -> str:
     """View activity timeline for a specific user."""
     # Users can view their own activity, admins can view anyone
     if user_id != current_user.id and not current_user.is_admin:
@@ -758,7 +833,7 @@ def user_activity(user_id: str):
 @users_bp.route('/api/generate-password')
 @login_required
 @admin_required
-def generate_password_api():
+def generate_password_api() -> flask.Response:
     """Generate a random password for the create user form."""
     import string
     alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
@@ -769,7 +844,7 @@ def generate_password_api():
 @users_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @admin_required
-def create_user():
+def create_user() -> flask.Response:
     """Create a new user (admin only). Password is auto-generated by default."""
     generated_password = None
 
@@ -779,13 +854,14 @@ def create_user():
         generated_password = ''.join(secrets.choice(alphabet) for _ in range(16))
         return render_template('cms/users/create.html', generated_password=generated_password)
 
-    data = request.get_json() if request.is_json else request.form
+    raw = request.get_json() if request.is_json else request.form
 
-    # Validate required fields
-    required = ['username', 'email', 'full_name', 'role']
-    for field in required:
-        if not data.get(field):
-            return jsonify({'error': f'{field} is required'}), 400
+    try:
+        validated = CreateUserSchema(**raw)
+    except Exception:
+        return jsonify({'error': 'Validation failed'}), 400
+
+    data = validated.model_dump(exclude_none=True)
 
     # Check for duplicate username/email
     if User.query.filter_by(username=data['username']).first():
@@ -823,12 +899,16 @@ def create_user():
     )
     db.session.commit()
 
+    notify_user_created(user.username, user.email, current_user.username)
+
     # Send credentials via email if requested
     if data.get('send_email') and user.email:
-        from .email_utils import send_new_user_credentials
-        sent = send_new_user_credentials(user.email, user.username, password, user.full_name)
+        from .email_utils import send_password_reset_email
+        token = user.generate_reset_token()
+        reset_url = url_for('auth.set_password', token=token, _external=True)
+        sent = send_password_reset_email(user.email, user.username, user.full_name, reset_url)
         if sent:
-            flash(f'Credentials sent to {user.email}', 'success')
+            flash(f'Password reset link sent to {user.email}', 'success')
         else:
             flash('Failed to send email — SMTP may not be configured.', 'warning')
 
@@ -846,7 +926,7 @@ def create_user():
 
 @users_bp.route('/<user_id>/edit', methods=['GET', 'POST'])
 @login_required
-def edit_user(user_id: str):
+def edit_user(user_id: str) -> flask.Response:
     """Edit user details."""
     # Users can edit their own profile, admins can edit anyone
     if user_id != current_user.id and not current_user.is_admin:
@@ -855,7 +935,12 @@ def edit_user(user_id: str):
     user = db.session.get(User, user_id) or abort(404)
     
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        raw = request.get_json() if request.is_json else request.form
+        try:
+            validated = EditUserSchema(**raw)
+        except Exception:
+            return jsonify({'error': 'Validation failed'}), 400
+        data = validated.model_dump(exclude_none=True)
         old_values = {}
         changes = {}
         
@@ -909,7 +994,7 @@ def edit_user(user_id: str):
 @users_bp.route('/<user_id>/deactivate', methods=['POST'])
 @login_required
 @admin_required
-def deactivate_user(user_id: str):
+def deactivate_user(user_id: str) -> flask.Response:
     """Deactivate a user account."""
     user = db.session.get(User, user_id) or abort(404)
     
@@ -937,13 +1022,12 @@ def deactivate_user(user_id: str):
 
 @users_bp.route('/change-password', methods=['POST'])
 @login_required
-def change_password():
+@validate(ChangePasswordSchema)
+def change_password() -> flask.Response:
     """Self-service password change. User must provide current password."""
-    data = request.get_json() if request.is_json else request.form
-
-    current_pw = data.get('current_password')
-    new_pw = data.get('new_password')
-    confirm_pw = data.get('confirm_password')
+    current_pw = request.validated_data.get('current_password', '')
+    new_pw = request.validated_data.get('new_password', '')
+    confirm_pw = request.validated_data.get('confirm_password', '')
 
     if not current_pw or not new_pw or not confirm_pw:
         return jsonify({'error': 'All password fields are required'}), 400

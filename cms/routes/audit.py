@@ -1,5 +1,6 @@
 import logging
 
+import flask
 from flask import request, render_template
 from flask_login import login_required
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 @cms_bp.route('/audit')
 @login_required
 @senior_required
-def audit_log():
+def audit_log() -> str:
     """View audit log with filtering."""
     page = request.args.get('page', 1, type=int)
     per_page = 50

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @cms_bp.route('/')
 @cms_bp.route('/dashboard')
 @login_required
-def dashboard():
+def dashboard() -> str:
     """Main dashboard with case overview and recent activity."""
     stats = {
         'open_cases': Case.query.filter_by(status=CaseStatus.OPEN.value, is_deleted=False).count(),

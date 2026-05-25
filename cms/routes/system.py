@@ -2,19 +2,53 @@ import logging
 import re
 import time
 
+import flask
 from flask import request, jsonify, current_app
 from flask_login import login_required
 
 from . import cms_bp
+from .. import csrf
 from ..models import db, Setting, AuditLog
 from ..auth import admin_required
 
 logger = logging.getLogger(__name__)
 
 
+@cms_bp.route('/admin/sessions', methods=['GET'])
+@login_required
+@admin_required
+def list_sessions() -> flask.Response:
+    """List active server-side sessions."""
+    from cachelib.file import FileSystemCache
+    import os
+    session_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'flask_session')
+    sessions = []
+    if os.path.exists(session_dir):
+        cache = FileSystemCache(session_dir)
+        for fname in os.listdir(session_dir):
+            if fname.startswith('session_'):
+                sessions.append({'session_id': fname.replace('session_', ''), 'file': fname})
+    return jsonify({'sessions': sessions, 'count': len(sessions)})
+
+
+@cms_bp.route('/admin/sessions/<session_id>/delete', methods=['POST'])
+@csrf.exempt
+@login_required
+@admin_required
+def delete_session(session_id: str) -> flask.Response:
+    """Delete a specific session."""
+    import os
+    session_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'flask_session')
+    session_file = os.path.join(session_dir, f'session_{session_id}')
+    if os.path.exists(session_file):
+        os.remove(session_file)
+        return jsonify({'message': 'Session deleted'})
+    return jsonify({'error': 'Session not found'}), 404
+
+
 @cms_bp.route('/api/changelog', methods=['GET'])
 @login_required
-def get_changelog():
+def get_changelog() -> flask.Response:
     """Return the full CHANGELOG.md rendered to simple HTML."""
     import os
     cl_path = os.path.join(current_app.root_path, 'CHANGELOG.md')
@@ -40,7 +74,7 @@ def get_changelog():
 
 @cms_bp.route('/api/check-update', methods=['GET'])
 @login_required
-def check_update():
+def check_update() -> flask.Response:
     """
     Check if a newer version or new commits are available on GitHub.
     Compares version + commit SHA to detect updates even without version bumps.
@@ -94,7 +128,7 @@ def check_update():
             import shutil
             try:
                 git_path = shutil.which('git') or '/usr/bin/git'
-                r = sp.run(f'{git_path} rev-parse HEAD', shell=True,
+                r = sp.run([git_path, 'rev-parse', 'HEAD'],
                            capture_output=True, text=True, cwd=current_app.root_path, timeout=10)
                 if r.returncode == 0:
                     local_sha = r.stdout.strip()
@@ -154,24 +188,26 @@ def check_update():
 
 
 @cms_bp.route('/admin/do-update', methods=['POST'])
+@csrf.exempt
 @login_required
 @admin_required
-def do_update():
+def do_update() -> flask.Response:
     """
     Run update: backup, git pull, pip upgrade, restart services.
     Admin only. Runs synchronously and streams status via JSON responses.
     """
     import subprocess
     import sys
+    from datetime import datetime
     from version import get_version
 
     current_ver = get_version()
     results = []
 
-    def step(msg, cmd, cwd=None):
+    def step(msg, cmd_list, cwd=None):
         results.append({'step': msg, 'status': 'running'})
         try:
-            r = subprocess.run(cmd, shell=True, capture_output=True, text=True,
+            r = subprocess.run(cmd_list, capture_output=True, text=True,
                                cwd=cwd or current_app.root_path, timeout=120)
             if r.returncode == 0:
                 results[-1] = {'step': msg, 'status': 'ok',
@@ -197,25 +233,30 @@ def do_update():
         'SQLALCHEMY_DATABASE_URI', 'sqlite:///cms.db')
     if db_path.startswith('sqlite'):
         db_file = db_path.replace('sqlite:///', '')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         step('Backup database',
-             f'cp "{db_file}" "{db_file}.backup.$(date +%Y%m%d_%H%M%S)"')
+             ['cp', db_file, f'{db_file}.backup.{timestamp}'])
 
     # Step 2: Git pull (use full path, systemd PATH may not include /usr/bin)
     git_path = shutil.which('git') or '/usr/bin/git'
     step('Pull latest code',
-         f'{git_path} pull origin master', cwd=project_root)
+         [git_path, 'pull', 'origin', 'master'], cwd=project_root)
 
     # Step 3: Install dependencies
-    step('Update Python packages', f'{sys.executable} -m pip install -r requirements.txt --upgrade',
+    step('Update Python packages',
+         [sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt', '--upgrade'],
          cwd=project_root)
 
     # Step 4: Run db.create_all() for any new tables
     step('Apply database migrations',
-         f'{sys.executable} -c "from app import app; from cms.models import db; import flask; app.app_context().push(); db.create_all(); print(\'Migrations OK\')"',
+         [sys.executable, '-c',
+          'from app import app; from cms.models import db; import flask; '
+          'app.app_context().push(); db.create_all(); print("Migrations OK")'],
          cwd=project_root)
 
     # Step 5: Restart (uses sudo via sudoers rule set by install.sh; ok if it fails — dev mode)
-    step('Restart services', '/usr/bin/sudo /usr/bin/systemctl restart osint-dashboard',
+    step('Restart services',
+         ['/usr/bin/sudo', '/usr/bin/systemctl', 'restart', 'osint-dashboard'],
          cwd=project_root)
 
     success = all(r['status'] == 'ok' for r in results)
@@ -227,7 +268,7 @@ def do_update():
         try:
             import subprocess as sp
             git_path = shutil.which('git') or '/usr/bin/git'
-            sha_result = sp.run(f'{git_path} rev-parse HEAD', shell=True,
+            sha_result = sp.run([git_path, 'rev-parse', 'HEAD'],
                                 capture_output=True, text=True, cwd=project_root, timeout=15)
             if sha_result.returncode == 0:
                 head_sha = sha_result.stdout.strip()

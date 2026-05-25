@@ -57,12 +57,12 @@
             <span class="btn btn-small" onclick="event.stopPropagation(); window.location.href='{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}'">View</span>
             {% if scan.status == 'running' %}
             <form method="POST" action="{{ url_for('cms.spiderfoot_stop_scan', scan_id=scan.id) }}" style="display: inline;" onclick="event.stopPropagation()">
-                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Stop scan?')">Stop</button>
+                <button type="submit" class="btn btn-small btn-danger" data-confirm="Stop scan?">Stop</button>
             </form>
             {% endif %}
             {% if current_user.is_admin and scan.status != 'running' %}
             <form method="POST" action="{{ url_for('cms.spiderfoot_delete_scan', scan_id=scan.id) }}" style="display: inline;" onclick="event.stopPropagation()">
-                <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this scan record?')">Delete</button>
+                <button type="submit" class="btn btn-small btn-danger" data-confirm="Delete this scan record?">Delete</button>
             </form>
             {% endif %}
         </div>

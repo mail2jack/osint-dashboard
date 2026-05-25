@@ -190,6 +190,10 @@
             <span class="icon">👥</span>
             <span>Users</span>
         </a>
+        <a href="#" class="category-item" data-click="viewSessions">
+            <span class="icon">🔐</span>
+            <span>Sessions</span>
+        </a>
     </div>
     
     <div class="settings-content">
@@ -230,7 +234,7 @@
                            value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
                            class="setting-input" autocomplete="new-password"
                            placeholder="{% if not setting.value %}Enter value{% endif %}">
-                    <button type="button" onclick="togglePassword('{{ setting.id }}')" 
+                    <button type="button" data-click="togglePassword" data-arg0="{{ setting.id }}" 
                             style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.5rem;">
                         👁️
                     </button>
@@ -256,7 +260,7 @@
             
             {% if settings_list %}
             <div class="action-buttons">
-                <button type="button" onclick="resetAllSettings()" class="btn" style="background: #6b7280;">
+                <button type="button" data-click="resetAllSettings" class="btn" style="background: #6b7280;">
                     Reset All
                 </button>
                 <button type="submit" class="btn">Save Changes</button>
@@ -372,6 +376,16 @@ function showToast(message, type = 'success') {
         toast.classList.remove('show');
     }, 3000);
 }
+
+window.viewSessions = async function() {
+    try {
+        const r = await fetch('/cms/admin/sessions');
+        const d = await r.json();
+        alert('Active sessions: ' + d.count + '\n' + d.sessions.map(s => '  • ' + s.session_id.slice(0,12) + '...').join('\n'));
+    } catch (e) {
+        alert('Failed to load sessions: ' + e.message);
+    }
+};
 
 window.addEventListener('beforeunload', (e) => {
     if (hasChanges) {

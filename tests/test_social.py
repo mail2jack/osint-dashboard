@@ -205,7 +205,7 @@ class TestExtractSocialId:
         db.session.add(subject)
         db.session.commit()
 
-        with patch('cms.routes.social._extract_social_ids_from_url') as mock_extract:
+        with patch('cms.routes.social_extraction._extract_social_ids_from_url') as mock_extract:
             mock_extract.return_value = {
                 'facebook_id': '123456789',
                 'instagram_id': '987654321',
@@ -221,7 +221,7 @@ class TestExtractSocialId:
 
     def test_extract_social_id_no_extracted_fallback(self, auth_client, app):
         """When _extract_social_ids_from_url returns empty, should use social_extractor fallback."""
-        with patch('cms.routes.social._extract_social_ids_from_url') as mock_extract:
+        with patch('cms.routes.social_extraction._extract_social_ids_from_url') as mock_extract:
             mock_extract.return_value = {}
             with patch('cms.social_extractor.detect_platform') as mock_detect:
                 mock_detect.return_value = 'instagram'
@@ -237,7 +237,7 @@ class TestExtractSocialId:
 
     def test_extract_social_id_completely_empty(self, auth_client, app):
         """When everything returns empty, should return 200 with note."""
-        with patch('cms.routes.social._extract_social_ids_from_url') as mock_extract:
+        with patch('cms.routes.social_extraction._extract_social_ids_from_url') as mock_extract:
             mock_extract.return_value = {}
             with patch('cms.social_extractor.detect_platform') as mock_detect:
                 mock_detect.return_value = None

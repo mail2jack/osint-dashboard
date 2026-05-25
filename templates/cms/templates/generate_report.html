@@ -7,10 +7,11 @@
         Generate a report for case: <strong>{{ case.case_number }}</strong> - {{ case.title }}
     </p>
     
-    <form method="POST" id="reportForm">
-        <div class="form-group">
-            <label for="template_id">Select Template *</label>
-            <select name="template_id" id="template_id" required onchange="loadPreview()">
+<form method="POST" id="reportForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="template_id">Select Template *</label>
+            <select name="template_id" id="template_id" required data-change="loadPreview">
                 <option value="">Choose a template...</option>
                 {% for t in templates %}
                 <option value="{{ t.id }}">{{ t.name }}{% if t.is_default %} (Default){% endif %}</option>
@@ -40,7 +41,7 @@
         
         <div style="display: flex; gap: 0.5rem;">
             <button type="submit" class="btn" style="background: #059669;">Generate & Save</button>
-            <button type="button" onclick="loadPreview()" class="btn">Preview</button>
+            <button type="button" data-click="loadPreview" class="btn">Preview</button>
             <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn" style="background: #666;">Cancel</a>
         </div>
     </form>

@@ -145,14 +145,14 @@
         
         <form method="GET" class="filter-row">
             <input type="hidden" name="user_id" value="{{ user.id }}">
-            <select name="action" onchange="this.form.submit()">
+            <select name="action" data-change="submitParentForm">
                 <option value="">All Actions</option>
                 <option value="create" {% if filters.action == 'create' %}selected{% endif %}>Create</option>
                 <option value="update" {% if filters.action == 'update' %}selected{% endif %}>Update</option>
                 <option value="delete" {% if filters.action == 'delete' %}selected{% endif %}>Delete</option>
                 <option value="login" {% if filters.action == 'login' %}selected{% endif %}>Login</option>
             </select>
-            <select name="entity_type" onchange="this.form.submit()">
+            <select name="entity_type" data-change="submitParentForm">
                 <option value="">All Entities</option>
                 <option value="case" {% if filters.entity_type == 'case' %}selected{% endif %}>Case</option>
                 <option value="subject" {% if filters.entity_type == 'subject' %}selected{% endif %}>Subject</option>

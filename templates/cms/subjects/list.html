@@ -17,8 +17,8 @@
             <span id="selectedCount">0</span> subject(s) selected
         </div>
         <div style="display: flex; gap: 0.5rem;">
-            <button onclick="openBulkLinkModal()" class="btn btn-success" id="linkBtn" disabled>Link to Case</button>
-            <button onclick="clearSelection()" class="btn">Clear Selection</button>
+            <button data-click="openBulkLinkModal" class="btn btn-success" id="linkBtn" disabled>Link to Case</button>
+            <button data-click="clearSelection" class="btn">Clear Selection</button>
         </div>
     </div>
 </div>
@@ -48,7 +48,7 @@
             <thead>
                 <tr>
                     <th class="checkbox-col">
-                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        <input type="checkbox" id="selectAll" data-change="toggleSelectAll">
                     </th>
                     <th>
                         <a href="?sort=name&order={% if filters.sort == 'name' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
@@ -71,7 +71,7 @@
             <tbody>
                 <tr class="select-all-row">
                     <td class="checkbox-col">
-                        <input type="checkbox" id="selectAllOnPage" onchange="toggleSelectAllOnPage()">
+                        <input type="checkbox" id="selectAllOnPage" data-change="toggleSelectAllOnPage">
                     </td>
                     <td colspan="4" style="color: var(--text-secondary); font-size: 0.875rem;">
                         Select all <span id="totalOnPage">{{ subjects|length }}</span> subjects on this page
@@ -80,13 +80,13 @@
                 {% for subject in subjects %}
                 <tr>
                     <td>
-                        <input type="checkbox" name="subject_ids" value="{{ subject.id }}" onchange="updateSelection()">
+                        <input type="checkbox" name="subject_ids" value="{{ subject.id }}" data-change="updateSelection">
                     </td>
                     <td><strong>{{ subject.name }}</strong></td>
                     <td>{{ subject.subject_type }}</td>
                     <td>{{ subject.risk_score }}</td>
                     <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a>
-                        <button onclick='deleteSubject("{{ subject.id }}", {{ subject.name|tojson }})' class="btn-sm" style="background: #dc2626; color: white; border: none; cursor: pointer; margin-left: 0.5rem;">🗑️</button>
+                        <button data-click="deleteSubject" data-arg0="{{ subject.id }}" data-arg1="{{ subject.name|tojson }}" class="btn-sm" style="background: #dc2626; color: white; border: none; cursor: pointer; margin-left: 0.5rem;">🗑️</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -114,7 +114,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Link Subjects to Case</h2>
-            <span class="close" onclick="closeBulkLinkModal()">&times;</span>
+            <span class="close" data-click="closeBulkLinkModal">&times;</span>
         </div>
         
         <p style="margin-bottom: 1rem; color: var(--text-secondary);">
@@ -129,8 +129,8 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button onclick="closeBulkLinkModal()" class="btn" style="background: var(--text-muted);">Cancel</button>
-            <button onclick="submitBulkLink()" class="btn btn-success">Link Subjects</button>
+            <button data-click="closeBulkLinkModal" class="btn" style="background: var(--text-muted);">Cancel</button>
+            <button data-click="submitBulkLink" class="btn btn-success">Link Subjects</button>
         </div>
     </div>
 </div>
@@ -249,8 +249,8 @@ document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
     if (e.target === this) closeBulkLinkModal();
 });
 
-function deleteSubject(id, name) {
-    if (!confirm('Weet je zeker dat je "' + name + '" wilt verwijderen?')) return;
+    function deleteSubject(btn, id, name) {
+        if (!confirm('Weet je zeker dat je "' + name + '" wilt verwijderen?')) return;
     fetch('/cms/subjects/' + id + '/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }

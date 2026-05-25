@@ -17,9 +17,9 @@ OK = "✅"
 FAIL = "❌"
 SKIP = "➖"
 
-def run(cmd, cwd=None, timeout=15):
+def run(cmd_list, cwd=None, timeout=15):
     try:
-        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=timeout)
+        r = subprocess.run(cmd_list, capture_output=True, text=True, cwd=cwd, timeout=timeout)
         return r.returncode, r.stdout.strip(), r.stderr.strip()
     except Exception as e:
         return -1, "", str(e)
@@ -65,11 +65,11 @@ with app.app_context():
     check("Project root exists", os.path.isdir(project_root), project_root)
     check(".git directory exists", os.path.isdir(os.path.join(project_root, ".git")))
 
-    rc, sha, err = run("git rev-parse HEAD", cwd=project_root)
+    rc, sha, err = run(["git", "rev-parse", "HEAD"], cwd=project_root)
     check(f"git rev-parse HEAD (exit={rc})", rc == 0,
           f"SHA: {sha[:16] if sha else 'FAILED'}\n{err[:200] if err else ''}")
 
-    rc2, origin, err2 = run("git rev-parse origin/master", cwd=project_root)
+    rc2, origin, err2 = run(["git", "rev-parse", "origin/master"], cwd=project_root)
     check(f"git rev-parse origin/master (exit={rc2})", rc2 == 0,
           f"SHA: {origin[:16] if origin else 'FAILED'}\n{err2[:200] if err2 else ''}")
 

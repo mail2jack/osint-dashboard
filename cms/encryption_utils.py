@@ -12,10 +12,13 @@ Security Design Decisions:
 """
 
 import base64
+import logging
 import os
 from typing import Any, Optional, Union
 from cryptography.fernet import Fernet, InvalidToken
 from flask import current_app
+
+logger = logging.getLogger(__name__)
 
 class EncryptionError(Exception):
     """Raised when encryption/decryption fails."""
@@ -58,7 +61,7 @@ class FieldEncryptor:
                 )
             # Development fallback - generate a new key (not for production!)
             key = Fernet.generate_key().decode()
-            print("WARNING: Using generated encryption key. Set CMS_ENCRYPTION_KEY for production!")
+            logger.warning("Using generated encryption key. Set CMS_ENCRYPTION_KEY for production!")
         
         # Ensure key is valid base64
         try:

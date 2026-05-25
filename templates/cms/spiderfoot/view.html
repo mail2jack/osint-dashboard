@@ -53,7 +53,7 @@
         <div class="progress-fill" id="progressFill" style="width: {{ scan.progress }}%"></div>
     </div>
     <p>Progress: <span id="progressText">{{ scan.progress }}</span>%</p>
-    <button onclick="location.reload()" class="btn btn-small">Refresh Page</button>
+    <button data-click="reloadPage" class="btn btn-small">Refresh Page</button>
 </div>
 
 <script>
@@ -121,7 +121,7 @@
 {% if scan.status == 'pending' or status_lower == 'running' %}
 <div class="form-actions">
     <form method="POST" action="{{ url_for('cms.spiderfoot_stop_scan', scan_id=scan.id) }}" style="display: inline;">
-        <button type="submit" class="btn btn-danger" onclick="return confirm('Stop this scan?')">Stop Scan</button>
+        <button type="submit" class="btn btn-danger" data-confirm="Stop this scan?">Stop Scan</button>
     </form>
 </div>
 {% endif %}
@@ -151,7 +151,7 @@
             <a href="{{ url_for('cms.spiderfoot_scan_results', scan_id=scan.id) }}" class="btn btn-small" target="_blank">View All JSON</a>
             {% if scan.case_id %}
             <form method="POST" action="{{ url_for('cms.spiderfoot_import_results', scan_id=scan.id) }}" style="display: inline;">
-                <button type="submit" class="btn btn-primary btn-small" onclick="return confirm('Import all results as findings to case {{ scan.case_id }}?')">
+                <button type="submit" class="btn btn-primary btn-small" data-confirm="Import all results as findings to case {{ scan.case_id }}?">
                     Import to Case
                 </button>
             </form>
@@ -159,7 +159,7 @@
         </div>
     </div>
     <div class="search-bar">
-        <input type="text" id="resultFilter" placeholder="Filter results..." oninput="filterResults(this.value)">
+        <input type="text" id="resultFilter" placeholder="Filter results..." data-input="filterResults">
     </div>
     
     {% if results %}
@@ -167,7 +167,7 @@
         {% set grouped = results|groupby('type') %}
         {% for group, items in grouped %}
         <div class="result-group" data-type="{{ group }}">
-            <div class="result-group-header" onclick="toggleGroup(this)">
+            <div class="result-group-header" data-click="toggleGroup">
                 <span class="result-group-title">
                     <span class="type-icon type-{{ group.lower()[:10] }}">{{ group[:2] }}</span>
                     <strong>{{ group }}</strong>
@@ -249,7 +249,7 @@
                             {% endif %}
                         </div>
                     </div>
-                    <button class="copy-btn" onclick="copyValue(this)" title="Copy to clipboard">📋</button>
+                    <button class="copy-btn" data-click="copyValue" title="Copy to clipboard">📋</button>
                 </div>
                 {% endfor %}
                 {% endif %}
@@ -645,11 +645,12 @@
 }
 </style>
 <script>
+function reloadPage(btn) { location.reload(); }
 function toggleGroup(header) {
     header.classList.toggle('collapsed');
 }
-function filterResults(query) {
-    const q = query.toLowerCase();
+function filterResults(el) {
+    const q = el.value.toLowerCase();
     document.querySelectorAll('.result-group').forEach(group => {
         const cards = group.querySelectorAll('.rich-card, .account-card');
         let visible = 0;

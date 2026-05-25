@@ -191,16 +191,19 @@
         </div>
         <div class="reminder-actions">
             {% if not reminder.is_completed %}
-            <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
-                <button type="submit" class="btn-sm btn-complete" title="Mark complete">✓</button>
-            </form>
-            <form method="POST" action="{{ url_for('cms.snooze_reminder', reminder_id=reminder.id, minutes=30) }}" style="display: inline;">
-                <button type="submit" class="btn-sm btn-snooze" title="Snooze 30 min">⏰</button>
-            </form>
-            {% endif %}
-            <a href="{{ url_for('cms.edit_reminder', reminder_id=reminder.id) }}" class="btn-sm btn-edit" title="Edit">✏️</a>
-            <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" onsubmit="return confirm('Delete this reminder?');">
-                <button type="submit" class="btn-sm btn-delete" title="Delete">🗑️</button>
+<form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-sm btn-complete" title="Mark complete">✓</button>
+</form>
+
+<form method="POST" action="{{ url_for('cms.snooze_reminder', reminder_id=reminder.id, minutes=30) }}" style="display: inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-sm btn-snooze" title="Snooze 30 min">⏰</button>
+</form>
+
+<form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="Delete this reminder?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-sm btn-delete" title="Delete">🗑️</button>
             </form>
         </div>
     </div>

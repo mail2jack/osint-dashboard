@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} - OSINT Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    body { margin: 0; background: #1a1a2e; }
+    .swagger-ui .topbar { display: none; }
+    .swagger-ui .info .title { color: #e0e0e0; }
+    .swagger-ui .info { margin: 20px 0; }
+    .swagger-ui .scheme-container { background: #16213e; }
+    .swagger-ui { color: #e0e0e0; }
+    .swagger-ui .opblock-tag { color: #e0e0e0; }
+    .swagger-ui .opblock .opblock-summary-description { color: #aaa; }
+    .swagger-ui .opblock-summary-method { border-radius: 3px; }
+    .swagger-ui .btn { border-radius: 3px; }
+    .swagger-ui input, .swagger-ui select { background: #0f3460; color: #e0e0e0; border-color: #1a1a2e; }
+    .swagger-ui .dialog-ux .modal-ux-content { background: #16213e; }
+    .swagger-ui .dialog-ux .modal-ux-header { background: #0f3460; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({
+      url: "{{ url_for('openapi_spec') }}",
+      dom_id: '#swagger-ui',
+      presets: [SwaggerUIBundle.presets.apis],
+      layout: "BaseLayout",
+      deepLinking: true,
+    });
+  </script>
+</body>
+</html>

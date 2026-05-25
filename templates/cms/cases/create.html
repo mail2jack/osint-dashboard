@@ -92,6 +92,7 @@
 
 <h2 style="margin-bottom: 1.5rem;">Create New Case</h2>
 <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
         <label for="title">Case Title *</label>
         <input type="text" name="title" id="title" required>

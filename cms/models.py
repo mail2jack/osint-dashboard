@@ -13,14 +13,31 @@ Design Decisions:
 """
 
 import uuid
+import json
+import hashlib
+import secrets
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum as PyEnum
 from typing import Optional, List, Any
 
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.types import JSON as _BaseJSON
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+
+class SafeJSON(_BaseJSON):
+    """JSON type that always returns Python objects, even on SQLite where
+    JSON columns may return raw strings (e.g. after ALTER TABLE migrations)."""
+
+    def process_result_value(self, value, dialect) -> object:
+        if value is not None and isinstance(value, str):
+            try:
+                return json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return value
+        return value
+
 
 from .encryption_utils import EncryptedString, encryptor
 
@@ -189,6 +206,14 @@ class User(UserMixin, db.Model):
     totp_secret = db.Column(db.String(64), nullable=True)
     totp_enabled = db.Column(db.Boolean, default=False, nullable=False)
     backup_codes = db.Column(db.Text, nullable=True)  # JSON array of hashed backup codes
+
+    # Password reset
+    password_reset_token = db.Column(db.String(128), nullable=True)
+    password_reset_expires = db.Column(db.DateTime, nullable=True)
+    
+    # Account lockout
+    failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)
+    locked_until = db.Column(db.DateTime, nullable=True)
     
     # Relationships
     assigned_cases = db.relationship(
@@ -203,7 +228,7 @@ class User(UserMixin, db.Model):
     findings = db.relationship('Finding', backref='author', lazy='dynamic')
     audit_logs = db.relationship('AuditLog', backref='user', lazy='dynamic')
     
-    def set_password(self, password: str):
+    def set_password(self, password: str) -> None:
         """Hash and set password securely."""
         self.hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
     
@@ -251,6 +276,22 @@ class User(UserMixin, db.Model):
             'is_active': self.is_active,
             'last_login': self.last_login.isoformat() if self.last_login else None
         }
+
+    def generate_reset_token(self) -> str:
+        token = secrets.token_urlsafe(48)
+        self.password_reset_token = hashlib.sha256(token.encode()).hexdigest()
+        self.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=48)
+        return token
+
+    def verify_reset_token(self, token: str) -> bool:
+        if not self.password_reset_expires or datetime.now(timezone.utc) > self.password_reset_expires:
+            return False
+        expected = hashlib.sha256(token.encode()).hexdigest()
+        return self.password_reset_token == expected
+
+    def clear_reset_token(self) -> None:
+        self.password_reset_token = None
+        self.password_reset_expires = None
 
 
 # =============================================================================
@@ -307,14 +348,14 @@ class Client(db.Model):
         'date_of_birth', 'place_of_birth'
     ]
     
-    def encrypt_naw(self):
+    def encrypt_naw(self) -> None:
         """Encrypt all NAW fields before saving."""
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 setattr(self, field, encryptor.encrypt(value))
     
-    def decrypt_naw(self):
+    def decrypt_naw(self) -> None:
         """Decrypt all NAW fields for display."""
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
@@ -322,9 +363,9 @@ class Client(db.Model):
                 try:
                     setattr(self, field, encryptor.decrypt(value))
                 except Exception:
-                    pass  # Handle corrupted data gracefully
+                    logger.warning("Decrypt failed for %s.%s (id=%s)", self.__class__.__name__, field, getattr(self, 'id', '?'))
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         """Soft delete the client."""
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
@@ -370,8 +411,8 @@ class Case(db.Model):
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     case_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=False)
-    title = db.Column(db.String(300), nullable=False)
+    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=False, index=True)
+    title = db.Column(db.String(300), nullable=False, index=True)
     description = db.Column(db.Text)
     priority = db.Column(db.String(20), default=CasePriority.MEDIUM.value)
     status = db.Column(db.String(20), default=CaseStatus.OPEN.value)
@@ -386,7 +427,7 @@ class Case(db.Model):
     # Case metadata
     case_type = db.Column(db.String(100))  # e.g., "fraud", "due_diligence", "asset_tracing"
     jurisdiction = db.Column(db.String(100))
-    tags = db.Column(db.JSON)  # Flexible tagging
+    tags = db.Column(SafeJSON)  # Flexible tagging
     
     # Reopening
     reopened_reason = db.Column(db.Text)  # Reason for reopening
@@ -436,8 +477,7 @@ class Case(db.Model):
         
         return f'{year}-{next_num:05d}'
     
-    def transition_status(self, new_status: str, user_id: str):
-        """Transition case to new status with validation."""
+    def transition_status(self, new_status: str, user_id: str) -> None:
         valid_transitions = {
             CaseStatus.OPEN.value: [CaseStatus.ACTIVE.value, CaseStatus.CLOSED.value],
             CaseStatus.ACTIVE.value: [CaseStatus.SUSPENDED.value, CaseStatus.CLOSED.value],
@@ -455,11 +495,10 @@ class Case(db.Model):
             return True
         return False
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         """Soft delete the case."""
         self.is_deleted = True
-        self.deleted_at = datetime.now(timezone.utc)
-    
+
     def to_dict(self, include_relations: bool = True) -> dict:
         """Serialize case data."""
         result = {
@@ -528,7 +567,7 @@ class Subject(db.Model):
     
     # Additional metadata
     risk_score = db.Column(db.Integer, default=0)  # 0-100 risk assessment
-    risk_factors = db.Column(db.JSON)              # List of risk indicators
+    risk_factors = db.Column(SafeJSON)              # List of risk indicators
     notes = db.Column(db.Text)
     
     # Entity-specific fields
@@ -542,7 +581,7 @@ class Subject(db.Model):
     
     # Social media identifiers (extracted from profiles)
     # Structure: {"facebook": {"id": "123456", "username": "johndoe"}, "vk": {...}, etc.}
-    social_media_ids = db.Column(db.JSON)
+    social_media_ids = db.Column(SafeJSON)
     
     # Vehicle-specific fields (encrypted)
     license_plate = db.Column(db.String(500))  # Encrypted
@@ -558,16 +597,16 @@ class Subject(db.Model):
     vessel_nationality = db.Column(db.String(500))  # Encrypted - flag state
     
     # Vessel data (full lookup result as JSON)
-    vessel_data = db.Column(db.JSON)
+    vessel_data = db.Column(SafeJSON)
     
     # RDW vehicle data (full RDW record as JSON)
-    rdw_data = db.Column(db.JSON)
+    rdw_data = db.Column(SafeJSON)
     
     # Photo
     photo_path = db.Column(db.String(500))  # Path to uploaded photo
     
     # Face recognition encoding (stored as JSON array of 128 floats from face-api.js)
-    face_encoding = db.Column(db.JSON)
+    face_encoding = db.Column(SafeJSON)
     
     # Soft delete
     is_deleted = db.Column(db.Boolean, default=False)
@@ -605,24 +644,22 @@ class Subject(db.Model):
         'imo_number', 'mmsi', 'eni_number', 'vessel_nationality'
     ]
     
-    def encrypt_identifiers(self):
-        """Encrypt all identifying fields."""
+    def encrypt_identifiers(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 setattr(self, field, encryptor.encrypt(value))
     
-    def decrypt_identifiers(self):
-        """Decrypt all identifying fields for display."""
+    def decrypt_identifiers(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
                 except Exception:
-                    pass
+                    logger.warning("Decrypt failed for %s.%s (id=%s)", self.__class__.__name__, field, getattr(self, 'id', '?'))
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         """Soft delete the subject."""
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
@@ -707,7 +744,7 @@ class Address(db.Model):
     
     # Kadaster verification
     kadaster_verified = db.Column(db.Boolean, default=False)
-    kadaster_data = db.Column(db.JSON)  # Full BAG response
+    kadaster_data = db.Column(SafeJSON)  # Full BAG response
     kadaster_checked_at = db.Column(db.DateTime)
     
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -715,22 +752,22 @@ class Address(db.Model):
     
     ENCRYPTED_FIELDS = ['street', 'number', 'zipcode', 'town', 'country']
     
-    def encrypt_fields(self):
+    def encrypt_fields(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 setattr(self, field, encryptor.encrypt(value))
     
-    def decrypt_fields(self):
+    def decrypt_fields(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
                 except Exception:
-                    pass
+                    logger.warning("Decrypt failed for %s.%s (id=%s)", self.__class__.__name__, field, getattr(self, 'id', '?'))
     
-    def to_dict(self, decrypted=True):
+    def to_dict(self, decrypted=True) -> dict:
         if decrypted:
             self.decrypt_fields()
         return {
@@ -749,7 +786,7 @@ class Address(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
     
-    def full_address(self):
+    def full_address(self) -> str:
         parts = []
         if self.street:
             line = self.street
@@ -791,22 +828,22 @@ class Contact(db.Model):
 
     ENCRYPTED_FIELDS = ['value']
 
-    def encrypt_fields(self):
+    def encrypt_fields(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 setattr(self, field, encryptor.encrypt(value))
 
-    def decrypt_fields(self):
+    def decrypt_fields(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
                 except Exception:
-                    pass
+                    logger.warning("Decrypt failed for %s.%s (id=%s)", self.__class__.__name__, field, getattr(self, 'id', '?'))
 
-    def to_dict(self, decrypted=True):
+    def to_dict(self, decrypted=True) -> dict:
         if decrypted:
             self.decrypt_fields()
         return {
@@ -869,14 +906,14 @@ class FinancialRecord(db.Model):
         'counterparty_name', 'counterparty_account', 'counterparty_bank', 'counterparty_country'
     ]
     
-    def encrypt_details(self):
+    def encrypt_details(self) -> None:
         """Encrypt counterparty information."""
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 setattr(self, field, encryptor.encrypt(value))
     
-    def decrypt_details(self):
+    def decrypt_details(self) -> None:
         """Decrypt counterparty information for display."""
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
@@ -884,9 +921,9 @@ class FinancialRecord(db.Model):
                 try:
                     setattr(self, field, encryptor.decrypt(value))
                 except Exception:
-                    pass
+                    logger.warning("Decrypt failed for %s.%s (id=%s)", self.__class__.__name__, field, getattr(self, 'id', '?'))
     
-    def verify(self, user_id: str, notes: str = None):
+    def verify(self, user_id: str, notes: str = None) -> None:
         """Mark record as verified."""
         self.verification_status = VerificationStatus.VERIFIED.value
         self.verified_by = user_id
@@ -894,7 +931,7 @@ class FinancialRecord(db.Model):
         if notes:
             self.verification_notes = notes
     
-    def flag(self, user_id: str, notes: str = None):
+    def flag(self, user_id: str, notes: str = None) -> None:
         """Flag record for review."""
         self.verification_status = VerificationStatus.FLAGGED.value
         self.verified_by = user_id
@@ -902,7 +939,7 @@ class FinancialRecord(db.Model):
         if notes:
             self.verification_notes = notes
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         """Soft delete the record."""
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
@@ -946,8 +983,8 @@ class Finding(db.Model):
     __tablename__ = 'findings'
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    case_id = db.Column(db.String(36), db.ForeignKey('cases.id'), nullable=False)
-    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'))
+    case_id = db.Column(db.String(36), db.ForeignKey('cases.id'), nullable=False, index=True)
+    subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'), index=True)
     
     title = db.Column(db.String(300), nullable=False)
     content = db.Column(db.Text, nullable=False)
@@ -959,7 +996,7 @@ class Finding(db.Model):
     confidence_level = db.Column(db.String(20))  # low, medium, high, verified
     
     finding_type = db.Column(db.String(50))  # identity, location, connection, financial, etc.
-    tags = db.Column(db.JSON)
+    tags = db.Column(SafeJSON)
     
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -968,7 +1005,7 @@ class Finding(db.Model):
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         """Soft delete the finding."""
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
@@ -1020,7 +1057,7 @@ class Screenshot(db.Model):
     file_size = db.Column(db.Integer)  # Size in bytes
     
     # Optional extracted data (e.g., social media IDs)
-    extracted_data = db.Column(db.JSON)
+    extracted_data = db.Column(SafeJSON)
     
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -1069,9 +1106,9 @@ class AuditLog(db.Model):
     entity_type = db.Column(db.String(50), nullable=False, index=True)  # case, client, subject, etc.
     entity_id = db.Column(db.String(128), index=True)
     
-    changes_made = db.Column(db.JSON)  # {"field": {"old": "x", "new": "y"}}
-    old_values = db.Column(db.JSON)     # Previous state snapshot
-    new_values = db.Column(db.JSON)    # New state snapshot
+    changes_made = db.Column(SafeJSON)  # {"field": {"old": "x", "new": "y"}}
+    old_values = db.Column(SafeJSON)     # Previous state snapshot
+    new_values = db.Column(SafeJSON)    # New state snapshot
     
     ip_address = db.Column(db.String(45))  # IPv6 compatible
     user_agent = db.Column(db.String(500))
@@ -1092,6 +1129,17 @@ class AuditLog(db.Model):
         if self.user:
             return self.user.full_name
         return 'System'
+    
+    @staticmethod
+    def purge_old(days: int = None) -> int:
+        """Delete audit logs older than `days`. Returns count deleted."""
+        if days is None:
+            days = int(Setting.get('audit_log_retention_days', '365'))
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        deleted = AuditLog.query.filter(AuditLog.timestamp < cutoff).delete()
+        if deleted:
+            db.session.commit()
+        return deleted
     
     @staticmethod
     def log(
@@ -1174,7 +1222,7 @@ class Document(db.Model):
     # Document metadata
     document_type = db.Column(db.String(50))  # evidence, contract, report, etc.
     description = db.Column(db.Text)
-    tags = db.Column(db.JSON)
+    tags = db.Column(SafeJSON)
     
     # Security classification
     classification = db.Column(db.String(20), default='confidential')  # public, internal, confidential, restricted
@@ -1185,7 +1233,7 @@ class Document(db.Model):
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         """Soft delete the document."""
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
@@ -1256,7 +1304,7 @@ class Comment(db.Model):
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         """Soft delete the comment."""
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
@@ -1477,27 +1525,27 @@ class Reminder(db.Model):
     is_deleted = db.Column(db.Boolean, default=False)
     deleted_at = db.Column(db.DateTime)
     
-    def complete(self):
+    def complete(self) -> None:
         """Mark reminder as completed."""
         self.is_completed = True
         self.completed_at = datetime.now(timezone.utc)
-    
-    def snooze(self, minutes: int = 30):
+
+    def snooze(self, minutes: int = 30) -> None:
         """Snooze reminder for specified minutes."""
         from datetime import timedelta
         self.reminder_date = datetime.now(timezone.utc) + timedelta(minutes=minutes)
     
-    def check_overdue(self):
+    def check_overdue(self) -> bool:
         """Check and update overdue status."""
         if not self.is_completed and self.reminder_date < datetime.now(timezone.utc):
             self.is_overdue = True
         return self.is_overdue
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         """Soft delete the reminder."""
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
-    
+
     def to_dict(self) -> dict:
         """Serialize reminder."""
         return {
@@ -1545,7 +1593,7 @@ class Setting(db.Model):
     category = db.Column(db.String(50), default='general', index=True)
     description = db.Column(db.String(500))
     value_type = db.Column(db.String(20), default='text')  # text, password, number, boolean, select
-    options = db.Column(db.JSON)
+    options = db.Column(SafeJSON)
     is_encrypted = db.Column(db.Boolean, default=False)
     is_sensitive = db.Column(db.Boolean, default=False)
     display_order = db.Column(db.Integer, default=0)
@@ -1631,7 +1679,7 @@ class SocialAccount(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'id': self.id,
             'subject_id': self.subject_id,
@@ -1643,15 +1691,14 @@ class SocialAccount(db.Model):
         }
 
 
-def get_setting(key: str, default=None):
-    setting = Setting.query.filter_by(key=key, is_active=True).first()
+def get_setting(key: str, default=None) -> Any:
     if not setting:
         return default
     return setting.value
 
 
 def set_setting(key: str, value: str, category: str = 'general', description: str = None,
-                value_type: str = 'text', is_sensitive: bool = False):
+                value_type: str = 'text', is_sensitive: bool = False) -> object:
     setting = Setting.query.filter_by(key=key).first()
     if setting:
         setting.value = value
@@ -1671,7 +1718,7 @@ def set_setting(key: str, value: str, category: str = 'general', description: st
     return setting
 
 
-def init_default_settings():
+def init_default_settings() -> None:
     defaults = [
         {'key': 'brave_api_key', 'category': 'api_keys', 'description': 'Brave Search API Key', 'value_type': 'password', 'is_sensitive': True, 'display_order': 1},
         {'key': 'pimeyes_api_key', 'category': 'api_keys', 'description': 'PimEyes API Key', 'value_type': 'password', 'is_sensitive': True, 'display_order': 2},
@@ -1702,6 +1749,22 @@ def init_default_settings():
         {'key': 'twochat_api_key', 'category': 'api_keys', 'description': '2Chat API Key (https://app.2chat.io/api)', 'value_type': 'password', 'is_sensitive': True, 'display_order': 8},
         {'key': 'twochat_whatsapp_number', 'category': 'api_keys', 'description': '2Chat WhatsApp nummer (E164, bv +31612345678)', 'value_type': 'text', 'display_order': 9},
         {'key': 'rapidapi_username_key', 'category': 'api_keys', 'description': 'RapidAPI Key voor Username Check (osint-username-availability-brand-checker-api)', 'value_type': 'password', 'is_sensitive': True, 'display_order': 10},
+        {'key': 'audit_log_retention_days', 'category': 'security', 'value': '365', 'description': 'Audit log retention (days, 0=keep forever)', 'value_type': 'number', 'display_order': 32},
+        {'key': 'webhook_url', 'category': 'general', 'value': '', 'description': 'Webhook URL for system notifications (POST JSON). Leave empty to disable.', 'value_type': 'text', 'display_order': 51},
+        {'key': 'feature_email', 'category': 'feature_flags', 'value': '1', 'description': 'Email search (Sherlock)', 'value_type': 'boolean', 'display_order': 1},
+        {'key': 'feature_email_holehe', 'category': 'feature_flags', 'value': '1', 'description': 'Email breach check (Holehe)', 'value_type': 'boolean', 'display_order': 2},
+        {'key': 'feature_ip', 'category': 'feature_flags', 'value': '1', 'description': 'IP address lookup', 'value_type': 'boolean', 'display_order': 3},
+        {'key': 'feature_domain', 'category': 'feature_flags', 'value': '1', 'description': 'Domain WHOIS/DNS lookup', 'value_type': 'boolean', 'display_order': 4},
+        {'key': 'feature_username', 'category': 'feature_flags', 'value': '1', 'description': 'Username search (Sherlock/Maigret)', 'value_type': 'boolean', 'display_order': 5},
+        {'key': 'feature_phone', 'category': 'feature_flags', 'value': '1', 'description': 'Phone number lookup', 'value_type': 'boolean', 'display_order': 6},
+        {'key': 'feature_hibp', 'category': 'feature_flags', 'value': '1', 'description': 'Have I Been Pwned breach check', 'value_type': 'boolean', 'display_order': 7},
+        {'key': 'feature_openkvk', 'category': 'feature_flags', 'value': '1', 'description': 'Dutch business registry (Overheid.io)', 'value_type': 'boolean', 'display_order': 8},
+        {'key': 'feature_ai', 'category': 'feature_flags', 'value': '1', 'description': 'AI summarization (Ollama)', 'value_type': 'boolean', 'display_order': 9},
+        {'key': 'feature_kadaster', 'category': 'feature_flags', 'value': '1', 'description': 'Dutch address lookup (PDOK/BAG)', 'value_type': 'boolean', 'display_order': 10},
+        {'key': 'feature_rdw', 'category': 'feature_flags', 'value': '1', 'description': 'Dutch vehicle lookup (RDW)', 'value_type': 'boolean', 'display_order': 11},
+        {'key': 'feature_vessel', 'category': 'feature_flags', 'value': '1', 'description': 'Vessel/ship lookup', 'value_type': 'boolean', 'display_order': 12},
+        {'key': 'feature_interpol', 'category': 'feature_flags', 'value': '1', 'description': 'Interpol wanted/missing check', 'value_type': 'boolean', 'display_order': 13},
+        {'key': 'feature_webcam', 'category': 'feature_flags', 'value': '1', 'description': 'Webcam search', 'value_type': 'boolean', 'display_order': 14},
     ]
     for default in defaults:
         existing = Setting.query.filter_by(key=default['key']).first()
@@ -1727,11 +1790,11 @@ class SpiderFootScan(db.Model):
     subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id'))
     use_case = db.Column(db.String(50), default='passive')
     profile = db.Column(db.String(50))
-    module_ids = db.Column(db.JSON)
+    module_ids = db.Column(SafeJSON)
     status = db.Column(db.String(50), default='pending')
     progress = db.Column(db.Integer, default=0)
     result_count = db.Column(db.Integer, default=0)
-    result_summary = db.Column(db.JSON)
+    result_summary = db.Column(SafeJSON)
     started_at = db.Column(db.DateTime)
     finished_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -1744,8 +1807,7 @@ class SpiderFootScan(db.Model):
     case = db.relationship('Case', backref='spiderfoot_scans', foreign_keys=[case_id])
     subject = db.relationship('Subject', backref='spiderfoot_scans', foreign_keys=[subject_id])
     
-    def update_status(self, status: str, progress: int = None):
-        self.status = status
+    def update_status(self, status: str, progress: int = None) -> None:
         if progress is not None:
             self.progress = progress
         if status == 'running' and not self.started_at:
@@ -1754,10 +1816,10 @@ class SpiderFootScan(db.Model):
             self.finished_at = datetime.now(timezone.utc)
         self.updated_at = datetime.now(timezone.utc)
     
-    def soft_delete(self):
+    def soft_delete(self) -> None:
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
-    
+
     def to_dict(self) -> dict:
         return {
             'id': self.id,
@@ -1795,7 +1857,7 @@ class OsintSearch(db.Model):
     subject_id = db.Column(db.String(36), db.ForeignKey('subjects.id', ondelete='SET NULL'), nullable=True)
     search_query = db.Column('query', db.String(500), nullable=False)
     status = db.Column(db.String(20), default='running', index=True)  # running, completed, cancelled, failed
-    results = db.Column(db.JSON, nullable=True)
+    results = db.Column(SafeJSON, nullable=True)
     error = db.Column(db.Text, nullable=True)
     started_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime, nullable=True)
@@ -1805,7 +1867,7 @@ class OsintSearch(db.Model):
 
     started_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'search_id': self.search_id,
             'case_id': self.case_id,
@@ -1820,9 +1882,8 @@ class OsintSearch(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
-    def get_status_dict(self):
+    def get_status_dict(self) -> dict:
         return {
-            'status': self.status,
             'results': self.results,
             'error': self.error,
             'started_at': self.started_at.isoformat() if self.started_at else None,
@@ -1831,12 +1892,40 @@ class OsintSearch(db.Model):
         }
 
 
+class ApiKey(db.Model):
+    """API key for programmatic access to OSINT endpoints."""
+    __tablename__ = 'api_keys'
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = db.Column(db.String(100), nullable=False)
+    key_hash = db.Column(db.String(255), nullable=False)
+    key_prefix = db.Column(db.String(8), nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    last_used_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    creator = db.relationship('User', backref='api_keys', foreign_keys=[user_id])
+
+    @staticmethod
+    def generate_key() -> tuple[str, str]:
+        """Generate a new API key. Returns (raw_key, key_hash)."""
+        import secrets
+        raw = f"osint_{secrets.token_urlsafe(32)}"
+        from werkzeug.security import generate_password_hash
+        return raw, generate_password_hash(raw, method='pbkdf2:sha256')
+
+    def verify_key(self, raw_key: str) -> bool:
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.key_hash, raw_key)
+
+
 class PhoneLookup(db.Model):
     __tablename__ = 'phone_lookups'
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     phone = db.Column(db.String(50), nullable=False, index=True)
-    raw_response = db.Column(db.JSON, nullable=False)
+    raw_response = db.Column(SafeJSON, nullable=False)
     profile_picture = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = db.Column(db.String(36), db.ForeignKey('users.id'))

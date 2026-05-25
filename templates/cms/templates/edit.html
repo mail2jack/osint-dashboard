@@ -3,9 +3,10 @@
 <h2 style="margin-bottom: 1.5rem;">Edit Document Template</h2>
 
 <div class="card">
-    <form method="POST">
-        <div class="form-group">
-            <label for="name">Template Name *</label>
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="name">Template Name *</label>
             <input type="text" name="name" id="name" value="{{ template.name }}" required>
         </div>
         
@@ -53,8 +54,9 @@
         <div style="display: flex; gap: 0.5rem;">
             <button type="submit" class="btn">Save Changes</button>
             <a href="{{ url_for('cms.list_templates') }}" class="btn" style="background: #666;">Cancel</a>
-            <form method="POST" action="{{ url_for('cms.delete_template', template_id=template.id) }}" style="margin-left: auto;" onsubmit="return confirm('Delete this template?');">
-                <button type="submit" class="btn" style="background: #dc2626;">Delete</button>
+<form method="POST" action="{{ url_for('cms.delete_template', template_id=template.id) }}" style="margin-left: auto;" data-confirm="Delete this template?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn" style="background: #dc2626;">Delete</button>
             </form>
         </div>
     </form>

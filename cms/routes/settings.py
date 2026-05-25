@@ -1,12 +1,15 @@
 import logging
 from datetime import datetime, timezone
 
+import flask
 from flask import request, jsonify, render_template, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from .. import csrf
 from ..models import db, Setting, AuditLog, init_default_settings
 from ..auth import admin_required
+from ..validation import validate, SaveSettingsSchema
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +17,7 @@ logger = logging.getLogger(__name__)
 @cms_bp.route('/settings')
 @login_required
 @admin_required
-def settings():
+def settings() -> str:
     """Settings management page."""
     category = request.args.get('category', 'api_keys')
 
@@ -25,6 +28,7 @@ def settings():
         'security': {'name': '🔒 Security', 'icon': '🔒'},
         'email': {'name': '📧 Email', 'icon': '📧'},
         'appearance': {'name': '🎨 Appearance', 'icon': '🎨'},
+        'feature_flags': {'name': '🚩 Feature Flags', 'icon': '🚩'},
     }
 
     settings_list = Setting.query.filter_by(
@@ -42,7 +46,7 @@ def settings():
 @cms_bp.route('/api/settings')
 @login_required
 @admin_required
-def get_settings_api():
+def get_settings_api() -> flask.Response:
     """Get all settings grouped by category (masked values)."""
     categories = request.args.get('category', None)
 
@@ -61,26 +65,23 @@ def get_settings_api():
 @cms_bp.route('/api/settings/<setting_id>', methods=['GET'])
 @login_required
 @admin_required
-def get_setting_api(setting_id: str):
+def get_setting_api(setting_id: str) -> flask.Response:
     """Get a single setting."""
     setting = db.session.get(Setting, setting_id) or abort(404)
     return jsonify(setting.to_dict(include_value=not setting.is_sensitive))
 
 
 @cms_bp.route('/api/settings', methods=['POST'])
+@csrf.exempt
 @login_required
 @admin_required
-def save_settings_api():
+@validate(SaveSettingsSchema)
+def save_settings_api() -> flask.Response:
     """Save one or more settings."""
-    data = request.get_json()
-
-    if not data or 'settings' not in data:
-        return jsonify({'error': 'Settings data required'}), 400
-
     saved_count = 0
     errors = []
 
-    for item in data['settings']:
+    for item in request.validated_data.get('settings', []):
         setting_id = item.get('id')
         new_value = item.get('value')
 
@@ -122,9 +123,10 @@ def save_settings_api():
 
 
 @cms_bp.route('/api/settings/<setting_id>/reset', methods=['POST'])
+@csrf.exempt
 @login_required
 @admin_required
-def reset_setting_api(setting_id: str):
+def reset_setting_api(setting_id: str) -> flask.Response:
     """Reset a setting to its default value."""
     setting = db.session.get(Setting, setting_id) or abort(404)
 

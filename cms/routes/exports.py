@@ -2,6 +2,7 @@ import csv
 import io
 from datetime import datetime
 
+import flask
 from flask import Response, request, jsonify, abort
 from flask_login import login_required
 
@@ -13,7 +14,7 @@ from ..auth import can_export, case_access_required
 @cms_bp.route('/cases/<case_id>/export')
 @login_required
 @case_access_required
-def export_case(case_id: str):
+def export_case(case_id: str) -> str:
     """Export case data as CSV."""
     case = db.session.get(Case, case_id) or abort(404)
     format_type = request.args.get('format', 'csv')
@@ -62,16 +63,15 @@ def export_case_csv(case: Case) -> Response:
 
     # Findings
     writer.writerow(['Findings'])
-    writer.writerow(['Title', 'Type', 'Severity',
-                    'Status', 'Created', 'Description'])
+    writer.writerow(['Title', 'Type', 'Reliability',
+                    'Created', 'Content'])
     for finding in case.findings.filter_by(is_deleted=False).all():
         writer.writerow([
             finding.title,
-            finding.finding_type,
-            finding.severity,
-            finding.status,
+            finding.finding_type or 'N/A',
+            finding.reliability_score or 'N/A',
             finding.created_at.strftime('%Y-%m-%d %H:%M'),
-            (finding.description or '')[:200]
+            (finding.content or '')[:200]
         ])
     writer.writerow([])
 
@@ -100,7 +100,7 @@ def export_case_csv(case: Case) -> Response:
 @cms_bp.route('/subjects/export')
 @login_required
 @can_export
-def export_subjects():
+def export_subjects() -> str:
     """Export all subjects as CSV."""
     format_type = request.args.get('format', 'csv')
 
@@ -122,7 +122,8 @@ def export_subjects_csv() -> Response:
         'Notes', 'Created'
     ])
 
-    for subject in Subject.query.filter_by(is_deleted=False).order_by(Subject.name).all():
+    q = Subject.query.options(db.selectinload(Subject.addresses)).filter_by(is_deleted=False).order_by(Subject.name)
+    for subject in q.all():
         subject.decrypt_identifiers()
         primary_addr = next(
             (a for a in list(subject.addresses) if a.is_primary), None)
@@ -159,7 +160,7 @@ def export_subjects_csv() -> Response:
 @cms_bp.route('/clients/export')
 @login_required
 @can_export
-def export_clients():
+def export_clients() -> str:
     """Export all clients as CSV."""
     format_type = request.args.get('format', 'csv')
 
@@ -203,7 +204,7 @@ def export_clients_csv() -> Response:
 @cms_bp.route('/cases/export')
 @login_required
 @can_export
-def export_cases():
+def export_cases() -> str:
     """Export all cases as CSV."""
     format_type = request.args.get('format', 'csv')
 
@@ -221,7 +222,11 @@ def export_cases_csv() -> Response:
     writer.writerow(['Case Number', 'Title', 'Client', 'Status', 'Priority',
                     'Start Date', 'End Date', 'Type', 'Subjects Count', 'Findings Count'])
 
-    for case in Case.query.filter_by(is_deleted=False).order_by(Case.case_number).all():
+    for case in Case.query.options(
+        db.joinedload(Case.client),
+        db.selectinload(Case.subjects),
+        db.selectinload(Case.findings),
+    ).filter_by(is_deleted=False).order_by(Case.case_number).all():
         writer.writerow([
             case.case_number,
             case.title,
@@ -232,8 +237,8 @@ def export_cases_csv() -> Response:
             case.actual_end_date.strftime(
                 '%Y-%m-%d') if case.actual_end_date else '',
             case.case_type or '',
-            case.subjects.count(),
-            case.findings.filter_by(is_deleted=False).count()
+            len(case.subjects),
+            len([f for f in case.findings if not f.is_deleted])
         ])
 
     output.seek(0)

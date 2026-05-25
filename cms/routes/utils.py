@@ -3,9 +3,12 @@ Utility functions for CMS routes.
 """
 
 import re
+import logging
 from typing import Optional
 
 from ..models import db, Subject, Client
+
+logger = logging.getLogger(__name__)
 
 
 try:
@@ -125,7 +128,7 @@ def check_for_exact_match(name: str, entity_type: str) -> Optional[dict]:
     return None
 
 
-def normalize_phone(phone):
+def normalize_phone(phone) -> str | None:
     """Normalize any phone number format to E164 (+31634407404)."""
     if not phone:
         return phone
@@ -136,7 +139,7 @@ def normalize_phone(phone):
             if phonenumbers.is_valid_number(parsed):
                 return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
         except Exception:
-            pass
+            logger.debug("Phone number normalization failed for %s", phone)
     # Fallback: strip all non-digits, prepend +
     digits = re.sub(r'[^0-9]', '', phone)
     if digits.startswith('0'):

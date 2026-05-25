@@ -26,6 +26,7 @@
     
     <div style="display: flex; gap: 0.5rem; align-items: center;">
         <form method="POST" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="name" value="{{ submitted_name }}">
             <input type="hidden" name="is_company" value="{{ submitted_is_company }}">
             <input type="hidden" name="confirm_duplicate" value="1">
@@ -37,14 +38,15 @@
 </div>
 {% endif %}
 
-<form method="POST" onsubmit="serializeAddresses(); serializeContacts(); return validateForm()">
+<form method="POST" data-submit="handleCreateSubmit">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
         <label for="name">Client Name *</label>
-        <input type="text" name="name" id="name" required value="{{ submitted_name or '' }}" oninput="checkDuplicate()" autocomplete="off">
+        <input type="text" name="name" id="name" required value="{{ submitted_name or '' }}" data-input="checkDuplicate" autocomplete="off">
         <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
     </div>
     <div class="form-group">
-        <input type="checkbox" name="is_company" id="is_company" value="1" style="width: auto; margin-right: 0.5rem;" onchange="toggleCompanyFields()" {% if submitted_is_company %}checked{% endif %}>
+        <input type="checkbox" name="is_company" id="is_company" value="1" style="width: auto; margin-right: 0.5rem;" data-change="toggleCompanyFields" {% if submitted_is_company %}checked{% endif %}>
         <label for="is_company" style="display: inline; font-weight: normal;">This is a company/organization</label>
     </div>
     
@@ -93,7 +95,7 @@
                 </div>
             </div>
         </div>
-        <button type="button" onclick="addContact()" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another contact</button>
+        <button type="button" data-click="addContact" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another contact</button>
     </div>
     
     <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Address(es)</h3>
@@ -119,7 +121,7 @@
                         <input type="text" class="addr-town" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div style="display:flex;align-items:center;gap:0.25rem;">
-                        <button type="button" onclick="postcodeCheck(this)" title="Look up zipcode + number" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
+                        <button type="button" data-click="postcodeCheck" title="Look up zipcode + number" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
                         <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
                             <input type="checkbox" class="addr-primary" checked> Primary
                         </label>
@@ -128,7 +130,7 @@
                 <input type="hidden" class="addr-country" value="Netherlands">
             </div>
         </div>
-        <button type="button" onclick="addAddress()" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another address</button>
+        <button type="button" data-click="addAddress" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another address</button>
     </div>
     
     <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Contract</h3>
@@ -160,6 +162,14 @@
 </form>
 
 <script>
+function handleCreateSubmit(e) {
+    serializeAddresses();
+    serializeContacts();
+    if (validateForm()) {
+        e.target.submit();
+    }
+}
+
 let duplicateTimeout = null;
 
 function toggleCompanyFields() {

@@ -33,7 +33,7 @@ def detect_platform(url):
             if platform:
                 return _PLATFORM_ALIASES.get(platform, platform)
         except Exception:
-            pass
+            logger.debug("Platform alias resolution failed for %s", url)
     parsed = urlparse(url)
     domain = parsed.netloc.lower().replace('www.', '').split('.')[0]
     return domain if domain and domain != urlparse(url).netloc else None
@@ -55,7 +55,7 @@ def extract_username(url, platform=None):
                 if uid:
                     return uid.lstrip('@')
         except Exception:
-            pass
+            logger.debug("Social UID extraction failed for %s", url)
     path = urlparse(url).path.strip('/')
     if path:
         return path.split('/')[-1].split('?')[0]

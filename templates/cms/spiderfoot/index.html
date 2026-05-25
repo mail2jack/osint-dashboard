@@ -75,7 +75,7 @@
 <div class="section">
     <h2>Recent Scans</h2>
     <div class="search-bar">
-        <input type="text" id="scanSearch" placeholder="Search scans by name, target, or status..." oninput="filterScans(this.value)">
+        <input type="text" id="scanSearch" placeholder="Search scans by name, target, or status..." data-input="filterScans">
     </div>
     {% if recent_scans %}
     <div class="scan-list">
@@ -306,8 +306,8 @@
 }
 </style>
 <script>
-function filterScans(query) {
-    const q = query.toLowerCase().trim();
+function filterScans(el) {
+    const q = el.value.toLowerCase().trim();
     document.querySelectorAll('.scan-card').forEach(card => {
         const text = card.textContent.toLowerCase();
         card.style.display = !q || text.includes(q) ? '' : 'none';

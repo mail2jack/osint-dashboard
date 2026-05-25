@@ -37,7 +37,7 @@
                 </td>
                 <td>
                     <a href="{{ url_for('cms.edit_template', template_id=template.id) }}" class="btn btn-sm">Edit</a>
-                    <button onclick="previewTemplate('{{ template.id }}')" class="btn btn-sm" style="background: #7c3aed;">Preview</button>
+                    <button data-click="previewTemplate" data-arg0="{{ template.id }}" class="btn btn-sm" style="background: #7c3aed;">Preview</button>
                 </td>
             </tr>
             {% endfor %}
@@ -53,11 +53,11 @@
     <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
             <h2>Template Preview</h2>
-            <span class="close" onclick="closePreviewModal()">&times;</span>
+            <span class="close" data-click="closePreviewModal">&times;</span>
         </div>
         <div id="previewContent" style="white-space: pre-wrap; font-family: monospace; background: #f5f5f5; padding: 1rem; border-radius: 8px; max-height: 60vh; overflow-y: auto;"></div>
         <div style="margin-top: 1rem; text-align: right;">
-            <button onclick="closePreviewModal()" class="btn" style="background: #666;">Close</button>
+            <button data-click="closePreviewModal" class="btn" style="background: #666;">Close</button>
         </div>
     </div>
 </div>

@@ -35,6 +35,10 @@
 - Template filters in `app.py:103-270`: `urlize_target`, `result_link`, `platform_name`, `platform_color`.
 - Rich result cards use `.rich-card` with `--card-color` CSS custom property (no separate classes per type).
 
+## Email & AI Config
+- `cms/email_utils.py`: SMTP with `ssl.create_default_context()` (TLS cert verification). `send_password_reset_email()` sends setup link; `send_new_user_credentials()` sends welcome without password.
+- `cms/services/ai_service.py`: `OLLAMA_URL`/`OLLAMA_MODEL` defined once here. `get_ollama_config()` reads Setting/env/hardcoded fallback. `app.py` imports from here — no duplicate constants.
+
 ## Phone Lookup (`routes.py:phone_lookup`)
 - `POST /cms/api/phone-lookup` — validates + enriches phone numbers using `phonenumbers` library + free `bedrijfsdata.nl` API (NL only).
 - Returns: valid, formatted, country, region, carrier, line_type, timezone, WhatsApp/Telegram presence.
@@ -110,8 +114,44 @@
 - **Auto-detect**: If `last_update_commit` is empty, `check_update()` runs `git rev-parse HEAD` and stores the result. This means the banner can only detect commits pushed AFTER the first page visit — visiting AFTER a manual `git pull` will silently store the new HEAD and show no diff.
 - **Diagnostic**: Run `sudo -u osint /opt/osint-dashboard/venv/bin/python -c "from app import app; from cms.models import Setting; app.app_context().push(); print('repo:', Setting.get('update_check_repo')); print('last_sha:', Setting.get('last_update_commit','(empty)'))"`
 
+## Image Upload Validation (`cms/image_validation.py`)
+- `validate_image_file(file_storage)` checks the first 32 bytes against known magic byte signatures (PNG: `\x89PNG...`, JPEG: `\xff\xd8\xff`, GIF: `GIF87a`/`GIF89a`, WebP: `RIFF....WEBP`).
+- Used in `cms/routes/screenshots.py` and `cms/routes/subjects_faces.py` — replaces unreliable `content_type` header check and extension-based check.
+- File cursor is restored to position 0 after reading magic bytes.
+
+## Password Reset Flow
+- **No passwords in email**: `send_new_user_credentials()` still exists as legacy but updated to omit the password. New `send_password_reset_email()` sends a reset link.
+- **`User` model**: Added `password_reset_token` (VARCHAR(128), hashed SHA-256) + `password_reset_expires` (TIMESTAMP, 48h TTL).
+- **Route** `GET/POST /auth/set-password/<token>` — public, validates token, requires 8+ char password + confirm. Token is one-time use (cleared after set).
+- **`create_user()`**: When `send_email=True`, generates a reset token and emails a "Set Password" link instead of including the raw password.
+- API response for `create_user` still includes `generated_password` (admin needs it for offline sharing with the user).
+
+## Encryption Key Persistence
+- **`CMS_ENCRYPTION_KEY` env var** — takes precedence.
+- **`.cms_key` file** — fallback; read if env var is unset. Created with `chmod 600` on first auto-generate.
+- Auto-generation only happens if BOTH env var AND `.cms_key` file are missing. Once persisted, key survives restarts.
+- Key file is at project root (`.cms_key`), gitignored.
+- `cms/config.py` defines `Config`, `DevelopmentConfig`, `ProductionConfig`, `TestingConfig`.
+- Loaded in `app.py:56-58` via `app.config.from_object(get_config())` right after `Flask(__name__)`.
+- `cms/config.py` defines `Config`, `DevelopmentConfig`, `ProductionConfig`, `TestingConfig`.
+- Loaded in `app.py:56-58` via `app.config.from_object(get_config())` right after `Flask(__name__)`.
+- Picks config class based on `FLASK_ENV` env var (default: `development`).
+- `DevelopmentConfig`: `WTF_CSRF_ENABLED = False`, `SESSION_COOKIE_SECURE = False` — safe for local dev.
+- `ProductionConfig`: `WTF_CSRF_ENABLED = True`, `SESSION_COOKIE_SAMESITE = 'Strict'`, enforces `CMS_ENCRYPTION_KEY`.
+- `TestingConfig`: in-memory SQLite, CSRF off.
+- **Session**: `PERMANENT_SESSION_LIFETIME = 8h`, `SESSION_COOKIE_HTTPONLY = True`, `SESSION_COOKIE_SAMESITE = 'Lax'/'Strict'`.
+- **Uploads**: `MAX_CONTENT_LENGTH = 16MB` — enforces request body size limit across all endpoints.
+- **Security headers**: Added in `app.py:3241-3250` via `@app.after_request`: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Strict-Transport-Security` (non-localhost only).
+- **SQLite note**: `SQLALCHEMY_ENGINE_OPTIONS` (pool_size, pool_recycle, pool_pre_ping) from config is automatically removed for SQLite at `app.py:106-107` to prevent hangs.
+- **CSRF**: Active via `flask_wtf.CSRFProtect`. All 37 forms have `{{ csrf_token() }}` hidden inputs. All JSON API POST routes have `@csrf.exempt`. Dual routes (form + JSON) are auto-checked; form submissions work, JS calls that lack the token will 400. `WTF_CSRF_CHECK_DEFAULT=True` (removed the False override). `cms/__init__.py::__all__` exports `csrf`.
+
 ## Health Check
 `curl http://localhost:5000/health` — returns `{"status":"ok","database":"connected","spiderfoot":"connected"}`.
+
+## Thread Safety
+- **`active_searches`** (`app.py:532-553`): Protected by `_searches_lock` (`threading.Lock()`). All three accessor functions (`deduplicate_request`, `mark_search_complete`, `cleanup_stale_searches`) acquire the lock before reading/writing.
+- **`_LAST_MARINEPLAN_CALL`** (`cms/vessel_service.py:28-30`): Protected by `_marineplan_lock`. The rate-limit check in `lookup_marineplan()` acquires the lock before calling `_rate_limit()`.
+- **Shell injection**: All `subprocess.run()` calls use list arguments (`[git_path, 'rev-parse', 'HEAD']`) instead of `shell=True` strings. The `step()` helper in `do_update()` now accepts `cmd_list` and omits `shell=True`. Shell expansion (e.g. `$(date)`) replaced with Python `datetime.strftime()`.
 
 ## Git
 - Rollback: `git reset --hard <hash>`. Commits are safe to reset.
@@ -123,11 +163,11 @@
 - Never write relative production commands.
 
 ## Tests
-- Run: `/usr/local/bin/python3 -m pytest tests/ -v` (58 tests, ~2-3 min).
-- Files: `test_core.py` (10), `test_findings.py` (7), `test_phone_lookup.py` (8), `test_username_search.py` (6), `test_lookups.py` (27).
+- Run: `/usr/local/bin/python3 -m pytest tests/ -v` (81 tests, ~3-4 min).
+- Files: `test_core.py` (10), `test_findings.py` (7), `test_phone_lookup.py` (8), `test_username_search.py` (6), `test_lookups.py` (27), `test_social.py` (23).
 - All mock external APIs (httpx, requests). No network calls.
 - `conftest.py`: SQLite temp file, `auth_client` via `session_transaction()` (omzeilt 2FA), `db_session`.
-- 37 third-party warnings remain (flask_login + flask_sqlalchemy internals).
+- Zero warnings (third-party warnings suppressed in `pytest.ini`).
 
 ## Input Validation (`cms/validation.py`)
 - Pydantic `@validate(Schema)` decorator for POST routes.
@@ -136,12 +176,36 @@
 - Schemas available for all lookups.py + social.py routes.
 
 ## Routes Structure
-- `cms/legacy_routes.py` (~6819 lines, ~109 routes) — legacy routes, `cms_bp` definition.
-- `cms/routes/lookups.py` (13 routes) — phone, email, kadaster, politiebureau, RDW, vessel, Interpol/politie.
-- `cms/routes/social.py` (8 routes) — social account CRUD, username findings, social ID extraction.
-- Extracted routes use `request.validated_data`; legacy routes use `request.get_json()`.
-- `cms/routes/__init__.py` re-exports `cms_bp`; `cms/__init__.py::create_cms_module()` calls `register_modules()`.
+- `cms/legacy_routes.py` (~6800 lines, ~109 routes) — legacy routes, `cms_bp` definition.
+- `cms/routes/` — 27 route modules (all <500 lines except `spiderfoot.py` 828, `osint_search.py` 296):
+  - `phone.py`, `email.py`, `kadaster.py`, `politiebureau.py`, `rdw.py`, `vessel.py`, `interpol.py`
+  - `subjects_list.py`, `subjects_crud.py`, `subjects_faces.py`, `subjects_rel.py`
+  - `cases_crud.py`, `cases_state.py`, `cases_subjects.py`, `cases_reports.py`
+  - `social_accounts.py`, `social_extraction.py`
+  - `clients_crud.py`, `clients_archive.py`
+  - Plus: `osint_search.py`, `spiderfoot.py`, `reminders.py`, `settings.py`, `templates.py`, `users.py`, `misc.py`
+- `register_modules()` in `cms/routes/__init__.py` imports all 27 by name; `create_cms_module()` calls it.
+- Extracted route modules use `request.validated_data` (Pydantic); legacy routes use `request.get_json()`.
+- `cms/search_manager.py` — `SearchManager` class extracted from `osint_search.py` for DB-backed search lifecycle.
+
+## SafeJSON (SQLite JSON compat)
+- `cms/models.py` defines `SafeJSON` — inherits `sqlalchemy.types.JSON`, overrides `process_result_value` to `json.loads()` when SQLite returns a raw string. PostgreSQL returns native dicts (passes through).
+- All 18 `db.JSON` columns now use `SafeJSON` instead. No manual `isinstance()` guards needed at read sites.
+
+## Event Delegation (Templates)
+- `templates/cms/base.html` has a global event delegation system (just before `</body>`):
+  - `click` delegation on `[data-click]` elements — calls `window[dataset.click]` with args from `data-arg0`, `data-arg1`, etc.
+  - `change` delegation on `[data-change]` elements — calls `window[dataset.change](element)`
+  - `submit` delegation on `[data-submit]` forms — calls `window[dataset.submit](event)`
+  - `input` delegation on `[data-input]` elements — calls `window[dataset.input](element)`
+- Helper functions in `base.html`: `removeEntry`, `navigateTo`, `reloadPage`.
+- Inline `onclick`/`onchange`/`onsubmit` handlers migrated to data attributes across ALL templates (~240 handlers).
+- 3 survivors in `spiderfoot/list.html` — `event.stopPropagation()` inline handlers on card buttons that prevent parent `<a>` navigation from firing (cannot use delegation because `stopPropagation()` must fire at the target, not after bubbling to document).
+- Flask template variables in data attributes use `|tojson` filter for safe escaping.
+- JS template literals (inside `<script>` blocks) use `data-click` attribute assignment directly.
 
 ## Deprecations Fixed
 - `datetime.utcnow()` → `datetime.now(timezone.utc)` (Python 3.12 compat).
 - `Model.query.get(id)` → `db.session.get(Model, id)` (SQLAlchemy 2.0 compat).
+- `legacy_routes.py` removed — `cms_bp` Blueprint lives in `cms/routes/__init__.py`.
+- Type hints added to all route handlers (38 in `app.py`, ~200+ in `cms/`).

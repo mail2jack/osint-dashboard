@@ -15,7 +15,7 @@
     <h3>Recent Targets</h3>
     <div class="recent-targets">
         {% for rt in recent_targets %}
-        <button class="target-chip" onclick="document.getElementById('target').value='{{ rt.target|e }}';detectType(this)">
+        <button class="target-chip" data-click="selectTarget" data-arg0="{{ rt.target|e }}">
             {{ rt.target }}
             <small>{{ rt.type }}</small>
         </button>
@@ -25,10 +25,11 @@
 {% endif %}
 
 <div class="card">
-    <form method="POST" action="{{ url_for('cms.spiderfoot_scan') }}">
-        <div class="form-group">
-            <label for="target">Target *</label>
-            <input type="text" id="target" name="target" required placeholder="e.g., example.com, user@email.com, 192.168.1.1" oninput="detectType(this)">
+<form method="POST" action="{{ url_for('cms.spiderfoot_scan') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="target">Target *</label>
+            <input type="text" id="target" name="target" required placeholder="e.g., example.com, user@email.com, 192.168.1.1" data-input="detectType">
             <p class="help-text">
                 Type wordt automatisch herkend. Je kunt ook een recent target kiezen hierboven.
             </p>
@@ -235,6 +236,10 @@ summary {
 </style>
 
 <script>
+function selectTarget(btn, target) {
+    document.getElementById('target').value = target;
+    detectType(btn);
+}
 function detectType(el) {
     const val = el.value || el.textContent || '';
     const sel = document.getElementById('target_type');

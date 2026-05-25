@@ -52,9 +52,9 @@
             </h1>
         <div style="display: flex; gap: 0.5rem;">
             {% if active_cases_count == 0 and client.is_active %}
-            <button onclick='archiveClient({{ client.id|tojson }})' class="btn-sm" style="background: #dc2626; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">📁 Archiveer</button>
+            <button data-click="archiveClient" data-arg0="{{ client.id|tojson }}" class="btn-sm" style="background: #dc2626; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">📁 Archiveer</button>
             {% elif not client.is_active %}
-            <button onclick='restoreClient({{ client.id|tojson }})' class="btn-sm" style="background: #059669; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">↩️ Herstellen</button>
+            <button data-click="restoreClient" data-arg0="{{ client.id|tojson }}" class="btn-sm" style="background: #059669; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">↩️ Herstellen</button>
             {% endif %}
             <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-sm" style="text-decoration: none;">✏️ Edit</a>
         </div>
@@ -87,14 +87,14 @@
                     <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
                         <span>{{ c.value }}</span>
                         {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                        <button onclick='emailCheck(this, {{ c.value|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                        <button data-click="emailCheck" data-arg0="{{ c.value|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
                         <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                     </div>
                     {% endfor %}
                 {% elif client.contact_email %}
                     <div style="display:flex;align-items:center;gap:0.35rem;">
                         <span>{{ client.contact_email }}</span>
-                        <button onclick='emailCheck(this, {{ client.contact_email|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                        <button data-click="emailCheck" data-arg0="{{ client.contact_email|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
                         <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                     </div>
                 {% else %}
@@ -111,14 +111,14 @@
                     <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
                         <span>{{ c.value }}</span>
                         {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                        <button onclick='phoneLookup(this, {{ c.value|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
-                        <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
-                    </div>
-                    {% endfor %}
-                {% elif client.contact_phone %}
-                    <div style="display:flex;align-items:center;gap:0.35rem;">
-                        <span>{{ client.contact_phone }}</span>
-                        <button onclick='phoneLookup(this, {{ client.contact_phone|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                        <button data-click="phoneLookup" data-arg0="{{ c.value|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                            <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        </div>
+                        {% endfor %}
+                    {% elif client.contact_phone %}
+                        <div style="display:flex;align-items:center;gap:0.35rem;">
+                            <span>{{ client.contact_phone }}</span>
+                            <button data-click="phoneLookup" data-arg0="{{ client.contact_phone|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
                         <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                     </div>
                 {% else %}
@@ -147,10 +147,10 @@
                                 </span>
                             </div>
                             <div style="display:flex;gap:0.35rem;">
-                                <button type="button" onclick='kadasterLookup(this, {{ addr.id|tojson }})' style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id|tojson }}" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
                                     🏛 Kadaster
                                 </button>
-                                <button type="button" onclick='politiebureauLookup(this, {{ addr.id|tojson }})' style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id|tojson }}" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
                                     🚔 Politiebureau
                                 </button>
                             </div>
@@ -223,7 +223,7 @@
     </div>
     
     <script>
-    function archiveClient(clientId) {
+    function archiveClient(btn, clientId) {
         if (!confirm('Are you sure you want to archive this client?')) return;
         
         fetch('/cms/clients/' + clientId + '/archive', {
@@ -240,7 +240,7 @@
         .catch(err => alert('Error: ' + err.message));
     }
 
-    function restoreClient(clientId) {
+    function restoreClient(btn, clientId) {
         if (!confirm('Weet u zeker dat u deze client wilt herstellen?')) return;
         
         fetch('/cms/clients/' + clientId + '/restore', {

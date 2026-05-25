@@ -39,9 +39,10 @@
     <h3>Start SpiderFoot Scan</h3>
     <p class="text-muted">Select a profile and link to a case for best results.</p>
     
-    <form method="POST" action="{{ url_for('cms.spiderfoot_scan_subject', subject_id=subject.id) }}">
-        <div class="form-group">
-            <label for="profile">Investigation Profile</label>
+<form method="POST" action="{{ url_for('cms.spiderfoot_scan_subject', subject_id=subject.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="profile">Investigation Profile</label>
             <select id="profile" name="profile" required>
                 <option value="basic" selected>Basic OSINT - Essential passive reconnaissance</option>
                 {% for key, profile in profiles.items() %}

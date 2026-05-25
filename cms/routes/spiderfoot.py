@@ -6,10 +6,13 @@ SpiderFoot scan management, status, results, import, and settings.
 
 import logging
 from datetime import datetime as dt
+import flask
 from flask import request, jsonify, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from .. import csrf
+from ..validation import validate, SpiderFootScanSchema, SpiderFootImportSchema, SpiderFootSettingsSchema, SpiderFootTestSchema, SpiderFootScanSubjectSchema
 from ..models import db, SpiderFootScan, Setting, Case, Subject, Finding, AuditLog
 from ..auth import roles_required, admin_required
 
@@ -24,7 +27,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def get_spiderfoot_config():
+def get_spiderfoot_config() -> dict:
     """Get SpiderFoot configuration from settings."""
     from ..spiderfoot_service import SpiderFootConfig
 
@@ -40,7 +43,7 @@ def get_spiderfoot_config():
     )
 
 
-def get_spiderfoot_service():
+def get_spiderfoot_service() -> object | None:
     """Get SpiderFoot service instance."""
     if not SPIDERFOOT_AVAILABLE:
         return None
@@ -50,7 +53,7 @@ def get_spiderfoot_service():
 @cms_bp.route('/spiderfoot')
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_index():
+def spiderfoot_index() -> str:
     """SpiderFoot integration dashboard."""
     try:
         sf_service = get_spiderfoot_service()
@@ -170,7 +173,8 @@ def spiderfoot_index():
 @cms_bp.route('/spiderfoot/scan', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_scan():
+@validate(SpiderFootScanSchema)
+def spiderfoot_scan() -> str:
     """Start a new SpiderFoot scan."""
     if request.method == 'GET':
         # Show scan form
@@ -205,7 +209,7 @@ def spiderfoot_scan():
                                )
 
     # POST - Start scan
-    data = request.get_json() if request.is_json else request.form
+    data = request.validated_data
 
     target = data.get('target')
     target_type = data.get('target_type', 'DOMAIN_NAME')
@@ -287,7 +291,7 @@ def spiderfoot_scan():
 @cms_bp.route('/spiderfoot/scan/<scan_id>')
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_scan_status(scan_id: str):
+def spiderfoot_scan_status(scan_id: str) -> flask.Response:
     """View SpiderFoot scan status and results."""
 
     # Try Iveras DB record first, fall back to direct SpiderFoot scan ID
@@ -373,9 +377,10 @@ def spiderfoot_scan_status(scan_id: str):
 
 
 @cms_bp.route('/spiderfoot/scan/<scan_id>/refresh', methods=['POST'])
+@csrf.exempt
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_refresh_scan(scan_id: str):
+def spiderfoot_refresh_scan(scan_id: str) -> flask.Response:
     """Refresh SpiderFoot scan status."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
 
@@ -411,9 +416,10 @@ def spiderfoot_refresh_scan(scan_id: str):
 
 
 @cms_bp.route('/spiderfoot/scan/<scan_id>/stop', methods=['POST'])
+@csrf.exempt
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_stop_scan(scan_id: str):
+def spiderfoot_stop_scan(scan_id: str) -> flask.Response:
     """Stop a running SpiderFoot scan."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
 
@@ -442,9 +448,10 @@ def spiderfoot_stop_scan(scan_id: str):
 
 
 @cms_bp.route('/spiderfoot/scan/<scan_id>/delete', methods=['POST'])
+@csrf.exempt
 @login_required
 @admin_required
-def spiderfoot_delete_scan(scan_id: str):
+def spiderfoot_delete_scan(scan_id: str) -> flask.Response:
     """Delete a SpiderFoot scan record."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
 
@@ -479,7 +486,7 @@ def spiderfoot_delete_scan(scan_id: str):
 @cms_bp.route('/spiderfoot/scan/<scan_id>/results')
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_scan_results(scan_id: str):
+def spiderfoot_scan_results(scan_id: str) -> flask.Response:
     """Get full SpiderFoot scan results as JSON."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
 
@@ -504,9 +511,11 @@ def spiderfoot_scan_results(scan_id: str):
 
 
 @cms_bp.route('/spiderfoot/scan/<scan_id>/import', methods=['POST'])
+@csrf.exempt
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_import_results(scan_id: str):
+@validate(SpiderFootImportSchema)
+def spiderfoot_import_results(scan_id: str) -> flask.Response:
     """Import SpiderFoot scan results as Iveras findings."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
 
@@ -518,7 +527,7 @@ def spiderfoot_import_results(scan_id: str):
     if not sf_service.is_available():
         return jsonify({'error': 'SpiderFoot server not available'}), 503
 
-    data = request.get_json() if request.is_json else request.form
+    data = request.validated_data
 
     # Filter options
     element_types = data.get('element_types', [])  # Only import these types
@@ -593,7 +602,7 @@ def spiderfoot_import_results(scan_id: str):
 @cms_bp.route('/spiderfoot/scans')
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_scans():
+def spiderfoot_scans() -> str:
     """List all SpiderFoot scans."""
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -627,10 +636,11 @@ def spiderfoot_scans():
 @cms_bp.route('/spiderfoot/settings', methods=['GET', 'POST'])
 @login_required
 @admin_required
-def spiderfoot_settings():
+@validate(SpiderFootSettingsSchema)
+def spiderfoot_settings() -> str:
     """Manage SpiderFoot settings."""
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
 
         # Update settings
         Setting.set('spiderfoot_url', data.get('url', 'http://localhost:5001'),
@@ -676,11 +686,13 @@ def spiderfoot_settings():
 
 
 @cms_bp.route('/spiderfoot/settings/test', methods=['POST'])
+@csrf.exempt
 @login_required
 @admin_required
-def spiderfoot_test_connection():
+@validate(SpiderFootTestSchema)
+def spiderfoot_test_connection() -> flask.Response:
     """Test SpiderFoot connection."""
-    data = request.get_json() if request.is_json else request.form
+    data = request.validated_data
 
     url = data.get('url', 'http://localhost:5001')
     username = data.get('username', 'admin')
@@ -709,7 +721,7 @@ def spiderfoot_test_connection():
 @cms_bp.route('/api/spiderfoot/status')
 @login_required
 @roles_required('admin', 'senior_investigator')
-def api_spiderfoot_status():
+def api_spiderfoot_status() -> flask.Response:
     """Get SpiderFoot server status."""
     sf_service = get_spiderfoot_service()
     available = sf_service.is_available()
@@ -732,13 +744,14 @@ def api_spiderfoot_status():
 @cms_bp.route('/spiderfoot/subject/<subject_id>/scan', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
-def spiderfoot_scan_subject(subject_id: str):
+@validate(SpiderFootScanSubjectSchema)
+def spiderfoot_scan_subject(subject_id: str) -> str:
     """Scan a subject with SpiderFoot."""
     subject = db.session.get(Subject, subject_id) or abort(404)
     subject.decrypt_identifiers()
 
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
 
         profile = data.get('profile', 'basic')
         use_case = data.get('use_case', 'passive')

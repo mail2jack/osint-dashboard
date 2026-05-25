@@ -12,8 +12,9 @@ Integrates with free maritime data sources:
 
 import logging
 import re
+import threading
 import time
-from typing import Optional
+from typing import Optional, Any
 from urllib.parse import quote
 
 import requests as http_requests
@@ -27,9 +28,10 @@ logger = logging.getLogger(__name__)
 
 _LAST_MARINEPLAN_CALL = 0
 _MARINEPLAN_MIN_INTERVAL = 2  # seconds between calls
+_marineplan_lock = threading.Lock()
 
 
-def _rate_limit(last: float, interval: float):
+def _rate_limit(last: float, interval: float) -> float:
     now = time.time()
     elapsed = now - last
     if elapsed < interval:
@@ -37,7 +39,7 @@ def _rate_limit(last: float, interval: float):
     return time.time()
 
 
-def _get_setting(key: str, default=None):
+def _get_setting(key: str, default=None) -> Any:
     """Lazy-import Setting to avoid circular imports."""
     from .models import Setting
     return Setting.get(key, default)
@@ -116,7 +118,7 @@ def lookup_vesselfinder(name: Optional[str] = None, mmsi: Optional[str] = None) 
                     if lat is not None and lon is not None:
                         position = {'lat': lat, 'lon': lon}
                 except (ValueError, IndexError):
-                    pass
+                    logger.debug("Failed to parse VesselFinder position data")
 
         return {
             'name': vessel_name,
@@ -178,7 +180,8 @@ def lookup_marineplan(name: Optional[str] = None, mmsi: Optional[str] = None) ->
     if not query_param:
         return None
 
-    _LAST_MARINEPLAN_CALL = _rate_limit(_LAST_MARINEPLAN_CALL, _MARINEPLAN_MIN_INTERVAL)
+    with _marineplan_lock:
+        _LAST_MARINEPLAN_CALL = _rate_limit(_LAST_MARINEPLAN_CALL, _MARINEPLAN_MIN_INTERVAL)
 
     try:
         url = f'{MARINEPLAN_BASE}/ship.json'
@@ -227,7 +230,7 @@ def lookup_marineplan(name: Optional[str] = None, mmsi: Optional[str] = None) ->
                         'lon': float(parts[1])
                     }
                 except (ValueError, TypeError):
-                    pass
+                    logger.debug("Failed to parse MarinePlan position data")
 
         return result
 

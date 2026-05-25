@@ -3,7 +3,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import validate_email, validate_ip, validate_domain, normalize_phone_number
+from cms.app_helpers import validate_email, validate_ip, validate_domain, normalize_phone_number
 
 class TestEmailValidation:
     def test_valid_email(self):

@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.env
+*.db
+.git/
+.github/
+.gitignore
+.pytest_cache/
+.obsidian/
+venv/
+.venv/
+*.log
+flask_session/
+tests/
+AGENTS.md
+README.md

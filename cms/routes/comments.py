@@ -1,39 +1,42 @@
 import logging
 from datetime import datetime, timezone
 
+import flask
 from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from .. import csrf
 from ..models import db, Comment, CommentEditHistory, AuditLog
+from ..validation import validate, CreateCommentSchema
 
 logger = logging.getLogger(__name__)
 
 
 @cms_bp.route('/api/comments', methods=['POST'])
+@csrf.exempt
 @login_required
-def create_comment():
+@validate(CreateCommentSchema)
+def create_comment() -> flask.Response:
     """Create a new comment on any entity."""
-    data = request.get_json()
-
-    if not data.get('content'):
+    if not request.validated_data.get('content'):
         return jsonify({'error': 'Content is required'}), 400
 
     # At least one entity must be specified
     entity_ids = {
-        'case_id': data.get('case_id'),
-        'subject_id': data.get('subject_id'),
-        'client_id': data.get('client_id'),
-        'financial_record_id': data.get('financial_record_id')
+        'case_id': request.validated_data.get('case_id'),
+        'subject_id': request.validated_data.get('subject_id'),
+        'client_id': request.validated_data.get('client_id'),
+        'financial_record_id': request.validated_data.get('financial_record_id')
     }
 
     if not any(entity_ids.values()):
         return jsonify({'error': 'At least one entity ID is required'}), 400
 
     comment = Comment(
-        content=data['content'],
-        comment_type=data.get('comment_type', 'note'),
-        is_pinned=bool(data.get('is_pinned', False)),
+        content=request.validated_data['content'],
+        comment_type=request.validated_data.get('comment_type', 'note'),
+        is_pinned=bool(request.validated_data.get('is_pinned', False)),
         author_id=current_user.id,
         **entity_ids
     )
@@ -46,8 +49,8 @@ def create_comment():
         entity_type='comment',
         entity_id=comment.id,
         ip_address=request.remote_addr,
-        case_id=data.get('case_id'),
-        description=f"Added comment on {data.get('case_id') and 'case' or data.get('subject_id') and 'subject' or data.get('client_id') and 'client' or 'entity'}"
+        case_id=request.validated_data.get('case_id'),
+        description=f"Added comment on {request.validated_data.get('case_id') and 'case' or request.validated_data.get('subject_id') and 'subject' or request.validated_data.get('client_id') and 'client' or 'entity'}"
     )
     db.session.commit()
 
@@ -56,7 +59,7 @@ def create_comment():
 
 @cms_bp.route('/api/comments/<comment_id>', methods=['PUT'])
 @login_required
-def update_comment(comment_id: str):
+def update_comment(comment_id: str) -> flask.Response:
     """Update a comment."""
     comment = db.session.get(Comment, comment_id) or abort(404)
 
@@ -107,7 +110,7 @@ def update_comment(comment_id: str):
 
 @cms_bp.route('/api/comments/<comment_id>', methods=['DELETE'])
 @login_required
-def delete_comment(comment_id: str):
+def delete_comment(comment_id: str) -> flask.Response:
     """Delete a comment."""
     comment = db.session.get(Comment, comment_id) or abort(404)
 
@@ -132,7 +135,7 @@ def delete_comment(comment_id: str):
 
 @cms_bp.route('/api/comments/for-entity')
 @login_required
-def get_comments_for_entity():
+def get_comments_for_entity() -> flask.Response:
     """Get all comments for a specific entity."""
     entity_type = request.args.get(
         'type')  # case, subject, client, financial_record
@@ -162,7 +165,7 @@ def get_comments_for_entity():
 
 @cms_bp.route('/api/comments/count')
 @login_required
-def get_comment_count():
+def get_comment_count() -> flask.Response:
     """Get comment count for a specific entity."""
     entity_type = request.args.get('type')
     entity_id = request.args.get('id')

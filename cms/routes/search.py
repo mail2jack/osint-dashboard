@@ -1,5 +1,6 @@
 import logging
 
+import flask
 from flask import request, jsonify, render_template
 from flask_login import login_required, current_user
 
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route('/search')
 @login_required
-def search():
+def search() -> str:
     """Global search across all entities with full page results."""
     query = request.args.get('q', '')
     entity_type = request.args.get('type', 'all')
@@ -28,7 +29,7 @@ def search():
 
     if query and len(query) >= 2:
         if entity_type in ['all', 'cases']:
-            cases = Case.query.join(Client).filter(
+            cases = Case.query.options(db.contains_eager(Case.client)).join(Client).filter(
                 Case.is_deleted == False,
                 db.or_(
                     Case.title.ilike(f'%{query}%'),
@@ -77,7 +78,7 @@ def search():
             } for s in subjects]
 
         if entity_type in ['all', 'findings']:
-            findings = Finding.query.join(Case).filter(
+            findings = Finding.query.options(db.joinedload(Finding.case)).join(Case).filter(
                 Finding.is_deleted == False,
                 db.or_(
                     Finding.title.ilike(f'%{query}%'),
@@ -95,7 +96,7 @@ def search():
             } for f in findings]
 
         if entity_type in ['all', 'financials']:
-            financials = FinancialRecord.query.join(Case).filter(
+            financials = FinancialRecord.query.options(db.joinedload(FinancialRecord.case)).join(Case).filter(
                 FinancialRecord.is_deleted == False,
                 db.or_(
                     FinancialRecord.description.ilike(f'%{query}%'),
@@ -114,13 +115,19 @@ def search():
             } for f in financials]
 
         if entity_type in ['all', 'comments']:
-            comments = Comment.query.filter(
+            comments = Comment.query.options(db.joinedload(Comment.author)).filter(
                 Comment.is_deleted == False,
                 Comment.content.ilike(f'%{query}%')
             ).limit(20).all()
+            # Batch-load cases for comments
+            comment_case_ids = {c.case_id for c in comments if c.case_id}
+            comment_cases_map = {}
+            if comment_case_ids:
+                for _c in Case.query.filter(Case.id.in_(comment_case_ids)).all():
+                    comment_cases_map[_c.id] = _c
             results['comments'] = []
             for c in comments:
-                _case = db.session.get(Case, c.case_id) if c.case_id else None
+                _case = comment_cases_map.get(c.case_id)
                 results['comments'].append({
                     'id': c.id,
                     'content': (c.content[:200] + '...') if c.content and len(c.content) > 200 else (c.content or ''),
@@ -145,13 +152,19 @@ def search():
                 'note_preview': s.notes[:150] + ('...' if len(s.notes) > 150 else '') if s.notes else None,
                 'entity_type': 'subject'
             } for s in subject_notes]
-            comment_results = Comment.query.filter(
+            comment_results = Comment.query.options(db.joinedload(Comment.author)).filter(
                 Comment.is_deleted == False,
                 Comment.subject_id.isnot(None),
                 Comment.content.ilike(f'%{query}%')
             ).order_by(Comment.created_at.desc()).limit(10).all()
+            # Batch-load subjects for comment notes
+            note_subject_ids = {c.subject_id for c in comment_results if c.subject_id}
+            note_subjects_map = {}
+            if note_subject_ids:
+                for _s in Subject.query.filter(Subject.id.in_(note_subject_ids)).all():
+                    note_subjects_map[_s.id] = _s
             for c in comment_results:
-                sub = db.session.get(Subject, c.subject_id)
+                sub = note_subjects_map.get(c.subject_id)
                 if sub and not sub.is_deleted:
                     results['notes'].append({
                         'id': sub.id,
@@ -180,7 +193,7 @@ def search():
 
 @cms_bp.route('/api/search')
 @login_required
-def api_search():
+def api_search() -> flask.Response:
     """API endpoint for autocomplete/typeahead search."""
     query = request.args.get('q', '')
     entity_type = request.args.get('type', '')

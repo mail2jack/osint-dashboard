@@ -2,194 +2,79 @@ import threading
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Optional, Any
 
 import requests as http_requests
+import flask
 from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, OsintSearch, Case, AuditLog, Finding
+from .. import csrf
+from ..validation import validate, StartOSINTSearchSchema, AddOSINTFindingsSchema
+from ..models import db, Case, AuditLog, Finding
 from ..auth import case_access_required
+from ..search_manager import search_manager
 
 logger = logging.getLogger(__name__)
 
-
-# =============================================================================
-# Background Search Manager
-# =============================================================================
-
-class SearchManager:
-    """Manages background OSINT searches — DB-backed for multi-worker gunicorn.
-
-    Cancel events stay in-memory (per-worker) since threads share the same process.
-    All persistent state (status, results, timestamps) lives in the database.
-    """
-
-    def __init__(self):
-        self._cancel_events: Dict[str, threading.Event] = {}
-        self._lock = threading.Lock()
-
-    def create_search(self, case_id: str, search_id: str, query: str, subject_id: str = None) -> threading.Event:
-        """Create a new search: DB record + in-memory cancel event."""
-        cancel_event = threading.Event()
-        with self._lock:
-            self._cancel_events[search_id] = cancel_event
-
-        row = OsintSearch(
-            search_id=search_id,
-            case_id=case_id,
-            subject_id=subject_id,
-            search_query=query,
-            status='running',
-            started_at=datetime.now(timezone.utc),
-        )
-        db.session.add(row)
-        db.session.commit()
-        return cancel_event
-
-    def get_search(self, search_id: str) -> Optional[Dict[str, Any]]:
-        """Get search info (DB row + in-memory cancel event)."""
-        row = OsintSearch.query.filter_by(search_id=search_id).first()
-        if not row:
-            return None
-        with self._lock:
-            cancel_event = self._cancel_events.get(search_id)
-        return {
-            'cancel_event': cancel_event,
-            'db_row': row,
-            'search_id': row.search_id,
-            'case_id': row.case_id,
-            'query': row.search_query,
-            'status': row.status,
-            'results': row.results,
-        }
-
-    def set_results(self, search_id: str, results: Any):
-        """Persist results to DB."""
-        row = OsintSearch.query.filter_by(search_id=search_id).first()
-        if not row:
-            return
-        row.results = results
-        row.status = 'completed'
-        row.completed_at = datetime.now(timezone.utc)
-        db.session.commit()
-
-    def set_error(self, search_id: str, error: str):
-        """Persist error state to DB."""
-        row = OsintSearch.query.filter_by(search_id=search_id).first()
-        if not row:
-            return
-        row.status = 'failed'
-        row.error = error
-        row.completed_at = datetime.now(timezone.utc)
-        db.session.commit()
-
-    def cancel_search(self, search_id: str) -> bool:
-        """Cancel a running search — sets cancel event + DB state."""
-        row = OsintSearch.query.filter_by(search_id=search_id).first()
-        if not row:
-            return False
-
-        with self._lock:
-            cancel_event = self._cancel_events.get(search_id)
-        if cancel_event:
-            cancel_event.set()
-
-        if row.status == 'running':
-            row.status = 'cancelled'
-            row.cancelled_at = datetime.now(timezone.utc)
-            db.session.commit()
-        return True
-
-    def cleanup(self, search_id: str):
-        """Remove in-memory cancel event. DB row stays for history."""
-        with self._lock:
-            self._cancel_events.pop(search_id, None)
-
-    def get_status(self, search_id: str) -> Optional[Dict[str, Any]]:
-        """Get current search status from DB."""
-        row = OsintSearch.query.filter_by(search_id=search_id).first()
-        if not row:
-            return None
-        return row.get_status_dict()
-
-    def is_cancelled(self, search_id: str) -> bool:
-        """Check if search was cancelled (in-memory event + DB)."""
-        with self._lock:
-            cancel_event = self._cancel_events.get(search_id)
-        if cancel_event and cancel_event.is_set():
-            return True
-        row = OsintSearch.query.filter_by(search_id=search_id).first()
-        return row.status == 'cancelled' if row else False
-
-
-search_manager = SearchManager()
-
-
-# =============================================================================
-# OSINT Background Search Routes
-# =============================================================================
-
-def run_osint_search(search_id: str, case_id: str, query: str, name: str):
+def run_osint_search(search_id: str, case_id: str, query: str, name: str) -> None:
     """Run OSINT search in background thread."""
-    import app as flask_app
-    with flask_app.app.app_context():
-        from app import person_dorks_search
+    from cms.services.search_service import person_dorks_search
 
-        search_info = search_manager.get_search(search_id)
-        if not search_info:
+    search_info = search_manager.get_search(search_id)
+    if not search_info:
+        return
+
+    cancel_event = search_info['cancel_event']
+    results = None
+
+    try:
+        logger.info(f"OSINT search {search_id} started for query: {name}")
+
+        # Run the dorks search
+        results = person_dorks_search(name)
+
+        # Check if cancelled before setting results
+        if cancel_event and cancel_event.is_set():
+            logger.info(f"OSINT search {search_id} was cancelled")
+            search_manager.cleanup(search_id)
             return
 
-        cancel_event = search_info['cancel_event']
-        results = None
+        # Count results
+        total_results = 0
+        if results and 'categories' in results:
+            for cat, items in results.get('categories', {}).items():
+                total_results += len(items) if items else 0
 
-        try:
-            logger.info(f"OSINT search {search_id} started for query: {name}")
+        # Persist to DB
+        search_manager.set_results(search_id, results)
+        logger.info(
+            f"OSINT search {search_id} completed with {total_results} dork results, {len(results.get('search_links', []))} search links")
 
-            # Run the dorks search
-            results = person_dorks_search(name)
+    except Exception as e:
+        logger.error(f"OSINT search {search_id} failed ({type(e).__name__}): {str(e)}")
+        logger.exception(e)
+        search_manager.set_error(search_id, str(e))
+    finally:
+        def delayed_cleanup():
+            import time
+            time.sleep(300)
+            search_manager.cleanup(search_id)
 
-            # Check if cancelled before setting results
-            if cancel_event and cancel_event.is_set():
-                logger.info(f"OSINT search {search_id} was cancelled")
-                search_manager.cleanup(search_id)
-                return
-
-            # Count results
-            total_results = 0
-            if results and 'categories' in results:
-                for cat, items in results.get('categories', {}).items():
-                    total_results += len(items) if items else 0
-
-            # Persist to DB
-            search_manager.set_results(search_id, results)
-            logger.info(
-                f"OSINT search {search_id} completed with {total_results} dork results, {len(results.get('search_links', []))} search links")
-
-        except Exception as e:
-            logger.error(f"OSINT search {search_id} failed ({type(e).__name__}): {str(e)}")
-            logger.exception(e)
-            search_manager.set_error(search_id, str(e))
-        finally:
-            # Cleanup cancel event after a delay
-            def delayed_cleanup():
-                import time
-                time.sleep(300)
-                search_manager.cleanup(search_id)
-
-            cleanup_thread = threading.Thread(
-                target=delayed_cleanup, daemon=True)
-            cleanup_thread.start()
+        cleanup_thread = threading.Thread(
+            target=delayed_cleanup, daemon=True)
+        cleanup_thread.start()
 
 
 @cms_bp.route('/cases/<case_id>/osint-search', methods=['POST'])
+@csrf.exempt
 @login_required
 @case_access_required
-def start_osint_search(case_id: str):
+@validate(StartOSINTSearchSchema)
+def start_osint_search(case_id: str) -> flask.Response:
     """Start a background OSINT search for a person."""
     db.session.get(Case, case_id) or abort(404)
-    data = request.get_json() if request.is_json else request.form
+    data = request.validated_data
 
     name = data.get('name', '').strip()
     if not name:
@@ -231,7 +116,7 @@ def start_osint_search(case_id: str):
 
 @cms_bp.route('/osint-search/<search_id>/status')
 @login_required
-def get_search_status(search_id: str):
+def get_search_status(search_id: str) -> flask.Response:
     """Get the status of a background search."""
     status = search_manager.get_status(search_id)
 
@@ -245,8 +130,9 @@ def get_search_status(search_id: str):
 
 
 @cms_bp.route('/osint-search/<search_id>/cancel', methods=['POST'])
+@csrf.exempt
 @login_required
-def cancel_search(search_id: str):
+def cancel_search(search_id: str) -> flask.Response:
     """Cancel a running search."""
     search_info = search_manager.get_search(search_id)
 
@@ -316,12 +202,14 @@ def get_search_results(search_id: str):
 
 
 @cms_bp.route('/cases/<case_id>/osint-search/add-findings', methods=['POST'])
+@csrf.exempt
 @login_required
 @case_access_required
+@validate(AddOSINTFindingsSchema)
 def add_osint_findings(case_id: str):
     """Add selected OSINT results as findings to a case."""
     case = db.session.get(Case, case_id) or abort(404)
-    data = request.get_json()
+    data = request.validated_data
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -332,6 +220,20 @@ def add_osint_findings(case_id: str):
 
     subject_id = data.get('subject_id')
     created_findings = []
+
+    # Batch dedup: collect URLs, check which ones already exist
+    from datetime import timedelta
+    all_urls = [r.get('url', '') for r in selected_results if r.get('url')]
+    existing_urls = set()
+    if all_urls:
+        from sqlalchemy import or_
+        dup_check = Finding.query.filter(
+            Finding.case_id == case_id,
+            Finding.source_url.in_(all_urls),
+            Finding.created_at >= datetime.now(timezone.utc) - timedelta(seconds=60),
+            Finding.is_deleted == False
+        ).with_entities(Finding.source_url).all()
+        existing_urls = {row[0] for row in dup_check}
 
     for result in selected_results:
         domain = result.get('domain', 'Unknown')
@@ -364,18 +266,10 @@ def add_osint_findings(case_id: str):
         if domain:
             tags.append(domain.split('.')[0])
 
-        # Dedup: skip if same (case_id, source_url) saved within last 60 seconds
-        from datetime import timedelta
+        # Dedup: skip if same URL saved within last 60 seconds (batch-checked above)
         url = result.get('url', '')
-        if url:
-            recent = Finding.query.filter(
-                Finding.case_id == case_id,
-                Finding.source_url == url,
-                Finding.created_at >= datetime.now(timezone.utc) - timedelta(seconds=60),
-                Finding.is_deleted == False
-            ).first()
-            if recent:
-                continue
+        if url and url in existing_urls:
+            continue
 
         finding = Finding(
             case_id=case_id,

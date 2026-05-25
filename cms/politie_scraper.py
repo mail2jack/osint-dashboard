@@ -132,7 +132,7 @@ def _normalize_opsporingsbericht(doc: dict) -> dict:
         try:
             date_str = datetime.fromtimestamp(int(date_ms) / 1000).strftime('%Y-%m-%d')
         except (ValueError, OSError):
-            pass
+            logger.debug("Failed to parse date from %s", date_ms)
 
     return {
         'title': title,

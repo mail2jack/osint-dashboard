@@ -2,13 +2,16 @@ import logging
 import os
 import uuid
 
+import flask
 from flask import request, jsonify, current_app, abort, send_from_directory
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from . import cms_bp
+from .. import csrf
 from ..models import db, Case, Subject, Document, AuditLog
 from ..auth import roles_required, case_access_required, case_edit_required
+from ..image_validation import validate_upload
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,7 @@ ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg',
 UPLOAD_FOLDER = 'uploads'
 
 
-def allowed_file(filename):
+def allowed_file(filename) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
@@ -25,7 +28,7 @@ def allowed_file(filename):
 @login_required
 @case_access_required
 @case_edit_required
-def upload_case_document(case_id: str):
+def upload_case_document(case_id: str) -> flask.Response:
     """Upload a document to a case."""
     db.session.get(Case, case_id) or abort(404)
 
@@ -40,6 +43,13 @@ def upload_case_document(case_id: str):
     if not allowed_file(file.filename):
         return jsonify({'error': 'File type not allowed'}), 400
 
+    # Validate file content by magic bytes
+    file_ext = file.filename.rsplit('.', 1)[1].lower()
+    is_valid, detected = validate_upload(file, file_ext)
+    if not is_valid:
+        logger.warning(f"Upload rejected: {file.filename} (detected: {detected or 'unknown'})")
+        return jsonify({'error': f'File content does not match extension ({detected or "unknown format"})'}), 400
+
     # Create upload directory if not exists
     upload_dir = os.path.join(current_app.root_path,
                               'static', UPLOAD_FOLDER, 'cases', case_id)
@@ -47,7 +57,6 @@ def upload_case_document(case_id: str):
 
     # Generate unique filename
     original_filename = secure_filename(file.filename)
-    file_ext = original_filename.rsplit('.', 1)[1].lower()
     unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
     file_path = os.path.join(upload_dir, unique_filename)
 
@@ -94,7 +103,7 @@ def upload_case_document(case_id: str):
 @cms_bp.route('/subjects/<subject_id>/upload', methods=['POST'])
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
-def upload_subject_document(subject_id: str):
+def upload_subject_document(subject_id: str) -> flask.Response:
     """Upload a document to a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)
 
@@ -108,6 +117,13 @@ def upload_subject_document(subject_id: str):
 
     if not allowed_file(file.filename):
         return jsonify({'error': 'File type not allowed'}), 400
+
+    # Validate file content by magic bytes
+    file_ext = file.filename.rsplit('.', 1)[1].lower()
+    is_valid, detected = validate_upload(file, file_ext)
+    if not is_valid:
+        logger.warning(f"Upload rejected: {file.filename} (detected: {detected or 'unknown'})")
+        return jsonify({'error': f'File content does not match extension ({detected or "unknown format"})'}), 400
 
     # Create upload directory
     upload_dir = os.path.join(current_app.root_path,
@@ -157,7 +173,7 @@ def upload_subject_document(subject_id: str):
 
 @cms_bp.route('/documents/<document_id>')
 @login_required
-def get_document(document_id: str):
+def get_document(document_id: str) -> flask.Response:
     """Get document metadata."""
     document = db.session.get(Document, document_id) or abort(404)
 
@@ -172,7 +188,7 @@ def get_document(document_id: str):
 
 @cms_bp.route('/documents/<document_id>/download')
 @login_required
-def download_document(document_id: str):
+def download_document(document_id: str) -> flask.Response:
     """Download a document."""
     document = db.session.get(Document, document_id) or abort(404)
 
@@ -202,7 +218,7 @@ def download_document(document_id: str):
 @cms_bp.route('/documents/<document_id>', methods=['DELETE'])
 @login_required
 @roles_required('admin', 'senior_investigator')
-def delete_document(document_id: str):
+def delete_document(document_id: str) -> flask.Response:
     """Delete a document."""
     document = db.session.get(Document, document_id) or abort(404)
 
@@ -230,7 +246,7 @@ def delete_document(document_id: str):
 @cms_bp.route('/cases/<case_id>/documents')
 @login_required
 @case_access_required
-def get_case_documents(case_id: str):
+def get_case_documents(case_id: str) -> flask.Response:
     """Get all documents for a case."""
     documents = Document.query.filter_by(case_id=case_id, is_deleted=False).order_by(
         Document.created_at.desc()

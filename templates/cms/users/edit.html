@@ -49,9 +49,10 @@
         <h1>Edit User</h1>
     
     <div class="card">
-        <form method="POST">
-            <div class="form-group">
-                <label for="full_name">Full Name</label>
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="full_name">Full Name</label>
                 <input type="text" id="full_name" name="full_name" value="{{ user.full_name }}">
             </div>
             

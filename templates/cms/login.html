@@ -41,6 +41,7 @@
             {% endif %}
         {% endwith %}
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" name="username" id="username" required autocomplete="username">

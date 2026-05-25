@@ -3,14 +3,18 @@ import os
 import uuid
 import io
 
+import flask
 from flask import request, jsonify, current_app, abort, send_file
 from flask_login import login_required, current_user
 from PIL import Image
 from werkzeug.utils import secure_filename
 
 from . import cms_bp
+from .. import csrf
+from ..validation import validate, CaptureScreenshotSchema
 from ..models import db, Case, Screenshot, AuditLog
 from ..auth import case_access_required, case_edit_required
+from ..image_validation import validate_image_file
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +34,7 @@ def get_screenshot_path(case_id: str, filename: str = None) -> str:
 @cms_bp.route('/cases/<case_id>/screenshots')
 @login_required
 @case_access_required
-def list_screenshots(case_id: str):
+def list_screenshots(case_id: str) -> str:
     """List all screenshots for a case."""
     db.session.get(Case, case_id) or abort(404)
     screenshots = Screenshot.query.filter_by(
@@ -46,7 +50,7 @@ def list_screenshots(case_id: str):
 @login_required
 @case_access_required
 @case_edit_required
-def upload_screenshot(case_id: str):
+def upload_screenshot(case_id: str) -> flask.Response:
     """Upload a screenshot file for a case."""
     db.session.get(Case, case_id) or abort(404)
 
@@ -58,9 +62,10 @@ def upload_screenshot(case_id: str):
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    # Check file type
-    if not file.content_type or not file.content_type.startswith('image/'):
-        return jsonify({'error': 'File must be an image'}), 400
+    # Check file type via magic bytes
+    is_img, _ = validate_image_file(file)
+    if not is_img:
+        return jsonify({'error': 'File must be an image (PNG, JPEG, GIF, or WebP)'}), 400
 
     # Create screenshot directory
     screenshot_dir = get_screenshot_path(case_id)
@@ -142,14 +147,15 @@ def upload_screenshot(case_id: str):
 @login_required
 @case_access_required
 @case_edit_required
-def capture_screenshot(case_id: str):
+@validate(CaptureScreenshotSchema)
+def capture_screenshot(case_id: str) -> flask.Response:
     """
     Capture a screenshot of a URL and save it.
     Note: This requires Playwright or similar to be installed.
     For now, this returns an error indicating the feature needs setup.
     """
     db.session.get(Case, case_id) or abort(404)
-    data = request.get_json()
+    data = request.validated_data
 
     if not data or not data.get('url'):
         return jsonify({'error': 'URL is required'}), 400
@@ -244,7 +250,7 @@ def capture_screenshot(case_id: str):
 @cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>/thumbnail')
 @login_required
 @case_access_required
-def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
+def get_screenshot_thumbnail(case_id: str, screenshot_id: str) -> flask.Response:
     """Get a thumbnail version of a screenshot."""
     screenshot = Screenshot.query.filter_by(
         id=screenshot_id, case_id=case_id).first()
@@ -283,7 +289,7 @@ def get_screenshot_thumbnail(case_id: str, screenshot_id: str):
 @cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>/view')
 @login_required
 @case_access_required
-def view_screenshot(case_id: str, screenshot_id: str):
+def view_screenshot(case_id: str, screenshot_id: str) -> str:
     """View the full screenshot."""
     screenshot = Screenshot.query.filter_by(
         id=screenshot_id, case_id=case_id).first()
@@ -323,7 +329,7 @@ def view_screenshot(case_id: str, screenshot_id: str):
 @cms_bp.route('/cases/<case_id>/screenshots/<screenshot_id>')
 @login_required
 @case_access_required
-def get_screenshot(case_id: str, screenshot_id: str):
+def get_screenshot(case_id: str, screenshot_id: str) -> flask.Response:
     """Get screenshot details."""
     screenshot = Screenshot.query.filter_by(
         id=screenshot_id, case_id=case_id).first()
@@ -338,7 +344,7 @@ def get_screenshot(case_id: str, screenshot_id: str):
 @login_required
 @case_access_required
 @case_edit_required
-def delete_screenshot(case_id: str, screenshot_id: str):
+def delete_screenshot(case_id: str, screenshot_id: str) -> flask.Response:
     """Delete a screenshot."""
     screenshot = Screenshot.query.filter_by(
         id=screenshot_id, case_id=case_id).first()

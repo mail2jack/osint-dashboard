@@ -163,7 +163,7 @@ class TestRDWCheck:
         resp = auth_client.post(self.URL, json={})
         assert resp.status_code == 400
 
-    @patch('cms.routes.lookups.http_requests.get')
+    @patch('cms.routes.rdw.http_requests.get')
     def test_happy_path(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(
             status_code=200,
@@ -187,7 +187,7 @@ class TestRDWCheck:
         assert data.get('merk') == 'VOLKSWAGEN'
         assert data.get('kenteken_display') == '22-PBR-2'
 
-    @patch('cms.routes.lookups.http_requests.get')
+    @patch('cms.routes.rdw.http_requests.get')
     def test_not_found(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(status_code=200, json_data=[])
         resp = auth_client.post(self.URL, json={'kenteken': 'XX-99-YY'})
@@ -195,7 +195,7 @@ class TestRDWCheck:
         assert resp.status_code == 200
         assert data.get('found') is False
 
-    @patch('cms.routes.lookups.http_requests.get')
+    @patch('cms.routes.rdw.http_requests.get')
     def test_api_error(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(status_code=503)
         resp = auth_client.post(self.URL, json={'kenteken': '22PBR2'})
@@ -239,7 +239,7 @@ class TestVesselLookup:
         resp = auth_client.post(self.URL, json={})
         assert resp.status_code == 400
 
-    @patch('cms.routes.lookups.lookup_vessel')
+    @patch('cms.routes.vessel.lookup_vessel')
     def test_happy_path(self, mock_lookup, auth_client):
         mock_lookup.return_value = {
             'found': True,
@@ -254,7 +254,7 @@ class TestVesselLookup:
         assert data.get('found') is True
         assert data['name'] == 'EVER GIVEN'
 
-    @patch('cms.routes.lookups.lookup_vessel')
+    @patch('cms.routes.vessel.lookup_vessel')
     def test_not_found(self, mock_lookup, auth_client):
         mock_lookup.return_value = {'found': False, 'message': 'No vessel data found'}
         resp = auth_client.post(self.URL, json={'name': 'NONEXISTENT'})
@@ -271,7 +271,7 @@ class TestCheckPolicieData:
         resp = client.post(self.URL, json={'name': 'John Doe'})
         assert resp.status_code == 401
 
-    @patch('cms.routes.lookups._check_interpol_rate_limit')
+    @patch('cms.routes.interpol._check_interpol_rate_limit')
     def test_no_name(self, mock_rate, auth_client):
         mock_rate.return_value = 0
         resp = auth_client.post(self.URL, json={})
@@ -286,7 +286,7 @@ class TestCheckPolicieStatus:
         # GET with login_required redirects instead of 401
         assert resp.status_code in (302, 401)
 
-    @patch('cms.routes.lookups._check_interpol_rate_limit')
+    @patch('cms.routes.interpol._check_interpol_rate_limit')
     def test_status_endpoint(self, mock_rate, auth_client):
         mock_rate.return_value = 0
         with patch('httpx.get') as mock_get:

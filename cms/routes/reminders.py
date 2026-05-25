@@ -1,10 +1,12 @@
 import logging
 from datetime import datetime, timezone, timedelta
 
+import flask
 from flask import request, jsonify, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from ..validation import validate, CreateReminderSchema, EditReminderSchema
 from ..models import db, Reminder, ReminderType, ReminderRecurrence, User, Case, Subject, Client, AuditLog
 
 logger = logging.getLogger(__name__)
@@ -12,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route('/reminders')
 @login_required
-def reminders():
+def reminders() -> str:
     """List all reminders for current user."""
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -68,7 +70,8 @@ def reminders():
 
 @cms_bp.route('/reminders/create', methods=['GET', 'POST'])
 @login_required
-def create_reminder():
+@validate(CreateReminderSchema)
+def create_reminder() -> flask.Response:
     """Create a new reminder."""
     # Get related entities if specified
     case_id = request.args.get('case_id')
@@ -87,7 +90,7 @@ def create_reminder():
     default_reminder_date = default_reminder.strftime('%Y-%m-%dT%H:%M')
 
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
 
         title = data.get('title')
         if not title:
@@ -165,7 +168,7 @@ def create_reminder():
 
 @cms_bp.route('/reminders/<reminder_id>')
 @login_required
-def view_reminder(reminder_id: str):
+def view_reminder(reminder_id: str) -> str:
     """View reminder details."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
 
@@ -188,13 +191,14 @@ def view_reminder(reminder_id: str):
 
 @cms_bp.route('/reminders/<reminder_id>/edit', methods=['GET', 'POST'])
 @login_required
-def edit_reminder(reminder_id: str):
+@validate(EditReminderSchema)
+def edit_reminder(reminder_id: str) -> flask.Response:
     """Edit a reminder."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
     users = User.query.filter_by(is_active=True).all()
 
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
 
         old_values = {}
         changes = {}
@@ -212,15 +216,14 @@ def edit_reminder(reminder_id: str):
                     setattr(reminder, field, new_val)
 
         # Parse and update dates
+        due_date_str = data.get('due_date')
         reminder_date_str = data.get('reminder_date')
         if reminder_date_str:
             try:
                 reminder.reminder_date = datetime.strptime(
                     reminder_date_str, '%Y-%m-%dT%H:%M')
             except ValueError:
-                pass
-
-        due_date_str = data.get('due_date')
+                logger.debug("Invalid reminder date format: %s", reminder_date_str)
         if due_date_str:
             try:
                 reminder.due_date = datetime.strptime(due_date_str, '%Y-%m-%d')
@@ -258,7 +261,7 @@ def edit_reminder(reminder_id: str):
 
 @cms_bp.route('/reminders/<reminder_id>/complete', methods=['POST'])
 @login_required
-def complete_reminder(reminder_id: str):
+def complete_reminder(reminder_id: str) -> flask.Response:
     """Mark a reminder as completed."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
 
@@ -288,7 +291,7 @@ def complete_reminder(reminder_id: str):
 
 @cms_bp.route('/reminders/<reminder_id>/snooze', methods=['POST'])
 @login_required
-def snooze_reminder(reminder_id: str):
+def snooze_reminder(reminder_id: str) -> flask.Response:
     """Snooze a reminder."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
 
@@ -318,7 +321,7 @@ def snooze_reminder(reminder_id: str):
 
 @cms_bp.route('/reminders/<reminder_id>/delete', methods=['POST'])
 @login_required
-def delete_reminder(reminder_id: str):
+def delete_reminder(reminder_id: str) -> flask.Response:
     """Delete a reminder."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
 
@@ -343,7 +346,7 @@ def delete_reminder(reminder_id: str):
 
 @cms_bp.route('/api/reminders/check-overdue')
 @login_required
-def api_check_overdue():
+def api_check_overdue() -> flask.Response:
     """API endpoint to check and update overdue reminders."""
     now = datetime.now(timezone.utc)
 

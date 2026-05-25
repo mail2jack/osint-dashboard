@@ -340,23 +340,15 @@
                 </div>
             </div>
             <div style="display: flex; gap: 0.25rem;">
-                <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
-                    <button type="submit" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
-                </form>
-            </div>
-        </div>
-        {% endfor %}
-        {% for reminder in upcoming_reminders[:3] %}
-        <div style="padding: 0.5rem; background: var(--info-bg, #dbeafe); border-radius: 6px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>{{ reminder.title[:40] }}{% if reminder.title|length > 40 %}...{% endif %}</strong>
-                <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                    {{ reminder.reminder_date.strftime('%m/%d %H:%M') if reminder.reminder_date else '' }}
-                </div>
-            </div>
-            <div style="display: flex; gap: 0.25rem;">
-                <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
-                    <button type="submit" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
+                                    <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
                 </form>
             </div>
         </div>

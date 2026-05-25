@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cms_db
+      POSTGRES_USER: cms
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms -d cms_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: postgresql://cms:${DB_PASSWORD:-changeme}@postgres:5432/cms_db
+      CMS_ENCRYPTION_KEY: ${CMS_ENCRYPTION_KEY:?Set CMS_ENCRYPTION_KEY in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5000}
+    volumes:
+      - uploads:/app/static/uploads
+      - flask_sessions:/app/flask_session
+      - app_log:/app/app.log
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads:
+  flask_sessions:
+  app_log:

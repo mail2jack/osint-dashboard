@@ -182,7 +182,7 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h2 style="margin: 0;">Case Hierarchy</h2>
-        <button onclick="openHierarchyModal()" class="btn btn-sm" style="background: #7c3aed;">Manage Hierarchy</button>
+        <button data-click="openHierarchyModal" class="btn btn-sm" style="background: #7c3aed;">Manage Hierarchy</button>
     </div>
     
     {% if case.parent_case %}
@@ -215,16 +215,17 @@
     
     {% if case.status not in ['closed', 'archived'] %}
     <div style="margin-bottom: 1rem;">
-        <button onclick="showAddSubjectForm()" class="btn btn-sm">+ Add Subject</button>
+        <button data-click="showAddSubjectForm" class="btn btn-sm">+ Add Subject</button>
         <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Create New Subject</a>
-        <button onclick="openCreateFromUsernameModal()" class="btn btn-sm" style="background: #8b5cf6;">@ Create from Username</button>
-        <button onclick="openOsintModal()" class="btn btn-sm" style="background: #7c3aed;">OSINT Search</button>
+        <button data-click="openCreateFromUsernameModal" class="btn btn-sm" style="background: #8b5cf6;">@ Create from Username</button>
+        <button data-click="openOsintModal" class="btn btn-sm" style="background: #7c3aed;">OSINT Search</button>
     </div>
     
     <div id="addSubjectForm" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
-        <form action="{{ url_for('cms.add_subject_to_case', case_id=case.id) }}" method="POST">
-            <div class="form-group">
-                <label for="subject_id">Select Existing Subject</label>
+<form action="{{ url_for('cms.add_subject_to_case', case_id=case.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="subject_id">Select Existing Subject</label>
                 <select name="subject_id" id="subject_id" required style="padding: 0.5rem; width: 100%;">
                     <option value="">Choose a subject...</option>
                     {% for s in all_subjects %}
@@ -233,7 +234,7 @@
                 </select>
             </div>
             <button type="submit" class="btn btn-sm">Add to Case</button>
-            <button type="button" onclick="hideAddSubjectForm()" class="btn btn-sm" style="background: #666;">Cancel</button>
+            <button type="button" data-click="hideAddSubjectForm" class="btn btn-sm" style="background: #666;">Cancel</button>
         </form>
     </div>
     {% else %}
@@ -267,8 +268,9 @@
                 </td>
                 <td>
                     {% if case.status not in ['closed', 'archived'] %}
-                    <form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display: inline;">
-                        <button type="submit" class="btn-text" onclick="return confirm('Remove {{ subject.name }} from this case?')" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0;">Remove</button>
+<form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display: inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-text" data-confirm="Remove {{ subject.name }} from this case?" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0;">Remove</button>
                     </form>
                     {% else %}
                     -
@@ -290,22 +292,22 @@
             <span style="font-weight: 500;">Status:</span>
             <span class="badge badge-{{ case.status }}">{{ case.status|upper }}</span>
             {% if case.status == 'open' %}
-            <button onclick="changeStatus('active')" class="btn btn-sm" style="background: #059669;">Start Investigation</button>
+            <button data-click="changeStatus" data-arg0="active" class="btn btn-sm" style="background: #059669;">Start Investigation</button>
             {% elif case.status == 'active' %}
-            <button onclick="changeStatus('suspended')" class="btn btn-sm" style="background: #f59e0b;">Suspend</button>
-            <button onclick="changeStatus('closed')" class="btn btn-sm" style="background: #059669;">Close Case</button>
+            <button data-click="changeStatus" data-arg0="suspended" class="btn btn-sm" style="background: #f59e0b;">Suspend</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn btn-sm" style="background: #059669;">Close Case</button>
             {% elif case.status == 'suspended' %}
-            <button onclick="changeStatus('active')" class="btn btn-sm" style="background: #059669;">Resume</button>
-            <button onclick="changeStatus('closed')" class="btn btn-sm" style="background: #059669;">Close Case</button>
+            <button data-click="changeStatus" data-arg0="active" class="btn btn-sm" style="background: #059669;">Resume</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn btn-sm" style="background: #059669;">Close Case</button>
             {% elif case.status == 'closed' %}
-            <button onclick="changeStatus('archived')" class="btn btn-sm" style="background: #6b7280;">Archive</button>
+            <button data-click="changeStatus" data-arg0="archived" class="btn btn-sm" style="background: #6b7280;">Archive</button>
             {% elif case.status == 'archived' %}
-            <button onclick="changeStatus('archived')" class="btn btn-sm" style="background: #6b7280;" disabled>Archived</button>
+            <button data-click="changeStatus" data-arg0="archived" class="btn btn-sm" style="background: #6b7280;" disabled>Archived</button>
             {% endif %}
             {% if case.status in ['closed', 'archived'] %}
-            <button onclick="reopenCase()" class="btn btn-sm" style="background: #059669;">Reopen Case</button>
+            <button data-click="reopenCase" class="btn btn-sm" style="background: #059669;">Reopen Case</button>
             {% endif %}
-            <button onclick="openTimeline()" class="btn btn-sm" style="background: #7c3aed;">Timeline</button>
+            <button data-click="openTimeline" class="btn btn-sm" style="background: #7c3aed;">Timeline</button>
             <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn btn-sm" style="background: #0e7490; text-decoration: none;">📋 Report</a>
         </div>
     </div>
@@ -314,17 +316,17 @@
     <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 8px;">
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
             <span style="font-weight: 500;">Filter:</span>
-            <input type="text" id="filterTitle" placeholder="Title" onkeyup="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
-            <input type="text" id="filterSubject" placeholder="Subject" onkeyup="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
-            <select id="filterSource" onchange="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            <input type="text" id="filterTitle" placeholder="Title" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
+            <input type="text" id="filterSubject" placeholder="Subject" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
+            <select id="filterSource" data-change="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                 <option value="">Source</option>
                 <option value="osint">OSINT</option>
                 <option value="manual">Manual</option>
                 <option value="document">Document</option>
             </select>
-            <input type="text" id="filterAddedBy" placeholder="Added By" onkeyup="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100px;">
-            <input type="date" id="filterDate" onchange="filterFindings()" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-            <button onclick="clearFindingFilters()" style="padding: 0.25rem 0.5rem; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Clear</button>
+            <input type="text" id="filterAddedBy" placeholder="Added By" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100px;">
+            <input type="date" id="filterDate" data-change="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            <button data-click="clearFindingFilters" style="padding: 0.25rem 0.5rem; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Clear</button>
             <span id="findingCount" style="margin-left: auto; color: #666; font-size: 0.875rem;"></span>
         </div>
     </div>
@@ -337,7 +339,7 @@
             <tr data-title="{{ finding.title|lower }}" data-subject="{{ finding.subject.name|lower if finding.subject else '' }}" data-source="{{ finding.source_type|lower }}" data-addedby="{{ finding.author.full_name|lower if finding.author else '' }}" data-date="{{ finding.created_at.strftime('%Y-%m-%d') if finding.created_at else '' }}">
                 <td>
                     {% if finding.source_url %}
-                    <a href="#" onclick="openCaptureFromFinding('{{ finding.source_url }}', '{{ finding.title|replace("'", "\\'") }}'); return false;" style="color: #3b82f6; text-decoration: none;">
+                    <a href="#" data-click="openCaptureFromFinding" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.title|replace("'", "\\'") }}" style="color: #3b82f6; text-decoration: none;">
                         {{ finding.title }}
                         <span style="font-size: 0.75rem; color: #8b5cf6;">📸</span>
                     </a>
@@ -346,7 +348,7 @@
                     {% endif %}
                     {% if finding.source_url and finding.subject_id %}
                     <br>
-                    <button onclick="extractSocialId('{{ finding.source_url }}', '{{ finding.subject_id }}')" 
+                    <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" 
                             class="btn btn-sm" style="font-size: 0.65rem; padding: 2px 6px; background: #8b5cf6; margin-top: 4px;">
                         🔍 Extract ID
                     </button>
@@ -390,7 +392,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2 style="margin: 0;">Documents (<span id="docCount">{{ documents|length }}</span>)</h2>
         {% if case.status not in ['closed', 'archived'] %}
-        <button onclick="openUploadModal()" class="btn btn-sm" style="background: #059669;">+ Upload Document</button>
+        <button data-click="openUploadModal" class="btn btn-sm" style="background: #059669;">+ Upload Document</button>
         {% endif %}
     </div>
     
@@ -410,7 +412,7 @@
                     <td>
                         <a href="/cms/documents/{{ doc.id }}/download" target="_blank">Download</a>
                         {% if current_user.is_admin or current_user.is_senior %}
-                        | <a href="#" onclick="deleteDocument('{{ doc.id }}')" style="color: #dc2626;">Delete</a>
+                        | <a href="#" data-click="deleteDocument" data-arg0="{{ doc.id }}" style="color: #dc2626;">Delete</a>
                         {% endif %}
                     </td>
                 </tr>
@@ -427,7 +429,7 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2 style="margin: 0;">Screenshots (<span id="screenshotCount">0</span>)</h2>
-        <button onclick="openAddScreenshotModal()" class="btn btn-sm" style="background: #7c3aed;">+ Add Screenshot</button>
+        <button data-click="openAddScreenshotModal" class="btn btn-sm" style="background: #7c3aed;">+ Add Screenshot</button>
     </div>
     
     <div id="screenshotsGallery">
@@ -440,7 +442,7 @@
     <div class="modal-content" style="max-width: 600px; background: #1a1a2e;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="margin: 0; color: white;">Add Screenshot</h2>
-            <span onclick="closeAddScreenshotModal()" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
+            <span data-click="closeAddScreenshotModal" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
         </div>
         
         <div style="margin-bottom: 1rem;">
@@ -450,7 +452,7 @@
         </div>
         
         <div style="margin-bottom: 1rem;">
-            <button onclick="openLinkForScreenshot()" id="openLinkBtn" class="btn btn-sm" style="background: #3b82f6; margin-bottom: 0.5rem;">
+            <button data-click="openLinkForScreenshot" id="openLinkBtn" class="btn btn-sm" style="background: #3b82f6; margin-bottom: 0.5rem;">
                 🔗 Open Link in New Tab
             </button>
             <p style="color: #888; font-size: 0.75rem; margin: 0;">Open the link, take a screenshot manually (Cmd+Shift+4 on Mac, Win+PrtSc on Windows), then upload below.</p>
@@ -469,8 +471,8 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button onclick="closeAddScreenshotModal()" class="btn btn-sm" style="background: #666;">Cancel</button>
-            <button onclick="uploadScreenshot()" id="uploadBtn" class="btn btn-sm" style="background: #059669;">Save Screenshot</button>
+            <button data-click="closeAddScreenshotModal" class="btn btn-sm" style="background: #666;">Cancel</button>
+            <button data-click="uploadScreenshot" id="uploadBtn" class="btn btn-sm" style="background: #059669;">Save Screenshot</button>
         </div>
         
         <div id="screenshotStatus" style="margin-top: 0.5rem; text-align: center;"></div>
@@ -482,7 +484,7 @@
     <div class="modal-content" style="max-width: 95%; background: #1a1a2e; padding: 30px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 id="viewScreenshotTitle" style="margin: 0; color: white;"></h2>
-            <span onclick="closeViewScreenshotModal()" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
+            <span data-click="closeViewScreenshotModal" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
         </div>
         
         <div style="background: linear-gradient(135deg, #d4a574 0%, #c4956a 50%, #b8845a 100%); padding: 25px; border-radius: 4px; box-shadow: 0 10px 50px rgba(0,0,0,0.6);">
@@ -493,7 +495,7 @@
         
         <div style="margin-top: 1rem; text-align: center;">
             <a id="viewScreenshotLink" href="#" target="_blank" class="btn btn-sm" style="background: #3b82f6;">Open Original URL</a>
-            <button onclick="closeViewScreenshotModal()" class="btn btn-sm" style="background: #666;">Close</button>
+            <button data-click="closeViewScreenshotModal" class="btn btn-sm" style="background: #666;">Close</button>
         </div>
     </div>
 </div>
@@ -503,10 +505,11 @@
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
             <h2>Upload Document</h2>
-            <span class="close" onclick="closeUploadModal()">&times;</span>
+            <span class="close" data-click="closeUploadModal">&times;</span>
         </div>
         
         <form id="uploadForm" enctype="multipart/form-data" style="margin-top: 1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="uploadFile">File *</label>
                 <input type="file" id="uploadFile" name="file" required style="padding: 0.5rem;">
@@ -537,7 +540,7 @@
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
                 <button type="submit" class="btn btn-sm" style="background: #059669;">Upload</button>
-                <button type="button" onclick="closeUploadModal()" class="btn btn-sm" style="background: #666;">Cancel</button>
+                <button type="button" data-click="closeUploadModal" class="btn btn-sm" style="background: #666;">Cancel</button>
             </div>
         </form>
     </div>
@@ -547,7 +550,7 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2 style="margin: 0;">Financial Summary</h2>
-        <button onclick="openFinancialSummary()" class="btn btn-sm" style="background: #7c3aed;">📊 View Charts</button>
+        <button data-click="openFinancialSummary" class="btn btn-sm" style="background: #7c3aed;">📊 View Charts</button>
     </div>
     
     <div id="financialSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
@@ -575,7 +578,7 @@
     <div class="modal-content" style="max-width: 900px;">
         <div class="modal-header">
             <h2>Financial Analysis</h2>
-            <span class="close" onclick="closeFinancialSummary()">&times;</span>
+            <span class="close" data-click="closeFinancialSummary">&times;</span>
         </div>
         
         <div id="financialCharts" style="max-height: 70vh; overflow-y: auto;">
@@ -589,7 +592,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Case Hierarchy</h2>
-            <span class="close" onclick="closeHierarchyModal()">&times;</span>
+            <span class="close" data-click="closeHierarchyModal">&times;</span>
         </div>
         
         <p style="color: #666; margin-bottom: 1rem;">Link this case to a parent case to create a hierarchy of related investigations.</p>
@@ -603,7 +606,7 @@
         <div style="margin-bottom: 1rem;">
             <input type="text" id="parentSearchInput" placeholder="Search cases by number or title..." 
                    style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px;"
-                   oninput="searchParentCases()">
+                   data-input="searchParentCases">
         </div>
         <div id="parentSearchResults" style="max-height: 300px; overflow-y: auto;">
             <p style="color: #666;">Type to search for a parent case...</p>
@@ -631,13 +634,14 @@
             </div>
             <div style="display: flex; gap: 0.25rem;">
                 {% if not reminder.is_completed %}
-                <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
-                    <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
-                </form>
-                {% endif %}
-                <a href="{{ url_for('cms.edit_reminder', reminder_id=reminder.id) }}" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #3b82f6;">✏️</a>
-                <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" onsubmit="return confirm('Delete this reminder?');">
-                    <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #dc2626;">🗑️</button>
+<form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
+</form>
+
+<form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="Delete this reminder?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #dc2626;">🗑️</button>
                 </form>
             </div>
         </div>
@@ -652,7 +656,7 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2 style="margin: 0;">Notes & Comments <span id="commentCount" style="font-size: 0.9rem; color: #888;"></span></h2>
-        <button onclick="loadComments()" class="btn btn-sm">🔄 Refresh</button>
+        <button data-click="loadComments" class="btn btn-sm">🔄 Refresh</button>
     </div>
     
     <div class="comment-form">
@@ -666,7 +670,7 @@
             <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: #666;">
                 <input type="checkbox" id="commentPinned"> Pin comment
             </label>
-            <button onclick="addComment()" class="btn btn-sm" style="background: #059669;">Add Comment</button>
+            <button data-click="addComment" class="btn btn-sm" style="background: #059669;">Add Comment</button>
         </div>
     </div>
     
@@ -680,9 +684,9 @@
     <div class="modal-content" style="max-width: 400px;">
         <div class="modal-header">
             <h2>@ Create Subject from Username</h2>
-            <span class="close" onclick="closeCreateFromUsernameModal()">&times;</span>
+            <span class="close" data-click="closeCreateFromUsernameModal">&times;</span>
         </div>
-        <form id="createFromUsernameForm" onsubmit="return createSubjectFromUsername(event)">
+        <form id="createFromUsernameForm" data-submit="createSubjectFromUsername">
             <div class="form-group">
                 <label for="cuUsername">Username *</label>
                 <input type="text" id="cuUsername" style="width:100%;padding:0.5rem;" placeholder="@username or profile name" required>
@@ -709,7 +713,7 @@
             </div>
             <div style="display:flex;gap:0.5rem;margin-top:1rem;">
                 <button type="submit" class="btn btn-success">Create Subject</button>
-                <button type="button" onclick="closeCreateFromUsernameModal()" class="btn" style="background:#666;">Cancel</button>
+                <button type="button" data-click="closeCreateFromUsernameModal" class="btn" style="background:#666;">Cancel</button>
             </div>
         </form>
     </div>
@@ -720,7 +724,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>OSINT Person Search</h2>
-            <span class="close" onclick="closeOsintModal()">&times;</span>
+            <span class="close" data-click="closeOsintModal">&times;</span>
         </div>
         
         <div id="osintSearchForm">
@@ -742,7 +746,7 @@
             {% endif %}
             
             <div id="osintActions">
-                <button onclick="startOsintSearch()" class="btn btn-success">Search</button>
+                <button data-click="startOsintSearch" class="btn btn-success">Search</button>
             </div>
         </div>
         
@@ -753,7 +757,7 @@
                 <p id="searchQueryDisplay" style="color: #666;"></p>
             </div>
             <div style="margin-top: 1.5rem;">
-                <button onclick="cancelOsintSearch()" class="btn btn-danger">Cancel Search</button>
+                <button data-click="cancelOsintSearch" class="btn btn-danger">Cancel Search</button>
             </div>
         </div>
         
@@ -765,7 +769,7 @@
             
             <div class="select-all-row">
                 <label>
-                    <input type="checkbox" id="selectAllResults" onchange="toggleAllResults(this)">
+                    <input type="checkbox" id="selectAllResults" data-change="toggleAllResults">
                     <strong>Select All</strong>
                 </label>
             </div>
@@ -773,9 +777,9 @@
             <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
             
             <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button onclick="closeOsintModal()" class="btn" style="background: #666;">Close</button>
-                <button onclick="saveSelectedAsSocialAccounts()" class="btn" style="background: #8b5cf6;" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
-                <button onclick="addSelectedFindings()" class="btn btn-success" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
+                <button data-click="closeOsintModal" class="btn" style="background: #666;">Close</button>
+                <button data-click="saveSelectedAsSocialAccounts" class="btn" style="background: #8b5cf6;" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
+                <button data-click="addSelectedFindings" class="btn btn-success" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
         
@@ -790,7 +794,7 @@
     <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
             <h2>Case Timeline</h2>
-            <span class="close" onclick="closeTimeline()">&times;</span>
+            <span class="close" data-click="closeTimeline">&times;</span>
         </div>
         <div id="timelineContent" style="max-height: 60vh; overflow-y: auto;">
             <div style="text-align: center; padding: 2rem;">Loading timeline...</div>
@@ -1059,7 +1063,7 @@ function displayResults(results) {
             const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">Brave</span>' : 
                                  item.source === 'duckduckgo' ? '<span class="source-badge ddg">DDG</span>' : '';
             div.innerHTML = `
-                <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || ''}" onchange="updateSelectedCount()">
+                <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || ''}" data-change="updateSelectedCount"">
                 <div class="result-content">
                     <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
                     ${item.query ? `<div class="result-query">${item.query}</div>` : ''}
@@ -1080,7 +1084,7 @@ function displayResults(results) {
             const div = document.createElement('div');
             div.className = 'result-item';
             div.innerHTML = `
-                <input type="checkbox" class="result-checkbox" data-domain="${link.engine || ''}" data-url="${link.url}" data-query="${link.query || ''}" data-source="search_link" data-category="search_link" onchange="updateSelectedCount()">
+                <input type="checkbox" class="result-checkbox" data-domain="${link.engine || ''}" data-url="${link.url}" data-query="${link.query || ''}" data-source="search_link" data-category="search_link" data-change="updateSelectedCount"">
                 <div class="result-content">
                     <div class="result-engine">${link.engine || 'Unknown'}</div>
                     ${link.query ? `<div class="result-query">${link.query}</div>` : ''}
@@ -1429,10 +1433,12 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         return;
     }
     
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
     formData.append('file', fileInput.files[0]);
     formData.append('document_type', document.getElementById('documentType').value);
     formData.append('classification', document.getElementById('classification').value);
     formData.append('description', document.getElementById('docDescription').value);
+    formData.append('csrf_token', csrfToken);
     
     fetch("{{ url_for('cms.upload_case_document', case_id=case.id) }}", {
         method: 'POST',
@@ -1506,12 +1512,12 @@ function displayScreenshots(screenshots) {
     screenshots.forEach(s => {
         html += `
             <div style="background: #f5f5f5; border-radius: 8px; overflow: hidden; position: relative;">
-                <div style="cursor: pointer;" onclick="viewScreenshot('${s.id}', '${(s.title || s.url || '').replace(/'/g, "\\'")}', '${s.url || ''}')">
+                <div style="cursor: pointer;" data-click="viewScreenshot" data-arg0="${s.id}" data-arg1="${(s.title || s.url || '').replace(/'/g, '\\x27')}" data-arg2="${s.url || ''}">
                     <img src="${s.thumbnail_url}" alt="${s.title || 'Screenshot'}" 
                          style="width: 100%; height: 120px; object-fit: cover; display: block;"
                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 fill=%22%23666%22 text-anchor=%22middle%22 font-size=%2212%22>No preview</text></svg>'">
                 </div>
-                <button onclick="event.stopPropagation(); deleteScreenshot('${s.id}')" 
+                <button data-click="deleteScreenshot" data-arg0="${s.id}" 
                         style="position: absolute; top: 5px; right: 5px; background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 24px; text-align: center;"
                         title="Delete screenshot">×</button>
                 <div style="padding: 0.5rem;">
@@ -1555,7 +1561,7 @@ function openAddScreenshotModal(url = '') {
     };
 }
 
-function openCaptureFromFinding(url, title) {
+function openCaptureFromFinding(btn, url, title) {
     openAddScreenshotModal(url);
 }
 
@@ -1651,19 +1657,18 @@ function uploadScreenshot() {
     });
 }
 
-function viewScreenshot(id, title, url) {
+function viewScreenshot(btn, id, title, url) {
     document.getElementById('viewScreenshotTitle').textContent = title || 'Screenshot';
     document.getElementById('viewScreenshotLink').href = url;
     document.getElementById('viewScreenshotImage').src = `/cms/cases/{{ case.id }}/screenshots/${id}/view`;
     document.getElementById('viewScreenshotModal').classList.add('show');
 }
 
-function extractSocialId(url, subjectId) {
+function extractSocialId(btn, url, subjectId) {
     if (!confirm('Extract social media ID from this URL?\n\n' + url + '\n\nThe ID will be saved to the linked subject.')) {
         return;
     }
     
-    const btn = event.target;
     btn.disabled = true;
     btn.textContent = 'Extracting...';
     
@@ -1878,7 +1883,7 @@ function loadAvailableParents() {
             <div>
                 <strong>{{ case.parent_case.case_number }}</strong>: {{ case.parent_case.title }}
             </div>
-            <button onclick="removeParent()" class="btn btn-sm" style="background: #dc2626;">Remove</button>
+            <button data-click="removeParent"" class="btn btn-sm" style="background: #dc2626;">Remove</button>
         </div>
     `;
     {% else %}
@@ -1914,7 +1919,7 @@ function searchParentCases() {
                                 <a href="/cms/cases/${c.id}" target="_blank">${c.case_number}</a>: ${c.title}
                                 <span class="badge badge-${c.status}" style="margin-left: 0.5rem;">${c.status}</span>
                             </div>
-                            <button onclick="setParent('${c.id}')" class="btn btn-sm" style="background: #059669;">Set as Parent</button>
+                            <button data-click="setParent" data-arg0="${c.id}"" class="btn btn-sm" style="background: #059669;">Set as Parent</button>
                         </div>
                     `;
                 });
@@ -2034,13 +2039,13 @@ function displayComments(comments) {
                 <div class="comment-edit-form" id="edit-form-${c.id}" style="display: none;">
                     <textarea id="edit-content-${c.id}">${escapeHtml(c.content)}</textarea>
                     <div class="comment-edit-actions">
-                        <button onclick="saveEdit('${c.id}')" class="btn btn-sm" style="background: #059669;">Save</button>
-                        <button onclick="cancelEdit('${c.id}')" class="btn btn-sm" style="background: #666;">Cancel</button>
+                        <button data-click="saveEdit" data-arg0="${c.id}"" class="btn btn-sm" style="background: #059669;">Save</button>
+                        <button data-click="cancelEdit" data-arg0="${c.id}"" class="btn btn-sm" style="background: #666;">Cancel</button>
                     </div>
                 </div>
                 <div class="comment-actions">
-                    ${canEdit ? `<button onclick="showEditForm('${c.id}')">Edit</button>` : ''}
-                    <button onclick="deleteComment('${c.id}')">Delete</button>
+                    ${canEdit ? `<button data-click="showEditForm" data-arg0="${c.id}"">Edit</button>` : ''}
+                    <button data-click="deleteComment" data-arg0="${c.id}"">Delete</button>
                 </div>
             </div>
         `;

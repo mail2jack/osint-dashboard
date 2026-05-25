@@ -1,169 +1,40 @@
 import json
 import logging
-import os
-import math
 from datetime import datetime, timezone
 
+import flask
 from flask import (
     request, jsonify, render_template,
-    redirect, url_for, flash, current_app, abort
+    redirect, url_for, flash, abort
 )
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from ..validation import validate, CreateSubjectSchema, EditSubjectSchema
 from ..models import (
-    db, Subject, Case, Address, Contact, AuditLog, User, Screenshot,
-    subject_relations, Finding, SocialAccount
+    db, Subject, Case, Address, Contact, AuditLog
 )
-from ..auth import roles_required, senior_required
+from ..auth import roles_required
 from ..encryption_utils import encryptor
+from .. import csrf
 from .utils import (
-    normalize_phone, find_similar_subjects, find_similar_clients,
-    check_for_exact_match, normalize_name
+    normalize_phone, find_similar_subjects,
+    check_for_exact_match
 )
 
 logger = logging.getLogger(__name__)
 
 
-@cms_bp.route('/subjects')
-@login_required
-def subjects():
-    """List all subjects with search, filtering, and sorting."""
-    page = request.args.get('page', 1, type=int)
-    per_page = 30
-    search = request.args.get('search', '')
-    subject_type = request.args.get('type', '')
-    sort = request.args.get('sort', 'name')
-    order = request.args.get('order', 'asc')
-    fmt = request.args.get('format', '')
-
-    query = Subject.query.filter_by(is_deleted=False)
-
-    if search:
-        query = query.outerjoin(SocialAccount, SocialAccount.subject_id == Subject.id).filter(
-            db.or_(
-                Subject.name.ilike(f'%{search}%'),
-                SocialAccount.username.ilike(f'%{search}%'),
-            )
-        ).distinct()
-
-    if subject_type:
-        query = query.filter_by(subject_type=subject_type)
-
-    # Sorting
-    sort_columns = {
-        'name': Subject.name,
-        'type': Subject.subject_type,
-        'risk': Subject.risk_score,
-    }
-
-    sort_col = sort_columns.get(sort, Subject.name)
-    if order == 'desc':
-        sort_col = sort_col.desc()
-
-    # JSON format for API calls
-    if fmt == 'json':
-        subjects_list = query.order_by(sort_col).all()
-        return jsonify({
-            'subjects': [{'id': s.id, 'name': s.name, 'type': s.subject_type} for s in subjects_list]
-        })
-
-    pagination = query.order_by(sort_col).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-
-    return render_template('cms/subjects/list.html',
-                           subjects=pagination.items,
-                           pagination=pagination,
-                           filters={'search': search, 'type': subject_type,
-                                    'sort': sort, 'order': order}
-                           )
-
-
-@cms_bp.route('/subjects/<subject_id>')
-@login_required
-def view_subject(subject_id: str):
-    """View subject details."""
-    subject = db.session.get(Subject, subject_id) or abort(404)
-    subject.decrypt_identifiers()
-    # Parse vessel_data to dict for template (SQLite JSON column may return string)
-    vd = subject.vessel_data
-    while isinstance(vd, str):
-        try:
-            vd = json.loads(vd)
-        except (json.JSONDecodeError, TypeError):
-            try:
-                import ast
-                vd = ast.literal_eval(vd)
-            except (ValueError, SyntaxError, TypeError):
-                vd = {}
-    subject.vessel_data = vd if isinstance(vd, dict) else {}
-    for addr in subject.addresses:
-        addr.decrypt_fields()
-    for c in subject.contacts:
-        c.decrypt_fields()
-
-    financials = subject.financial_records.filter_by(is_deleted=False).all()
-    findings = subject.findings.filter_by(
-        is_deleted=False).order_by(Finding.created_at.desc()).all()
-
-    # Get linked cases
-    linked_cases = []
-    first_case_id = None
-    for case in Case.query.filter_by(is_deleted=False).all():
-        if subject in case.subjects.all():
-            case_info = {'id': case.id,
-                         'case_number': case.case_number, 'title': case.title}
-            linked_cases.append(case_info)
-            if first_case_id is None:
-                first_case_id = case.id
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action='read',
-        entity_type='subject',
-        entity_id=subject_id,
-        ip_address=request.remote_addr,
-        description=f"Viewed subject: {subject.name}"
-    )
-    db.session.commit()
-
-    return render_template('cms/subjects/view.html',
-                           subject=subject,
-                           financials=financials,
-                           findings=findings,
-                           linked_cases=linked_cases,
-                           first_case_id=first_case_id
-                           )
-
-
-@cms_bp.route('/api/check-duplicate')
-@login_required
-def check_duplicate():
-    """Check for duplicate subjects or clients by name (for real-time lookup)."""
-    name = request.args.get('name', '').strip()
-    entity_type = request.args.get('type', 'subject')  # 'subject' or 'client'
-
-    if len(name) < 2:
-        return jsonify({'duplicates': [], 'exact': None})
-
-    if entity_type == 'subject':
-        exact = check_for_exact_match(name, 'subject')
-        similar = find_similar_subjects(name)[:5]
-        return jsonify({'duplicates': similar, 'exact': exact})
-    else:
-        exact = check_for_exact_match(name, 'client')
-        similar = find_similar_clients(name)[:5]
-        return jsonify({'duplicates': similar, 'exact': exact})
-
-
 @cms_bp.route('/subjects/create', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
-def create_subject():
+@validate(CreateSubjectSchema)
+def create_subject() -> flask.Response:
     """Create a new subject with duplicate detection."""
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
+        if 'type_' in data:
+            data['type'] = data.pop('type_')
 
         required = ['name', 'subject_type']
         for field in required:
@@ -350,12 +221,15 @@ def create_subject():
 @cms_bp.route('/subjects/<subject_id>/edit', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
-def edit_subject(subject_id: str):
+@validate(EditSubjectSchema)
+def edit_subject(subject_id: str) -> flask.Response:
     """Edit subject details."""
     subject = db.session.get(Subject, subject_id) or abort(404)
 
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
+        if 'type_' in data:
+            data['type'] = data.pop('type_')
         changes = {}
 
         # Update basic fields
@@ -389,7 +263,7 @@ def edit_subject(subject_id: str):
                     if old_value:
                         old_value = encryptor.decrypt(old_value)
                 except Exception:
-                    pass  # Value may already be plaintext or encryption key may have changed
+                    logger.debug("Could not decrypt %s (may already be plaintext or key changed)", field)
                 if field == 'phone' and new_value:
                     new_value = normalize_phone(new_value)
                 if new_value != old_value:
@@ -413,7 +287,7 @@ def edit_subject(subject_id: str):
                     if old_value:
                         old_value = encryptor.decrypt(old_value)
                 except Exception:
-                    pass  # Value may already be plaintext or encryption key may have changed
+                    logger.debug("Could not decrypt %s (may already be plaintext or key changed)", field)
                 if new_value != old_value:
                     changes[field] = {
                         'old': old_value or '[empty]', 'new': new_value or '[empty]'}
@@ -443,7 +317,7 @@ def edit_subject(subject_id: str):
                     if old_value:
                         old_value = encryptor.decrypt(old_value)
                 except Exception:
-                    pass  # Value may already be plaintext or encryption key may have changed
+                    logger.debug("Could not decrypt %s (may already be plaintext or key changed)", field)
                 if new_value != old_value:
                     changes[field] = {
                         'old': old_value or '[empty]', 'new': new_value or '[empty]'}
@@ -591,455 +465,32 @@ def edit_subject(subject_id: str):
     return render_template('cms/subjects/edit.html', subject=subject)
 
 
-@cms_bp.route('/subjects/<subject_id>/photo', methods=['POST'])
-@login_required
-@roles_required('admin', 'senior_investigator', 'junior_investigator')
-def upload_subject_photo(subject_id: str):
-    """Upload a photo for a subject."""
-    subject = db.session.get(Subject, subject_id) or abort(404)
-
-    if 'photo' not in request.files:
-        return jsonify({'error': 'No photo provided'}), 400
-
-    file = request.files['photo']
-
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-
-    # Only allow images
-    allowed_extensions = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
-    ext = file.filename.rsplit(
-        '.', 1)[-1].lower() if '.' in file.filename else ''
-    if ext not in allowed_extensions:
-        return jsonify({'error': 'Only image files allowed'}), 400
-
-    # Create upload directory
-    upload_dir = os.path.join(current_app.root_path,
-                              'static', 'uploads', 'subjects', subject_id)
-    os.makedirs(upload_dir, exist_ok=True)
-
-    # Remove old photo if exists
-    if subject.photo_path:
-        old_path = os.path.join(current_app.root_path,
-                                'static', subject.photo_path.lstrip('/'))
-        if os.path.exists(old_path):
-            os.remove(old_path)
-
-    # Save new photo
-    filename = f"photo.{ext}"
-    file_path = os.path.join(upload_dir, filename)
-    file.save(file_path)
-
-    # Update subject
-    subject.photo_path = f"/uploads/subjects/{subject_id}/{filename}"
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action='update',
-        entity_type='subject',
-        entity_id=subject_id,
-        changes={'photo': 'uploaded'},
-        ip_address=request.remote_addr,
-        description=f"Uploaded photo for {subject.name}"
-    )
-    db.session.commit()
-
-    return jsonify({
-        'message': 'Photo uploaded',
-        'photo_path': subject.photo_path
-    })
-
-
-@cms_bp.route('/subjects/<subject_id>/face-encoding', methods=['POST'])
-@login_required
-@roles_required('admin', 'senior_investigator', 'junior_investigator')
-def save_face_encoding(subject_id: str):
-    """Save face encoding for a subject."""
-    subject = db.session.get(Subject, subject_id) or abort(404)
-    data = request.get_json()
-
-    if not data or 'encoding' not in data:
-        return jsonify({'error': 'No encoding provided'}), 400
-
-    encoding = data['encoding']
-
-    if not isinstance(encoding, list) or len(encoding) != 128:
-        return jsonify({'error': 'Invalid encoding format'}), 400
-
-    subject.face_encoding = encoding
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action='face_encoding_saved',
-        entity_type='subject',
-        entity_id=subject_id,
-        ip_address=request.remote_addr,
-        description=f"Saved face encoding for {subject.name}"
-    )
-    db.session.commit()
-
-    return jsonify({
-        'message': 'Face encoding saved',
-        'has_encoding': True
-    })
-
-
-@cms_bp.route('/subjects/<subject_id>/face-encoding', methods=['DELETE'])
-@login_required
-@roles_required('admin', 'senior_investigator', 'junior_investigator')
-def delete_face_encoding(subject_id: str):
-    """Delete face encoding for a subject."""
-    subject = db.session.get(Subject, subject_id) or abort(404)
-
-    subject.face_encoding = None
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action='face_encoding_deleted',
-        entity_type='subject',
-        entity_id=subject_id,
-        ip_address=request.remote_addr,
-        description=f"Deleted face encoding for {subject.name}"
-    )
-    db.session.commit()
-
-    return jsonify({
-        'message': 'Face encoding deleted',
-        'has_encoding': False
-    })
-
-
-@cms_bp.route('/subjects/compare-faces', methods=['POST'])
-@login_required
-def compare_faces():
-    """Compare face encodings. Returns list of matching subjects."""
-    data = request.get_json()
-
-    if not data or 'encoding' not in data:
-        return jsonify({'error': 'No encoding provided'}), 400
-
-    target_encoding = data['encoding']
-
-    if not isinstance(target_encoding, list) or len(target_encoding) != 128:
-        return jsonify({'error': 'Invalid encoding format'}), 400
-
-    threshold = data.get('threshold', 0.6)
-    limit = data.get('limit', 20)
-
-    subjects_with_faces = Subject.query.filter(
-        Subject.face_encoding.isnot(None),
-        Subject.is_deleted == False,
-        Subject.photo_path.isnot(None)
-    ).all()
-
-    def euclidean_distance(enc1, enc2):
-        return math.sqrt(sum((a - b) ** 2 for a, b in zip(enc1, enc2)))
-
-    matches = []
-    for subject in subjects_with_faces:
-        distance = euclidean_distance(target_encoding, subject.face_encoding)
-        if distance < threshold:
-            matches.append({
-                'id': subject.id,
-                'name': subject.name,
-                'subject_type': subject.subject_type,
-                'photo_path': subject.photo_path,
-                'distance': round(distance, 4),
-                'similarity': round((1 - distance) * 100, 1)
-            })
-
-    matches.sort(key=lambda x: x['distance'])
-    matches = matches[:limit]
-
-    return jsonify({
-        'matches': matches,
-        'total_searched': len(subjects_with_faces),
-        'threshold': threshold
-    })
-
-
-@cms_bp.route('/api/subjects/with-faces', methods=['GET'])
-@login_required
-def get_subjects_with_faces():
-    """Get list of subjects with face encodings for face-api.js matching."""
-    subjects = Subject.query.filter(
-        Subject.face_encoding.isnot(None),
-        Subject.is_deleted == False,
-        Subject.photo_path.isnot(None)
-    ).all()
-
-    return jsonify({
-        'subjects': [{
-            'id': s.id,
-            'name': s.name,
-            'photo_path': s.photo_path,
-            'face_encoding': s.face_encoding
-        } for s in subjects]
-    })
-
-
-@cms_bp.route('/subjects/<subject_id>/relationships')
-@login_required
-def get_subject_relationships(subject_id: str):
-    """Get relationship network data for a subject."""
-    try:
-        subject = db.session.get(Subject, subject_id) or abort(404)
-
-        # Get ALL relationships for this subject (both directions now)
-        related_rows = db.session.execute(
-            subject_relations.select().where(subject_relations.c.subject_id == subject.id)
-        ).fetchall()
-
-        # Build a map of related subjects
-        related_ids = [row.related_subject_id for row in related_rows]
-        related = Subject.query.filter(Subject.id.in_(
-            related_ids), Subject.is_deleted == False).all() if related_ids else []
-
-        # Build nodes and edges for visualization
-        nodes = [{
-            'id': subject.id,
-            'name': subject.name,
-            'type': subject.subject_type,
-            'isMain': True
-        }]
-
-        edges = []
-        edge_ids = set()  # Use sorted IDs to avoid duplicates
-
-        # Helper to get sorted edge ID
-        def sorted_edge_id(a, b):
-            return f"{min(a, b)}-{max(a, b)}"
-
-        for rel in related:
-            nodes.append({
-                'id': rel.id,
-                'name': rel.name,
-                'type': rel.subject_type,
-                'isMain': False
-            })
-
-            # Get relationship type from either direction
-            rel_type = 'related'
-            type_rows = db.session.execute(
-                subject_relations.select().where(
-                    (subject_relations.c.subject_id == subject.id) &
-                    (subject_relations.c.related_subject_id == rel.id)
-                )
-            ).fetchall()
-            if not type_rows:
-                # Check reverse direction
-                type_rows = db.session.execute(
-                    subject_relations.select().where(
-                        (subject_relations.c.subject_id == rel.id) &
-                        (subject_relations.c.related_subject_id == subject.id)
-                    )
-                ).fetchall()
-            if type_rows:
-                rel_type = type_rows[0].relationship_type or 'related'
-
-            edge_id = sorted_edge_id(subject.id, rel.id)
-            if edge_id not in edge_ids:
-                edges.append({
-                    'id': edge_id,
-                    'source': subject.id,
-                    'target': rel.id,
-                    'type': rel_type
-                })
-                edge_ids.add(edge_id)
-
-        # Get second-degree connections (friends of friends)
-        for rel in related:
-            second_degree_rows = db.session.execute(
-                subject_relations.select().where(subject_relations.c.subject_id == rel.id)
-            ).fetchall()
-
-            second_degree_ids = [
-                row.related_subject_id for row in second_degree_rows if row.related_subject_id != subject.id]
-            rel_related = Subject.query.filter(
-                Subject.id.in_(second_degree_ids),
-                Subject.is_deleted == False,
-                Subject.id != subject.id
-            ).all() if second_degree_ids else []
-
-            for rr in rel_related:
-                # Check if node already exists
-                if not any(n['id'] == rr.id for n in nodes):
-                    nodes.append({
-                        'id': rr.id,
-                        'name': rr.name,
-                        'type': rr.subject_type,
-                        'isMain': False
-                    })
-
-                edge_id = sorted_edge_id(rel.id, rr.id)
-                if edge_id not in edge_ids:
-                    rel_type = 'connected'
-                    type_rows = db.session.execute(
-                        subject_relations.select().where(
-                            (subject_relations.c.subject_id == rel.id) &
-                            (subject_relations.c.related_subject_id == rr.id)
-                        )
-                    ).fetchall()
-                    if not type_rows:
-                        # Check reverse direction
-                        type_rows = db.session.execute(
-                            subject_relations.select().where(
-                                (subject_relations.c.subject_id == rr.id) &
-                                (subject_relations.c.related_subject_id == rel.id)
-                            )
-                        ).fetchall()
-                    if type_rows:
-                        rel_type = type_rows[0].relationship_type or 'connected'
-
-                    edges.append({
-                        'id': edge_id,
-                        'source': rel.id,
-                        'target': rr.id,
-                        'type': rel_type
-                    })
-                    edge_ids.add(edge_id)
-
-        return jsonify({
-            'subject': {
-                'id': subject.id,
-                'name': subject.name,
-                'type': subject.subject_type
-            },
-            'nodes': nodes,
-            'edges': edges
-        })
-    except Exception as e:
-        logger.error(f"Error in get_subject_relationships: {str(e)} ({type(e).__name__})")
-        return jsonify({'error': str(e), 'error_type': type(e).__name__}), 500
-
-
-@cms_bp.route('/subjects/<subject_id>/add-relationship', methods=['POST'])
-@login_required
-@roles_required('admin', 'senior_investigator', 'junior_investigator')
-def add_subject_relationship(subject_id: str):
-    """Add a bidirectional relationship between two subjects."""
-    try:
-        subject = db.session.get(Subject, subject_id) or abort(404)
-        data = request.get_json()
-        if data is None:
-            return jsonify({'error': 'Invalid JSON'}), 400
-
-        related_id = data.get('related_subject_id')
-        relationship_type = data.get('relationship_type', 'related')
-
-        if not related_id:
-            return jsonify({'error': 'Related subject ID required'}), 400
-
-        if related_id == subject_id:
-            return jsonify({'error': 'Cannot create relationship with self'}), 400
-
-        related = db.session.get(Subject, related_id)
-        if not related:
-            return jsonify({'error': 'Related subject not found'}), 404
-
-        existing_a = db.session.execute(
-            subject_relations.select().where(
-                (subject_relations.c.subject_id == subject.id) &
-                (subject_relations.c.related_subject_id == related_id)
-            )
-        ).first()
-
-        existing_b = db.session.execute(
-            subject_relations.select().where(
-                (subject_relations.c.subject_id == related_id) &
-                (subject_relations.c.related_subject_id == subject.id)
-            )
-        ).first()
-
-        if existing_a or existing_b:
-            return jsonify({'error': 'Relationship already exists'}), 400
-
-        db.session.execute(
-            subject_relations.insert().values(
-                subject_id=subject.id,
-                related_subject_id=related_id,
-                relationship_type=relationship_type
-            )
-        )
-        db.session.execute(
-            subject_relations.insert().values(
-                subject_id=related_id,
-                related_subject_id=subject.id,
-                relationship_type=relationship_type
-            )
-        )
-
-        AuditLog.log(
-            user_id=current_user.id,
-            action='create',
-            entity_type='subject_relation',
-            entity_id=f"{subject.id}-{related_id}",
-            ip_address=request.remote_addr,
-            description=f"Added bidirectional {relationship_type} relationship between {subject.name} and {related.name}"
-        )
-        db.session.commit()
-
-        return jsonify({
-            'message': 'Relationship added',
-            'relationship': {
-                'subject_id': subject.id,
-                'related_subject_id': related_id,
-                'type': relationship_type,
-                'bidirectional': True
-            }
-        })
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error adding relationship: {e} ({type(e).__name__})")
-        return jsonify({'error': str(e)}), 500
-
-
-@cms_bp.route('/subjects/<subject_id>/remove-relationship', methods=['POST'])
+@cms_bp.route('/api/subjects/bulk-delete', methods=['POST'])
+@csrf.exempt
 @login_required
 @roles_required('admin', 'senior_investigator')
-def remove_subject_relationship(subject_id: str):
-    """Remove a relationship between two subjects."""
-    try:
-        subject = db.session.get(Subject, subject_id) or abort(404)
-        data = request.get_json()
-        if data is None:
-            return jsonify({'error': 'Invalid JSON'}), 400
-
-        related_id = data.get('related_subject_id')
-
-        if not related_id:
-            return jsonify({'error': 'Related subject ID required'}), 400
-
-        db.session.execute(
-            subject_relations.delete().where(
-                ((subject_relations.c.subject_id == subject.id) &
-                 (subject_relations.c.related_subject_id == related_id)) |
-                ((subject_relations.c.subject_id == related_id) &
-                 (subject_relations.c.related_subject_id == subject.id))
-            )
-        )
-
-        AuditLog.log(
-            user_id=current_user.id,
-            action='delete',
-            entity_type='subject_relation',
-            entity_id=f"{subject.id}-{related_id}",
-            ip_address=request.remote_addr,
-            description=f"Removed relationship between {subject.name} and subject {related_id}"
-        )
-        db.session.commit()
-
-        return jsonify({'message': 'Relationship removed'})
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error removing relationship: {e} ({type(e).__name__})")
-        return jsonify({'error': str(e)}), 500
+def bulk_delete_subjects() -> flask.Response:
+    """Soft-delete subjects in bulk (consistent with single delete)."""
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids', [])
+    if not ids or not isinstance(ids, list) or len(ids) > 100:
+        return jsonify({'error': 'Provide a list of up to 100 subject IDs'}), 400
+    now = datetime.now(timezone.utc)
+    count = Subject.query.filter(Subject.id.in_(ids), Subject.is_deleted == False).update(
+        {'is_deleted': True, 'deleted_at': now}, synchronize_session=False)
+    db.session.commit()
+    AuditLog.log(
+        user_id=current_user.id, action='bulk_delete',
+        entity_type='subject', ip_address=request.remote_addr,
+        description=f"Bulk soft-deleted {count} subjects"
+    )
+    return jsonify({'deleted': count, 'message': f'{count} subjects deleted'})
 
 
 @cms_bp.route('/subjects/<subject_id>/delete', methods=['POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
-def delete_subject(subject_id: str):
+def delete_subject(subject_id: str) -> flask.Response:
     """Soft-delete a subject if not linked to any case."""
     subject = db.session.get(Subject, subject_id) or abort(404)
 

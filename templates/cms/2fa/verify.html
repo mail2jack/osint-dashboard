@@ -51,6 +51,7 @@
         {% endwith %}
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="code">Authentication code</label>
                 <input type="text" name="code" id="code" placeholder="000000" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required autofocus>
@@ -62,6 +63,7 @@
             <details>
                 <summary>Use a recovery code instead</summary>
                 <form method="POST" style="margin-top: 0.75rem;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label for="recovery_code">Recovery code</label>
                         <input type="text" name="recovery_code" id="recovery_code" placeholder="XXXX-XXXX-XXXX" style="letter-spacing:normal;text-align:left;" autocomplete="off">

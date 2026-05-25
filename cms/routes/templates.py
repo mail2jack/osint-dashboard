@@ -2,10 +2,13 @@ import logging
 import os
 from datetime import datetime, timezone
 
+import flask
 from flask import request, jsonify, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from .. import csrf
+from ..validation import validate, CreateTemplateSchema, EditTemplateSchema, RenderPreviewSchema
 from ..models import db, Case, DocumentTemplate, Document, AuditLog
 from ..auth import roles_required, case_access_required
 
@@ -14,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route('/templates')
 @login_required
-def list_templates():
+def list_templates() -> str:
     """List all document templates."""
     templates = DocumentTemplate.query.filter_by(
         is_active=True).order_by(DocumentTemplate.name).all()
@@ -24,10 +27,11 @@ def list_templates():
 @cms_bp.route('/templates/create', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
-def create_template():
+@validate(CreateTemplateSchema)
+def create_template() -> flask.Response:
     """Create a new document template."""
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
 
         template = DocumentTemplate(
             name=data['name'],
@@ -63,12 +67,13 @@ def create_template():
 @cms_bp.route('/templates/<template_id>/edit', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
-def edit_template(template_id: str):
+@validate(EditTemplateSchema)
+def edit_template(template_id: str) -> flask.Response:
     """Edit a document template."""
     template = db.session.get(DocumentTemplate, template_id) or abort(404)
 
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
 
         template.name = data['name']
         template.description = data.get('description')
@@ -100,7 +105,7 @@ def edit_template(template_id: str):
 @cms_bp.route('/templates/<template_id>/delete', methods=['POST'])
 @login_required
 @roles_required('admin')
-def delete_template(template_id: str):
+def delete_template(template_id: str) -> flask.Response:
     """Delete a document template."""
     template = db.session.get(DocumentTemplate, template_id) or abort(404)
 
@@ -122,7 +127,7 @@ def delete_template(template_id: str):
 
 @cms_bp.route('/templates/<template_id>/preview')
 @login_required
-def preview_template(template_id: str):
+def preview_template(template_id: str) -> flask.Response:
     """Preview a template with sample data."""
     template = db.session.get(DocumentTemplate, template_id) or abort(404)
 
@@ -136,7 +141,7 @@ def preview_template(template_id: str):
 @cms_bp.route('/cases/<case_id>/generate-report', methods=['GET', 'POST'])
 @login_required
 @case_access_required
-def generate_case_report(case_id: str):
+def generate_case_report(case_id: str) -> flask.Response:
     """Generate a report from a template for a specific case."""
     case = db.session.get(Case, case_id) or abort(404)
 
@@ -198,7 +203,7 @@ def generate_case_report(case_id: str):
     return render_template('cms/templates/generate_report.html', case=case, templates=templates)
 
 
-def _build_report_context(case: Case):
+def _build_report_context(case: Case) -> dict:
     """Build context dictionary for template rendering."""
     context = {
         'case': None,
@@ -268,7 +273,7 @@ def _build_report_context(case: Case):
 
 @cms_bp.route('/templates/api/all')
 @login_required
-def get_all_templates():
+def get_all_templates() -> flask.Response:
     """Get all templates as JSON."""
     templates = DocumentTemplate.query.filter_by(
         is_active=True).order_by(DocumentTemplate.name).all()
@@ -276,10 +281,12 @@ def get_all_templates():
 
 
 @cms_bp.route('/templates/api/render-preview', methods=['POST'])
+@csrf.exempt
 @login_required
-def render_template_preview():
+@validate(RenderPreviewSchema)
+def render_template_preview() -> flask.Response:
     """Render a template preview with case data."""
-    data = request.get_json()
+    data = request.validated_data
 
     template_id = data.get('template_id')
     case_id = data.get('case_id')

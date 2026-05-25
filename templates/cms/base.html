@@ -332,6 +332,64 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        /* Toast notifications */
+        #toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-width: 400px;
+        }
+        .toast {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: toastIn 0.3s ease-out;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        .toast-success { background: #059669; }
+        .toast-error { background: #dc2626; }
+        .toast-warning { background: #d97706; }
+        .toast-info { background: #2563eb; }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        /* Action loading overlay */
+        .action-loader {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .action-loader.show { display: flex; }
+        .action-loader-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            min-width: 200px;
+        }
+        .action-loader-spinner {
+            width: 32px; height: 32px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 0.75rem;
+        }
     </style>
     {% if theme_style == 'professional' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cms-professional.css') }}">
@@ -366,14 +424,14 @@
                 <span style="color:#6ee7b7;font-size:0.75rem;margin-left:0.25rem;" title="2FA enabled">✓</span>
                 {% endif %}
                 | <a href="{{ url_for('auth.logout') }}">Logout</a>
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+                <button class="theme-toggle" data-click="toggleTheme" title="Toggle dark mode">
                     <span id="theme-icon">🌙</span>
                 </button>
             {% endif %}
         </div>
     </div>
     
-    <div id="updateBanner" style="display:none;background:#1e40af;color:white;text-align:center;padding:0.5rem;font-size:0.875rem;cursor:pointer;" onclick="document.getElementById('updateModal').classList.add('show')">
+    <div id="updateBanner" style="display:none;background:#1e40af;color:white;text-align:center;padding:0.5rem;font-size:0.875rem;cursor:pointer;" data-click="showUpdateModal">
         ⬆️ <span id="updateBannerText">Update available</span>
     </div>
 
@@ -381,7 +439,7 @@
         <div class="modal-content" style="max-width:500px;">
             <div class="modal-header">
                 <h2>⬆️ Update Available</h2>
-                <span class="close" onclick="this.closest('.modal').classList.remove('show')">&times;</span>
+                <span class="close" data-click="closeParentModal">&times;</span>
             </div>
             <div id="updateInfo">
                 <p>Current version: <strong id="updCurrent"></strong></p>
@@ -393,8 +451,8 @@
             </div>
             <div id="updateResult" style="display:none;"></div>
             <div style="margin-top:1rem;display:flex;gap:0.5rem;">
-                <button id="updateNowBtn" onclick="runUpdate()" class="btn" style="background:#16a34a;">⬆️ Update Now</button>
-                <button onclick="this.closest('.modal').classList.remove('show')" class="btn" style="background:#666;">Later</button>
+                <button id="updateNowBtn" data-click="runUpdate" class="btn" style="background:#16a34a;">⬆️ Update Now</button>
+                <button data-click="closeParentModal" class="btn" style="background:#666;">Later</button>
             </div>
             <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted);">
                 The update runs git pull, pip install, and restarts services. Database is backed up first.
@@ -418,7 +476,7 @@
         <kbd>s</kbd> Search &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigate &nbsp; <kbd>Enter</kbd> View &nbsp; <kbd>?</kbd> Help
         <span style="float:right;font-size:0.75rem;">
             v<span id="footerVersion">-</span>
-            <a href="#" onclick="event.preventDefault();openChangelog()" style="color:var(--text-secondary);text-decoration:none;">changelog</a>
+            <a href="#" data-click="openChangelog" style="color:var(--text-secondary);text-decoration:none;">changelog</a>
         </span>
     </div>
 
@@ -426,7 +484,7 @@
         <div class="modal-content" style="max-width:600px;max-height:80vh;overflow-y:auto;">
             <div class="modal-header">
                 <h2>📋 Changelog</h2>
-                <span class="close" onclick="document.getElementById('changelogModal').classList.remove('show')">&times;</span>
+                <span class="close" data-click="closeChangelogModal">&times;</span>
             </div>
             <div id="changelogContent" class="changelog-content"></div>
         </div>
@@ -660,6 +718,118 @@
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(hideLoader, 2000);
         });
+    </script>
+    <script>
+    // Helper functions for data-click handlers
+    function showUpdateModal() { document.getElementById('updateModal').classList.add('show'); }
+    function closeParentModal(btn) { btn.closest('.modal').classList.remove('show'); }
+    function closeChangelogModal() { document.getElementById('changelogModal').classList.remove('show'); }
+    function submitParentForm(el) { el.form.submit(); }
+    function removeEntry(btn, selector) { btn.closest(selector).remove(); }
+    function navigateTo(btn, url) { window.location.href = url; }
+    function reloadPage(btn) { location.reload(); }
+
+    // Event delegation for data-click buttons
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-click]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (btn.dataset.confirm && !confirm(btn.dataset.confirm)) return;
+        var fn = window[btn.dataset.click];
+        if (typeof fn === 'function') {
+            var args = [btn];
+            var i = 0;
+            while (btn.dataset['arg' + i] !== undefined) {
+                try { args.push(JSON.parse(btn.dataset['arg' + i])); }
+                catch(_) { args.push(btn.dataset['arg' + i]); }
+                i++;
+            }
+            fn.apply(null, args);
+        }
+    });
+
+    // Event delegation for data-submit forms
+    document.addEventListener('submit', function(e) {
+        var form = e.target.closest('[data-submit]');
+        if (!form) return;
+        e.preventDefault();
+        var fn = window[form.dataset.submit];
+        if (typeof fn === 'function') {
+            fn(e);
+        }
+    });
+
+    // Event delegation for data-change inputs/selects
+    document.addEventListener('change', function(e) {
+        var el = e.target.closest('[data-change]');
+        if (!el) return;
+        var fn = window[el.dataset.change];
+        if (typeof fn === 'function') {
+            fn(el);
+        }
+    });
+
+    // Event delegation for data-input handlers
+    document.addEventListener('input', function(e) {
+        var el = e.target.closest('[data-input]');
+        if (!el) return;
+        var fn = window[el.dataset.input];
+        if (typeof fn === 'function') {
+            fn(el);
+        }
+    });
+    </script>
+    <div id="toast-container"></div>
+    <div class="action-loader" id="actionLoader">
+        <div class="action-loader-box">
+            <div class="action-loader-spinner"></div>
+            <div id="actionLoaderText" style="color:var(--text-primary);">Loading...</div>
+        </div>
+    </div>
+    <script>
+    // Toast notification system
+    function showToast(message, type, duration) {
+        type = type || 'info';
+        duration = duration || 4000;
+        var container = document.getElementById('toast-container');
+        var toast = document.createElement('div');
+        toast.className = 'toast toast-' + type;
+        var icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+        toast.innerHTML = '<span>' + (icons[type] || 'ℹ️') + '</span><span>' + message + '</span>';
+        toast.addEventListener('click', function() { toast.remove(); });
+        container.appendChild(toast);
+        setTimeout(function() {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(function() { toast.remove(); }, 300);
+        }, duration);
+    }
+    // Global loading overlay
+    function showLoading(text) {
+        document.getElementById('actionLoaderText').textContent = text || 'Loading...';
+        document.getElementById('actionLoader').classList.add('show');
+    }
+    function hideLoading() {
+        document.getElementById('actionLoader').classList.remove('show');
+    }
+    // Unified API response handler
+    function handleApiResponse(response, toastOnError) {
+        if (toastOnError === undefined) toastOnError = true;
+        if (!response.ok) {
+            return response.json().then(function(data) {
+                var msg = data.error || data.message || 'Request failed (' + response.status + ')';
+                if (toastOnError) showToast(msg, 'error');
+                return Promise.reject({ status: response.status, data: data, message: msg });
+            }).catch(function(err) {
+                if (err && err.status) return Promise.reject(err);
+                var msg = 'Request failed (' + response.status + ')';
+                if (toastOnError) showToast(msg, 'error');
+                return Promise.reject({ status: response.status, message: msg });
+            });
+        }
+        return response.json().catch(function() { return {}; });
+    }
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js"></script>
 </body>

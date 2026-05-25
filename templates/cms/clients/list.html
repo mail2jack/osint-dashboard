@@ -16,7 +16,7 @@
         <input type="text" name="search" placeholder="Search by name..." value="{{ search or '' }}" 
                style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; flex: 1; min-width: 200px;">
         <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; color: #666; cursor: pointer;">
-            <input type="checkbox" name="show_archived" value="1" {% if show_archived %}checked{% endif %} onchange="this.form.submit()">
+            <input type="checkbox" name="show_archived" value="1" {% if show_archived %}checked{% endif %} data-change="submitParentForm">
             Toon gearchiveerde
         </label>
         <button type="submit" class="btn">Filter</button>

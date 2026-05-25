@@ -168,13 +168,13 @@
     </div>
     
     <div class="search-filters">
-        <button type="button" class="filter-btn {% if not active_filter or active_filter == 'all' %}active{% endif %}" onclick="filterResults('all')">All</button>
-        <button type="button" class="filter-btn {% if active_filter == 'cases' %}active{% endif %}" onclick="filterResults('cases')">Cases</button>
-        <button type="button" class="filter-btn {% if active_filter == 'clients' %}active{% endif %}" onclick="filterResults('clients')">Clients</button>
-        <button type="button" class="filter-btn {% if active_filter == 'subjects' %}active{% endif %}" onclick="filterResults('subjects')">Subjects</button>
-        <button type="button" class="filter-btn {% if active_filter == 'findings' %}active{% endif %}" onclick="filterResults('findings')">Findings</button>
-        <button type="button" class="filter-btn {% if active_filter == 'comments' %}active{% endif %}" onclick="filterResults('comments')">Comments</button>
-        <button type="button" class="filter-btn {% if active_filter == 'notes' %}active{% endif %}" onclick="filterResults('notes')">Notes</button>
+        <button type="button" class="filter-btn {% if not active_filter or active_filter == 'all' %}active{% endif %}" data-click="filterResults" data-arg0="all">All</button>
+        <button type="button" class="filter-btn {% if active_filter == 'cases' %}active{% endif %}" data-click="filterResults" data-arg0="cases">Cases</button>
+        <button type="button" class="filter-btn {% if active_filter == 'clients' %}active{% endif %}" data-click="filterResults" data-arg0="clients">Clients</button>
+        <button type="button" class="filter-btn {% if active_filter == 'subjects' %}active{% endif %}" data-click="filterResults" data-arg0="subjects">Subjects</button>
+        <button type="button" class="filter-btn {% if active_filter == 'findings' %}active{% endif %}" data-click="filterResults" data-arg0="findings">Findings</button>
+        <button type="button" class="filter-btn {% if active_filter == 'comments' %}active{% endif %}" data-click="filterResults" data-arg0="comments">Comments</button>
+        <button type="button" class="filter-btn {% if active_filter == 'notes' %}active{% endif %}" data-click="filterResults" data-arg0="notes">Notes</button>
     </div>
     
     <input type="hidden" name="type" id="filter-type" value="{{ active_filter or 'all' }}">
@@ -187,7 +187,7 @@
             <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Upload a photo to find subjects with similar faces</p>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <input type="file" id="faceSearchInput" accept="image/*" onchange="searchByFace(this)" style="display: none;">
+            <input type="file" id="faceSearchInput" accept="image/*" data-change="searchByFace" style="display: none;">
             <label for="faceSearchInput" style="padding: 0.75rem 1.5rem; background: white; color: #7c3aed; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                 📷 Upload Photo
             </label>

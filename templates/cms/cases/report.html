@@ -12,7 +12,7 @@
                 {% if case.client %}<br>Client: {{ case.client.name }}{% endif %}
             </p>
         </div>
-        <button onclick="window.print()" class="btn btn-sm" style="background:#16213e;">🖨️ Print / PDF</button>
+        <button data-click="printReport" class="btn btn-sm" style="background:#16213e;">🖨️ Print / PDF</button>
     </div>
 </div>
 
@@ -96,6 +96,9 @@
 </div>
 {% endif %}
 
+<script>
+function printReport(btn) { window.print(); }
+</script>
 <style>
 @media print {
     .back, form, button, .btn, .btn-sm, .no-print { display: none !important; }

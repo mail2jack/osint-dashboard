@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
+import flask
 from flask import (
     request, jsonify, render_template,
     redirect, url_for, flash, abort
@@ -9,8 +10,9 @@ from flask import (
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, Client, Case, Subject, AuditLog, Contact, Address
-from ..auth import roles_required, admin_required, senior_required
+from ..validation import validate, CreateClientSchema, EditClientSchema
+from ..models import db, Client, Case, AuditLog, Contact, Address
+from ..auth import roles_required, admin_required
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_clients, check_for_exact_match
 
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 @cms_bp.route('/clients')
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
-def clients():
+def clients() -> str:
     """List all clients."""
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -64,7 +66,7 @@ def clients():
 @cms_bp.route('/clients/<client_id>')
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
-def view_client(client_id: str):
+def view_client(client_id: str) -> str:
     """View client details with all associated cases."""
     client = db.session.get(Client, client_id) or abort(404)
     client.decrypt_naw()
@@ -100,10 +102,11 @@ def view_client(client_id: str):
 @cms_bp.route('/clients/create', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
-def create_client():
+@validate(CreateClientSchema)
+def create_client() -> flask.Response:
     """Create a new client with duplicate detection."""
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
 
         required = ['name']
         for field in required:
@@ -232,12 +235,13 @@ def create_client():
 @cms_bp.route('/clients/<client_id>/edit', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
-def edit_client(client_id: str):
+@validate(EditClientSchema)
+def edit_client(client_id: str) -> flask.Response:
     """Edit client details."""
     client = db.session.get(Client, client_id) or abort(404)
 
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
+        data = request.validated_data
         changes = {}
 
         # Update name
@@ -366,7 +370,7 @@ def edit_client(client_id: str):
 @cms_bp.route('/clients/<client_id>/delete', methods=['POST'])
 @login_required
 @admin_required
-def delete_client(client_id: str):
+def delete_client(client_id: str) -> flask.Response:
     """Soft delete a client."""
     client = db.session.get(Client, client_id) or abort(404)
 
@@ -387,70 +391,3 @@ def delete_client(client_id: str):
     if request.is_json:
         return jsonify({'message': 'Client archived'})
     return redirect(url_for('cms.clients'))
-
-
-@cms_bp.route('/clients/<client_id>/archive', methods=['POST'])
-@login_required
-@roles_required('admin', 'senior_investigator')
-def archive_client(client_id: str):
-    """Archive a client if no active cases exist."""
-    client = db.session.get(Client, client_id) or abort(404)
-
-    if not client.is_active:
-        return jsonify({'error': 'Client is already archived'}), 400
-
-    # Check if client has any non-closed/non-archived cases
-    active_cases = Case.query.filter(
-        Case.client_id == client_id,
-        Case.is_deleted == False,
-        Case.status.in_(['open', 'active', 'suspended'])
-    ).count()
-    if active_cases > 0:
-        return jsonify({'error': f'Kan niet archiveren: client heeft {active_cases} actieve za(a)k(en)'}), 400
-
-    client.is_active = False
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action='archive',
-        entity_type='client',
-        entity_id=client_id,
-        ip_address=request.remote_addr,
-        description=f"Archived client: {client.name}"
-    )
-    db.session.commit()
-
-    flash(f'Client {client.name} is gearchiveerd.', 'info')
-
-    if request.is_json:
-        return jsonify({'message': 'Client archived'})
-    return redirect(url_for('cms.clients'))
-
-
-@cms_bp.route('/clients/<client_id>/restore', methods=['POST'])
-@login_required
-@roles_required('admin', 'senior_investigator')
-def restore_client(client_id: str):
-    """Restore an archived client."""
-    client = db.session.get(Client, client_id) or abort(404)
-
-    if client.is_active:
-        return jsonify({'error': 'Client is already active'}), 400
-
-    client.is_active = True
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action='restore',
-        entity_type='client',
-        entity_id=client_id,
-        ip_address=request.remote_addr,
-        description=f"Restored client: {client.name}"
-    )
-    db.session.commit()
-
-    flash(f'Client {client.name} is hersteld.', 'info')
-
-    if request.is_json:
-        return jsonify({'message': 'Client restored'})
-    return redirect(url_for('cms.view_client', client_id=client.id))

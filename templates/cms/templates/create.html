@@ -3,9 +3,10 @@
 <h2 style="margin-bottom: 1.5rem;">Create Document Template</h2>
 
 <div class="card">
-    <form method="POST">
-        <div class="form-group">
-            <label for="name">Template Name *</label>
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="name">Template Name *</label>
             <input type="text" name="name" id="name" required placeholder="e.g., Investigation Report">
         </div>
         

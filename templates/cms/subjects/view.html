@@ -14,44 +14,44 @@
         <img id="subjectPhoto" style="display:none;">
         {% endif %}
         <label class="photo-upload-btn" for="photoInput">📷 Upload</label>
-        <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">
+        <input type="file" id="photoInput" class="photo-input" accept="image/*" data-change="uploadPhoto">
     </div>
     <div>
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
             <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
-            <button onclick="confirmDeleteSubject()" class="btn-sm" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">🗑️ Delete</button>
+            <button data-click="confirmDeleteSubject" class="btn-sm" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">🗑️ Delete</button>
         </h1>
         <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             {% if subject.subject_type == 'person' %}
             {% if first_case_id %}
-            <button onclick="openOsintModal()" class="btn-osint" style="border: none; cursor: pointer;">
+            <button data-click="openOsintModal" class="btn-osint" style="border: none; cursor: pointer;">
                 🔍 OSINT Search
             </button>
             {% else %}
-            <button onclick="openOsintModalNoCase()" class="btn-osint" style="border: none; cursor: pointer; opacity: 0.6;" title="Link subject to a case first">
+            <button data-click="openOsintModalNoCase" class="btn-osint" style="border: none; cursor: pointer; opacity: 0.6;" title="Link subject to a case first">
                 🔍 OSINT Search
             </button>
             {% endif %}
-            <button onclick="checkPolitieData()" id="policieCheckBtn" class="btn-osint" style="background: #1e40af; border: none; cursor: pointer;">
+            <button data-click="checkPolitieData" id="policieCheckBtn" class="btn-osint" style="background: #1e40af; border: none; cursor: pointer;">
                 🌍 Check Interpol
             </button>
             {% endif %}
             {% if subject.subject_type == 'vessel' %}
-            <button onclick="checkVessel()" id="vesselCheckBtn" class="btn-osint" style="background: #0e7490; border: none; cursor: pointer;">
+            <button data-click="checkVessel" id="vesselCheckBtn" class="btn-osint" style="background: #0e7490; border: none; cursor: pointer;">
                 🚢 Check Vessel
             </button>
             {% endif %}
             {% if subject.photo_path %}
-            <button onclick="encodeFace()" id="encodeFaceBtn" class="btn-osint" style="background: #7c3aed; border: none; cursor: pointer;">
+            <button data-click="encodeFace" id="encodeFaceBtn" class="btn-osint" style="background: #7c3aed; border: none; cursor: pointer;">
                 👤 Encode Face
             </button>
-            <button onclick="searchTinEye()" class="btn-osint" style="background: #059669; border: none; cursor: pointer;">
+            <button data-click="searchTinEye" class="btn-osint" style="background: #059669; border: none; cursor: pointer;">
                 🔍 TinEye Search
             </button>
             {% endif %}
             {% if subject.face_encoding %}
             <span class="face-badge" style="background: #059669; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; font-size: 0.75rem;">✅ Face Encoded</span>
-            <button onclick="deleteFaceEncoding()" class="btn-sm" style="background: #dc2626; padding: 0.3rem 0.6rem; font-size: 0.7rem;">Remove</button>
+            <button data-click="deleteFaceEncoding" class="btn-sm" style="background: #dc2626; padding: 0.3rem 0.6rem; font-size: 0.7rem;">Remove</button>
             {% endif %}
         </div>
         <div id="faceStatus" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
@@ -69,7 +69,7 @@
         <h3 style="margin: 0;">
             {% if subject.subject_type == 'vehicle' %}🚗 Vehicle Details{% elif subject.subject_type == 'vessel' %}🚢 Vessel Details{% else %}Subject Details{% endif %}
         </h3>
-        <button onclick="openNetworkModal()" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
+        <button data-click="openNetworkModal" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
         <div>
@@ -85,14 +85,14 @@
                         <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
                             <span>{{ c.value }}</span>
                             {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                            <button onclick='emailCheck(this, {{ c.value|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                            <button data-click="emailCheck" data-arg0="{{ c.value|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
                             <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                         </div>
                         {% endfor %}
                     {% elif subject.email %}
                         <div style="display:flex;align-items:center;gap:0.35rem;">
                             <span>{{ subject.email }}</span>
-                            <button onclick='emailCheck(this, {{ subject.email|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
+                            <button data-click="emailCheck" data-arg0="{{ subject.email|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
                             <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                         </div>
                     {% else %}
@@ -109,14 +109,14 @@
                         <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
                             <span>{{ c.value }}</span>
                             {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                            <button onclick='phoneLookup(this, {{ c.value|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                            <button data-click="phoneLookup" data-arg0="{{ c.value|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
                             <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                         </div>
                         {% endfor %}
                     {% elif subject.phone %}
                         <div style="display:flex;align-items:center;gap:0.35rem;">
                             <span>{{ subject.phone }}</span>
-                            <button onclick='phoneLookup(this, {{ subject.phone|tojson }})' class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
+                            <button data-click="phoneLookup" data-arg0="{{ subject.phone|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
                             <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
                         </div>
                     {% else %}
@@ -134,7 +134,7 @@
             <div class="info-item"><label>License Plate (Kenteken)</label>
                 <span style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate if subject.license_plate else '-' }}</span>
                 {% if subject.license_plate %}
-                <button onclick='checkRDWVehicle({{ subject.license_plate|tojson }}, {{ subject.id|tojson }})' class="btn-sm" style="background: #f59e0b; margin-left: 0.5rem; font-size: 0.7rem;">🚗 Check RDW</button>
+                <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate|tojson }}" data-arg1="{{ subject.id|tojson }}" class="btn-sm" style="background: #f59e0b; margin-left: 0.5rem; font-size: 0.7rem;">🚗 Check RDW</button>
                 {% else %}
                 <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">(Add license plate first)</span>
                 {% endif %}
@@ -257,10 +257,10 @@
                                     </span>
                                 </div>
                                 <div style="display:flex;gap:0.35rem;">
-                                    <button type="button" onclick='kadasterLookup(this, {{ addr.id|tojson }})' class="kadaster-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id|tojson }}" class="kadaster-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
                                         🏛 Kadaster
                                     </button>
-                                    <button type="button" onclick='politiebureauLookup(this, {{ addr.id|tojson }})' class="politie-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id|tojson }}" class="politie-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
                                         🚔 Politiebureau
                                     </button>
                                 </div>
@@ -293,7 +293,7 @@
 <div class="card subject-comments-section">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="margin: 0;">📝 Notities & Comments <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h3>
-        <button onclick="loadSubjectComments()" class="btn btn-sm">🔄 Refresh</button>
+        <button data-click="loadSubjectComments" class="btn btn-sm">🔄 Refresh</button>
     </div>
     <div class="comment-form">
         <textarea id="newSubjectComment" placeholder="Add a note or comment about this subject..." style="width:100%;padding:0.75rem;border:1px solid var(--border-input);border-radius:8px;resize:vertical;min-height:80px;background:var(--bg-card);color:var(--text-primary);"></textarea>
@@ -307,7 +307,7 @@
                 <option value="meeting">🤝 Meeting</option>
             </select>
             <label style="font-size:0.875rem;display:flex;align-items:center;gap:0.25rem;"><input type="checkbox" id="subjectCommentPinned"> Pin</label>
-            <button onclick="addSubjectComment()" class="btn-sm" style="background:#059669;">Add Note</button>
+            <button data-click="addSubjectComment" class="btn-sm" style="background:#059669;">Add Note</button>
         </div>
     </div>
     <div id="subjectCommentsList" style="margin-top:1rem;">
@@ -320,8 +320,8 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="margin: 0;">Social Media IDs</h3>
         <div style="display: flex; gap: 0.5rem;">
-            <button onclick="bulkExtractSocialIds()" class="btn-sm" style="background: #059669;" id="bulkExtractBtn">🔍 Bulk Extract from Findings</button>
-            <button onclick="openAddSocialIdModal()" class="btn-sm" style="background: #8b5cf6;">+ Add ID</button>
+            <button data-click="bulkExtractSocialIds" class="btn-sm" style="background: #059669;" id="bulkExtractBtn">🔍 Bulk Extract from Findings</button>
+            <button data-click="openAddSocialIdModal" class="btn-sm" style="background: #8b5cf6;">+ Add ID</button>
         </div>
     </div>
     <div id="socialIdsList">
@@ -343,8 +343,8 @@
                         {% endif %}
                     </td>
                     <td>
-                        <button onclick='editSocialId({{ platform|tojson }})' class="btn-sm" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">Edit</button>
-                        <button onclick='deleteSocialId({{ platform|tojson }})' class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
+                        <button data-click="editSocialId" data-arg0="{{ platform|tojson }}" class="btn-sm" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">Edit</button>
+                        <button data-click="deleteSocialId" data-arg0="{{ platform|tojson }}" class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -361,7 +361,7 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="margin: 0;">🌐 Social Accounts (Usernames)</h3>
-        <button onclick="openAddSocialAccountModal()" class="btn-sm" style="background: #8b5cf6;">+ Add Username</button>
+        <button data-click="openAddSocialAccountModal" class="btn-sm" style="background: #8b5cf6;">+ Add Username</button>
     </div>
     <div id="socialAccountsList">
         {% if subject.social_accounts and subject.social_accounts.count() > 0 %}
@@ -376,7 +376,7 @@
                     <td><strong>{{ acct.username }}</strong></td>
                     <td>{% if acct.url %}<a href="{{ acct.url }}" target="_blank" style="font-size:0.8rem;">🔗 link</a>{% else %}-{% endif %}</td>
                     <td>
-                        <button onclick="deleteSocialAccount('{{ acct.id }}')" class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
+                        <button data-click="deleteSocialAccount" data-arg0="{{ acct.id }}" class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -397,11 +397,11 @@
     </div>
     <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
         <input type="text" id="usernameSearchInput" placeholder="Enter username..." style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
-        <button onclick="searchUsername()" class="btn-sm" style="background:#8b5cf6;">🔍 Check</button>
+        <button data-click="searchUsername" class="btn-sm" style="background:#8b5cf6;">🔍 Check</button>
     </div>
     <div id="usernameResults"></div>
     <div id="usernameSaveBar" style="display:none; margin-top: 0.75rem;">
-        <button onclick="saveUsernameFindings()" class="btn-sm" style="background:#059669;" id="saveUsernameBtn">📥 Save Selected as Findings (<span id="usernameSelectedCount">0</span>)</button>
+        <button data-click="saveUsernameFindings" class="btn-sm" style="background:#059669;" id="saveUsernameBtn">📥 Save Selected as Findings (<span id="usernameSelectedCount">0</span>)</button>
     </div>
 </div>
 
@@ -410,9 +410,9 @@
     <div class="modal-content" style="max-width: 400px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="margin: 0;">Add Social Account</h2>
-            <span onclick="closeAddSocialAccountModal()" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            <span data-click="closeAddSocialAccountModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
         </div>
-        <form id="addSocialAccountForm" onsubmit="return saveSocialAccount(event)">
+        <form id="addSocialAccountForm" data-submit="saveSocialAccount">
             <div class="form-group">
                 <label for="saPlatform">Platform</label>
                 <select id="saPlatform" style="width: 100%; padding: 0.5rem;">
@@ -442,7 +442,7 @@
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
                 <button type="submit" class="btn-sm" style="background: #059669;">Save</button>
-                <button type="button" onclick="closeAddSocialAccountModal()" class="btn-sm" style="background: #666;">Cancel</button>
+                <button type="button" data-click="closeAddSocialAccountModal" class="btn-sm" style="background: #666;">Cancel</button>
             </div>
         </form>
     </div>
@@ -453,7 +453,7 @@
     <div class="modal-content" style="max-width: 400px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="margin: 0;" id="socialIdModalTitle">Add Social Media ID</h2>
-            <span onclick="closeAddSocialIdModal()" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            <span data-click="closeAddSocialIdModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
         </div>
         <form id="addSocialIdForm">
             <div class="form-group">
@@ -478,8 +478,8 @@
                 <input type="url" id="socialUrl" style="width: 100%; padding: 0.5rem;" placeholder="https://...">
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button type="button" onclick="saveSocialId()" class="btn-sm" style="background: #059669;">Save</button>
-                <button type="button" onclick="closeAddSocialIdModal()" class="btn-sm" style="background: #666;">Cancel</button>
+                <button type="button" data-click="saveSocialId" class="btn-sm" style="background: #059669;">Save</button>
+                <button type="button" data-click="closeAddSocialIdModal" class="btn-sm" style="background: #666;">Cancel</button>
             </div>
         </form>
     </div>
@@ -490,13 +490,13 @@
     <div class="modal-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="margin: 0;">OSINT Person Search</h2>
-            <span onclick="closeOsintModal()" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            <span data-click="closeOsintModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
         </div>
         
         <div id="osintSearchForm">
             <p style="margin-bottom: 1rem; color: var(--text-secondary);">Search for information about <strong>{{ subject.name }}</strong></p>
             <div id="osintActions">
-                <button onclick="startOsintSearch()" class="btn-sm btn-success">Start Search</button>
+                <button data-click="startOsintSearch" class="btn-sm btn-success">Start Search</button>
             </div>
         </div>
         
@@ -506,7 +506,7 @@
                 <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
             </div>
             <div style="margin-top: 1.5rem;">
-                <button onclick="cancelOsintSearch()" class="btn-sm" style="background: var(--danger-text);">Cancel Search</button>
+                <button data-click="cancelOsintSearch" class="btn-sm" style="background: var(--danger-text);">Cancel Search</button>
             </div>
         </div>
         
@@ -517,9 +517,9 @@
             </div>
             <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
             <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button onclick="closeOsintModal()" class="btn-sm" style="background: #666;">Close</button>
-                <button onclick="saveSelectedAsSocialAccounts()" class="btn-sm" style="background: #8b5cf6;" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
-                <button onclick="addSelectedFindings()" class="btn-sm btn-success" id="addFindingsBtn" disabled>Add Selected to Findings (<span id="selectedCount">0</span>)</button>
+                <button data-click="closeOsintModal" class="btn-sm" style="background: #666;">Close</button>
+                <button data-click="saveSelectedAsSocialAccounts" class="btn-sm" style="background: #8b5cf6;" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
+                <button data-click="addSelectedFindings" class="btn-sm btn-success" id="addFindingsBtn" disabled>Add Selected to Findings (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
         
@@ -534,7 +534,7 @@
     <div class="modal-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2 style="margin: 0;">Subject Network</h2>
-            <span onclick="closeNetworkModal()" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+            <span data-click="closeNetworkModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
         </div>
         
         <div id="networkInfo" style="margin-bottom: 0.5rem;">
@@ -549,7 +549,7 @@
         </div>
         
         <div style="margin-top: 1rem;">
-            <button onclick="openAddRelationForm()" class="btn-sm" style="background: #059669;">+ Add Relationship</button>
+            <button data-click="openAddRelationForm" class="btn-sm" style="background: #059669;">+ Add Relationship</button>
         </div>
         
         <div id="addRelationForm" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
@@ -566,8 +566,8 @@
             </select>
             <div id="relationError" style="color:#dc2626;font-size:0.85rem;margin-bottom:0.5rem;word-break:break-all;"></div>
             <div style="display: flex; gap: 0.5rem;">
-                <button onclick="addRelationship()" class="btn-sm" style="background: #059669;">Save</button>
-                <button onclick="closeAddRelationForm()" class="btn-sm" style="background: var(--text-muted);">Cancel</button>
+                <button data-click="addRelationship" class="btn-sm" style="background: #059669;">Save</button>
+                <button data-click="closeAddRelationForm" class="btn-sm" style="background: var(--text-muted);">Cancel</button>
             </div>
         </div>
     </div>
@@ -873,7 +873,7 @@
             if (other) {
                 html += `<div class="relation-item">
                     <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || 'related'}</span></div>
-                    <button onclick="removeRelationship('${other.id}')" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
+                    <button data-click="removeRelationship" data-arg0="${other.id}"" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
                 </div>`;
             }
         });
@@ -955,7 +955,7 @@
     document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });
     
     // RDW Vehicle Check Functions
-    function checkRDWVehicle(kenteken, subjectId) {
+    function checkRDWVehicle(btn, kenteken, subjectId) {
         if (!kenteken) {
             alert('No license plate (kenteken) available for this vehicle.');
             return;
@@ -1033,6 +1033,7 @@
         
         const formData = new FormData();
         formData.append('photo', file);
+        formData.append('csrf_token', '{{ csrf_token() }}');
         
         fetch("{{ url_for('cms.upload_subject_photo', subject_id=subject.id) }}", {
             method: 'POST',
@@ -1050,7 +1051,7 @@
                 } else {
                     photoFrame.innerHTML = `<img src="/static${data.photo_path}?t=${new Date().getTime()}" alt="Photo">
                         <label class="photo-upload-btn" for="photoInput">📷 Change</label>
-                        <input type="file" id="photoInput" class="photo-input" accept="image/*" onchange="uploadPhoto(this)">`;
+                        <input type="file" id="photoInput" class="photo-input" accept="image/*" data-change="uploadPhoto">`;
                 }
             }
         })
@@ -1108,7 +1109,7 @@
                     if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">Issued by: ' + p.issuing_country + '</span>';
                     if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> INTERPOL link</a>';
                     html += '</div>';
-                    html += '<button onclick="saveInterpolFinding(&#39;wanted&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + i + '" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
                     html += '</div></div>';
                 });
             }
@@ -1127,7 +1128,7 @@
                     if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">Info: ' + p.description + '</span>';
                     if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Link</a>';
                     html += '</div>';
-                    html += '<button onclick="saveInterpolFinding(&#39;missing&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + i + '" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
                     html += '</div></div>';
                 });
             }
@@ -1148,7 +1149,7 @@
                     if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;"> Datum: ' + p.date + '</span>';
                     if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Bekijk op politie.nl</a>';
                     html += '</div>';
-                    html += '<button onclick="saveInterpolFinding(&#39;opsporing&#39;, ' + i + ', this)" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;align-self:flex-start;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + i + '" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;align-self:flex-start;"> Bewaar als bevinding</button>';
                     html += '</div></div>';
                 });
             }
@@ -1168,7 +1169,7 @@
         });
     }
 
-    function saveInterpolFinding(type, index, btn) {
+    function saveInterpolFinding(btn, type, index) {
         const data = _lastInterpolData;
         if (!data) return;
 
@@ -1386,10 +1387,10 @@
             // Save as finding button
             const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
             if (firstCaseId) {
-                html += '<button onclick="saveVesselFinding(this)" class="btn-sm" style="background:#0e7490;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">📥 Bewaar als bevinding</button>';
+                html += '<button data-click="saveVesselFinding"" class="btn-sm" style="background:#0e7490;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">📥 Bewaar als bevinding</button>';
 
                 // Update subject button
-                html += ' <button onclick="updateVesselFromCheck()" class="btn-sm" style="background:#0891b2;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;margin-left:0.5rem;">💾 Update vessel fields</button>';
+                html += ' <button data-click="updateVesselFromCheck"" class="btn-sm" style="background:#0891b2;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;margin-left:0.5rem;">💾 Update vessel fields</button>';
             } else {
                 html += '<div style="font-size:0.8rem;color:#888;">Link subject to a case to save findings.</div>';
             }
@@ -1659,7 +1660,7 @@
             catDiv.dataset.category = cat;
             catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">${categoryLabels[cat] || cat} (${items.length})</h4>
                 <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">
-                    <input type="checkbox" class="cat-select-all" data-cat="${cat}" onchange="toggleCategory(this)"> Select all
+                    <input type="checkbox" class="cat-select-all" data-cat="${cat}" data-change="toggleCategory""> Select all
                 </label>`;
             
             items.forEach(item => {
@@ -1668,7 +1669,7 @@
                 const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">Brave</span>' : 
                                      item.source === 'duckduckgo' ? '<span class="source-badge ddg">DDG</span>' : '';
                 div.innerHTML = `
-                    <input type="checkbox" class="result-checkbox" data-url="${item.url}" data-domain="${item.domain || ''}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || 'general'}" onchange="updateSelectedCount()">
+                    <input type="checkbox" class="result-checkbox" data-url="${item.url}" data-domain="${item.domain || ''}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || 'general'}" data-change="updateSelectedCount"">
                     <div class="result-content">
                         <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
                         ${item.query ? `<div class="result-query">${item.query}</div>` : ''}
@@ -1685,14 +1686,14 @@
             searchDiv.style.marginBottom = '1rem';
             searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (${searchLinks.length})</h4>
                 <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">
-                    <input type="checkbox" class="cat-select-all" data-cat="search" onchange="toggleCategory(this)"> Select all
+                    <input type="checkbox" class="cat-select-all" data-cat="search" data-change="toggleCategory""> Select all
                 </label>`;
             
             searchLinks.forEach(link => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
                 div.innerHTML = `
-                    <input type="checkbox" class="result-checkbox" data-url="${link.url}" data-domain="${link.engine || 'Unknown'}" data-query="${link.name || ''}" data-source="search_link" data-category="search" onchange="updateSelectedCount()">
+                    <input type="checkbox" class="result-checkbox" data-url="${link.url}" data-domain="${link.engine || 'Unknown'}" data-query="${link.name || ''}" data-source="search_link" data-category="search" data-change="updateSelectedCount"">
                     <div class="result-content">
                         <div class="result-engine">${link.engine || 'Unknown'}</div>
                         <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
@@ -2164,7 +2165,7 @@
                 let html = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.5rem;margin-bottom:0.5rem;font-size:0.8rem;text-align:center;color:#15803d;">';
                 html += '📦 Previously checked on ' + ts;
                 if (storedData.created_by_name) html += ' by ' + storedData.created_by_name;
-                html += ' <button onclick="phoneLookupRefresh(\'' + phone.replace(/'/g, "\\'") + '\', this)" style="background:#7c3aed;color:white;border:none;border-radius:4px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">🔄 Refresh</button>';
+                html += ' <button data-click="phoneLookupRefresh" data-arg0="' + phone.replace(/'/g, '\\x27') + '" style="background:#7c3aed;color:white;border:none;border-radius:4px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">🔄 Refresh</button>';
                 html += '</div>';
                 html += renderPhoneResult(raw);
                 resultDiv.innerHTML = html;
@@ -2202,7 +2203,7 @@
         }
     }
 
-    async function phoneLookupRefresh(phone, refreshBtn) {
+    async function phoneLookupRefresh(refreshBtn, phone) {
         const resultDiv = refreshBtn.closest('.phone-result') || refreshBtn.parentElement.querySelector('.phone-result');
         const phoneBtn = refreshBtn.closest('.phone-result') ? null : null;
         refreshBtn.disabled = true;
@@ -2472,13 +2473,13 @@
                     <div class="comment-edit-form" id="edit-form-${c.id}" style="display:none;">
                         <textarea id="edit-content-${c.id}">${escapeHtml(c.content)}</textarea>
                         <div class="comment-edit-actions">
-                            <button onclick="saveSubjectComment('${c.id}')" class="btn btn-sm" style="background:#059669;">Save</button>
-                            <button onclick="cancelSubjectCommentEdit('${c.id}')" class="btn btn-sm" style="background:#666;">Cancel</button>
+                            <button data-click="saveSubjectComment" data-arg0="${c.id}"" class="btn btn-sm" style="background:#059669;">Save</button>
+                            <button data-click="cancelSubjectCommentEdit" data-arg0="${c.id}"" class="btn btn-sm" style="background:#666;">Cancel</button>
                         </div>
                     </div>
                     <div class="comment-actions">
-                        ${canEdit ? `<button onclick="showSubjectCommentEditForm('${c.id}')">Edit</button>` : ''}
-                        <button onclick="deleteSubjectComment('${c.id}')">Delete</button>
+                        ${canEdit ? `<button data-click="showSubjectCommentEditForm" data-arg0="${c.id}"">Edit</button>` : ''}
+                        <button data-click="deleteSubjectComment" data-arg0="${c.id}"">Delete</button>
                     </div>
                 </div>
             `;

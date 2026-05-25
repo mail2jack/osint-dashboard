@@ -1,12 +1,15 @@
 import logging
 
+import flask
 from flask import request, jsonify, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from .. import csrf
 from ..models import db, FinancialRecord, AuditLog, Case
 from ..auth import senior_required, case_access_required
 from ..encryption_utils import encryptor
+from ..validation import validate, CreateFinancialSchema, VerifyFinancialSchema
 
 logger = logging.getLogger(__name__)
 
@@ -14,33 +17,32 @@ logger = logging.getLogger(__name__)
 @cms_bp.route('/financials/create', methods=['POST'])
 @login_required
 @senior_required
-def create_financial():
+@validate(CreateFinancialSchema)
+def create_financial() -> flask.Response:
     """Create a new financial record."""
-    data = request.get_json() if request.is_json else request.form
-
     required = ['case_id', 'transaction_date', 'amount']
     for field in required:
-        if not data.get(field):
+        if not request.validated_data.get(field):
             return jsonify({'error': f'{field} is required'}), 400
 
     record = FinancialRecord(
-        case_id=data['case_id'],
-        subject_id=data.get('subject_id'),
-        transaction_date=data['transaction_date'],
-        amount=data['amount'],
-        currency=data.get('currency', 'EUR'),
-        transaction_type=data.get('transaction_type'),
-        source=data.get('source'),
-        source_reference=data.get('source_reference'),
-        description=data.get('description')
+        case_id=request.validated_data['case_id'],
+        subject_id=request.validated_data.get('subject_id'),
+        transaction_date=request.validated_data['transaction_date'],
+        amount=request.validated_data['amount'],
+        currency=request.validated_data.get('currency', 'EUR'),
+        transaction_type=request.validated_data.get('transaction_type'),
+        source=request.validated_data.get('source'),
+        source_reference=request.validated_data.get('source_reference'),
+        description=request.validated_data.get('description')
     )
 
     # Encrypt counterparty details
     encrypted_fields = ['counterparty_name', 'counterparty_account',
                         'counterparty_bank', 'counterparty_country']
     for field in encrypted_fields:
-        if data.get(field):
-            setattr(record, field, encryptor.encrypt(data[field]))
+        if request.validated_data.get(field):
+            setattr(record, field, encryptor.encrypt(request.validated_data[field]))
 
     db.session.add(record)
 
@@ -50,7 +52,7 @@ def create_financial():
         entity_type='financial_record',
         entity_id=record.id,
         ip_address=request.remote_addr,
-        case_id=data['case_id'],
+        case_id=request.validated_data['case_id'],
         new_values={'amount': str(record.amount),
                     'date': str(record.transaction_date)},
         description=f"Added financial record: {record.amount} {record.currency}"
@@ -61,19 +63,20 @@ def create_financial():
         return jsonify({'message': 'Financial record created', 'record': record.to_dict()}), 201
 
     flash('Financial record added.', 'success')
-    return redirect(url_for('cms.view_case', case_id=data['case_id']))
+    return redirect(url_for('cms.view_case', case_id=request.validated_data['case_id']))
 
 
 @cms_bp.route('/financials/<record_id>/verify', methods=['POST'])
+@csrf.exempt
 @login_required
 @senior_required
-def verify_financial(record_id: str):
+@validate(VerifyFinancialSchema)
+def verify_financial(record_id: str) -> flask.Response:
     """Verify or flag a financial record."""
     record = db.session.get(FinancialRecord, record_id) or abort(404)
-    data = request.get_json()
 
-    action = data.get('action')  # 'verify' or 'flag'
-    notes = data.get('notes', '')
+    action = request.validated_data.get('action')  # 'verify' or 'flag'
+    notes = request.validated_data.get('notes', '')
 
     if action == 'verify':
         record.verify(current_user.id, notes)
@@ -104,7 +107,7 @@ def verify_financial(record_id: str):
 @cms_bp.route('/cases/<case_id>/financial-summary')
 @login_required
 @case_access_required
-def get_financial_summary(case_id: str):
+def get_financial_summary(case_id: str) -> flask.Response:
     """Get aggregated financial data for a case."""
     db.session.get(Case, case_id) or abort(404)
     records = FinancialRecord.query.filter_by(
