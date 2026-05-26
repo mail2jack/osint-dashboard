@@ -8,6 +8,7 @@ import os
 import signal
 
 import flask
+import httpx
 from flask import Flask, request, jsonify, render_template, redirect, url_for, g
 
 logger = logging.getLogger(__name__)
