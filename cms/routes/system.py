@@ -240,10 +240,6 @@ def do_update() -> flask.Response:
 
     # Step 2: Git pull (use full path, systemd PATH may not include /usr/bin)
     git_path = shutil.which('git') or '/usr/bin/git'
-    # Fix .git ownership so osint can write FETCH_HEAD; install.sh adds sudoers rule
-    step('Fix repo permissions',
-         ['/usr/bin/sudo', 'chown', '-R', 'osint:osint', project_root],
-         cwd=project_root)
     step('Pull latest code',
          [git_path, 'pull', 'origin', 'master'], cwd=project_root)
 
