@@ -42,6 +42,19 @@ FIXED = "  FIXED"
 SKIP = "  SKIP"
 DRY = "  WOULD FIX"
 
+# Detect venv Python (system Python 3.14 has PEP 668 externally-managed)
+VENV_PYTHON = None
+for candidate in [
+    APP_DIR / "venv" / "bin" / "python3",
+    Path("/opt/osint-dashboard/venv/bin/python3"),
+    Path("/opt/osint-dashboard/.venv/bin/python3"),
+]:
+    if candidate.exists():
+        VENV_PYTHON = str(candidate)
+        break
+if not VENV_PYTHON:
+    VENV_PYTHON = shutil.which("python3") or "/usr/bin/python3"
+
 
 def log(msg: str, status: str = "", **kwargs):
     ts = datetime.now().strftime("%H:%M:%S")
@@ -176,7 +189,7 @@ def check_alembic(dry: bool) -> bool:
             if "=" in line and not line.strip().startswith("#"):
                 k, v = line.strip().split("=", 1)
                 env[k] = v
-    python = shutil.which("python3") or "/usr/bin/python3"
+    python = VENV_PYTHON
     r = run([python, "-m", "alembic", "check"], cwd=str(APP_DIR), env=env, timeout=30)
     # 'alembic check' exits 0 if no pending migrations
     if r.returncode == 0:
@@ -265,7 +278,7 @@ def check_pip_deps(dry: bool) -> bool:
     if not req.exists():
         log(SKIP + " (no requirements.txt)")
         return True
-    python = shutil.which("python3") or "/usr/bin/python3"
+    python = VENV_PYTHON
     r = run([python, "-m", "pip", "install", "-r", str(req), "--dry-run"], timeout=60)
     if r.returncode == 0:
         log(OK)
@@ -302,7 +315,7 @@ def check_spiderfoot_url_settings(dry: bool) -> bool:
             if "=" in line and not line.strip().startswith("#"):
                 k, v = line.strip().split("=", 1)
                 env[k] = v
-    python = shutil.which("python3") or "/usr/bin/python3"
+    python = VENV_PYTHON
     code = (
         "from app import app; from cms.models import Setting; "
         "app.app_context().push(); "
@@ -315,8 +328,20 @@ def check_spiderfoot_url_settings(dry: bool) -> bool:
         log(OK + f" ({val})")
         return True
     log(FAIL + " (not configured)")
-    if dry or not val or val == "EMPTY":
-        log("  Set via: python3 -c 'from app import app; from cms.models import Setting; app.app_context().push(); Setting.set(\"spiderfoot_url\", \"http://127.0.0.1:5001\")'")
+    if dry:
+        return False
+    # Auto-configure to default
+    set_code = (
+        "from app import app; from cms.models import Setting; "
+        "app.app_context().push(); "
+        "Setting.set('spiderfoot_url', 'http://127.0.0.1:5001', 'SpiderFoot server URL', 'spiderfoot'); "
+        "print('OK')"
+    )
+    r2 = run([VENV_PYTHON, "-c", set_code], cwd=str(APP_DIR), env=env, timeout=30)
+    if r2.returncode == 0:
+        log(f"  {FIXED} (set to http://127.0.0.1:5001)")
+        return True
+    log(f"  {FAIL} {r2.stderr.strip()[:200]}")
     return False
 
 
