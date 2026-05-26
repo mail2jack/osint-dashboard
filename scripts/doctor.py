@@ -43,9 +43,9 @@ SKIP = "  SKIP"
 DRY = "  WOULD FIX"
 
 
-def log(msg: str, status: str = ""):
+def log(msg: str, status: str = "", **kwargs):
     ts = datetime.now().strftime("%H:%M:%S")
-    print(f"[{ts}] {msg} {status}")
+    print(f"[{ts}] {msg} {status}", **kwargs)
 
 
 def run(cmd: list, timeout: int = 30, **kwargs) -> subprocess.CompletedProcess:
