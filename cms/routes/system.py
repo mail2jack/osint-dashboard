@@ -204,11 +204,12 @@ def do_update() -> flask.Response:
     current_ver = get_version()
     results = []
 
-    def step(msg, cmd_list, cwd=None):
+    def step(msg, cmd_list, cwd=None, env=None):
         results.append({'step': msg, 'status': 'running'})
         try:
             r = subprocess.run(cmd_list, capture_output=True, text=True,
-                               cwd=cwd or current_app.root_path, timeout=120)
+                               cwd=cwd or current_app.root_path, timeout=120,
+                               env=env)
             if r.returncode == 0:
                 results[-1] = {'step': msg, 'status': 'ok',
                                'output': r.stdout.strip()}
@@ -239,6 +240,10 @@ def do_update() -> flask.Response:
 
     # Step 2: Git pull (use full path, systemd PATH may not include /usr/bin)
     git_path = shutil.which('git') or '/usr/bin/git'
+    # Fix .git ownership so osint can write FETCH_HEAD; install.sh adds sudoers rule
+    step('Fix repo permissions',
+         ['/usr/bin/sudo', 'chown', '-R', 'osint:osint', project_root],
+         cwd=project_root)
     step('Pull latest code',
          [git_path, 'pull', 'origin', 'master'], cwd=project_root)
 
@@ -247,12 +252,15 @@ def do_update() -> flask.Response:
          [sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt', '--upgrade'],
          cwd=project_root)
 
-    # Step 4: Run db.create_all() for any new tables
+    # Step 4: Apply Alembic migrations
+    import os as _os
+    alembic_env = {**_os.environ}
+    alembic_env['DATABASE_URL'] = db_path
+    if 'CMS_ENCRYPTION_KEY' not in alembic_env:
+        alembic_env['CMS_ENCRYPTION_KEY'] = current_app.config.get('CMS_ENCRYPTION_KEY', '')
     step('Apply database migrations',
-         [sys.executable, '-c',
-          'from app import app; from cms.models import db; import flask; '
-          'app.app_context().push(); db.create_all(); print("Migrations OK")'],
-         cwd=project_root)
+         [sys.executable, '-m', 'alembic', 'upgrade', 'head'],
+         cwd=project_root, env=alembic_env)
 
     # Step 5: Restart (uses sudo via sudoers rule set by install.sh; ok if it fails — dev mode)
     step('Restart services',

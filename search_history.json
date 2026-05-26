@@ -1,0 +1,2052 @@
+[
+  {
+    "id": "20260513080606_5110",
+    "timestamp": "2026-05-13T08:06:06.686059",
+    "tool": "username",
+    "query": "vixencuckqueen",
+    "results_count": 25,
+    "results_summary": "25 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260329200427_402",
+    "timestamp": "2026-03-29T20:04:27.099008",
+    "tool": "person",
+    "query": "clifton becker",
+    "results_count": 21,
+    "results_summary": "21 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260329195850_6843",
+    "timestamp": "2026-03-29T19:58:50.935911",
+    "tool": "person",
+    "query": "oran yucel",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260329195748_6843",
+    "timestamp": "2026-03-29T19:57:48.274195",
+    "tool": "person",
+    "query": "oran yucel",
+    "results_count": 13,
+    "results_summary": "13 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327205008_7463",
+    "timestamp": "2026-03-27T20:50:08.472186",
+    "tool": "person",
+    "query": "peter barzilay",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327203655_7078",
+    "timestamp": "2026-03-27T20:36:55.276762",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 19,
+    "results_summary": "19 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327195703_4000",
+    "timestamp": "2026-03-27T19:57:03.646867",
+    "tool": "holehe",
+    "query": "royversteegh@gmail.com",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327194017_4000",
+    "timestamp": "2026-03-27T19:40:17.225308",
+    "tool": "holehe",
+    "query": "royversteegh@gmail.com",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327191240_923",
+    "timestamp": "2026-03-27T19:12:40.020240",
+    "tool": "person",
+    "query": "charo walop",
+    "results_count": 20,
+    "results_summary": "20 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327191153_2346",
+    "timestamp": "2026-03-27T19:11:53.480171",
+    "tool": "person",
+    "query": "roy versteegh",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327191122_7267",
+    "timestamp": "2026-03-27T19:11:22.547106",
+    "tool": "person",
+    "query": "ivan versteegh",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327185012_3507",
+    "timestamp": "2026-03-27T18:50:12.179589",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 24,
+    "results_summary": "24 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327184253_3066",
+    "timestamp": "2026-03-27T18:42:53.975371",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 18,
+    "results_summary": "18 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327184201_3507",
+    "timestamp": "2026-03-27T18:42:01.050447",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 24,
+    "results_summary": "24 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183917_4000",
+    "timestamp": "2026-03-27T18:39:17.048348",
+    "tool": "email",
+    "query": "royversteegh@gmail.com",
+    "results_count": 4,
+    "results_summary": "4 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183803_3507",
+    "timestamp": "2026-03-27T18:38:03.381067",
+    "tool": "username",
+    "query": "clinton.martis.9",
+    "results_count": 12,
+    "results_summary": "12 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183504_9350",
+    "timestamp": "2026-03-27T18:35:04.509038",
+    "tool": "phone",
+    "query": "+31618175143",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: T-Mobile Thuis",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183422_8120",
+    "timestamp": "2026-03-27T18:34:22.843011",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327183411_3507",
+    "timestamp": "2026-03-27T18:34:11.682584",
+    "tool": "maigret",
+    "query": "clinton.martis.9",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327182402_7030",
+    "timestamp": "2026-03-27T18:24:02.545926",
+    "tool": "maigret",
+    "query": "clinton.martis.9",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327180942_8769",
+    "timestamp": "2026-03-27T18:09:42.788101",
+    "tool": "person",
+    "query": "anne versteegh",
+    "results_count": 18,
+    "results_summary": "18 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327180921_2536",
+    "timestamp": "2026-03-27T18:09:21.079883",
+    "tool": "person",
+    "query": "anne sophie versteegh",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327180523_7010",
+    "timestamp": "2026-03-27T18:05:23.050971",
+    "tool": "social",
+    "query": "asversteegh@gmail.com",
+    "results_count": 21,
+    "results_summary": "21 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327175952_3558",
+    "timestamp": "2026-03-27T17:59:52.719997",
+    "tool": "maigret",
+    "query": "clinton.martis.9",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327175827_3558",
+    "timestamp": "2026-03-27T17:58:27.775905",
+    "tool": "username",
+    "query": "clinton.martis.9",
+    "results_count": 10,
+    "results_summary": "10 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327175405_6395",
+    "timestamp": "2026-03-27T17:54:05.776719",
+    "tool": "username",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327175337_6395",
+    "timestamp": "2026-03-27T17:53:37.975205",
+    "tool": "username",
+    "query": "clinton.martis.9",
+    "results_count": 8,
+    "results_summary": "8 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327174134_7149",
+    "timestamp": "2026-03-27T17:41:34.599600",
+    "tool": "username",
+    "query": "clinton.martis.9",
+    "results_count": 6,
+    "results_summary": "6 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327173706_7149",
+    "timestamp": "2026-03-27T17:37:06.316502",
+    "tool": "maigret",
+    "query": "clinton.martis.9",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327173523_3691",
+    "timestamp": "2026-03-27T17:35:23.924932",
+    "tool": "maigret",
+    "query": "muziekantje",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327173512_3691",
+    "timestamp": "2026-03-27T17:35:12.362250",
+    "tool": "maigret",
+    "query": "muziekantje",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327173500_3691",
+    "timestamp": "2026-03-27T17:35:00.419137",
+    "tool": "maigret",
+    "query": "muziekantje",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327173431_7533",
+    "timestamp": "2026-03-27T17:34:31.663414",
+    "tool": "phone",
+    "query": "+31618175143",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: T-Mobile Thuis",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327172313_7533",
+    "timestamp": "2026-03-27T17:23:13.544751",
+    "tool": "phone",
+    "query": "+31618175143",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: T-Mobile Thuis",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327172056_8289",
+    "timestamp": "2026-03-27T17:20:56.746229",
+    "tool": "email",
+    "query": "ivan.versteegh@icloud.com",
+    "results_count": 5,
+    "results_summary": "5 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327171319_2097",
+    "timestamp": "2026-03-27T17:13:19.872182",
+    "tool": "email",
+    "query": "royversteegh@gmail.com",
+    "results_count": 10,
+    "results_summary": "10 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327165816_2589",
+    "timestamp": "2026-03-27T16:58:16.386400",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327155237_6438",
+    "timestamp": "2026-03-27T15:52:37.584826",
+    "tool": "social",
+    "query": "ivan.versteegh@gmail.com",
+    "results_count": 13,
+    "results_summary": "13 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327154614_2349",
+    "timestamp": "2026-03-27T15:46:14.375569",
+    "tool": "social",
+    "query": "juultjetielemans",
+    "results_count": 9,
+    "results_summary": "9 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327153519_5289",
+    "timestamp": "2026-03-27T15:35:19.964787",
+    "tool": "person",
+    "query": "juultje tieleman",
+    "results_count": 23,
+    "results_summary": "23 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327152042_5170",
+    "timestamp": "2026-03-27T15:20:42.162703",
+    "tool": "social",
+    "query": "muziekantje",
+    "results_count": 7,
+    "results_summary": "7 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327151542_8185",
+    "timestamp": "2026-03-27T15:15:42.001720",
+    "tool": "social",
+    "query": "juultjetieleman",
+    "results_count": 9,
+    "results_summary": "9 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327151445_4767",
+    "timestamp": "2026-03-27T15:14:45.429474",
+    "tool": "social",
+    "query": "lindseyjonker37",
+    "results_count": 6,
+    "results_summary": "6 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327151336_6292",
+    "timestamp": "2026-03-27T15:13:36.354983",
+    "tool": "social",
+    "query": "lindseyjonker36",
+    "results_count": 8,
+    "results_summary": "8 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327150612_8209",
+    "timestamp": "2026-03-27T15:06:12.437194",
+    "tool": "social",
+    "query": "juultjetieleman",
+    "results_count": 1,
+    "results_summary": "1 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327150321_7733",
+    "timestamp": "2026-03-27T15:03:21.998311",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 23,
+    "results_summary": "23 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327150228_4468",
+    "timestamp": "2026-03-27T15:02:28.387927",
+    "tool": "social",
+    "query": "lindseyjonker37",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327150119_4416",
+    "timestamp": "2026-03-27T15:01:19.003177",
+    "tool": "social",
+    "query": "lindseyjonker36",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327145538_6551",
+    "timestamp": "2026-03-27T14:55:38.423778",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 3,
+    "results_summary": "3 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327144522_6551",
+    "timestamp": "2026-03-27T14:45:22.417916",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 3,
+    "results_summary": "3 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327144324_8621",
+    "timestamp": "2026-03-27T14:43:24.169122",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 2,
+    "results_summary": "2 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327144315_8621",
+    "timestamp": "2026-03-27T14:43:15.327312",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 2,
+    "results_summary": "2 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327144257_8621",
+    "timestamp": "2026-03-27T14:42:57.874827",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 2,
+    "results_summary": "2 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327143821_8040",
+    "timestamp": "2026-03-27T14:38:21.976601",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 9,
+    "results_summary": "9 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327143604_8040",
+    "timestamp": "2026-03-27T14:36:04.195320",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 7,
+    "results_summary": "7 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327143602_8040",
+    "timestamp": "2026-03-27T14:36:02.724361",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 7,
+    "results_summary": "7 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327143556_8040",
+    "timestamp": "2026-03-27T14:35:56.291180",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 7,
+    "results_summary": "7 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327143554_8040",
+    "timestamp": "2026-03-27T14:35:54.906373",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 7,
+    "results_summary": "7 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327143554_8040",
+    "timestamp": "2026-03-27T14:35:54.033529",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 7,
+    "results_summary": "7 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327143552_8040",
+    "timestamp": "2026-03-27T14:35:52.229539",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 7,
+    "results_summary": "7 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327143545_8040",
+    "timestamp": "2026-03-27T14:35:45.370733",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 7,
+    "results_summary": "7 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142526_9516",
+    "timestamp": "2026-03-27T14:25:26.587303",
+    "tool": "person",
+    "query": "danique de graaff",
+    "results_count": 17,
+    "results_summary": "17 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142318_5598",
+    "timestamp": "2026-03-27T14:23:18.395523",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142314_5598",
+    "timestamp": "2026-03-27T14:23:14.426138",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142313_5598",
+    "timestamp": "2026-03-27T14:23:13.573911",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142311_5598",
+    "timestamp": "2026-03-27T14:23:11.242676",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142310_5598",
+    "timestamp": "2026-03-27T14:23:10.360408",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142309_5598",
+    "timestamp": "2026-03-27T14:23:09.253577",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142308_5598",
+    "timestamp": "2026-03-27T14:23:08.408884",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142307_5598",
+    "timestamp": "2026-03-27T14:23:07.469332",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142306_5598",
+    "timestamp": "2026-03-27T14:23:06.603470",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327142305_5598",
+    "timestamp": "2026-03-27T14:23:05.129471",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found (cached)",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327140939_5598",
+    "timestamp": "2026-03-27T14:09:39.251808",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 11,
+    "results_summary": "11 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327140633_8270",
+    "timestamp": "2026-03-27T14:06:33.721020",
+    "tool": "person",
+    "query": "clinton martis 9",
+    "results_count": 13,
+    "results_summary": "13 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327140534_357",
+    "timestamp": "2026-03-27T14:05:34.017814",
+    "tool": "person",
+    "query": "clinton martis",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327140442_357",
+    "timestamp": "2026-03-27T14:04:42.514077",
+    "tool": "person",
+    "query": "clinton martis",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327140309_357",
+    "timestamp": "2026-03-27T14:03:09.647933",
+    "tool": "person",
+    "query": "clinton martis",
+    "results_count": 16,
+    "results_summary": "16 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327134625_2670",
+    "timestamp": "2026-03-27T13:46:25.472970",
+    "tool": "person",
+    "query": "josje rutten",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327132815_4142",
+    "timestamp": "2026-03-27T13:28:15.924464",
+    "tool": "person",
+    "query": "huub rutten",
+    "results_count": 27,
+    "results_summary": "27 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327131225_2341",
+    "timestamp": "2026-03-27T13:12:25.996398",
+    "tool": "person",
+    "query": "ivan Versteegh",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327131051_2014",
+    "timestamp": "2026-03-27T13:10:51.381605",
+    "tool": "person",
+    "query": "ivan versteegh",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327131007_3093",
+    "timestamp": "2026-03-27T13:10:07.357364",
+    "tool": "person",
+    "query": "roy versteegh",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327130928_5059",
+    "timestamp": "2026-03-27T13:09:28.956091",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327130921_5059",
+    "timestamp": "2026-03-27T13:09:21.755168",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 22,
+    "results_summary": "22 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327130823_5059",
+    "timestamp": "2026-03-27T13:08:23.537067",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327130114_5059",
+    "timestamp": "2026-03-27T13:01:14.395291",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 22,
+    "results_summary": "22 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327130034_5059",
+    "timestamp": "2026-03-27T13:00:34.671655",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 21,
+    "results_summary": "21 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327130002_5059",
+    "timestamp": "2026-03-27T13:00:02.224680",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 22,
+    "results_summary": "22 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327125829_2014",
+    "timestamp": "2026-03-27T12:58:29.547047",
+    "tool": "person",
+    "query": "ivan versteegh",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327125658_2014",
+    "timestamp": "2026-03-27T12:56:58.103545",
+    "tool": "person",
+    "query": "ivan versteegh",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327125631_3093",
+    "timestamp": "2026-03-27T12:56:31.897654",
+    "tool": "person",
+    "query": "roy versteegh",
+    "results_count": 17,
+    "results_summary": "17 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327125547_4252",
+    "timestamp": "2026-03-27T12:55:47.252231",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 18,
+    "results_summary": "18 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327125504_5059",
+    "timestamp": "2026-03-27T12:55:04.654913",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 21,
+    "results_summary": "21 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327124853_4252",
+    "timestamp": "2026-03-27T12:48:53.882617",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 18,
+    "results_summary": "18 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327124709_5059",
+    "timestamp": "2026-03-27T12:47:09.447911",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 22,
+    "results_summary": "22 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327124629_5059",
+    "timestamp": "2026-03-27T12:46:29.946859",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 23,
+    "results_summary": "23 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327124104_4956",
+    "timestamp": "2026-03-27T12:41:04.819848",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 22,
+    "results_summary": "22 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327123812_3192",
+    "timestamp": "2026-03-27T12:38:12.288993",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327123731_3192",
+    "timestamp": "2026-03-27T12:37:31.324643",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 17,
+    "results_summary": "17 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327122644_9630",
+    "timestamp": "2026-03-27T12:26:44.603339",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327122541_9630",
+    "timestamp": "2026-03-27T12:25:41.635127",
+    "tool": "person",
+    "query": "lindsey jonker",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327122501_7881",
+    "timestamp": "2026-03-27T12:25:01.396860",
+    "tool": "social",
+    "query": "lindseyjonker37",
+    "results_count": 13,
+    "results_summary": "13 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121932_1041",
+    "timestamp": "2026-03-27T12:19:32.502181",
+    "tool": "person",
+    "query": "rene kaarsemaker",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121926_1041",
+    "timestamp": "2026-03-27T12:19:26.059413",
+    "tool": "person",
+    "query": "rene kaarsemaker",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121851_6428",
+    "timestamp": "2026-03-27T12:18:51.239647",
+    "tool": "person",
+    "query": "roy versteegh",
+    "results_count": 13,
+    "results_summary": "13 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121819_4683",
+    "timestamp": "2026-03-27T12:18:19.401492",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121750_4885",
+    "timestamp": "2026-03-27T12:17:50.428107",
+    "tool": "person",
+    "query": "bouwine schreuder",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121723_4885",
+    "timestamp": "2026-03-27T12:17:23.207122",
+    "tool": "person",
+    "query": "bouwine schreuder",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121622_4885",
+    "timestamp": "2026-03-27T12:16:22.462342",
+    "tool": "person",
+    "query": "bouwine schreuder",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121242_4885",
+    "timestamp": "2026-03-27T12:12:42.535850",
+    "tool": "person",
+    "query": "bouwine schreuder",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327121156_5425",
+    "timestamp": "2026-03-27T12:11:56.974453",
+    "tool": "person",
+    "query": "wesley van den engel",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327115808_2762",
+    "timestamp": "2026-03-27T11:58:08.186935",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327115740_2762",
+    "timestamp": "2026-03-27T11:57:40.441097",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327115720_2762",
+    "timestamp": "2026-03-27T11:57:20.469956",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 16,
+    "results_summary": "16 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327115626_4683",
+    "timestamp": "2026-03-27T11:56:26.195857",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327115531_4683",
+    "timestamp": "2026-03-27T11:55:31.107942",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327113342_5818",
+    "timestamp": "2026-03-27T11:33:42.926285",
+    "tool": "person",
+    "query": "ivan versteegh",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327113314_1610",
+    "timestamp": "2026-03-27T11:33:14.265854",
+    "tool": "person",
+    "query": "roy versteegh",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327113118_5175",
+    "timestamp": "2026-03-27T11:31:18.243056",
+    "tool": "person",
+    "query": "ivan versteegh",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327113106_9938",
+    "timestamp": "2026-03-27T11:31:06.576266",
+    "tool": "person",
+    "query": "ivan roy versteegh",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327112949_3798",
+    "timestamp": "2026-03-27T11:29:49.680562",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327112819_9797",
+    "timestamp": "2026-03-27T11:28:19.987427",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 16,
+    "results_summary": "16 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327112430_5781",
+    "timestamp": "2026-03-27T11:24:30.212289",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327112322_7124",
+    "timestamp": "2026-03-27T11:23:22.118914",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327112300_3435",
+    "timestamp": "2026-03-27T11:23:00.612060",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 13,
+    "results_summary": "13 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327112200_6936",
+    "timestamp": "2026-03-27T11:22:00.389602",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327112116_1877",
+    "timestamp": "2026-03-27T11:21:16.479602",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 13,
+    "results_summary": "13 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327111756_2761",
+    "timestamp": "2026-03-27T11:17:56.914841",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327111222_3295",
+    "timestamp": "2026-03-27T11:12:22.706382",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327111157_4368",
+    "timestamp": "2026-03-27T11:11:57.005340",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 16,
+    "results_summary": "16 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327111130_9116",
+    "timestamp": "2026-03-27T11:11:30.074829",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327110807_8136",
+    "timestamp": "2026-03-27T11:08:07.230844",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 12,
+    "results_summary": "12 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327110315_2608",
+    "timestamp": "2026-03-27T11:03:15.717762",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 14,
+    "results_summary": "14 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327110235_9886",
+    "timestamp": "2026-03-27T11:02:35.579773",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 16,
+    "results_summary": "16 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327105431_3734",
+    "timestamp": "2026-03-27T10:54:32.000982",
+    "tool": "person",
+    "query": "fred van leer",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260327002902_6191",
+    "timestamp": "2026-03-27T00:29:02.927745",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326115100_6191",
+    "timestamp": "2026-03-26T11:51:00.463942",
+    "tool": "social",
+    "query": "patricia van sandwijk",
+    "results_count": 19,
+    "results_summary": "19 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326114952_6683",
+    "timestamp": "2026-03-26T11:49:52.412069",
+    "tool": "person",
+    "query": "ivan roy versteegh",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326114939_1466",
+    "timestamp": "2026-03-26T11:49:39.410059",
+    "tool": "person",
+    "query": "roy versteegh",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326114920_9224",
+    "timestamp": "2026-03-26T11:49:20.153537",
+    "tool": "person",
+    "query": "ivan versteegh",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326114845_6191",
+    "timestamp": "2026-03-26T11:48:45.988823",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326113309_1166",
+    "timestamp": "2026-03-26T11:33:09.210548",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326112340_9010",
+    "timestamp": "2026-03-26T11:23:40.295047",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326112014_7968",
+    "timestamp": "2026-03-26T11:20:14.581179",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326111837_528",
+    "timestamp": "2026-03-26T11:18:37.212922",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326111755_8034",
+    "timestamp": "2026-03-26T11:17:55.776278",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326111004_7610",
+    "timestamp": "2026-03-26T11:10:04.708847",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 15,
+    "results_summary": "15 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326110657_9181",
+    "timestamp": "2026-03-26T11:06:57.524940",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326110130_4048",
+    "timestamp": "2026-03-26T11:01:30.086296",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326110102_3752",
+    "timestamp": "2026-03-26T11:01:02.115316",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326105420_6691",
+    "timestamp": "2026-03-26T10:54:20.098834",
+    "tool": "person",
+    "query": "sandwijk patr",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326105341_1569",
+    "timestamp": "2026-03-26T10:53:41.359432",
+    "tool": "person",
+    "query": "patricia sandwijk",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326105325_8034",
+    "timestamp": "2026-03-26T10:53:25.791458",
+    "tool": "person",
+    "query": "patricia van sandwijk",
+    "results_count": 11,
+    "results_summary": "11 results",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326102310_4395",
+    "timestamp": "2026-03-26T10:23:10.144259",
+    "tool": "social",
+    "query": "mrsaabnl",
+    "results_count": 19,
+    "results_summary": "19 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326102159_2482",
+    "timestamp": "2026-03-26T10:21:59.824362",
+    "tool": "social",
+    "query": "muziekkantje",
+    "results_count": 19,
+    "results_summary": "19 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326094347_5644",
+    "timestamp": "2026-03-26T09:43:47.026370",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 3,
+    "results_summary": "3 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260326084334_6589",
+    "timestamp": "2026-03-26T08:43:34.646783",
+    "tool": "social",
+    "query": "clinton.martis.9",
+    "results_count": 18,
+    "results_summary": "18 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324163428_8148",
+    "timestamp": "2026-03-24T16:34:28.473762",
+    "tool": "social",
+    "query": "testuser",
+    "results_count": 31,
+    "results_summary": "31 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324163333_3153",
+    "timestamp": "2026-03-24T16:33:33.811677",
+    "tool": "phone",
+    "query": "+31612345678",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: KPN",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324162808_4223",
+    "timestamp": "2026-03-24T16:28:08.844331",
+    "tool": "social",
+    "query": "patricia van sandwijk",
+    "results_count": 3,
+    "results_summary": "3 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324162736_394",
+    "timestamp": "2026-03-24T16:27:36.892472",
+    "tool": "social",
+    "query": "muziekant",
+    "results_count": 4,
+    "results_summary": "4 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324162713_9530",
+    "timestamp": "2026-03-24T16:27:13.443804",
+    "tool": "social",
+    "query": "muziekantje",
+    "results_count": 4,
+    "results_summary": "4 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324162647_7851",
+    "timestamp": "2026-03-24T16:26:47.563953",
+    "tool": "social",
+    "query": "muziekkantje",
+    "results_count": 2,
+    "results_summary": "2 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324160749_711",
+    "timestamp": "2026-03-24T16:07:49.264246",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324160730_711",
+    "timestamp": "2026-03-24T16:07:30.226787",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324160706_6870",
+    "timestamp": "2026-03-24T16:07:06.514192",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324160646_6870",
+    "timestamp": "2026-03-24T16:06:46.674499",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324155927_734",
+    "timestamp": "2026-03-24T15:59:27.356222",
+    "tool": "maigret",
+    "query": "test",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324155016_6388",
+    "timestamp": "2026-03-24T15:50:16.477266",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324153845_5532",
+    "timestamp": "2026-03-24T15:38:45.212519",
+    "tool": "phone",
+    "query": "+31618175143",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: T-Mobile Thuis",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324153822_2860",
+    "timestamp": "2026-03-24T15:38:22.738095",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324094533_3308",
+    "timestamp": "2026-03-24T09:45:33.877425",
+    "tool": "phone",
+    "query": "+31612345678",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: KPN",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324093506_7361",
+    "timestamp": "2026-03-24T09:35:06.898873",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324093451_7361",
+    "timestamp": "2026-03-24T09:34:51.236607",
+    "tool": "carrier",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Vodafone Libertel B.V. - Mobile",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324093451_7361",
+    "timestamp": "2026-03-24T09:34:51.234475",
+    "tool": "telegram",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Phone number linked to Telegram",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324093450_7361",
+    "timestamp": "2026-03-24T09:34:50.246600",
+    "tool": "whatsapp",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Phone number found on WhatsApp",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324093415_7361",
+    "timestamp": "2026-03-24T09:34:15.561575",
+    "tool": "phone",
+    "query": "+31655344311",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: Vodafone Libertel B.V.",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324093239_5070",
+    "timestamp": "2026-03-24T09:32:39.299959",
+    "tool": "phone",
+    "query": "+31612345678",
+    "results_count": 1,
+    "results_summary": "Valid: True, Country: Netherlands, Carrier: KPN",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324090847_3692",
+    "timestamp": "2026-03-24T09:08:47.177359",
+    "tool": "username",
+    "query": "muziekantje",
+    "results_count": 25,
+    "results_summary": "25 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324090244_3692",
+    "timestamp": "2026-03-24T09:02:44.765759",
+    "tool": "maigret",
+    "query": "muziekantje",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324085859_3692",
+    "timestamp": "2026-03-24T08:58:59.564489",
+    "tool": "maigret",
+    "query": "muziekantje",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324085828_3692",
+    "timestamp": "2026-03-24T08:58:28.141187",
+    "tool": "maigret",
+    "query": "muziekantje",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324083359_244",
+    "timestamp": "2026-03-24T08:33:59.521696",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324083244_244",
+    "timestamp": "2026-03-24T08:32:44.337819",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324083209_5010",
+    "timestamp": "2026-03-24T08:32:09.346608",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324083115_5010",
+    "timestamp": "2026-03-24T08:31:15.496487",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324083022_5010",
+    "timestamp": "2026-03-24T08:30:22.415889",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324083000_5010",
+    "timestamp": "2026-03-24T08:30:00.621569",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324082940_5010",
+    "timestamp": "2026-03-24T08:29:40.199813",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324082733_6081",
+    "timestamp": "2026-03-24T08:27:33.354825",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324082337_7357",
+    "timestamp": "2026-03-24T08:23:37.948800",
+    "tool": "maigret",
+    "query": "muziekantje",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324082141_7357",
+    "timestamp": "2026-03-24T08:21:41.369767",
+    "tool": "username",
+    "query": "muziekantje",
+    "results_count": 26,
+    "results_summary": "26 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324081920_7357",
+    "timestamp": "2026-03-24T08:19:20.212307",
+    "tool": "maigret",
+    "query": "muziekantje",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324081839_1463",
+    "timestamp": "2026-03-24T08:18:39.855690",
+    "tool": "maigret",
+    "query": "ivanv",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324081533_4806",
+    "timestamp": "2026-03-24T08:15:33.669670",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324081221_4806",
+    "timestamp": "2026-03-24T08:12:21.604702",
+    "tool": "maigret",
+    "query": "testuser",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324081202_8200",
+    "timestamp": "2026-03-24T08:12:02.221646",
+    "tool": "maigret",
+    "query": "test",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324080932_4875",
+    "timestamp": "2026-03-24T08:09:32.856939",
+    "tool": "maigret",
+    "query": "tes",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324075946_1780",
+    "timestamp": "2026-03-24T07:59:46.819187",
+    "tool": "maigret",
+    "query": "irversteegh",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324074504_2773",
+    "timestamp": "2026-03-24T07:45:04.920319",
+    "tool": "maigret",
+    "query": "test",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324074433_2773",
+    "timestamp": "2026-03-24T07:44:33.679551",
+    "tool": "maigret",
+    "query": "test",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324074356_425",
+    "timestamp": "2026-03-24T07:43:56.035875",
+    "tool": "maigret",
+    "query": "sadad",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324073651_3220",
+    "timestamp": "2026-03-24T07:36:51.755489",
+    "tool": "maigret",
+    "query": "edohamar",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324073521_8150",
+    "timestamp": "2026-03-24T07:35:21.815373",
+    "tool": "maigret",
+    "query": "streng",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  },
+  {
+    "id": "20260324072828_8150",
+    "timestamp": "2026-03-24T07:28:28.007891",
+    "tool": "maigret",
+    "query": "streng",
+    "results_count": 0,
+    "results_summary": "0 accounts found",
+    "status": "unread",
+    "archived": false
+  }
+]

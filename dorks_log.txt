@@ -1,0 +1,1930 @@
+
+=== 2026-03-29T20:36:47.400877 - People search: patricia van sandwijk ===
+
+=== 2026-03-29T20:37:32.540238 - People search: martin verkerk ===
+
+=== 2026-03-29T20:38:46.760160 - People search: martin verkerk webdesign ===
+
+=== 2026-03-29T20:39:21.499976 - People search: martin verkerk AND webdesign ===
+
+=== 2026-03-29T20:40:24.224223 - People search: martin verkerk AND topdesk ===
+
+=== 2026-03-29T20:54:50.707268 - People search: marloes van asperen ===
+
+=== 2026-03-29T21:15:14.375577 - People search: raymon van der meer ===
+
+=== 2026-03-29T21:16:40.437997 - People search: raymond van der meer ===
+
+=== 2026-03-30T14:13:14.408408 - People search: oran yucel ===
+
+=== 2026-03-30T14:14:52.022511 - People search: erwin krijgsman ===
+
+=== 2026-03-30T14:15:21.356562 - People search: erwin krijgsman ===
+
+=== 2026-03-30T14:20:17.114594 - People search: marloes van asperen ===
+
+=== 2026-04-01T12:50:46.480797 - People search: patricia van sandwijk ===
+  Query error: "patriciavan sandwijk" OR "pat - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia.van sandwijk" OR "pa - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" userna - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" profil - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:l - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:f - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:t - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:i - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:t - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:y - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:g - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:r - [Errno 8] nodename nor servname provided, or not k
+  Query error: "patricia van sandwijk" site:p - [Errno 8] nodename nor servname provided, or not k
+
+=== 2026-04-01T13:13:01.636883 - People search: patricia van sandwijk ===
+
+=== 2026-04-01T13:13:10.086963 - People search: patricia van sandwijk ===
+
+=== 2026-04-01T13:13:13.373470 - People search: patricia van sandwijk ===
+  Query error: "patricia van sandwijk" profil - Server disconnected without sending a response.
+
+=== 2026-04-01T13:13:16.368780 - People search: patricia van sandwijk ===
+  Query error: "patriciavan sandwijk" OR "pat - [Errno 60] Operation timed out
+  Query error: "patricia.van sandwijk" OR "pa - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" userna - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" profil - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:l - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:f - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:t - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:i - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:t - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:y - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:g - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:r - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:p - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:s - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:d - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:t - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:t - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:b - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:m - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:f - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:v - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" filety - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" filety - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" email - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:n - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" profil - [Errno 60] Operation timed out
+
+=== 2026-04-01T21:32:22.991997 - People search: patricia van sandwijk ===
+
+=== 2026-04-01T21:32:31.599618 - People search: patricia van sandwijk ===
+
+=== 2026-04-01T21:34:59.970737 - People search: patricia van sandwijk ===
+  Query error: "patricia van sandwijk" profil - Server disconnected without sending a response.
+
+=== 2026-04-01T21:35:05.172213 - People search: patricia van sandwijk ===
+  Query error: "patriciavan sandwijk" OR "pat - [Errno 60] Operation timed out
+  Query error: "patricia.van sandwijk" OR "pa - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" userna - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" profil - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:l - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:f - [Errno 60] Operation timed out
+
+=== 2026-04-01T21:36:49.277388 - People search: patricia van sandwijk ===
+  Query error: "patricia van sandwijk" site:t - [Errno 60] Operation timed out
+  Query error: "patriciavan sandwijk" OR "pat - [Errno 60] Operation timed out
+  Query error: "patricia van sandwijk" site:i - [Errno 60] Operation timed out
+  Query error: "patricia.van sandwijk" OR "pa - [Errno 60] Operation timed out
+
+=== 2026-04-01T21:37:42.060351 - People search: patricia van sandwijk ===
+  Query error: "patriciavan sandwijk" OR "pat - timed out
+  Query error: "patricia.van sandwijk" OR "pa - timed out
+
+=== 2026-04-01T21:39:38.587580 - People search: patricia van sandwijk ===
+  Query error: "patriciavan sandwijk" OR "pat - timed out
+  Query error: "patricia.van sandwijk" OR "pa - timed out
+  Query error: "patricia van sandwijk" userna - timed out
+  Query error: "patricia van sandwijk" profil - timed out
+  Query error: "patricia van sandwijk" site:l - timed out
+  Query error: "patricia van sandwijk" site:f - timed out
+  Query error: "patricia van sandwijk" site:t - timed out
+  Query error: "patricia van sandwijk" site:i - timed out
+  Query error: "patricia van sandwijk" site:t - timed out
+  Query error: "patricia van sandwijk" site:y - timed out
+  Query error: "patricia van sandwijk" site:g - timed out
+  Query error: "patricia van sandwijk" site:r - timed out
+  Query error: "patricia van sandwijk" site:p - timed out
+  Query error: "patricia van sandwijk" site:s - timed out
+  Query error: "patricia van sandwijk" site:d - timed out
+  Query error: "patricia van sandwijk" site:t - timed out
+  Query error: "patricia van sandwijk" site:t - timed out
+  Query error: "patricia van sandwijk" site:b - timed out
+  Query error: "patricia van sandwijk" site:m - timed out
+  Query error: "patricia van sandwijk" site:f - timed out
+  Query error: "patricia van sandwijk" site:v - timed out
+  Query error: "patricia van sandwijk" filety - timed out
+  Query error: "patricia van sandwijk" filety - timed out
+  Query error: "patricia van sandwijk" email - timed out
+  Query error: "patricia van sandwijk" site:n - timed out
+  Query error: "patricia van sandwijk" profil - timed out
+
+=== 2026-04-02T07:34:21.644192 - People search: soho a. alaas ===
+
+=== 2026-04-02T08:03:23.087134 - People search: marcin wierczynski ===
+
+=== 2026-04-02T08:19:40.377318 - People search: jels slobbe ===
+  Query error: "jels slobbe" profile picture - Server disconnected without sending a response.
+
+=== 2026-04-02T08:19:47.591358 - People search: jels slobbe ===
+  Query error: "jelsslobbe" OR "jels_slobbe"  - [Errno 60] Operation timed out
+  Query error: "jels.slobbe" OR "jelsslobbe" - [Errno 60] Operation timed out
+  Query error: "jels slobbe" username OR hand - [Errno 60] Operation timed out
+  Query error: "jels slobbe" profile - [Errno 60] Operation timed out
+  Query error: "jels slobbe" site:linkedin.co - [Errno 60] Operation timed out
+  Query error: "jels slobbe" site:facebook.co - [Errno 60] Operation timed out
+  Query error: "jels slobbe" site:twitter.com - [Errno 60] Operation timed out
+  Query error: "jels slobbe" site:instagram.c - [Errno 60] Operation timed out
+  Query error: "jels slobbe" site:tiktok.com - [Errno 60] Operation timed out
+  Query error: "jels slobbe" site:youtube.com - [Errno 60] Operation timed out
+  Query error: "jels slobbe" site:github.com - [Errno 60] Operation timed out
+  Query error: "jels slobbe" site:reddit.com - [Errno 60] Operation timed out
+
+=== 2026-04-02T08:25:23.373178 - People search: jels slobbe ===
+  Query error: "jelsslobbe" OR "jels_slobbe"  - timed out
+  Query error: "jels.slobbe" OR "jelsslobbe" - timed out
+
+=== 2026-04-02T08:26:46.625476 - People search: jels slobb ===
+  Query error: "jels slobbe" username OR hand - timed out
+
+=== 2026-04-02T08:43:50.947618 - People search: jels slobbe ===
+  Query error: "jelsslobbe" OR "jels_slobbe"  - timed out
+  Query error: "jels.slobbe" OR "jelsslobbe" - timed out
+  Query error: "jels slobbe" username OR hand - timed out
+  Query error: "jels slobbe" profile - timed out
+  Query error: "jels slobbe" site:linkedin.co - timed out
+  Query error: "jels slobbe" site:facebook.co - timed out
+  Query error: "jels slobbe" site:twitter.com - timed out
+  Query error: "jels slobbe" site:instagram.c - timed out
+  Query error: "jels slobbe" site:tiktok.com - timed out
+  Query error: "jels slobbe" site:youtube.com - timed out
+  Query error: "jels slobbe" site:github.com - timed out
+  Query error: "jels slobbe" site:reddit.com - timed out
+
+=== 2026-04-07T11:55:10.453492 - Dorks search: Patricia van Sandwich ===
+Query: "Patricia van Sandwich" site:linkedin.com
+  Status: 200, Content-Length: 9380
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwich" site:facebook.com
+  Status: 200, Content-Length: 9380
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwich" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwich" site:instagram.com
+  Status: 200, Content-Length: 9383
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwich" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwich" site:youtube.com
+  Status: 200, Content-Length: 9377
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwich" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwich" filetype:doc OR filetype:docx
+  Status: 200, Content-Length: 9416
+  Found 5 raw links
+  Added: w3.org (general)
+=== COMPLETE: 8 results ===
+
+=== 2026-04-07T11:56:41.402373 - Dorks search: Frank Jansen ===
+Query: "Frank Jansen" site:linkedin.com
+  Status: 200, Content-Length: 31079
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" site:facebook.com
+  Status: 200, Content-Length: 30044
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 13682
+  Found 7 raw links
+  Added: w3.org (general)
+  Added: t.co (general)
+Query: "Frank Jansen" site:instagram.com
+  Status: 200, Content-Length: 27078
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" site:tiktok.com
+  Status: 200, Content-Length: 32984
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" site:youtube.com
+  Status: 200, Content-Length: 31361
+  Found 8 raw links
+  Added: w3.org (general)
+  Added: bit.ly (general)
+  Added: player.sp... (general)
+  Added: player.spo... (general)
+Query: "Frank Jansen" filetype:pdf
+  Status: 200, Content-Length: 26658
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" filetype:doc OR filetype:docx
+  Status: 200, Content-Length: 9389
+  Found 5 raw links
+  Added: w3.org (general)
+=== COMPLETE: 12 results ===
+
+=== 2026-04-07T11:57:11.390202 - Dorks search: patricia van sandwijk ===
+Query: "patricia van sandwijk" site:linkedin.com
+  Status: 200, Content-Length: 22481
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:facebook.com
+  Status: 200, Content-Length: 11679
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:instagram.com
+  Status: 200, Content-Length: 33239
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:youtube.com
+  Status: 200, Content-Length: 11685
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" filetype:doc OR filetype:docx
+  Status: 200, Content-Length: 9416
+  Found 5 raw links
+  Added: w3.org (general)
+=== COMPLETE: 8 results ===
+
+=== 2026-04-07T11:57:59.508828 - Dorks search: patricia van sandwijk ===
+Query: "patricia van sandwijk" site:linkedin.com
+  Status: 200, Content-Length: 33703
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:facebook.com
+  Status: 200, Content-Length: 11679
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:instagram.com
+  Status: 200, Content-Length: 33074
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:youtube.com
+  Status: 200, Content-Length: 11685
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" filetype:doc OR filetype:docx
+  Status: 200, Content-Length: 9416
+  Found 5 raw links
+  Added: w3.org (general)
+=== COMPLETE: 8 results ===
+
+=== 2026-04-07T12:00:56.172124 - Dorks search: Test User ===
+Query: "Test User" site:linkedin.com
+  Status: 200, Content-Length: 32311
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Test User" site:facebook.com
+  Status: 200, Content-Length: 24855
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Test User" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9383
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Test User" site:instagram.com
+  Status: 200, Content-Length: 20148
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Test User" site:tiktok.com
+  Status: 200, Content-Length: 27276
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Test User" site:youtube.com
+  Status: 200, Content-Length: 17964
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Test User" filetype:pdf
+  Status: 200, Content-Length: 32727
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Test User" filetype:doc OR filetype:docx
+  Status: 200, Content-Length: 9380
+  Found 5 raw links
+  Added: w3.org (general)
+=== COMPLETE: 8 results ===
+
+=== 2026-04-07T12:04:39.878407 - Dorks search: patricia van sandwijk ===
+Query: "patricia van sandwijk" site:linkedin.com
+  Status: 200, Content-Length: 33703
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:facebook.com
+  Status: 200, Content-Length: 11679
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:instagram.com
+  Status: 200, Content-Length: 33239
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" site:youtube.com
+  Status: 200, Content-Length: 11685
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "patricia van sandwijk" filetype:doc OR filetype:docx
+  Status: 200, Content-Length: 9416
+  Found 5 raw links
+  Added: w3.org (general)
+=== COMPLETE: 8 results ===
+
+=== 2026-04-07T12:05:16.897192 - Dorks search: Frank Jansen ===
+Query: "Frank Jansen" site:linkedin.com
+  Status: 200, Content-Length: 31079
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" site:facebook.com
+  Status: 200, Content-Length: 30044
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 13682
+  Found 7 raw links
+  Added: w3.org (general)
+  Added: t.co (general)
+Query: "Frank Jansen" site:instagram.com
+  Status: 200, Content-Length: 27078
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" site:tiktok.com
+  Status: 200, Content-Length: 32984
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" site:youtube.com
+  Status: 200, Content-Length: 31361
+  Found 8 raw links
+  Added: w3.org (general)
+  Added: bit.ly (general)
+  Added: player.sp... (general)
+  Added: player.spo... (general)
+Query: "Frank Jansen" filetype:pdf
+  Status: 200, Content-Length: 26658
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Frank Jansen" filetype:doc OR filetype:docx
+  Status: 200, Content-Length: 9389
+  Found 5 raw links
+  Added: w3.org (general)
+=== COMPLETE: 12 results ===
+
+=== 2026-04-07T12:05:36.644260 - Dorks search: Patricia van Sandwijk ===
+Query: "Patricia van Sandwijk" site:linkedin.com
+  Status: 200, Content-Length: 33703
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwijk" site:facebook.com
+  Status: 200, Content-Length: 11679
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwijk" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwijk" site:instagram.com
+  Status: 200, Content-Length: 33238
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwijk" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwijk" site:youtube.com
+  Status: 200, Content-Length: 11685
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwijk" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 5 raw links
+  Added: w3.org (general)
+Query: "Patricia van Sandwijk" filetype:doc OR filetype:docx
+  Status: 200, Content-Length: 9416
+  Found 5 raw links
+  Added: w3.org (general)
+=== COMPLETE: 8 results ===
+
+=== 2026-04-07T12:11:57.504127 - Dorks search: Patricia van Sandwich ===
+Query: "Patricia van Sandwich" profile
+  Status: 200, Content-Length: 9350
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:linkedin.com
+  Status: 200, Content-Length: 9380
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:facebook.com
+  Status: 200, Content-Length: 9380
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:instagram.com
+  Status: 200, Content-Length: 9383
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:youtube.com
+  Status: 200, Content-Length: 9377
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:github.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:reddit.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwich" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 0 redirect links
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-07T12:14:49.002946 - Dorks search: Patricia van Sandwich ===
+Query: "Patricia van Sandwich" profile
+  Status: 200, Content-Length: 9350
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:linkedin.com
+  Status: 200, Content-Length: 9380
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:facebook.com
+  Status: 200, Content-Length: 9380
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:instagram.com
+  Status: 200, Content-Length: 9383
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:youtube.com
+  Status: 200, Content-Length: 9377
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:github.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:reddit.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwich" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 0 redirect links
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-07T12:16:38.856864 - Dorks search: Patricia van Sandwijk ===
+Query: "Patricia van Sandwijk" profile
+  Status: 200, Content-Length: 31758
+  Found 40 redirect links
+  Added: facebook.com (social_media)
+  Added: linkedin.com (social_media)
+  Added: saloncosmetic.nl (general)
+Query: "Patricia van Sandwijk" site:linkedin.com
+  Status: 202, Content-Length: 14311
+  Non-200 status: 202
+Query: "Patricia van Sandwijk" site:facebook.com
+  Status: 202, Content-Length: 14239
+  Non-200 status: 202
+Query: "Patricia van Sandwijk" site:twitter.com OR site:x.com
+  Status: 202, Content-Length: 14283
+  Non-200 status: 202
+Query: "Patricia van Sandwijk" site:instagram.com
+  Status: 202, Content-Length: 14241
+  Non-200 status: 202
+Query: "Patricia van Sandwijk" site:tiktok.com
+  Status: 202, Content-Length: 14235
+  Non-200 status: 202
+Query: "Patricia van Sandwijk" site:youtube.com
+  Status: 202, Content-Length: 14237
+  Non-200 status: 202
+Query: "Patricia van Sandwijk" site:github.com
+  Status: 202, Content-Length: 14241
+  Non-200 status: 202
+Query: "Patricia van Sandwijk" site:reddit.com
+  Status: 202, Content-Length: 14241
+  Non-200 status: 202
+Query: "Patricia van Sandwijk" filetype:pdf
+  Status: 202, Content-Length: 14229
+  Non-200 status: 202
+=== COMPLETE: 3 dork results, 10 search links ===
+
+=== 2026-04-07T12:17:19.376914 - Dorks search: patricia van sandwijk ===
+DuckDuckGo is blocking requests - only returning search links
+=== COMPLETE: 0 dork results, 10 search links (DuckDuckGo blocked) ===
+
+=== 2026-04-07T12:19:33.683844 - Dorks search: Patricia van Sandwich ===
+DuckDuckGo is blocking requests - only returning search links
+=== COMPLETE: 0 dork results, 10 search links (DuckDuckGo blocked) ===
+
+=== 2026-04-07T12:22:15.377396 - Dorks search: Patricia van Sandwich ===
+DuckDuckGo is blocking requests - only returning search links
+=== COMPLETE: 0 dork results, 10 search links (DuckDuckGo blocked) ===
+
+=== 2026-04-07T12:23:17.849335 - Dorks search: Patricia van Sandwich ===
+DuckDuckGo is blocking requests - only returning search links
+=== COMPLETE: 0 dork results, 10 search links (DuckDuckGo blocked) ===
+
+=== 2026-04-07T12:24:18.259415 - Dorks search: Patricia van Sandwich ===
+DuckDuckGo is blocking requests - only returning search links
+=== COMPLETE: 0 dork results, 10 search links (DuckDuckGo blocked) ===
+
+=== 2026-04-07T12:25:15.183222 - Dorks search: Patricia van Sandwich ===
+Note: DuckDuckGo may be blocking, attempting anyway...
+Query: "Patricia van Sandwich" profile
+  Status: 202, Content-Length: 14225
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:linkedin.com
+  Status: 202, Content-Length: 14293
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:facebook.com
+  Status: 202, Content-Length: 14245
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:twitter.com OR site:x.com
+  Status: 202, Content-Length: 14265
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:instagram.com
+  Status: 202, Content-Length: 14259
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:tiktok.com
+  Status: 202, Content-Length: 14235
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:youtube.com
+  Status: 202, Content-Length: 14237
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:github.com
+  Status: 202, Content-Length: 14241
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:reddit.com
+  Status: 202, Content-Length: 14247
+  Found 0 redirect links
+Query: "Patricia van Sandwich" filetype:pdf
+  Status: 202, Content-Length: 14229
+  Found 0 redirect links
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-07T12:26:31.522884 - Dorks search: Patricia van Sandwich ===
+Note: DuckDuckGo may be blocking, attempting anyway...
+Query: "Patricia van Sandwich" profile
+  Status: 202, Content-Length: 14219
+  DuckDuckGo blocking detected
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-07T12:27:58.903641 - Dorks search: Patricia van Sandwich ===
+Note: DuckDuckGo may be blocking, attempting anyway...
+Query: "Patricia van Sandwich" profile
+  Status: 202, Content-Length: 14219
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:linkedin.com
+  Status: 202, Content-Length: 14316
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:facebook.com
+  Status: 202, Content-Length: 14239
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:twitter.com OR site:x.com
+  Status: 202, Content-Length: 14277
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:instagram.com
+  Status: 202, Content-Length: 14259
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:tiktok.com
+  Status: 202, Content-Length: 14265
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:youtube.com
+  Status: 202, Content-Length: 14243
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:github.com
+  Status: 202, Content-Length: 14235
+  Found 0 redirect links
+Query: "Patricia van Sandwich" site:reddit.com
+  Status: 202, Content-Length: 14240
+  Found 0 redirect links
+Query: "Patricia van Sandwich" filetype:pdf
+  Status: 202, Content-Length: 14235
+  Found 0 redirect links
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-07T12:43:27.289871 - Dorks search: Patricia van Sandwijk ===
+Note: DuckDuckGo may be blocking, attempting anyway...
+Query: "Patricia van Sandwijk" profile
+  Status: 202, Content-Length: 14236
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:linkedin.com
+  Status: 202, Content-Length: 14299
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:facebook.com
+  Status: 202, Content-Length: 14251
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:twitter.com OR site:x.com
+  Status: 202, Content-Length: 14265
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:instagram.com
+  Status: 202, Content-Length: 14246
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:tiktok.com
+  Status: 202, Content-Length: 14253
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:youtube.com
+  Status: 202, Content-Length: 14249
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:github.com
+  Status: 202, Content-Length: 14241
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:reddit.com
+  Status: 202, Content-Length: 14253
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" filetype:pdf
+  Status: 202, Content-Length: 14229
+  Found 0 redirect links
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-07T12:44:25.424618 - Dorks search: Patricia van Sandwijk ===
+Query: "Patricia van Sandwijk" profile
+  Status: 200, Content-Length: 31814
+  Found 40 redirect links
+  Added: facebook.com (social_media)
+  Added: saloncosmetic.nl (general)
+  Added: linkedin.com (social_media)
+Query: "Patricia van Sandwijk" site:linkedin.com
+  Status: 200, Content-Length: 33882
+  Found 40 redirect links
+  Added: nl.linkedin.com (social_media)
+Query: "Patricia van Sandwijk" site:facebook.com
+  Status: 200, Content-Length: 11679
+  Found 4 redirect links
+Query: "Patricia van Sandwijk" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:instagram.com
+  Status: 200, Content-Length: 33073
+  Found 40 redirect links
+  Added: instagram.com (social_media)
+Query: "Patricia van Sandwijk" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:youtube.com
+  Status: 200, Content-Length: 11685
+  Found 4 redirect links
+  Added: youtube.com (social_media)
+Query: "Patricia van Sandwijk" site:github.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" site:reddit.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "Patricia van Sandwijk" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 0 redirect links
+=== COMPLETE: 6 dork results, 10 search links ===
+
+=== 2026-04-07T12:45:06.751268 - Dorks search: patricia van sandwijk ===
+Query: "patricia van sandwijk" profile
+  Status: 200, Content-Length: 31721
+  Found 40 redirect links
+  Added: facebook.com (social_media)
+  Added: linkedin.com (social_media)
+  Added: youtube.com (social_media)
+Query: "patricia van sandwijk" site:linkedin.com
+  Status: 200, Content-Length: 33703
+  Found 40 redirect links
+  Added: nl.linkedin.com (social_media)
+Query: "patricia van sandwijk" site:facebook.com
+  Status: 200, Content-Length: 11679
+  Found 4 redirect links
+Query: "patricia van sandwijk" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 9419
+  Found 0 redirect links
+Query: "patricia van sandwijk" site:instagram.com
+  Status: 200, Content-Length: 33239
+  Found 40 redirect links
+  Added: instagram.com (social_media)
+Query: "patricia van sandwijk" site:tiktok.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "patricia van sandwijk" site:youtube.com
+  Status: 200, Content-Length: 11685
+  Found 4 redirect links
+Query: "patricia van sandwijk" site:github.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "patricia van sandwijk" site:reddit.com
+  Status: 200, Content-Length: 9374
+  Found 0 redirect links
+Query: "patricia van sandwijk" filetype:pdf
+  Status: 200, Content-Length: 9365
+  Found 0 redirect links
+=== COMPLETE: 5 dork results, 10 search links ===
+
+=== 2026-04-07T12:47:19.704036 - Dorks search: frank jansen ===
+Query: "frank jansen" profile
+  Status: 200, Content-Length: 32164
+  Found 40 redirect links
+  Added: facebook.com (social_media)
+  Added: linkedin.com (social_media)
+  Added: broadjam.com (general)
+Query: "frank jansen" site:linkedin.com
+  Status: 200, Content-Length: 31079
+  Found 36 redirect links
+Query: "frank jansen" site:facebook.com
+  Status: 200, Content-Length: 27905
+  Found 32 redirect links
+Query: "frank jansen" site:twitter.com OR site:x.com
+  Status: 200, Content-Length: 13682
+  Found 8 redirect links
+  Added: twitter.com (social_media)
+Query: "frank jansen" site:instagram.com
+  Status: 200, Content-Length: 26789
+  Found 32 redirect links
+  Added: instagram.com (social_media)
+Query: "frank jansen" site:tiktok.com
+  Status: 200, Content-Length: 32984
+  Found 40 redirect links
+  Added: tiktok.com (social_media)
+Query: "frank jansen" site:youtube.com
+  Status: 200, Content-Length: 31362
+  Found 40 redirect links
+  Added: youtube.com (social_media)
+Query: "frank jansen" site:github.com
+  Status: 200, Content-Length: 17585
+  Found 16 redirect links
+  Added: github.com (general)
+Query: "frank jansen" site:reddit.com
+  Status: 200, Content-Length: 30044
+  Found 32 redirect links
+  Added: reddit.com (general)
+Query: "frank jansen" filetype:pdf
+  Status: 200, Content-Length: 26658
+  Found 28 redirect links
+  Added: apps.dtic.mil (general)
+  Added: dh8zy5a1i9xe5.cloudfront.net (general)
+  Added: jowr.org (general)
+=== COMPLETE: 12 dork results, 10 search links ===
+
+=== 2026-04-07T13:03:46.351247 - Dorks search: Patricia van Sandwich ===
+Trying DuckDuckGo scraping...
+DDG Query: "Patricia van Sandwich" profile
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" site:linkedin.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" site:facebook.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" site:twitter.com OR site:x.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" site:instagram.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" site:tiktok.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" site:youtube.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" site:github.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" site:reddit.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwich" filetype:pdf
+  Status: 200
+  Found 0 redirect links
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-07T13:16:34.682566 - Dorks search: Patricia van Sandwich ===
+Using Brave Search API (key configured)
+Brave Query: "Patricia van Sandwich" profile
+  Brave found 0 results
+Brave Query: "Patricia van Sandwich" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Patricia van Sandwich" site:facebook.com
+  Brave found 0 results
+Brave Query: "Patricia van Sandwich" site:twitter.com OR site:x.com
+  Brave found 10 results
+  Added: x.com (general)
+Brave Query: "Patricia van Sandwich" site:instagram.com
+  Brave found 0 results
+Brave Query: "Patricia van Sandwich" site:tiktok.com
+  Brave found 0 results
+Brave Query: "Patricia van Sandwich" site:youtube.com
+  Brave found 0 results
+Brave Query: "Patricia van Sandwich" site:github.com
+  Brave found 0 results
+Brave Query: "Patricia van Sandwich" site:reddit.com
+  Brave found 0 results
+Brave Query: "Patricia van Sandwich" filetype:pdf
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-04-07T13:19:43.196369 - Dorks search: Patricia van Sandwijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "Patricia van Sandwijk" profile
+  Status: 200
+  Found 40 redirect links
+  Added: facebook.com (social_media)
+  Added: linkedin.com (social_media)
+  Added: instagram.com (social_media)
+DDG Query: "Patricia van Sandwijk" site:linkedin.com
+  Status: 200
+  Found 36 redirect links
+  Added: nl.linkedin.com (social_media)
+DDG Query: "Patricia van Sandwijk" site:facebook.com
+  Status: 200
+  Found 4 redirect links
+DDG Query: "Patricia van Sandwijk" site:twitter.com OR site:x.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwijk" site:instagram.com
+  Status: 200
+  Found 40 redirect links
+DDG Query: "Patricia van Sandwijk" site:tiktok.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwijk" site:youtube.com
+  Status: 200
+  Found 4 redirect links
+  Added: youtube.com (social_media)
+DDG Query: "Patricia van Sandwijk" site:github.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwijk" site:reddit.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Patricia van Sandwijk" filetype:pdf
+  Status: 200
+  Found 0 redirect links
+=== COMPLETE: 5 dork results, 10 search links ===
+
+=== 2026-04-07T13:58:37.720532 - Dorks search: ivan versteegh ===
+Trying DuckDuckGo scraping...
+DDG Query: "ivan versteegh" profile
+  Status: 200
+  Found 12 redirect links
+  Added: rocketreach.co (general)
+  Added: locatefamily.com (general)
+  Added: nl.pinterest.com (general)
+DDG Query: "ivan versteegh" site:linkedin.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "ivan versteegh" site:facebook.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "ivan versteegh" site:twitter.com OR site:x.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "ivan versteegh" site:instagram.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "ivan versteegh" site:tiktok.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "ivan versteegh" site:youtube.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "ivan versteegh" site:github.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "ivan versteegh" site:reddit.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "ivan versteegh" filetype:pdf
+  Status: 200
+  Found 0 redirect links
+=== COMPLETE: 3 dork results, 10 search links ===
+
+=== 2026-04-07T16:09:37.588035 - Dorks search: Bouwine Schreuder ===
+Trying DuckDuckGo scraping...
+DDG Query: "Bouwine Schreuder" profile
+  Status: 200
+  Found 40 redirect links
+  Added: nl.linkedin.com (social_media)
+  Added: hersenletsel.nl (general)
+DDG Query: "Bouwine Schreuder" site:linkedin.com
+  Status: 200
+  Found 40 redirect links
+DDG Query: "Bouwine Schreuder" site:facebook.com
+  Status: 200
+  Found 4 redirect links
+  Added: facebook.com (social_media)
+DDG Query: "Bouwine Schreuder" site:twitter.com OR site:x.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Bouwine Schreuder" site:instagram.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Bouwine Schreuder" site:tiktok.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Bouwine Schreuder" site:youtube.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Bouwine Schreuder" site:github.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Bouwine Schreuder" site:reddit.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Bouwine Schreuder" filetype:pdf
+  Status: 200
+  Found 0 redirect links
+=== COMPLETE: 3 dork results, 10 search links ===
+
+=== 2026-04-08T06:52:38.722144 - Dorks search: Jessica van Blitterswijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "Jessica van Blitterswijk" profile
+  Status: 200
+  Found 28 redirect links
+  Added: nl.linkedin.com (social_media)
+  Added: juristi.nl (general)
+  Added: aeroleads.com (general)
+DDG Query: "Jessica van Blitterswijk" site:linkedin.com
+  Status: 200
+  Found 40 redirect links
+  Added: linkedin.com (social_media)
+DDG Query: "Jessica van Blitterswijk" site:facebook.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:twitter.com OR site:x.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:instagram.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:tiktok.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:youtube.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:github.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:reddit.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" filetype:pdf
+  Status: 200
+  Found 0 redirect links
+=== COMPLETE: 4 dork results, 10 search links ===
+
+=== 2026-04-08T06:56:13.445779 - Dorks search: Jessica van Blitterswijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "Jessica van Blitterswijk" profile
+  Status: 200
+  Found 28 redirect links
+  Added: nl.linkedin.com (social_media)
+  Added: aeroleads.com (general)
+  Added: juristi.nl (general)
+DDG Query: "Jessica van Blitterswijk" site:linkedin.com
+  Status: 200
+  Found 40 redirect links
+  Added: linkedin.com (social_media)
+DDG Query: "Jessica van Blitterswijk" site:facebook.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:twitter.com OR site:x.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:instagram.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:tiktok.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:youtube.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:github.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:reddit.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" filetype:pdf
+  Status: 200
+  Found 0 redirect links
+=== COMPLETE: 4 dork results, 10 search links ===
+
+=== 2026-04-08T07:10:24.390982 - Dorks search: Jessica van Blitterswijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "Jessica van Blitterswijk" profile
+  Status: 200
+  Found 28 redirect links
+  Added: nl.linkedin.com (social_media)
+  Added: juristi.nl (general)
+  Added: aeroleads.com (general)
+DDG Query: "Jessica van Blitterswijk" site:linkedin.com
+  Status: 200
+  Found 40 redirect links
+  Added: linkedin.com (social_media)
+DDG Query: "Jessica van Blitterswijk" site:facebook.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:twitter.com OR site:x.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:instagram.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:tiktok.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:youtube.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:github.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:reddit.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" filetype:pdf
+  Status: 200
+  Found 0 redirect links
+=== COMPLETE: 4 dork results, 10 search links ===
+
+=== 2026-04-08T07:25:11.437170 - Dorks search: Jessica van Blitterswijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "Jessica van Blitterswijk" profile
+  Status: 200
+  Found 28 redirect links
+  Added: linkedin.com (social_media)
+  Added: juristi.nl (general)
+  Added: aeroleads.com (general)
+DDG Query: "Jessica van Blitterswijk" site:linkedin.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:facebook.com
+  Status: 200
+  Found 0 redirect links
+DDG Query: "Jessica van Blitterswijk" site:twitter.com OR site:x.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:instagram.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:tiktok.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:youtube.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:github.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:reddit.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" filetype:pdf
+  Status: 202
+=== COMPLETE: 3 dork results, 10 search links ===
+
+=== 2026-04-08T07:35:40.055829 - Dorks search: jessica van blitterswijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "jessica van blitterswijk" profile
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:linkedin.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:facebook.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:twitter.com OR site:x.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:instagram.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:tiktok.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:youtube.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:github.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:reddit.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" filetype:pdf
+  Status: 202
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-08T07:36:22.290214 - Dorks search: patricia van sandwijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "patricia van sandwijk" profile
+  Status: 202
+DDG Query: "patricia van sandwijk" site:linkedin.com
+  Status: 202
+DDG Query: "patricia van sandwijk" site:facebook.com
+  Status: 202
+DDG Query: "patricia van sandwijk" site:twitter.com OR site:x.com
+  Status: 202
+DDG Query: "patricia van sandwijk" site:instagram.com
+  Status: 202
+DDG Query: "patricia van sandwijk" site:tiktok.com
+  Status: 202
+DDG Query: "patricia van sandwijk" site:youtube.com
+  Status: 202
+DDG Query: "patricia van sandwijk" site:github.com
+  Status: 202
+DDG Query: "patricia van sandwijk" site:reddit.com
+  Status: 202
+DDG Query: "patricia van sandwijk" filetype:pdf
+  Status: 202
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-08T07:37:32.160882 - Dorks search: jessica van blitterswijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "jessica van blitterswijk" profile
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:linkedin.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:facebook.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:twitter.com OR site:x.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:instagram.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:tiktok.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:youtube.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:github.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" site:reddit.com
+  Status: 202
+DDG Query: "jessica van blitterswijk" filetype:pdf
+  Status: 202
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-08T07:38:08.780703 - Dorks search: Jessica van Blitterswijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "Jessica van Blitterswijk" profile
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:linkedin.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:facebook.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:twitter.com OR site:x.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:instagram.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:tiktok.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:youtube.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:github.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" site:reddit.com
+  Status: 202
+DDG Query: "Jessica van Blitterswijk" filetype:pdf
+  Status: 202
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-08T07:38:34.204071 - Dorks search: Patricia van Sandwijk ===
+Trying DuckDuckGo scraping...
+DDG Query: "Patricia van Sandwijk" profile
+  Status: 202
+DDG Query: "Patricia van Sandwijk" site:linkedin.com
+  Status: 202
+DDG Query: "Patricia van Sandwijk" site:facebook.com
+  Status: 202
+DDG Query: "Patricia van Sandwijk" site:twitter.com OR site:x.com
+  Status: 202
+DDG Query: "Patricia van Sandwijk" site:instagram.com
+  Status: 202
+DDG Query: "Patricia van Sandwijk" site:tiktok.com
+  Status: 202
+DDG Query: "Patricia van Sandwijk" site:youtube.com
+  Status: 202
+DDG Query: "Patricia van Sandwijk" site:github.com
+  Status: 202
+DDG Query: "Patricia van Sandwijk" site:reddit.com
+  Status: 202
+DDG Query: "Patricia van Sandwijk" filetype:pdf
+  Status: 202
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-08 08:29:59.764814 - Dorks search: test user ===
+
+=== 2026-04-08 08:31:20.142399 - Dorks search: test user ===
+Trying DuckDuckGo scraping...
+
+=== 2026-04-08 08:37:53.525531 - Dorks search: jessica van blitterswijk ===
+Trying DuckDuckGo scraping...
+
+=== 2026-04-08 08:39:05.560565 - Dorks search: Jessica van Blitterswijk ===
+Trying DuckDuckGo scraping...
+=== COMPLETE: 0 dork results, 10 search links ===
+=== COMPLETE: 0 dork results, 10 search links ===
+
+=== 2026-04-08 08:50:44.703811 - Dorks search: Jessica van Blitterswijk ===
+Using Brave Search API (key configured)
+Brave Query: "Jessica van Blitterswijk" profile
+  Brave found 4 results
+Brave Query: "Jessica van Blitterswijk" site:linkedin.com
+  Brave found 3 results
+Brave Query: "Jessica van Blitterswijk" site:facebook.com
+  Brave found 0 results
+Brave Query: "Jessica van Blitterswijk" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Jessica van Blitterswijk" site:instagram.com
+  Brave found 0 results
+Brave Query: "Jessica van Blitterswijk" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 4 dork results, 10 search links ===
+
+=== 2026-04-08 08:54:10.970248 - Dorks search: jessica van blitterswijk ===
+Using Brave Search API (key configured)
+Brave Query: "jessica van blitterswijk" profile
+  Brave found 4 results
+Brave Query: "jessica van blitterswijk" site:linkedin.com
+  Brave found 3 results
+Brave Query: "jessica van blitterswijk" site:facebook.com
+  Brave found 0 results
+Brave Query: "jessica van blitterswijk" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "jessica van blitterswijk" site:instagram.com
+  Brave found 0 results
+Brave Query: "jessica van blitterswijk" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 4 dork results, 10 search links ===
+
+=== 2026-04-08 09:10:22.966421 - Dorks search: test search ===
+Using Brave Search API (key configured)
+Brave Query: "test search" profile
+  Brave found 2 results
+Brave Query: "test search" site:linkedin.com
+  Brave found 3 results
+Brave Query: "test search" site:facebook.com
+  Brave found 0 results
+Brave Query: "test search" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "test search" site:instagram.com
+  Brave found 0 results
+Brave Query: "test search" site:tiktok.com
+  Brave found 1 results
+=== COMPLETE: 6 dork results, 10 search links ===
+
+=== 2026-04-08 09:11:45.305079 - Dorks search: Jessica van Blitterswijk ===
+Using Brave Search API (key configured)
+Brave Query: "Jessica van Blitterswijk" profile
+  Brave found 4 results
+Brave Query: "Jessica van Blitterswijk" site:linkedin.com
+  Brave found 3 results
+Brave Query: "Jessica van Blitterswijk" site:facebook.com
+  Brave found 0 results
+Brave Query: "Jessica van Blitterswijk" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Jessica van Blitterswijk" site:instagram.com
+  Brave found 0 results
+Brave Query: "Jessica van Blitterswijk" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 4 dork results, 10 search links ===
+
+=== 2026-04-08 09:15:57.642787 - Dorks search: jessica van blitterswijk ===
+Using Brave Search API (key configured)
+Brave Query: "jessica van blitterswijk" profile
+  Brave found 4 results
+Brave Query: "jessica van blitterswijk" site:linkedin.com
+  Brave found 3 results
+Brave Query: "jessica van blitterswijk" site:facebook.com
+  Brave found 0 results
+Brave Query: "jessica van blitterswijk" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "jessica van blitterswijk" site:instagram.com
+  Brave found 0 results
+Brave Query: "jessica van blitterswijk" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 4 dork results, 10 search links ===
+
+=== 2026-04-08 09:17:26.663743 - Dorks search: patricia van sandwijk ===
+Using Brave Search API (key configured)
+Brave Query: "patricia van sandwijk" profile
+  Brave found 10 results
+Brave Query: "patricia van sandwijk" site:linkedin.com
+  Brave found 3 results
+Brave Query: "patricia van sandwijk" site:facebook.com
+  Brave found 0 results
+Brave Query: "patricia van sandwijk" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "patricia van sandwijk" site:instagram.com
+  Brave found 1 results
+Brave Query: "patricia van sandwijk" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 8 dork results, 10 search links ===
+
+=== 2026-04-08 09:21:55.146143 - Dorks search: patricia van sandwijk ===
+Using Brave Search API (key configured)
+Brave Query: "patricia van sandwijk" profile
+  Brave found 10 results
+Brave Query: "patricia van sandwijk" site:linkedin.com
+  Brave found 3 results
+Brave Query: "patricia van sandwijk" site:facebook.com
+  Brave found 0 results
+Brave Query: "patricia van sandwijk" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "patricia van sandwijk" site:instagram.com
+  Brave found 1 results
+Brave Query: "patricia van sandwijk" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 8 dork results, 10 search links ===
+
+=== 2026-04-08 20:27:01.188856 - Dorks search: ivan versteegh ===
+Using Brave Search API (key configured)
+Brave Query: "ivan versteegh" profile
+  Brave found 0 results
+Brave Query: "ivan versteegh" site:linkedin.com
+  Brave found 0 results
+Brave Query: "ivan versteegh" site:facebook.com
+  Brave found 0 results
+Brave Query: "ivan versteegh" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "ivan versteegh" site:instagram.com
+  Brave found 0 results
+Brave Query: "ivan versteegh" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-04-09 07:39:01.730591 - Dorks search: rene van holten ===
+Using Brave Search API (key configured)
+Brave Query: "rene van holten" profile
+  Brave found 2 results
+Brave Query: "rene van holten" site:linkedin.com
+  Brave found 1 results
+Brave Query: "rene van holten" site:facebook.com
+  Brave found 0 results
+Brave Query: "rene van holten" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "rene van holten" site:instagram.com
+  Brave found 0 results
+Brave Query: "rene van holten" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 3 dork results, 10 search links ===
+
+=== 2026-04-10 08:45:18.582537 - Dorks search: adem yildirim ===
+Using Brave Search API (key configured)
+Brave Query: "adem yildirim" profile
+  Brave found 10 results
+Brave Query: "adem yildirim" site:linkedin.com
+  Brave found 10 results
+Brave Query: "adem yildirim" site:facebook.com
+  Brave found 9 results
+Brave Query: "adem yildirim" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "adem yildirim" site:instagram.com
+  Brave found 10 results
+Brave Query: "adem yildirim" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 10 dork results, 10 search links ===
+
+=== 2026-04-10 09:29:30.528175 - Dorks search: patricia van sandwijk ===
+Using Brave Search API (key configured)
+Brave Query: "patricia van sandwijk" profile
+  Brave found 10 results
+Brave Query: "patricia van sandwijk" site:linkedin.com
+  Brave found 3 results
+Brave Query: "patricia van sandwijk" site:facebook.com
+  Brave found 0 results
+Brave Query: "patricia van sandwijk" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "patricia van sandwijk" site:instagram.com
+  Brave found 1 results
+Brave Query: "patricia van sandwijk" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 8 dork results, 10 search links ===
+
+=== 2026-04-10 10:13:11.893926 - Dorks search: Johannes Willem Looij ===
+Using Brave Search API (key configured)
+Brave Query: "Johannes Willem Looij" profile
+  Brave found 1 results
+Brave Query: "Johannes Willem Looij" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Johannes Willem Looij" site:facebook.com
+  Brave found 0 results
+Brave Query: "Johannes Willem Looij" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Johannes Willem Looij" site:instagram.com
+  Brave found 0 results
+Brave Query: "Johannes Willem Looij" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 2 dork results, 10 search links ===
+
+=== 2026-04-10 10:35:11.836486 - Dorks search: maamar hafsa ===
+Using Brave Search API (key configured)
+Brave Query: "maamar hafsa" profile
+  Brave found 1 results
+Brave Query: "maamar hafsa" site:linkedin.com
+  Brave found 0 results
+Brave Query: "maamar hafsa" site:facebook.com
+  Brave found 0 results
+Brave Query: "maamar hafsa" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "maamar hafsa" site:instagram.com
+  Brave found 0 results
+Brave Query: "maamar hafsa" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 2 dork results, 10 search links ===
+
+=== 2026-04-10 14:00:59.658109 - Dorks search: frank jansen ===
+Using Brave Search API (key configured)
+Brave Query: "frank jansen" profile
+  Brave found 10 results
+Brave Query: "frank jansen" site:linkedin.com
+  Brave found 10 results
+Brave Query: "frank jansen" site:facebook.com
+  Brave found 10 results
+Brave Query: "frank jansen" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "frank jansen" site:instagram.com
+  Brave found 10 results
+Brave Query: "frank jansen" site:tiktok.com
+  Brave found 3 results
+=== COMPLETE: 13 dork results, 10 search links ===
+
+=== 2026-05-11 07:48:33.065621 - Dorks search: Anne Vink ===
+Using Brave Search API (key configured)
+Brave Query: "Anne Vink" profile
+  Brave found 10 results
+Brave Query: "Anne Vink" site:linkedin.com
+  Brave found 10 results
+Brave Query: "Anne Vink" site:facebook.com
+  Brave found 7 results
+Brave Query: "Anne Vink" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Anne Vink" site:instagram.com
+  Brave found 3 results
+Brave Query: "Anne Vink" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 9 dork results, 10 search links ===
+
+=== 2026-05-11 07:55:25.547399 - Dorks search: Anna Vink ===
+Using Brave Search API (key configured)
+Brave Query: "Anna Vink" profile
+  Brave found 10 results
+Brave Query: "Anna Vink" site:linkedin.com
+  Brave found 3 results
+Brave Query: "Anna Vink" site:facebook.com
+  Brave found 4 results
+Brave Query: "Anna Vink" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Anna Vink" site:instagram.com
+  Brave found 4 results
+Brave Query: "Anna Vink" site:tiktok.com
+  Brave found 2 results
+=== COMPLETE: 12 dork results, 10 search links ===
+
+=== 2026-05-11 08:03:35.210382 - Dorks search: Anna Vink ===
+Using Brave Search API (key configured)
+Brave Query: "Anna Vink" profile
+  Brave found 10 results
+Brave Query: "Anna Vink" site:linkedin.com
+  Brave found 3 results
+Brave Query: "Anna Vink" site:facebook.com
+  Brave found 4 results
+Brave Query: "Anna Vink" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Anna Vink" site:instagram.com
+  Brave found 4 results
+Brave Query: "Anna Vink" site:tiktok.com
+  Brave found 2 results
+=== COMPLETE: 12 dork results, 10 search links ===
+
+=== 2026-05-11 13:59:38.661833 - Dorks search: marlinde leurink ===
+Using Brave Search API (key configured)
+Brave Query: "marlinde leurink" profile
+  Brave found 4 results
+Brave Query: "marlinde leurink" site:linkedin.com
+  Brave found 0 results
+Brave Query: "marlinde leurink" site:facebook.com
+  Brave found 0 results
+Brave Query: "marlinde leurink" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "marlinde leurink" site:instagram.com
+  Brave found 0 results
+Brave Query: "marlinde leurink" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 5 dork results, 10 search links ===
+
+=== 2026-05-11 14:02:52.334103 - Dorks search: Marlinde Leurink ===
+Using Brave Search API (key configured)
+Brave Query: "Marlinde Leurink" profile
+  Brave found 4 results
+Brave Query: "Marlinde Leurink" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Marlinde Leurink" site:facebook.com
+  Brave found 0 results
+Brave Query: "Marlinde Leurink" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Marlinde Leurink" site:instagram.com
+  Brave found 0 results
+Brave Query: "Marlinde Leurink" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 5 dork results, 10 search links ===
+
+=== 2026-05-11 14:03:45.865444 - Dorks search: Marlinde Leurink ===
+Using Brave Search API (key configured)
+Brave Query: "Marlinde Leurink" profile
+  Brave found 4 results
+Brave Query: "Marlinde Leurink" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Marlinde Leurink" site:facebook.com
+  Brave found 0 results
+Brave Query: "Marlinde Leurink" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Marlinde Leurink" site:instagram.com
+  Brave found 0 results
+Brave Query: "Marlinde Leurink" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 5 dork results, 10 search links ===
+
+=== 2026-05-11 14:05:40.984715 - Dorks search: marlinde leurink ===
+Using Brave Search API (key configured)
+Brave Query: "marlinde leurink" profile
+  Brave found 4 results
+Brave Query: "marlinde leurink" site:linkedin.com
+  Brave found 0 results
+Brave Query: "marlinde leurink" site:facebook.com
+  Brave found 0 results
+Brave Query: "marlinde leurink" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "marlinde leurink" site:instagram.com
+  Brave found 0 results
+Brave Query: "marlinde leurink" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 5 dork results, 10 search links ===
+
+=== 2026-05-11 19:35:02.125795 - Dorks search: Ivan Versteegh ===
+Using Brave Search API (key configured)
+Brave Query: "Ivan Versteegh" profile
+  Brave found 0 results
+Brave Query: "Ivan Versteegh" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Ivan Versteegh" site:facebook.com
+  Brave found 0 results
+Brave Query: "Ivan Versteegh" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Ivan Versteegh" site:instagram.com
+  Brave found 0 results
+Brave Query: "Ivan Versteegh" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-11 21:44:31.105031 - Dorks search: Ivan Versteegh ===
+Using Brave Search API (key configured)
+Brave Query: "Ivan Versteegh" profile
+  Brave found 0 results
+Brave Query: "Ivan Versteegh" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Ivan Versteegh" site:facebook.com
+  Brave found 0 results
+Brave Query: "Ivan Versteegh" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Ivan Versteegh" site:instagram.com
+  Brave found 0 results
+Brave Query: "Ivan Versteegh" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-13 09:41:15.063490 - Dorks search: bello aminatou ===
+Using Brave Search API (key configured)
+Brave Query: "bello aminatou" profile
+  Brave found 0 results
+Brave Query: "bello aminatou" site:linkedin.com
+  Brave found 0 results
+Brave Query: "bello aminatou" site:facebook.com
+  Brave found 0 results
+Brave Query: "bello aminatou" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "bello aminatou" site:instagram.com
+  Brave found 0 results
+Brave Query: "bello aminatou" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-13 10:39:46.592996 - Dorks search: Bouwine Schreuder ===
+Using Brave Search API (key configured)
+Brave Query: "Bouwine Schreuder" profile
+  Brave found 1 results
+Brave Query: "Bouwine Schreuder" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Bouwine Schreuder" site:facebook.com
+  Brave found 0 results
+Brave Query: "Bouwine Schreuder" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Bouwine Schreuder" site:instagram.com
+  Brave found 0 results
+Brave Query: "Bouwine Schreuder" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 2 dork results, 10 search links ===
+
+=== 2026-05-13 23:57:07.712863 - Dorks search: ANDREI CASTELLI ===
+Using Brave Search API (key configured)
+Brave Query: "ANDREI CASTELLI" profile
+  Brave found 4 results
+Brave Query: "ANDREI CASTELLI" site:linkedin.com
+  Brave found 0 results
+Brave Query: "ANDREI CASTELLI" site:facebook.com
+  Brave found 0 results
+Brave Query: "ANDREI CASTELLI" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "ANDREI CASTELLI" site:instagram.com
+  Brave found 1 results
+Brave Query: "ANDREI CASTELLI" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 5 dork results, 10 search links ===
+
+=== 2026-05-15 22:21:44.448534 - Dorks search: frans jansen ===
+Using Brave Search API (key configured)
+Brave Query: "frans jansen" profile
+  Brave found 10 results
+Brave Query: "frans jansen" site:linkedin.com
+  Brave found 10 results
+Brave Query: "frans jansen" site:facebook.com
+  Brave found 10 results
+Brave Query: "frans jansen" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "frans jansen" site:instagram.com
+  Brave found 5 results
+Brave Query: "frans jansen" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 10 dork results, 10 search links ===
+
+=== 2026-05-15 22:25:03.917609 - Dorks search: Erik Jansen ===
+Using Brave Search API (key configured)
+Brave Query: "Erik Jansen" profile
+  Brave found 10 results
+Brave Query: "Erik Jansen" site:linkedin.com
+  Brave found 10 results
+Brave Query: "Erik Jansen" site:facebook.com
+  Brave found 10 results
+Brave Query: "Erik Jansen" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Erik Jansen" site:instagram.com
+  Brave found 8 results
+Brave Query: "Erik Jansen" site:tiktok.com
+  Brave found 2 results
+=== COMPLETE: 14 dork results, 10 search links ===
+
+=== 2026-05-18 09:07:15.855972 - Dorks search: Romeo Gobardhan ===
+Using Brave Search API (key configured)
+Brave Query: "Romeo Gobardhan" profile
+  Brave found 0 results
+Brave Query: "Romeo Gobardhan" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Romeo Gobardhan" site:facebook.com
+  Brave found 0 results
+Brave Query: "Romeo Gobardhan" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Romeo Gobardhan" site:instagram.com
+  Brave found 0 results
+Brave Query: "Romeo Gobardhan" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 09:11:42.214694 - Dorks search: rmnultien rmnultien ===
+Using Brave Search API (key configured)
+Brave Query: "rmnultien rmnultien" profile
+  Brave found 0 results
+Brave Query: "rmnultien rmnultien" site:linkedin.com
+  Brave found 0 results
+Brave Query: "rmnultien rmnultien" site:facebook.com
+  Brave found 0 results
+Brave Query: "rmnultien rmnultien" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "rmnultien rmnultien" site:instagram.com
+  Brave found 0 results
+Brave Query: "rmnultien rmnultien" site:tiktok.com
+  Brave found 2 results
+=== COMPLETE: 2 dork results, 10 search links ===
+
+=== 2026-05-18 09:20:09.444461 - Dorks search: Younes Tahtah ===
+Using Brave Search API (key configured)
+Brave Query: "Younes Tahtah" profile
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:facebook.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Younes Tahtah" site:instagram.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 09:21:33.135348 - Dorks search: Ryan Sherwin Gobardhan ===
+Using Brave Search API (key configured)
+Brave Query: "Ryan Sherwin Gobardhan" profile
+  Brave found 0 results
+Brave Query: "Ryan Sherwin Gobardhan" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Ryan Sherwin Gobardhan" site:facebook.com
+  Brave found 0 results
+Brave Query: "Ryan Sherwin Gobardhan" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Ryan Sherwin Gobardhan" site:instagram.com
+  Brave found 0 results
+Brave Query: "Ryan Sherwin Gobardhan" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 10:06:28.822041 - Dorks search: Ryan Sherwin Gobardhan ===
+Using Brave Search API (key configured)
+Brave Query: "Ryan Sherwin Gobardhan" profile
+  Brave found 0 results
+Brave Query: "Ryan Sherwin Gobardhan" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Ryan Sherwin Gobardhan" site:facebook.com
+  Brave found 0 results
+Brave Query: "Ryan Sherwin Gobardhan" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Ryan Sherwin Gobardhan" site:instagram.com
+  Brave found 0 results
+Brave Query: "Ryan Sherwin Gobardhan" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 10:06:53.961418 - Dorks search: Ryan Gobardhan ===
+Using Brave Search API (key configured)
+Brave Query: "Ryan Gobardhan" profile
+  Brave found 0 results
+Brave Query: "Ryan Gobardhan" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Ryan Gobardhan" site:facebook.com
+  Brave found 0 results
+Brave Query: "Ryan Gobardhan" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Ryan Gobardhan" site:instagram.com
+  Brave found 0 results
+Brave Query: "Ryan Gobardhan" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 10:08:05.015487 - Dorks search: ryan gobardhan ===
+Using Brave Search API (key configured)
+Brave Query: "ryan gobardhan" profile
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:linkedin.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:facebook.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "ryan gobardhan" site:instagram.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 10:08:55.766680 - Dorks search: younes tahtah ===
+Using Brave Search API (key configured)
+Brave Query: "younes tahtah" profile
+  Brave found 0 results
+Brave Query: "younes tahtah" site:linkedin.com
+  Brave found 0 results
+Brave Query: "younes tahtah" site:facebook.com
+  Brave found 0 results
+Brave Query: "younes tahtah" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "younes tahtah" site:instagram.com
+  Brave found 0 results
+Brave Query: "younes tahtah" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 10:09:45.071723 - Dorks search: ryan gobardhan ===
+Using Brave Search API (key configured)
+Brave Query: "ryan gobardhan" profile
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:linkedin.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:facebook.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "ryan gobardhan" site:instagram.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 10:10:05.213068 - Dorks search: Ryan Gobardhan ===
+Using Brave Search API (key configured)
+Brave Query: "Ryan Gobardhan" profile
+  Brave found 0 results
+Brave Query: "Ryan Gobardhan" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Ryan Gobardhan" site:facebook.com
+  Brave found 0 results
+Brave Query: "Ryan Gobardhan" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Ryan Gobardhan" site:instagram.com
+  Brave found 0 results
+Brave Query: "Ryan Gobardhan" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 10:10:32.257590 - Dorks search: Younes Tahtah ===
+Using Brave Search API (key configured)
+Brave Query: "Younes Tahtah" profile
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:facebook.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Younes Tahtah" site:instagram.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 11:38:28.474356 - Dorks search: Tom Jansen ===
+Using Brave Search API (key configured)
+Brave Query: "Tom Jansen" profile
+  Brave found 10 results
+Brave Query: "Tom Jansen" site:linkedin.com
+  Brave found 10 results
+Brave Query: "Tom Jansen" site:facebook.com
+  Brave found 10 results
+Brave Query: "Tom Jansen" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Tom Jansen" site:instagram.com
+  Brave found 9 results
+Brave Query: "Tom Jansen" site:tiktok.com
+  Brave found 2 results
+=== COMPLETE: 11 dork results, 10 search links ===
+
+=== 2026-05-18 11:44:29.641711 - Dorks search: Younes Tahtah ===
+Using Brave Search API (key configured)
+Brave Query: "Younes Tahtah" profile
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:linkedin.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:facebook.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "Younes Tahtah" site:instagram.com
+  Brave found 0 results
+Brave Query: "Younes Tahtah" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
+
+=== 2026-05-18 11:45:00.741161 - Dorks search: ryan gobardhan ===
+Using Brave Search API (key configured)
+Brave Query: "ryan gobardhan" profile
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:linkedin.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:facebook.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:twitter.com OR site:x.com
+  Brave found 10 results
+Brave Query: "ryan gobardhan" site:instagram.com
+  Brave found 0 results
+Brave Query: "ryan gobardhan" site:tiktok.com
+  Brave found 0 results
+=== COMPLETE: 1 dork results, 10 search links ===
