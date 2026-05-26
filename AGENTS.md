@@ -20,6 +20,8 @@
 - **CRITICAL — PostgreSQL vs SQLite diff**: PostgreSQL enforces `VARCHAR(n)` length limits; SQLite ignores them. Fernet-encrypted values are ~100-140 chars, so ALL encrypted columns MUST be `String(500)` minimum. Was vroeger auto-migrated op startup, nu vastgelegd in Alembic migration + modeldefinities.
 - Never mutate `created_at` on ORM objects directly (crashes SQLite). Sort with `strftime()` in sort key lambda.
 - `instr()` in queries is dialect-agnostic (uses `instr` for SQLite, `strpos` for PostgreSQL) — helper in `cms/routes/search_fts.py`.
+- **CRITICAL — Alembic stamp vs upgrade pitfall**: `alembic stamp head` registreert de versie maar voert **geen DDL uit**. De initiale migratie `8c4bb90d2490_initial_schema.py` bevat kolommen die mogelijk niet in de oude productie-DB zaten (`password_reset_token`, `password_reset_expires`, `failed_login_attempts`, `locked_until`). Migratie `69999cbb5609` lost dit op met `_has_column()` checks (dialect-agnostisch via `sqlalchemy.inspect`), zodat `ADD COLUMN` alleen wordt uitgevoerd als de kolom nog ontbreekt.
+- **Nieuwe migratie maken (manual)**: Schrijf `upgrade()`/`downgrade()` met `_has_column()` guards voor idempotentie op zowel SQLite als PostgreSQL. SQLite ondersteunt geen `ALTER COLUMN DROP DEFAULT` — gebruik `server_default` op `add_column` i.p.v. aparte `alter_column`.
 
 ## SpiderFoot Integration (`cms/spiderfoot_service.py`)
 
