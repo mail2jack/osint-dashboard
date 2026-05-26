@@ -1,18 +1,11 @@
-__pycache__/
-*.pyc
 *.log
-.env
-dorks_log.txt
-*.json
-.obsidian/
-.pytest_cache/
-*.db
-*.pid
-.app_port
-.sf_port
-instance/
-static/uploads/
-spiderfoot/
-# Test update notification
+osint_cache/
+rate_limits.json
 .cms_key
+*.db
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
 flask_session/
+uploads/
