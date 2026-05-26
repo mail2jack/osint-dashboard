@@ -17,7 +17,7 @@ import logging
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import httpx
+
 
 logger = logging.getLogger(__name__)
 
@@ -670,14 +670,15 @@ def check_spiderfoot_health(sf_url: Optional[str] = None) -> Tuple[bool, str]:
             sf_url = Setting.get('spiderfoot_url')
         if not sf_url:
             sf_url = 'http://127.0.0.1:5001'
-        
+
         sf_user = Setting.get('spiderfoot_username', 'admin')
         sf_pass = Setting.get('spiderfoot_password', '')
-        
-        auth = httpx.DigestAuth(sf_user, sf_pass) if sf_pass else None
-        r = httpx.get(f"{sf_url}/health", timeout=10, auth=auth)
-        healthy = r.status_code == 200
-        message = 'connected' if healthy else f'unexpected status: {r.status_code}'
+
+        from spiderfoot_client import SpiderFootClient
+        client = SpiderFootClient(sf_url, sf_user, sf_pass)
+        result = client.ping()
+        healthy = result.get('status') == 'success'
+        message = 'connected' if healthy else f'unexpected: {result}'
         
         Setting.set('spiderfoot_last_ok', datetime.now(timezone.utc).isoformat())
         Setting.set('spiderfoot_health', 'ok' if healthy else 'error')
