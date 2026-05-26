@@ -435,6 +435,10 @@
         ⬆️ <span id="updateBannerText">Update available</span>
     </div>
 
+    <div id="sfHealthBanner" style="display:none;background:#dc2626;color:white;text-align:center;padding:0.5rem;font-size:0.875rem;">
+        ⚠️ SpiderFoot is <span id="sfHealthText">unreachable</span>. Some OSINT features may not work.
+    </div>
+
     <div id="updateModal" class="modal">
         <div class="modal-content" style="max-width:500px;">
             <div class="modal-header">
@@ -528,6 +532,28 @@
             })
             .catch(() => {});
     });
+
+    // SpiderFoot health banner
+    var sfHealth = '{{ spiderfoot_health|tojson }}'.replace(/^"|"$/g, '');
+    if (sfHealth && sfHealth !== 'ok') {
+        document.getElementById('sfHealthBanner').style.display = 'block';
+        document.getElementById('sfHealthText').textContent = sfHealth === 'error' ? 'unreachable' : sfHealth;
+    }
+    // Periodically refresh SF health status
+    setInterval(function() {
+        fetch('/health?quick=1', { headers: { 'Accept': 'application/json' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var banner = document.getElementById('sfHealthBanner');
+                if (data.spiderfoot && data.spiderfoot === 'connected') {
+                    banner.style.display = 'none';
+                } else if (data.spiderfoot && data.spiderfoot !== 'connected') {
+                    banner.style.display = 'block';
+                    document.getElementById('sfHealthText').textContent = 'unreachable';
+                }
+            })
+            .catch(function() {});
+    }, 60000);
 
     function escapeHtml(str) {
         const div = document.createElement('div');

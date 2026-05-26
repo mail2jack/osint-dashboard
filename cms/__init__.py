@@ -151,8 +151,8 @@ def create_cms_module(app: Flask):
             admin.set_password(default_password)
             db.session.add(admin)
             db.session.commit()
-            app.logger.info("Default admin user created. Set a password via Settings > Users.")
-            print(f"\n{'='*60}\n  DEFAULT ADMIN CREATED — CHANGE PASSWORD IMMEDIATELY\n  Username: admin\n  Temporary password: {default_password}\n{'='*60}\n", flush=True)
+            app.logger.warning("Default admin user created. Set a password immediately via Settings > Users or the password reset flow.")
+            print(f"\n{'='*60}\n  DEFAULT ADMIN CREATED — CHANGE PASSWORD IMMEDIATELY\n  Username: admin\n  Go to Settings > Users to set a password.\n{'='*60}\n", flush=True)
     
     return app
 
@@ -182,6 +182,7 @@ def init_db(app: Flask, database_url: str = None):
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_size': 10,
+        'max_overflow': 20,
         'pool_recycle': 3600,
         'pool_pre_ping': True
     }

@@ -601,6 +601,17 @@
                 {% endif %}
             </div>
             {% endfor %}
+            {% if findings_pagination and findings_pagination.pages > 1 %}
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+                {% if findings_pagination.has_prev %}
+                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.prev_num) }}" class="btn btn-sm">Previous</a>
+                {% endif %}
+                <span style="padding: 0.5rem 1rem;">Page {{ findings_pagination.page }} of {{ findings_pagination.pages }}</span>
+                {% if findings_pagination.has_next %}
+                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.next_num) }}" class="btn btn-sm">Next</a>
+                {% endif %}
+            </div>
+            {% endif %}
         {% else %}
         <p style="color:#888;font-size:0.875rem;">Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan.</p>
         {% endif %}

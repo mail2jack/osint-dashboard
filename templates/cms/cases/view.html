@@ -390,7 +390,7 @@
 <!-- Documents Section -->
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Documents (<span id="docCount">{{ documents|length }}</span>)</h2>
+        <h2 style="margin: 0;">Documents (<span id="docCount">{{ documents_pagination.total if documents_pagination else documents|length }}</span>)</h2>
         {% if case.status not in ['closed', 'archived'] %}
         <button data-click="openUploadModal" class="btn btn-sm" style="background: #059669;">+ Upload Document</button>
         {% endif %}
@@ -419,6 +419,17 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% if documents_pagination and documents_pagination.pages > 1 %}
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+            {% if documents_pagination.has_prev %}
+            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.prev_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn btn-sm">Previous</a>
+            {% endif %}
+            <span style="padding: 0.5rem 1rem;">Page {{ documents_pagination.page }} of {{ documents_pagination.pages }}</span>
+            {% if documents_pagination.has_next %}
+            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.next_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn btn-sm">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
         {% else %}
         <p>No documents uploaded.</p>
         {% endif %}

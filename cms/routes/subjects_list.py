@@ -54,11 +54,16 @@ def subjects() -> str:
     if order == 'desc':
         sort_col = sort_col.desc()
 
-    # JSON format for API calls
+    # JSON format for API calls (subject picker dropdown)
     if fmt == 'json':
-        subjects_list = query.order_by(sort_col).all()
+        search_q = request.args.get('q', '').strip()
+        if search_q:
+            query = query.filter(Subject.name.ilike(f'%{search_q}%'))
+        subjects_list = query.order_by(sort_col).limit(200).all()
         return jsonify({
-            'subjects': [{'id': s.id, 'name': s.name, 'type': s.subject_type} for s in subjects_list]
+            'subjects': [{'id': s.id, 'name': s.name, 'type': s.subject_type} for s in subjects_list],
+            'total': len(subjects_list),
+            'has_more': query.order_by(sort_col).count() > 200
         })
 
     pagination = query.order_by(sort_col).paginate(
@@ -85,9 +90,14 @@ def view_subject(subject_id: str) -> str:
     for c in subject.contacts:
         c.decrypt_fields()
 
-    financials = subject.financial_records.filter_by(is_deleted=False).all()
-    findings = subject.findings.filter_by(
-        is_deleted=False).order_by(Finding.created_at.desc()).all()
+    # Paginated findings
+    findings_page = request.args.get('findings_page', 1, type=int)
+    findings_per_page = 20
+    findings_pagination = subject.findings.filter_by(
+        is_deleted=False
+    ).order_by(Finding.created_at.desc()).paginate(
+        page=findings_page, per_page=findings_per_page, error_out=False
+    )
 
     # Get linked cases — use association table directly to avoid N+1
     from ..models import case_subjects
@@ -118,8 +128,8 @@ def view_subject(subject_id: str) -> str:
 
     return render_template('cms/subjects/view.html',
                            subject=subject,
-                           financials=financials,
-                           findings=findings,
+                           findings=findings_pagination.items,
+                           findings_pagination=findings_pagination,
                            linked_cases=linked_cases,
                            first_case_id=first_case_id
                            )

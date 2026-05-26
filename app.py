@@ -199,13 +199,23 @@ def platform_color_filter(url):
 # End CMS Integration
 # =============================================================================
 
-# Context Processor — inject version + update info into all templates
+# Context Processor — inject version + SF health into all templates
 @app.context_processor
 def inject_globals():
     from version import get_version
-    return {
+    ctx = {
         'current_version': get_version(),
     }
+    try:
+        from cms.models import Setting
+        sf_health = Setting.get('spiderfoot_health', '')
+        sf_last_ok = Setting.get('spiderfoot_last_ok', '')
+        ctx['spiderfoot_health'] = sf_health
+        ctx['spiderfoot_last_ok'] = sf_last_ok
+    except Exception:
+        ctx['spiderfoot_health'] = ''
+        ctx['spiderfoot_last_ok'] = ''
+    return ctx
 
 # =============================================================================
 # App-level Routes — imported from route modules

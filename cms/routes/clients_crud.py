@@ -15,6 +15,7 @@ from ..models import db, Client, Case, AuditLog, Contact, Address
 from ..auth import roles_required, admin_required
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_clients, check_for_exact_match
+from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,7 @@ def view_client(client_id: str) -> str:
 @cms_bp.route('/clients/create', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
+@rate_limit(STRICT_RATE_LIMIT, key_prefix='create_client')
 @validate(CreateClientSchema)
 def create_client() -> flask.Response:
     """Create a new client with duplicate detection."""
@@ -235,6 +237,7 @@ def create_client() -> flask.Response:
 @cms_bp.route('/clients/<client_id>/edit', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator')
+@rate_limit(STRICT_RATE_LIMIT, key_prefix='edit_client')
 @validate(EditClientSchema)
 def edit_client(client_id: str) -> flask.Response:
     """Edit client details."""

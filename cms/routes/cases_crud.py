@@ -10,13 +10,14 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from .. import csrf
-from ..validation import validate, CreateCaseSchema, EditCaseSchema
+from ..validation import validate, CreateCaseSchema, EditCaseSchema, BulkDeleteSchema
 from ..models import (
     db, Case, Client, Subject,
     AuditLog, User, CaseStatus, CasePriority
 )
 from ..auth import roles_required, admin_required, case_access_required, case_edit_required
 from ..notifications import notify_case_created
+from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +26,12 @@ logger = logging.getLogger(__name__)
 @csrf.exempt
 @login_required
 @roles_required('admin', 'senior_investigator')
+@validate(BulkDeleteSchema)
 def bulk_delete_cases() -> flask.Response:
     """Soft-delete cases in bulk."""
-    data = request.get_json(silent=True) or {}
+    data = request.validated_data
     ids = data.get('ids', [])
-    if not ids or not isinstance(ids, list) or len(ids) > 100:
+    if not ids or len(ids) > 100:
         return jsonify({'error': 'Provide a list of up to 100 case IDs'}), 400
     now = datetime.now(timezone.utc)
     count = Case.query.filter(Case.id.in_(ids), Case.is_deleted == False).update(
@@ -130,6 +132,7 @@ def cases() -> str:
 @cms_bp.route('/cases/create', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
+@rate_limit(STRICT_RATE_LIMIT, key_prefix='create_case')
 @validate(CreateCaseSchema)
 def create_case() -> flask.Response:
     """Create a new case."""

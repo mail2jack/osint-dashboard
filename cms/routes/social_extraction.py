@@ -10,7 +10,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from .. import csrf
 from ..models import db, Subject, Finding, AuditLog
-from ..validation import validate, ExtractSocialIdSchema
+from ..validation import validate, ExtractSocialIdSchema, UpdateSocialIdsSchema
 
 logger = logging.getLogger(__name__)
 
@@ -225,13 +225,11 @@ def get_subject_social_ids(subject_id: str) -> flask.Response:
 
 @cms_bp.route('/subjects/<subject_id>/social-ids', methods=['PUT'])
 @login_required
+@validate(UpdateSocialIdsSchema)
 def update_subject_social_ids(subject_id: str) -> flask.Response:
     """Update social media IDs for a subject (manual entry)."""
     subject = db.session.get(Subject, subject_id) or abort(404)
-    data = request.get_json()
-
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
+    data = request.validated_data
 
     # Merge with existing
     existing = subject.social_media_ids or {}

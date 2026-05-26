@@ -26,7 +26,7 @@
     }
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(7, minmax(100px, 1fr));
+        grid-template-columns: repeat(8, minmax(100px, 1fr));
         gap: 0.5rem;
         margin-bottom: 1rem;
     }
@@ -190,6 +190,15 @@
     <div class="stat-card">
         <h3>Findings</h3>
         <div class="value">{{ stats.total_findings }}</div>
+    </div>
+    <div class="stat-card spiderfoot">
+        <h3>🔍 Scans</h3>
+        <div class="value">{{ sf_total }}</div>
+        {% if sf_health == 'ok' %}
+        <div class="subtitle" style="color:#16a34a;">✓ {{ sf_running }} running · {{ sf_completed }} done</div>
+        {% else %}
+        <div class="subtitle" style="color:#dc2626;">⚠️ SF unreachable</div>
+        {% endif %}
     </div>
 </div>
 
@@ -392,6 +401,36 @@
         {% else %}
         <p style="color: var(--text-secondary); text-align: center;">No subject data</p>
         {% endif %}
+    </div>
+    
+    <div class="card">
+        <h2>🔍 SpiderFoot Scans</h2>
+        {% if sf_total > 0 %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #10b981;"></div>
+                <span>Completed: {{ sf_completed }}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></div>
+                <span>Running: {{ sf_running }}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div>
+                <span>Failed: {{ sf_failed }}</span>
+            </div>
+            {% if sf_last_scan_time %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px; width: 100%;">
+                <span>Last scan: {{ sf_last_scan_time[:10] }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center;">No scans yet</p>
+        {% endif %}
+        <div style="margin-top: 0.5rem; text-align: center;">
+            <a href="{{ url_for('cms.spiderfoot_index') }}" class="btn btn-sm">View All Scans</a>
+        </div>
     </div>
     
     <div class="card">

@@ -10,7 +10,7 @@ from flask import (
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..validation import validate, CreateSubjectSchema, EditSubjectSchema
+from ..validation import validate, CreateSubjectSchema, EditSubjectSchema, BulkDeleteSchema
 from ..models import (
     db, Subject, Case, Address, Contact, AuditLog
 )
@@ -21,6 +21,7 @@ from .utils import (
     normalize_phone, find_similar_subjects,
     check_for_exact_match
 )
+from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 @cms_bp.route('/subjects/create', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
+@rate_limit(STRICT_RATE_LIMIT, key_prefix='create_subject')
 @validate(CreateSubjectSchema)
 def create_subject() -> flask.Response:
     """Create a new subject with duplicate detection."""
@@ -221,6 +223,7 @@ def create_subject() -> flask.Response:
 @cms_bp.route('/subjects/<subject_id>/edit', methods=['GET', 'POST'])
 @login_required
 @roles_required('admin', 'senior_investigator', 'junior_investigator')
+@rate_limit(STRICT_RATE_LIMIT, key_prefix='edit_subject')
 @validate(EditSubjectSchema)
 def edit_subject(subject_id: str) -> flask.Response:
     """Edit subject details."""
@@ -469,11 +472,12 @@ def edit_subject(subject_id: str) -> flask.Response:
 @csrf.exempt
 @login_required
 @roles_required('admin', 'senior_investigator')
+@validate(BulkDeleteSchema)
 def bulk_delete_subjects() -> flask.Response:
     """Soft-delete subjects in bulk (consistent with single delete)."""
-    data = request.get_json(silent=True) or {}
+    data = request.validated_data
     ids = data.get('ids', [])
-    if not ids or not isinstance(ids, list) or len(ids) > 100:
+    if not ids or len(ids) > 100:
         return jsonify({'error': 'Provide a list of up to 100 subject IDs'}), 400
     now = datetime.now(timezone.utc)
     count = Subject.query.filter(Subject.id.in_(ids), Subject.is_deleted == False).update(

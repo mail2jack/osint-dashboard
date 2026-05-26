@@ -65,6 +65,7 @@ _api_lock = threading.Lock()
 
 DEFAULT_RATE_LIMIT = (100, 60)   # 100 requests / 60 seconds
 STRICT_RATE_LIMIT = (30, 60)     # 30 requests / 60 seconds
+GLOBAL_LIMIT = (300, 60)         # 300 requests / 60 seconds per IP (all endpoints combined)
 
 
 def load_rate_limits():
@@ -81,6 +82,7 @@ def load_rate_limits():
 
 def rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix='default'):
     max_requests, window_seconds = limit
+    global_max, global_window = GLOBAL_LIMIT
 
     def decorator(f):
         @wraps(f)
@@ -88,6 +90,26 @@ def rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix='default'):
             with _api_lock:
                 now = time.time()
                 client_ip = flask.request.remote_addr or '127.0.0.1'
+
+                # Global per-IP check (all endpoints combined)
+                global_key = f"_global:{client_ip}"
+                if global_key not in _api_rate_limits:
+                    _api_rate_limits[global_key] = {'count': 0, 'window_start': now}
+                gdata = _api_rate_limits[global_key]
+                if now - gdata['window_start'] > global_window:
+                    gdata['count'] = 0
+                    gdata['window_start'] = now
+                if gdata['count'] >= global_max:
+                    retry_after = int(global_window - (now - gdata['window_start']))
+                    return flask.jsonify({
+                        'error': 'Rate limit exceeded',
+                        'limit': global_max,
+                        'window_seconds': global_window,
+                        'retry_after': max(retry_after, 1)
+                    }), 429, {'Retry-After': str(max(retry_after, 1))}
+                gdata['count'] += 1
+
+                # Per-endpoint per-IP check
                 key = f"{key_prefix}:{client_ip}"
 
                 if key not in _api_rate_limits:

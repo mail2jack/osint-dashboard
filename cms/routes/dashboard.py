@@ -8,7 +8,7 @@ from . import cms_bp
 from ..models import (
     db, Case, Client, Subject, Finding,
     AuditLog, User, CaseStatus, CasePriority,
-    Reminder
+    Reminder, SpiderFootScan, Setting
 )
 from sqlalchemy import func
 
@@ -169,6 +169,17 @@ def dashboard() -> str:
     if overdue_reminders:
         db.session.commit()
 
+    # SpiderFoot stats
+    sf_total = SpiderFootScan.query.filter_by(is_deleted=False).count()
+    sf_running = SpiderFootScan.query.filter_by(is_deleted=False, status='RUNNING').count()
+    sf_completed = SpiderFootScan.query.filter_by(is_deleted=False, status='FINISHED').count()
+    sf_failed = SpiderFootScan.query.filter_by(is_deleted=False, status='FAILED').count()
+    sf_last_scan = SpiderFootScan.query.filter_by(is_deleted=False).order_by(
+        SpiderFootScan.created_at.desc()).first()
+    sf_last_scan_time = sf_last_scan.created_at.isoformat() if sf_last_scan else None
+    sf_health = Setting.get('spiderfoot_health', '')
+    sf_last_ok = Setting.get('spiderfoot_last_ok', '')
+
     return render_template('cms/dashboard.html',
                            stats=stats,
                            my_cases=my_cases,
@@ -188,5 +199,12 @@ def dashboard() -> str:
                            investigator_counts=investigator_counts,
                            my_open_cases=my_open_cases,
                            my_active_cases=my_active_cases,
-                           overdue_cases=overdue_cases
+                           overdue_cases=overdue_cases,
+                           sf_total=sf_total,
+                           sf_running=sf_running,
+                           sf_completed=sf_completed,
+                           sf_failed=sf_failed,
+                           sf_last_scan_time=sf_last_scan_time,
+                           sf_health=sf_health,
+                           sf_last_ok=sf_last_ok
                            )

@@ -1,0 +1,330 @@
+2026-05-25 09:52:56,062 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 09:53:10,990 - app - WARNING - [-] Default admin user created. Password: bu2CM&BiMMuhBaDmYbRa — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 09:53:10,991 - app - INFO - [-] CMS initialized successfully
+2026-05-25 09:53:11,478 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 09:53:11,479 - app - INFO - [-] App-level routes registered
+2026-05-25 09:53:26,446 - cms.routes.system_app - INFO - [f987467ccba6] => POST /api/search/fts
+2026-05-25 09:53:26,446 - cms.routes.system_app - INFO - [f987467ccba6] <= POST /api/search/fts — 404
+2026-05-25 09:53:29,250 - cms.routes.system_app - INFO - [f4075aa5acf1] => POST /api/search/fts
+2026-05-25 09:53:29,252 - cms.routes.system_app - INFO - [f4075aa5acf1] <= POST /api/search/fts — 404
+2026-05-25 09:53:31,993 - cms.routes.system_app - INFO - [8d1d6eb5d2ec] => POST /api/search/fts
+2026-05-25 09:53:31,994 - cms.routes.system_app - INFO - [8d1d6eb5d2ec] <= POST /api/search/fts — 404
+2026-05-25 09:53:55,429 - cms.routes.system_app - INFO - [229137f2794c] => POST /api/subjects/bulk-delete
+2026-05-25 09:53:55,433 - cms.routes.system_app - INFO - [229137f2794c] <= POST /api/subjects/bulk-delete — 404
+2026-05-25 09:54:09,697 - cms.routes.system_app - INFO - [cd39951fe87c] => POST /api/subjects/bulk-delete
+2026-05-25 09:54:09,786 - cms.routes.system_app - INFO - [cd39951fe87c] <= POST /api/subjects/bulk-delete — 404
+2026-05-25 09:54:33,897 - cms.routes.system_app - INFO - [18269cea8a58] => POST /api/cases/bulk-delete
+2026-05-25 09:54:33,899 - cms.routes.system_app - INFO - [18269cea8a58] <= POST /api/cases/bulk-delete — 404
+2026-05-25 09:54:51,120 - cms.routes.system_app - INFO - [3f548f5698dc] => POST /api/subjects/bulk-delete
+2026-05-25 09:54:51,121 - cms.routes.system_app - INFO - [3f548f5698dc] <= POST /api/subjects/bulk-delete — 404
+2026-05-25 09:56:04,822 - cms.routes.system_app - INFO - [8a676da598fb] => GET /api/rate-limit-status
+2026-05-25 09:56:04,823 - cms.routes.system_app - INFO - [8a676da598fb] <= GET /api/rate-limit-status — 200
+2026-05-25 09:56:18,719 - httpx - INFO - [613c9a79feb3] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 09:56:20,736 - httpx - INFO - [613c9a79feb3] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 09:56:30,603 - cms.routes.system_app - INFO - [77c076582825] => GET /api/config
+2026-05-25 09:56:42,061 - cms.routes.system_app - INFO - [203058c7ca31] => GET /api/version
+2026-05-25 09:56:42,062 - cms.routes.system_app - INFO - [203058c7ca31] <= GET /api/version — 200
+2026-05-25 09:56:50,829 - cms.routes.system_app - INFO - [a0eada22ded7] => GET /api/changelog
+2026-05-25 09:56:50,830 - cms.routes.system_app - INFO - [a0eada22ded7] <= GET /api/changelog — 200
+2026-05-25 09:58:31,247 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 09:58:33,346 - app - INFO - [-] Migration: made subject_id nullable in addresses table
+2026-05-25 09:58:35,383 - app - INFO - [-] CMS initialized successfully
+2026-05-25 09:58:35,448 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 09:58:35,449 - app - INFO - [-] App-level routes registered
+2026-05-25 10:07:05,243 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:07:10,625 - app - WARNING - [-] Default admin user created. Password: 8AZUX5rH92jShzSgp$qy — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:07:10,625 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:07:10,691 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:07:10,692 - app - INFO - [-] App-level routes registered
+2026-05-25 10:08:34,056 - cms.routes.system_app - INFO - [ba7c64d69a32] => GET /api/rate-limit-status
+2026-05-25 10:08:34,059 - cms.routes.system_app - INFO - [ba7c64d69a32] <= GET /api/rate-limit-status — 200
+2026-05-25 10:08:47,054 - httpx - INFO - [29423ccab61e] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 10:08:49,971 - httpx - INFO - [29423ccab61e] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 10:08:51,277 - cms.routes.system_app - INFO - [-] Received signal 15, shutting down...
+2026-05-25 10:08:58,066 - cms.routes.system_app - INFO - [300d3d500098] => GET /api/config
+2026-05-25 10:08:58,600 - httpx - INFO - [300d3d500098] HTTP Request: GET http://localhost:11434/api/generate/api/tags "HTTP/1.1 404 Not Found"
+2026-05-25 10:08:58,601 - cms.routes.system_app - INFO - [300d3d500098] <= GET /api/config — 200
+2026-05-25 10:09:35,553 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:09:50,757 - app - WARNING - [-] Default admin user created. Password: j@vsho$G8qqvr!*n$tBX — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:09:50,758 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:09:50,952 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:09:50,953 - app - INFO - [-] App-level routes registered
+2026-05-25 10:10:25,040 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:10:58,505 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:11:03,656 - app - INFO - [-] Migration: made subject_id nullable in addresses table
+2026-05-25 10:11:06,707 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:11:06,800 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:11:06,801 - app - INFO - [-] App-level routes registered
+2026-05-25 10:11:37,156 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:11:54,635 - app - WARNING - [-] Default admin user created. Password: 5Ny3zj$L7usBbFRUrXll — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:11:54,636 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:11:55,085 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:11:55,085 - app - INFO - [-] App-level routes registered
+2026-05-25 10:12:28,049 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:12:43,098 - app - WARNING - [-] Default admin user created. Password: 7ZMg!@cT2OEF3Sq6YuLF — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:12:43,099 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:12:43,643 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:12:43,644 - app - INFO - [-] App-level routes registered
+2026-05-25 10:12:46,879 - httpx - INFO - [12606571db34] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 10:12:48,721 - httpx - INFO - [12606571db34] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 10:12:58,601 - cms.routes.system_app - INFO - [6d3e5615b957] => GET /api/config
+2026-05-25 10:12:59,931 - httpx - INFO - [6d3e5615b957] HTTP Request: GET http://localhost:11434/api/generate/api/tags "HTTP/1.1 404 Not Found"
+2026-05-25 10:12:59,934 - cms.routes.system_app - INFO - [6d3e5615b957] <= GET /api/config — 200
+2026-05-25 10:13:35,370 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:13:48,768 - app - WARNING - [-] Default admin user created. Password: *8sTlpA2Xqop3JhCLX6Y — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:13:48,769 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:13:49,165 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:13:49,165 - app - INFO - [-] App-level routes registered
+2026-05-25 10:21:27,625 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:21:44,531 - app - WARNING - [-] Default admin user created. Password: xYVjVZ7jb@W8J6XhRX^k — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:21:44,531 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:21:45,327 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:21:45,327 - app - INFO - [-] App-level routes registered
+2026-05-25 10:24:29,942 - cms.routes.system_app - INFO - [216603202d07] => GET /api/rate-limit-status
+2026-05-25 10:24:29,943 - cms.routes.system_app - INFO - [216603202d07] <= GET /api/rate-limit-status — 200
+2026-05-25 10:24:39,364 - httpx - INFO - [a8fb3a2aca46] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 10:24:41,865 - httpx - INFO - [a8fb3a2aca46] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 10:24:51,485 - cms.routes.system_app - INFO - [d5d99f2d2be5] => GET /api/config
+2026-05-25 10:24:52,668 - httpx - INFO - [d5d99f2d2be5] HTTP Request: GET http://localhost:11434/api/generate/api/tags "HTTP/1.1 404 Not Found"
+2026-05-25 10:24:52,713 - cms.routes.system_app - INFO - [d5d99f2d2be5] <= GET /api/config — 200
+2026-05-25 10:25:03,883 - cms.routes.system_app - INFO - [4fb810bdbc3e] => GET /api/version
+2026-05-25 10:25:03,884 - cms.routes.system_app - INFO - [4fb810bdbc3e] <= GET /api/version — 200
+2026-05-25 10:25:13,492 - cms.routes.system_app - INFO - [a0f2c040b5a2] => GET /api/changelog
+2026-05-25 10:25:13,493 - cms.routes.system_app - INFO - [a0f2c040b5a2] <= GET /api/changelog — 200
+2026-05-25 10:36:31,353 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:36:36,638 - app - WARNING - [-] Default admin user created. Password: sfRuu7ojxFr*^l7OX93p — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:36:36,639 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:36:36,761 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:36:36,761 - app - INFO - [-] App-level routes registered
+2026-05-25 10:38:55,412 - cms.routes.system_app - INFO - [9cdffcad64e6] => GET /api/rate-limit-status
+2026-05-25 10:38:55,413 - cms.routes.system_app - INFO - [9cdffcad64e6] <= GET /api/rate-limit-status — 200
+2026-05-25 10:39:08,256 - httpx - INFO - [37bb6b33d7bb] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 10:39:10,783 - httpx - INFO - [37bb6b33d7bb] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 10:39:21,462 - cms.routes.system_app - INFO - [b9bbb1c6b529] => GET /api/config
+2026-05-25 10:39:22,036 - httpx - INFO - [b9bbb1c6b529] HTTP Request: GET http://localhost:11434/api/generate/api/tags "HTTP/1.1 404 Not Found"
+2026-05-25 10:39:22,037 - cms.routes.system_app - INFO - [b9bbb1c6b529] <= GET /api/config — 200
+2026-05-25 10:39:27,990 - cms.routes.system_app - INFO - [b13f46d81644] => GET /api/version
+2026-05-25 10:39:27,991 - cms.routes.system_app - INFO - [b13f46d81644] <= GET /api/version — 200
+2026-05-25 10:39:30,699 - cms.routes.system_app - INFO - [11cbd9975f56] => GET /api/changelog
+2026-05-25 10:39:30,700 - cms.routes.system_app - INFO - [11cbd9975f56] <= GET /api/changelog — 200
+2026-05-25 10:42:23,921 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:42:42,982 - app - WARNING - [-] Default admin user created. Password: RVy78RXMa3SM4Byxleym — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:42:42,983 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:42:44,066 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:42:44,112 - app - INFO - [-] App-level routes registered
+2026-05-25 10:45:44,073 - cms.routes.system_app - INFO - [b028e5f20cba] => GET /api/rate-limit-status
+2026-05-25 10:45:44,075 - cms.routes.system_app - INFO - [b028e5f20cba] <= GET /api/rate-limit-status — 200
+2026-05-25 10:45:57,430 - httpx - INFO - [7ce923ae42be] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 10:45:58,561 - httpx - INFO - [7ce923ae42be] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 10:46:09,348 - cms.routes.system_app - INFO - [51f6a48b35b9] => GET /api/config
+2026-05-25 10:46:09,584 - httpx - INFO - [51f6a48b35b9] HTTP Request: GET http://localhost:11434/api/generate/api/tags "HTTP/1.1 404 Not Found"
+2026-05-25 10:46:09,586 - cms.routes.system_app - INFO - [51f6a48b35b9] <= GET /api/config — 200
+2026-05-25 10:46:21,469 - cms.routes.system_app - INFO - [f77dd4726417] => GET /api/version
+2026-05-25 10:46:21,475 - cms.routes.system_app - INFO - [f77dd4726417] <= GET /api/version — 200
+2026-05-25 10:46:30,060 - cms.routes.system_app - INFO - [80dc7b1ee271] => GET /api/changelog
+2026-05-25 10:46:30,061 - cms.routes.system_app - INFO - [80dc7b1ee271] <= GET /api/changelog — 200
+2026-05-25 10:49:53,354 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:50:08,385 - app - WARNING - [-] Default admin user created. Password: 3conul3GNwjWxJOE3rZ3 — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:50:08,386 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:50:08,761 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:50:08,762 - app - INFO - [-] App-level routes registered
+2026-05-25 10:53:08,896 - cms.routes.system_app - INFO - [43cea02bd5c9] => GET /api/rate-limit-status
+2026-05-25 10:53:08,898 - cms.routes.system_app - INFO - [43cea02bd5c9] <= GET /api/rate-limit-status — 200
+2026-05-25 10:53:21,838 - httpx - INFO - [8ef67be0e8b0] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 10:53:23,273 - httpx - INFO - [8ef67be0e8b0] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 10:53:35,161 - cms.routes.system_app - INFO - [7035da81045f] => GET /api/config
+2026-05-25 10:53:35,442 - httpx - INFO - [7035da81045f] HTTP Request: GET http://localhost:11434/api/generate/api/tags "HTTP/1.1 404 Not Found"
+2026-05-25 10:53:35,444 - cms.routes.system_app - INFO - [7035da81045f] <= GET /api/config — 200
+2026-05-25 10:53:48,763 - cms.routes.system_app - INFO - [ac5e46f82e57] => GET /api/version
+2026-05-25 10:53:48,765 - cms.routes.system_app - INFO - [ac5e46f82e57] <= GET /api/version — 200
+2026-05-25 10:53:59,263 - cms.routes.system_app - INFO - [0a0d31526071] => GET /api/changelog
+2026-05-25 10:53:59,267 - cms.routes.system_app - INFO - [0a0d31526071] <= GET /api/changelog — 200
+2026-05-25 10:55:31,211 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:55:46,153 - app - WARNING - [-] Default admin user created. Password: QH&vObi*aem@aRy8DENb — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:55:46,156 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:55:46,817 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:55:46,834 - app - INFO - [-] App-level routes registered
+2026-05-25 10:56:54,162 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:57:54,952 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 10:58:14,157 - app - WARNING - [-] Default admin user created. Password: rNpB4jTolt!apw@or4qZ — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 10:58:14,157 - app - INFO - [-] CMS initialized successfully
+2026-05-25 10:58:14,462 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 10:58:14,462 - app - INFO - [-] App-level routes registered
+2026-05-25 11:02:10,221 - cms.routes.system_app - INFO - [eb884f1f5063] => GET /api/rate-limit-status
+2026-05-25 11:02:10,223 - cms.routes.system_app - INFO - [eb884f1f5063] <= GET /api/rate-limit-status — 200
+2026-05-25 11:02:26,161 - httpx - INFO - [7aa8e7c69137] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 11:02:28,628 - httpx - INFO - [7aa8e7c69137] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 11:03:05,379 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 11:03:29,678 - app - WARNING - [-] Default admin user created. Password: nmdYDB@6XEZWtKp8kJ7b — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:03:29,678 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:03:30,365 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:03:30,366 - app - INFO - [-] App-level routes registered
+2026-05-25 11:04:32,617 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 11:04:56,333 - app - WARNING - [-] Default admin user created. Password: xcyxnKWR0HpVarFSxo!Z — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:04:56,334 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:04:56,905 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:04:56,906 - app - INFO - [-] App-level routes registered
+2026-05-25 11:08:56,256 - cms.routes.system_app - INFO - [c9a12d6c80e8] => GET /api/rate-limit-status
+2026-05-25 11:08:56,266 - cms.routes.system_app - INFO - [c9a12d6c80e8] <= GET /api/rate-limit-status — 200
+2026-05-25 11:09:10,704 - httpx - INFO - [5dc2b8ec8c45] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 11:09:12,475 - httpx - INFO - [5dc2b8ec8c45] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 11:09:15,898 - cms.routes.system_app - INFO - [dc1bdf96392e] => GET /api/config
+2026-05-25 11:09:16,075 - httpx - INFO - [dc1bdf96392e] HTTP Request: GET http://localhost:11434/api/generate/api/tags "HTTP/1.1 404 Not Found"
+2026-05-25 11:09:16,076 - cms.routes.system_app - INFO - [dc1bdf96392e] <= GET /api/config — 200
+2026-05-25 11:09:22,614 - cms.routes.system_app - INFO - [-] Received signal 15, shutting down...
+2026-05-25 11:09:22,625 - cms.routes.system_app - INFO - [67022d7c8483] => GET /api/version
+2026-05-25 11:09:22,626 - cms.routes.system_app - INFO - [67022d7c8483] <= GET /api/version — 200
+2026-05-25 11:09:49,974 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 11:10:11,628 - app - WARNING - [-] Default admin user created. Password: iDHWLrguFA#BaMmciPWb — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:10:11,630 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:10:12,335 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:10:12,336 - app - INFO - [-] App-level routes registered
+2026-05-25 11:11:31,369 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 11:11:57,743 - app - WARNING - [-] Default admin user created. Password: eXJG0RgKp0RSs9TkVV#L — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:11:57,772 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:11:57,939 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:11:57,939 - app - INFO - [-] App-level routes registered
+2026-05-25 11:15:06,642 - cms.routes.system_app - INFO - [dd2ab907509b] => GET /api/rate-limit-status
+2026-05-25 11:15:06,651 - cms.routes.system_app - INFO - [dd2ab907509b] <= GET /api/rate-limit-status — 200
+2026-05-25 11:15:18,866 - httpx - INFO - [baadc7fc8baa] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 11:15:20,796 - httpx - INFO - [baadc7fc8baa] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 11:15:32,483 - cms.routes.system_app - INFO - [065e216b9e7c] => GET /api/config
+2026-05-25 11:15:33,116 - httpx - INFO - [065e216b9e7c] HTTP Request: GET http://localhost:11434/api/generate/api/tags "HTTP/1.1 404 Not Found"
+2026-05-25 11:15:33,119 - cms.routes.system_app - INFO - [065e216b9e7c] <= GET /api/config — 200
+2026-05-25 11:15:44,956 - cms.routes.system_app - INFO - [f3c2f844c84c] => GET /api/version
+2026-05-25 11:15:44,958 - cms.routes.system_app - INFO - [f3c2f844c84c] <= GET /api/version — 200
+2026-05-25 11:15:56,761 - cms.routes.system_app - INFO - [bd573da8b006] => GET /api/changelog
+2026-05-25 11:15:56,765 - cms.routes.system_app - INFO - [bd573da8b006] <= GET /api/changelog — 200
+2026-05-25 11:17:11,082 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 11:17:26,821 - app - WARNING - [-] Default admin user created. Password: CZM5$0VIn7bG*eg^&bh* — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:17:26,822 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:17:27,347 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:17:27,348 - app - INFO - [-] App-level routes registered
+2026-05-25 11:17:46,917 - cms.routes.system_app - INFO - [-] Received signal 15, shutting down...
+2026-05-25 11:18:18,903 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 11:18:32,209 - app - WARNING - [-] Default admin user created. Password: 2ldemW7YrW0XsYf#2eoS — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:18:32,209 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:18:32,277 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:18:32,277 - app - INFO - [-] App-level routes registered
+2026-05-25 11:20:01,595 - cms.routes.phone - INFO - [19b3d89f6dd4] Phone lookup: +31634407404 → valid=True, carrier=T-Mobile, region=Nederland, wa=False
+2026-05-25 11:20:11,242 - cms.routes.phone - INFO - [b96a7a03ea5f] Phone lookup: +14155552671 → valid=True, carrier=, region=San Francisco, CA, wa=False
+2026-05-25 11:20:20,490 - cms.routes.phone - INFO - [a96b66f45c7b] Phone lookup: 123 → valid=False, carrier=, region=, wa=False
+2026-05-25 11:20:28,659 - cms.routes.phone - INFO - [d8ee16ed2ca0] Phone lookup: 06 12345678 → valid=True, carrier=KPN, region=Nederland, wa=False
+2026-05-25 11:20:32,948 - cms.routes.phone - INFO - [aaf9c884999a] Phone lookup: 0612345678 → valid=True, carrier=KPN, region=Nederland, wa=False
+2026-05-25 11:20:37,674 - cms.routes.system_app - INFO - [c2aa4612a575] => POST /api/username/rapidapi
+2026-05-25 11:20:37,688 - cms.routes.system_app - INFO - [c2aa4612a575] <= POST /api/username/rapidapi — 400
+2026-05-25 11:20:46,701 - cms.routes.system_app - INFO - [107a1edbf093] => POST /api/username/rapidapi
+2026-05-25 11:20:46,708 - cms.routes.system_app - INFO - [107a1edbf093] <= POST /api/username/rapidapi — 400
+2026-05-25 11:20:56,299 - cms.routes.system_app - INFO - [e9cf167eae3d] => POST /api/username/rapidapi
+2026-05-25 11:20:56,391 - cms.routes.system_app - INFO - [e9cf167eae3d] <= POST /api/username/rapidapi — 200
+2026-05-25 11:21:05,161 - cms.routes.system_app - INFO - [c2205c889a48] => POST /api/username/rapidapi
+2026-05-25 11:21:05,170 - cms.routes.system_app - INFO - [c2205c889a48] <= POST /api/username/rapidapi — 200
+2026-05-25 11:21:14,332 - cms.routes.system_app - INFO - [d7a57fb62694] => GET /api/username/rapidapi-status
+2026-05-25 11:21:14,341 - cms.routes.system_app - INFO - [d7a57fb62694] <= GET /api/username/rapidapi-status — 200
+2026-05-25 11:21:24,660 - cms.routes.system_app - INFO - [e093a3506ead] => POST /api/username/rapidapi
+2026-05-25 11:21:25,108 - cms.routes.system_app - INFO - [e093a3506ead] <= POST /api/username/rapidapi — 200
+2026-05-25 11:21:34,382 - cms.routes.system_app - INFO - [410b97c9551a] => POST /api/username/rapidapi
+2026-05-25 11:21:34,391 - cms.routes.system_app - INFO - [410b97c9551a] <= POST /api/username/rapidapi — 200
+2026-05-25 11:22:14,050 - httpx - INFO - [edfd37b270ad] HTTP Request: GET https://emailrep.io/test@example.com "HTTP/1.1 429 Too Many Requests"
+2026-05-25 11:22:14,053 - cms.routes.email - INFO - [edfd37b270ad] Email check: test@example.com -> valid=True, mx=True, hibp=False
+2026-05-25 11:22:44,982 - cms.routes.kadaster - INFO - [624506d0dd31] Kadaster lookup OK: 1 1234AB -> Hoofdstraat 1, 1234AB Amsterdam
+2026-05-25 11:22:58,280 - cms.routes.system_app - INFO - [-] Received signal 15, shutting down...
+2026-05-25 11:22:58,345 - cms.routes.kadaster - WARNING - [ddcd50114fd8] Kadaster lookup not found: 999 9999ZZ
+2026-05-25 11:23:24,973 - cms.rate_limiting - INFO - [-] Restored 1 API + 0 platform rate limits
+2026-05-25 11:23:46,720 - app - WARNING - [-] Default admin user created. Password: Bdg*@pnxuuKMpc*YmQNX — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:23:46,721 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:23:47,757 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:23:47,758 - app - INFO - [-] App-level routes registered
+2026-05-25 11:25:55,609 - cms.rate_limiting - INFO - [-] Restored 1 API + 0 platform rate limits
+2026-05-25 11:26:17,882 - app - WARNING - [-] Default admin user created. Password: nBeQBGkqm7B6ag*@$@PS — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:26:17,884 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:26:18,832 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:26:18,833 - app - INFO - [-] App-level routes registered
+2026-05-25 11:27:05,501 - httpx - INFO - [49fc8abd8ee5] HTTP Request: GET https://emailrep.io/test@example.com "HTTP/1.1 429 Too Many Requests"
+2026-05-25 11:27:05,504 - cms.routes.email - INFO - [49fc8abd8ee5] Email check: test@example.com -> valid=True, mx=True, hibp=False
+2026-05-25 11:27:48,652 - cms.routes.kadaster - INFO - [97bddc5210b8] Kadaster lookup OK: 1 1234AB -> Hoofdstraat 1, 1234AB Amsterdam
+2026-05-25 11:28:02,557 - cms.routes.kadaster - WARNING - [b23a861f8f84] Kadaster lookup not found: 999 9999ZZ
+2026-05-25 11:51:40,085 - cms.rate_limiting - INFO - [-] Restored 4 API + 0 platform rate limits
+2026-05-25 11:52:10,627 - app - WARNING - [-] Default admin user created. Password: KqtNRuLrDMGI&aOxH*Rb — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:52:10,628 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:52:10,862 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:52:10,863 - app - INFO - [-] App-level routes registered
+2026-05-25 11:57:08,178 - cms.routes.system_app - INFO - [add071e4aa3a] => GET /api/rate-limit-status
+2026-05-25 11:57:08,192 - cms.routes.system_app - INFO - [add071e4aa3a] <= GET /api/rate-limit-status — 200
+2026-05-25 11:57:22,755 - cms.routes.system_app - INFO - [-] Received signal 15, shutting down...
+2026-05-25 11:57:24,642 - httpx - INFO - [4df27b59ea42] HTTP Request: GET https://opendata.rdw.nl/resource/m9d7-ebf2.json "HTTP/1.1 200 OK"
+2026-05-25 11:57:26,302 - httpx - INFO - [4df27b59ea42] HTTP Request: GET https://haveibeenpwned.com "HTTP/1.1 200 OK"
+2026-05-25 11:57:56,091 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 11:58:07,789 - app - WARNING - [-] Default admin user created. Password: GG7QDmCsRgEt3r$@vl%K — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:58:07,797 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:58:08,356 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:58:08,357 - app - INFO - [-] App-level routes registered
+2026-05-25 11:58:41,233 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 11:58:48,889 - app - WARNING - [-] Default admin user created. Password: 8rzOHa*iu8WwH*2oWnbx — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 11:58:48,889 - app - INFO - [-] CMS initialized successfully
+2026-05-25 11:58:49,447 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 11:58:49,447 - app - INFO - [-] App-level routes registered
+2026-05-25 12:13:33,459 - cms.routes.system_app - INFO - [9e00235a39f2] Received signal 15, shutting down...
+2026-05-25 12:14:16,327 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 12:30:02,367 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 12:30:45,738 - app - WARNING - [-] Default admin user created. Password: GLzn!$Ta2hwmiGLPfyre — CHANGE IMMEDIATELY via Settings > Users.
+2026-05-25 12:30:45,742 - app - INFO - [-] CMS initialized successfully
+2026-05-25 12:30:47,371 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 12:30:47,374 - app - INFO - [-] App-level routes registered
+2026-05-25 12:36:17,418 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 12:38:28,711 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:02:25,560 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:02:31,400 - app - INFO - [-] Default admin user created. Set a password via Settings > Users.
+2026-05-25 18:02:31,402 - app - INFO - [-] CMS initialized successfully
+2026-05-25 18:02:31,455 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 18:02:31,456 - app - INFO - [-] App-level routes registered
+2026-05-25 18:02:52,411 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:03:15,314 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:03:34,146 - app - INFO - [-] Default admin user created. Set a password via Settings > Users.
+2026-05-25 18:03:34,150 - app - INFO - [-] CMS initialized successfully
+2026-05-25 18:03:34,923 - cms.routes.system_app - INFO - [-] System routes registered
+2026-05-25 18:03:34,924 - app - INFO - [-] App-level routes registered
+2026-05-25 18:06:00,241 - alembic.runtime.migration - INFO - [-] Context impl SQLiteImpl.
+2026-05-25 18:06:00,245 - alembic.runtime.migration - INFO - [-] Will assume non-transactional DDL.
+2026-05-25 18:06:00,255 - alembic.runtime.plugins - INFO - [-] setting up autogenerate plugin alembic.autogenerate.schemas
+2026-05-25 18:06:00,256 - alembic.runtime.plugins - INFO - [-] setting up autogenerate plugin alembic.autogenerate.tables
+2026-05-25 18:06:00,256 - alembic.runtime.plugins - INFO - [-] setting up autogenerate plugin alembic.autogenerate.types
+2026-05-25 18:06:00,257 - alembic.runtime.plugins - INFO - [-] setting up autogenerate plugin alembic.autogenerate.constraints
+2026-05-25 18:06:00,258 - alembic.runtime.plugins - INFO - [-] setting up autogenerate plugin alembic.autogenerate.defaults
+2026-05-25 18:06:00,259 - alembic.runtime.plugins - INFO - [-] setting up autogenerate plugin alembic.autogenerate.comments
+2026-05-25 18:13:52,514 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:28:41,371 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:29:49,329 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:31:14,051 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:31:48,899 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:31:50,472 - app - INFO - [-] Existing DB detected — stamping Alembic head
+2026-05-25 18:32:29,429 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:32:30,792 - app - INFO - [-] Existing DB detected — stamping Alembic head
+2026-05-25 18:46:30,169 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:47:01,355 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:47:37,209 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 18:51:27,934 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 19:02:10,537 - cms.rate_limiting - INFO - [-] Restored 1 API + 0 platform rate limits
+2026-05-25 19:33:31,219 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 19:33:35,870 - app - INFO - [-] Existing DB detected — stamping Alembic head
+2026-05-25 19:35:35,072 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 20:05:34,890 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 20:07:50,054 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 21:30:50,205 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 21:30:58,077 - cms.rate_limiting - INFO - [-] Restored 0 API + 0 platform rate limits
+2026-05-25 21:50:28,017 - cms.rate_limiting - INFO - [-] Restored 1 API + 0 platform rate limits
+2026-05-25 21:50:57,487 - cms.rate_limiting - INFO - [-] Restored 2 API + 0 platform rate limits
+2026-05-25 21:51:26,614 - cms.rate_limiting - INFO - [-] Restored 3 API + 0 platform rate limits
+2026-05-25 21:51:52,874 - cms.rate_limiting - INFO - [-] Restored 4 API + 0 platform rate limits
+2026-05-25 21:52:24,594 - cms.rate_limiting - INFO - [-] Restored 5 API + 0 platform rate limits
+2026-05-25 21:52:50,357 - cms.rate_limiting - INFO - [-] Restored 5 API + 0 platform rate limits
+2026-05-25 21:53:18,848 - cms.rate_limiting - INFO - [-] Restored 6 API + 0 platform rate limits
+2026-05-25 21:53:49,666 - cms.rate_limiting - INFO - [-] Restored 7 API + 0 platform rate limits
+2026-05-25 21:55:24,369 - cms.rate_limiting - INFO - [-] Restored 7 API + 0 platform rate limits
+2026-05-25 21:57:18,350 - cms.rate_limiting - INFO - [-] Restored 7 API + 0 platform rate limits
+2026-05-25 22:02:11,062 - cms.rate_limiting - INFO - [-] Restored 7 API + 0 platform rate limits
+2026-05-25 22:02:42,414 - cms.rate_limiting - INFO - [-] Restored 7 API + 0 platform rate limits
+2026-05-25 22:10:35,762 - cms.rate_limiting - INFO - [-] Restored 2 API + 0 platform rate limits
+2026-05-25 22:13:25,457 - cms.rate_limiting - INFO - [-] Restored 9 API + 0 platform rate limits
+2026-05-25 22:22:17,673 - cms.rate_limiting - INFO - [-] Restored 9 API + 0 platform rate limits
+2026-05-25 22:26:59,097 - cms.rate_limiting - INFO - [-] Restored 2 API + 0 platform rate limits

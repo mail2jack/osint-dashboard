@@ -14,9 +14,10 @@ Features:
 """
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -653,3 +654,35 @@ def get_spiderfoot_service(config: Optional[SpiderFootConfig] = None) -> SpiderF
         _spiderfoot_service = SpiderFootService(config)
     
     return _spiderfoot_service
+
+
+def check_spiderfoot_health(sf_url: Optional[str] = None) -> Tuple[bool, str]:
+    """
+    Check if SpiderFoot is reachable and cache the status in Settings.
+    
+    Returns:
+        Tuple of (is_healthy, status_message)
+    """
+    from .models import Setting, db
+    
+    try:
+        if sf_url is None:
+            sf_url = Setting.get('spiderfoot_url')
+        if not sf_url:
+            sf_url = 'http://127.0.0.1:5001'
+        
+        r = httpx.get(f"{sf_url}/health", timeout=10)
+        healthy = r.status_code == 200
+        message = 'connected' if healthy else f'unexpected status: {r.status_code}'
+        
+        Setting.set('spiderfoot_last_ok', datetime.now(timezone.utc).isoformat())
+        Setting.set('spiderfoot_health', 'ok' if healthy else 'error')
+        Setting.set('spiderfoot_health_message', message)
+        db.session.commit()
+        return healthy, message
+    except Exception as e:
+        message = f'unavailable: {e}'
+        Setting.set('spiderfoot_health', 'error')
+        Setting.set('spiderfoot_health_message', message)
+        db.session.commit()
+        return False, message

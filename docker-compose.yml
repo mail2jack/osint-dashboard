@@ -25,17 +25,24 @@ services:
       CMS_ENCRYPTION_KEY: ${CMS_ENCRYPTION_KEY:?Set CMS_ENCRYPTION_KEY in .env}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5000}
+      PYTHONUNBUFFERED: 1
+      LOG_FILE: /dev/null
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - uploads:/app/static/uploads
       - flask_sessions:/app/flask_session
-      - app_log:/app/app.log
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health?quick=1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
 volumes:
   pgdata:
   uploads:
   flask_sessions:
-  app_log:

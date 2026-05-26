@@ -520,6 +520,33 @@ class EditSubjectSchema(BaseModel):
 
 
 # =============================================================================
+# Bulk delete schemas
+# =============================================================================
+
+class BulkDeleteSchema(BaseModel):
+    ids: list[str] = Field(default_factory=list)
+
+
+# =============================================================================
+# Social IDs schema
+# =============================================================================
+
+class UpdateSocialIdsSchema(BaseModel):
+    social_media_ids: dict = Field(default_factory=dict)
+    model_config = {"extra": "forbid"}
+
+
+# =============================================================================
+# Comment update schema
+# =============================================================================
+
+class UpdateCommentSchema(BaseModel):
+    content: Optional[str] = None
+    is_pinned: Any = None
+    is_resolved: Any = None
+
+
+# =============================================================================
 # Subject relationship schemas
 # =============================================================================
 

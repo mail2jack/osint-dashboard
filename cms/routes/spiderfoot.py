@@ -178,10 +178,14 @@ def spiderfoot_scan() -> str:
     """Start a new SpiderFoot scan."""
     if request.method == 'GET':
         # Show scan form
-        cases = Case.query.filter_by(is_deleted=False).order_by(
-            Case.case_number.desc()).all()
-        subjects = Subject.query.filter_by(
-            is_deleted=False).order_by(Subject.name).all()
+        search_q = request.args.get('q', '').strip()
+        case_query = Case.query.filter_by(is_deleted=False)
+        subject_query = Subject.query.filter_by(is_deleted=False)
+        if search_q:
+            case_query = case_query.filter(Case.title.ilike(f'%{search_q}%'))
+            subject_query = subject_query.filter(Subject.name.ilike(f'%{search_q}%'))
+        cases = case_query.order_by(Case.case_number.desc()).limit(500).all()
+        subjects = subject_query.order_by(Subject.name).limit(500).all()
 
         profiles = SpiderFootService.INVESTIGATION_PROFILES if SpiderFootService else {}
         use_cases = SpiderFootService.USE_CASES if SpiderFootService else {}
@@ -831,7 +835,7 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
 
     # GET - Show scan form with subject info
     cases = Case.query.filter_by(is_deleted=False).order_by(
-        Case.case_number.desc()).all()
+        Case.case_number.desc()).limit(500).all()
 
     return render_template('cms/spiderfoot/scan_subject.html',
                            subject=subject,

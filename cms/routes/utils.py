@@ -64,9 +64,16 @@ def find_similar_subjects(name: str, threshold: float = 0.7) -> list:
     normalized_input = normalize_name(name)
     similar = []
 
-    for subject in Subject.query.filter_by(is_deleted=False).all():
+    # Filter by first letter in DB to avoid loading all records
+    first_letter = normalized_input[0]
+    candidates = Subject.query.filter(
+        Subject.is_deleted == False,
+        Subject.name.ilike(f'{first_letter}%')
+    ).limit(500).all()
+
+    for subject in candidates:
         if normalize_name(subject.name) == normalized_input:
-            continue  # Skip exact matches (handled separately)
+            continue
 
         similarity = calculate_similarity(name, subject.name)
         if similarity >= threshold:
@@ -77,7 +84,7 @@ def find_similar_subjects(name: str, threshold: float = 0.7) -> list:
                 'similarity': round(similarity * 100)
             })
 
-    return sorted(similar, key=lambda x: x['similarity'], reverse=True)
+    return sorted(similar, key=lambda x: x['similarity'], reverse=True)[:10]
 
 
 def find_similar_clients(name: str, threshold: float = 0.7) -> list:
@@ -88,7 +95,14 @@ def find_similar_clients(name: str, threshold: float = 0.7) -> list:
     normalized_input = normalize_name(name)
     similar = []
 
-    for client in Client.query.filter_by(is_deleted=False, is_active=True).all():
+    first_letter = normalized_input[0]
+    candidates = Client.query.filter(
+        Client.is_deleted == False,
+        Client.is_active == True,
+        Client.name.ilike(f'{first_letter}%')
+    ).limit(500).all()
+
+    for client in candidates:
         if normalize_name(client.name) == normalized_input:
             continue
 
@@ -100,30 +114,40 @@ def find_similar_clients(name: str, threshold: float = 0.7) -> list:
                 'similarity': round(similarity * 100)
             })
 
-    return sorted(similar, key=lambda x: x['similarity'], reverse=True)
+    return sorted(similar, key=lambda x: x['similarity'], reverse=True)[:10]
 
 
 def check_for_exact_match(name: str, entity_type: str) -> Optional[dict]:
     """Check for exact or very close match."""
+    if not name:
+        return None
+
     normalized = normalize_name(name)
 
     if entity_type == 'subject':
-        for subject in Subject.query.filter_by(is_deleted=False).all():
-            if normalize_name(subject.name) == normalized:
-                return {
-                    'id': subject.id,
-                    'name': subject.name,
-                    'type': subject.subject_type,
-                    'exact': True
-                }
+        subject = Subject.query.filter(
+            Subject.is_deleted == False,
+            Subject.name.ilike(normalized)
+        ).first()
+        if subject:
+            return {
+                'id': subject.id,
+                'name': subject.name,
+                'type': subject.subject_type,
+                'exact': normalize_name(subject.name) == normalized
+            }
     elif entity_type == 'client':
-        for client in Client.query.filter_by(is_deleted=False, is_active=True).all():
-            if normalize_name(client.name) == normalized:
-                return {
-                    'id': client.id,
-                    'name': client.name,
-                    'exact': True
-                }
+        client = Client.query.filter(
+            Client.is_deleted == False,
+            Client.is_active == True,
+            Client.name.ilike(normalized)
+        ).first()
+        if client:
+            return {
+                'id': client.id,
+                'name': client.name,
+                'exact': normalize_name(client.name) == normalized
+            }
 
     return None
 

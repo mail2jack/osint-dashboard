@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from .. import csrf
 from ..models import db, Comment, CommentEditHistory, AuditLog
-from ..validation import validate, CreateCommentSchema
+from ..validation import validate, CreateCommentSchema, UpdateCommentSchema
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ def create_comment() -> flask.Response:
 
 @cms_bp.route('/api/comments/<comment_id>', methods=['PUT'])
 @login_required
+@validate(UpdateCommentSchema)
 def update_comment(comment_id: str) -> flask.Response:
     """Update a comment."""
     comment = db.session.get(Comment, comment_id) or abort(404)
@@ -67,7 +68,7 @@ def update_comment(comment_id: str) -> flask.Response:
     if comment.author_id != current_user.id and not current_user.is_admin:
         return jsonify({'error': 'Not authorized to edit this comment'}), 403
 
-    data = request.get_json()
+    data = request.validated_data
     content_changed = False
 
     if 'content' in data and data['content'] != comment.content:

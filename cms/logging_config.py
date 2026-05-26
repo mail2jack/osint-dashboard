@@ -46,11 +46,17 @@ def setup_logging(app=None):
     """Configure logging. Uses JSON format if LOG_FORMAT=json or in production."""
     log_level = getattr(logging, os.environ.get('LOG_LEVEL', 'INFO').upper(), logging.INFO)
     log_format = os.environ.get('LOG_FORMAT', 'json' if os.environ.get('FLASK_ENV') == 'production' else 'text')
+    log_file = os.environ.get('LOG_FILE', 'app.log')
 
-    handlers = [
-        TimedRotatingFileHandler('app.log', when='midnight', backupCount=30),
-        logging.StreamHandler()
-    ]
+    handlers = [logging.StreamHandler()]
+
+    # File logging — disabled in Docker (LOG_FILE=/dev/null or empty), enabled by default
+    if log_file and log_file != '/dev/null':
+        try:
+            file_handler = TimedRotatingFileHandler(log_file, when='midnight', backupCount=30)
+            handlers.append(file_handler)
+        except Exception:
+            pass  # Fall back to stdout-only if file cannot be opened
 
     if log_format == 'json':
         formatter = JSONFormatter()

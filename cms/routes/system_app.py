@@ -70,7 +70,7 @@ def register_system_routes(app: Flask) -> None:
     @app.route('/health')
     def health_check() -> flask.Response:
         from cms.models import Setting
-        import httpx
+        from cms.spiderfoot_service import check_spiderfoot_health
         status = {'status': 'ok', 'database': 'unknown', 'spiderfoot': 'unknown'}
         try:
             from cms import db
@@ -78,26 +78,29 @@ def register_system_routes(app: Flask) -> None:
             status['database'] = 'connected'
         except Exception as e:
             status['database'] = f'error: {e}'
+        # Check and cache SpiderFoot health
         try:
-            sf_url = Setting.get('spiderfoot_url', 'http://127.0.0.1:5001')
-            r = httpx.get(f"{sf_url}/health", timeout=5)
-            status['spiderfoot'] = 'connected' if r.status_code == 200 else f'unexpected status: {r.status_code}'
+            healthy, msg = check_spiderfoot_health()
+            status['spiderfoot'] = msg
         except Exception as e:
             status['spiderfoot'] = f'unavailable: {e}'
-        # External service checks
-        for svc_name, svc_url, svc_check in [
-            ('rdw', 'https://opendata.rdw.nl/resource/m9d7-ebf2.json',
-             lambda r: r.status_code in (200, 401, 403)),
-            ('kadaster', 'https://geodata.nationaalgeoregister.nl/locatieserver/free',
-             lambda r: r.status_code == 200),
-            ('hibp', 'https://haveibeenpwned.com',
-             lambda r: r.status_code == 200),
-        ]:
-            try:
-                r = httpx.get(svc_url, timeout=5)
-                status[svc_name] = 'ok' if svc_check(r) else f'unexpected: {r.status_code}'
-            except Exception as e:
-                status[svc_name] = f'unavailable: {e}'
+        # Cached SF status from last check
+        status['spiderfoot_cached_ok'] = Setting.get('spiderfoot_last_ok', 'never')
+        # External service checks (skipped on quick check)
+        if request.args.get('quick') != '1':
+            for svc_name, svc_url, svc_check in [
+                ('rdw', 'https://opendata.rdw.nl/resource/m9d7-ebf2.json',
+                 lambda r: r.status_code in (200, 401, 403)),
+                ('kadaster', 'https://geodata.nationaalgeoregister.nl/locatieserver/free',
+                 lambda r: r.status_code == 200),
+                ('hibp', 'https://haveibeenpwned.com',
+                 lambda r: r.status_code == 200),
+            ]:
+                try:
+                    r = httpx.get(svc_url, timeout=5)
+                    status[svc_name] = 'ok' if svc_check(r) else f'unexpected: {r.status_code}'
+                except Exception as e:
+                    status[svc_name] = f'unavailable: {e}'
         from cms.cache import get_status as cache_status
         status['cache'] = cache_status()
         return jsonify(status)

@@ -52,11 +52,19 @@ def view_case(case_id: str) -> str:
         Finding.created_at.desc()
     ).paginate(page=findings_page, per_page=findings_per_page, error_out=False)
 
-    financials = case.financial_records.filter_by(is_deleted=False).order_by(
-        FinancialRecord.transaction_date.desc()).all()
+    financials_page = request.args.get('financials_page', 1, type=int)
+    financials_per_page = 20
+    financials_pagination = case.financial_records.filter_by(is_deleted=False).order_by(
+        FinancialRecord.transaction_date.desc()
+    ).paginate(page=financials_page, per_page=financials_per_page, error_out=False)
 
-    documents = Document.query.filter_by(
-        case_id=case_id, is_deleted=False).order_by(Document.created_at.desc()).all()
+    documents_page = request.args.get('documents_page', 1, type=int)
+    documents_per_page = 20
+    documents_pagination = Document.query.filter_by(
+        case_id=case_id, is_deleted=False
+    ).order_by(Document.created_at.desc()).paginate(
+        page=documents_page, per_page=documents_per_page, error_out=False
+    )
 
     case_reminders = Reminder.query.filter_by(
         case_id=case_id,
@@ -85,8 +93,10 @@ def view_case(case_id: str) -> str:
                            subjects=subjects,
                            findings=findings_pagination.items,
                            findings_pagination=findings_pagination,
-                           financials=financials,
-                           documents=documents,
+                           financials=financials_pagination.items,
+                           financials_pagination=financials_pagination,
+                           documents=documents_pagination.items,
+                           documents_pagination=documents_pagination,
                            all_subjects=available_subjects,
                            case_reminders=case_reminders
                            )

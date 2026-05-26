@@ -1,14 +1,17 @@
 import csv
 import io
+import logging
 from datetime import datetime
 
 import flask
 from flask import Response, request, jsonify, abort
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Case, Subject, Client
 from ..auth import can_export, case_access_required
+
+logger = logging.getLogger(__name__)
 
 
 @cms_bp.route('/cases/<case_id>/export')
@@ -178,7 +181,11 @@ def export_clients_csv() -> Response:
     writer.writerow(['Name', 'Type', 'Contact Person', 'Email',
                     'Phone', 'Contract Number', 'Active', 'Created'])
 
-    for client in Client.query.filter_by(is_deleted=False).order_by(Client.name).all():
+    client_count = Client.query.filter_by(is_deleted=False).count()
+    if client_count > 5000:
+        logger.warning("Large client export (%d records) triggered by %s",
+                       client_count, current_user.username)
+    for client in Client.query.filter_by(is_deleted=False).order_by(Client.name).yield_per(200):
         client.decrypt_naw()
         writer.writerow([
             client.name,
@@ -222,11 +229,12 @@ def export_cases_csv() -> Response:
     writer.writerow(['Case Number', 'Title', 'Client', 'Status', 'Priority',
                     'Start Date', 'End Date', 'Type', 'Subjects Count', 'Findings Count'])
 
-    for case in Case.query.options(
-        db.joinedload(Case.client),
-        db.selectinload(Case.subjects),
-        db.selectinload(Case.findings),
-    ).filter_by(is_deleted=False).order_by(Case.case_number).all():
+    case_count = Case.query.filter_by(is_deleted=False).count()
+    if case_count > 5000:
+        logger.warning("Large cases export (%d records) triggered by %s",
+                       case_count, current_user.username)
+
+    for case in Case.query.filter_by(is_deleted=False).order_by(Case.case_number).yield_per(200):
         writer.writerow([
             case.case_number,
             case.title,
@@ -237,8 +245,8 @@ def export_cases_csv() -> Response:
             case.actual_end_date.strftime(
                 '%Y-%m-%d') if case.actual_end_date else '',
             case.case_type or '',
-            len(case.subjects),
-            len([f for f in case.findings if not f.is_deleted])
+            case.subjects.count(),
+            case.findings.filter_by(is_deleted=False).count()
         ])
 
     output.seek(0)
