@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+"""
+Server diagnostics & auto-repair script for OSINT Dashboard.
+Run as root:  sudo python3 scripts/doctor.py
+Run dry:     sudo python3 scripts/doctor.py --dry-run
+
+Checks:
+  1. Home directory /home/osint exists and owned by osint
+  2. osint user exists
+  3. .spiderfoot directory exists and is owned by osint
+  4. SpiderFoot service is running
+  5. Flask app health endpoint responds
+  6. Alembic migrations are up to date
+  7. Git repo is owned by osint
+  8. flask_session directory is writable by osint
+  9. Python dependencies installed
+ 10. CMS_ENCRYPTION_KEY set in .env
+"""
+
+import argparse
+import os
+import pwd
+import shutil
+import stat
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+APP_DIR = Path("/opt/osint-dashboard")
+SF_DIR = Path("/opt/spiderfoot")
+ENV_FILE = APP_DIR / ".env"
+SF_SERVICE = "spiderfoot"
+APP_SERVICE = "osint-dashboard"
+OSINT_USER = "osint"
+OSINT_HOME = Path("/home/osint")
+SF_PASSWD = OSINT_HOME / ".spiderfoot" / "passwd"
+
+OK = "  OK"
+FAIL = "  FAIL"
+FIXED = "  FIXED"
+SKIP = "  SKIP"
+DRY = "  WOULD FIX"
+
+
+def log(msg: str, status: str = ""):
+    ts = datetime.now().strftime("%H:%M:%S")
+    print(f"[{ts}] {msg} {status}")
+
+
+def run(cmd: list, timeout: int = 30, **kwargs) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, **kwargs)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(cmd, -1, "", "TIMEOUT")
+
+
+def check_home_dir(dry: bool) -> bool:
+    log("Checking /home/osint...", end=" ")
+    if not OSINT_HOME.exists():
+        if dry:
+            log(DRY + " (mkdir -p /home/osint && chown osint:osint)")
+            return False
+        OSINT_HOME.mkdir(parents=True, exist_ok=True)
+        shutil.chown(OSINT_HOME, user=OSINT_USER, group=OSINT_USER)
+        OSINT_HOME.chmod(0o755)
+        log(FIXED)
+        return True
+    try:
+        st = OSINT_HOME.stat()
+        owner = pwd.getpwuid(st.st_uid).pw_name
+        if owner != OSINT_USER:
+            if dry:
+                log(DRY + f" (chown osint:osint, currently {owner})")
+                return False
+            shutil.chown(OSINT_HOME, user=OSINT_USER, group=OSINT_USER)
+            log(FIXED + f" (was {owner})")
+            return True
+        log(OK)
+        return True
+    except (KeyError, OSError) as e:
+        log(FAIL + f" {e}")
+        return False
+
+
+def check_osint_user(dry: bool) -> bool:
+    log("Checking osint user exists...", end=" ")
+    try:
+        pwd.getpwnam(OSINT_USER)
+        log(OK)
+        return True
+    except KeyError:
+        log(FAIL + " osint user does not exist")
+        return False
+
+
+def check_spiderfoot_dir(dry: bool) -> bool:
+    log("Checking ~/.spiderfoot...", end=" ")
+    sf_dir = OSINT_HOME / ".spiderfoot"
+    if not sf_dir.exists():
+        if dry:
+            log(DRY + " (mkdir + chown osint:osint)")
+            return False
+        sf_dir.mkdir(parents=True, exist_ok=True)
+        shutil.chown(sf_dir, user=OSINT_USER, group=OSINT_USER)
+        log(FIXED)
+        return True
+    try:
+        st = sf_dir.stat()
+        owner = pwd.getpwuid(st.st_uid).pw_name
+        if owner != OSINT_USER:
+            if dry:
+                log(DRY + f" (chown osint:osint, currently {owner})")
+                return False
+            shutil.chown(sf_dir, user=OSINT_USER, group=OSINT_USER)
+            log(FIXED + f" (was {owner})")
+        else:
+            log(OK)
+        return True
+    except Exception as e:
+        log(FAIL + f" {e}")
+        return False
+
+
+def check_spiderfoot_service(dry: bool) -> bool:
+    log("Checking spiderfoot.service...", end=" ")
+    r = run(["systemctl", "is-active", SF_SERVICE])
+    if r.returncode == 0:
+        log(OK + f" ({r.stdout.strip()})")
+        return True
+    log(FAIL + f" ({r.stdout.strip() or r.stderr.strip()})")
+    # Try to start it
+    if dry:
+        log(f"  {DRY} (systemctl start {SF_SERVICE})")
+        return False
+    log("  Attempting to start...", end=" ")
+    r2 = run(["systemctl", "start", SF_SERVICE])
+    if r2.returncode == 0:
+        log(FIXED)
+        return True
+    log(FAIL + f" {r2.stderr.strip()}")
+    # Check logs for common errors
+    r3 = run(["journalctl", "-u", SF_SERVICE, "-n", "20", "--no-pager"])
+    if "Permission denied" in r3.stdout:
+        log("  Detected: Permission denied in SF logs")
+        path_line = [l for l in r3.stdout.split("\n") if "Permission denied" in l]
+        if path_line:
+            log(f"  Path: {path_line[0].strip()}")
+    return False
+
+
+def check_flask_health(dry: bool) -> bool:
+    log("Checking Flask health (curl localhost:5000/health?quick=1)...", end=" ")
+    r = run(["curl", "-sf", "http://localhost:5000/health?quick=1"], timeout=10)
+    if r.returncode == 0:
+        log(OK)
+        return True
+    log(FAIL)
+    if dry:
+        return False
+    # Try restarting the app
+    log("  Restarting osint-dashboard.service...", end=" ")
+    r2 = run(["systemctl", "restart", APP_SERVICE])
+    if r2.returncode == 0:
+        log(FIXED)
+        return True
+    log(FAIL + f" {r2.stderr.strip()}")
+    return False
+
+
+def check_alembic(dry: bool) -> bool:
+    log("Checking Alembic migrations...", end=" ")
+    env = {**os.environ}
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.strip().split("=", 1)
+                env[k] = v
+    python = shutil.which("python3") or "/usr/bin/python3"
+    r = run([python, "-m", "alembic", "check"], cwd=str(APP_DIR), env=env, timeout=30)
+    # 'alembic check' exits 0 if no pending migrations
+    if r.returncode == 0:
+        log(OK)
+        return True
+    # Try upgrade
+    log(FAIL + " (pending migrations)")
+    if dry:
+        return False
+    r2 = run([python, "-m", "alembic", "upgrade", "head"], cwd=str(APP_DIR), env=env, timeout=60)
+    if r2.returncode == 0:
+        log(f"  {FIXED} (upgrade OK)")
+        return True
+    log(f"  {FAIL} {r2.stderr.strip()[:200]}")
+    return False
+
+
+def check_git_perms(dry: bool) -> bool:
+    log("Checking .git ownership...", end=" ")
+    git_dir = APP_DIR / ".git"
+    if not git_dir.exists():
+        log(SKIP + " (no .git directory)")
+        return True
+    try:
+        st = git_dir.stat()
+        owner = pwd.getpwuid(st.st_uid).pw_name
+        if owner != OSINT_USER:
+            if dry:
+                log(DRY + f" (chown -R osint:osint .git, currently {owner})")
+                return False
+            r = run(["chown", "-R", f"{OSINT_USER}:{OSINT_USER}", str(git_dir)])
+            if r.returncode == 0:
+                log(FIXED + f" (was {owner})")
+            else:
+                # Try with sudo
+                r = run(["sudo", "chown", "-R", f"{OSINT_USER}:{OSINT_USER}", str(git_dir)])
+                if r.returncode == 0:
+                    log(FIXED + f" (was {owner}, via sudo)")
+                else:
+                    log(FAIL + f" {r.stderr.strip()}")
+                    return False
+        else:
+            log(OK)
+        return True
+    except Exception as e:
+        log(FAIL + f" {e}")
+        return False
+
+
+def check_flask_session(dry: bool) -> bool:
+    log("Checking flask_session/ writable...", end=" ")
+    sess_dir = APP_DIR / "flask_session"
+    if not sess_dir.exists():
+        if dry:
+            log(DRY + " (mkdir flask_session && chown osint)")
+            return False
+        sess_dir.mkdir(parents=True, exist_ok=True)
+        shutil.chown(sess_dir, user=OSINT_USER, group=OSINT_USER)
+        log(FIXED)
+        return True
+    try:
+        st = sess_dir.stat()
+        owner = pwd.getpwuid(st.st_uid).pw_name
+        if owner != OSINT_USER:
+            if dry:
+                log(DRY + f" (chown osint:osint, currently {owner})")
+                return False
+            shutil.chown(sess_dir, user=OSINT_USER, group=OSINT_USER)
+            log(FIXED + f" (was {owner})")
+        else:
+            # Also check writable
+            if os.access(str(sess_dir), os.W_OK):
+                log(OK)
+            else:
+                log(FAIL + " not writable by current user")
+                return False
+        return True
+    except Exception as e:
+        log(FAIL + f" {e}")
+        return False
+
+
+def check_pip_deps(dry: bool) -> bool:
+    log("Checking Python dependencies...", end=" ")
+    req = APP_DIR / "requirements.txt"
+    if not req.exists():
+        log(SKIP + " (no requirements.txt)")
+        return True
+    python = shutil.which("python3") or "/usr/bin/python3"
+    r = run([python, "-m", "pip", "install", "-r", str(req), "--dry-run"], timeout=60)
+    if r.returncode == 0:
+        log(OK)
+        return True
+    log(FAIL)
+    if dry:
+        return False
+    r2 = run([python, "-m", "pip", "install", "-r", str(req), "--upgrade"], timeout=120)
+    if r2.returncode == 0:
+        log(f"  {FIXED}")
+        return True
+    log(f"  {FAIL} {r2.stderr.strip()[:200]}")
+    return False
+
+
+def check_env_encryption_key(dry: bool) -> bool:
+    log("Checking CMS_ENCRYPTION_KEY in .env...", end=" ")
+    if not ENV_FILE.exists():
+        log(FAIL + " (.env not found)")
+        return False
+    content = ENV_FILE.read_text()
+    if "CMS_ENCRYPTION_KEY" in content:
+        log(OK)
+        return True
+    log(FAIL + " (CMS_ENCRYPTION_KEY not set)")
+    return False
+
+
+def check_spiderfoot_url_settings(dry: bool) -> bool:
+    log("Checking spiderfoot_url setting in DB...", end=" ")
+    env = {**os.environ}
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.strip().split("=", 1)
+                env[k] = v
+    python = shutil.which("python3") or "/usr/bin/python3"
+    code = (
+        "from app import app; from cms.models import Setting; "
+        "app.app_context().push(); "
+        "v = Setting.get('spiderfoot_url', ''); "
+        "print(v or 'EMPTY')"
+    )
+    r = run([python, "-c", code], cwd=str(APP_DIR), env=env, timeout=30)
+    val = r.stdout.strip()
+    if val and val != "EMPTY":
+        log(OK + f" ({val})")
+        return True
+    log(FAIL + " (not configured)")
+    if dry or not val or val == "EMPTY":
+        log("  Set via: python3 -c 'from app import app; from cms.models import Setting; app.app_context().push(); Setting.set(\"spiderfoot_url\", \"http://127.0.0.1:5001\")'")
+    return False
+
+
+def main():
+    parser = argparse.ArgumentParser(description="OSINT Dashboard doctor")
+    parser.add_argument("--dry-run", "-n", action="store_true", help="Show what would be fixed without making changes")
+    args = parser.parse_args()
+    dry = args.dry_run
+
+    if os.geteuid() != 0:
+        print("This script should be run as root for full diagnostics.")
+        print("Re-run with: sudo python3 scripts/doctor.py")
+        if not dry:
+            sys.exit(1)
+
+    print(f"\n{'='*60}")
+    print(f"  OSINT Dashboard — Server Diagnostics")
+    print(f"  {'DRY RUN — no changes will be made' if dry else 'Fixing issues automatically'}")
+    print(f"{'='*60}\n")
+
+    checks = [
+        ("osint user", check_osint_user),
+        ("home directory", check_home_dir),
+        ("~/.spiderfoot directory", check_spiderfoot_dir),
+        (".git ownership", check_git_perms),
+        ("flask_session/ writable", check_flask_session),
+        ("Python dependencies", check_pip_deps),
+        (".env CMS_ENCRYPTION_KEY", check_env_encryption_key),
+        ("Alembic migrations", check_alembic),
+        ("spiderfoot.service", check_spiderfoot_service),
+        ("Flask health", check_flask_health),
+        ("SF URL in Settings", check_spiderfoot_url_settings),
+    ]
+
+    good = bad = 0
+    for name, func in checks:
+        print(f"\n  [{name}]")
+        if func(dry):
+            good += 1
+        else:
+            bad += 1
+
+    print(f"\n{'='*60}")
+    print(f"  Results: {good}/{len(checks)} passed, {bad} failed")
+    if bad == 0:
+        print(f"  All checks passed!")
+    else:
+        if dry:
+            print(f"  Re-run without --dry-run to fix issues")
+        else:
+            print(f"  Some issues could not be auto-fixed — check output above")
+    print(f"{'='*60}\n")
+    sys.exit(0 if bad == 0 else 1)
+
+
+if __name__ == "__main__":
+    main()
