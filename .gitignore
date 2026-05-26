@@ -9,3 +9,13 @@ __pycache__/
 .env
 flask_session/
 uploads/
+.instance
+.app_port
+.sf_port
+app.pid
+spiderfoot.pid
+dorks_log.txt
+search_history.json
+static/data/
+static/pwa/manifest.json
+spiderfoot/
