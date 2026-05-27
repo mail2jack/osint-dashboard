@@ -196,95 +196,104 @@ def do_update() -> flask.Response:
     Run update: backup, git pull, pip upgrade, restart services.
     Admin only. Runs synchronously and streams status via JSON responses.
     """
-    import subprocess
-    import sys
-    from datetime import datetime
-    from version import get_version
+    try:
+        import subprocess
+        import sys
+        from datetime import datetime
+        from version import get_version
 
-    current_ver = get_version()
-    results = []
+        current_ver = get_version()
+        results = []
 
-    def step(msg, cmd_list, cwd=None, env=None):
-        results.append({'step': msg, 'status': 'running'})
-        try:
-            r = subprocess.run(cmd_list, capture_output=True, text=True,
-                               cwd=cwd or current_app.root_path, timeout=120,
-                               env=env)
-            if r.returncode == 0:
-                results[-1] = {'step': msg, 'status': 'ok',
-                               'output': r.stdout.strip()}
-            elif r.returncode < 0 and 'restart' in msg.lower():
-                results[-1] = {'step': msg, 'status': 'ok',
-                               'output': 'Service restarted (process killed by signal, expected)'}
-            else:
-                output = r.stderr.strip() or r.stdout.strip(
-                ) or f'Command failed (exit code {r.returncode})'
-                results[-1] = {'step': msg,
-                               'status': 'error', 'output': output}
-                logger.error(f"Update step failed: {msg}\n{output}")
-        except Exception as e:
-            results[-1] = {'step': msg, 'status': 'error', 'output': str(e)}
-            logger.error(f"Update step exception ({type(e).__name__}): {msg}\n{e}")
+        def step(msg, cmd_list, cwd=None, env=None):
+            results.append({'step': msg, 'status': 'running'})
+            try:
+                r = subprocess.run(cmd_list, capture_output=True, text=True,
+                                   cwd=cwd or current_app.root_path, timeout=120,
+                                   env=env)
+                if r.returncode == 0:
+                    results[-1] = {'step': msg, 'status': 'ok',
+                                   'output': r.stdout.strip()}
+                elif r.returncode < 0 and 'restart' in msg.lower():
+                    results[-1] = {'step': msg, 'status': 'ok',
+                                   'output': 'Service restarted (process killed by signal, expected)'}
+                else:
+                    output = r.stderr.strip() or r.stdout.strip(
+                    ) or f'Command failed (exit code {r.returncode})'
+                    results[-1] = {'step': msg,
+                                   'status': 'error', 'output': output}
+                    logger.error(f"Update step failed: {msg}\n{output}")
+            except Exception as e:
+                results[-1] = {'step': msg, 'status': 'error', 'output': str(e)}
+                logger.error(f"Update step exception ({type(e).__name__}): {msg}\n{e}")
 
-    import shutil
-    project_root = current_app.root_path
+        import shutil
+        project_root = current_app.root_path
 
-    # Step 1: Database backup (SQLite only)
-    db_path = current_app.config.get(
-        'SQLALCHEMY_DATABASE_URI', 'sqlite:///cms.db')
-    if db_path.startswith('sqlite'):
-        db_file = db_path.replace('sqlite:///', '')
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        step('Backup database',
-             ['cp', db_file, f'{db_file}.backup.{timestamp}'])
+        # Step 1: Database backup (SQLite only)
+        db_path = current_app.config.get(
+            'SQLALCHEMY_DATABASE_URI', 'sqlite:///cms.db')
+        if db_path.startswith('sqlite'):
+            db_file = db_path.replace('sqlite:///', '')
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            step('Backup database',
+                 ['cp', db_file, f'{db_file}.backup.{timestamp}'])
 
-    # Step 2: Git pull (use full path, systemd PATH may not include /usr/bin)
-    git_path = shutil.which('git') or '/usr/bin/git'
-    step('Pull latest code',
-         [git_path, 'pull', 'origin', 'master'], cwd=project_root)
+        # Step 2: Git pull
+        git_path = shutil.which('git') or '/usr/bin/git'
+        step('Pull latest code',
+             [git_path, 'pull', 'origin', 'master'], cwd=project_root)
 
-    # Step 3: Install dependencies
-    step('Update Python packages',
-         [sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt', '--upgrade'],
-         cwd=project_root)
+        # Step 3: Install dependencies
+        step('Update Python packages',
+             [sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt', '--upgrade'],
+             cwd=project_root)
 
-    # Step 4: Apply Alembic migrations
-    import os as _os
-    alembic_env = {**_os.environ}
-    alembic_env['DATABASE_URL'] = db_path
-    if 'CMS_ENCRYPTION_KEY' not in alembic_env:
-        alembic_env['CMS_ENCRYPTION_KEY'] = current_app.config.get('CMS_ENCRYPTION_KEY', '')
-    step('Apply database migrations',
-         [sys.executable, '-m', 'alembic', 'upgrade', 'head'],
-         cwd=project_root, env=alembic_env)
+        # Step 4: Apply Alembic migrations
+        import os as _os
+        alembic_env = {**_os.environ}
+        alembic_env['DATABASE_URL'] = db_path
+        if 'CMS_ENCRYPTION_KEY' not in alembic_env:
+            alembic_env['CMS_ENCRYPTION_KEY'] = current_app.config.get('CMS_ENCRYPTION_KEY', '')
+        step('Apply database migrations',
+             [sys.executable, '-m', 'alembic', 'upgrade', 'head'],
+             cwd=project_root, env=alembic_env)
 
-    # Step 5: Restart (uses sudo via sudoers rule set by install.sh; ok if it fails — dev mode)
-    step('Restart services',
-         ['/usr/bin/sudo', '/usr/bin/systemctl', 'restart', 'osint-dashboard'],
-         cwd=project_root)
+        # Step 5: Restart
+        step('Restart services',
+             ['/usr/bin/sudo', '/usr/bin/systemctl', 'restart', 'osint-dashboard'],
+             cwd=project_root)
 
-    success = all(r['status'] == 'ok' for r in results)
+        success = all(r['status'] == 'ok' for r in results)
 
-    # Store local HEAD SHA after pull (even if restart fails — e.g. dev mode)
-    pull_ok = any(
-        r['step'] == 'Pull latest code' and r['status'] == 'ok' for r in results)
-    if pull_ok:
-        try:
-            import subprocess as sp
-            git_path = shutil.which('git') or '/usr/bin/git'
-            sha_result = sp.run([git_path, 'rev-parse', 'HEAD'],
-                                capture_output=True, text=True, cwd=project_root, timeout=15)
-            if sha_result.returncode == 0:
-                head_sha = sha_result.stdout.strip()
-                Setting.set('last_update_commit', head_sha,
-                            'Last pulled commit SHA (auto-updated)', 'general')
-                logger.info(f"Stored last update commit: {head_sha[:12]}")
-        except Exception as e:
-            logger.warning(f"Failed to store commit SHA ({type(e).__name__}): {e}")
+        # Store local HEAD SHA after pull
+        pull_ok = any(
+            r['step'] == 'Pull latest code' and r['status'] == 'ok' for r in results)
+        if pull_ok:
+            try:
+                import subprocess as sp
+                git_path = shutil.which('git') or '/usr/bin/git'
+                sha_result = sp.run([git_path, 'rev-parse', 'HEAD'],
+                                    capture_output=True, text=True, cwd=project_root, timeout=15)
+                if sha_result.returncode == 0:
+                    head_sha = sha_result.stdout.strip()
+                    Setting.set('last_update_commit', head_sha,
+                                'Last pulled commit SHA (auto-updated)', 'general')
+                    logger.info(f"Stored last update commit: {head_sha[:12]}")
+            except Exception as e:
+                logger.warning(f"Failed to store commit SHA ({type(e).__name__}): {e}")
 
-    return jsonify({
-        'success': success,
-        'current_version': current_ver,
-        'results': results,
-        'message': 'Update completed successfully' if success else 'Update had errors, check results'
-    }), 200 if success else 500
+        return jsonify({
+            'success': success,
+            'current_version': current_ver,
+            'results': results,
+            'message': 'Update completed successfully' if success else 'Update had errors, check results'
+        }), 200 if success else 500
+    except Exception as e:
+        logger.exception(f"do_update crashed ({type(e).__name__}): {e}")
+        return jsonify({
+            'success': False,
+            'current_version': 'unknown',
+            'results': [{'step': 'Update crashed', 'status': 'error', 'output': str(e)}],
+            'message': 'Update crashed with an unexpected error'
+        }), 500
