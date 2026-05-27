@@ -394,8 +394,9 @@
     {% if theme_style == 'professional' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cms-professional.css') }}">
     {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}">
 </head>
-<body>
+<body data-help-topic="{{ help_topic|default('general') }}">
     <div class="app-loader" id="appLoader">
         <div class="app-loader-icon">📋</div>
         <div class="app-loader-text">Loading OSINT...</div>
@@ -427,6 +428,7 @@
                 <button class="theme-toggle" data-click="toggleTheme" title="Toggle dark mode">
                     <span id="theme-icon">🌙</span>
                 </button>
+                <button class="help-toggle" data-click="openHelp" title="Help (?)" style="background:none;border:none;color:white;cursor:pointer;font-size:1.2rem;margin-left:0.5rem;">❓</button>
             {% endif %}
         </div>
     </div>
@@ -493,7 +495,19 @@
             <div id="changelogContent" class="changelog-content"></div>
         </div>
     </div>
-    
+
+    <!-- Help slide-out panel -->
+    <div id="helpPanel" class="help-panel">
+        <div class="help-panel-header">
+            <span id="helpPanelTitle">Help</span>
+            <button class="help-panel-close" data-click="closeHelp">&times;</button>
+        </div>
+        <div id="helpPanelContent" class="help-panel-content">
+            <p style="color:var(--text-secondary);">Loading help...</p>
+        </div>
+    </div>
+    <div id="helpOverlay" class="help-overlay" data-click="closeHelp" style="display:none;"></div>
+
     <script>
     // Update check — runs once on page load for admin users
     {% if current_user.is_authenticated and current_user.is_admin %}
@@ -705,8 +719,8 @@
             }
             
             if (e.key === '?') {
-                const hint = document.querySelector('.keyboard-hint');
-                hint.style.opacity = hint.style.opacity === '1' ? '0.5' : '1';
+                e.preventDefault();
+                openHelp();
             }
         });
         
@@ -754,6 +768,32 @@
     function removeEntry(btn, selector) { btn.closest(selector).remove(); }
     function navigateTo(btn, url) { window.location.href = url; }
     function reloadPage(btn) { location.reload(); }
+    function toggleTheme(btn) {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('cms-theme', next);
+        document.getElementById('theme-icon').textContent = next === 'dark' ? '☀️' : '🌙';
+    }
+    function closeHelp() {
+        document.getElementById('helpPanel').classList.remove('open');
+        document.getElementById('helpOverlay').style.display = 'none';
+    }
+    function openHelp(topic) {
+        topic = topic || document.body.dataset.helpTopic || 'general';
+        document.getElementById('helpPanelTitle').textContent = 'Help: ' + topic.charAt(0).toUpperCase() + topic.slice(1);
+        document.getElementById('helpPanelContent').innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
+        document.getElementById('helpPanel').classList.add('open');
+        document.getElementById('helpOverlay').style.display = 'block';
+        fetch('/cms/api/help/' + encodeURIComponent(topic))
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('helpPanelContent').innerHTML = data.html;
+            })
+            .catch(err => {
+                document.getElementById('helpPanelContent').innerHTML = '<p style="color:var(--error);">Failed to load help content.</p>';
+            });
+    }
 
     // Event delegation for data-click buttons
     document.addEventListener('click', function(e) {

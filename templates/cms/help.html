@@ -1,0 +1,36 @@
+{% extends "cms/base.html" %}
+
+{% block title %}Help{% endblock %}
+
+{% block head %}
+<style>
+    .help-container { max-width: 800px; margin: 2rem auto; padding: 1.5rem; }
+    .help-container h1 { margin-bottom: 1rem; }
+    .help-container .topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .help-container .topic-card { background: var(--bg-card, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 8px; padding: 1.25rem; text-decoration: none; color: var(--text-primary, #111); transition: box-shadow 0.2s; }
+    .help-container .topic-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .help-container .topic-card h3 { margin: 0 0 0.25rem; font-size: 1.05rem; }
+    .help-container .topic-card p { margin: 0; font-size: 0.85rem; color: var(--text-secondary, #666); }
+    .help-content { line-height: 1.8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="help-container">
+    {% if topics %}
+    <h1>Help & Documentation</h1>
+    <p style="color:var(--text-secondary);">Select a topic below, or press <kbd>?</kbd> from any page to open context-sensitive help.</p>
+    <div class="topic-grid">
+        {% for t in topics %}
+        <a href="{{ url_for('cms.help_page', topic=t.id) }}" class="topic-card">
+            <h3>{{ t.title }}</h3>
+            <p>{{ t.id }}</p>
+        </a>
+        {% endfor %}
+    </div>
+    {% elif topic_html %}
+    <a href="{{ url_for('cms.help_index') }}" style="color:var(--text-secondary);text-decoration:none;font-size:0.9rem;">&larr; All topics</a>
+    <div class="help-content">{{ topic_html|safe }}</div>
+    {% endif %}
+</div>
+{% endblock %}

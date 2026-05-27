@@ -18,5 +18,6 @@ dorks_log.txt
 search_history.json
 static/data/
 spiderfoot/
+instance/
 .obsidian/
 app.log.*

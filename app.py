@@ -199,7 +199,7 @@ def platform_color_filter(url):
 # End CMS Integration
 # =============================================================================
 
-# Context Processor — inject version + SF health into all templates
+# Context Processor — inject version + SF health + help topic into all templates
 @app.context_processor
 def inject_globals():
     from version import get_version
@@ -215,6 +215,38 @@ def inject_globals():
     except Exception:
         ctx['spiderfoot_health'] = ''
         ctx['spiderfoot_last_ok'] = ''
+    # Derive help topic from request endpoint
+    try:
+        from flask import request
+        if request and request.endpoint:
+            ep = request.endpoint
+            if ep.startswith('cms.'):
+                topic = ep.split('.', 1)[1]
+                # Map endpoint names to help topic names
+                topic_map = {
+                    'dashboard': 'dashboard',
+                    'cases_crud': 'cases',
+                    'cases_state': 'cases',
+                    'cases_subjects': 'cases',
+                    'cases_reports': 'cases',
+                    'clients_crud': 'clients',
+                    'clients_archive': 'clients',
+                    'subjects_list': 'subjects',
+                    'subjects_crud': 'subjects',
+                    'subjects_faces': 'subjects',
+                    'subjects_rel': 'subjects',
+                    'spiderfoot': 'spiderfoot',
+                    'settings': 'settings',
+                    'osint_search': 'search',
+                    'search': 'search',
+                }
+                ctx['help_topic'] = topic_map.get(topic, 'general')
+            else:
+                ctx['help_topic'] = 'general'
+        else:
+            ctx['help_topic'] = 'general'
+    except Exception:
+        ctx['help_topic'] = 'general'
     return ctx
 
 # =============================================================================

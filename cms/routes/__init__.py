@@ -82,3 +82,4 @@ def register_modules() -> None:
     from . import subjects_rel
     from . import spiderfoot
     from . import search_fts
+    from . import help

@@ -236,3 +236,13 @@
 - `Model.query.get(id)` → `db.session.get(Model, id)` (SQLAlchemy 2.0 compat).
 - `legacy_routes.py` removed — `cms_bp` Blueprint lives in `cms/routes/__init__.py`.
 - Type hints added to all route handlers (38 in `app.py`, ~200+ in `cms/`).
+
+## Context-Sensitive Help System
+- **Route**: `cms/routes/help.py` — 3 endpoints: `/cms/help` (index), `/cms/help/<topic>` (full page), `/cms/api/help/<topic>` (AJAX JSON).
+- **Content**: Markdown files in `help/` (`dashboard.md`, `cases.md`, `clients.md`, `subjects.md`, `spiderfoot.md`, `search.md`, `settings.md`). Converted to HTML via `markdown` library with `extra` + `toc` + `codehilite` extensions.
+- **Slide-out panel**: `#helpPanel` in `base.html` — fixed right-side panel with overlay. Toggled via `openHelp(topic)` / `closeHelp()`.
+- **Activation**: `?` key on keyboard, or ❓ button in header next to theme toggle.
+- **Context awareness**: `body` tag gets `data-help-topic="{{ help_topic }}"` via Flask context processor (`app.py:inject_globals`). The topic is derived from the current endpoint name using a `topic_map` dict. Default: `general`.
+- **Template**: `templates/cms/help.html` — extends `base.html`, shows topic grid or rendered help content.
+- **Styling**: `static/css/help.css` — slide-out panel, overlay, help content typography, help page layout.
+- **Registration**: Imported in `cms/routes/__init__.py::register_modules()` as `.help`.
