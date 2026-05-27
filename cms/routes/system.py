@@ -259,10 +259,16 @@ def do_update() -> flask.Response:
              [sys.executable, '-m', 'alembic', 'upgrade', 'head'],
              cwd=project_root, env=alembic_env)
 
-        # Step 5: Restart
-        step('Restart services',
-             ['/usr/bin/sudo', '/usr/bin/systemctl', 'restart', 'osint-dashboard'],
-             cwd=project_root)
+        # Step 5: Restart (async — response must be sent before process kill)
+        restart_proc = subprocess.Popen(
+            ['/usr/bin/sudo', '/usr/bin/systemctl', 'restart', 'osint-dashboard'],
+            cwd=project_root,
+            start_new_session=True,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        results.append({'step': 'Restart services', 'status': 'ok',
+                        'output': f'Restart initiated (PID {restart_proc.pid})'})
+        logger.info(f"Restart initiated (PID {restart_proc.pid})")
 
         success = all(r['status'] == 'ok' for r in results)
 
