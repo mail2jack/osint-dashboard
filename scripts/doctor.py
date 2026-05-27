@@ -345,6 +345,79 @@ def check_spiderfoot_url_settings(dry: bool) -> bool:
     return False
 
 
+def check_ssl_renewal(dry: bool) -> bool:
+    log("Checking certbot SSL renewal timer...", end=" ")
+    r = run(["systemctl", "is-active", "certbot.timer"])
+    if r.returncode == 0 and r.stdout.strip() == "active":
+        log(OK + f" ({r.stdout.strip()})")
+        return True
+    r = run(["systemctl", "is-active", "certbot-renewal.timer"])
+    if r.returncode == 0:
+        log(OK + f" ({r.stdout.strip()})")
+        return True
+    log(FAIL + " (no certbot timer found)")
+    if dry:
+        return False
+    r2 = run(["which", "certbot"])
+    if r2.returncode != 0:
+        log("  certbot not installed — skipping")
+        return True
+    r3 = run(["systemctl", "enable", "certbot.timer", "--now"])
+    if r3.returncode == 0:
+        log(f"  {FIXED} (certbot.timer enabled)")
+        return True
+    return False
+
+
+def check_backup_cron(dry: bool) -> bool:
+    log("Checking daily backup cron...", end=" ")
+    cron_file = Path("/etc/cron.d/osint-dashboard-backup")
+    if cron_file.exists():
+        log(OK)
+        return True
+    log(FAIL + " (not installed)")
+    backup_script = APP_DIR / "scripts" / "backup.sh"
+    if not backup_script.exists():
+        log("  backup.sh not found — skipping")
+        return True
+    if dry:
+        log(f"  {DRY} (install /etc/cron.d/osint-dashboard-backup)")
+        return False
+    cron_content = f"0 3 * * * osint {backup_script} > /dev/null 2>&1\n"
+    cron_file.write_text(cron_content)
+    cron_file.chmod(0o644)
+    log(f"  {FIXED}")
+    return True
+
+
+def check_gunicorn_logging(dry: bool) -> bool:
+    log("Checking gunicorn error log directory...", end=" ")
+    log_dir = Path("/var/log/osint-dashboard")
+    if log_dir.exists():
+        st = log_dir.stat()
+        try:
+            owner = pwd.getpwuid(st.st_uid).pw_name
+        except KeyError:
+            owner = "unknown"
+        if owner == OSINT_USER:
+            log(OK)
+        else:
+            if dry:
+                log(DRY + f" (chown osint:osint, currently {owner})")
+                return False
+            shutil.chown(str(log_dir), user=OSINT_USER, group=OSINT_USER)
+            log(FIXED + f" (was {owner})")
+        return True
+    log(FAIL + " (/var/log/osint-dashboard not found)")
+    if dry:
+        log(f"  {DRY} (mkdir -p /var/log/osint-dashboard && chown osint:osint)")
+        return False
+    log_dir.mkdir(parents=True, exist_ok=True)
+    shutil.chown(str(log_dir), user=OSINT_USER, group=OSINT_USER)
+    log(f"  {FIXED}")
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(description="OSINT Dashboard doctor")
     parser.add_argument("--dry-run", "-n", action="store_true", help="Show what would be fixed without making changes")
@@ -373,8 +446,11 @@ def main():
         ("Alembic migrations", check_alembic),
         ("spiderfoot.service", check_spiderfoot_service),
         ("Flask health", check_flask_health),
-        ("SF URL in Settings", check_spiderfoot_url_settings),
-    ]
+    ("SF URL in Settings", check_spiderfoot_url_settings),
+    ("SSL cert renewal", check_ssl_renewal),
+    ("Backup cron", check_backup_cron),
+    ("Gunicorn error log", check_gunicorn_logging),
+]
 
     good = bad = 0
     for name, func in checks:

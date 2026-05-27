@@ -298,6 +298,16 @@ server {
     server_name ${SERVER_NAMES};
 
     client_max_body_size 50M;
+    proxy_read_timeout 120s;
+    proxy_connect_timeout 30s;
+    proxy_send_timeout 30s;
+
+    # Buffer settings for upstream responses
+    proxy_buffer_size 8k;
+    proxy_buffers 8 8k;
+    proxy_busy_buffers_size 16k;
+    proxy_temp_file_write_size 64k;
+    proxy_buffering off;
 
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -312,6 +322,8 @@ server {
         proxy_set_header Connection "upgrade";
 
         proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+        proxy_next_upstream_timeout 10s;
+        proxy_next_upstream_tries 3;
     }
 
     location /spiderfoot/ {
@@ -322,6 +334,7 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_read_timeout 300s;
         proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
     }
 
     location /static {
@@ -401,6 +414,10 @@ fi
 # ============================================================================
 print_step "Creating systemd services..."
 
+# Log directory for gunicorn
+mkdir -p /var/log/osint-dashboard
+chown osint:osint /var/log/osint-dashboard
+
 # Iveras service
 cat > /etc/systemd/system/$SERVICE_NAME.service << 'SERVICEEOF'
 [Unit]
@@ -414,7 +431,7 @@ User=osint
 Group=osint
 WorkingDirectory=/opt/osint-dashboard
 Environment="PATH=/opt/osint-dashboard/venv/bin"
-ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 --timeout 120 "app:app"
+ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 --timeout 120 --access-logfile /var/log/osint-dashboard/access.log --error-logfile /var/log/osint-dashboard/error.log "app:app"
 Restart=always
 RestartSec=10s
 
@@ -441,6 +458,7 @@ RestartSec=10s
 
 # Security
 NoNewPrivileges=true
+ProtectHome=off
 PrivateTmp=true
 
 [Install]
@@ -540,7 +558,25 @@ else
 fi
 
 # ============================================================================
-# STEP 16: Get Server IP Addresses
+# STEP 16: Setup Daily Backup Cron
+# ============================================================================
+print_step "Setting up daily backup cron..."
+
+BACKUP_SCRIPT="$APP_DIR/scripts/backup.sh"
+if [ -f "$BACKUP_SCRIPT" ]; then
+    chmod +x "$BACKUP_SCRIPT"
+    cat > /etc/cron.d/osint-dashboard-backup << CRONEOF
+# Daily backup at 3:00 AM
+0 3 * * * osint $BACKUP_SCRIPT > /dev/null 2>&1
+CRONEOF
+    chmod 644 /etc/cron.d/osint-dashboard-backup
+    print_success "Daily backup cron installed (3:00 AM)"
+else
+    print_warning "Backup script not found at $BACKUP_SCRIPT — skipping cron"
+fi
+
+# ============================================================================
+# STEP 17: Get Server IP Addresses
 # ============================================================================
 echo -e "\n${CYAN}========================================${NC}"
 echo -e "${CYAN}  Installation Complete!${NC}"
@@ -601,9 +637,14 @@ echo -e "${YELLOW}--- Useful Commands ---${NC}"
 echo -e "  ${BLUE}sudo systemctl status $SERVICE_NAME${NC}      - Iveras status"
 echo -e "  ${BLUE}sudo systemctl status $SF_SERVICE_NAME${NC}    - SpiderFoot status"
 echo -e "  ${BLUE}sudo journalctl -u $SERVICE_NAME -f${NC}       - Iveras live logs"
+echo -e "  ${BLUE}sudo tail -f /var/log/osint-dashboard/error.log${NC} - Iveras error log"
+echo -e "  ${BLUE}sudo tail -f /var/log/osint-dashboard/access.log${NC} - Iveras access log"
 echo -e "  ${BLUE}sudo journalctl -u $SF_SERVICE_NAME -f${NC}    - SpiderFoot live logs"
 echo -e "  ${BLUE}sudo systemctl restart $SERVICE_NAME${NC}     - Restart Iveras"
 echo -e "  ${BLUE}curl http://localhost:5000/health${NC}         - Health check"
+echo -e "  ${BLUE}sudo python3 $APP_DIR/scripts/doctor.py${NC}   - Run diagnostics"
+echo -e "  ${BLUE}sudo python3 $APP_DIR/scripts/backup.sh${NC}   - Manual backup"
+echo -e "  ${BLUE}sudo certbot renew${NC}                        - Renew SSL certificates"
 echo ""
 
 echo -e "${CYAN}========================================${NC}"

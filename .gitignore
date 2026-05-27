@@ -17,7 +17,6 @@ spiderfoot.pid
 dorks_log.txt
 search_history.json
 static/data/
-static/pwa/manifest.json
 spiderfoot/
 .obsidian/
 app.log.*
