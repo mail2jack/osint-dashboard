@@ -153,11 +153,16 @@
 
 ## Health Check
 `curl http://localhost:5000/health` — returns `{"status":"ok","database":"connected","spiderfoot":"connected"}`.
+- `/health?quick=1` skips external service checks (kadaster, rdw, hibp) — used by Docker healthcheck + template banner.
+- SF health uses `SpiderFootClient.ping()` with HTTP **Digest auth** (via `spiderfoot-client` package). Credentials from Settings (`spiderfoot_username`, `spiderfoot_password`).
+- Health status cached in Settings (`spiderfoot_health`, `spiderfoot_last_ok`). Banner in `base.html` checks every 60s.
+- `httpx` import in `system_app.py` for external service health checks (kadaster/rdw/hibp).
 
 ## Thread Safety
 - **`active_searches`** (app.py routes section): Protected by `_searches_lock` (`threading.Lock()`). All three accessor functions (`deduplicate_request`, `mark_search_complete`, `cleanup_stale_searches`) acquire the lock before reading/writing.
 - **`_LAST_MARINEPLAN_CALL`** (`cms/vessel_service.py:28-30`): Protected by `_marineplan_lock`. The rate-limit check in `lookup_marineplan()` acquires the lock before calling `_rate_limit()`.
 - **Shell injection**: All `subprocess.run()` calls use list arguments (`[git_path, 'rev-parse', 'HEAD']`) instead of `shell=True` strings. The `step()` helper in `do_update()` now accepts `cmd_list` and omits `shell=True`. Shell expansion (e.g. `$(date)`) replaced with Python `datetime.strftime()`.
+- **`do_update()` crash safety**: Entire function wrapped in try/except to return JSON even on unexpected crash (prevents HTML 500 response that breaks the frontend).
 
 ## Git
 - Rollback: `git reset --hard <hash>`. Commits are safe to reset.
@@ -167,6 +172,19 @@
 - Production commands MUST use the full path `/opt/osint-dashboard`:
   - `cd /opt/osint-dashboard && git pull origin master && sudo systemctl restart osint-dashboard`
 - Never write relative production commands.
+
+## Server Diagnostics (`scripts/doctor.py`)
+- `sudo python3 scripts/doctor.py` — checks 11 items (osint user, home dir, .spiderfoot, .git perms, flask_session, pip deps, .env key, alembic, SF service, Flask health, SF URL).
+- `sudo python3 scripts/doctor.py --dry-run` to preview without making changes.
+- Auto-fixes: `/home/osint` ownership, `.git` perms, `flask_session/`, pip deps (via venv), alembic upgrade, spiderfoot.service restart, spiderfoot_url config.
+- Uses venv Python (`/opt/osint-dashboard/venv/bin/python3`) — system Python 3.14 has PEP 668 externally-managed.
+
+## Production install (`install.sh`)
+- **Gunicorn logging**: `--access-logfile /var/log/osint-dashboard/access.log --error-logfile /var/log/osint-dashboard/error.log` (directory created, chowned to osint).
+- **Nginx tuning**: `proxy_buffer_size 8k`, `proxy_buffers 8 8k`, `proxy_buffering off`, `proxy_read_timeout 120s`, `proxy_connect_timeout 30s`.
+- **SpiderFoot service**: `ProtectHome=off` (was `ProtectHome=true` — blocked access to `/home/osint/.spiderfoot`).
+- **Backup cron**: Daily at 3:00 AM via `/etc/cron.d/osint-dashboard-backup`.
+- **Sudoers**: `git`, `chown`, `systemctl` added for passwordless update from GUI.
 
 ## Tests
 - Run: `/usr/local/bin/python3 -m pytest tests/ -v` (81 tests, ~3-4 min).
@@ -191,10 +209,11 @@
   - `cases_crud.py`, `cases_state.py`, `cases_subjects.py`, `cases_reports.py`
   - `social_accounts.py`, `social_extraction.py`
   - `clients_crud.py`, `clients_archive.py`
-  - Plus: `osint_search.py`, `spiderfoot.py`, `reminders.py`, `settings.py`, `templates.py`, `users.py`, `misc.py`
+  - Plus: `osint_search.py`, `spiderfoot.py`, `reminders.py`, `settings.py`, `templates.py`, `users.py`, `misc.py`, `system.py`
 - `register_modules()` in `cms/routes/__init__.py` imports all 27 by name; `create_cms_module()` calls it.
 - Extracted route modules use `request.validated_data` (Pydantic); legacy routes use `request.get_json()`.
 - `cms/search_manager.py` — `SearchManager` class extracted from `osint_search.py` for DB-backed search lifecycle.
+- **`system.py`** — system routes (`/health`, `/version`, `/admin/do-update`, error handlers). `do_update()` is fully wrapped in try/except to always return JSON.
 
 ## SafeJSON (SQLite JSON compat)
 - `cms/models.py` defines `SafeJSON` — inherits `sqlalchemy.types.JSON`, overrides `process_result_value` to `json.loads()` when SQLite returns a raw string. PostgreSQL returns native dicts (passes through).
