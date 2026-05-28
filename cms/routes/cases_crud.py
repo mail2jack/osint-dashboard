@@ -282,6 +282,9 @@ def edit_case(case_id: str) -> flask.Response:
                     case.target_end_date = new_date
             except ValueError:
                 logger.debug("Invalid date value for target_end_date")
+
+        # Handle status transition (independent of target_end_date)
+        if 'status' in data and data['status']:
             if case.transition_status(data['status'], current_user.id):
                 changes['status'] = {'old': case.status, 'new': data['status']}
             else:
