@@ -125,7 +125,7 @@ def export_subjects_csv() -> Response:
         'Notes', 'Created'
     ])
 
-    q = Subject.query.options(db.selectinload(Subject.addresses)).filter_by(is_deleted=False).order_by(Subject.name)
+    q = Subject.query.filter_by(is_deleted=False).order_by(Subject.name)
     for subject in q.all():
         subject.decrypt_identifiers()
         primary_addr = next(
@@ -202,7 +202,7 @@ def export_clients_csv() -> Response:
     filename = f"clients_export_{datetime.now().strftime('%Y%m%d')}.csv"
 
     return Response(
-        output.get_value(),
+        output.getvalue(),
         mimetype='text/csv',
         headers={'Content-Disposition': f'attachment; filename={filename}'}
     )

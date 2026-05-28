@@ -47,10 +47,10 @@
             <label for="content">Template Content *</label>
             <p style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">
                 Use Jinja2 syntax with these variables:<br>
-                <code>{{ case.case_number }}</code>, <code>{{ case.title }}</code>, <code>{{ case.client.name }}</code><br>
-                <code>{% for subject in subjects %}{{ subject.name }}{% endfor %}</code><br>
-                <code>{% for finding in findings %}{{ finding.title }}{% endfor %}</code><br>
-                <code>{{ financials.summary.total_amount }}</code>
+                <code>{% raw %}{{ case.case_number }}{% endraw %}</code>, <code>{% raw %}{{ case.title }}{% endraw %}</code>, <code>{% raw %}{{ case.client.name }}{% endraw %}</code><br>
+                <code>{% raw %}{% for subject in subjects %}{{ subject.name }}{% endfor %}{% endraw %}</code><br>
+                <code>{% raw %}{% for finding in findings %}{{ finding.title }}{% endfor %}{% endraw %}</code><br>
+                <code>{% raw %}{{ financials.summary.total_amount }}{% endraw %}</code>
             </p>
             <textarea name="content" id="content" rows="20" required style="font-family: monospace;" placeholder="Enter your template content here...">{{ content or '' }}</textarea>
         </div>
