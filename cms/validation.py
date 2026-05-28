@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import request, jsonify
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import Optional, Any
 
 

@@ -1,15 +1,11 @@
 import logging
-import json
 import re
 import time
 import os
 import asyncio
 import httpx
-import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urlencode, quote, unquote
-
-from cms.services.http_client import get_random_headers
+from urllib.parse import quote, unquote
 
 logger = logging.getLogger(__name__)
 
@@ -145,19 +141,16 @@ def brave_search(query, api_key) -> list:
     Returns list of results or empty list if failed.
     Requires BRAVE_API_KEY environment variable.
     """
-    import httpx
-    from urllib.parse import quote
-    
     if not api_key:
         return []
-    
+
     try:
         headers = {
             'X-Subscription-Token': api_key,
             'Accept': 'application/json'
         }
-        
-        url = f"https://api.search.brave.com/res/v1/web/search"
+
+        url = "https://api.search.brave.com/res/v1/web/search"
         params = {
             'q': query,
             'count': 10
@@ -216,13 +209,8 @@ def person_dorks_search(full_name) -> dict:
     Uses Brave Search API if available, falls back to multiple DuckDuckGo methods.
     Tracks source for each result and shows which source was used.
     """
-    import os
-    import re
-    import time
-    import httpx
-    from urllib.parse import quote, unquote
     from datetime import datetime
-    
+
     parts = full_name.strip().split()
     if len(parts) < 2:
         return {'error': 'Please enter first and last name', 'results': None}
@@ -336,7 +324,7 @@ def person_dorks_search(full_name) -> dict:
         logger.info("Using Brave Search API")
         results['sources_used'].append('brave')
         
-        log_ddg(f"Using Brave Search API (key configured)")
+        log_ddg("Using Brave Search API (key configured)")
         
         for query in dork_queries[:6]:
             results['queries_run'].append(query)
@@ -358,7 +346,7 @@ def person_dorks_search(full_name) -> dict:
     ddg_success = False
     if not brave_success or not results['dorks_results']:
         logger.info("Trying DuckDuckGo scraping methods")
-        log_ddg(f"Trying DuckDuckGo scraping...")
+        log_ddg("Trying DuckDuckGo scraping...")
         
         ddg_methods = [
             {'name': 'duckduckgo_lite', 'url': 'https://lite.duckduckgo.com/50x.html'},

@@ -187,13 +187,14 @@
 - **Sudoers**: `git`, `chown`, `systemctl` added for passwordless update from GUI.
 
 ## Tests
-- Run: `/usr/local/bin/python3 -m pytest tests/ -v` (81 tests, ~3-4 min).
+- Run: `/usr/local/bin/python3 -m pytest tests/ -v` (116 tests, ~7 min).
 - Files: `test_core.py` (10), `test_findings.py` (7), `test_phone_lookup.py` (8), `test_username_search.py` (6), `test_lookups.py` (27), `test_social.py` (23).
 - All mock external APIs (httpx, requests). No network calls.
 - `conftest.py`: SQLite temp file, `auth_client` via `session_transaction()` (omzeilt 2FA), `db_session`.
 - Schema via Alembic (`alembic upgrade head` in fixture setup, niet `db.create_all()`).
 - Teardown dropt ALL tabellen (inclusief `alembic_version`) zodat elke test schoon start.
 - Zero warnings (third-party warnings suppressed in `pytest.ini`).
+- 116 tests, ~7 min (27 tests in `test_lookups.py` ~96s door setup/teardown overhead).
 
 ## Input Validation (`cms/validation.py`)
 - Pydantic `@validate(Schema)` decorator for POST routes.
