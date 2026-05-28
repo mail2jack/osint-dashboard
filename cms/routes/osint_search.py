@@ -3,7 +3,6 @@ import uuid
 import logging
 from datetime import datetime, timezone
 
-import requests as http_requests
 import flask
 from flask import request, jsonify, abort
 from flask_login import login_required, current_user
@@ -226,7 +225,6 @@ def add_osint_findings(case_id: str):
     all_urls = [r.get('url', '') for r in selected_results if r.get('url')]
     existing_urls = set()
     if all_urls:
-        from sqlalchemy import or_
         dup_check = Finding.query.filter(
             Finding.case_id == case_id,
             Finding.source_url.in_(all_urls),

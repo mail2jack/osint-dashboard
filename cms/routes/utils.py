@@ -6,7 +6,7 @@ import re
 import logging
 from typing import Optional
 
-from ..models import db, Subject, Client
+from ..models import Subject, Client
 
 logger = logging.getLogger(__name__)
 

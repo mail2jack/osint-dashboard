@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime, timedelta
-from itertools import groupby
 
 import flask
 from flask import (

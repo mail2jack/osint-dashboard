@@ -1,11 +1,8 @@
 import logging
-import json
 import os
 import re
 import httpx
 import requests
-from datetime import datetime, timezone
-from urllib.parse import quote
 from flask import request, jsonify
 import flask
 from search_history import search_history
@@ -518,7 +515,6 @@ def phone_lookup_all() -> flask.Response:
     results = {}
 
     if 'whatsapp' in services:
-        from flask import make_response
         whatsapp_result = whatsapp_lookup()
         results['whatsapp'] = whatsapp_result.get_json()
 

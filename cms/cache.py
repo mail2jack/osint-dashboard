@@ -4,10 +4,8 @@ Uses cachelib (already installed via flask-session dependency).
 """
 
 import hashlib
-import json
 import logging
 import threading
-import time
 
 from cachelib.file import FileSystemCache
 

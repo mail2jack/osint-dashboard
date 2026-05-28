@@ -6,7 +6,6 @@ When a tool is disabled, its API endpoint returns 503 with a clear message.
 import logging
 from functools import wraps
 
-import flask
 from flask import jsonify
 
 logger = logging.getLogger(__name__)

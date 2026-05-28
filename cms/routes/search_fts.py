@@ -1,14 +1,13 @@
 import logging
-from datetime import datetime, timezone
 
 import flask
 from flask import request, jsonify
-from flask_login import login_required, current_user
-from sqlalchemy import or_, func
+from flask_login import login_required
+from sqlalchemy import or_
 
 from . import cms_bp
 from .. import csrf
-from ..models import db, Subject, Case, Finding
+from ..models import Subject, Case, Finding
 from ..validation import validate, FTSSearchSchema
 from ..api_key_auth import api_key_required
 

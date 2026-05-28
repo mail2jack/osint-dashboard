@@ -6,12 +6,11 @@ Help content is stored as Markdown files in the help/ directory.
 """
 
 import logging
-import os
 from pathlib import Path
 
 import markdown
 import flask
-from flask import request, jsonify, render_template
+from flask import jsonify, render_template
 from flask_login import login_required
 
 from . import cms_bp

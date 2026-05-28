@@ -2,16 +2,13 @@ import logging
 import json
 import os
 import asyncio
-import threading
 import time
-import queue
 import re
 import requests
 from datetime import datetime, timezone
 from urllib.parse import quote
 
-from flask import Blueprint, request, jsonify, Response as FlaskResponse, send_file, stream_with_context, g
-from flask_login import current_user
+from flask import Blueprint, request, jsonify, Response as FlaskResponse, send_file
 
 from .. import csrf
 from ..app_helpers import (
@@ -29,7 +26,6 @@ from ..app_helpers import (
     search_email_holehe,
     search_email_combined,
     search_username,
-    SearchJob,
     search_registry,
     generate_results_pdf,
     check_ollama_available,
@@ -38,7 +34,7 @@ from cms.rate_limiting import rate_limit, DEFAULT_RATE_LIMIT, STRICT_RATE_LIMIT
 from cms.api_key_auth import api_key_required
 from cms.feature_flags import tool_enabled
 from cms.validation import validate
-from cms.cache import get as cache_get, set as cache_set, get_status as cache_status
+from cms.cache import get as cache_get, set as cache_set
 from cms.validation import (
     AISummarizeSchema, AIAnalyzeQuerySchema, AIEnrichProfileSchema,
     PersonSearchSchema, EmailQuerySchema, IPQuerySchema,

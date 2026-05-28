@@ -7,10 +7,8 @@ import flask
 from flask import request, jsonify, current_app, abort, send_file
 from flask_login import login_required, current_user
 from PIL import Image
-from werkzeug.utils import secure_filename
 
 from . import cms_bp
-from .. import csrf
 from ..validation import validate, CaptureScreenshotSchema
 from ..models import db, Case, Screenshot, AuditLog
 from ..auth import case_access_required, case_edit_required

@@ -18,7 +18,7 @@ import base64
 import secrets
 import logging
 from datetime import datetime, timezone
-from typing import Callable, List, Optional, Union
+from typing import Callable, Optional
 
 import flask
 import pyotp
@@ -26,22 +26,19 @@ import qrcode
 
 from flask import (
     Blueprint, request, jsonify, render_template, 
-    redirect, url_for, flash, session, g, current_app, abort
+    redirect, url_for, flash, session, current_app, abort
 )
 from flask_login import (
     LoginManager, login_user, logout_user, 
     login_required, current_user
 )
 
-from .models import db, User, AuditLog, Case, Client, Subject
-from .encryption_utils import encryptor
-from . import csrf
+from .models import db, User, AuditLog, Case
 from .validation import validate
 from .rate_limiting import is_rate_limited, set_rate_limited
 from .notifications import notify_login_failed, notify_login_success, notify_account_locked, notify_user_created
 from .validation import (
-    LoginSchema, SetPasswordSchema, Verify2FASchema, Setup2FASchema,
-    CreateUserSchema, EditUserSchema, ChangePasswordSchema,
+    LoginSchema, SetPasswordSchema, CreateUserSchema, EditUserSchema, ChangePasswordSchema,
 )
 
 

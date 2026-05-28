@@ -3,7 +3,6 @@ Notification system — sends webhooks for important events.
 Webhook URL is configured via Setting 'webhook_url'.
 """
 
-import json
 import logging
 from datetime import datetime, timezone
 

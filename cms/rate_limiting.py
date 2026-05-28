@@ -9,7 +9,6 @@ import time
 import threading
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Optional
 
 import flask
 

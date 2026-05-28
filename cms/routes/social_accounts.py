@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from .. import csrf
-from ..models import db, Subject, Finding, AuditLog, Case, SocialAccount
+from ..models import db, Subject, Finding, AuditLog
 from ..validation import validate, CheckExistingUrlsSchema, AddSocialAccountSchema, SaveFindingAsSocialAccountSchema, SaveUsernameFindingsSchema, CreateSubjectFromUsernameSchema
 
 logger = logging.getLogger(__name__)

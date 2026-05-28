@@ -4,12 +4,11 @@ import math
 
 import flask
 from flask import (
-    request, jsonify, render_template, abort, current_app
+    request, jsonify, abort, current_app
 )
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import (
     db, Subject, AuditLog
 )

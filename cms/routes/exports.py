@@ -3,7 +3,6 @@ import io
 import logging
 from datetime import datetime
 
-import flask
 from flask import Response, request, jsonify, abort
 from flask_login import login_required, current_user
 

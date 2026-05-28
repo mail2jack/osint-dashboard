@@ -1,6 +1,5 @@
 import logging
 
-import flask
 from flask import request, render_template
 from flask_login import login_required
 

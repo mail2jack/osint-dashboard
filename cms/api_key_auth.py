@@ -5,11 +5,10 @@ API Key authentication for external tool access.
 import logging
 from functools import wraps
 
-import flask
 from flask import request, jsonify, g
 from flask_login import current_user
 
-from .models import db, ApiKey, User
+from .models import db, ApiKey
 
 logger = logging.getLogger(__name__)
 

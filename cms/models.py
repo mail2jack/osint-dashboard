@@ -19,7 +19,7 @@ import secrets
 import logging
 from datetime import datetime, timedelta, timezone
 from enum import Enum as PyEnum
-from typing import Optional, List, Any
+from typing import Any
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.types import JSON as _BaseJSON
@@ -39,7 +39,7 @@ class SafeJSON(_BaseJSON):
         return value
 
 
-from .encryption_utils import EncryptedString, encryptor
+from .encryption_utils import encryptor
 
 
 db = SQLAlchemy()

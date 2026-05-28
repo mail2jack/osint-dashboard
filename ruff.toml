@@ -1,0 +1,5 @@
+[lint]
+# E712, E711 suppressed: == True/False/None is correct for SQLAlchemy
+# filter expressions; Python `not`/`is` operators don't work on
+# SQLAlchemy column expressions.
+ignore = ["E711", "E712"]

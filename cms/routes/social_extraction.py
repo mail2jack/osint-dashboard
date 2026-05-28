@@ -1,15 +1,13 @@
 import logging
-import re
 import requests as http_requests
-from urllib.parse import urlparse
 
 import flask
 from flask import request, jsonify, abort
-from flask_login import login_required, current_user
+from flask_login import login_required
 
 from . import cms_bp
 from .. import csrf
-from ..models import db, Subject, Finding, AuditLog
+from ..models import db, Subject, Finding
 from ..validation import validate, ExtractSocialIdSchema, UpdateSocialIdsSchema
 
 logger = logging.getLogger(__name__)

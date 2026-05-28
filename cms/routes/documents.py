@@ -8,7 +8,6 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Case, Subject, Document, AuditLog
 from ..auth import roles_required, case_access_required, case_edit_required
 from ..image_validation import validate_upload

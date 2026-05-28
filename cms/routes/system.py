@@ -3,12 +3,12 @@ import re
 import time
 
 import flask
-from flask import request, jsonify, current_app
+from flask import jsonify, current_app
 from flask_login import login_required
 
 from . import cms_bp
 from .. import csrf
-from ..models import db, Setting, AuditLog
+from ..models import Setting
 from ..auth import admin_required
 
 logger = logging.getLogger(__name__)

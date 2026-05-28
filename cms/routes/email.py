@@ -2,7 +2,6 @@ import logging
 import re
 import socket
 import os
-from datetime import datetime, timezone
 
 import flask
 from flask import request, jsonify

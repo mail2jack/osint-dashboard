@@ -4,7 +4,6 @@ Registered directly on the Flask app (not the CMS blueprint).
 """
 
 import logging
-import os
 import signal
 
 import flask

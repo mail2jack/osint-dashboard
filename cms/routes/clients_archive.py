@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Client, Case, AuditLog
-from ..auth import roles_required, admin_required
+from ..auth import roles_required
 
 logger = logging.getLogger(__name__)
 

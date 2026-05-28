@@ -14,9 +14,8 @@ Security Design Decisions:
 import base64
 import logging
 import os
-from typing import Any, Optional, Union
+from typing import Optional, Union
 from cryptography.fernet import Fernet, InvalidToken
-from flask import current_app
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +220,6 @@ class EncryptedString:
     
     def __call__(self):
         from sqlalchemy import String, TypeDecorator
-        from sqlalchemy.dialects.postgresql import BYTEA
         
         class EncryptedType(TypeDecorator):
             impl = String(self.max_length)
