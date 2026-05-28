@@ -477,7 +477,7 @@ class Case(db.Model):
         
         return f'{year}-{next_num:05d}'
     
-    def transition_status(self, new_status: str, user_id: str) -> None:
+    def transition_status(self, new_status: str, user_id: str) -> bool:
         valid_transitions = {
             CaseStatus.OPEN.value: [CaseStatus.ACTIVE.value, CaseStatus.CLOSED.value],
             CaseStatus.ACTIVE.value: [CaseStatus.SUSPENDED.value, CaseStatus.CLOSED.value],
@@ -1150,7 +1150,7 @@ class AuditLog(db.Model):
         changes: dict = None,
         old_values: dict = None,
         new_values: dict = None,
-        ip_address: str = None,
+        ip_address: str | None = None,
         user_agent: str = None,
         case_id: str = None,
         description: str = None
@@ -1643,6 +1643,12 @@ class Setting(db.Model):
         setting.updated_at = datetime.now(timezone.utc)
         try:
             db.session.commit()
+            # Invalidate setting cache so next read hits DB
+            try:
+                from .setting_cache import invalidate_setting
+                invalidate_setting(key)
+            except Exception:
+                pass
             return True
         except Exception as e:
             db.session.rollback()

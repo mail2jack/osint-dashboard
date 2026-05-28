@@ -36,7 +36,7 @@ jobs:
       run: ruff check --output-format=github .
 
     - name: Type check with mypy
-      run: mypy app.py cms/ --ignore-missing-imports
+      run: mypy --config-file mypy.ini app.py cms/
 
     - name: Run tests
       run: python -m pytest tests/ -v --tb=short

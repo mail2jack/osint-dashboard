@@ -254,13 +254,14 @@ def case_report(case_id: str) -> str:
             findings_q = findings_q.filter(Finding.created_at >= fd)
             comments_q = comments_q.filter(Comment.created_at >= fd)
         except ValueError:
-            logger.debug("Invalid from_date filter: %s", fd)
-        try:
-            td = datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1)
-            findings_q = findings_q.filter(Finding.created_at < td)
-            comments_q = comments_q.filter(Comment.created_at < td)
-        except ValueError:
-            logger.debug("Invalid to_date filter: %s", td)
+            logger.debug("Invalid from_date filter: %s", from_date)
+        if to_date:
+            try:
+                td = datetime.strptime(to_date, '%Y-%m-%d') + timedelta(days=1)
+                findings_q = findings_q.filter(Finding.created_at < td)
+                comments_q = comments_q.filter(Comment.created_at < td)
+            except ValueError:
+                logger.debug("Invalid to_date filter: %s", to_date)
         findings_q = findings_q.filter_by(subject_id=subject_filter)
         comments_q = comments_q.filter_by(subject_id=subject_filter)
 

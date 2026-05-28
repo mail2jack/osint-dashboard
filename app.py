@@ -207,9 +207,9 @@ def inject_globals():
         'current_version': get_version(),
     }
     try:
-        from cms.models import Setting
-        sf_health = Setting.get('spiderfoot_health', '')
-        sf_last_ok = Setting.get('spiderfoot_last_ok', '')
+        from cms.setting_cache import cached_setting_get
+        sf_health = cached_setting_get('spiderfoot_health', '')
+        sf_last_ok = cached_setting_get('spiderfoot_last_ok', '')
         ctx['spiderfoot_health'] = sf_health
         ctx['spiderfoot_last_ok'] = sf_last_ok
     except Exception:

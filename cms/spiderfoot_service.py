@@ -659,7 +659,8 @@ def get_spiderfoot_service(config: Optional[SpiderFootConfig] = None) -> SpiderF
 def check_spiderfoot_health(sf_url: Optional[str] = None) -> Tuple[bool, str]:
     """
     Check if SpiderFoot is reachable and cache the status in Settings.
-    
+    If no spiderfoot_url is configured, silently return healthy=False without logging.
+
     Returns:
         Tuple of (is_healthy, status_message)
     """
@@ -669,7 +670,10 @@ def check_spiderfoot_health(sf_url: Optional[str] = None) -> Tuple[bool, str]:
         if sf_url is None:
             sf_url = Setting.get('spiderfoot_url')
         if not sf_url:
-            sf_url = 'http://127.0.0.1:5001'
+            # No URL configured — not an error, just not set up
+            Setting.set('spiderfoot_health', '')
+            Setting.set('spiderfoot_health_message', '')
+            return False, 'not configured'
 
         sf_user = Setting.get('spiderfoot_username', 'admin')
         sf_pass = Setting.get('spiderfoot_password', '')
