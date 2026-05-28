@@ -52,7 +52,6 @@ def _extract_social_ids_from_url(url, subject=None):
                     extracted = socid_extractor.extract(html)
                 except ImportError:
                     logger.debug("socid_extractor not available")
-            logger.warning(f"Playwright extraction failed ({type(e).__name__}): {e}")
             headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'}
             r = http_requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200:

@@ -1698,6 +1698,7 @@ class SocialAccount(db.Model):
 
 
 def get_setting(key: str, default=None) -> Any:
+    setting = Setting.query.filter_by(key=key, is_active=True).first()
     if not setting:
         return default
     return setting.value

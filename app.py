@@ -114,6 +114,10 @@ from cms import create_cms_module, csrf
 create_cms_module(app)
 logger.info("CMS initialized successfully")
 
+# Centralized API error handlers
+from cms.api_errors import register_error_handlers
+register_error_handlers(app)
+
 # =============================================================================
 # Template Filters — registered on the app (used by CMS templates)
 # =============================================================================
@@ -260,6 +264,30 @@ from cms.routes.system_app import register_system_routes
 register_system_routes(app)
 
 logger.info("App-level routes registered")
+
+# ── Security headers ──────────────────────────────────────────────────────────
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https:; "
+        "frame-src 'none'; "
+        "object-src 'none'"
+    )
+    response.headers['Content-Security-Policy'] = csp
+    # Only set HSTS for non-localhost
+    host = request.host.split(':')[0] if request.host else ''
+    if host and host != 'localhost' and host != '127.0.0.1':
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
 
 # =============================================================================
 # Main

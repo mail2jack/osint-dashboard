@@ -22,6 +22,7 @@ from ..app_helpers import (
     _get_hibp_key,
     WEBCAM_DATA,
     search_email_async,
+    search_username_async,
     get_sherlock_sites,
     search_email_holehe,
     search_email_combined,
@@ -589,9 +590,9 @@ def username_search_stream() -> FlaskResponse:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(search_email_async(email, progress_callback, limit))
+            result = loop.run_until_complete(search_username_async(username, progress_callback))
             found_count = result.get('found_count', 0)
-            search_history.add_entry('email', email, f'{found_count} accounts found', found_count)
+            search_history.add_entry('username', username, f'{found_count} accounts found', found_count)
             result_queue.put(('complete', result))
         except Exception as e:
             result_queue.put(('error', f"{type(e).__name__}: {str(e)}"))
@@ -605,7 +606,8 @@ def username_search_stream() -> FlaskResponse:
     if not email_sites:
         return jsonify({'error': 'Could not load site data'}), 400
 
-    progress_state['total'] = limit
+    from cms.app_helpers import search_history
+    progress_state['total'] = len(email_sites)
 
     thread = threading.Thread(target=run_search_thread, daemon=True)
     thread.start()
