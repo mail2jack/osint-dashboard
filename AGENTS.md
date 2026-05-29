@@ -268,3 +268,27 @@
 - **Template**: `templates/cms/help.html` — extends `base.html`, shows topic grid or rendered help content.
 - **Styling**: `static/css/help.css` — slide-out panel, overlay, help content typography, help page layout.
 - **Registration**: Imported in `cms/routes/__init__.py::register_modules()` as `.help`.
+
+## Sentry Error Tracking (`app.py`)
+- **Opt-in**: `SENTRY_DSN` env var (primary) or `sentry_dsn` Setting (fallback via Settings GUI).
+- **Integrations**: `FlaskIntegration` + `SqlalchemyIntegration` (DB query tracing).
+- **Config**: `traces_sample_rate=0.1` (env: `SENTRY_TRACES_SAMPLE_RATE`), `environment` from `FLASK_ENV`.
+- **`send_default_pii=False`** — never send user PII to Sentry.
+- **Initialization**: env var checked at import time (before `app` exists); Settings checked after `create_cms_module(app)`.
+- Set via Flask shell: `Setting.set('sentry_dsn', 'https://...@ingest.sentry.io/...')` (category=`system`, `encrypt=True`).
+
+## Grafana Dashboard (`grafana/dashboard.json`)
+- **7 panels**: Request Rate (timeseries), Active Requests (gauge), HTTP Status (2xx/4xx/5xx stacked), Latency p50/p95/p99, Top Routes (table), Duration Distribution (histogram), Requests by Method (pie chart).
+- **Prometheus data source**: expects `http://localhost:9090` — update after import.
+- **Metrics exposed at** `/metrics` by `cms/metrics.py`.
+- **Import**: Grafana → Dashboards → Import → paste JSON → select Prometheus datasource.
+
+## Backup Verification (`scripts/verify_backup.sh`)
+- **Usage**: `./scripts/verify_backup.sh` — verifies latest backup archive.
+- **Checks**: file integrity (min size), gzip validity, SQL syntax (CREATE TABLE/COPY presence), PostgreSQL restore dry-run (if psql available + postgres running), SQLite integrity check (`PRAGMA integrity_check`).
+- **Exit codes**: 0 (OK), 1 (no backup found), 2 (verification failed), 3 (cleanup error).
+- **Cleanup**: `./scripts/verify_backup.sh --cleanup` removes `/tmp/iveras_backup_verify_*` dirs older than 7 days.
+- **Cron integration**: add to `/etc/cron.d/osint-dashboard-backup`:
+  ```
+  0 4 * * * osint /opt/osint-dashboard/scripts/verify_backup.sh >> /var/log/osint-dashboard/backup-verify.log 2>&1
+  ```

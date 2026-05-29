@@ -13,25 +13,34 @@ from cms.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Sentry — opt-in via SENTRY_DSN env var
-_sentry_dsn = os.environ.get("SENTRY_DSN")
-if _sentry_dsn:
+
+def _init_sentry(dsn: str) -> None:
     try:
         import sentry_sdk
         from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
         sentry_sdk.init(
-            dsn=_sentry_dsn,
-            integrations=[FlaskIntegration()],
+            dsn=dsn,
+            integrations=[
+                FlaskIntegration(),
+                SqlalchemyIntegration(),
+            ],
             traces_sample_rate=float(
                 os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")
             ),
             environment=os.environ.get("FLASK_ENV", "development"),
             send_default_pii=False,
         )
-        logger.info("Sentry initialized")
+        logger.info("Sentry initialized (DSN: ...%s)", dsn[-12:])
     except Exception as e:
-        logger.warning(f"Failed to initialize Sentry: {e}")
+        logger.warning("Failed to initialize Sentry: %s", e)
+
+
+# Sentry — opt-in via env var (before app is created)
+_sentry_dsn = os.environ.get("SENTRY_DSN")
+if _sentry_dsn:
+    _init_sentry(_sentry_dsn)
 
 
 app = Flask(__name__)
@@ -129,6 +138,17 @@ from cms import create_cms_module
 
 create_cms_module(app)
 logger.info("CMS initialized successfully")
+
+# Sentry fallback: check Setting table if no env var was set
+if not _sentry_dsn:
+    try:
+        from cms.models import Setting
+
+        _setting_dsn = Setting.get("sentry_dsn")
+        if _setting_dsn:
+            _init_sentry(_setting_dsn)
+    except Exception:
+        pass
 
 # Centralized API error handlers
 from cms.api_errors import register_error_handlers
