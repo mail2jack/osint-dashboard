@@ -8,7 +8,7 @@ from flask import Blueprint
 
 logger = logging.getLogger(__name__)
 
-cms_bp = Blueprint('cms', __name__, url_prefix='/cms')
+cms_bp = Blueprint("cms", __name__, url_prefix="/cms")
 
 
 def register_modules() -> None:
@@ -48,3 +48,10 @@ def register_modules() -> None:
     from . import spiderfoot  # noqa: F401
     from . import search_fts  # noqa: F401
     from . import help  # noqa: F401
+    from . import api_keys  # noqa: F401
+    from . import imports  # noqa: F401
+
+    # Background task status API
+    from ..background import register_background_routes
+
+    register_background_routes(cms_bp)

@@ -1,0 +1,107 @@
+{% extends "cms/base.html" %}
+{% block title %}Active Sessions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🔐 Active Sessions</h1>
+    <p style="color: var(--text-secondary);">Manage active server-side sessions. Revoke sessions to force logout.</p>
+</div>
+
+<div class="card" style="padding: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <span id="sessionCount" style="font-weight: 600;"></span>
+        <button type="button" data-click="deleteAllSessions" class="btn" style="background: #dc2626;">Delete All (except mine)</button>
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Session ID</th>
+                <th>User ID</th>
+                <th>IP</th>
+                <th>Current</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="sessionsBody">
+            <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+async function loadSessions() {
+    try {
+        const r = await fetch('/cms/admin/sessions');
+        const d = await r.json();
+        const tbody = document.getElementById('sessionsBody');
+        document.getElementById('sessionCount').textContent = d.count + ' active session(s)';
+
+        if (!d.sessions.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No active sessions.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = d.sessions.map(s => `
+            <tr>
+                <td><code>${s.session_id.slice(0, 16)}...</code></td>
+                <td>${s.user_id || '-'}</td>
+                <td>${s.ip || '-'}</td>
+                <td>${s.is_current ? '<span style="color: #059669;">✓ Current</span>' : ''}</td>
+                <td>
+                    ${s.is_current ? '—' : `<button type="button" data-click="deleteSession" data-arg0="${s.session_id}" class="btn" style="background: #dc2626; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Revoke</button>`}
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        document.getElementById('sessionsBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #dc2626;">Failed to load sessions: ' + e.message + '</td></tr>';
+    }
+}
+
+window.deleteSession = async function(id) {
+    if (!confirm('Revoke this session? The user will be logged out.')) return;
+    try {
+        const r = await fetch('/cms/admin/sessions/' + id + '/delete', { method: 'POST' });
+        if (r.ok) {
+            loadSessions();
+        } else {
+            const d = await r.json();
+            alert('Failed: ' + (d.error || 'Unknown error'));
+        }
+    } catch (e) {
+        alert('Failed: ' + e.message);
+    }
+};
+
+window.deleteAllSessions = async function() {
+    if (!confirm('Revoke ALL sessions except your current one? All other users will be logged out.')) return;
+    try {
+        const r = await fetch('/cms/admin/sessions/delete-all', { method: 'POST' });
+        const d = await r.json();
+        if (r.ok) {
+            showToast('Deleted ' + d.deleted + ' sessions', 'success');
+            loadSessions();
+        } else {
+            showToast('Failed: ' + (d.error || 'Unknown'), 'error');
+        }
+    } catch (e) {
+        showToast('Failed: ' + e.message, 'error');
+    }
+};
+
+function showToast(msg, type) {
+    const t = document.getElementById('toast') || (() => {
+        const el = document.createElement('div');
+        el.id = 'toast';
+        el.className = 'toast';
+        document.body.appendChild(el);
+        return el;
+    })();
+    t.textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+document.addEventListener('DOMContentLoaded', loadSessions);
+</script>
+{% endblock %}

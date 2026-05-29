@@ -187,20 +187,27 @@
 - **Sudoers**: `git`, `chown`, `systemctl` added for passwordless update from GUI.
 
 ## Tests
-- Run: `/usr/local/bin/python3 -m pytest tests/ -v` (116 tests, ~7 min).
-- Files: `test_core.py` (10), `test_findings.py` (7), `test_phone_lookup.py` (8), `test_username_search.py` (6), `test_lookups.py` (27), `test_social.py` (23).
+- Run: `/usr/local/bin/python3 -m pytest tests/ -v` (205 tests, ~15 min).
+- Files: `test_core.py` (10), `test_findings.py` (7), `test_phone_lookup.py` (8), `test_username_search.py` (6), `test_lookups.py` (27), `test_social.py` (23), `test_templates.py` (2), `test_routes_smoke.py` (2), `test_cases.py` (16), `test_subjects.py` (18), `test_clients.py` (18), `test_documents.py` (16), `test_reminders.py` (13), `test_audit.py` (11), `test_rate_limiter.py` (1 test per class, internal).
+- Tests maken cases cliënten aan omdat schema `client_id` required heeft en de route dat valideert.
+- Document upload tests mocken `validate_upload()` (magic-byte check) en gebruiken `multipart/form-data` via `data` parameter.
+- Audit purge test verifieert `AuditLog.purge_old(days=N)` + dat startup purge in `cms/__init__.py` werkt.
+- Alle nieuwe tests checken `test_requires_auth` (unauthorized = 401/302) + happy path + edge cases.
+- Pauze tussen testfiles wordt veroorzaakt door `app` fixture (function scope): elke testfile hercreëert de hele schema via Alembic.
+- `test_lookups.py` (27 tests, ~96s) traag door setup/teardown overhead per test (mock patches op httpx/requests).
 - All mock external APIs (httpx, requests). No network calls.
 - `conftest.py`: SQLite temp file, `auth_client` via `session_transaction()` (omzeilt 2FA), `db_session`.
 - Schema via Alembic (`alembic upgrade head` in fixture setup, niet `db.create_all()`).
 - Teardown dropt ALL tabellen (inclusief `alembic_version`) zodat elke test schoon start.
 - Zero warnings (third-party warnings suppressed in `pytest.ini`).
-- 116 tests, ~7 min (27 tests in `test_lookups.py` ~96s door setup/teardown overhead).
 
 ## Input Validation (`cms/validation.py`)
-- Pydantic `@validate(Schema)` decorator for POST routes.
+- Pydantic `@validate(Schema)` decorator for POST routes. Handles zowel JSON als form data.
 - Usage: `@validate(EmailCheckSchema)` after `@login_required`, then `request.validated_data`.
 - Returns 400 with `{"error": "Validation failed", "details": [...]}` on invalid input.
-- Schemas available for all lookups.py + social.py routes.
+- Alle 78 schemas in `cms/validation.py` — elke POST route in de CRM modules gebruikt `@validate`.
+- Uitzonderingen: endpoints zonder request body (archive, delete, complete, stop) hebben geen schema nodig.
+- `phone_service.py` routes: validatie toegepast op `add_url_rule` niveau in `app_bp.py` (i.p.v. decorator op functie) zodat `phone_lookup_all()` de ongedecoreerde functies intern kan aanroepen.
 
 ## Routes Structure
 - `cms/legacy_routes.py` (~6800 lines, ~109 routes) — legacy routes, `cms_bp` definition.
@@ -237,6 +244,20 @@
 - `Model.query.get(id)` → `db.session.get(Model, id)` (SQLAlchemy 2.0 compat).
 - `legacy_routes.py` removed — `cms_bp` Blueprint lives in `cms/routes/__init__.py`.
 - Type hints added to all route handlers (38 in `app.py`, ~200+ in `cms/`).
+
+## Background Task Queue (`cms/background.py`)
+- `ThreadPoolExecutor(max_workers=4)` voor fire-and-forget taken.
+- `run_in_background(task_id, func, *args, **kwargs)` — voert functie uit op achtergrond thread.
+- `get_task_status(task_id)` — polling: `{'status': 'pending'|'running'|'completed'|'failed', 'result': ..., 'error': ...}`.
+- `GET /cms/api/background/status/<task_id>` — polling endpoint voor frontend.
+- **Email**: `send_password_reset_background()` in `cms/email_utils.py` — SMTP-aanroep verplaatst naar achtergrond, user creation returned direct.
+- **AI/LLM**: `ollama_generate_background()`, `summarize_results_background()`, `analyze_natural_language_background()` in `cms/services/ai_service.py` — klaar voor frontend polling.
+- Task data in-memory (geen DB), dus niet persisted bij restart. Beperkt tot max_workers=4 gelijktijdige taken.
+
+## Error Templates
+- `templates/cms/404.html` en `templates/cms/500.html` — gestylede foutpagina's.
+- Error handlers in `cms/routes/system_app.py`: JSON voor `/api/`-prefix, HTML voor rest.
+- **LET OP**: `render_template()` in error handlers gebruikt `cms/404.html` i.p.v. `404.html` (deze staan niet in de root `templates/`). `spiderfoot.py` hanteert hetzelfde patroon.
 
 ## Context-Sensitive Help System
 - **Route**: `cms/routes/help.py` — 3 endpoints: `/cms/help` (index), `/cms/help/<topic>` (full page), `/cms/api/help/<topic>` (AJAX JSON).

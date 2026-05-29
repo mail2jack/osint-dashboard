@@ -14,55 +14,72 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record):
         log_entry = {
-            'timestamp': self.formatTime(record),
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage(),
-            'module': record.module,
-            'function': record.funcName,
-            'line': record.lineno,
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
         }
-        if hasattr(record, 'request_id'):
-            log_entry['request_id'] = record.request_id
+        if hasattr(record, "request_id"):
+            log_entry["request_id"] = record.request_id
         if record.exc_info and record.exc_info[0]:
-            log_entry['exception'] = self.formatException(record.exc_info)
-        if hasattr(record, 'extra_data'):
+            log_entry["exception"] = self.formatException(record.exc_info)
+        if hasattr(record, "extra_data"):
             log_entry.update(record.extra_data)
         return json.dumps(log_entry)
 
 
 class RequestIDFilter(logging.Filter):
-    """Add request_id from Flask g to log records."""
+    """Add request_id, user_id, endpoint from Flask g to log records."""
+
     def filter(self, record):
         try:
-            from flask import g as flask_g
-            record.request_id = getattr(flask_g, 'request_id', '-')
+            from flask import g as flask_g, has_request_context
+
+            if has_request_context():
+                record.request_id = getattr(flask_g, "request_id", "-")
+                record.user_id = getattr(flask_g, "user_id", "-")
+                record.endpoint = getattr(flask_g, "endpoint", "-")
+            else:
+                record.request_id = "-"
+                record.user_id = "-"
+                record.endpoint = "-"
         except Exception:
-            record.request_id = '-'
+            record.request_id = "-"
+            record.user_id = "-"
+            record.endpoint = "-"
         return True
 
 
 def setup_logging(app=None):
     """Configure logging. Uses JSON format if LOG_FORMAT=json or in production."""
-    log_level = getattr(logging, os.environ.get('LOG_LEVEL', 'INFO').upper(), logging.INFO)
-    log_format = os.environ.get('LOG_FORMAT', 'json' if os.environ.get('FLASK_ENV') == 'production' else 'text')
-    log_file = os.environ.get('LOG_FILE', 'app.log')
+    log_level = getattr(
+        logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO
+    )
+    log_format = os.environ.get(
+        "LOG_FORMAT", "json" if os.environ.get("FLASK_ENV") == "production" else "text"
+    )
+    log_file = os.environ.get("LOG_FILE", "app.log")
 
     handlers = [logging.StreamHandler()]
 
     # File logging — disabled in Docker (LOG_FILE=/dev/null or empty), enabled by default
-    if log_file and log_file != '/dev/null':
+    if log_file and log_file != "/dev/null":
         try:
-            file_handler = TimedRotatingFileHandler(log_file, when='midnight', backupCount=30)
+            file_handler = TimedRotatingFileHandler(
+                log_file, when="midnight", backupCount=30
+            )
             handlers.append(file_handler)
         except Exception:
             pass  # Fall back to stdout-only if file cannot be opened
 
-    if log_format == 'json':
+    if log_format == "json":
         formatter = JSONFormatter()
     else:
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] [%(user_id)s] %(endpoint)s %(message)s"
         )
 
     for handler in handlers:
@@ -72,7 +89,7 @@ def setup_logging(app=None):
     logging.basicConfig(level=log_level, handlers=handlers, force=True)
 
     # Configure known child loggers — they inherit root handlers but get explicit levels
-    for name in ('performance', 'requests'):
+    for name in ("performance", "requests"):
         child = logging.getLogger(name)
         child.setLevel(log_level)
         child.propagate = True

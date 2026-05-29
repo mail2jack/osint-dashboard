@@ -177,7 +177,6 @@
 
 <div class="settings-container">
     <div class="settings-sidebar">
-        <h3>Categories</h3>
         {% for cat_key, cat_info in categories.items() %}
         <a href="{{ url_for('cms.settings') }}?category={{ cat_key }}" 
            class="category-item {% if active_category == cat_key %}active{% endif %}">
@@ -185,12 +184,12 @@
             <span>{{ cat_info.name.replace(cat_info.icon + ' ', '') }}</span>
         </a>
         {% endfor %}
-        <hr style="border-color:var(--border-color);margin:1rem 0;">
-        <a href="{{ url_for('users.list_users') }}" class="category-item">
-            <span class="icon">👥</span>
-            <span>Users</span>
+        <a href="{{ url_for('cms.settings') }}?category=security" 
+           class="category-item {% if active_category == 'security' %}active{% endif %}">
+            <span class="icon">🔒</span>
+            <span>Security</span>
         </a>
-        <a href="#" class="category-item" data-click="viewSessions">
+        <a href="{{ url_for('cms.list_sessions') }}" class="category-item">
             <span class="icon">🔐</span>
             <span>Sessions</span>
         </a>
@@ -273,6 +272,44 @@
             {% endif %}
         </form>
     </div>
+
+    {% if active_category == 'api_keys' %}
+    <div class="settings-section" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+        <h3>🔐 API Keys for Programmatic Access</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            Generate API keys for external tools and scripts to access the CMS REST API.
+            Keys are shown once after creation and use <code>X-API-Key</code> header authentication.
+        </p>
+
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="newApiKeyName" placeholder="Key name (e.g. automation-script)"
+                   style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text);">
+            <button type="button" data-click="generateApiKey" class="btn">Generate Key</button>
+        </div>
+
+        <table class="data-table" id="apiKeysTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Key Prefix</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Last Used</th>
+                    <th>Created By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="apiKeysBody">
+                <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Loading...</td></tr>
+            </tbody>
+        </table>
+
+        <div id="newApiKeyResult" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 4px; background: var(--warning-bg, #fffbeb); border: 1px solid var(--warning-border, #f59e0b);">
+            <strong style="color: var(--warning-text, #92400e);">⚠️ Copy this key now — it will not be shown again!</strong>
+            <pre id="newApiKeyDisplay" style="margin-top: 0.5rem; padding: 0.75rem; background: var(--code-bg, #1e1e2e); color: var(--code-text, #a6e3a1); border-radius: 4px; overflow-x: auto; user-select: all; font-size: 0.875rem;"></pre>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <div id="toast" class="toast"></div>
@@ -377,15 +414,100 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-window.viewSessions = async function() {
+async function loadApiKeys() {
     try {
-        const r = await fetch('/cms/admin/sessions');
-        const d = await r.json();
-        alert('Active sessions: ' + d.count + '\n' + d.sessions.map(s => '  • ' + s.session_id.slice(0,12) + '...').join('\n'));
+        const r = await fetch('/cms/api/api-keys');
+        const keys = await r.json();
+        const tbody = document.getElementById('apiKeysBody');
+        if (!keys.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No API keys created yet.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = keys.map(k => `
+            <tr>
+                <td>${k.name}</td>
+                <td><code>${k.prefix || (k.id.slice(0,8)+'...')}</code></td>
+                <td>${k.is_active ? '<span style="color: #059669;">Active</span>' : '<span style="color: #dc2626;">Revoked</span>'}</td>
+                <td>${k.created_at ? new Date(k.created_at).toLocaleString() : '-'}</td>
+                <td>${k.last_used_at ? new Date(k.last_used_at).toLocaleString() : 'Never'}</td>
+                <td>${k.created_by}</td>
+                <td>
+                    ${k.is_active ? `<button type="button" data-click="revokeApiKey" data-arg0="${k.id}" class="btn" style="background: #dc2626; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Revoke</button>` : ''}
+                    <button type="button" data-click="deleteApiKey" data-arg0="${k.id}" class="btn" style="background: #6b7280; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Delete</button>
+                </td>
+            </tr>
+        `).join('');
     } catch (e) {
-        alert('Failed to load sessions: ' + e.message);
+        document.getElementById('apiKeysBody').innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #dc2626;">Failed to load API keys: ' + e.message + '</td></tr>';
+    }
+}
+
+window.generateApiKey = async function() {
+    const nameInput = document.getElementById('newApiKeyName');
+    const name = nameInput.value.trim();
+    if (!name) {
+        showToast('Please enter a name for the API key.', 'error');
+        return;
+    }
+    try {
+        const r = await fetch('/cms/api/api-keys/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name })
+        });
+        const data = await r.json();
+        if (r.ok) {
+            nameInput.value = '';
+            document.getElementById('newApiKeyDisplay').textContent = data.key;
+            document.getElementById('newApiKeyResult').style.display = 'block';
+            showToast('API key generated successfully!', 'success');
+            loadApiKeys();
+        } else {
+            showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Failed: ' + e.message, 'error');
     }
 };
+
+window.revokeApiKey = async function(id) {
+    if (!confirm('Revoke this API key? Existing integrations using it will stop working.')) return;
+    try {
+        const r = await fetch('/cms/api/api-keys/' + id + '/revoke', { method: 'POST' });
+        const data = await r.json();
+        if (r.ok) {
+            showToast(data.message || 'Key revoked', 'success');
+            loadApiKeys();
+        } else {
+            showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Failed: ' + e.message, 'error');
+    }
+};
+
+window.deleteApiKey = async function(id) {
+    if (!confirm('Permanently delete this API key record?')) return;
+    try {
+        const r = await fetch('/cms/api/api-keys/' + id + '/delete', { method: 'POST' });
+        const data = await r.json();
+        if (r.ok) {
+            showToast(data.message || 'Key deleted', 'success');
+            loadApiKeys();
+        } else {
+            showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Failed: ' + e.message, 'error');
+    }
+};
+
+// Load API keys on page load if the section exists
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('apiKeysBody')) {
+        loadApiKeys();
+    }
+});
 
 window.addEventListener('beforeunload', (e) => {
     if (hasChanges) {

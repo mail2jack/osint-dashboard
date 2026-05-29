@@ -13,8 +13,17 @@ def get_ollama_config() -> tuple[str, str]:
     """Get Ollama config from Setting with env var / hardcoded fallback."""
     try:
         from ..models import Setting
-        url = Setting.get('ollama_url', '') or os.environ.get('OLLAMA_URL', '') or OLLAMA_URL
-        model = Setting.get('ollama_model', '') or os.environ.get('OLLAMA_MODEL', '') or OLLAMA_MODEL
+
+        url = (
+            Setting.get("ollama_url", "")
+            or os.environ.get("OLLAMA_URL", "")
+            or OLLAMA_URL
+        )
+        model = (
+            Setting.get("ollama_model", "")
+            or os.environ.get("OLLAMA_MODEL", "")
+            or OLLAMA_MODEL
+        )
         return url, model
     except Exception:
         return OLLAMA_URL, OLLAMA_MODEL
@@ -36,10 +45,7 @@ def ollama_generate(prompt, system_prompt=None, timeout=60) -> str | None:
             "model": OLLAMA_MODEL,
             "prompt": prompt,
             "stream": False,
-            "options": {
-                "temperature": 0.3,
-                "num_predict": 512
-            }
+            "options": {"temperature": 0.3, "num_predict": 512},
         }
         if system_prompt:
             payload["system"] = system_prompt
@@ -58,7 +64,11 @@ def summarize_results(query, tool, findings) -> str:
     if not findings:
         return "No results found to summarize."
 
-    platforms = [f.get('platform') or f.get('site', 'Unknown') for f in findings if f.get('exists')]
+    platforms = [
+        f.get("platform") or f.get("site", "Unknown")
+        for f in findings
+        if f.get("exists")
+    ]
     if not platforms:
         return "No confirmed accounts found."
 
@@ -95,7 +105,7 @@ If the query is unclear, set confidence below 0.5."""
 
 Query: "{user_query}"
 
-Available tools: {', '.join(available_tools)}
+Available tools: {", ".join(available_tools)}
 
 Determine what the user is searching for and extract the key information."""
 
@@ -115,18 +125,18 @@ def enrich_profile(platform, username, available_info) -> str:
     system_prompt = """You are a research analyst providing context about publicly listed social media platforms. Keep responses factual and under 50 words. This is read-only analysis."""
 
     info_text = ""
-    if available_info.get('url'):
+    if available_info.get("url"):
         info_text += f"Profile URL: {available_info['url']}\n"
-    if available_info.get('bio'):
+    if available_info.get("bio"):
         info_text += f"Bio: {available_info['bio']}\n"
-    if available_info.get('name'):
+    if available_info.get("name"):
         info_text += f"Display Name: {available_info['name']}\n"
 
     prompt = f"""Platform Analysis Request:
 Platform: {platform}
 Username: {username}
 
-{info_text or 'Limited information available.'}
+{info_text or "Limited information available."}
 
 Provide brief context about this platform (what it is, typical use cases). Keep under 40 words. Research purposes only."""
 

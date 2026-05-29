@@ -8,6 +8,7 @@ from typing import Optional, Any
 # Existing schemas
 # =============================================================================
 
+
 class EmailCheckSchema(BaseModel):
     email: str = Field(min_length=1, description="Email address to check")
 
@@ -57,7 +58,7 @@ class VesselFindingSchema(BaseModel):
     case_id: str = Field(min_length=1)
     subject_id: Optional[str] = None
     vessel_data: dict = Field(default_factory=dict)
-    source: str = 'vessel_lookup'
+    source: str = "vessel_lookup"
     source_url: Optional[str] = None
 
 
@@ -79,7 +80,7 @@ class CheckPolicieDataSchema(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     date_of_birth: Optional[str] = None
-    country: str = 'NL'
+    country: str = "NL"
 
 
 class CheckExistingUrlsSchema(BaseModel):
@@ -90,27 +91,29 @@ class CheckExistingUrlsSchema(BaseModel):
 class AddSocialAccountSchema(BaseModel):
     platform: str = Field(min_length=1, description="Social media platform name")
     username: str = Field(min_length=1, description="Username on the platform")
-    url: str = ''
-    account_id: str = ''
+    url: str = ""
+    account_id: str = ""
 
 
 class SaveFindingAsSocialAccountSchema(BaseModel):
     finding_id: Optional[str] = None
     subject_id: Optional[str] = None
-    url: str = ''
-    platform: str = ''
-    username: str = ''
+    url: str = ""
+    platform: str = ""
+    username: str = ""
 
 
 class SaveUsernameFindingsSchema(BaseModel):
-    results: list = Field(default_factory=list, description="List of {platform, url, username}")
+    results: list = Field(
+        default_factory=list, description="List of {platform, url, username}"
+    )
     case_id: Optional[str] = None
 
 
 class CreateSubjectFromUsernameSchema(BaseModel):
-    username: str = ''
-    platform: str = ''
-    url: str = ''
+    username: str = ""
+    platform: str = ""
+    url: str = ""
     case_id: Optional[str] = None
 
 
@@ -123,96 +126,98 @@ class ExtractSocialIdSchema(BaseModel):
 # app.py OSINT route schemas
 # =============================================================================
 
+
 class AISummarizeSchema(BaseModel):
-    query: str = ''
-    tool: str = 'unknown'
+    query: str = ""
+    tool: str = "unknown"
     findings: list = Field(default_factory=list)
 
 
 class AIAnalyzeQuerySchema(BaseModel):
-    query: str = ''
+    query: str = ""
 
 
 class AIEnrichProfileSchema(BaseModel):
-    platform: str = 'Unknown'
-    username: str = ''
+    platform: str = "Unknown"
+    username: str = ""
     info: dict = Field(default_factory=dict)
 
 
 class PersonSearchSchema(BaseModel):
-    name: str = ''
+    name: str = ""
 
 
 class EmailQuerySchema(BaseModel):
-    email: str = ''
+    email: str = ""
 
 
 class IPQuerySchema(BaseModel):
-    ip: str = ''
+    ip: str = ""
 
 
 class DomainQuerySchema(BaseModel):
-    domain: str = ''
+    domain: str = ""
 
 
 class OpenKVKQuerySchema(BaseModel):
-    query: str = ''
+    query: str = ""
 
 
 class WebcamQuerySchema(BaseModel):
-    query: str = ''
-    country: str = ''
+    query: str = ""
+    country: str = ""
 
 
 class HIBPQuerySchema(BaseModel):
-    email: str = ''
+    email: str = ""
 
 
 class UsernameQuerySchema(BaseModel):
-    username: str = ''
+    username: str = ""
 
 
 class EmailStreamSchema(BaseModel):
-    email: str = ''
-    tags: list = Field(default_factory=lambda: ['all'])
+    email: str = ""
+    tags: list = Field(default_factory=lambda: ["all"])
 
 
 class EmailHoleheSchema(BaseModel):
-    email: str = ''
+    email: str = ""
 
 
 class EmailCombinedSchema(BaseModel):
-    email: str = ''
+    email: str = ""
 
 
 class EmailCrossValidatedSchema(BaseModel):
-    email: str = ''
+    email: str = ""
 
 
 class UsernameRapidAPISchema(BaseModel):
-    username: str = ''
+    username: str = ""
 
 
 class GeneratePDFSchema(BaseModel):
     results: dict = Field(default_factory=dict)
-    type: str = 'unknown'
-    query: str = 'unknown'
+    type: str = "unknown"
+    query: str = "unknown"
 
 
 # =============================================================================
 # Auth route schemas
 # =============================================================================
 
+
 class SetPasswordSchema(BaseModel):
-    password: str = ''
-    confirm_password: str = ''
+    password: str = ""
+    confirm_password: str = ""
 
 
 class CreateUserSchema(BaseModel):
-    username: str = ''
-    email: str = ''
-    full_name: str = ''
-    role: str = ''
+    username: str = ""
+    email: str = ""
+    full_name: str = ""
+    role: str = ""
     password: Optional[str] = None
     generated_password: Optional[str] = None
     send_email: Any = None
@@ -228,33 +233,34 @@ class EditUserSchema(BaseModel):
 
 
 class ChangePasswordSchema(BaseModel):
-    current_password: str = ''
-    new_password: str = ''
-    confirm_password: str = ''
+    current_password: str = ""
+    new_password: str = ""
+    confirm_password: str = ""
 
 
 class LoginSchema(BaseModel):
-    username: str = ''
-    password: str = ''
+    username: str = ""
+    password: str = ""
     remember: Any = None
 
 
 class Verify2FASchema(BaseModel):
-    code: str = ''
-    recovery_code: str = ''
+    code: str = ""
+    recovery_code: str = ""
 
 
 class Setup2FASchema(BaseModel):
-    code: str = ''
+    code: str = ""
 
 
 # =============================================================================
 # CMS comment schemas
 # =============================================================================
 
+
 class CreateCommentSchema(BaseModel):
-    content: str = ''
-    comment_type: str = 'note'
+    content: str = ""
+    comment_type: str = "note"
     is_pinned: Any = None
     case_id: Optional[str] = None
     subject_id: Optional[str] = None
@@ -266,11 +272,12 @@ class CreateCommentSchema(BaseModel):
 # Financial schemas
 # =============================================================================
 
+
 class CreateFinancialSchema(BaseModel):
-    case_id: str = ''
-    transaction_date: str = ''
-    amount: Any = ''
-    currency: str = 'EUR'
+    case_id: str = ""
+    transaction_date: str = ""
+    amount: Any = ""
+    currency: str = "EUR"
     subject_id: Optional[str] = None
     transaction_type: Optional[str] = None
     source: Optional[str] = None
@@ -283,18 +290,19 @@ class CreateFinancialSchema(BaseModel):
 
 
 class VerifyFinancialSchema(BaseModel):
-    action: str = ''
-    notes: str = ''
+    action: str = ""
+    notes: str = ""
 
 
 # =============================================================================
 # Finding schemas
 # =============================================================================
 
+
 class CreateFindingSchema(BaseModel):
-    case_id: str = ''
-    title: str = ''
-    content: str = ''
+    case_id: str = ""
+    title: str = ""
+    content: str = ""
     subject_id: Optional[str] = None
     source_url: Optional[str] = None
     source_type: Optional[str] = None
@@ -308,6 +316,7 @@ class CreateFindingSchema(BaseModel):
 # Settings schemas
 # =============================================================================
 
+
 class SaveSettingsSchema(BaseModel):
     settings: list = Field(default_factory=list)
 
@@ -316,9 +325,10 @@ class SaveSettingsSchema(BaseModel):
 # Case CRUD schemas
 # =============================================================================
 
+
 class CreateCaseSchema(BaseModel):
-    title: str = ''
-    client_id: str = ''
+    title: str = ""
+    client_id: str = ""
     description: Optional[str] = None
     priority: Optional[str] = None
     case_type: Optional[str] = None
@@ -347,12 +357,13 @@ class EditCaseSchema(BaseModel):
 # Case state schemas
 # =============================================================================
 
+
 class SetCaseParentSchema(BaseModel):
     parent_case_id: Optional[str] = None
 
 
 class TransitionCaseSchema(BaseModel):
-    status: str = ''
+    status: str = ""
     closure_reason: Optional[str] = None
     reopened_reason: Optional[str] = None
 
@@ -361,8 +372,9 @@ class TransitionCaseSchema(BaseModel):
 # Case subjects schemas
 # =============================================================================
 
+
 class AddSubjectToCaseSchema(BaseModel):
-    subject_id: str = ''
+    subject_id: str = ""
 
 
 class BulkAddSubjectsSchema(BaseModel):
@@ -373,8 +385,9 @@ class BulkAddSubjectsSchema(BaseModel):
 # Client CRUD schemas
 # =============================================================================
 
+
 class CreateClientSchema(BaseModel):
-    name: str = ''
+    name: str = ""
     is_company: Any = None
     confirm_duplicate: Any = None
     contact_person: Optional[str] = None
@@ -414,9 +427,10 @@ class EditClientSchema(BaseModel):
 # Subject CRUD schemas
 # =============================================================================
 
+
 class CreateSubjectSchema(BaseModel):
-    name: str = ''
-    subject_type: str = ''
+    name: str = ""
+    subject_type: str = ""
     risk_score: int = 0
     risk_factors: Optional[str] = None
     notes: Optional[str] = None
@@ -424,7 +438,7 @@ class CreateSubjectSchema(BaseModel):
     legal_form: Optional[str] = None
     asset_type: Optional[str] = None
     estimated_value: Optional[str] = None
-    currency: str = 'EUR'
+    currency: str = "EUR"
     license_plate: Optional[str] = None
     vin: Optional[str] = None
     insurance_company: Optional[str] = None
@@ -461,7 +475,7 @@ class CreateSubjectSchema(BaseModel):
     zuinigheidsclassificatie: Optional[str] = None
     catalogusprijs: Optional[str] = None
     datum_eerste_toelating: Optional[str] = None
-    type_: Optional[str] = Field(None, alias='type')
+    type_: Optional[str] = Field(None, alias="type")
     variant: Optional[str] = None
     uitvoering: Optional[str] = None
     typegoedkeuringsnummer: Optional[str] = None
@@ -512,7 +526,7 @@ class EditSubjectSchema(BaseModel):
     zuinigheidsclassificatie: Optional[str] = None
     catalogusprijs: Optional[str] = None
     datum_eerste_toelating: Optional[str] = None
-    type_: Optional[str] = Field(None, alias='type')
+    type_: Optional[str] = Field(None, alias="type")
     variant: Optional[str] = None
     uitvoering: Optional[str] = None
     typegoedkeuringsnummer: Optional[str] = None
@@ -523,6 +537,7 @@ class EditSubjectSchema(BaseModel):
 # Bulk delete schemas
 # =============================================================================
 
+
 class BulkDeleteSchema(BaseModel):
     ids: list[str] = Field(default_factory=list)
 
@@ -530,6 +545,7 @@ class BulkDeleteSchema(BaseModel):
 # =============================================================================
 # Social IDs schema
 # =============================================================================
+
 
 class UpdateSocialIdsSchema(BaseModel):
     social_media_ids: dict = Field(default_factory=dict)
@@ -539,6 +555,7 @@ class UpdateSocialIdsSchema(BaseModel):
 # =============================================================================
 # Comment update schema
 # =============================================================================
+
 
 class UpdateCommentSchema(BaseModel):
     content: Optional[str] = None
@@ -550,18 +567,20 @@ class UpdateCommentSchema(BaseModel):
 # Subject relationship schemas
 # =============================================================================
 
+
 class AddRelationSchema(BaseModel):
-    related_subject_id: str = ''
-    relationship_type: str = 'related'
+    related_subject_id: str = ""
+    relationship_type: str = "related"
 
 
 class RemoveRelationSchema(BaseModel):
-    related_subject_id: str = ''
+    related_subject_id: str = ""
 
 
 # =============================================================================
 # Subject face schemas
 # =============================================================================
+
 
 class SaveFaceEncodingSchema(BaseModel):
     encoding: list = Field(default_factory=list)
@@ -577,23 +596,25 @@ class CompareFacesSchema(BaseModel):
 # Screenshot schemas
 # =============================================================================
 
+
 class CaptureScreenshotSchema(BaseModel):
-    url: str = ''
-    title: str = ''
+    url: str = ""
+    title: str = ""
 
 
 # =============================================================================
 # OSINT search schemas
 # =============================================================================
 
+
 class FTSSearchSchema(BaseModel):
     query: str = Field(..., min_length=1, max_length=200)
-    scope: str = Field(default='all')
+    scope: str = Field(default="all")
     limit: int = Field(default=20, ge=1, le=100)
 
 
 class StartOSINTSearchSchema(BaseModel):
-    name: str = ''
+    name: str = ""
 
 
 class AddOSINTFindingsSchema(BaseModel):
@@ -605,14 +626,15 @@ class AddOSINTFindingsSchema(BaseModel):
 # SpiderFoot schemas
 # =============================================================================
 
+
 class SpiderFootScanSchema(BaseModel):
-    target: str = ''
-    target_type: str = 'DOMAIN_NAME'
+    target: str = ""
+    target_type: str = "DOMAIN_NAME"
     scan_name: Optional[str] = None
     case_id: Optional[str] = None
     subject_id: Optional[str] = None
     profile: Optional[str] = None
-    use_case: str = 'passive'
+    use_case: str = "passive"
 
 
 class SpiderFootImportSchema(BaseModel):
@@ -622,20 +644,20 @@ class SpiderFootImportSchema(BaseModel):
 
 
 class SpiderFootSettingsSchema(BaseModel):
-    url: str = 'http://localhost:5001'
-    username: str = 'admin'
-    password: str = ''
+    url: str = "http://localhost:5001"
+    username: str = "admin"
+    password: str = ""
 
 
 class SpiderFootTestSchema(BaseModel):
-    url: str = 'http://localhost:5001'
-    username: str = 'admin'
-    password: str = ''
+    url: str = "http://localhost:5001"
+    username: str = "admin"
+    password: str = ""
 
 
 class SpiderFootScanSubjectSchema(BaseModel):
-    profile: str = 'basic'
-    use_case: str = 'passive'
+    profile: str = "basic"
+    use_case: str = "passive"
     case_id: Optional[str] = None
 
 
@@ -643,51 +665,46 @@ class SpiderFootScanSubjectSchema(BaseModel):
 # Template schemas
 # =============================================================================
 
+
 class CreateTemplateSchema(BaseModel):
-    name: str = ''
+    name: str = ""
     description: Optional[str] = None
-    template_type: str = 'report'
-    content: str = ''
+    template_type: str = "report"
+    content: str = ""
     category: Optional[str] = None
     is_default: Any = None
 
 
 class EditTemplateSchema(BaseModel):
-    name: str = ''
+    name: str = ""
     description: Optional[str] = None
-    template_type: str = 'report'
-    content: str = ''
+    template_type: str = "report"
+    content: str = ""
     category: Optional[str] = None
     is_default: Any = None
 
 
 class RenderPreviewSchema(BaseModel):
-    template_id: str = ''
+    template_id: str = ""
     case_id: Optional[str] = None
-    conclusion: str = ''
-    recommendation: str = ''
-    classification: str = 'Confidential'
-
-
-class GenerateReportSchema(BaseModel):
-    template_id: str = ''
-    conclusion: str = ''
-    recommendation: str = ''
-    classification: str = 'Confidential'
+    conclusion: str = ""
+    recommendation: str = ""
+    classification: str = "Confidential"
 
 
 # =============================================================================
 # Reminder schemas
 # =============================================================================
 
+
 class CreateReminderSchema(BaseModel):
-    title: str = ''
-    description: str = ''
+    title: str = ""
+    description: str = ""
     reminder_date: Optional[str] = None
     due_date: Optional[str] = None
-    reminder_type: str = 'manual'
-    recurrence: str = 'none'
-    priority: str = 'medium'
+    reminder_type: str = "manual"
+    recurrence: str = "none"
+    priority: str = "medium"
     case_id: Optional[str] = None
     subject_id: Optional[str] = None
     client_id: Optional[str] = None
@@ -710,11 +727,49 @@ class EditReminderSchema(BaseModel):
 
 
 # =============================================================================
+# Phone service schemas
+# =============================================================================
+
+
+class PhoneNumberSchema(BaseModel):
+    phone: str = Field(default="", min_length=1)
+
+
+class PhoneLookupAllSchema(BaseModel):
+    phone: str = Field(default="", min_length=1)
+    services: Optional[list[str]] = None
+
+
+# =============================================================================
+# Document upload schemas
+# =============================================================================
+
+
+class DocumentUploadSchema(BaseModel):
+    document_type: str = Field(default="evidence", max_length=50)
+    description: str = Field(default="", max_length=2000)
+    classification: str = Field(default="confidential", max_length=50)
+
+
+class ScreenshotUploadSchema(BaseModel):
+    url: str = Field(default="", max_length=2000)
+
+
+class GenerateReportSchema(BaseModel):
+    template_id: Optional[str] = None
+    conclusion: str = Field(default="", max_length=10000)
+    recommendation: str = Field(default="", max_length=10000)
+    classification: str = Field(default="Confidential", max_length=50)
+
+
+# =============================================================================
 # Validate decorator
 # =============================================================================
 
+
 def validate(schema_class):
     """Decorator that validates request JSON (or form data) against a Pydantic schema."""
+
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -726,14 +781,16 @@ def validate(schema_class):
                 request.validated_data = validated.model_dump(exclude_none=True)
             except Exception as e:
                 errors = []
-                if hasattr(e, 'errors'):
+                if hasattr(e, "errors"):
                     for err in e.errors():
-                        field = ' \u2192 '.join(str(loc) for loc in err.get('loc', []))
-                        msg = err.get('msg', 'Invalid value')
-                        errors.append({'field': field, 'message': msg})
+                        field = " \u2192 ".join(str(loc) for loc in err.get("loc", []))
+                        msg = err.get("msg", "Invalid value")
+                        errors.append({"field": field, "message": msg})
                 else:
-                    errors.append({'message': str(e)})
-                return jsonify({'error': 'Validation failed', 'details': errors}), 400
+                    errors.append({"message": str(e)})
+                return jsonify({"error": "Validation failed", "details": errors}), 400
             return f(*args, **kwargs)
+
         return wrapper
+
     return decorator

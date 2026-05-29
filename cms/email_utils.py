@@ -17,20 +17,21 @@ logger = logging.getLogger(__name__)
 def get_smtp_settings() -> dict:
     """Read SMTP settings from database."""
     from .models import Setting
+
     return {
-        'server': Setting.get('smtp_server'),
-        'port': int(Setting.get('smtp_port') or 587),
-        'username': Setting.get('smtp_username'),
-        'password': Setting.get('smtp_password'),
-        'from_email': Setting.get('smtp_from_email'),
-        'from_name': Setting.get('smtp_from_name') or 'Iveras CMS',
+        "server": Setting.get("smtp_server"),
+        "port": int(Setting.get("smtp_port") or 587),
+        "username": Setting.get("smtp_username"),
+        "password": Setting.get("smtp_password"),
+        "from_email": Setting.get("smtp_from_email"),
+        "from_name": Setting.get("smtp_from_name") or "Iveras CMS",
     }
 
 
 def is_smtp_configured() -> bool:
     """Check if SMTP is configured in settings."""
     cfg = get_smtp_settings()
-    return bool(cfg['server'] and cfg['from_email'])
+    return bool(cfg["server"] and cfg["from_email"])
 
 
 def send_email(to_email, subject, body_html, body_text=None) -> bool:
@@ -39,31 +40,31 @@ def send_email(to_email, subject, body_html, body_text=None) -> bool:
     Returns True on success, False on failure.
     """
     cfg = get_smtp_settings()
-    if not cfg['server'] or not cfg['from_email']:
+    if not cfg["server"] or not cfg["from_email"]:
         logger.warning("SMTP not configured — cannot send email")
         return False
 
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f"{cfg['from_name']} <{cfg['from_email']}>"
-    msg['To'] = to_email
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"{cfg['from_name']} <{cfg['from_email']}>"
+    msg["To"] = to_email
 
     if body_text:
-        msg.attach(MIMEText(body_text, 'plain'))
-    msg.attach(MIMEText(body_html, 'html'))
+        msg.attach(MIMEText(body_text, "plain"))
+    msg.attach(MIMEText(body_html, "html"))
 
     try:
         ctx = ssl.create_default_context()
-        if cfg['port'] == 465:
-            server = smtplib.SMTP_SSL(cfg['server'], cfg['port'], context=ctx)
+        if cfg["port"] == 465:
+            server = smtplib.SMTP_SSL(cfg["server"], cfg["port"], context=ctx)
         else:
-            server = smtplib.SMTP(cfg['server'], cfg['port'])
+            server = smtplib.SMTP(cfg["server"], cfg["port"])
             server.starttls(context=ctx)
 
-        if cfg['username'] and cfg['password']:
-            server.login(cfg['username'], cfg['password'])
+        if cfg["username"] and cfg["password"]:
+            server.login(cfg["username"], cfg["password"])
 
-        server.sendmail(cfg['from_email'], [to_email], msg.as_string())
+        server.sendmail(cfg["from_email"], [to_email], msg.as_string())
         server.quit()
         logger.info(f"Email sent to {to_email}: {subject}")
         return True
@@ -100,6 +101,20 @@ An account has been created for you:
 Important: You will be required to set up two-factor authentication (2FA) on your first login.
 """
     return send_email(email, subject, body_html, body_text)
+
+
+def send_password_reset_background(email, username, full_name, reset_url) -> str:
+    """Queue a password reset email for background delivery. Returns task_id."""
+    from .background import run_in_background, generate_task_id
+
+    task_id = generate_task_id()
+    run_in_background(
+        task_id, send_password_reset_email, email, username, full_name, reset_url
+    )
+    logger.info(
+        "Password reset email queued (task=%s) for %s <%s>", task_id, username, email
+    )
+    return task_id
 
 
 def send_password_reset_email(email, username, full_name, reset_url) -> bool:

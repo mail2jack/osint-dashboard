@@ -28,61 +28,73 @@ csrf = CSRFProtect()
 def create_cms_module(app: Flask):
     """
     Initialize CMS module with Flask application.
-    
+
     Args:
         app: Flask application instance
     """
     # Initialize extensions
     from .auth import login_manager
+
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
 
     # Configure login
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'Please log in to access the Case Management System.'
-    login_manager.login_message_category = 'info'
-    
+    login_manager.login_view = "auth.login"
+    login_manager.login_message = "Please log in to access the Case Management System."
+    login_manager.login_message_category = "info"
+
     # Register blueprints
     from .routes import cms_bp
     from .routes import register_modules
+
     register_modules()
     from .auth import auth_bp, users_bp
-    
+
     app.register_blueprint(cms_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(users_bp)
-    
+
+    from .api_v1 import api_v1_bp
+
+    app.register_blueprint(api_v1_bp)
+
     # Inject theme_style into all templates
     @app.context_processor
     def inject_theme():
         from .models import Setting
-        style = Setting.get('theme_style', 'classic')
-        return {'theme_style': style}
-    
+
+        style = Setting.get("theme_style", "classic")
+        return {"theme_style": style}
+
     # Schema management via Alembic
     with app.app_context():
         from alembic.config import Config
         from alembic import command
-        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), '..', 'alembic.ini'))
+
+        alembic_cfg = Config(
+            os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+        )
 
         from sqlalchemy import inspect
+
         inspector = inspect(db.engine)
-        has_alembic = 'alembic_version' in inspector.get_table_names()
-        has_app_tables = bool([t for t in inspector.get_table_names()
-                               if t not in ('alembic_version',)])
+        has_alembic = "alembic_version" in inspector.get_table_names()
+        has_app_tables = bool(
+            [t for t in inspector.get_table_names() if t not in ("alembic_version",)]
+        )
 
         if has_alembic:
             # Normal incremental migration path
-            command.upgrade(alembic_cfg, 'head')
+            command.upgrade(alembic_cfg, "head")
         elif has_app_tables:
             # Existing DB (pre-Alembic) — stamp head without running migrations
             app.logger.info("Existing DB detected — stamping Alembic head")
-            command.stamp(alembic_cfg, 'head')
+            command.stamp(alembic_cfg, "head")
         else:
             # Fresh DB — create all tables from migration
-            command.upgrade(alembic_cfg, 'head')
+            command.upgrade(alembic_cfg, "head")
 
         # All schema migrations are now managed by Alembic.
         # See migrations/versions/ for the current schema revision.
@@ -91,99 +103,137 @@ def create_cms_module(app: Flask):
         try:
             from .models import Subject, Comment
             from datetime import datetime, timezone
+
             subjects_with_notes = Subject.query.filter(
-                Subject.notes.isnot(None),
-                Subject.notes != ''
+                Subject.notes.isnot(None), Subject.notes != ""
             ).all()
             migrated_count = 0
             for s in subjects_with_notes:
                 existing = Comment.query.filter_by(
-                    subject_id=s.id,
-                    content=s.notes,
-                    comment_type='note'
+                    subject_id=s.id, content=s.notes, comment_type="note"
                 ).first()
                 if not existing:
                     comment = Comment(
                         subject_id=s.id,
                         content=s.notes,
-                        comment_type='note',
-                        author_id=User.query.filter_by(role='admin').first().id,
+                        comment_type="note",
+                        author_id=User.query.filter_by(role="admin").first().id,
                         created_at=s.created_at or datetime.now(timezone.utc),
-                        updated_at=s.updated_at or datetime.now(timezone.utc)
+                        updated_at=s.updated_at or datetime.now(timezone.utc),
                     )
                     db.session.add(comment)
                     migrated_count += 1
             if migrated_count:
                 db.session.commit()
-                app.logger.info(f"Migration: migrated {migrated_count} Subject.notes → Comment")
+                app.logger.info(
+                    f"Migration: migrated {migrated_count} Subject.notes → Comment"
+                )
         except Exception as e:
             app.logger.warning(f"Subject.notes migration note: {e}")
             db.session.rollback()
 
         # Initialize default settings
         from .models import Setting, AuditLog, init_default_settings
+
         init_default_settings()
-        
+
         # Purge old audit logs on startup
         try:
-            retention = int(Setting.get('audit_log_retention_days', '365'))
+            retention = int(Setting.get("audit_log_retention_days", "365"))
             if retention > 0:
                 deleted = AuditLog.purge_old(retention)
                 if deleted:
-                    app.logger.info(f"Startup: purged {deleted} audit log entries older than {retention} days")
+                    app.logger.info(
+                        f"Startup: purged {deleted} audit log entries older than {retention} days"
+                    )
         except Exception as e:
             app.logger.debug(f"Audit log purge note: {e}")
-        
+
+        # Purge expired password reset tokens on startup
+        try:
+            from datetime import datetime, timezone
+
+            now = datetime.now(timezone.utc)
+            expired = User.query.filter(
+                User.password_reset_expires.isnot(None),
+                User.password_reset_expires < now,
+            ).update(
+                {"password_reset_token": None, "password_reset_expires": None},
+                synchronize_session="fetch",
+            )
+            db.session.commit()
+            if expired:
+                app.logger.info(
+                    f"Startup: cleared {expired} expired password reset tokens"
+                )
+        except Exception as e:
+            app.logger.debug(f"Password reset token cleanup note: {e}")
+            db.session.rollback()
+
+        # Clean up old background tasks on startup
+        try:
+            from .background import cleanup_old_tasks
+
+            cleanup_old_tasks(max_age_hours=48)
+        except Exception as e:
+            app.logger.debug(f"Background task cleanup note: {e}")
+
         # Create default admin user if none exists
-        if not User.query.filter_by(role='admin').first():
+        if not User.query.filter_by(role="admin").first():
             import secrets
             import string
-            alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
-            default_password = ''.join(secrets.choice(alphabet) for _ in range(20))
+
+            alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+            default_password = "".join(secrets.choice(alphabet) for _ in range(20))
             admin = User(
-                username='admin',
-                email='admin@localhost',
-                full_name='System Administrator',
-                role='admin'
+                username="admin",
+                email="admin@localhost",
+                full_name="System Administrator",
+                role="admin",
             )
             admin.set_password(default_password)
             db.session.add(admin)
             db.session.commit()
-            app.logger.warning("Default admin user created. Set a password immediately via Settings > Users or the password reset flow.")
-            print(f"\n{'='*60}\n  DEFAULT ADMIN CREATED — CHANGE PASSWORD IMMEDIATELY\n  Username: admin\n  Go to Settings > Users to set a password.\n{'='*60}\n", flush=True)
-    
+            app.logger.warning(
+                "Default admin user created. Set a password immediately via Settings > Users or the password reset flow."
+            )
+            print(
+                f"\n{'=' * 60}\n  DEFAULT ADMIN CREATED — CHANGE PASSWORD IMMEDIATELY\n  Username: admin\n  Go to Settings > Users to set a password.\n{'=' * 60}\n",
+                flush=True,
+            )
+
     return app
 
 
 def init_db(app: Flask, database_url: str = None):
     """
     Configure database for CMS.
-    
+
     Args:
         app: Flask application instance
         database_url: PostgreSQL connection string
     """
     if database_url:
-        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    elif not app.config.get('SQLALCHEMY_DATABASE_URI'):
+        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    elif not app.config.get("SQLALCHEMY_DATABASE_URI"):
         # Default to PostgreSQL only if not already set
-        db_host = app.config.get('DB_HOST', 'localhost')
-        db_port = app.config.get('DB_PORT', '5432')
-        db_name = app.config.get('DB_NAME', 'cms_db')
-        db_user = app.config.get('DB_USER', 'postgres')
-        db_pass = app.config.get('DB_PASSWORD', '')
-        
-        app.config['SQLALCHEMY_DATABASE_URI'] = (
-            f'postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}'
+        db_host = app.config.get("DB_HOST", "localhost")
+        db_port = app.config.get("DB_PORT", "5432")
+        db_name = app.config.get("DB_NAME", "cms_db")
+        db_user = app.config.get("DB_USER", "postgres")
+        db_pass = app.config.get("DB_PASSWORD", "")
+
+        app.config["SQLALCHEMY_DATABASE_URI"] = (
+            f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
         )
-    
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': 10,
-        'max_overflow': 20,
-        'pool_recycle': 3600,
-        'pool_pre_ping': True
+
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_recycle": 3600,
+        "pool_pre_ping": True,
     }
 
 
-__all__ = ['db', 'csrf', 'create_cms_module', 'init_db', 'models', 'routes', 'auth']
+__all__ = ["db", "csrf", "create_cms_module", "init_db", "models", "routes", "auth"]
