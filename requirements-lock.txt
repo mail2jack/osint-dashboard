@@ -128,7 +128,7 @@ pyHanko==0.34.1
 pyOpenSSL==21.0.0
 pycares==4.11.0
 pycodestyle==2.14.0
-pycountry==24.6.1
+pycountry==26.2.16
 pycparser==3.0
 pydantic-settings==2.13.1
 pydantic==2.12.5
