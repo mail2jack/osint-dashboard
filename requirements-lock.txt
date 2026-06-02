@@ -179,7 +179,7 @@ svglib==1.5.1
 tempora==5.8.1
 termcolor==2.5.0
 tinycss2==1.5.1
-tld==0.13
+tld==0.13.2
 tokenize_rt==6.2.0
 torrequest==0.1.0
 tqdm==4.67.3
