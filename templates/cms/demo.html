@@ -1,0 +1,310 @@
+{% extends "cms/base.html" %}
+{% block title %}Design System Demo — CMS{% endblock %}
+{% block content %}
+<style>
+.demo-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin: 2rem 0 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+</style>
+
+<h1>🎨 Design System Demo</h1>
+<p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+    Component library voor de nieuwe look & feel. Alle elementen zijn puur CSS via <code>var(--*)</code> en werken in light en dark mode.
+</p>
+
+{# ─── Buttons ───────────────────────────────────────────── #}
+<div class="demo-section-title">Buttons</div>
+<div class="card">
+    <div class="btn-group">
+        <a href="#" class="btn-cms">Secondary</a>
+        <a href="#" class="btn-cms primary">Primary</a>
+        <a href="#" class="btn-cms danger">Danger</a>
+        <a href="#" class="btn-cms small">Small</a>
+        <a href="#" class="btn-cms primary small">Small Primary</a>
+        <a href="#" class="btn-cms danger small">Small Danger</a>
+    </div>
+</div>
+
+{# ─── Stat Counters ─────────────────────────────────────── #}
+<div class="demo-section-title">Stat Counters</div>
+<div class="stat-grid">
+    <div class="stat-card open"><h3>Open</h3><div class="value">{{ stats.open_cases }}</div></div>
+    <div class="stat-card active"><h3>Active</h3><div class="value">{{ stats.active_cases }}</div></div>
+    <div class="stat-card suspended"><h3>Suspended</h3><div class="value">{{ stats.suspended_cases }}</div></div>
+    <div class="stat-card closed"><h3>Closed</h3><div class="value">{{ stats.closed_cases }}</div></div>
+    <div class="stat-card"><h3>Clients</h3><div class="value">{{ stats.total_clients }}</div></div>
+    <div class="stat-card"><h3>Subjects</h3><div class="value">{{ stats.total_subjects }}</div></div>
+    <div class="stat-card"><h3>Findings</h3><div class="value">{{ stats.total_findings }}</div></div>
+</div>
+
+{# ─── Client Detail Card (info grid) ─────────────────── #}
+<div class="demo-section-title">Info Card (2-kolom grid)</div>
+<div class="card">
+    <div class="card-header">
+        <h2>📞 Contact Information</h2>
+        <div class="btn-group" style="margin:0;">
+            <a href="#" class="btn-cms small">✏️ Edit</a>
+            <a href="#" class="btn-cms danger small">📁 Archiveer</a>
+        </div>
+    </div>
+    <div class="info-grid">
+        <div class="info-row">
+            <span class="info-label">Company Name</span>
+            <span class="info-value">{{ client.name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Contact Person</span>
+            <span class="info-value">{{ client.contact_person }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Date of Birth</span>
+            <span class="info-value">{{ client.date_of_birth }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Place of Birth</span>
+            <span class="info-value">{{ client.place_of_birth }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Contract Number</span>
+            <span class="info-value">{{ client.contract_number }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">VAT Number</span>
+            <span class="info-value">{{ client.vat_number }}</span>
+        </div>
+    </div>
+</div>
+
+{# ─── Contact info + badges ───────────────────────────── #}
+<div class="card">
+    <div class="card-header">
+        <h2>📧 Email & Phone</h2>
+    </div>
+    {% for email in emails %}
+    <div class="contact-row">
+        <span class="icon">✉️</span>
+        <span class="value">{{ email }}</span>
+        <span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">PRIMARY</span>
+        <span class="actions"><a href="#" class="btn-cms purple small">✉️ Check</a></span>
+    </div>
+    {% endfor %}
+    {% for phone in phones %}
+    <div class="contact-row">
+        <span class="icon">📞</span>
+        <span class="value">{{ phone }}</span>
+        <span></span>
+        <span class="actions"><a href="#" class="btn-cms purple small">📞 Check</a></span>
+    </div>
+    {% endfor %}
+</div>
+
+{# ─── Addresses ─────────────────────────────────────── #}
+<div class="demo-section-title">Address Cards</div>
+{% for addr in addresses %}
+<div class="address-card {% if addr.is_primary %}primary{% endif %}">
+    <div class="address-header">
+        <div>
+            <strong>{{ addr.street }} {{ addr.number }}</strong>
+            {% if addr.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% endif %}
+            {% if addr.kadaster_verified %}<span class="badge badge-kadaster">✓ KADASTER</span>{% endif %}
+            <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.15rem;">
+                {{ addr.zipcode }}, {{ addr.town }}
+            </div>
+        </div>
+        <div class="btn-group" style="margin:0;">
+            <a href="#" class="btn-cms small">🏛 Kadaster</a>
+            <a href="#" class="btn-cms danger small">🚔 Politiebureau</a>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{# ─── Financial Info (single info grid) ─────────────── #}
+<div class="card">
+    <div class="card-header">
+        <h2>💰 Financial Information</h2>
+    </div>
+    <div class="info-grid">
+        <div class="info-row">
+            <span class="info-label">Social Security Number</span>
+            <span class="info-value">{{ client.social_security_number }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Bank Account</span>
+            <span class="info-value">{{ client.bank_account }}</span>
+        </div>
+        <div class="info-row" style="grid-column: 1/-1;">
+            <span class="info-label">Notes</span>
+            <span class="info-value">{{ client.financial_notes }}</span>
+        </div>
+    </div>
+</div>
+
+{# ─── Cases Table ───────────────────────────────────── #}
+<div class="demo-section-title">Data Table</div>
+<div class="card">
+    <div class="card-header">
+        <h2>📁 Cases ({{ cases|length }})</h2>
+        <a href="#" class="btn-cms small">View All →</a>
+    </div>
+    {% if cases %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Case Number</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for case in cases %}
+            <tr>
+                <td><a href="#">{{ case.case_number }}</a></td>
+                <td><a href="#">{{ case.title[:35] }}{% if case.title|length > 35 %}...{% endif %}</a></td>
+                <td><span class="badge badge-status-{{ case.status }}">{{ case.status }}</span></td>
+                <td><span class="badge badge-priority-{{ case.priority }}">{{ case.priority }}</span></td>
+                <td style="color: var(--text-muted); font-size: 0.8rem;">{{ case.updated_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📂</div>
+        <p>No cases for this client.</p>
+    </div>
+    {% endif %}
+</div>
+
+{# ─── Reminders ─────────────────────────────────────── #}
+<div class="demo-section-title">Reminder Items</div>
+<div class="card">
+    <div class="card-header">
+        <h2>⏰ Reminders</h2>
+        <a href="#" class="btn-cms small">+ New Reminder</a>
+    </div>
+    {% for r in reminders %}
+    <div class="reminder-item {% if r.is_overdue %}overdue{% endif %}">
+        <div>
+            <strong>{{ r.title }}</strong>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+                {% if r.is_overdue %}⚠️ Overdue: {% endif %}{{ r.date }}
+            </div>
+        </div>
+        <button class="btn-cms small primary">✓</button>
+    </div>
+    {% endfor %}
+</div>
+
+{# ─── Findings Table ────────────────────────────────── #}
+<div class="demo-section-title">Findings Table</div>
+<div class="card">
+    <div class="card-header">
+        <h2>📋 Bevindingen (Findings) ({{ findings|length }})</h2>
+        <div style="display:flex;gap:0.5rem;">
+            <a href="#" class="btn-cms purple small">Timeline</a>
+            <a href="#" class="btn-cms teal small">📋 Report</a>
+        </div>
+    </div>
+    <div style="margin-bottom:0.75rem;display:flex;flex-wrap:wrap;gap:0.4rem;align-items:center;padding:0.6rem 0.75rem;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--border-color);">
+        <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Filter:</span>
+        <input type="text" placeholder="Title" style="padding:0.3rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;width:120px;background:var(--input-bg);color:var(--text-primary);">
+        <input type="text" placeholder="Subject" style="padding:0.3rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;width:100px;background:var(--input-bg);color:var(--text-primary);">
+        <select style="padding:0.3rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;background:var(--input-bg);color:var(--text-primary);">
+            <option>Source</option>
+            <option>OSINT</option>
+            <option>Manual</option>
+            <option>Document</option>
+        </select>
+        <a href="#" class="btn-cms gray small">Clear</a>
+        <span style="margin-left:auto;font-size:0.8rem;color:var(--text-muted);">{{ findings|length }} items</span>
+    </div>
+    {% if findings %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Subject</th>
+                <th>Source</th>
+                <th>Added By</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in findings %}
+            <tr>
+                <td>
+                    {% if f.source_url %}
+                    <div style="display:flex;align-items:center;gap:0.35rem;">
+                        <a href="#">{{ f.title }}</a>
+                        <a href="#" class="btn-cms purple small">🔍 Extract ID</a>
+                    </div>
+                    {% else %}
+                    {{ f.title }}
+                    {% endif %}
+                </td>
+                <td><a href="#" style="color:var(--link-color);text-decoration:none;font-weight:500;">{{ f.subject }}</a></td>
+                <td><span class="badge badge-status-open" style="text-transform:none;background:#e5e7eb;color:#374151;">{{ f.source_type }}</span></td>
+                <td style="color:var(--text-primary);">{{ f.author }}</td>
+                <td style="color:var(--text-muted);font-size:0.8rem;">{{ f.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>No findings yet.</p>
+    </div>
+    {% endif %}
+    <div style="margin-top:0.75rem;display:flex;gap:0.5rem;justify-content:center;">
+        <a href="#" class="btn-cms gray small">← Previous</a>
+        <span style="padding:0.3rem 0.5rem;font-size:0.8rem;color:var(--text-muted);">Page 1 of 1</span>
+        <a href="#" class="btn-cms gray small">Next →</a>
+    </div>
+</div>
+
+{# ─── Health Badges ─────────────────────────────────── #}
+<div class="demo-section-title">Health Status Badges</div>
+<div class="card">
+    <div class="card-header">
+        <h2>🔌 OSINT Service Health</h2>
+    </div>
+    <div class="health-row">
+        {% for name, status in health.items() %}
+        <div class="health-badge">
+            <span class="health-dot {% if status == 'ok' %}ok{% elif status == 'no key configured' %}warn{% else %}err{% endif %}"></span>
+            <strong>{{ name|capitalize }}</strong>
+            <span style="color: var(--text-muted); font-size: 0.75rem;">
+                {% if status == 'ok' %}✓ Online
+                {% elif status == 'no key configured' %}⚙️ No key
+                {% elif status == 'auth error' %}🔑 Auth error
+                {% else %}⚠️ {{ status }}{% endif %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{# ─── Empty State ───────────────────────────────────── #}
+<div class="demo-section-title">Empty State</div>
+<div class="card">
+    <div class="card-header">
+        <h2>📄 Something</h2>
+    </div>
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>No items found.</p>
+        <a href="#" class="btn-cms primary">+ Create First</a>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,14 +1,13 @@
 import logging
-import json
 import os
 import asyncio
-import time
 import re
 import requests
 from datetime import datetime, timezone
 from urllib.parse import quote
 
 from flask import Blueprint, request, jsonify, Response as FlaskResponse, send_file
+from flask_login import login_required
 
 from .. import csrf
 from ..app_helpers import (
@@ -36,6 +35,8 @@ from cms.api_key_auth import api_key_required
 from cms.feature_flags import tool_enabled
 from cms.validation import validate
 from cms.cache import get as cache_get, set as cache_set
+from cms.sse_utils import run_sse_search
+
 from cms.validation import (
     AISummarizeSchema,
     AIAnalyzeQuerySchema,
@@ -161,11 +162,13 @@ def ai_enrich_profile() -> FlaskResponse:
 
 
 @app_routes_bp.route("/api/history", methods=["GET"])
+@login_required
 def get_history() -> FlaskResponse:
     return jsonify(search_history.get_history(limit=50))
 
 
 @app_routes_bp.route("/api/archive", methods=["GET"])
+@login_required
 def get_archive() -> FlaskResponse:
     query = request.args.get("q", "")
     tool = request.args.get("tool", "")
@@ -179,6 +182,7 @@ def get_archive() -> FlaskResponse:
 
 @app_routes_bp.route("/api/history/archive/<entry_id>", methods=["POST"])
 @csrf.exempt
+@login_required
 def archive_entry(entry_id) -> FlaskResponse:
     search_history.archive_entry(entry_id)
     return jsonify({"success": True})
@@ -186,6 +190,7 @@ def archive_entry(entry_id) -> FlaskResponse:
 
 @app_routes_bp.route("/api/history/archive-all", methods=["POST"])
 @csrf.exempt
+@login_required
 def archive_all() -> FlaskResponse:
     count = search_history.archive_all()
     return jsonify({"success": True, "archived_count": count})
@@ -193,6 +198,7 @@ def archive_all() -> FlaskResponse:
 
 @app_routes_bp.route("/api/history/mark-read/<entry_id>", methods=["POST"])
 @csrf.exempt
+@login_required
 def mark_read(entry_id) -> FlaskResponse:
     search_history.mark_read(entry_id)
     return jsonify({"success": True})
@@ -200,18 +206,21 @@ def mark_read(entry_id) -> FlaskResponse:
 
 @app_routes_bp.route("/api/history/mark-all-read", methods=["POST"])
 @csrf.exempt
+@login_required
 def mark_all_read() -> FlaskResponse:
     search_history.mark_all_read()
     return jsonify({"success": True})
 
 
 @app_routes_bp.route("/api/history/stats", methods=["GET"])
+@login_required
 def get_history_stats() -> FlaskResponse:
     return jsonify(search_history.get_stats())
 
 
 @app_routes_bp.route("/api/search/stop/<job_id>", methods=["POST"])
 @csrf.exempt
+@login_required
 def stop_search(job_id) -> FlaskResponse:
     if job_id in search_registry:
         search_registry[job_id].cancel()
@@ -247,10 +256,6 @@ def get_search_progress(job_id) -> FlaskResponse:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="person")
 @validate(PersonSearchSchema)
 def person_search_stream() -> FlaskResponse:
-    from flask import Response, stream_with_context
-    import threading
-    import queue
-
     name = request.validated_data.get("name", "")
     if not name:
         return jsonify({"error": "Name required"}), 400
@@ -265,36 +270,18 @@ def person_search_stream() -> FlaskResponse:
                 }
             ), 429
 
-    result_queue = queue.Queue()
-
-    def run_search():
+    def search_worker(q, stop_event):
         try:
             result = search_person(name)
-            result_queue.put(("complete", result))
-        except Exception as e:
-            result_queue.put(("error", f"{type(e).__name__}: {str(e)}"))
+            q.put({"complete": True, "result": result})
+        except Exception:
+            logger.exception("Person search failed")
+            q.put({"complete": True, "error": "Search error"})
         finally:
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
-    thread = threading.Thread(target=run_search)
-    thread.start()
-
-    def generate():
-        while True:
-            try:
-                msg_type, msg_data = result_queue.get(timeout=30)
-                if msg_type == "complete":
-                    yield f"data: {json.dumps({'complete': True, 'result': msg_data})}\n\n"
-                    break
-                elif msg_type == "error":
-                    yield f"data: {json.dumps({'complete': True, 'error': msg_data})}\n\n"
-                    break
-            except queue.Empty:
-                yield f"data: {json.dumps({'complete': True, 'result': {'name': name, 'search_links': [], 'error': 'Timeout'}})}\n\n"
-                break
-
-    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+    return run_sse_search(search_worker)
 
 
 # =============================================================================
@@ -468,10 +455,12 @@ def openkvk_lookup() -> FlaskResponse:
 
     except requests.Timeout:
         result["error"] = "Request timed out"
-    except requests.RequestException as e:
-        result["error"] = f"Request failed: {str(e)}"
-    except Exception as e:
-        result["error"] = f"Unexpected error ({type(e).__name__}): {str(e)}"
+    except requests.RequestException:
+        logger.exception("OpenKVK request failed")
+        result["error"] = "Request failed"
+    except Exception:
+        logger.exception("OpenKVK unexpected error")
+        result["error"] = "Unexpected error"
 
     search_history.add_entry(
         "openkvk",
@@ -631,9 +620,11 @@ def hibp_check() -> FlaskResponse:
 
     except requests.Timeout:
         return jsonify({"email": email, "error": "Request timeout", "breaches": []})
-    except Exception as e:
-        logger.error(f"HIBP check error ({type(e).__name__}): {e}", exc_info=True)
-        return jsonify({"email": email, "error": str(e), "breaches": []})
+    except Exception:
+        logger.exception("HIBP check error")
+        return jsonify(
+            {"email": email, "error": "Internal server error", "breaches": []}
+        )
 
 
 # =============================================================================
@@ -648,10 +639,6 @@ def hibp_check() -> FlaskResponse:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="username_stream")
 @validate(UsernameQuerySchema)
 def username_search_stream() -> FlaskResponse:
-    from flask import Response, stream_with_context
-    import threading
-    import queue
-
     username = request.validated_data.get("username", "")
     if not username:
         return jsonify({"error": "Username required"}), 400
@@ -666,22 +653,39 @@ def username_search_stream() -> FlaskResponse:
                 }
             ), 429
 
-    result_queue = queue.Queue()
-    stop_event = threading.Event()
-    progress_state = {
-        "checked": 0,
-        "found": 0,
-        "current_site": "",
-        "total": 0,
-        "_stop": stop_event,
-    }
+    email_sites = get_sherlock_sites()
 
-    def progress_callback(progress):
-        if stop_event.is_set():
-            return
-        progress_state.update(progress)
+    if not email_sites:
+        return jsonify({"error": "Could not load site data"}), 400
 
-    def run_search_thread():
+    def search_worker(q, stop_event):
+        progress_state = {
+            "checked": 0,
+            "found": 0,
+            "current_site": "",
+            "total": len(email_sites),
+        }
+
+        def progress_callback(progress):
+            if stop_event.is_set():
+                return
+            progress_state.update(progress)
+            total = progress_state["total"]
+            checked = progress_state["checked"]
+            found = progress_state["found"]
+            current_site = progress_state["current_site"]
+            q.put(
+                {
+                    "progress": {
+                        "checked": checked,
+                        "total": total,
+                        "found": found,
+                        "percent": int((checked / total) * 100) if total > 0 else 0,
+                        "current_site": current_site,
+                    }
+                }
+            )
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -692,51 +696,16 @@ def username_search_stream() -> FlaskResponse:
             search_history.add_entry(
                 "username", username, f"{found_count} accounts found", found_count
             )
-            result_queue.put(("complete", result))
-        except Exception as e:
-            result_queue.put(("error", f"{type(e).__name__}: {str(e)}"))
+            q.put({"complete": True, "result": result})
+        except Exception:
+            logger.exception("Username search failed")
+            q.put({"error": "Search error"})
         finally:
             loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
-    email_sites = get_sherlock_sites()
-
-    if not email_sites:
-        return jsonify({"error": "Could not load site data"}), 400
-
-    from cms.app_helpers import search_history
-
-    progress_state["total"] = len(email_sites)
-
-    thread = threading.Thread(target=run_search_thread, daemon=True)
-    thread.start()
-
-    def generate():
-        try:
-            while not stop_event.is_set():
-                try:
-                    status, data = result_queue.get_nowait()
-                    if status == "complete":
-                        yield f"data: {json.dumps({'complete': True, 'result': data})}\n\n"
-                    else:
-                        yield f"data: {json.dumps({'error': data})}\n\n"
-                    break
-                except queue.Empty:
-                    if request.is_disconnected:
-                        stop_event.set()
-                        return
-                    time.sleep(0.1)
-                    total = progress_state["total"]
-                    checked = progress_state["checked"]
-                    found = progress_state["found"]
-                    current_site = progress_state["current_site"]
-
-                    yield f"data: {json.dumps({'progress': {'checked': checked, 'total': total, 'found': found, 'percent': int((checked / total) * 100) if total > 0 else 0, 'current_site': current_site}})}\n\n"
-        finally:
-            stop_event.set()
-
-    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+    return run_sse_search(search_worker)
 
 
 # =============================================================================
@@ -751,10 +720,6 @@ def username_search_stream() -> FlaskResponse:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="email_stream")
 @validate(EmailStreamSchema)
 def email_search_stream() -> FlaskResponse:
-    from flask import Response, stream_with_context
-    import threading
-    import queue
-
     email = request.validated_data.get("email", "")
     tags = request.validated_data.get("tags", ["all"])
     if not email:
@@ -786,13 +751,37 @@ def email_search_stream() -> FlaskResponse:
         elif tag in ["all", "200"]:
             limit = max(limit, 200)
 
-    result_queue = queue.Queue()
-    progress_state = {"checked": 0, "found": 0, "current_site": "", "total": 0}
+    email_sites = get_sherlock_sites()
 
-    def progress_callback(progress):
-        progress_state.update(progress)
+    if not email_sites:
+        return jsonify({"error": "Could not load site data"}), 400
 
-    def run_search_thread():
+    def search_worker(q, stop_event):
+        progress_state = {
+            "checked": 0,
+            "found": 0,
+            "current_site": "",
+            "total": len(email_sites),
+        }
+
+        def progress_callback(progress):
+            progress_state.update(progress)
+            total = progress_state["total"]
+            checked = progress_state["checked"]
+            found = progress_state["found"]
+            current_site = progress_state["current_site"]
+            q.put(
+                {
+                    "progress": {
+                        "checked": checked,
+                        "total": total,
+                        "found": found,
+                        "percent": int((checked / total) * 100) if total > 0 else 0,
+                        "current_site": current_site,
+                    }
+                }
+            )
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -803,45 +792,16 @@ def email_search_stream() -> FlaskResponse:
             search_history.add_entry(
                 "email", email, f"{found_count} accounts found", found_count
             )
-            result_queue.put(("complete", result))
-        except Exception as e:
-            result_queue.put(("error", f"{type(e).__name__}: {str(e)}"))
+            q.put({"complete": True, "result": result})
+        except Exception:
+            logger.exception("Email Sherlock search failed")
+            q.put({"error": "Search error"})
         finally:
             loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
-    email_sites = get_sherlock_sites()
-
-    if not email_sites:
-        return jsonify({"error": "Could not load site data"}), 400
-
-    progress_state["total"] = limit
-
-    thread = threading.Thread(target=run_search_thread)
-    thread.start()
-
-    def generate():
-        import time
-
-        while True:
-            try:
-                status, data = result_queue.get_nowait()
-                if status == "complete":
-                    yield f"data: {json.dumps({'complete': True, 'result': data})}\n\n"
-                else:
-                    yield f"data: {json.dumps({'error': data})}\n\n"
-                break
-            except queue.Empty:
-                time.sleep(0.1)
-                total = progress_state["total"]
-                checked = progress_state["checked"]
-                found = progress_state["found"]
-                current_site = progress_state["current_site"]
-
-                yield f"data: {json.dumps({'progress': {'checked': checked, 'total': total, 'found': found, 'percent': int((checked / total) * 100) if total > 0 else 0, 'current_site': current_site}})}\n\n"
-
-    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+    return run_sse_search(search_worker)
 
 
 # =============================================================================
@@ -856,9 +816,6 @@ def email_search_stream() -> FlaskResponse:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="email_holehe")
 @validate(EmailHoleheSchema)
 def email_holehe() -> FlaskResponse:
-    from flask import Response, stream_with_context
-    import threading
-    import queue
     from argparse import Namespace
 
     email = request.validated_data.get("email", "")
@@ -875,22 +832,41 @@ def email_holehe() -> FlaskResponse:
                 }
             ), 429
 
-    stop_event = threading.Event()
-    result_queue = queue.Queue()
-    progress_state = {
-        "checked": 0,
-        "found": 0,
-        "current_site": "",
-        "total": 0,
-        "_stop": stop_event,
-    }
+    from holehe.core import import_submodules, get_functions
 
-    def progress_callback(progress):
-        if stop_event.is_set():
-            return
-        progress_state.update(progress)
+    modules = import_submodules("holehe.modules")
+    args = Namespace(nopasswordrecovery=False)
+    websites = get_functions(modules, args)
+    total_websites = len(websites)
 
-    def run_search_thread():
+    def search_worker(q, stop_event):
+        progress_state = {
+            "checked": 0,
+            "found": 0,
+            "current_site": "",
+            "total": total_websites,
+        }
+
+        def progress_callback(progress):
+            if stop_event.is_set():
+                return
+            progress_state.update(progress)
+            total = progress_state["total"]
+            checked = progress_state["checked"]
+            found = progress_state["found"]
+            current_site = progress_state["current_site"]
+            q.put(
+                {
+                    "progress": {
+                        "checked": checked,
+                        "total": total,
+                        "found": found,
+                        "percent": int((checked / total) * 100) if total > 0 else 0,
+                        "current_site": current_site,
+                    }
+                }
+            )
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -903,49 +879,16 @@ def email_holehe() -> FlaskResponse:
                 f"{result.get('found_count', 0)} accounts found",
                 result.get("found_count", 0),
             )
-            result_queue.put(("complete", result))
-        except Exception as e:
-            result_queue.put(("error", f"{type(e).__name__}: {str(e)}"))
+            q.put({"complete": True, "result": result})
+        except Exception:
+            logger.exception("Email Holehe search failed")
+            q.put({"error": "Search error"})
         finally:
             loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
-    from holehe.core import import_submodules, get_functions
-
-    modules = import_submodules("holehe.modules")
-    args = Namespace(nopasswordrecovery=False)
-    websites = get_functions(modules, args)
-    progress_state["total"] = len(websites)
-
-    thread = threading.Thread(target=run_search_thread, daemon=True)
-    thread.start()
-
-    def generate():
-        try:
-            while not stop_event.is_set():
-                try:
-                    status, data = result_queue.get_nowait()
-                    if status == "complete":
-                        yield f"data: {json.dumps({'complete': True, 'result': data})}\n\n"
-                    else:
-                        yield f"data: {json.dumps({'error': data})}\n\n"
-                    break
-                except queue.Empty:
-                    if request.is_disconnected:
-                        stop_event.set()
-                        return
-                    time.sleep(0.1)
-                    total = progress_state["total"]
-                    checked = progress_state["checked"]
-                    found = progress_state["found"]
-                    current_site = progress_state["current_site"]
-
-                    yield f"data: {json.dumps({'progress': {'checked': checked, 'total': total, 'found': found, 'percent': int((checked / total) * 100) if total > 0 else 0, 'current_site': current_site}})}\n\n"
-        finally:
-            stop_event.set()
-
-    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+    return run_sse_search(search_worker)
 
 
 # =============================================================================
@@ -960,10 +903,6 @@ def email_holehe() -> FlaskResponse:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="email_combined")
 @validate(EmailCombinedSchema)
 def email_combined() -> FlaskResponse:
-    from flask import Response, stream_with_context
-    import threading
-    import queue
-
     email = request.validated_data.get("email", "")
     if not email:
         return jsonify({"error": "Email required"}), 400
@@ -978,25 +917,48 @@ def email_combined() -> FlaskResponse:
                 }
             ), 429
 
-    stop_event = threading.Event()
-    result_queue = queue.Queue()
-    progress_state = {
-        "checked": 0,
-        "found": 0,
-        "current_site": "",
-        "total": 0,
-        "_stop": stop_event,
-    }
+    from holehe.core import import_submodules, get_functions
+    from argparse import Namespace
 
-    def progress_callback(progress):
-        if stop_event.is_set():
-            return
-        saved_total = progress_state["total"]
-        progress_state.update(progress)
-        if progress.get("total", 0) < saved_total:
-            progress_state["total"] = saved_total
+    modules = import_submodules("holehe.modules")
+    args = Namespace(nopasswordrecovery=False)
+    websites = get_functions(modules, args)
+    sherlock_sites = get_sherlock_sites() or {}
+    holehe_total = len(websites)
+    sherlock_total = len(sherlock_sites)
+    total_sites = sherlock_total + holehe_total
 
-    def run_search_thread():
+    def search_worker(q, stop_event):
+        progress_state = {
+            "checked": 0,
+            "found": 0,
+            "current_site": "",
+            "total": total_sites,
+        }
+
+        def progress_callback(progress):
+            if stop_event.is_set():
+                return
+            saved_total = progress_state["total"]
+            progress_state.update(progress)
+            if progress.get("total", 0) < saved_total:
+                progress_state["total"] = saved_total
+            total = progress_state["total"]
+            checked = progress_state["checked"]
+            found = progress_state["found"]
+            current_site = progress_state["current_site"]
+            q.put(
+                {
+                    "progress": {
+                        "checked": checked,
+                        "total": total,
+                        "found": found,
+                        "percent": int((checked / total) * 100) if total > 0 else 0,
+                        "current_site": current_site,
+                    }
+                }
+            )
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -1010,53 +972,16 @@ def email_combined() -> FlaskResponse:
                 f"{found_count} accounts found (Sherlock + Holehe)",
                 found_count,
             )
-            result_queue.put(("complete", result))
-        except Exception as e:
-            result_queue.put(("error", str(e)))
+            q.put({"complete": True, "result": result})
+        except Exception:
+            logger.exception("Email combined search failed")
+            q.put({"error": "Search error"})
         finally:
             loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
-    from holehe.core import import_submodules, get_functions
-    from argparse import Namespace
-
-    modules = import_submodules("holehe.modules")
-    args = Namespace(nopasswordrecovery=False)
-    websites = get_functions(modules, args)
-    sherlock_sites = get_sherlock_sites() or {}
-    holehe_total = len(websites)
-    sherlock_total = len(sherlock_sites)
-    progress_state["total"] = sherlock_total + holehe_total
-
-    thread = threading.Thread(target=run_search_thread, daemon=True)
-    thread.start()
-
-    def generate():
-        try:
-            while not stop_event.is_set():
-                try:
-                    status, data = result_queue.get_nowait()
-                    if status == "complete":
-                        yield f"data: {json.dumps({'complete': True, 'result': data})}\n\n"
-                    else:
-                        yield f"data: {json.dumps({'error': data})}\n\n"
-                    break
-                except queue.Empty:
-                    if request.is_disconnected:
-                        stop_event.set()
-                        return
-                    time.sleep(0.1)
-                    total = progress_state["total"]
-                    checked = progress_state["checked"]
-                    found = progress_state["found"]
-                    current_site = progress_state["current_site"]
-
-                    yield f"data: {json.dumps({'progress': {'checked': checked, 'total': total, 'found': found, 'percent': int((checked / total) * 100) if total > 0 else 0, 'current_site': current_site}})}\n\n"
-        finally:
-            stop_event.set()
-
-    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+    return run_sse_search(search_worker)
 
 
 # =============================================================================
@@ -1071,10 +996,6 @@ def email_combined() -> FlaskResponse:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="email_crossvalidated")
 @validate(EmailCrossValidatedSchema)
 def email_cross_validated() -> FlaskResponse:
-    from flask import Response, stream_with_context
-    import threading
-    import queue
-
     email = request.validated_data.get("email", "")
     if not email:
         return jsonify({"error": "Email required"}), 400
@@ -1089,25 +1010,48 @@ def email_cross_validated() -> FlaskResponse:
                 }
             ), 429
 
-    stop_event = threading.Event()
-    result_queue = queue.Queue()
-    progress_state = {
-        "checked": 0,
-        "found": 0,
-        "current_site": "",
-        "total": 0,
-        "_stop": stop_event,
-    }
+    from holehe.core import import_submodules, get_functions
+    from argparse import Namespace
 
-    def progress_callback(progress):
-        if stop_event.is_set():
-            return
-        saved_total = progress_state["total"]
-        progress_state.update(progress)
-        if progress.get("total", 0) < saved_total:
-            progress_state["total"] = saved_total
+    modules = import_submodules("holehe.modules")
+    args = Namespace(nopasswordrecovery=False)
+    websites = get_functions(modules, args)
+    sherlock_sites = get_sherlock_sites() or {}
+    holehe_total = len(websites)
+    sherlock_total = len(sherlock_sites)
+    total_sites = sherlock_total + holehe_total
 
-    def run_search_thread():
+    def search_worker(q, stop_event):
+        progress_state = {
+            "checked": 0,
+            "found": 0,
+            "current_site": "",
+            "total": total_sites,
+        }
+
+        def progress_callback(progress):
+            if stop_event.is_set():
+                return
+            saved_total = progress_state["total"]
+            progress_state.update(progress)
+            if progress.get("total", 0) < saved_total:
+                progress_state["total"] = saved_total
+            total = progress_state["total"]
+            checked = progress_state["checked"]
+            found = progress_state["found"]
+            current_site = progress_state["current_site"]
+            q.put(
+                {
+                    "progress": {
+                        "checked": checked,
+                        "total": total,
+                        "found": found,
+                        "percent": int((checked / total) * 100) if total > 0 else 0,
+                        "current_site": current_site,
+                    }
+                }
+            )
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -1122,53 +1066,16 @@ def email_cross_validated() -> FlaskResponse:
                 f"{found_count} found, {cross_count} cross-validated",
                 found_count,
             )
-            result_queue.put(("complete", result))
-        except Exception as e:
-            result_queue.put(("error", f"{type(e).__name__}: {str(e)}"))
+            q.put({"complete": True, "result": result})
+        except Exception:
+            logger.exception("Email cross-validated search failed")
+            q.put({"error": "Search error"})
         finally:
             loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
-    from holehe.core import import_submodules, get_functions
-    from argparse import Namespace
-
-    modules = import_submodules("holehe.modules")
-    args = Namespace(nopasswordrecovery=False)
-    websites = get_functions(modules, args)
-    sherlock_sites = get_sherlock_sites() or {}
-    holehe_total = len(websites)
-    sherlock_total = len(sherlock_sites)
-    progress_state["total"] = sherlock_total + holehe_total
-
-    thread = threading.Thread(target=run_search_thread, daemon=True)
-    thread.start()
-
-    def generate():
-        try:
-            while not stop_event.is_set():
-                try:
-                    status, data = result_queue.get_nowait()
-                    if status == "complete":
-                        yield f"data: {json.dumps({'complete': True, 'result': data})}\n\n"
-                    else:
-                        yield f"data: {json.dumps({'error': data})}\n\n"
-                    break
-                except queue.Empty:
-                    if request.is_disconnected:
-                        stop_event.set()
-                        return
-                    time.sleep(0.1)
-                    total = progress_state["total"]
-                    checked = progress_state["checked"]
-                    found = progress_state["found"]
-                    current_site = progress_state["current_site"]
-
-                    yield f"data: {json.dumps({'progress': {'checked': checked, 'total': total, 'found': found, 'percent': int((checked / total) * 100) if total > 0 else 0, 'current_site': current_site}})}\n\n"
-        finally:
-            stop_event.set()
-
-    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+    return run_sse_search(search_worker)
 
 
 # =============================================================================
@@ -1362,6 +1269,7 @@ def username_rapidapi_status() -> FlaskResponse:
 
 @app_routes_bp.route("/api/generate-pdf", methods=["POST"])
 @csrf.exempt
+@login_required
 @validate(GeneratePDFSchema)
 def generate_pdf() -> FlaskResponse:
     results = request.validated_data.get("results", {})
@@ -1369,7 +1277,18 @@ def generate_pdf() -> FlaskResponse:
     query = request.validated_data.get("query", "unknown")
 
     try:
-        filename = generate_results_pdf(results, search_type, query)
+        from flask_login import current_user
+
+        viewer_info = (
+            f"{current_user.full_name or current_user.username} — {current_user.role}"
+            if current_user.is_authenticated
+            else "Anonymous"
+        )
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+        watermark = f"Exported by {viewer_info} on {ts} | OSINT Dashboard"
+        filename = generate_results_pdf(
+            results, search_type, query, watermark_text=watermark
+        )
         return jsonify(
             {
                 "success": True,
@@ -1377,12 +1296,13 @@ def generate_pdf() -> FlaskResponse:
                 "download_url": f"/download/{os.path.basename(filename)}",
             }
         )
-    except Exception as e:
-        logger.error(f"PDF generation error ({type(e).__name__}): {e}")
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        logger.exception("PDF generation error")
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app_routes_bp.route("/download/<filename>")
+@login_required
 def download_pdf(filename) -> FlaskResponse:
     safe_filename = os.path.basename(filename)
     path = os.path.join("reports", safe_filename)

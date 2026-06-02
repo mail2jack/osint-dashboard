@@ -7,8 +7,8 @@
     <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h1 style="margin: 0;">Cases</h1>
         <div style="display: flex; gap: 0.5rem;">
-            <a href="{{ url_for('cms.export_cases', format='csv') }}" class="btn" style="background: #059669;">📥 Export All</a>
-            <a href="{{ url_for('cms.create_case') }}" class="btn">+ New Case</a>
+            <a href="{{ url_for('cms.export_cases', format='csv') }}" class="btn-cms teal">📥 Export All</a>
+            <a href="{{ url_for('cms.create_case') }}" class="btn-cms primary">+ New Case</a>
         </div>
     </div>
 
@@ -93,12 +93,12 @@
             <option value="3.9.2" {% if filters.case_type == '3.9.2' %}selected{% endif %}>3.9.2 - Verticale fraude</option>
             <option value="3.9.3" {% if filters.case_type == '3.9.3' %}selected{% endif %}>3.9.3 - Overige fraude</option>
         </select>
-        <button type="submit">Filter</button>
-        <a href="{{ url_for('cms.cases') }}" class="btn btn-clear">Clear</a>
+        <button type="submit" class="btn-cms primary">Filter</button>
+        <a href="{{ url_for('cms.cases') }}" class="btn-cms gray">Clear</a>
     </form>
     
     {% if cases %}
-    <table>
+    <table class="data-table">
         <thead>
             <tr>
                 <th>
@@ -169,7 +169,7 @@
     </div>
     {% endif %}
     {% else %}
-    <p>No cases found. Try adjusting your filters.</p>
+    <div class="empty-state"><div class="icon">📭</div><p>No cases found. Try adjusting your filters.</p></div>
     {% endif %}
 </div>
 </div>

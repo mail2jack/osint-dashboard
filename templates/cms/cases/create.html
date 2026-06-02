@@ -136,11 +136,11 @@
             <div id="case_type_list" class="combobox-list"></div>
         </div>
     </div>
-    <button type="submit" class="btn">Create Case</button>
-    <a href="{{ url_for('cms.cases') }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
+    <button type="submit" class="btn-cms primary">Create Case</button>
+    <a href="{{ url_for('cms.cases') }}" class="btn-cms gray" style="margin-left:0.5rem;">Cancel</a>
 </form>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const ITEM_HEIGHT = 52;
 const HEADER_HEIGHT = 32;
 const BUFFER_COUNT = 5;

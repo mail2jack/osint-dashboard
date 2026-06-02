@@ -51,6 +51,7 @@ class UserRole(PyEnum):
 
     ADMIN = "admin"  # Full system access
     SENIOR_INVESTIGATOR = "senior_investigator"  # Can manage cases, export data
+    INVESTIGATOR = "investigator"  # Can view and update assigned cases
     JUNIOR_INVESTIGATOR = "junior_investigator"  # Can view and update assigned cases
     VIEWER = "viewer"  # Read-only access
 
@@ -165,7 +166,7 @@ case_assignments = db.Table(
     db.Column("case_id", db.String(36), db.ForeignKey("cases.id"), primary_key=True),
     db.Column("user_id", db.String(36), db.ForeignKey("users.id"), primary_key=True),
     db.Column("assigned_at", db.DateTime, default=lambda: datetime.now(timezone.utc)),
-    db.Column("assigned_by", db.String(36), db.ForeignKey("users.id")),
+    db.Column("assigned_by", db.String(36), db.ForeignKey("users.id"), index=True),
 )
 
 case_subjects = db.Table(
@@ -273,11 +274,17 @@ class User(UserMixin, db.Model):
         """Check if user can access a specific case."""
         if self.is_admin:
             return True
-        # Investigators can view any case
-        if self.role in ["senior_investigator", "junior_investigator"]:
+        # Creator always has access
+        if case.created_by == self.id:
             return True
-        # Assigned users can access their cases
-        if case.assigned_to == self.id or self in case.investigators:
+        # Lead investigator always has access
+        if case.lead_investigator_id == self.id:
+            return True
+        # Direct assignee has access
+        if case.assigned_to == self.id:
+            return True
+        # Assigned via case_assignments table has access
+        if self in case.investigators:
             return True
         return False
 
@@ -313,10 +320,13 @@ class User(UserMixin, db.Model):
         return token
 
     def verify_reset_token(self, token: str) -> bool:
-        if (
-            not self.password_reset_expires
-            or datetime.now(timezone.utc) > self.password_reset_expires
-        ):
+        now = datetime.now(timezone.utc)
+        if not self.password_reset_expires:
+            return False
+        expires = self.password_reset_expires
+        if expires.tzinfo is None:
+            now = now.replace(tzinfo=None)
+        if now > expires:
             return False
         expected = hashlib.sha256(token.encode()).hexdigest()
         return self.password_reset_token == expected
@@ -360,7 +370,7 @@ class Client(db.Model):
     bank_account = db.Column(db.String(500))  # Encrypted
     financial_notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
-    is_deleted = db.Column(db.Boolean, default=False)  # Soft delete
+    is_deleted = db.Column(db.Boolean, default=False, index=True)  # Soft delete
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -483,9 +493,11 @@ class Case(db.Model):
     target_end_date = db.Column(db.Date)
     actual_end_date = db.Column(db.Date)
     closure_reason = db.Column(db.Text)  # Reason for closing
-    created_by = db.Column(db.String(36), db.ForeignKey("users.id"))
-    assigned_to = db.Column(db.String(36), db.ForeignKey("users.id"))
-    lead_investigator_id = db.Column(db.String(36), db.ForeignKey("users.id"))
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
+    assigned_to = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
+    lead_investigator_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), index=True
+    )
 
     # Case metadata
     case_type = db.Column(
@@ -497,13 +509,15 @@ class Case(db.Model):
     # Reopening
     reopened_reason = db.Column(db.Text)  # Reason for reopening
     reopened_at = db.Column(db.DateTime)
-    reopened_by = db.Column(db.String(36), db.ForeignKey("users.id"))
+    reopened_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
 
     # Case hierarchy
-    parent_case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), nullable=True)
+    parent_case_id = db.Column(
+        db.String(36), db.ForeignKey("cases.id"), nullable=True, index=True
+    )
 
     # Soft delete
-    is_deleted = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
     # Timestamps
@@ -659,7 +673,7 @@ class Subject(db.Model):
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(300), nullable=False, index=True)
-    subject_type = db.Column(db.String(20), nullable=False)
+    subject_type = db.Column(db.String(20), nullable=False, index=True)
 
     # Encrypted identifying information
     date_of_birth = db.Column(db.String(500))  # Encrypted (DOB can be sensitive)
@@ -714,7 +728,7 @@ class Subject(db.Model):
     face_encoding = db.Column(SafeJSON)
 
     # Soft delete
-    is_deleted = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -1044,8 +1058,10 @@ class FinancialRecord(db.Model):
     __tablename__ = "financial_records"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), nullable=False)
-    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"))
+    case_id = db.Column(
+        db.String(36), db.ForeignKey("cases.id"), nullable=False, index=True
+    )
+    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"), index=True)
 
     transaction_date = db.Column(db.Date, nullable=False)
     amount = db.Column(db.Numeric(15, 2), nullable=False)
@@ -1065,11 +1081,11 @@ class FinancialRecord(db.Model):
     verification_status = db.Column(
         db.String(20), default=VerificationStatus.PENDING.value
     )
-    verified_by = db.Column(db.String(36), db.ForeignKey("users.id"))
+    verified_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     verified_at = db.Column(db.DateTime)
     verification_notes = db.Column(db.Text)
 
-    is_deleted = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -1192,11 +1208,13 @@ class Finding(db.Model):
     confidence_level = db.Column(db.String(20))  # low, medium, high, verified
 
     finding_type = db.Column(
-        db.String(50)
+        db.String(50), index=True
     )  # identity, location, connection, financial, etc.
     tags = db.Column(SafeJSON)
 
-    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    created_by = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -1204,7 +1222,7 @@ class Finding(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    is_deleted = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
     def soft_delete(self) -> None:
@@ -1246,7 +1264,9 @@ class Screenshot(db.Model):
     __tablename__ = "screenshots"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), nullable=False)
+    case_id = db.Column(
+        db.String(36), db.ForeignKey("cases.id"), nullable=False, index=True
+    )
 
     url = db.Column(db.String(500), nullable=False)  # Source URL
     filename = db.Column(db.String(255), nullable=False)  # Stored filename
@@ -1263,7 +1283,9 @@ class Screenshot(db.Model):
     # Optional extracted data (e.g., social media IDs)
     extracted_data = db.Column(SafeJSON)
 
-    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    created_by = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
@@ -1306,7 +1328,7 @@ class AuditLog(db.Model):
     __tablename__ = "audit_logs"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"))
+    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     action = db.Column(db.String(20), nullable=False, index=True)
 
     entity_type = db.Column(
@@ -1418,10 +1440,10 @@ class Document(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # Linked entity
-    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"))
-    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"))
+    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), index=True)
+    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"), index=True)
     financial_record_id = db.Column(
-        db.String(36), db.ForeignKey("financial_records.id")
+        db.String(36), db.ForeignKey("financial_records.id"), index=True
     )
 
     filename = db.Column(db.String(255), nullable=False)
@@ -1443,10 +1465,10 @@ class Document(db.Model):
         db.String(20), default="confidential"
     )  # public, internal, confidential, restricted
 
-    uploaded_by = db.Column(db.String(36), db.ForeignKey("users.id"))
+    uploaded_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    is_deleted = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
     def soft_delete(self) -> None:
@@ -1490,11 +1512,11 @@ class Comment(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # Entity references (at least one must be set)
-    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"))
-    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"))
-    client_id = db.Column(db.String(36), db.ForeignKey("clients.id"))
+    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), index=True)
+    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"), index=True)
+    client_id = db.Column(db.String(36), db.ForeignKey("clients.id"), index=True)
     financial_record_id = db.Column(
-        db.String(36), db.ForeignKey("financial_records.id")
+        db.String(36), db.ForeignKey("financial_records.id"), index=True
     )
 
     # Comment content
@@ -1508,12 +1530,14 @@ class Comment(db.Model):
     is_resolved = db.Column(db.Boolean, default=False)
 
     # Ownership
-    author_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    author_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     author = db.relationship("User", foreign_keys=[author_id], backref="comments")
 
     # Edit tracking
     edit_count = db.Column(db.Integer, default=0)
-    last_edited_by_id = db.Column(db.String(36), db.ForeignKey("users.id"))
+    last_edited_by_id = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     last_edited_by = db.relationship(
         "User", foreign_keys=[last_edited_by_id], backref="edited_comments"
     )
@@ -1534,7 +1558,7 @@ class Comment(db.Model):
     )
 
     # Soft delete
-    is_deleted = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
     def soft_delete(self) -> None:
@@ -1590,12 +1614,16 @@ class CommentEditHistory(db.Model):
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    comment_id = db.Column(db.String(36), db.ForeignKey("comments.id"), nullable=False)
+    comment_id = db.Column(
+        db.String(36), db.ForeignKey("comments.id"), nullable=False, index=True
+    )
 
     previous_content = db.Column(db.Text, nullable=False)
     new_content = db.Column(db.Text, nullable=False)
 
-    edited_by_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    edited_by_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     edited_by = db.relationship("User", backref="comment_edits")
 
     edited_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -1647,7 +1675,7 @@ class DocumentTemplate(db.Model):
     is_active = db.Column(db.Boolean, default=True)
 
     # Ownership
-    created_by = db.Column(db.String(36), db.ForeignKey("users.id"))
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     creator = db.relationship("User", backref="document_templates")
 
     # Timestamps
@@ -1681,11 +1709,12 @@ class DocumentTemplate(db.Model):
 
         Context can include: case, client, subjects, findings, financials, custom fields
         """
-        from jinja2 import Environment, BaseLoader
+        from jinja2 import BaseLoader
+        from jinja2.sandbox import SandboxedEnvironment
         import logging
         from datetime import datetime, timezone
 
-        env = Environment(loader=BaseLoader())
+        env = SandboxedEnvironment(loader=BaseLoader())
 
         env.filters["default"] = lambda v, d: v if v else d
         env.filters["date"] = lambda v, fmt="%Y-%m-%d": (
@@ -1756,18 +1785,20 @@ class Reminder(db.Model):
     priority = db.Column(db.String(20), default="medium")  # low, medium, high, critical
 
     # Links (at least one should be set)
-    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"))
-    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"))
-    client_id = db.Column(db.String(36), db.ForeignKey("clients.id"))
+    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), index=True)
+    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"), index=True)
+    client_id = db.Column(db.String(36), db.ForeignKey("clients.id"), index=True)
 
     # Assignment
-    assigned_to = db.Column(db.String(36), db.ForeignKey("users.id"))
+    assigned_to = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     assigned_user = db.relationship(
         "User", foreign_keys=[assigned_to], backref="assigned_reminders"
     )
 
     # Ownership
-    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    created_by = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
     creator = db.relationship(
         "User", foreign_keys=[created_by], backref="created_reminders"
     )
@@ -1790,7 +1821,7 @@ class Reminder(db.Model):
     )
 
     # Soft delete
-    is_deleted = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
     def complete(self) -> None:
@@ -1884,7 +1915,7 @@ class Setting(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-    created_by = db.Column(db.String(36), db.ForeignKey("users.id"))
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
 
     def get_masked_value(self) -> str:
         if not self.is_sensitive or not self.value:
@@ -2266,6 +2297,14 @@ def init_default_settings() -> None:
             "display_order": 32,
         },
         {
+            "key": "phone_lookup_retention_days",
+            "category": "security",
+            "value": "90",
+            "description": "Phone lookup retention (days, 0=keep forever)",
+            "value_type": "number",
+            "display_order": 33,
+        },
+        {
             "key": "webhook_url",
             "category": "general",
             "value": "",
@@ -2407,12 +2446,12 @@ class SpiderFootScan(db.Model):
     scan_name = db.Column(db.String(300))
     target_value = db.Column(db.String(500), nullable=False)
     target_type = db.Column(db.String(50))
-    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"))
-    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"))
+    case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), index=True)
+    subject_id = db.Column(db.String(36), db.ForeignKey("subjects.id"), index=True)
     use_case = db.Column(db.String(50), default="passive")
     profile = db.Column(db.String(50))
     module_ids = db.Column(SafeJSON)
-    status = db.Column(db.String(50), default="pending")
+    status = db.Column(db.String(50), default="pending", index=True)
     progress = db.Column(db.Integer, default=0)
     result_count = db.Column(db.Integer, default=0)
     result_summary = db.Column(SafeJSON)
@@ -2424,8 +2463,8 @@ class SpiderFootScan(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-    created_by = db.Column(db.String(36), db.ForeignKey("users.id"))
-    is_deleted = db.Column(db.Boolean, default=False)
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
     creator = db.relationship(
@@ -2484,10 +2523,16 @@ class OsintSearch(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     search_id = db.Column(db.String(36), unique=True, nullable=False, index=True)
     case_id = db.Column(
-        db.String(36), db.ForeignKey("cases.id", ondelete="SET NULL"), nullable=True
+        db.String(36),
+        db.ForeignKey("cases.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     subject_id = db.Column(
-        db.String(36), db.ForeignKey("subjects.id", ondelete="SET NULL"), nullable=True
+        db.String(36),
+        db.ForeignKey("subjects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     search_query = db.Column("query", db.String(500), nullable=False)
     status = db.Column(
@@ -2505,7 +2550,9 @@ class OsintSearch(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    started_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+    started_by = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=True, index=True
+    )
 
     def to_dict(self) -> dict:
         return {
@@ -2528,6 +2575,7 @@ class OsintSearch(db.Model):
 
     def get_status_dict(self) -> dict:
         return {
+            "status": self.status,
             "results": self.results,
             "error": self.error,
             "started_at": self.started_at.isoformat() if self.started_at else None,
@@ -2549,8 +2597,11 @@ class ApiKey(db.Model):
     name = db.Column(db.String(100), nullable=False)
     key_hash = db.Column(db.String(255), nullable=False)
     key_prefix = db.Column(db.String(8), nullable=False)
-    user_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
-    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    scopes = db.Column(SafeJSON, default=lambda: ["read"])
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     last_used_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -2599,16 +2650,148 @@ class BackgroundTask(db.Model):
         }
 
 
+class Notification(db.Model):
+    """In-app notification for users (alerts, restricted search matches, etc.)."""
+
+    __tablename__ = "notifications"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    message = db.Column(db.String(500), nullable=False)
+    link = db.Column(db.String(500))
+    is_read = db.Column(db.Boolean, default=False, index=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+    user = db.relationship("User", backref=db.backref("notifications", lazy="dynamic"))
+
+
+class LoginLog(db.Model):
+    """Record of login attempts with geolocation and anomaly flags."""
+
+    __tablename__ = "login_logs"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    ip_address = db.Column(db.String(45), nullable=False)
+    user_agent = db.Column(db.String(500))
+    country = db.Column(db.String(100))
+    region = db.Column(db.String(100))
+    city = db.Column(db.String(100))
+    isp = db.Column(db.String(200))
+    lat = db.Column(db.Float)
+    lon = db.Column(db.Float)
+    is_success = db.Column(db.Boolean, default=True)
+    is_anomaly = db.Column(db.Boolean, default=False)
+    anomaly_reason = db.Column(db.String(200))
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+    user = db.relationship("User", backref=db.backref("login_logs", lazy="dynamic"))
+
+    __table_args__ = (db.Index("ix_login_logs_user_created", "user_id", "created_at"),)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "ip_address": self.ip_address,
+            "user_agent": self.user_agent,
+            "country": self.country,
+            "region": self.region,
+            "city": self.city,
+            "isp": self.isp,
+            "lat": self.lat,
+            "lon": self.lon,
+            "is_success": self.is_success,
+            "is_anomaly": self.is_anomaly,
+            "anomaly_reason": self.anomaly_reason,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "username": self.user.username if self.user else None,
+        }
+
+
 class PhoneLookup(db.Model):
     __tablename__ = "phone_lookups"
 
+    ENCRYPTED_FIELDS = ["raw_response", "profile_picture"]
+
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    phone = db.Column(db.String(50), nullable=False, index=True)
+    phone = db.Column(
+        db.String(50), nullable=False, index=True
+    )  # plaintext for queryability
     raw_response = db.Column(SafeJSON, nullable=False)
     profile_picture = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    created_by = db.Column(db.String(36), db.ForeignKey("users.id"))
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
 
     creator = db.relationship(
         "User", backref="phone_lookups", foreign_keys=[created_by]
     )
+
+    def _get_encryptor(self):
+        from cms.config import _get_encryption_key
+        from cryptography.fernet import Fernet
+
+        key = _get_encryption_key()
+        return Fernet(key.encode()) if key else None
+
+    def _encrypt_field(self, value):
+        f = self._get_encryptor()
+        if f and value is not None:
+            try:
+                return f.encrypt(str(value).encode()).decode()
+            except Exception:
+                return value
+        return value
+
+    def _decrypt_field(self, value):
+        if value is None:
+            return None
+        f = self._get_encryptor()
+        if f:
+            try:
+                return f.decrypt(value.encode()).decode()
+            except Exception:
+                return value
+        return value
+
+    @property
+    def decrypted_raw_response(self):
+        if self.raw_response and isinstance(self.raw_response, str):
+            try:
+                import json
+
+                raw = self._decrypt_field(self.raw_response)
+                return json.loads(raw) if raw else None
+            except (json.JSONDecodeError, TypeError):
+                return self.raw_response
+        return self.raw_response
+
+    @decrypted_raw_response.setter
+    def decrypted_raw_response(self, value):
+        self.raw_response = self._encrypt_field(value)
+
+    @property
+    def decrypted_profile_picture(self):
+        return self._decrypt_field(self.profile_picture)
+
+    @decrypted_profile_picture.setter
+    def decrypted_profile_picture(self, value):
+        self.profile_picture = self._encrypt_field(value)
+
+    @staticmethod
+    def purge_old(days: int = None) -> int:
+        if days is None:
+            days = int(Setting.get("phone_lookup_retention_days", "90"))
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        deleted = PhoneLookup.query.filter(PhoneLookup.created_at < cutoff).delete()
+        if deleted:
+            db.session.commit()
+        return deleted

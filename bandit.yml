@@ -1,0 +1,11 @@
+skips:
+  # B101: assert statements used in tests are fine
+  - B101
+  # B311: random vs secrets — acceptable for non-cryptographic use
+  - B311
+  # B404: import subprocess — needed for update/backup operations
+  - B404
+  # B603: subprocess_without_shell_equals_true — already uses list args
+  - B603
+  # B607: same as B603
+  - B607

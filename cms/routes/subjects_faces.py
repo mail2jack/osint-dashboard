@@ -3,15 +3,11 @@ import os
 import math
 
 import flask
-from flask import (
-    request, jsonify, abort, current_app
-)
+from flask import request, jsonify, abort, current_app
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import (
-    db, Subject, AuditLog
-)
+from ..models import db, Subject, AuditLog
 from ..auth import roles_required
 from ..image_validation import validate_image_file
 from ..validation import validate, SaveFaceEncodingSchema, CompareFacesSchema
@@ -19,36 +15,40 @@ from ..validation import validate, SaveFaceEncodingSchema, CompareFacesSchema
 logger = logging.getLogger(__name__)
 
 
-@cms_bp.route('/subjects/<subject_id>/photo', methods=['POST'])
+@cms_bp.route("/subjects/<subject_id>/photo", methods=["POST"])
 @login_required
-@roles_required('admin', 'senior_investigator', 'junior_investigator')
+@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 def upload_subject_photo(subject_id: str) -> flask.Response:
     """Upload a photo for a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)
 
-    if 'photo' not in request.files:
-        return jsonify({'error': 'No photo provided'}), 400
+    if "photo" not in request.files:
+        return jsonify({"error": "No photo provided"}), 400
 
-    file = request.files['photo']
+    file = request.files["photo"]
 
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
 
     # Only allow images — validate by magic bytes
     is_img, detected_ext = validate_image_file(file)
     if not is_img:
-        return jsonify({'error': 'Only image files allowed (PNG, JPEG, GIF, WebP)'}), 400
+        return jsonify(
+            {"error": "Only image files allowed (PNG, JPEG, GIF, WebP)"}
+        ), 400
     ext = detected_ext
 
     # Create upload directory
-    upload_dir = os.path.join(current_app.root_path,
-                              'static', 'uploads', 'subjects', subject_id)
+    upload_dir = os.path.join(
+        current_app.root_path, "static", "uploads", "subjects", subject_id
+    )
     os.makedirs(upload_dir, exist_ok=True)
 
     # Remove old photo if exists
     if subject.photo_path:
-        old_path = os.path.join(current_app.root_path,
-                                'static', subject.photo_path.lstrip('/'))
+        old_path = os.path.join(
+            current_app.root_path, "static", subject.photo_path.lstrip("/")
+        )
         if os.path.exists(old_path):
             os.remove(old_path)
 
@@ -62,55 +62,49 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
 
     AuditLog.log(
         user_id=current_user.id,
-        action='update',
-        entity_type='subject',
+        action="update",
+        entity_type="subject",
         entity_id=subject_id,
-        changes={'photo': 'uploaded'},
+        changes={"photo": "uploaded"},
         ip_address=request.remote_addr,
-        description=f"Uploaded photo for {subject.name}"
+        description=f"Uploaded photo for {subject.name}",
     )
     db.session.commit()
 
-    return jsonify({
-        'message': 'Photo uploaded',
-        'photo_path': subject.photo_path
-    })
+    return jsonify({"message": "Photo uploaded", "photo_path": subject.photo_path})
 
 
-@cms_bp.route('/subjects/<subject_id>/face-encoding', methods=['POST'])
+@cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["POST"])
 @login_required
-@roles_required('admin', 'senior_investigator', 'junior_investigator')
+@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @validate(SaveFaceEncodingSchema)
 def save_face_encoding(subject_id: str) -> flask.Response:
     """Save face encoding for a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)
 
-    encoding = request.validated_data.get('encoding')
+    encoding = request.validated_data.get("encoding")
 
     if not isinstance(encoding, list) or len(encoding) != 128:
-        return jsonify({'error': 'Invalid encoding format'}), 400
+        return jsonify({"error": "Invalid encoding format"}), 400
 
     subject.face_encoding = encoding
 
     AuditLog.log(
         user_id=current_user.id,
-        action='face_encoding_saved',
-        entity_type='subject',
+        action="face_encoding_saved",
+        entity_type="subject",
         entity_id=subject_id,
         ip_address=request.remote_addr,
-        description=f"Saved face encoding for {subject.name}"
+        description=f"Saved face encoding for {subject.name}",
     )
     db.session.commit()
 
-    return jsonify({
-        'message': 'Face encoding saved',
-        'has_encoding': True
-    })
+    return jsonify({"message": "Face encoding saved", "has_encoding": True})
 
 
-@cms_bp.route('/subjects/<subject_id>/face-encoding', methods=['DELETE'])
+@cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["DELETE"])
 @login_required
-@roles_required('admin', 'senior_investigator', 'junior_investigator')
+@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 def delete_face_encoding(subject_id: str) -> flask.Response:
     """Delete face encoding for a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)
@@ -119,37 +113,38 @@ def delete_face_encoding(subject_id: str) -> flask.Response:
 
     AuditLog.log(
         user_id=current_user.id,
-        action='face_encoding_deleted',
-        entity_type='subject',
+        action="face_encoding_deleted",
+        entity_type="subject",
         entity_id=subject_id,
         ip_address=request.remote_addr,
-        description=f"Deleted face encoding for {subject.name}"
+        description=f"Deleted face encoding for {subject.name}",
     )
     db.session.commit()
 
-    return jsonify({
-        'message': 'Face encoding deleted',
-        'has_encoding': False
-    })
+    return jsonify({"message": "Face encoding deleted", "has_encoding": False})
 
 
-@cms_bp.route('/subjects/compare-faces', methods=['POST'])
+@cms_bp.route("/subjects/compare-faces", methods=["POST"])
 @login_required
 @validate(CompareFacesSchema)
 def compare_faces() -> flask.Response:
     """Compare face encodings. Returns list of matching subjects."""
-    target_encoding = request.validated_data.get('encoding', [])
+    target_encoding = request.validated_data.get("encoding", [])
 
-    if not target_encoding or not isinstance(target_encoding, list) or len(target_encoding) != 128:
-        return jsonify({'error': 'Invalid encoding format'}), 400
+    if (
+        not target_encoding
+        or not isinstance(target_encoding, list)
+        or len(target_encoding) != 128
+    ):
+        return jsonify({"error": "Invalid encoding format"}), 400
 
-    threshold = request.validated_data.get('threshold', 0.6)
-    limit = request.validated_data.get('limit', 20)
+    threshold = request.validated_data.get("threshold", 0.6)
+    limit = request.validated_data.get("limit", 20)
 
     subjects_with_faces = Subject.query.filter(
         Subject.face_encoding.isnot(None),
         Subject.is_deleted == False,
-        Subject.photo_path.isnot(None)
+        Subject.photo_path.isnot(None),
     ).all()
 
     def euclidean_distance(enc1, enc2):
@@ -159,40 +154,49 @@ def compare_faces() -> flask.Response:
     for subject in subjects_with_faces:
         distance = euclidean_distance(target_encoding, subject.face_encoding)
         if distance < threshold:
-            matches.append({
-                'id': subject.id,
-                'name': subject.name,
-                'subject_type': subject.subject_type,
-                'photo_path': subject.photo_path,
-                'distance': round(distance, 4),
-                'similarity': round((1 - distance) * 100, 1)
-            })
+            matches.append(
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "subject_type": subject.subject_type,
+                    "photo_path": subject.photo_path,
+                    "distance": round(distance, 4),
+                    "similarity": round((1 - distance) * 100, 1),
+                }
+            )
 
-    matches.sort(key=lambda x: x['distance'])
+    matches.sort(key=lambda x: x["distance"])
     matches = matches[:limit]
 
-    return jsonify({
-        'matches': matches,
-        'total_searched': len(subjects_with_faces),
-        'threshold': threshold
-    })
+    return jsonify(
+        {
+            "matches": matches,
+            "total_searched": len(subjects_with_faces),
+            "threshold": threshold,
+        }
+    )
 
 
-@cms_bp.route('/api/subjects/with-faces', methods=['GET'])
+@cms_bp.route("/api/subjects/with-faces", methods=["GET"])
 @login_required
 def get_subjects_with_faces() -> flask.Response:
     """Get list of subjects with face encodings for face-api.js matching."""
     subjects = Subject.query.filter(
         Subject.face_encoding.isnot(None),
         Subject.is_deleted == False,
-        Subject.photo_path.isnot(None)
+        Subject.photo_path.isnot(None),
     ).all()
 
-    return jsonify({
-        'subjects': [{
-            'id': s.id,
-            'name': s.name,
-            'photo_path': s.photo_path,
-            'face_encoding': s.face_encoding
-        } for s in subjects]
-    })
+    return jsonify(
+        {
+            "subjects": [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "photo_path": s.photo_path,
+                    "face_encoding": s.face_encoding,
+                }
+                for s in subjects
+            ]
+        }
+    )

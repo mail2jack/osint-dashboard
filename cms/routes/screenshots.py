@@ -145,15 +145,15 @@ def upload_screenshot(case_id: str) -> flask.Response:
             }
         ), 201
 
-    except Exception as e:
-        logger.error(f"Screenshot upload error ({type(e).__name__}): {e}")
+    except Exception:
+        logger.exception("Screenshot upload error")
         # Clean up file if it was created
         if filepath_defined and os.path.exists(filepath):
             try:
                 os.remove(filepath)
             except Exception:
                 logger.debug("Failed to clean up screenshot file after upload error")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @cms_bp.route("/cases/<case_id>/screenshots/capture", methods=["POST"])
@@ -215,11 +215,11 @@ def capture_screenshot(case_id: str) -> flask.Response:
                 }
             ), 503
 
-        except Exception as e:
-            logger.error(f"Playwright capture failed ({type(e).__name__}): {e}")
+        except Exception:
+            logger.exception("Playwright capture failed")
             return jsonify(
                 {
-                    "error": f"Failed to capture screenshot: {str(e)}",
+                    "error": "Failed to capture screenshot",
                     "setup_required": False,
                 }
             ), 500
@@ -257,12 +257,12 @@ def capture_screenshot(case_id: str) -> flask.Response:
             }
         ), 201
 
-    except Exception as e:
-        logger.error(f"Screenshot capture error ({type(e).__name__}): {e}")
+    except Exception:
+        logger.exception("Screenshot capture error")
         # Clean up file if database insert failed
         if os.path.exists(filepath):
             os.remove(filepath)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @cms_bp.route("/cases/<case_id>/screenshots/<screenshot_id>/thumbnail")
@@ -389,6 +389,6 @@ def delete_screenshot(case_id: str, screenshot_id: str) -> flask.Response:
 
         return jsonify({"message": "Screenshot deleted"}), 200
 
-    except Exception as e:
-        logger.error(f"Screenshot delete error ({type(e).__name__}): {e}")
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        logger.exception("Screenshot delete error")
+        return jsonify({"error": "Internal server error"}), 500

@@ -49,6 +49,9 @@ def dispatch(event: str, payload: dict) -> list[dict]:
                 headers["X-Webhook-Signature"] = sig
             r = httpx.post(url, content=body, headers=headers, timeout=10)
             results.append({"url": url, "status": r.status_code, "ok": r.is_success})
-        except Exception as e:
-            results.append({"url": url, "error": str(e), "ok": False})
+        except Exception:
+            logger.exception("Webhook delivery failed to %s", url)
+            results.append(
+                {"url": url, "error": "Webhook delivery failed", "ok": False}
+            )
     return results

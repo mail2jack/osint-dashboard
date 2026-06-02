@@ -1,7 +1,26 @@
+import logging
+import re
 from functools import wraps
 from flask import request, jsonify
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Any
+
+logger = logging.getLogger(__name__)
+
+
+def validate_password_complexity(password: str) -> str:
+    """Validate password meets minimum complexity requirements."""
+    if not password or len(password) < 8:
+        raise ValueError("Password must be at least 8 characters")
+    if not re.search(r"[A-Z]", password):
+        raise ValueError("Password must contain at least one uppercase letter")
+    if not re.search(r"[a-z]", password):
+        raise ValueError("Password must contain at least one lowercase letter")
+    if not re.search(r"[0-9]", password):
+        raise ValueError("Password must contain at least one digit")
+    if not re.search(r"[^a-zA-Z0-9]", password):
+        raise ValueError("Password must contain at least one special character")
+    return password
 
 
 # =============================================================================
@@ -14,6 +33,7 @@ class EmailCheckSchema(BaseModel):
 
 
 class KadasterLookupSchema(BaseModel):
+    address_id: Optional[str] = None
     query: Optional[str] = None
     street: Optional[str] = None
     number: Optional[str] = None
@@ -22,7 +42,7 @@ class KadasterLookupSchema(BaseModel):
 
 
 class PolitiebureauLookupSchema(BaseModel):
-    address_id: Optional[int] = None
+    address_id: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
     query: Optional[str] = None
@@ -209,8 +229,13 @@ class GeneratePDFSchema(BaseModel):
 
 
 class SetPasswordSchema(BaseModel):
-    password: str = ""
+    password: str = Field(min_length=8)
     confirm_password: str = ""
+
+    @field_validator("password")
+    @classmethod
+    def check_password_complexity(cls, v: str) -> str:
+        return validate_password_complexity(v)
 
 
 class CreateUserSchema(BaseModel):
@@ -223,6 +248,13 @@ class CreateUserSchema(BaseModel):
     send_email: Any = None
     send_sms: Any = None
 
+    @field_validator("password")
+    @classmethod
+    def check_password_complexity(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            return validate_password_complexity(v)
+        return v
+
 
 class EditUserSchema(BaseModel):
     full_name: Optional[str] = None
@@ -231,11 +263,23 @@ class EditUserSchema(BaseModel):
     is_active: Any = None
     password: Optional[str] = None
 
+    @field_validator("password")
+    @classmethod
+    def check_password_complexity(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            return validate_password_complexity(v)
+        return v
+
 
 class ChangePasswordSchema(BaseModel):
-    current_password: str = ""
-    new_password: str = ""
-    confirm_password: str = ""
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=8)
+    confirm_password: str = Field(min_length=1)
+
+    @field_validator("new_password")
+    @classmethod
+    def check_password_complexity(cls, v: str) -> str:
+        return validate_password_complexity(v)
 
 
 class LoginSchema(BaseModel):
@@ -787,7 +831,8 @@ def validate(schema_class):
                         msg = err.get("msg", "Invalid value")
                         errors.append({"field": field, "message": msg})
                 else:
-                    errors.append({"message": str(e)})
+                    logger.exception("Unexpected validation error")
+                    errors.append({"message": "Validation error"})
                 return jsonify({"error": "Validation failed", "details": errors}), 400
             return f(*args, **kwargs)
 

@@ -1,0 +1,50 @@
+    // Event delegation for data-click buttons
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-click]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (btn.dataset.confirm && !confirm(btn.dataset.confirm)) return;
+        var fn = window[btn.dataset.click];
+        if (typeof fn === 'function') {
+            var args = [btn];
+            var i = 0;
+            while (btn.dataset['arg' + i] !== undefined) {
+                try { args.push(JSON.parse(btn.dataset['arg' + i])); }
+                catch(_) { args.push(btn.dataset['arg' + i]); }
+                i++;
+            }
+            fn.apply(null, args);
+        }
+    });
+
+    // Event delegation for data-submit forms
+    document.addEventListener('submit', function(e) {
+        var form = e.target.closest('[data-submit]');
+        if (!form) return;
+        e.preventDefault();
+        var fn = window[form.dataset.submit];
+        if (typeof fn === 'function') {
+            fn(e);
+        }
+    });
+
+    // Event delegation for data-change inputs/selects
+    document.addEventListener('change', function(e) {
+        var el = e.target.closest('[data-change]');
+        if (!el) return;
+        var fn = window[el.dataset.change];
+        if (typeof fn === 'function') {
+            fn(el);
+        }
+    });
+
+    // Event delegation for data-input handlers
+    document.addEventListener('input', function(e) {
+        var el = e.target.closest('[data-input]');
+        if (!el) return;
+        var fn = window[el.dataset.input];
+        if (typeof fn === 'function') {
+            fn(el);
+        }
+    });

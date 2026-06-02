@@ -1,0 +1,187 @@
+{% extends "cms/base.html" %}
+
+{% block title %}Read Audit Log - Settings{% endblock %}
+
+{% block content %}
+<style>
+.read-audit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.read-audit-header h1 { margin: 0; }
+.filters {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.filters input, .filters select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+.audit-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color);
+}
+.audit-table td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.audit-table tr:last-child td { border-bottom: none; }
+.audit-table tr:hover td { background: var(--table-hover); }
+.entity-type-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.type-case { background: var(--info-bg); color: var(--info-text); }
+.type-subject { background: var(--warning-bg); color: var(--warning-text); }
+.type-client { background: var(--success-bg); color: var(--success-text); }
+.type-user { background: var(--accent-primary); color: white; }
+.type-default { background: var(--bg-secondary); color: var(--text-secondary); }
+.desc-cell {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+}
+.entity-link { font-size: 0.8125rem; }
+.entity-link a { color: var(--accent-primary); text-decoration: none; }
+.entity-link a:hover { text-decoration: underline; }
+.timestamp-cell { white-space: nowrap; font-size: 0.8125rem; color: var(--text-secondary); }
+.ip-cell { font-family: monospace; font-size: 0.8125rem; }
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+}
+.pagination a, .pagination span {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+.pagination a {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    text-decoration: none;
+    color: var(--text-primary);
+}
+.pagination a:hover { background: var(--table-hover); }
+.pagination span.current {
+    background: var(--accent-primary);
+    color: white;
+    font-weight: 600;
+}
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+</style>
+
+<div class="back">
+    <a href="{{ url_for('cms.settings') }}">← Back to Settings</a>
+</div>
+
+<div class="read-audit-header">
+    <h1>📖 Read Audit Log</h1>
+    <p style="margin:0;color:var(--text-secondary);font-size:0.875rem;">Who viewed what and when</p>
+    <div class="filters">
+        <form method="GET" action="{{ url_for('cms.read_audit_dashboard') }}" style="display:contents">
+            <select name="type">
+                <option value="">All types</option>
+                {% for t in entity_types %}
+                <option value="{{ t }}" {% if entity_filter == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="user" placeholder="Filter by username" value="{{ user_filter }}">
+            <button type="submit" class="btn-cms small">Filter</button>
+            <a href="{{ url_for('cms.read_audit_dashboard') }}" class="btn-cms gray small">Clear</a>
+        </form>
+    </div>
+</div>
+
+{% if logs %}
+<table class="audit-table">
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>User</th>
+            <th>Type</th>
+            <th>Entity</th>
+            <th>Description</th>
+            <th>IP</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        {% set type_class = 'type-' + (log.entity_type if log.entity_type in ('case','subject','client','user') else 'default') %}
+        <tr>
+            <td class="timestamp-cell">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') if log.timestamp else '—' }}</td>
+            <td>{{ log.user.username if log.user else '—' }}</td>
+            <td><span class="entity-type-badge {{ type_class }}">{{ log.entity_type }}</span></td>
+            <td class="entity-link">
+                {% if log.entity_type == 'case' and log.entity_id %}
+                <a href="{{ url_for('cms.view_case', case_id=log.entity_id) }}">{{ log.entity_id[:8] }}…</a>
+                {% elif log.entity_type == 'subject' and log.entity_id %}
+                <a href="{{ url_for('cms.view_subject', subject_id=log.entity_id) }}">{{ log.entity_id[:8] }}…</a>
+                {% elif log.entity_type == 'client' and log.entity_id %}
+                <a href="{{ url_for('cms.view_client', client_id=log.entity_id) }}">{{ log.entity_id[:8] }}…</a>
+                {% else %}
+                {{ log.entity_id[:12] if log.entity_id else '—' }}…
+                {% endif %}
+            </td>
+            <td class="desc-cell" title="{{ log.description or '' }}">{{ log.description or '—' }}</td>
+            <td class="ip-cell">{{ log.ip_address or '—' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="pagination">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('cms.read_audit_dashboard', page=pagination.prev_num, type=entity_filter, user=user_filter) }}">← Previous</a>
+    {% endif %}
+    {% for p in pagination.iter_pages() %}
+        {% if p %}
+        <a href="{{ url_for('cms.read_audit_dashboard', page=p, type=entity_filter, user=user_filter) }}" {% if p == pagination.page %}class="current"{% endif %}>{{ p }}</a>
+        {% else %}
+        <span>…</span>
+        {% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+    <a href="{{ url_for('cms.read_audit_dashboard', page=pagination.next_num, type=entity_filter, user=user_filter) }}">Next →</a>
+    {% endif %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>No read-audit entries found.</p>
+</div>
+{% endif %}
+{% endblock %}

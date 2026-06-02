@@ -147,165 +147,87 @@
 
 <style>
 .stats-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 1rem;
     margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-}
-.stat-card {
-    flex: 1;
-    min-width: 120px;
-    background: var(--bg-card);
-    padding: 1rem 1.25rem;
-    border-radius: 8px;
-    text-align: center;
-    border: 1px solid var(--border-color);
 }
 .stat-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    font-size: 0.7rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.25rem;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.15rem;
 }
 .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: 700;
     color: var(--text-primary);
 }
-.card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
-    margin: 1rem 0;
-}
-.card-grid .card {
-    background: var(--bg-card);
-    padding: 1.25rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px var(--shadow);
-}
-.card-grid .card h3 {
-    margin-bottom: 0.5rem;
-}
-.card-grid .card p {
-    margin: 0.25rem 0;
-    color: var(--text-secondary);
-}
-
-/* Scan Card List */
 .scan-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
 }
 .scan-card {
     display: block;
-    padding: 1rem 1.25rem;
+    text-decoration: none;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    text-decoration: none;
+    border-radius: 10px;
+    padding: 0.85rem 1.1rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
     color: var(--text-primary);
-    transition: all 0.15s;
 }
 .scan-card:hover {
     border-color: var(--accent-primary);
     box-shadow: 0 2px 8px var(--shadow);
-    transform: translateY(-1px);
 }
 .scan-card-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
 }
 .scan-name {
     font-weight: 600;
     font-size: 0.95rem;
 }
 .scan-badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
     border-radius: 4px;
-    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    flex-shrink: 0;
-    margin-left: 0.5rem;
+    letter-spacing: 0.03em;
 }
-.badge-success { background: var(--success-bg); color: var(--success-text); }
-.badge-danger { background: var(--danger-bg); color: var(--danger-text); }
-.badge-info { background: var(--info-bg); color: var(--info-text); }
-.badge-warning { background: var(--warning-bg); color: var(--warning-text); }
 .scan-card-meta {
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
     font-size: 0.8rem;
     color: var(--text-secondary);
-    flex-wrap: wrap;
 }
 .scan-detail {
     display: inline-flex;
     align-items: center;
-    gap: 0.2rem;
+    gap: 0.25rem;
 }
 .progress-dot {
     display: inline-block;
     width: 8px;
     height: 8px;
-    background: var(--info-bg);
     border-radius: 50%;
-    animation: pulse 1.5s infinite;
+    background: var(--info-text);
+    animation: pulse 1.5s ease-in-out infinite;
 }
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
 }
-.btn {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    background: var(--accent-primary);
-    color: white;
-    border-radius: 4px;
-    text-decoration: none;
-    font-size: 0.875rem;
-}
-.btn:hover {
-    background: var(--accent-hover);
-}
-.btn-primary { background: var(--accent-primary); }
-.btn-secondary {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-}
-.btn-small {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-.text-small { font-size: 0.75rem; }
-.text-muted { color: var(--text-secondary); }
-.search-bar {
-    margin-bottom: 0.75rem;
-}
-.search-bar input {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-size: 0.875rem;
-    box-sizing: border-box;
-}
-.search-bar input:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-}
 </style>
-<script>
+
+<script nonce="{{ csp_nonce }}">
 function filterScans(el) {
     const q = el.value.toLowerCase().trim();
     document.querySelectorAll('.scan-card').forEach(card => {

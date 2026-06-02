@@ -30,9 +30,9 @@
             <input type="hidden" name="name" value="{{ submitted_name }}">
             <input type="hidden" name="is_company" value="{{ submitted_is_company }}">
             <input type="hidden" name="confirm_duplicate" value="1">
-            <button type="submit" class="btn" style="background: #dc2626;">Create Anyway</button>
+            <button type="submit" class="btn-cms danger">Create Anyway</button>
         </form>
-        <a href="{{ url_for('cms.clients') }}" class="btn" style="background: #666;">Cancel</a>
+        <a href="{{ url_for('cms.clients') }}" class="btn-cms gray">Cancel</a>
         <span style="margin-left: 1rem; color: #92400e; font-size: 0.875rem;">Please verify this is not a duplicate before proceeding.</span>
     </div>
 </div>
@@ -157,11 +157,11 @@
         <textarea name="financial_notes" id="financial_notes" rows="3" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;"></textarea>
     </div>
     
-    <button type="submit" class="btn">Create Client</button>
-    <a href="{{ url_for('cms.clients') }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
+    <button type="submit" class="btn-cms primary">Create Client</button>
+    <a href="{{ url_for('cms.clients') }}" class="btn-cms gray" style="margin-left:0.5rem;">Cancel</a>
 </form>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function handleCreateSubmit(e) {
     serializeAddresses();
     serializeContacts();
@@ -205,14 +205,14 @@ function checkDuplicate() {
             .then(r => r.json())
             .then(data => {
                 if (data.exact) {
-                    alert.innerHTML = `<strong>⚠️ Exact match:</strong> <a href="/cms/clients/${data.exact.id}" target="_blank">${data.exact.name}</a>`;
+                    alert.innerHTML = '<strong>⚠️ Exact match:</strong> <a href="/cms/clients/' + esc(data.exact.id) + '" target="_blank">' + esc(data.exact.name) + '</a>';
                     alert.style.background = '#fee2e2';
                     alert.style.border = '1px solid #ef4444';
                     alert.style.display = 'block';
                 } else if (data.duplicates && data.duplicates.length > 0) {
                     let html = '<strong>Similar clients found:</strong><ul style="margin:0.25rem 0 0 1rem;padding:0;">';
                     data.duplicates.forEach(d => {
-                        html += `<li><a href="/cms/clients/${d.id}" target="_blank">${d.name}</a> - ${d.similarity}% similar</li>`;
+                        html += '<li><a href="/cms/clients/' + esc(d.id) + '" target="_blank">' + esc(d.name) + '</a> - ' + esc(d.similarity) + '% similar</li>';
                     });
                     html += '</ul>';
                     alert.innerHTML = html;

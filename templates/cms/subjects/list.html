@@ -6,8 +6,8 @@
 <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
     <h1 style="margin: 0;">Subjects</h1>
     <div style="display: flex; gap: 0.5rem;">
-        <a href="{{ url_for('cms.export_subjects', format='csv') }}" class="btn" style="background: #059669;">📥 Export</a>
-        <a href="{{ url_for('cms.create_subject') }}" class="btn">+ New Subject</a>
+        <a href="{{ url_for('cms.export_subjects', format='csv') }}" class="btn-cms teal">📥 Export</a>
+        <a href="{{ url_for('cms.create_subject') }}" class="btn-cms primary">+ New Subject</a>
     </div>
 </div>
 
@@ -17,8 +17,8 @@
             <span id="selectedCount">0</span> subject(s) selected
         </div>
         <div style="display: flex; gap: 0.5rem;">
-            <button data-click="openBulkLinkModal" class="btn btn-success" id="linkBtn" disabled>Link to Case</button>
-            <button data-click="clearSelection" class="btn">Clear Selection</button>
+            <button data-click="openBulkLinkModal" class="btn-cms primary small" id="linkBtn" disabled>Link to Case</button>
+            <button data-click="clearSelection" class="btn-cms small">Clear Selection</button>
         </div>
     </div>
 </div>
@@ -36,32 +36,37 @@
             <option value="vessel" {% if filters.type == 'vessel' %}selected{% endif %}>Vessel</option>
             <option value="property" {% if filters.type == 'property' %}selected{% endif %}>Property</option>
         </select>
-        <button type="submit" class="btn">Filter</button>
-        {% if filters.search or filters.type %}
-        <a href="{{ url_for('cms.subjects') }}" class="btn" style="background: var(--text-muted);">Clear</a>
+        <select name="case_filter" style="padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+            <option value="all" {% if filters.case_filter == 'all' %}selected{% endif %}>All Subjects</option>
+            <option value="has_case" {% if filters.case_filter == 'has_case' %}selected{% endif %}>Has Case</option>
+            <option value="no_case" {% if filters.case_filter == 'no_case' %}selected{% endif %}>No Case</option>
+        </select>
+        <button type="submit" class="btn-cms primary">Filter</button>
+        {% if filters.search or filters.type or filters.case_filter != 'all' %}
+        <a href="{{ url_for('cms.subjects') }}" class="btn-cms gray">Clear</a>
         {% endif %}
     </form>
     
     {% if subjects %}
     <form id="bulkForm">
-        <table>
+        <table class="data-table">
             <thead>
                 <tr>
                     <th class="checkbox-col">
                         <input type="checkbox" id="selectAll" data-change="toggleSelectAll">
                     </th>
                     <th>
-                        <a href="?sort=name&order={% if filters.sort == 'name' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
+                        <a href="?sort=name&order={% if filters.sort == 'name' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}{% if filters.case_filter and filters.case_filter != 'all' %}&case_filter={{ filters.case_filter }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
                             Name {% if filters.sort == 'name' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
                         </a>
                     </th>
                     <th>
-                        <a href="?sort=type&order={% if filters.sort == 'type' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
+                        <a href="?sort=type&order={% if filters.sort == 'type' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}{% if filters.case_filter and filters.case_filter != 'all' %}&case_filter={{ filters.case_filter }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
                             Type {% if filters.sort == 'type' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
                         </a>
                     </th>
                     <th>
-                        <a href="?sort=risk&order={% if filters.sort == 'risk' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
+                        <a href="?sort=risk&order={% if filters.sort == 'risk' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}{% if filters.case_filter and filters.case_filter != 'all' %}&case_filter={{ filters.case_filter }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
                             Risk Score {% if filters.sort == 'risk' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
                         </a>
                     </th>
@@ -86,7 +91,7 @@
                     <td>{{ subject.subject_type }}</td>
                     <td>{{ subject.risk_score }}</td>
                     <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a>
-                        <button data-click="deleteSubject" data-arg0="{{ subject.id }}" data-arg1="{{ subject.name|tojson }}" class="btn-sm" style="background: #dc2626; color: white; border: none; cursor: pointer; margin-left: 0.5rem;">🗑️</button>
+                        <button data-click="deleteSubject" data-arg0="{{ subject.id }}" data-arg1="{{ subject.name }}" class="btn-cms danger small" style="margin-left: 0.5rem;">🗑️</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -94,17 +99,17 @@
         </table>
     </form>
     {% else %}
-    <p style="color: var(--text-muted);">No subjects found.</p>
+    <div class="empty-state"><div class="icon">📭</div><p>No subjects found.</p></div>
     {% endif %}
     
     {% if pagination.pages > 1 %}
     <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
         {% if pagination.has_prev %}
-        <a href="{{ url_for('cms.subjects', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type) }}" class="btn" style="padding: 0.3rem 0.8rem;">Previous</a>
+        <a href="{{ url_for('cms.subjects', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type, case_filter=filters.case_filter if filters.case_filter != 'all' else none) }}" class="btn-cms small">Previous</a>
         {% endif %}
         <span style="padding: 0.3rem 0.8rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
         {% if pagination.has_next %}
-        <a href="{{ url_for('cms.subjects', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type) }}" class="btn" style="padding: 0.3rem 0.8rem;">Next</a>
+        <a href="{{ url_for('cms.subjects', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type, case_filter=filters.case_filter if filters.case_filter != 'all' else none) }}" class="btn-cms small">Next</a>
         {% endif %}
     </div>
     {% endif %}
@@ -129,8 +134,8 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button data-click="closeBulkLinkModal" class="btn" style="background: var(--text-muted);">Cancel</button>
-            <button data-click="submitBulkLink" class="btn btn-success">Link Subjects</button>
+            <button data-click="closeBulkLinkModal" class="btn-cms gray">Cancel</button>
+            <button data-click="submitBulkLink" class="btn-cms primary">Link Subjects</button>
         </div>
     </div>
 </div>
@@ -143,7 +148,7 @@
     .select-all-row { background: var(--info-bg); }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 let selectedSubjects = new Set();
 
 function toggleSelectAll() {
@@ -208,7 +213,7 @@ function openBulkLinkModal() {
             const select = document.getElementById('caseSelect');
             select.innerHTML = '<option value="">Select a case...</option>';
             (data.cases || []).forEach(c => {
-                select.innerHTML += `<option value="${c.id}">${c.case_number}: ${c.title}</option>`;
+                select.innerHTML += '<option value="' + esc(c.id) + '">' + esc(c.case_number) + ': ' + esc(c.title) + '</option>';
             });
         });
     

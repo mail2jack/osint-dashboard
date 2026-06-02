@@ -48,7 +48,7 @@ def _run_task(task_id: str, func: Callable, *args, **kwargs) -> None:
         _update_status(task_id, "completed", result=result)
     except Exception as e:
         logger.exception("Background task %s failed: %s", task_id, e)
-        _update_status(task_id, "failed", error=str(e))
+        _update_status(task_id, "failed", error="Internal server error")
     finally:
         db.session.close()
 

@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="/static/pwa/icon-180.png">
     <meta name="mobile-web-app-capable" content="yes">
     <title>{% block title %}CMS{% endblock %}</title>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         // Apply theme before page renders to avoid flash
         (function() {
             const theme = localStorage.getItem('cms-theme') || 'light';
@@ -145,8 +145,9 @@
         }
         .btn:hover { background: var(--accent-hover); }
         .card {
-            background: var(--bg-card); padding: 1.5rem; border-radius: 8px;
-            box-shadow: 0 2px 4px var(--shadow); margin-bottom: 1rem;
+            background: var(--bg-card); padding: 1.5rem; border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px var(--shadow); margin-bottom: 1rem;
             transition: background 0.3s;
         }
         .alert { padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; }
@@ -244,10 +245,23 @@
         
         /* Stats cards */
         .stat-card {
-            background: var(--bg-card); padding: 1.25rem; border-radius: 8px;
-            box-shadow: 0 2px 4px var(--shadow);
+            background: var(--bg-card); padding: 1.25rem; border-radius: 10px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px var(--shadow);
             border-left: 4px solid var(--accent-primary);
+            text-align: center;
         }
+        .stat-card h3 {
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em;
+            color: var(--text-muted); margin: 0 0 0.25rem;
+        }
+        .stat-card .value {
+            font-size: 1.3rem; font-weight: 700; color: var(--text-primary);
+        }
+        .stat-card.open { border-left-color: #f59e0b; }
+        .stat-card.active { border-left-color: #3b82f6; }
+        .stat-card.suspended { border-left-color: #f97316; }
+        .stat-card.closed { border-left-color: #10b981; }
         
         /* Activity items */
         .activity-item { border-bottom: 1px solid var(--border-color); }
@@ -259,6 +273,114 @@
         
         /* Pie legend */
         .pie-legend-item { color: var(--text-primary); }
+        
+        /* ─── Component Library ─────────────────────────── */
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 1rem; margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .card-header h2 {
+            font-size: 1rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem;
+        }
+        @media (max-width: 700px) { .info-grid { grid-template-columns: 1fr; } }
+        .info-row {
+            display: flex; flex-direction: column; padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .info-row:nth-child(even) { background: var(--table-hover, transparent); }
+        .info-label {
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
+            color: var(--text-muted); margin-bottom: 0.15rem;
+        }
+        .info-value {
+            font-size: 0.9rem; color: var(--text-primary); font-weight: 500;
+        }
+        .address-card {
+            border: 1px solid var(--border-color); border-radius: 10px;
+            padding: 1rem; margin-bottom: 0.75rem; background: var(--bg-card);
+        }
+        .address-card.primary { border-color: var(--accent-primary); }
+        .address-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        .badge-primary { background: #16a34a; color: white; }
+        .badge-kadaster { background: #2563eb; color: white; }
+        .badge-status-open { background: var(--badge-open); color: var(--badge-open-text); }
+        .badge-status-active { background: var(--badge-active); color: var(--badge-active-text); }
+        .badge-status-suspended { background: #fed7aa; color: #9a3412; }
+        .badge-status-closed { background: var(--badge-closed); color: var(--badge-closed-text); }
+        .badge-priority-critical { background: var(--danger-bg); color: var(--danger-text); }
+        .badge-priority-high { background: #fed7aa; color: #9a3412; }
+        .badge-priority-medium { background: var(--warning-bg); color: var(--warning-text); }
+        .badge-priority-low { background: var(--success-bg); color: var(--success-text); }
+        .btn-cms {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.5rem 1rem; border: 1px solid var(--border-color);
+            border-radius: 8px; background: var(--bg-card);
+            color: var(--text-primary); cursor: pointer; font-size: 0.85rem;
+            font-weight: 500; text-decoration: none;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .btn-cms:hover { background: var(--table-hover); border-color: var(--accent-primary); }
+        .btn-cms.primary { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
+        .btn-cms.danger { background: #dc2626; color: white; border-color: #dc2626; }
+        .btn-cms.small { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+        .btn-cms.purple { background: #7c3aed; color: white; border-color: #7c3aed; }
+        .btn-cms.teal { background: #0e7490; color: white; border-color: #0e7490; }
+        .btn-cms.gray { background: #6b7280; color: white; border-color: #6b7280; }
+        .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+        .stat-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; margin-bottom: 1rem;
+        }
+        @media (max-width: 900px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 600px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+        .health-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .health-badge {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.4rem 0.7rem; border: 1px solid var(--border-color);
+            border-radius: 8px; font-size: 0.8rem; background: var(--bg-card);
+        }
+        .health-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .health-dot.ok { background: #10b981; }
+        .health-dot.warn { background: #f59e0b; }
+        .health-dot.err { background: #ef4444; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th {
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
+            color: var(--text-muted); padding: 0.6rem 0.75rem; text-align: left;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .data-table td {
+            padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem; color: var(--text-primary);
+        }
+        .data-table tr:hover td { background: var(--table-hover); }
+        .data-table a { color: var(--link-color); text-decoration: none; font-weight: 500; }
+        .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); }
+        .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .reminder-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.6rem 0.75rem; border: 1px solid var(--border-color);
+            border-radius: 8px; margin-bottom: 0.5rem; background: var(--bg-card);
+        }
+        .reminder-item.overdue { border-color: #fecaca; background: var(--danger-bg); }
+        .contact-row {
+            display: grid; grid-template-columns: 2rem 1fr auto auto; gap: 0.5rem;
+            align-items: center; padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .contact-row:last-child { border-bottom: none; }
+        .contact-row .icon { text-align: center; font-size: 1rem; }
+        .contact-row .value {
+            font-weight: 500; color: var(--text-primary); min-width: 0;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .contact-row .actions { display: flex; gap: 0.35rem; }
         
         /* Form styles */
         .info-item label { color: var(--text-secondary); }
@@ -425,6 +547,11 @@
                 <span style="color:#6ee7b7;font-size:0.75rem;margin-left:0.25rem;" title="2FA enabled">✓</span>
                 {% endif %}
                 | <a href="{{ url_for('auth.logout') }}">Logout</a>
+                <span id="notificationBell" style="position:relative;cursor:pointer;margin-left:0.75rem;font-size:1.1rem;" title="Notifications" data-click="toggleNotificationPanel">
+                    🔔
+                    <span id="notificationBadge" style="display:none;position:absolute;top:-6px;right:-8px;background:#dc2626;color:white;font-size:0.6rem;border-radius:50%;width:16px;height:16px;text-align:center;line-height:16px;font-weight:bold;">0</span>
+                </span>
+                <div id="notificationPanel" style="display:none;position:absolute;top:100%;right:0;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;box-shadow:0 4px 12px var(--shadow);min-width:320px;max-height:400px;overflow-y:auto;z-index:1000;"></div>
                 <button class="theme-toggle" data-click="toggleTheme" title="Toggle dark mode">
                     <span id="theme-icon">🌙</span>
                 </button>
@@ -439,6 +566,20 @@
 
     <div id="sfHealthBanner" style="display:none;background:#dc2626;color:white;text-align:center;padding:0.5rem;font-size:0.875rem;">
         ⚠️ SpiderFoot is <span id="sfHealthText">unreachable</span>. Some OSINT features may not work.
+    </div>
+
+    <div id="loginAnomalyBanner" style="display:none;background:#f59e0b;color:black;text-align:center;padding:0.5rem;font-size:0.875rem;">
+        🔒 <span id="loginAnomalyCount">0</span> login anomaly/anomalies detected in the last 24 hours.
+        <a href="{{ url_for('cms.login_history') }}?anomalies=1" style="color:black;font-weight:600;text-decoration:underline;margin-left:0.5rem;">Review</a>
+    </div>
+
+    <div id="sessionTimeoutModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width:400px;text-align:center;">
+            <h3>⏰ Session Timeout Warning</h3>
+            <p id="sessionTimeoutText" style="color:var(--text-secondary);margin:1rem 0;">Your session will expire in <strong id="sessionTimeoutCountdown">5:00</strong>.</p>
+            <button class="btn btn-primary" data-click="extendSession">Extend Session</button>
+            <button class="btn" data-click="closeParentModal">Dismiss</button>
+        </div>
     </div>
 
     <div id="updateModal" class="modal">
@@ -508,7 +649,7 @@
     </div>
     <div id="helpOverlay" class="help-overlay" data-click="closeHelp" style="display:none;"></div>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
     // Update check — runs once on page load for admin users
     {% if current_user.is_authenticated and current_user.is_admin %}
     document.addEventListener('DOMContentLoaded', function() {
@@ -553,6 +694,156 @@
         document.getElementById('sfHealthBanner').style.display = 'block';
         document.getElementById('sfHealthText').textContent = sfHealth === 'error' ? 'unreachable' : sfHealth;
     }
+    // Login anomaly banner
+    var anomalyCount = {{ login_anomaly_count|tojson }};
+    if (anomalyCount > 0) {
+        document.getElementById('loginAnomalyCount').textContent = anomalyCount;
+        document.getElementById('loginAnomalyBanner').style.display = 'block';
+    }
+
+    // Session timeout warning
+    (function() {
+        var SESSION_LIFETIME = {{ session_lifetime_seconds|tojson }} || 28800;
+        var WARNING_BEFORE = 300; // 5 minutes in seconds
+        var KEEP_ALIVE_INTERVAL = 60000; // check every 60s
+        var warningShown = false;
+
+        function getSessionAge() {
+            // Estimate session age based on document.cookie presence of session
+            // We can't read the server-side session, so we track client-side elapsed time
+            var age = sessionStorage.getItem('session_start');
+            if (!age) {
+                age = Date.now().toString();
+                sessionStorage.setItem('session_start', age);
+            }
+            return (Date.now() - parseInt(age)) / 1000;
+        }
+
+        function getRemaining() {
+            return SESSION_LIFETIME - getSessionAge();
+        }
+
+        function showWarning() {
+            if (warningShown) return;
+            warningShown = true;
+            var modal = document.getElementById('sessionTimeoutModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function updateCountdown() {
+            var rem = getRemaining();
+            var el = document.getElementById('sessionTimeoutCountdown');
+            if (el) {
+                var mins = Math.floor(rem / 60);
+                var secs = Math.floor(rem % 60);
+                el.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+            }
+        }
+
+        // Check periodically
+        setInterval(function() {
+            var rem = getRemaining();
+            if (rem <= 0) {
+                location.reload(); // session expired, force reload
+            } else if (rem <= WARNING_BEFORE && !warningShown) {
+                showWarning();
+                updateCountdown();
+                // Update countdown every second
+                setInterval(updateCountdown, 1000);
+            }
+        }, KEEP_ALIVE_INTERVAL);
+
+        // Extend session (called by button click)
+        window.extendSession = function() {
+            fetch('/api/keep-alive', { method: 'POST' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.status === 'ok') {
+                        // Reset client-side timer
+                        sessionStorage.setItem('session_start', Date.now().toString());
+                        warningShown = false;
+                        var modal = document.getElementById('sessionTimeoutModal');
+                        if (modal) modal.style.display = 'none';
+                    }
+                })
+                .catch(function() {});
+        };
+    })();
+
+    // Notification bell
+    (function() {
+        var badge = document.getElementById('notificationBadge');
+        var panel = document.getElementById('notificationPanel');
+        var count = {{ notification_count|tojson }};
+        if (count > 0) {
+            badge.style.display = 'block';
+            badge.textContent = count > 99 ? '99+' : count;
+        }
+
+        window.toggleNotificationPanel = function() {
+            if (panel.style.display === 'block') {
+                panel.style.display = 'none';
+                return;
+            }
+            fetch('{{ url_for("cms.list_notifications") }}?limit=10')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var html = '<div style="padding:0.75rem 1rem;border-bottom:1px solid var(--border-color);font-weight:600;display:flex;justify-content:space-between;align-items:center;"><span>Notifications</span>';
+                    if (data.unread_count > 0) {
+                        html += '<button class="btn btn-xs" data-click="markAllRead">Mark all read</button>';
+                    }
+                    html += '</div>';
+                    if (data.notifications.length === 0) {
+                        html += '<div style="padding:1.5rem;text-align:center;color:var(--text-secondary);font-size:0.875rem;">No notifications</div>';
+                    } else {
+                        data.notifications.forEach(function(n) {
+                            var safeId = String(n.id).replace(/"/g, '&quot;');
+                            var safeLink = String(n.link || '').replace(/"/g, '&quot;');
+                            html += '<div class="' + (n.is_read ? '' : 'unread') + '" style="padding:0.75rem 1rem;border-bottom:1px solid var(--border-color);cursor:pointer;font-size:0.875rem;';
+                            if (!n.is_read) html += 'background:var(--table-hover);font-weight:600;';
+                            html += '" data-click="clickNotificationBtn" data-arg0="' + safeId + '" data-arg1="' + safeLink + '">';
+                            html += '<div>' + n.message + '</div>';
+                            html += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">' + new Date(n.created_at).toLocaleString() + '</div>';
+                            html += '</div>';
+                        });
+                    }
+                    panel.innerHTML = html;
+                    panel.style.display = 'block';
+                });
+        };
+
+        window.clickNotification = function(id, link) {
+            fetch('{{ url_for("cms.mark_notification_read", notif_id="__ID__") }}'.replace('__ID__', id), {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+            }).then(function() {
+                panel.style.display = 'none';
+                if (link) { window.location.href = link; }
+            });
+        };
+        window.clickNotificationBtn = function(btn) {
+            clickNotification(btn.dataset.arg0, btn.dataset.arg1 || '');
+        };
+
+        window.markAllRead = function() {
+            fetch('{{ url_for("cms.mark_all_notifications_read") }}', {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+            }).then(function() {
+                badge.style.display = 'none';
+                panel.style.display = 'none';
+            });
+        };
+
+        // Close panel on click outside
+        document.addEventListener('click', function(e) {
+            var bell = document.getElementById('notificationBell');
+            if (panel.style.display === 'block' && !panel.contains(e.target) && !bell.contains(e.target)) {
+                panel.style.display = 'none';
+            }
+        });
+    })();
+
     // Periodically refresh SF health status
     setInterval(function() {
         fetch('/health?quick=1', { headers: { 'Accept': 'application/json' } })
@@ -630,14 +921,14 @@
             .catch(err => {
                 progress.style.display = 'none';
                 result.style.display = 'block';
-                result.innerHTML = '<div style="padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">❌ Error: ' + err.message + '</div>';
+                result.innerHTML = '<div style="padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">❌ Error: ' + esc(err.message) + '</div>';
                 btn.disabled = false;
                 btn.textContent = '⬆️ Retry';
             });
     }
     {% endif %}
     </script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
@@ -728,7 +1019,7 @@
         style.textContent = 'tbody tr.selected { background: var(--table-hover) !important; }';
         document.head.appendChild(style);
     </script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         function hideLoader() {
             const loader = document.getElementById('appLoader');
             if (loader) {
@@ -759,7 +1050,7 @@
             setTimeout(hideLoader, 2000);
         });
     </script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
     // Helper functions for data-click handlers
     function showUpdateModal() { document.getElementById('updateModal').classList.add('show'); }
     function closeParentModal(btn) { btn.closest('.modal').classList.remove('show'); }
@@ -777,8 +1068,15 @@
     }
     function closeHelp() {
         document.getElementById('helpPanel').classList.remove('open');
-        document.getElementById('helpOverlay').style.display = 'none';
+        document.getElementById('helpOverlay').classList.remove('open');
     }
+
+    function esc(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str != null ? String(str) : ''));
+        return div.innerHTML;
+    }
+
     function openHelp(topic) {
         topic = topic || document.body.dataset.helpTopic || 'general';
         document.getElementById('helpPanelTitle').textContent = 'Help: ' + topic.charAt(0).toUpperCase() + topic.slice(1);
@@ -795,56 +1093,7 @@
             });
     }
 
-    // Event delegation for data-click buttons
-    document.addEventListener('click', function(e) {
-        var btn = e.target.closest('[data-click]');
-        if (!btn) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (btn.dataset.confirm && !confirm(btn.dataset.confirm)) return;
-        var fn = window[btn.dataset.click];
-        if (typeof fn === 'function') {
-            var args = [btn];
-            var i = 0;
-            while (btn.dataset['arg' + i] !== undefined) {
-                try { args.push(JSON.parse(btn.dataset['arg' + i])); }
-                catch(_) { args.push(btn.dataset['arg' + i]); }
-                i++;
-            }
-            fn.apply(null, args);
-        }
-    });
-
-    // Event delegation for data-submit forms
-    document.addEventListener('submit', function(e) {
-        var form = e.target.closest('[data-submit]');
-        if (!form) return;
-        e.preventDefault();
-        var fn = window[form.dataset.submit];
-        if (typeof fn === 'function') {
-            fn(e);
-        }
-    });
-
-    // Event delegation for data-change inputs/selects
-    document.addEventListener('change', function(e) {
-        var el = e.target.closest('[data-change]');
-        if (!el) return;
-        var fn = window[el.dataset.change];
-        if (typeof fn === 'function') {
-            fn(el);
-        }
-    });
-
-    // Event delegation for data-input handlers
-    document.addEventListener('input', function(e) {
-        var el = e.target.closest('[data-input]');
-        if (!el) return;
-        var fn = window[el.dataset.input];
-        if (typeof fn === 'function') {
-            fn(el);
-        }
-    });
+    {% include 'cms/_event_delegation.html' %}
     </script>
     <div id="toast-container"></div>
     <div class="action-loader" id="actionLoader">
@@ -853,7 +1102,7 @@
             <div id="actionLoaderText" style="color:var(--text-primary);">Loading...</div>
         </div>
     </div>
-    <script>
+    <script nonce="{{ csp_nonce }}">
     // Toast notification system
     function showToast(message, type, duration) {
         type = type || 'info';
@@ -897,6 +1146,44 @@
         return response.json().catch(function() { return {}; });
     }
     </script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js"></script>
+    <script nonce="{{ csp_nonce }}">
+    // Global event delegation system
+    document.addEventListener('click', function(e) {
+        var el = e.target.closest('[data-click]');
+        if (!el) return;
+        var fn = window[el.dataset.click];
+        if (typeof fn === 'function') {
+            var args = [];
+            for (var i = 0; ; i++) {
+                var key = 'arg' + i;
+                if (el.dataset[key] !== undefined) {
+                    try { args.push(JSON.parse(el.dataset[key])); }
+                    catch(e) { args.push(el.dataset[key]); }
+                } else break;
+            }
+            fn(el, ...args);
+            if (!el.dataset.clickNoStop) e.preventDefault();
+        }
+    });
+    document.addEventListener('change', function(e) {
+        var el = e.target.closest('[data-change]');
+        if (!el) return;
+        var fn = window[el.dataset.change];
+        if (typeof fn === 'function') fn(el);
+    });
+    document.addEventListener('submit', function(e) {
+        var el = e.target.closest('[data-submit]');
+        if (!el) return;
+        var fn = window[el.dataset.submit];
+        if (typeof fn === 'function') fn(e);
+    });
+    document.addEventListener('input', function(e) {
+        var el = e.target.closest('[data-input]');
+        if (!el) return;
+        var fn = window[el.dataset.input];
+        if (typeof fn === 'function') fn(el);
+    });
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js" nonce="{{ csp_nonce }}"></script>
 </body>
 </html>

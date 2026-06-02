@@ -1,233 +1,215 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ client.name }} - CMS</title>
-    <style>
-        body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
-        h1 { color: #1a1a2e; }
-        .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
-        .info-item { margin-bottom: 1rem; }
-        .info-item label { display: block; color: #666; font-size: 0.875rem; margin-bottom: 0.25rem; }
-        .info-item span { font-weight: 500; }
-        .back { margin-bottom: 1rem; }
-        .back a { color: #0066cc; text-decoration: none; }
-        h2 { margin-top: 1.5rem; color: #1a1a2e; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
-    </style>
-    <script>
-        (function() {
-            const theme = localStorage.getItem('cms-theme') || 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
-</head>
-<body>
-    <div style="background: #1a1a2e; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
-        <div style="display: flex; gap: 0; align-items: center;">
-            <strong style="font-size: 1rem; margin-right: 2rem;">CMS</strong>
-            <a href="{{ url_for('cms.dashboard') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Dashboard</a>
-            <a href="{{ url_for('cms.cases') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Cases</a>
-            <a href="{{ url_for('cms.clients') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem; font-weight: bold; border-bottom: 2px solid white;">Clients</a>
-            <a href="{{ url_for('cms.subjects') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Subjects</a>
-            <a href="{{ url_for('cms.reminders') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Reminders</a>
-            {% if current_user.is_admin %}
-            <a href="{{ url_for('users.list_users') }}" style="color: white; text-decoration: none; padding: 0.5rem 1rem;">Users</a>
+{% extends "cms/base.html" %}
+{% block title %}{{ client.name }} — CMS{% endblock %}
+{% block content %}
+    <div class="back"><a href="{{ url_for('cms.clients') }}">← Back to Clients</a></div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ client.name }}{% if client.is_company %} <span class="badge">Company</span>{% endif %}
+                {% if not client.is_active %}<span class="badge badge-archived">GEARCHIVEERD</span>{% endif %}
+            </h2>
+            <div class="btn-group" style="margin:0;">
+                {% if active_cases_count == 0 and client.is_active %}
+                <button data-click="archiveClient" data-arg0="{{ client.id }}" class="btn-cms danger small">📁 Archiveer</button>
+                {% elif not client.is_active %}
+                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small" style="background:#059669;color:white;border-color:#059669;">↩️ Herstellen</button>
+                {% endif %}
+                <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-cms small">✏️ Edit</a>
+            </div>
+        </div>
+    
+    <div class="card">
+        <div class="card-header"><h2>📞 Contact Information</h2></div>
+        <div class="info-grid">
+            {% if client.is_company %}
+            <div class="info-row">
+                <span class="info-label">Contact Person</span>
+                <span class="info-value">{{ client.contact_person if client.contact_person else '-' }}</span>
+            </div>
+            {% endif %}
+            {% if not client.is_company %}
+            <div class="info-row">
+                <span class="info-label">Date of Birth</span>
+                <span class="info-value">{{ client.date_of_birth if client.date_of_birth else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Place of Birth</span>
+                <span class="info-value">{{ client.place_of_birth if client.place_of_birth else '-' }}</span>
+            </div>
             {% endif %}
         </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span style="font-size: 0.9rem;">{{ current_user.full_name }}</span>
-            <span style="color: #888;">|</span>
-            <a href="{{ url_for('auth.logout') }}" style="color: white; text-decoration: none; font-size: 0.9rem;">Logout</a>
+        {% set cl_emails = client.contacts.filter_by(contact_type='email') if client.contacts else [] %}
+        {% set cl_phones = client.contacts.filter_by(contact_type='phone') if client.contacts else [] %}
+        {% if cl_emails.count() > 0 %}
+        <div style="margin-top:0.5rem;">
+            {% for c in cl_emails %}
+            <div class="contact-row">
+                <span class="icon">✉️</span>
+                <span class="value">{{ c.value }}</span>
+                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">PRIMARY</span>{% else %}<span></span>{% endif %}
+                <span class="actions">
+                    <button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">✉️ Check</button>
+                </span>
+                <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif client.contact_email %}
+        <div class="contact-row">
+            <span class="icon">✉️</span>
+            <span class="value">{{ client.contact_email }}</span>
+            <span></span>
+            <span class="actions">
+                <button data-click="emailCheck" data-arg0="{{ client.contact_email }}" class="btn-cms purple small">✉️ Check</button>
+            </span>
+            <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
+        </div>
+        {% endif %}
+        {% if cl_phones.count() > 0 %}
+        <div>
+            {% for c in cl_phones %}
+            <div class="contact-row">
+                <span class="icon">📞</span>
+                <span class="value">{{ c.value }}</span>
+                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">PRIMARY</span>{% else %}<span></span>{% endif %}
+                <span class="actions">
+                    <button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">📞 Check</button>
+                </span>
+                <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif client.contact_phone %}
+        <div class="contact-row">
+            <span class="icon">📞</span>
+            <span class="value">{{ client.contact_phone }}</span>
+            <span></span>
+            <span class="actions">
+                <button data-click="phoneLookup" data-arg0="{{ client.contact_phone }}" class="btn-cms purple small">📞 Check</button>
+            </span>
+            <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header"><h2>📍 Address(es)</h2></div>
+        {% if client.addresses.count() > 0 %}
+            {% for addr in client.addresses %}
+            <div class="address-card {% if addr.is_primary %}primary{% endif %}">
+                <div class="address-header">
+                    <div>
+                        <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
+                        {% if addr.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% endif %}
+                        {% if addr.kadaster_verified %}<span class="badge badge-kadaster">✓ KADASTER</span>{% endif %}
+                        <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
+                            {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
+                            {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="btn-group" style="margin:0;">
+                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;">🏛 Kadaster</button>
+                        <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms danger small">🚔 Politiebureau</button>
+                    </div>
+                </div>
+                <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
+                <div class="politiebureau-result" style="margin-top:0.5rem;display:none;"></div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="info-grid">
+                <div class="info-row">
+                    <span class="info-label">Street</span>
+                    <span class="info-value">{{ client.address_street or '' }}{% if client.address_street and client.address_number %}, {% endif %}{{ client.address_number or '' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Postal Code</span>
+                    <span class="info-value">{{ client.address_postal or '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">City</span>
+                    <span class="info-value">{{ client.address_city or '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Country</span>
+                    <span class="info-value">{{ client.address_country or 'Netherlands' }}</span>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <div class="card-header"><h2>📄 Contract Information</h2></div>
+        <div class="info-grid">
+            <div class="info-row">
+                <span class="info-label">Contract Number</span>
+                <span class="info-value">{{ client.contract_number if client.contract_number else '-' }}</span>
+            </div>
         </div>
     </div>
     
-    <div style="padding: 0 2rem; margin-top: 1rem;">
-        <div class="back"><a href="{{ url_for('cms.clients') }}">← Back to Clients</a></div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>{{ client.name }}{% if client.is_company %} <span style="font-size: 0.6em; color: #666;">(Company)</span>{% endif %}
-                {% if not client.is_active %}<span style="background: #6b7280; color: white; font-size: 0.6em; padding: 0.2rem 0.5rem; border-radius: 4px; vertical-align: middle;">GEARCHIVEERD</span>{% endif %}
-            </h1>
-        <div style="display: flex; gap: 0.5rem;">
-            {% if active_cases_count == 0 and client.is_active %}
-            <button data-click="archiveClient" data-arg0="{{ client.id|tojson }}" class="btn-sm" style="background: #dc2626; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">📁 Archiveer</button>
-            {% elif not client.is_active %}
-            <button data-click="restoreClient" data-arg0="{{ client.id|tojson }}" class="btn-sm" style="background: #059669; border: none; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">↩️ Herstellen</button>
+    <div class="card">
+        <div class="card-header"><h2>💰 Financial Information</h2></div>
+        <div class="info-grid">
+            <div class="info-row">
+                <span class="info-label">Social Security Number</span>
+                <span class="info-value">{{ client.social_security_number if client.social_security_number else '-' }}</span>
+            </div>
+            {% if client.is_company %}
+            <div class="info-row">
+                <span class="info-label">VAT Number</span>
+                <span class="info-value">{{ client.vat_number if client.vat_number else '-' }}</span>
+            </div>
             {% endif %}
-            <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-sm" style="text-decoration: none;">✏️ Edit</a>
-        </div>
-    </div>
-    
-    <div class="card">
-        <h2>Contact Information</h2>
-        {% if client.is_company %}
-        <div class="info-item">
-            <label>Contact Person</label>
-            <span>{{ client.contact_person if client.contact_person else '-' }}</span>
-        </div>
-        {% endif %}
-        {% if not client.is_company %}
-        <div class="info-item">
-            <label>Date of Birth</label>
-            <span>{{ client.date_of_birth if client.date_of_birth else '-' }}</span>
-        </div>
-        <div class="info-item">
-            <label>Place of Birth</label>
-            <span>{{ client.place_of_birth if client.place_of_birth else '-' }}</span>
-        </div>
-        {% endif %}
-        <div class="info-item">
-            <label>Email(s)</label>
-            <div style="margin-top: 0.25rem;">
-                {% set cl_emails = client.contacts.filter_by(contact_type='email') if client.contacts else [] %}
-                {% if cl_emails.count() > 0 %}
-                    {% for c in cl_emails %}
-                    <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
-                        <span>{{ c.value }}</span>
-                        {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                        <button data-click="emailCheck" data-arg0="{{ c.value|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
-                        <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
-                    </div>
-                    {% endfor %}
-                {% elif client.contact_email %}
-                    <div style="display:flex;align-items:center;gap:0.35rem;">
-                        <span>{{ client.contact_email }}</span>
-                        <button data-click="emailCheck" data-arg0="{{ client.contact_email|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
-                        <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
-                    </div>
-                {% else %}
-                    <span>-</span>
-                {% endif %}
+            <div class="info-row">
+                <span class="info-label">Bank Account</span>
+                <span class="info-value">{{ client.bank_account if client.bank_account else '-' }}</span>
             </div>
-        </div>
-        <div class="info-item">
-            <label>Phone(s)</label>
-            <div style="margin-top: 0.25rem;">
-                {% set cl_phones = client.contacts.filter_by(contact_type='phone') if client.contacts else [] %}
-                {% if cl_phones.count() > 0 %}
-                    {% for c in cl_phones %}
-                    <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
-                        <span>{{ c.value }}</span>
-                        {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                        <button data-click="phoneLookup" data-arg0="{{ c.value|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
-                            <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
-                        </div>
-                        {% endfor %}
-                    {% elif client.contact_phone %}
-                        <div style="display:flex;align-items:center;gap:0.35rem;">
-                            <span>{{ client.contact_phone }}</span>
-                            <button data-click="phoneLookup" data-arg0="{{ client.contact_phone|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
-                        <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
-                    </div>
-                {% else %}
-                    <span>-</span>
-                {% endif %}
+            {% if client.financial_notes %}
+            <div class="info-row" style="grid-column:1/-1;">
+                <span class="info-label">Financial Notes</span>
+                <span class="info-value">{{ client.financial_notes }}</span>
             </div>
+            {% endif %}
         </div>
     </div>
     
     <div class="card">
-        <h2>Address(es)</h2>
-        <div class="info-item">
-            <div style="margin-top: 0.25rem;">
-                {% if client.addresses.count() > 0 %}
-                    {% for addr in client.addresses %}
-                    <div style="background:{% if addr.is_primary %}#f0fdf4{% else %}#f9fafb{% endif %};border:1px solid {% if addr.is_primary %}#bbf7d0{% else %}#e5e7eb{% endif %};border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                            <div>
-                                <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
-                                {% if addr.is_primary %}<span style="background:#16a34a;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.5rem;">PRIMARY</span>{% endif %}
-                                {% if addr.kadaster_verified %}<span style="background:#2563eb;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;">✓ KADASTER</span>{% endif %}
-                                <br>
-                                <span style="color:#666;font-size:0.875rem;">
-                                    {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
-                                    {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
-                                </span>
-                            </div>
-                            <div style="display:flex;gap:0.35rem;">
-                                <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id|tojson }}" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
-                                    🏛 Kadaster
-                                </button>
-                                <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id|tojson }}" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
-                                    🚔 Politiebureau
-                                </button>
-                            </div>
-                        </div>
-                        <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
-                        <div class="politiebureau-result" style="margin-top:0.5rem;display:none;"></div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <span>{% if client.address_street or client.address_city %}
-                        {{ client.address_street or '' }}{% if client.address_street and client.address_number %}, {% endif %}{{ client.address_number or '' }}
-                        {% if client.address_postal or client.address_city %}<br>{{ client.address_postal or '' }}{% if client.address_postal and client.address_city %}, {% endif %}{{ client.address_city or '' }}{% endif %}
-                        {% if client.address_country and client.address_country != 'Netherlands' %}<br>{{ client.address_country }}{% endif %}
-                    {% else %}-{% endif %}</span>
-                {% endif %}
-            </div>
+        <div class="card-header">
+            <h2>📁 Cases ({{ cases|length }})</h2>
+            <span></span>
         </div>
-    </div>
-    
-    <div class="card">
-        <h2>Contract Information</h2>
-        <div class="info-item">
-            <label>Contract Number</label>
-            <span>{{ client.contract_number if client.contract_number else '-' }}</span>
-        </div>
-    </div>
-    
-    <div class="card">
-        <h2>Financial Information</h2>
-        <div class="info-item">
-            <label>Social Security Number</label>
-            <span>{{ client.social_security_number if client.social_security_number else '-' }}</span>
-        </div>
-        {% if client.is_company %}
-        <div class="info-item">
-            <label>VAT Number</label>
-            <span>{{ client.vat_number if client.vat_number else '-' }}</span>
-        </div>
-        {% endif %}
-        <div class="info-item">
-            <label>Bank Account</label>
-            <span>{{ client.bank_account if client.bank_account else '-' }}</span>
-        </div>
-        {% if client.financial_notes %}
-        <div class="info-item">
-            <label>Financial Notes</label>
-            <span>{{ client.financial_notes }}</span>
-        </div>
-        {% endif %}
-    </div>
-    
-    <div class="card">
-        <h2>Cases ({{ cases|length }})</h2>
         {% if cases %}
-        <table>
+        <table class="data-table">
             <thead><tr><th>Case Number</th><th>Title</th><th>Status</th></tr></thead>
             <tbody>
                 {% for case in cases %}
                 <tr>
-                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}" style="color: var(--link-color); text-decoration: none;">{{ case.case_number }}</a></td>
-                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}" style="color: var(--link-color); text-decoration: none;">{{ case.title }}</a></td>
-                    <td>{{ case.status }}</td>
+                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a></td>
+                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.title }}</a></td>
+                    <td><span class="badge badge-status-{{ case.status }}">{{ case.status }}</span></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <p>No cases for this client.</p>
+        <div class="empty-state">
+            <div class="icon">📂</div>
+            <p>No cases for this client.</p>
+        </div>
         {% endif %}
     </div>
     
-    <script>
+    <script nonce="{{ csp_nonce }}">
     function archiveClient(btn, clientId) {
         if (!confirm('Are you sure you want to archive this client?')) return;
         
         fetch('/cms/clients/' + clientId + '/archive', {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
         })
         .then(r => r.json())
         .then(data => {
@@ -244,7 +226,11 @@
         if (!confirm('Weet u zeker dat u deze client wilt herstellen?')) return;
         
         fetch('/cms/clients/' + clientId + '/restore', {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
         })
         .then(r => r.json())
         .then(data => {
@@ -258,7 +244,7 @@
     }
 
     async function kadasterLookup(btn, addrId) {
-        const card = btn.closest('[style*="border-radius:8px;padding:0.75rem"]');
+        const card = btn.closest('.address-card');
         const resultDiv = card.querySelector('.kadaster-result');
         const origText = btn.textContent;
 
@@ -276,14 +262,14 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'Address not found') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'Address not found') + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -292,26 +278,35 @@
             const b = data.bag_data;
             let html = '<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + (b.street || '') + ' ' + (b.number || '') + '</div>';
-            html += '<div><strong>Zipcode:</strong> ' + (b.zipcode || '-') + '</div>';
-            html += '<div><strong>Town:</strong> ' + (b.town || '-') + '</div>';
-            html += '<div><strong>Municipality:</strong> ' + (b.municipality || '-') + '</div>';
-            html += '<div><strong>Province:</strong> ' + (b.province || '-') + '</div>';
-            html += '<div><strong>Building year:</strong> ' + (b.building_year || '-') + '</div>';
-            html += '</div>';
-            if (b.purpose) html += '<div style="margin-top:0.5rem;"><strong>Purpose:</strong> ' + b.purpose + '</div>';
-            html += '</div>';
+            html += '<div><strong>Address:</strong> ' + esc(b.street || '') + ' ' + esc(b.number || '') + (b.number_addition ? '-' + esc(b.number_addition) : '') + '</div>';
+            html += '<div><strong>Zipcode:</strong> ' + esc(b.zipcode || '-') + '</div>';
+            html += '<div><strong>Town:</strong> ' + esc(b.town || '-') + '</div>';
+            html += '<div><strong>Municipality:</strong> ' + esc(b.municipality || '-') + '</div>';
+            html += '<div><strong>Province:</strong> ' + esc(b.province || '-') + '</div>';
+            html += '<div><strong>Building year:</strong> ' + esc(b.building_year || '-') + '</div>';
+            html += '<div><strong>Surface:</strong> ' + esc(b.surface ? b.surface + ' m²' : '-') + '</div>';
+            html += '<div><strong>Purpose:</strong> ' + esc(b.purpose || '-') + '</div>';
+            html += '<div><strong>Status:</strong> ' + esc(b.status || '-') + '</div>';
+            html += '<div><strong>Type:</strong> ' + esc(b.type || '-') + '</div>';
+            html += '<div><strong>BAG ID:</strong> ' + esc(b.bag_id || '-') + '</div>';
+            if (b.coordinates) {
+                const coords = b.coordinates.replace('POINT(', '').replace(')', '');
+                const [lng, lat] = coords.split(' ');
+                html += '<div style="grid-column:1/-1;"><strong>Coordinates:</strong> ' + esc(lat) + ', ' + esc(lng) + ' (<a href="https://www.openstreetmap.org/?mlat=' + esc(lat) + '&mlon=' + esc(lng) + '&zoom=16" target="_blank">View on map</a>)</div>';
+            }
+            html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Verified';
+            btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
     }
 
     async function politiebureauLookup(btn, addrId) {
-        const card = btn.closest('[style*="border-radius:8px;padding:0.75rem"]');
+        const card = btn.closest('.address-card');
         const resultDiv = card.querySelector('.politiebureau-result');
         const origText = btn.textContent;
 
@@ -329,14 +324,14 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'No police station found') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'No police station found') + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -344,32 +339,32 @@
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + (s.name || 'Politiebureau') + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || 'Politiebureau') + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + (s.address || '-') + '</div>';
-            html += '<div><strong>Phone:</strong> ' + (s.phone || '-') + '</div>';
+            html += '<div><strong>Address:</strong> ' + esc(s.address || '-') + '</div>';
+            html += '<div><strong>Phone:</strong> ' + esc(s.phone || '-') + '</div>';
             if (s.opening_hours) {
-                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + s.opening_hours + '</div>';
+                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + esc(s.opening_hours) + '</div>';
             }
             if (s.location && s.location.latitude && s.location.longitude) {
-                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + s.location.latitude + '&mlon=' + s.location.longitude + '&zoom=16" target="_blank">📍 View on map</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">📍 View on map</a></div>';
             }
             if (s.url) {
-                html += '<div style="grid-column:1/-1;"><a href="' + s.url + '" target="_blank">🔗 Politie.nl page</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">🔗 Politie.nl page</a></div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Station found';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
     }
 
     async function phoneLookup(btn, phone) {
-        const resultDiv = btn.parentElement.querySelector('.phone-result');
+        const resultDiv = btn.closest('.contact-row').querySelector('.phone-result');
         const origText = btn.textContent;
 
         btn.disabled = true;
@@ -386,7 +381,7 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -395,32 +390,32 @@
             let html = '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
             html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Formatted:</strong> ' + (data.formatted || '-') + '</div>';
-            html += '<div><strong>Country:</strong> ' + (data.country || '-') + '</div>';
-            html += '<div><strong>Region:</strong> ' + (data.region || '-') + '</div>';
-            html += '<div><strong>Carrier:</strong> ' + (data.carrier || '-') + '</div>';
-            html += '<div><strong>Line Type:</strong> ' + (data.line_type || '-') + '</div>';
+            html += '<div><strong>Formatted:</strong> ' + esc(data.formatted || '-') + '</div>';
+            html += '<div><strong>Country:</strong> ' + esc(data.country || '-') + '</div>';
+            html += '<div><strong>Region:</strong> ' + esc(data.region || '-') + '</div>';
+            html += '<div><strong>Carrier:</strong> ' + esc(data.carrier || '-') + '</div>';
+            html += '<div><strong>Line Type:</strong> ' + esc(data.line_type || '-') + '</div>';
             if (data.services && data.services.whatsapp) {
                 const wa = data.services.whatsapp;
-                html += '<div><strong>WhatsApp:</strong> ' + (wa.exists ? '✅ <a href="' + wa.url + '" target="_blank">Chat</a>' : (wa.exists === false ? '❌ Not found' : '⚠ ' + (wa.note || 'Unknown'))) + '</div>';
+                html += '<div><strong>WhatsApp:</strong> ' + (wa.exists ? '✅ <a href="' + esc(wa.url) + '" target="_blank">Chat</a>' : (wa.exists === false ? '❌ Not found' : '⚠ ' + esc(wa.note || 'Unknown'))) + '</div>';
             }
             if (data.services && data.services.telegram) {
                 const tg = data.services.telegram;
-                html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + tg.url + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + (tg.note || 'Unknown'))) + '</div>';
+                html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + esc(tg.url) + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + esc(tg.note || 'Unknown'))) + '</div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Done';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
     }
 
     async function emailCheck(btn, email) {
-        const resultDiv = btn.parentElement.querySelector('.email-result');
+        const resultDiv = btn.closest('.contact-row').querySelector('.email-result');
         const origText = btn.textContent;
 
         btn.disabled = true;
@@ -437,7 +432,7 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -446,7 +441,7 @@
             let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
             html += '<div><strong>Valid Format:</strong> ' + (data.valid_format ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Domain:</strong> ' + (data.domain || '-') + '</div>';
+            html += '<div><strong>Domain:</strong> ' + esc(data.domain || '-') + '</div>';
             html += '<div><strong>MX Records:</strong> ' + (data.has_mx ? '✅ Found' : '❌ None') + '</div>';
             html += '<div><strong>Disposable:</strong> ' + (data.disposable ? '⚠️ Yes' : '✅ No') + '</div>';
 
@@ -454,9 +449,9 @@
                 html += '<div style="grid-column:1/-1;"><strong>🔴 Breaches (' + data.hibp_breaches.length + '):</strong></div>';
                 data.hibp_breaches.forEach(b => {
                     html += '<div style="grid-column:1/-1;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:0.4rem;margin-bottom:0.2rem;">';
-                    html += '<strong>' + b.name + '</strong> (' + (b.date || 'unknown') + ')';
+                    html += '<strong>' + esc(b.name) + '</strong> (' + esc(b.date || 'unknown') + ')';
                     if (b.data_classes && b.data_classes.length > 0) {
-                        html += '<br><span style="font-size:0.75rem;color:#666;">Data: ' + b.data_classes.join(', ') + '</span>';
+                        html += '<br><span style="font-size:0.75rem;color:#666;">Data: ' + esc(b.data_classes.join(', ')) + '</span>';
                     }
                     html += '</div>';
                 });
@@ -467,9 +462,9 @@
             if (data.emailrep) {
                 const rep = data.emailrep;
                 html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
-                html += '<strong>EmailRep:</strong> ' + (rep.reputation || 'unknown') + ' | ';
+                html += '<strong>EmailRep:</strong> ' + esc(rep.reputation || 'unknown') + ' | ';
                 html += 'Suspicious: ' + (rep.suspicious ? '⚠️ Yes' : '✅ No') + ' | ';
-                html += 'Details: ' + (rep.details ? rep.details.join(', ') : '-');
+                html += 'Details: ' + (rep.details ? esc(rep.details.join(', ')) : '-');
                 html += '</div>';
             }
 
@@ -478,7 +473,7 @@
                 html += '<strong>🔍 Investigate further:</strong> ';
                 data.search_links.forEach(function(link, i) {
                     if (i > 0) html += ' | ';
-                    html += '<a href="' + link.url + '" target="_blank" style="color:#2563eb;">' + link.label + '</a>';
+                    html += '<a href="' + esc(link.url) + '" target="_blank" style="color:#2563eb;">' + esc(link.label) + '</a>';
                 });
                 html += '</div>';
             }
@@ -488,7 +483,7 @@
             btn.textContent = '✅ Done';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -524,14 +519,14 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'No police station found') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'No police station found') + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -539,30 +534,28 @@
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + (s.name || 'Politiebureau') + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || 'Politiebureau') + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + (s.address || '-') + '</div>';
-            html += '<div><strong>Phone:</strong> ' + (s.phone || '-') + '</div>';
+            html += '<div><strong>Address:</strong> ' + esc(s.address || '-') + '</div>';
+            html += '<div><strong>Phone:</strong> ' + esc(s.phone || '-') + '</div>';
             if (s.opening_hours) {
-                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + s.opening_hours + '</div>';
+                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + esc(s.opening_hours) + '</div>';
             }
             if (s.location && s.location.latitude && s.location.longitude) {
-                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + s.location.latitude + '&mlon=' + s.location.longitude + '&zoom=16" target="_blank">📍 View on map</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">📍 View on map</a></div>';
             }
             if (s.url) {
-                html += '<div style="grid-column:1/-1;"><a href="' + s.url + '" target="_blank">🔗 Politie.nl page</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">🔗 Politie.nl page</a></div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Station found';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
     }
     </script>
-    </div>
-</body>
-</html>
+{% endblock %}

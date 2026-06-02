@@ -22,11 +22,14 @@ def _get_cache() -> FileSystemCache:
         with _cache_lock:
             if _cache is None:
                 import os
+
                 cache_dir = os.environ.get(
-                    'OSINT_CACHE_DIR',
-                    os.path.join(os.path.dirname(__file__), '..', 'osint_cache')
+                    "OSINT_CACHE_DIR",
+                    os.path.join(os.path.dirname(__file__), "..", "osint_cache"),
                 )
-                _cache = FileSystemCache(cache_dir, threshold=1000, default_timeout=_default_timeout)
+                _cache = FileSystemCache(
+                    cache_dir, threshold=1000, default_timeout=_default_timeout
+                )
     return _cache
 
 
@@ -72,9 +75,12 @@ def get_status() -> dict:
     try:
         cache = _get_cache()
         return {
-            'type': 'filesystem',
-            'directory': cache._cache_dir if hasattr(cache, '_cache_dir') else 'unknown',
-            'default_timeout': _default_timeout,
+            "type": "filesystem",
+            "directory": cache._cache_dir
+            if hasattr(cache, "_cache_dir")
+            else "unknown",
+            "default_timeout": _default_timeout,
         }
-    except Exception as e:
-        return {'error': str(e)}
+    except Exception:
+        logger.exception("Cache get_status failed")
+        return {"error": "Internal server error"}

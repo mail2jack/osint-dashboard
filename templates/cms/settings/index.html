@@ -154,9 +154,9 @@
     transform: translateY(0);
 }
 
-.toast.success { background: #059669; }
-.toast.error { background: #dc2626; }
-.toast.warning { background: #f59e0b; }
+.toast.success { background: var(--success-bg); }
+.toast.error { background: var(--danger-bg); }
+.toast.warning { background: var(--warning-bg); }
 
 @media (max-width: 768px) {
     .settings-container {
@@ -192,6 +192,22 @@
         <a href="{{ url_for('cms.list_sessions') }}" class="category-item">
             <span class="icon">🔐</span>
             <span>Sessions</span>
+        </a>
+        <a href="{{ url_for('cms.login_history') }}" class="category-item">
+            <span class="icon">📋</span>
+            <span>Login History</span>
+        </a>
+        <a href="{{ url_for('cms.read_audit_dashboard') }}" class="category-item">
+            <span class="icon">📖</span>
+            <span>Read Audit</span>
+        </a>
+        <a href="{{ url_for('cms.manage_api_keys') }}" class="category-item">
+            <span class="icon">🔑</span>
+            <span>API Keys</span>
+        </a>
+        <a href="{{ url_for('cms.statistics') }}" class="category-item">
+            <span class="icon">📊</span>
+            <span>Statistieken</span>
         </a>
     </div>
     
@@ -314,10 +330,10 @@
 
 <div id="toast" class="toast"></div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 let hasChanges = false;
 
-function togglePassword(id) {
+function togglePassword(btn, id) {
     const input = document.getElementById(id);
     if (input.type === 'password') {
         input.type = 'text';
@@ -423,22 +439,24 @@ async function loadApiKeys() {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No API keys created yet.</td></tr>';
             return;
         }
-        tbody.innerHTML = keys.map(k => `
-            <tr>
-                <td>${k.name}</td>
-                <td><code>${k.prefix || (k.id.slice(0,8)+'...')}</code></td>
-                <td>${k.is_active ? '<span style="color: #059669;">Active</span>' : '<span style="color: #dc2626;">Revoked</span>'}</td>
-                <td>${k.created_at ? new Date(k.created_at).toLocaleString() : '-'}</td>
-                <td>${k.last_used_at ? new Date(k.last_used_at).toLocaleString() : 'Never'}</td>
-                <td>${k.created_by}</td>
-                <td>
-                    ${k.is_active ? `<button type="button" data-click="revokeApiKey" data-arg0="${k.id}" class="btn" style="background: #dc2626; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Revoke</button>` : ''}
-                    <button type="button" data-click="deleteApiKey" data-arg0="${k.id}" class="btn" style="background: #6b7280; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = keys.map(k => {
+            const createdAt = k.created_at ? esc(new Date(k.created_at).toLocaleString()) : '-';
+            const lastUsedAt = k.last_used_at ? esc(new Date(k.last_used_at).toLocaleString()) : 'Never';
+            const prefix = k.prefix || (k.id.slice(0,8)+'...');
+            const activeBadge = k.is_active ? '<span style="color: #059669;">Active</span>' : '<span style="color: #dc2626;">Revoked</span>';
+            const revokeBtn = k.is_active ? '<button type="button" data-click="revokeApiKey" data-arg0="' + esc(k.id) + '" class="btn" style="background: #dc2626; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Revoke</button>' : '';
+            const deleteBtn = '<button type="button" data-click="deleteApiKey" data-arg0="' + esc(k.id) + '" class="btn" style="background: #6b7280; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Delete</button>';
+            return '<tr>' +
+                '<td>' + esc(k.name) + '</td>' +
+                '<td><code>' + esc(prefix) + '</code></td>' +
+                '<td>' + activeBadge + '</td>' +
+                '<td>' + createdAt + '</td>' +
+                '<td>' + lastUsedAt + '</td>' +
+                '<td>' + esc(k.created_by) + '</td>' +
+                '<td>' + revokeBtn + deleteBtn + '</td></tr>';
+        }).join('');
     } catch (e) {
-        document.getElementById('apiKeysBody').innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #dc2626;">Failed to load API keys: ' + e.message + '</td></tr>';
+        document.getElementById('apiKeysBody').innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #dc2626;">Failed to load API keys: ' + esc(e.message) + '</td></tr>';
     }
 }
 
@@ -470,7 +488,7 @@ window.generateApiKey = async function() {
     }
 };
 
-window.revokeApiKey = async function(id) {
+window.revokeApiKey = async function(btn, id) {
     if (!confirm('Revoke this API key? Existing integrations using it will stop working.')) return;
     try {
         const r = await fetch('/cms/api/api-keys/' + id + '/revoke', { method: 'POST' });
@@ -486,7 +504,7 @@ window.revokeApiKey = async function(id) {
     }
 };
 
-window.deleteApiKey = async function(id) {
+window.deleteApiKey = async function(btn, id) {
     if (!confirm('Permanently delete this API key record?')) return;
     try {
         const r = await fetch('/cms/api/api-keys/' + id + '/delete', { method: 'POST' });

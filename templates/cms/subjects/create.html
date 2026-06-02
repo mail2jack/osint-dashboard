@@ -292,15 +292,15 @@
         <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)</p>
     </div>
     
-    <button type="submit" class="btn">Create Subject</button>
-    <button type="button" data-click="resetForm" class="btn" style="background:#666;margin-left:0.5rem;">Back</button>
+    <button type="submit" class="btn-cms primary">Create Subject</button>
+    <button type="button" data-click="resetForm" class="btn-cms gray" style="margin-left:0.5rem;">Back</button>
 </form>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 let selectedType = null;
 let duplicateTimeout = null;
 
-function selectType(type) {
+function selectType(btn, type) {
     selectedType = type;
     
     document.querySelectorAll('.type-card').forEach(card => card.classList.remove('selected'));
@@ -362,14 +362,14 @@ function fetchRDWData() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + data.error + '</span>';
+            statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + esc(data.error) + '</span>';
             btn.disabled = false;
             btn.textContent = '📡 Fetch RDW';
             return;
         }
         
         if (!data.found) {
-            statusDiv.innerHTML = '<span style="color: #fcd34d;">No vehicle found for: ' + kenteken + '</span>';
+            statusDiv.innerHTML = '<span style="color: #fcd34d;">No vehicle found for: ' + esc(kenteken) + '</span>';
             btn.disabled = false;
             btn.textContent = '📡 Fetch RDW';
             return;
@@ -397,12 +397,12 @@ function fetchRDWData() {
         if (data.vervaldatum_apk) document.getElementById('vervaldatum_apk').value = data.vervaldatum_apk;
         if (data.wam_verzekerd) document.getElementById('wam_verzekerd').value = data.wam_verzekerd;
         
-        statusDiv.innerHTML = '<span style="color: #86efac;">✅ Loaded: ' + data.merk + ' ' + data.handelsbenaming + '</span>';
+        statusDiv.innerHTML = '<span style="color: #86efac;">✅ Loaded: ' + esc(data.merk) + ' ' + esc(data.handelsbenaming) + '</span>';
         btn.disabled = false;
         btn.textContent = '📡 Fetch RDW';
     })
     .catch(err => {
-        statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + err.message + '</span>';
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + esc(err.message) + '</span>';
         btn.disabled = false;
         btn.textContent = '📡 Fetch RDW';
     });
@@ -433,7 +433,7 @@ function lookupVesselCreate() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + data.error + '</span>';
+            statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + esc(data.error) + '</span>';
             btn.disabled = false;
             btn.textContent = '🔍 Zoek Schip';
             return;
@@ -453,12 +453,12 @@ function lookupVesselCreate() {
         if (data.flag) document.getElementById('vessel_nationality').value = data.flag;
 
         let sources = (data.sources || []).join(', ');
-        statusDiv.innerHTML = '<span style="color: #86efac;">✅ Found: ' + data.name + ' (' + sources + ')</span>';
+        statusDiv.innerHTML = '<span style="color: #86efac;">✅ Found: ' + esc(data.name) + ' (' + esc(sources) + ')</span>';
         btn.disabled = false;
         btn.textContent = '🔍 Zoek Schip';
     })
     .catch(err => {
-        statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + err.message + '</span>';
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">Error: ' + esc(err.message) + '</span>';
         btn.disabled = false;
         btn.textContent = '🔍 Zoek Schip';
     });
@@ -510,14 +510,14 @@ function checkDuplicate() {
                 if (!alertEl) return;
                 
                 if (data.exact) {
-                    alertEl.innerHTML = `<strong>⚠️ Exact match:</strong> <a href="/cms/subjects/${data.exact.id}" target="_blank">${data.exact.name}</a> (${data.exact.type})`;
+                    alertEl.innerHTML = '<strong>⚠️ Exact match:</strong> <a href="/cms/subjects/' + esc(data.exact.id) + '" target="_blank">' + esc(data.exact.name) + '</a> (' + esc(data.exact.type) + ')';
                     alertEl.style.background = '#fee2e2';
                     alertEl.style.border = '1px solid #ef4444';
                     alertEl.style.display = 'block';
                 } else if (data.duplicates && data.duplicates.length > 0) {
                     let html = '<strong>Similar subjects found:</strong><ul style="margin:0.25rem 0 0 1rem;padding:0;">';
                     data.duplicates.forEach(d => {
-                        html += `<li><a href="/cms/subjects/${d.id}" target="_blank">${d.name}</a> (${d.type}) - ${d.similarity}% similar</li>`;
+                        html += '<li><a href="/cms/subjects/' + esc(d.id) + '" target="_blank">' + esc(d.name) + '</a> (' + esc(d.type) + ') - ' + esc(d.similarity) + '% similar</li>';
                     });
                     html += '</ul>';
                     alertEl.innerHTML = html;

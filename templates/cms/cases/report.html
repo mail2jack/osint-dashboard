@@ -12,7 +12,7 @@
                 {% if case.client %}<br>Client: {{ case.client.name }}{% endif %}
             </p>
         </div>
-        <button data-click="printReport" class="btn btn-sm" style="background:#16213e;">🖨️ Print / PDF</button>
+        <button data-click="printReport" class="btn-cms primary small">🖨️ Print / PDF</button>
     </div>
 </div>
 
@@ -36,9 +36,9 @@
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn-sm" style="background:#059669;">Filter</button>
+        <button type="submit" class="btn-cms teal small">Filter</button>
         {% if from_date or to_date or subject_filter %}
-        <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-sm" style="background:#6b7280;text-decoration:none;">Clear</a>
+        <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms gray small">Clear</a>
         {% endif %}
     </form>
 </div>
@@ -62,7 +62,7 @@
                         <div>
                             <span style="font-weight:600;color:var(--text-primary);">{{ entry.icon }} {{ entry.title }}</span>
                             {% if entry.source_type %}
-                            <span class="finding-badge" style="display:inline-block;background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.35rem;">{{ entry.source_type }}</span>
+                            <span class="badge" style="margin-left:0.35rem;">{{ entry.source_type }}</span>
                             {% endif %}
                             {% if entry.confidence %}
                             <span style="display:inline-block;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;
@@ -90,14 +90,19 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="card" style="text-align:center;padding:3rem;">
-    <p style="color:var(--text-muted);font-size:1.1rem;">Geen entries gevonden voor deze filters.</p>
-    <p style="color:var(--text-muted);font-size:0.9rem;">Voeg findings of notities toe aan deze case om het rapport te vullen.</p>
+<div class="card">
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>Geen entries gevonden voor deze filters.</p>
+        <p style="margin-top:0.5rem;">Voeg findings of notities toe aan deze case om het rapport te vullen.</p>
+    </div>
 </div>
 {% endif %}
 
-<script>
-function printReport(btn) { window.print(); }
+<script nonce="{{ csp_nonce }}">
+function printReport() {
+    window.print();
+}
 </script>
 <style>
 @media print {

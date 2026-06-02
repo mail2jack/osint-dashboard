@@ -132,11 +132,11 @@
         <input type="date" name="target_end_date" id="target_end_date" value="{{ case.target_end_date.strftime('%Y-%m-%d') if case.target_end_date else '' }}">
     </div>
     
-    <button type="submit" class="btn">Save Changes</button>
-    <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
+    <button type="submit" class="btn-cms primary">Save Changes</button>
+    <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">Cancel</a>
 </form>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const ITEM_HEIGHT = 52;
 const HEADER_HEIGHT = 32;
 const BUFFER_COUNT = 5;

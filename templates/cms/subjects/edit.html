@@ -45,7 +45,7 @@
                         Enter a license plate (kenteken) and fetch official RDW data
                     </p>
                 </div>
-                <button type="button" data-click="fetchRDWData" id="fetchRdwBtn" class="btn" style="background: #0ea5e9;">
+                <button type="button" data-click="fetchRDWData" id="fetchRdwBtn" class="btn-cms" style="background: #0ea5e9;">
                     🚗 Fetch from RDW
                 </button>
             </div>
@@ -324,10 +324,10 @@
         <label for="notes">Notes</label>
         <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)</p>
     </div>
-    <button type="submit" class="btn">Save Changes</button>
-    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn" style="background:#666;margin-left:0.5rem;">Cancel</a>
+    <button type="submit" class="btn-cms primary">Save Changes</button>
+    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">Cancel</a>
 </form>
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleTypeFields() {
     const type = document.getElementById('subject_type').value;
     document.getElementById('person-fields').style.display = type === 'person' ? 'block' : 'none';
@@ -357,14 +357,14 @@ function fetchRDWData() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+            statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
             btn.disabled = false;
             btn.textContent = '🚗 Fetch from RDW';
             return;
         }
         
         if (!data.found) {
-            statusDiv.innerHTML = '<span style="color: #f59e0b;">No vehicle found for: ' + kenteken + '</span>';
+            statusDiv.innerHTML = '<span style="color: #f59e0b;">No vehicle found for: ' + esc(kenteken) + '</span>';
             btn.disabled = false;
             btn.textContent = '🚗 Fetch from RDW';
             return;
@@ -393,12 +393,12 @@ function fetchRDWData() {
         if (data.catalogusprijs) document.getElementById('catalogusprijs').value = data.catalogusprijs;
         if (data.datum_eerste_toelating) document.getElementById('datum_eerste_toelating').value = data.datum_eerste_toelating;
         
-        statusDiv.innerHTML = '<span style="color: #16a34a;">✅ RDW data loaded for ' + data.merk + ' ' + data.handelsbenaming + '</span>';
+        statusDiv.innerHTML = '<span style="color: #16a34a;">✅ RDW data loaded for ' + esc(data.merk) + ' ' + esc(data.handelsbenaming) + '</span>';
         btn.disabled = false;
         btn.textContent = '🚗 Fetch from RDW';
     })
     .catch(err => {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+        statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
         btn.disabled = false;
         btn.textContent = '🚗 Fetch from RDW';
     });
@@ -532,7 +532,7 @@ function lookupVesselEdit() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+            statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
             btn.disabled = false;
             btn.textContent = '🔍 Zoek Schip';
             return;
@@ -551,12 +551,12 @@ function lookupVesselEdit() {
         if (data.flag) document.getElementById('vessel_nationality').value = data.flag;
 
         let sources = (data.sources || []).join(', ');
-        statusDiv.innerHTML = '<span style="color: #16a34a;">✅ Found: ' + data.name + ' (' + sources + ')</span>';
+        statusDiv.innerHTML = '<span style="color: #16a34a;">✅ Found: ' + esc(data.name) + ' (' + esc(sources) + ')</span>';
         btn.disabled = false;
         btn.textContent = '🔍 Zoek Schip';
     })
     .catch(err => {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+        statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
         btn.disabled = false;
         btn.textContent = '🔍 Zoek Schip';
     });
@@ -570,5 +570,14 @@ document.getElementById('vessel_lookup_mmsi').addEventListener('keypress', funct
 });
 
 document.addEventListener('DOMContentLoaded', toggleTypeFields);
+
+function handleEditSubmit(event) {
+    var form = document.getElementById('subjectForm');
+    if (form.checkValidity()) {
+        form.submit();
+    } else {
+        form.reportValidity();
+    }
+}
 </script>
 {% endblock %}

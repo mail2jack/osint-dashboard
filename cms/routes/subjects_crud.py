@@ -14,7 +14,7 @@ from ..validation import (
     BulkDeleteSchema,
 )
 from ..models import db, Subject, Case, Address, Contact, AuditLog
-from ..auth import roles_required
+from ..auth import roles_required, subject_access_required
 from ..encryption_utils import encryptor
 from .. import csrf
 from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/subjects/create", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator", "junior_investigator")
+@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="create_subject")
 @validate(CreateSubjectSchema)
 def create_subject() -> flask.Response:
@@ -278,7 +278,8 @@ def create_subject() -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/edit", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator", "junior_investigator")
+@subject_access_required
+@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="edit_subject")
 @validate(EditSubjectSchema)
 def edit_subject(subject_id: str) -> flask.Response:
@@ -626,6 +627,7 @@ def bulk_delete_subjects() -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/delete", methods=["POST"])
 @login_required
+@subject_access_required
 @roles_required("admin", "senior_investigator")
 def delete_subject(subject_id: str) -> flask.Response:
     """Soft-delete a subject if not linked to any case."""

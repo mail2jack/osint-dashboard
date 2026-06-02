@@ -7,8 +7,8 @@ import logging
 import signal
 
 import flask
-import httpx
 from flask import Flask, request, jsonify, render_template, redirect, url_for, g
+from flask_login import login_required
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +21,14 @@ def register_system_routes(app: Flask) -> None:
         return redirect(url_for("cms.dashboard"))
 
     @app.route("/api/version", methods=["GET"])
+    @login_required
     def get_version() -> flask.Response:
         from version import get_version_info
 
         return jsonify(get_version_info())
 
     @app.route("/api/changelog", methods=["GET"])
+    @login_required
     def get_changelog() -> flask.Response:
         from version import get_version_info
 
@@ -44,6 +46,7 @@ def register_system_routes(app: Flask) -> None:
         return jsonify({"html": "\n".join(html_parts)})
 
     @app.route("/api/config", methods=["GET"])
+    @login_required
     def get_config_api() -> flask.Response:
         from cms.models import Setting
 
@@ -69,6 +72,7 @@ def register_system_routes(app: Flask) -> None:
         return jsonify(spec)
 
     @app.route("/api/rate-limit-status", methods=["GET"])
+    @login_required
     def rate_limit_status() -> flask.Response:
         from cms.rate_limiting import get_api_rate_limit_status, get_rate_limit_status
 
@@ -82,46 +86,23 @@ def register_system_routes(app: Flask) -> None:
     @app.route("/health")
     def health_check() -> flask.Response:
         from cms.models import Setting
-        from cms.spiderfoot_service import check_spiderfoot_health
+        from cms.health_utils import check_external_services
 
-        status = {"status": "ok", "database": "unknown", "spiderfoot": "unknown"}
-        try:
-            from cms import db
-
-            db.session.execute(db.text("SELECT 1"))
-            status["database"] = "connected"
-        except Exception as e:
-            status["database"] = f"error: {e}"
-        # Check and cache SpiderFoot health
-        try:
-            healthy, msg = check_spiderfoot_health()
-            status["spiderfoot"] = msg
-        except Exception as e:
-            status["spiderfoot"] = f"unavailable: {e}"
+        status = {"status": "ok"}
+        svc = check_external_services(quick=request.args.get("quick") == "1")
+        relabel = {"ok": "connected"}
+        database_label = relabel.get(
+            svc.get("database", ""), svc.get("database", "unknown")
+        )
+        status["database"] = database_label
+        status["spiderfoot"] = svc.get("spiderfoot", "unknown")
         # Cached SF status from last check
         status["spiderfoot_cached_ok"] = Setting.get("spiderfoot_last_ok", "never")
-        # External service checks (skipped on quick check)
-        if request.args.get("quick") != "1":
-            for svc_name, svc_url, svc_check in [
-                (
-                    "rdw",
-                    "https://opendata.rdw.nl/resource/m9d7-ebf2.json",
-                    lambda r: r.status_code in (200, 401, 403),
-                ),
-                (
-                    "kadaster",
-                    "https://geodata.nationaalgeoregister.nl/locatieserver/free",
-                    lambda r: r.status_code == 200,
-                ),
-                ("hibp", "https://haveibeenpwned.com", lambda r: r.status_code == 200),
-            ]:
-                try:
-                    r = httpx.get(svc_url, timeout=5)
-                    status[svc_name] = (
-                        "ok" if svc_check(r) else f"unexpected: {r.status_code}"
-                    )
-                except Exception as e:
-                    status[svc_name] = f"unavailable: {e}"
+        # External service checks from shared function
+        for key in ("rdw", "kadaster", "hibp", "overheid", "brave", "tor"):
+            if key in svc:
+                status[key] = svc[key]
+
         from cms.cache import get_status as cache_status
 
         status["cache"] = cache_status()
@@ -143,6 +124,19 @@ def register_system_routes(app: Flask) -> None:
     @app.errorhandler(413)
     def request_entity_too_large(e) -> flask.Response:
         return jsonify({"error": "Request too large (max 16MB)"}), 413
+
+    @app.route("/api/keep-alive", methods=["POST"])
+    def session_keep_alive() -> flask.Response:
+        """Extend the current session lifetime.
+
+        Called periodically by the client-side session timeout warning JS.
+        Returns the remaining session lifetime in seconds.
+        """
+        from flask import session
+
+        session.modified = True
+        remaining = int(app.permanent_session_lifetime.total_seconds())
+        return jsonify({"status": "ok", "remaining": remaining})
 
     @app.before_request
     def log_request_info() -> None:

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iveras-osint-v3';
+const CACHE_NAME = 'iveras-osint-v4';
 const STATIC_ASSETS = [
   '/',
   '/static/css/style.css',

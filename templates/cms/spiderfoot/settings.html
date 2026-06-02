@@ -90,111 +90,46 @@ pip3 install -r requirements.txt</pre>
     </ul>
 </div>
 
+
 <style>
-.card {
-    background: var(--bg-card);
-    padding: 1.25rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
-.form-group {
-    margin-bottom: 1.5rem;
-}
-.form-group label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-}
-.form-group input {
-    width: 100%;
-    max-width: 400px;
-    padding: 0.75rem;
-    border: 1px solid var(--border-input);
-    border-radius: 4px;
-    font-size: 1rem;
-    background: var(--bg-card);
-    color: var(--text-primary);
-}
-.help-text {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin-top: 0.25rem;
-}
-.form-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
-}
-.status-ok, .status-error {
+.status-ok {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-}
-.status-ok {
+    padding: 0.75rem;
     background: var(--success-bg);
     color: var(--success-text);
+    border-radius: 8px;
+    font-weight: 500;
 }
 .status-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
     background: var(--danger-bg);
     color: var(--danger-text);
-}
-.status-icon {
-    font-size: 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
 }
 .server-info {
-    margin-top: 1rem;
-    padding: 1rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
     background: var(--bg-secondary);
-    border-radius: 4px;
+    border-radius: 8px;
+    font-size: 0.85rem;
 }
 .server-info p {
-    margin: 0.5rem 0;
+    margin: 0.2rem 0;
+    color: var(--text-secondary);
 }
-pre {
-    background: var(--bg-secondary);
-    padding: 1rem;
-    border-radius: 4px;
-    overflow-x: auto;
-    margin: 0.5rem 0;
-}
-.alert {
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-}
-.alert-success {
-    background: var(--success-bg);
-    color: var(--success-text);
-}
-.alert-error {
-    background: var(--danger-bg);
-    color: var(--danger-text);
-}
-.btn {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
-    background: var(--accent-primary);
-    color: white;
-    border-radius: 4px;
-    text-decoration: none;
-    font-size: 0.875rem;
-    border: none;
-    cursor: pointer;
-}
-.btn:hover {
-    background: var(--accent-hover);
-}
-.btn-secondary {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
+.status-icon {
+    font-size: 1.2rem;
+    font-weight: 700;
 }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function testConnection() {
     const form = document.getElementById('settingsForm');
     const formData = new FormData(form);

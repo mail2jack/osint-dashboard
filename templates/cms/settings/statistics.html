@@ -1,0 +1,414 @@
+{% extends "cms/base.html" %}
+{% block title %}Statistics - CMS{% endblock %}
+{% block content %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(8, minmax(100px, 1fr));
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .stat-card {
+        background: var(--bg-card);
+        padding: 0.4rem 0.3rem;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px var(--shadow);
+        border-left: 3px solid var(--accent-primary);
+        text-align: center;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .stat-card.open { border-left-color: #f59e0b; }
+    .stat-card.active { border-left-color: #3b82f6; }
+    .stat-card.suspended { border-left-color: #f97316; }
+    .stat-card.closed { border-left-color: #10b981; }
+    .stat-card h3 { 
+        color: var(--text-secondary); 
+        font-size: 0.65rem; 
+        margin-bottom: 0.25rem; 
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    .stat-card .value { 
+        font-size: 1.1rem; 
+        font-weight: bold; 
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+    .stat-card .subtitle { 
+        font-size: 0.5rem; 
+        color: var(--text-muted); 
+        margin-top: 0.1rem;
+    }
+    @media (max-width: 1200px) {
+        .stats-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+    .chart-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        height: 120px;
+        padding: 0.5rem;
+        background: var(--chart-bg, #f9fafb);
+        border-radius: 8px;
+    }
+    .chart-bar {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        height: 100%;
+    }
+    .chart-bar-fill {
+        width: 100%;
+        border-radius: 4px 4px 0 0;
+        min-height: 5px;
+        transition: height 0.3s;
+    }
+    .chart-bar-label {
+        font-size: 0.65rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+        text-align: center;
+    }
+    .chart-bar-value {
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    .priority-case {
+        padding: 0.75rem;
+        background: var(--warning-bg, #fef3c7);
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .priority-case a { color: var(--accent-primary); font-weight: 500; text-decoration: none; }
+    .activity-item {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        gap: 0.75rem;
+        font-size: 0.85rem;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--info-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+    .activity-content { flex: 1; }
+    .activity-user { font-weight: 600; }
+    .activity-desc { color: var(--text-secondary); }
+    .activity-time { font-size: 0.75rem; color: var(--text-muted); }
+    
+    :root {
+        --chart-bg: #f9fafb;
+        --warning-bg: #fef3c7;
+        --info-bg: #dbeafe;
+    }
+    [data-theme="dark"] {
+        --chart-bg: #1f2937;
+        --warning-bg: #78350f;
+        --info-bg: #1e3a8a;
+    }
+</style>
+
+<div class="back">
+    <a href="{{ url_for('cms.settings') }}">← Back to Settings</a>
+</div>
+
+<h1 style="margin-bottom: 1rem;">📊 Statistieken</h1>
+
+<div class="stats-grid">
+    <div class="stat-card open">
+        <h3>Open</h3>
+        <div class="value">{{ stats.open_cases }}</div>
+    </div>
+    <div class="stat-card active">
+        <h3>Active</h3>
+        <div class="value">{{ stats.active_cases }}</div>
+    </div>
+    <div class="stat-card suspended">
+        <h3>Suspended</h3>
+        <div class="value">{{ stats.suspended_cases }}</div>
+    </div>
+    <div class="stat-card closed">
+        <h3>Closed</h3>
+        <div class="value">{{ stats.closed_cases }}</div>
+        <div class="subtitle">+{{ stats.archived_cases }} archived</div>
+    </div>
+    <div class="stat-card">
+        <h3>Clients</h3>
+        <div class="value">{{ stats.total_clients }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Subjects</h3>
+        <div class="value">{{ stats.total_subjects }}</div>
+        <div class="subtitle">{{ stats.high_risk_subjects }} high risk</div>
+    </div>
+    <div class="stat-card">
+        <h3>Findings</h3>
+        <div class="value">{{ stats.total_findings }}</div>
+    </div>
+    <div class="stat-card spiderfoot">
+        <h3>🔍 Scans</h3>
+        <div class="value">{{ sf_total }}</div>
+        {% if sf_health == 'ok' %}
+        <div class="subtitle" style="color:#16a34a;">✓ {{ sf_running }} running · {{ sf_completed }} done</div>
+        {% else %}
+        <div class="subtitle" style="color:#dc2626;">⚠️ SF unreachable</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="quick-filters" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+    <a href="{{ url_for('cms.cases', assigned='me', status='open') }}" class="quick-filter-btn" style="background: var(--badge-open); color: var(--badge-open-text); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+        My Open ({{ my_open_cases }})
+    </a>
+    <a href="{{ url_for('cms.cases', assigned='me', status='active') }}" class="quick-filter-btn" style="background: var(--badge-active); color: var(--badge-active-text); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+        My Active ({{ my_active_cases }})
+    </a>
+    <a href="{{ url_for('cms.cases', priority='critical,high') }}" class="quick-filter-btn" style="background: var(--danger-bg); color: var(--danger-text); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+        Priority Cases
+    </a>
+    <a href="{{ url_for('cms.cases', client='') }}" class="quick-filter-btn" style="background: var(--bg-secondary); color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500;">
+        All Cases ({{ stats.open_cases + stats.active_cases + stats.suspended_cases }})
+    </a>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <h2>Cases by Status</h2>
+        <div class="chart-row">
+            {% set max_status = status_values|max if status_values else 1 %}
+            {% for i in range(status_values|length) %}
+            <div class="chart-bar">
+                <div class="chart-bar-value">{{ status_values[i] }}</div>
+                <div class="chart-bar-fill" style="height: {% if max_status > 0 %}{{ (status_values[i] / max_status * 100)|round }}%{% else %}0{% endif %}; background: {% if status_labels[i] == 'Open' %}#f59e0b{% elif status_labels[i] == 'Active' %}#3b82f6{% elif status_labels[i] == 'Suspended' %}#f97316{% elif status_labels[i] == 'Closed' %}#10b981{% else %}#6b7280{% endif %};"></div>
+                <div class="chart-bar-label">{{ status_labels[i] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Cases by Priority</h2>
+        <div class="chart-row">
+            {% set max_priority = priority_data.values()|max if priority_data.values()|list else 1 %}
+            {% set priority_colors = {'critical': '#dc2626', 'high': '#f97316', 'medium': '#f59e0b', 'low': '#10b981'} %}
+            {% for label, value in priority_data.items() %}
+            <div class="chart-bar">
+                <div class="chart-bar-value">{{ value }}</div>
+                <div class="chart-bar-fill" style="height: {% if max_priority > 0 %}{{ (value / max_priority * 100)|round }}%{% else %}0{% endif %}; background: {{ priority_colors[label] }};"></div>
+                <div class="chart-bar-label">{{ label|capitalize }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <h2>Cases by Criminal Code</h2>
+        {% if case_type_labels %}
+        <div class="chart-row" style="height: 150px;">
+            {% set max_type = case_type_values|max if case_type_values else 1 %}
+            {% set colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#84cc16', '#a855f7', '#14b8a6'] %}
+            {% for i in range(case_type_labels|length) %}
+            <div class="chart-bar">
+                <div class="chart-bar-value">{{ case_type_values[i] }}</div>
+                <div class="chart-bar-fill" style="height: {% if max_type > 0 %}{{ (case_type_values[i] / max_type * 100)|round }}%{% else %}0{% endif %}; background: {{ colors[loop.index0 % colors|length] }};"></div>
+                <div class="chart-bar-label" title="{{ case_type_labels[i] }}">{{ case_type_labels[i][:6] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-secondary);">Top {{ case_type_labels|length }} crime types</div>
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center;">No criminal code data</p>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <h2>Lead Investigator Workload</h2>
+        {% if investigator_names %}
+        <div class="chart-row" style="height: 150px;">
+            {% set max_inv = investigator_counts|max if investigator_counts else 1 %}
+            {% set colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'] %}
+            {% for i in range(investigator_names|length) %}
+            <div class="chart-bar">
+                <div class="chart-bar-value">{{ investigator_counts[i] }}</div>
+                <div class="chart-bar-fill" style="height: {% if max_inv > 0 %}{{ (investigator_counts[i] / max_inv * 100)|round }}%{% else %}0{% endif %}; background: {{ colors[loop.index0 % colors|length] }};"></div>
+                <div class="chart-bar-label" title="{{ investigator_names[i] }}">{{ investigator_names[i][:8] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-secondary);">Active cases per investigator</div>
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center;">No lead investigators assigned</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <h2>My Active Cases</h2>
+        {% if my_cases %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Case</th>
+                    <th>Priority</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for case in my_cases[:5] %}
+                <tr>
+                    <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a> {{ case.title[:25] }}{% if case.title|length > 25 %}...{% endif %}</td>
+                    <td><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></td>
+                    <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ case.updated_at.strftime('%m/%d') if case.updated_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: var(--text-secondary);">No active cases assigned</p>
+        {% endif %}
+    </div>
+    
+    <div class="card">
+        <h2>Priority Cases</h2>
+        {% if priority_cases %}
+        {% for case in priority_cases %}
+        <div class="priority-case {% if case.priority == 'critical' %}critical{% endif %}">
+            <div>
+                <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a>
+                <span style="color: var(--text-secondary); margin-left: 0.5rem;">{{ case.title[:30] }}{% if case.title|length > 30 %}...{% endif %}</span>
+            </div>
+            <span class="badge badge-{{ case.priority }}">{{ case.priority }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p style="color: var(--text-secondary);">No critical/high priority cases</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <h2 style="display: flex; justify-content: space-between; align-items: center;">
+            <span>{% if overdue_reminders %}⚠️{% else %}⏰{% endif %} Reminders</span>
+            <a href="{{ url_for('cms.reminders') }}" style="font-size: 0.8rem; color: var(--link-color);">View All →</a>
+        </h2>
+        {% if overdue_reminders or upcoming_reminders %}
+        {% for reminder in overdue_reminders[:5] %}
+        <div style="padding: 0.5rem; background: var(--danger-bg, #fee2e2); border-radius: 6px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong style="color: var(--danger-text, #dc2626);">{{ reminder.title[:40] }}{% if reminder.title|length > 40 %}...{% endif %}</strong>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                    Overdue: {{ reminder.reminder_date.strftime('%m/%d %H:%M') if reminder.reminder_date else '' }}
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
+            </form>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p style="color: var(--text-secondary);">No pending reminders</p>
+        {% endif %}
+        <a href="{{ url_for('cms.create_reminder') }}" class="btn" style="margin-top: 0.5rem; font-size: 0.85rem; padding: 0.5rem 1rem;">+ New Reminder</a>
+    </div>
+
+    <div class="card">
+        <h2>Subject Types</h2>
+        {% if subject_type_labels %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 0.5rem;">
+            {% set colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'] %}
+            {% for label in subject_type_labels %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
+                <div style="width: 12px; height: 12px; border-radius: 2px; background: {{ colors[loop.index0 % colors|length] }};"></div>
+                <span>{{ label }}: {{ subject_type_values[loop.index0] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center;">No subject data</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <h2>🔍 SpiderFoot Scans</h2>
+        {% if sf_total > 0 %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #10b981;"></div>
+                <span>Completed: {{ sf_completed }}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></div>
+                <span>Running: {{ sf_running }}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div>
+                <span>Failed: {{ sf_failed }}</span>
+            </div>
+            {% if sf_last_scan_time %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px; width: 100%;">
+                <span>Last scan: {{ sf_last_scan_time[:10] }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-secondary); text-align: center;">No scans yet</p>
+        {% endif %}
+        <div style="margin-top: 0.5rem; text-align: center;">
+            <a href="{{ url_for('cms.spiderfoot_index') }}" class="btn btn-sm">View All Scans</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Recent Activity</h2>
+        {% if recent_activity %}
+        <div style="max-height: 300px; overflow-y: auto;">
+            {% for log in recent_activity[:15] %}
+            <div class="activity-item">
+                <div class="activity-icon">{% if log.action == 'create' %}➕{% elif log.action == 'update' %}✏️{% elif log.action == 'delete' %}🗑️{% elif log.action == 'login' %}🔑{% else %}📝{% endif %}</div>
+                <div class="activity-content">
+                    <div><span class="activity-user">{{ log.user_name or 'System' }}</span> <span class="activity-desc">{{ log.description or log.action }}</span></div>
+                    <div class="activity-time">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp else '' }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-secondary);">No recent activity</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

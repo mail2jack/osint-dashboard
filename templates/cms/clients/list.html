@@ -6,8 +6,8 @@
 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 1rem;">
     <h1 style="margin: 0;">Clients</h1>
     <div style="display: flex; gap: 0.5rem;">
-        <a href="{{ url_for('cms.export_clients', format='csv') }}" class="btn" style="background: #059669;">📥 Export</a>
-        <a href="{{ url_for('cms.create_client') }}" class="btn">+ New Client</a>
+        <a href="{{ url_for('cms.export_clients', format='csv') }}" class="btn-cms teal">📥 Export</a>
+        <a href="{{ url_for('cms.create_client') }}" class="btn-cms primary">+ New Client</a>
     </div>
 </div>
 
@@ -19,14 +19,14 @@
             <input type="checkbox" name="show_archived" value="1" {% if show_archived %}checked{% endif %} data-change="submitParentForm">
             Toon gearchiveerde
         </label>
-        <button type="submit" class="btn">Filter</button>
+        <button type="submit" class="btn-cms primary">Filter</button>
         {% if search or show_archived %}
-        <a href="{{ url_for('cms.clients') }}" class="btn" style="background: #888;">Clear</a>
+        <a href="{{ url_for('cms.clients') }}" class="btn-cms gray">Clear</a>
         {% endif %}
     </form>
     
     {% if clients %}
-    <table>
+    <table class="data-table">
         <thead>
             <tr>
                 <th>
@@ -51,7 +51,7 @@
         <tbody>
             {% for client in clients %}
             <tr>
-                <td><strong>{{ client.name }}</strong>{% if not client.is_active %} <span style="background:#6b7280;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">Gearchiveerd</span>{% endif %}</td>
+                <td><strong>{{ client.name }}</strong>{% if not client.is_active %} <span class="badge" style="background:#6b7280;color:white;">Gearchiveerd</span>{% endif %}</td>
                 <td>{{ client.contact_person if client.contact_person else '-' }}</td>
                 <td>
                     {% if client.address_street or client.address_city %}
@@ -69,17 +69,17 @@
         </tbody>
     </table>
     {% else %}
-    <p>No clients found.</p>
+    <div class="empty-state"><div class="icon">📭</div><p>No clients found.</p></div>
     {% endif %}
     
     {% if pagination.pages > 1 %}
     <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
         {% if pagination.has_prev %}
-        <a href="{{ url_for('cms.clients', page=pagination.prev_num, sort=sort, order=order, search=search, show_archived='1' if show_archived else '') }}" class="btn" style="padding: 0.3rem 0.8rem;">Previous</a>
+        <a href="{{ url_for('cms.clients', page=pagination.prev_num, sort=sort, order=order, search=search, show_archived='1' if show_archived else '') }}" class="btn-cms small">Previous</a>
         {% endif %}
         <span style="padding: 0.3rem 0.8rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
         {% if pagination.has_next %}
-        <a href="{{ url_for('cms.clients', page=pagination.next_num, sort=sort, order=order, search=search, show_archived='1' if show_archived else '') }}" class="btn" style="padding: 0.3rem 0.8rem;">Next</a>
+        <a href="{{ url_for('cms.clients', page=pagination.next_num, sort=sort, order=order, search=search, show_archived='1' if show_archived else '') }}" class="btn-cms small">Next</a>
         {% endif %}
     </div>
     {% endif %}

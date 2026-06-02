@@ -66,14 +66,14 @@
 
         <a href="{{ url_for('cms.dashboard') }}" class="btn" id="continueBtn">Done — go to dashboard</a>
         {% if auto_close %}
-        <script>
+        <script nonce="{{ csp_nonce }}">
             document.getElementById('continueBtn').textContent = '✅ 2FA active — redirecting...';
             setTimeout(function() { window.location.href = '{{ url_for("cms.dashboard") }}'; }, 4000);
         </script>
         {% endif %}
     </div>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
         const codes = {{ codes | tojson }};
 
         function copyCodes() {

@@ -2,29 +2,37 @@ import logging
 
 import flask
 from flask import request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy import or_
 
 from . import cms_bp
 from .. import csrf
-from ..models import Subject, Case, Finding
+from ..models import db, Subject, Case, Finding, case_subjects
 from ..validation import validate, FTSSearchSchema
 from ..api_key_auth import api_key_required
+from ..auth import get_accessible_case_ids
 
 logger = logging.getLogger(__name__)
 
 
 def _fts_query(model, columns, query: str, limit: int = 20) -> list:
     """Cross-database full-text search using ILIKE (works on PostgreSQL + SQLite)."""
-    conditions = [col.ilike(f'%{query}%') for col in columns if col is not None]
+    conditions = [col.ilike(f"%{query}%") for col in columns if col is not None]
     if not conditions:
         return []
-    return model.query.filter(or_(*conditions)).order_by(
-        model.updated_at.desc() if hasattr(model, 'updated_at') else model.created_at.desc()
-    ).limit(limit).all()
+    return (
+        model.query.filter(or_(*conditions))
+        .order_by(
+            model.updated_at.desc()
+            if hasattr(model, "updated_at")
+            else model.created_at.desc()
+        )
+        .limit(limit)
+        .all()
+    )
 
 
-@cms_bp.route('/api/search/fts', methods=['POST'])
+@cms_bp.route("/api/search/fts", methods=["POST"])
 @csrf.exempt
 @api_key_required
 @login_required
@@ -32,43 +40,82 @@ def _fts_query(model, columns, query: str, limit: int = 20) -> list:
 def full_text_search() -> flask.Response:
     """Full-text search across subjects, cases, and findings."""
     data = request.validated_data
-    query = data.get('query', '').strip()
-    scope = data.get('scope', 'all')
-    limit = min(int(data.get('limit', 20)), 100)
+    query = data.get("query", "").strip()
+    scope = data.get("scope", "all")
+    limit = min(int(data.get("limit", 20)), 100)
 
     if not query or len(query) < 2:
-        return jsonify({'error': 'Query must be at least 2 characters'}), 400
+        return jsonify({"error": "Query must be at least 2 characters"}), 400
 
+    accessible_ids = set(get_accessible_case_ids(current_user))
     results = {}
 
-    if scope in ('all', 'subjects'):
-        subjects = _fts_query(Subject, [
-            Subject.name,
-            Subject.email,
-            Subject.phone,
-            Subject.identification_number,
-            Subject.license_plate,
-            Subject.notes,
-        ], query, limit)
-        results['subjects'] = [s.to_dict() for s in subjects]
+    if scope in ("all", "subjects"):
+        subjects = _fts_query(
+            Subject,
+            [
+                Subject.name,
+                Subject.email,
+                Subject.phone,
+                Subject.identification_number,
+                Subject.license_plate,
+                Subject.notes,
+            ],
+            query,
+            limit,
+        )
+        if current_user.is_admin:
+            filtered_subjects = subjects
+        else:
+            filtered_subjects = [
+                s
+                for s in subjects
+                if any(
+                    row[0] in accessible_ids
+                    for row in db.session.query(case_subjects.c.case_id)
+                    .filter(case_subjects.c.subject_id == s.id)
+                    .all()
+                )
+            ]
+        results["subjects"] = [s.to_dict() for s in filtered_subjects]
 
-    if scope in ('all', 'cases'):
-        cases = _fts_query(Case, [
-            Case.title,
-            Case.description,
-            Case.case_number,
-        ], query, limit)
-        results['cases'] = [c.to_dict() for c in cases]
+    if scope in ("all", "cases"):
+        cases = _fts_query(
+            Case,
+            [
+                Case.title,
+                Case.description,
+                Case.case_number,
+            ],
+            query,
+            limit,
+        )
+        filtered_cases = (
+            [c for c in cases if c.id in accessible_ids]
+            if not current_user.is_admin
+            else cases
+        )
+        results["cases"] = [c.to_dict() for c in filtered_cases]
 
-    if scope in ('all', 'findings'):
-        findings = _fts_query(Finding, [
-            Finding.title,
-            Finding.content,
-            Finding.source_url,
-        ], query, limit)
-        results['findings'] = [f.to_dict() for f in findings]
+    if scope in ("all", "findings"):
+        findings = _fts_query(
+            Finding,
+            [
+                Finding.title,
+                Finding.content,
+                Finding.source_url,
+            ],
+            query,
+            limit,
+        )
+        filtered_findings = (
+            [f for f in findings if f.case_id in accessible_ids]
+            if not current_user.is_admin
+            else findings
+        )
+        results["findings"] = [f.to_dict() for f in filtered_findings]
 
-    results['query'] = query
-    results['scope'] = scope
-    results['total'] = sum(len(v) for k, v in results.items() if isinstance(v, list))
+    results["query"] = query
+    results["scope"] = scope
+    results["total"] = sum(len(v) for k, v in results.items() if isinstance(v, list))
     return jsonify(results), 200

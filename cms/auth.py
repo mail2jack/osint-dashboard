@@ -35,6 +35,7 @@ from flask import (
     session,
     current_app,
     abort,
+    g,
 )
 from flask_login import (
     LoginManager,
@@ -44,9 +45,9 @@ from flask_login import (
     current_user,
 )
 
-from .models import db, User, ApiKey, AuditLog, Case
+from .models import db, User, ApiKey, AuditLog, Case, Subject
 from .validation import validate
-from .rate_limiting import is_rate_limited, set_rate_limited
+from .rate_limiting import is_rate_limited, rate_limit, rate_limit_after_n
 from .notifications import (
     notify_login_failed,
     notify_login_success,
@@ -60,6 +61,7 @@ from .validation import (
     EditUserSchema,
     ChangePasswordSchema,
 )
+from .geo_utils import log_login_attempt
 
 
 logger = logging.getLogger(__name__)
@@ -94,6 +96,10 @@ def load_user_from_request(request: flask.Request) -> Optional[User]:
     key_record.last_used_at = datetime.now(timezone.utc)
     db.session.commit()
     user = db.session.get(User, key_record.user_id)
+    if user:
+        # Store API key scopes in flask.g for scope checking
+        g.api_key_scopes = key_record.scopes or ["read"]
+        g.authenticated_via_api_key = True
     return user
 
 
@@ -183,7 +189,48 @@ def senior_required(f: Callable) -> Callable:
 
 def investigator_required(f: Callable) -> Callable:
     """Decorator for routes requiring any investigator role."""
-    return roles_required("admin", "senior_investigator", "junior_investigator")(f)
+    return roles_required(
+        "admin", "senior_investigator", "investigator", "junior_investigator"
+    )(f)
+
+
+def require_scope(*scopes: str) -> Callable:
+    """
+    Decorator for API routes that require specific API key scopes.
+
+    Works with both session-based auth (full access) and API-key auth (scope-checked).
+    Session-authenticated users bypass scope checks.
+
+    Usage:
+        @require_scope('read')
+        @require_scope('read', 'write')
+    """
+
+    def decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return unauthorized()
+
+            # Session-authenticated users have full access
+            if not getattr(g, "authenticated_via_api_key", False):
+                return f(*args, **kwargs)
+
+            # API-key authenticated: check scopes
+            key_scopes = set(getattr(g, "api_key_scopes", ["read"]))
+            if not any(s in key_scopes for s in scopes):
+                return jsonify(
+                    {
+                        "error": "Insufficient API key scope. Required one of: "
+                        + ", ".join(scopes)
+                    }
+                ), 403
+
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
 
 
 def can_export(f: Callable) -> Callable:
@@ -328,10 +375,10 @@ def case_edit_required(f: Callable) -> Callable:
             flash("This case is closed and cannot be edited.", "warning")
             return redirect(url_for("cms.view_case", case_id=case_id))
 
-        # Junior investigators can only add findings (already handled above)
-        if current_user.role == "junior_investigator":
+        # Junior investigators and investigators can only add findings
+        if current_user.role in ("junior_investigator", "investigator"):
             logger.warning(
-                f"Edit denied: Junior investigator {current_user.username} attempted "
+                f"Edit denied: {current_user.role} {current_user.username} attempted "
                 f"to edit case {case_id}"
             )
 
@@ -349,6 +396,114 @@ def case_edit_required(f: Callable) -> Callable:
         return f(*args, **kwargs)
 
     return decorated_function
+
+
+def subject_access_required(f: Callable) -> Callable:
+    """
+    Decorator to check subject-level access.
+
+    Users can only access subjects linked to cases they have access to.
+    Admins bypass this check.
+    """
+
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return unauthorized()
+
+        subject_id = kwargs.get("subject_id")
+        if not subject_id:
+            return f(*args, **kwargs)
+
+        if current_user.is_admin:
+            return f(*args, **kwargs)
+
+        subject = db.session.get(Subject, subject_id)
+        if not subject:
+            return f(*args, **kwargs)
+
+        from .models import case_subjects
+
+        linked_case_ids = [
+            row.case_id
+            for row in db.session.query(case_subjects.c.case_id)
+            .filter(case_subjects.c.subject_id == subject_id)
+            .all()
+        ]
+
+        if not linked_case_ids:
+            if request.is_json:
+                return jsonify({"error": "No access to this subject"}), 403
+            flash("You do not have access to this subject.", "warning")
+            return redirect(url_for("cms.subjects"))
+
+        has_access = False
+        for cid in linked_case_ids:
+            case = db.session.get(Case, cid)
+            if case and current_user.can_access_case(case):
+                has_access = True
+                break
+
+        if not has_access:
+            AuditLog.log(
+                user_id=current_user.id,
+                action="access_denied",
+                entity_type="subject",
+                entity_id=subject_id,
+                ip_address=request.remote_addr,
+                description="Subject access denied: no case access",
+            )
+            db.session.commit()
+            if request.is_json:
+                return jsonify({"error": "No access to this subject"}), 403
+            flash("You do not have access to this subject.", "warning")
+            return redirect(url_for("cms.subjects"))
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def audit_read(entity_type: str) -> Callable:
+    """
+    Decorator to automatically log read/view actions to audit trail.
+
+    Usage:
+        @audit_read('subject')
+        def view_subject(subject_id):
+            ...
+
+    Args:
+        entity_type: The type of entity being viewed
+    """
+
+    def decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
+        def decorated_function(*args, **kwargs):
+            response = f(*args, **kwargs)
+
+            if current_user.is_authenticated:
+                entity_id = None
+                for key in ("subject_id", "case_id", "client_id", "user_id"):
+                    if key in kwargs:
+                        entity_id = kwargs[key]
+                        break
+
+                AuditLog.log(
+                    user_id=current_user.id,
+                    action="read",
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    ip_address=request.remote_addr,
+                    description=f"Viewed {entity_type}: {entity_id}",
+                )
+                db.session.commit()
+
+            return response
+
+        return decorated_function
+
+    return decorator
 
 
 def audit_log(
@@ -444,10 +599,13 @@ def login() -> flask.Response:
         if (
             user
             and user.locked_until
-            and user.locked_until > datetime.now(timezone.utc)
+            and user.locked_until > datetime.now(timezone.utc).replace(tzinfo=None)
         ):
             remaining = int(
-                (user.locked_until - datetime.now(timezone.utc)).total_seconds() / 60
+                (
+                    user.locked_until - datetime.now(timezone.utc).replace(tzinfo=None)
+                ).total_seconds()
+                / 60
             )
             flash(
                 f"Account locked due to too many failed attempts. Try again in {remaining} minutes.",
@@ -507,8 +665,17 @@ def login() -> flask.Response:
         # Notify login failed
         notify_login_failed(username, request.remote_addr)
 
-        # Set IP rate limit on failed login
-        set_rate_limited(rate_key, retry_after=60)
+        # Log failed login attempt (if user exists)
+        if user:
+            log_login_attempt(
+                user_id=user.id,
+                ip_address=request.remote_addr or "",
+                is_success=False,
+                user_agent=request.user_agent.string or "",
+            )
+
+        # IP rate limit on failed login (kicks in after 3 attempts, 15s wait)
+        rate_limit_after_n(rate_key, max_attempts=3, retry_after=15)
 
         flash("Invalid username or password.", "danger")
 
@@ -545,6 +712,11 @@ def set_password(token) -> flask.Response:
         return redirect(url_for("auth.login"))
 
     if request.method == "POST":
+        rate_key = f"set_password_ip:{request.remote_addr or 'unknown'}"
+        limited, _ = is_rate_limited(rate_key)
+        if limited:
+            flash("Too many attempts. Please wait before trying again.", "danger")
+            return redirect(url_for("auth.login"))
         raw = request.get_json() if request.is_json else request.form
         try:
             validated = SetPasswordSchema(**raw)
@@ -553,8 +725,6 @@ def set_password(token) -> flask.Response:
         password = validated.password
         confirm = validated.confirm_password
 
-        if not password or len(password) < 8:
-            return jsonify({"error": "Password must be at least 8 characters"}), 400
         if password != confirm:
             return jsonify({"error": "Passwords do not match"}), 400
 
@@ -589,6 +759,12 @@ def verify_2fa() -> flask.Response:
         return redirect(url_for("auth.setup_2fa"))
 
     if request.method == "POST":
+        rate_key = f"verify_2fa_ip:{request.remote_addr or 'unknown'}"
+        limited, _ = is_rate_limited(rate_key)
+        if limited:
+            flash("Too many attempts. Please wait before trying again.", "danger")
+            return render_template("cms/2fa/verify.html")
+
         code = request.form.get("code", "").strip()
         recovery_code = request.form.get("recovery_code", "").strip()
 
@@ -609,6 +785,18 @@ def verify_2fa() -> flask.Response:
                     db.session.commit()
                     flash("Recovery code used — please set up a new device.", "info")
                     return _complete_2fa_login(user)
+
+        # 2FA IP rate limit (kicks in after 3 failed codes, 15s wait)
+        rate_limit_after_n(rate_key, max_attempts=3, retry_after=15)
+
+        # Log failed 2FA attempt
+        if user_id:
+            log_login_attempt(
+                user_id=str(user_id),
+                ip_address=request.remote_addr or "",
+                is_success=False,
+                user_agent=request.user_agent.string or "",
+            )
 
         flash("Invalid code. Please try again.", "danger")
 
@@ -634,6 +822,13 @@ def _complete_2fa_login(user) -> flask.Response:
     )
     db.session.commit()
 
+    log_login_attempt(
+        user_id=user.id,
+        ip_address=request.remote_addr or "",
+        is_success=True,
+        user_agent=request.user_agent.string or "",
+    )
+
     next_page = request.args.get("next") or session.pop("_2fa_next", None)
     if next_page and next_page.startswith("/"):
         return redirect(next_page)
@@ -658,6 +853,15 @@ def setup_2fa() -> flask.Response:
     partial_login = bool(user_id)
 
     if request.method == "POST":
+        rate_key = f"setup_2fa_ip:{request.remote_addr or 'unknown'}"
+        limited, _ = is_rate_limited(rate_key)
+        if limited:
+            flash("Too many attempts. Please wait before trying again.", "danger")
+            return render_template(
+                "cms/2fa/setup.html",
+                partial_login=partial_login,
+            )
+
         code = request.form.get("code", "").strip()
         secret = session.get("_2fa_pending_secret")
 
@@ -740,7 +944,7 @@ def reset_2fa(user_id) -> flask.Response:
     """Admin: reset 2FA for another user (forces re-setup on next login)."""
     user = db.session.get(User, user_id) or abort(404)
     user.totp_secret = None
-    user.totp_enabled = True
+    user.totp_enabled = False
     user.backup_codes = None
     db.session.commit()
 
@@ -936,6 +1140,7 @@ def generate_password_api() -> flask.Response:
 @users_bp.route("/create", methods=["GET", "POST"])
 @login_required
 @admin_required
+@rate_limit(limit=(30, 300), key_prefix="create_user")
 def create_user() -> flask.Response:
     """Create a new user (admin only). Password is auto-generated by default."""
     generated_password = None
@@ -965,7 +1170,13 @@ def create_user() -> flask.Response:
         return jsonify({"error": "Email already exists"}), 400
 
     # Validate role
-    valid_roles = ["admin", "senior_investigator", "junior_investigator", "viewer"]
+    valid_roles = [
+        "admin",
+        "senior_investigator",
+        "investigator",
+        "junior_investigator",
+        "viewer",
+    ]
     if data["role"] not in valid_roles:
         return jsonify({"error": "Invalid role"}), 400
 
@@ -1037,7 +1248,10 @@ def edit_user(user_id: str) -> flask.Response:
         try:
             validated = EditUserSchema(**raw)
         except Exception:
-            return jsonify({"error": "Validation failed"}), 400
+            logger.exception("User edit validation failed")
+            return jsonify(
+                {"error": "Validation failed", "details": "Invalid data provided"}
+            ), 400
         data = validated.model_dump(exclude_none=True)
         old_values = {}
         changes = {}
@@ -1120,6 +1334,7 @@ def deactivate_user(user_id: str) -> flask.Response:
 
 @users_bp.route("/change-password", methods=["POST"])
 @login_required
+@rate_limit(limit=(10, 300), key_prefix="change_password")
 @validate(ChangePasswordSchema)
 def change_password() -> flask.Response:
     """Self-service password change. User must provide current password."""
@@ -1127,17 +1342,11 @@ def change_password() -> flask.Response:
     new_pw = request.validated_data.get("new_password", "")
     confirm_pw = request.validated_data.get("confirm_password", "")
 
-    if not current_pw or not new_pw or not confirm_pw:
-        return jsonify({"error": "All password fields are required"}), 400
-
     if not current_user.check_password(current_pw):
         return jsonify({"error": "Current password is incorrect"}), 400
 
     if new_pw != confirm_pw:
         return jsonify({"error": "New passwords do not match"}), 400
-
-    if len(new_pw) < 8:
-        return jsonify({"error": "Password must be at least 8 characters"}), 400
 
     current_user.set_password(new_pw)
 
@@ -1170,6 +1379,48 @@ def get_client_ip() -> str:
     return request.remote_addr
 
 
+def get_accessible_case_ids(user) -> list[str]:
+    """
+    Return all case IDs the user can access.
+    Replicates can_access_case() logic but in bulk.
+    """
+    from .models import Case, case_assignments
+
+    # Admin bypass — returns all non-deleted case IDs
+    if user.is_admin:
+        return [
+            r[0]
+            for r in Case.query.with_entities(Case.id)
+            .filter(Case.is_deleted == False)
+            .all()
+        ]
+
+    # Build list of case IDs via all access patterns
+    direct = (
+        Case.query.with_entities(Case.id)
+        .filter(
+            Case.is_deleted == False,
+            db.or_(
+                Case.created_by == user.id,
+                Case.lead_investigator_id == user.id,
+                Case.assigned_to == user.id,
+            ),
+        )
+        .all()
+    )
+    direct_ids = {r[0] for r in direct}
+
+    # Via case_assignments table
+    assigned_ids = {
+        r[0]
+        for r in db.session.query(case_assignments.c.case_id)
+        .filter(case_assignments.c.user_id == user.id)
+        .all()
+    }
+
+    return list(direct_ids | assigned_ids)
+
+
 def require_api_key(f: Callable) -> Callable:
     """
     Decorator for API routes that require an API key.
@@ -1178,7 +1429,7 @@ def require_api_key(f: Callable) -> Callable:
 
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
-        api_key = request.headers.get("X-API-Key") or request.args.get("api_key")
+        api_key = request.headers.get("X-API-Key")
 
         if not api_key:
             return jsonify({"error": "API key required"}), 401

@@ -52,11 +52,11 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem;">
-            <button type="submit" class="btn">Save Changes</button>
-            <a href="{{ url_for('cms.list_templates') }}" class="btn" style="background: #666;">Cancel</a>
+            <button type="submit" class="btn-cms primary">Save Changes</button>
+            <a href="{{ url_for('cms.list_templates') }}" class="btn-cms gray">Cancel</a>
 <form method="POST" action="{{ url_for('cms.delete_template', template_id=template.id) }}" style="margin-left: auto;" data-confirm="Delete this template?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn" style="background: #dc2626;">Delete</button>
+    <button type="submit" class="btn-cms danger">Delete</button>
             </form>
         </div>
     </form>

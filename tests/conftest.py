@@ -3,21 +3,21 @@ import tempfile
 import atexit
 import pytest
 
-_db_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-atexit.register(
-    lambda: os.unlink(_db_file.name) if os.path.exists(_db_file.name) else None
-)
-os.environ["DATABASE_URL"] = f"sqlite:///{_db_file.name}"
+_tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False, delete_on_close=False)
+os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db.name}"
 os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
 os.environ["CMS_ENCRYPTION_KEY"] = "ZFnorYZ7TTJCbUd8J-NCId5SkbzkB450u8odzL65yj8="
 
-# Import the real Flask app — create_cms_module runs at import time
 from app import app as _app
 from cms.models import db, User, init_default_settings
 from sqlalchemy import inspect, text
 
+atexit.register(
+    lambda: os.unlink(_tmp_db.name) if os.path.exists(_tmp_db.name) else None
+)
 
-@pytest.fixture(scope="module")
+
+@pytest.fixture(scope="session")
 def app():
     _app.config["TESTING"] = True
     _app.config["WTF_CSRF_ENABLED"] = False
@@ -33,7 +33,10 @@ def app():
         command.upgrade(alembic_cfg, "head")
         init_default_settings()
 
-        if not User.query.filter_by(username="admin").first():
+        admin = User.query.filter_by(username="admin").first()
+        if admin:
+            admin.set_password("Test1234!")
+        else:
             admin = User(
                 username="admin",
                 email="admin@test.nl",
@@ -41,9 +44,9 @@ def app():
                 role="admin",
                 is_active=True,
             )
-            admin.set_password("test1234")
+            admin.set_password("Test1234!")
             db.session.add(admin)
-            db.session.commit()
+        db.session.commit()
 
         yield _app
 
@@ -51,6 +54,17 @@ def app():
         for table in inspect(db.engine).get_table_names():
             db.session.execute(text(f'DROP TABLE IF EXISTS "{table}"'))
         db.session.commit()
+
+
+@pytest.fixture(autouse=True)
+def _clean_db_between_tests(app):
+    """Clean all data between tests — runs before each test function."""
+    # Delete all tables EXCEPT users (keep the admin from app fixture)
+    for t in inspect(db.engine).get_table_names():
+        if t in ("alembic_version", "users"):
+            continue
+        db.session.execute(text(f'DELETE FROM "{t}"'))
+    db.session.commit()
 
 
 @pytest.fixture
@@ -63,6 +77,21 @@ def auth_client(app, client):
     with app.app_context():
         user = User.query.filter_by(username="admin").first()
         import pyotp
+
+        if user is None:
+            user = User(
+                username="admin",
+                email="admin@test.nl",
+                full_name="Admin User",
+                role="admin",
+                is_active=True,
+            )
+            user.set_password("Test1234!")
+            db.session.add(user)
+            db.session.commit()
+        else:
+            user.set_password("Test1234!")
+            db.session.commit()
 
         user.totp_secret = pyotp.random_base32()
         user.totp_enabled = True
@@ -77,5 +106,5 @@ def auth_client(app, client):
 
 
 @pytest.fixture
-def db_session(app):
+def db_session():
     return db.session

@@ -13,47 +13,49 @@ from ..validation import validate, CreateFindingSchema
 logger = logging.getLogger(__name__)
 
 
-@cms_bp.route('/findings/create', methods=['POST'])
-@cms_bp.route('/cases/<case_id>/findings/create', methods=['POST'])
+@cms_bp.route("/findings/create", methods=["POST"])
+@cms_bp.route("/cases/<case_id>/findings/create", methods=["POST"])
 @csrf.exempt
 @login_required
-@roles_required('admin', 'senior_investigator', 'junior_investigator')
+@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @validate(CreateFindingSchema)
 def create_finding() -> flask.Response:
     """Create a new finding."""
-    required = ['case_id', 'title', 'content']
+    required = ["case_id", "title", "content"]
     for field in required:
         if not request.validated_data.get(field):
-            return jsonify({'error': f'{field} is required'}), 400
+            return jsonify({"error": f"{field} is required"}), 400
 
     finding = Finding(
-        case_id=request.validated_data['case_id'],
-        subject_id=request.validated_data.get('subject_id'),
-        title=request.validated_data['title'],
-        content=request.validated_data['content'],
-        source_url=request.validated_data.get('source_url'),
-        source_type=request.validated_data.get('source_type'),
-        reliability_score=request.validated_data.get('reliability_score', 5),
-        confidence_level=request.validated_data.get('confidence_level'),
-        finding_type=request.validated_data.get('finding_type'),
-        tags=request.validated_data.get('tags'),
-        created_by=current_user.id
+        case_id=request.validated_data["case_id"],
+        subject_id=request.validated_data.get("subject_id"),
+        title=request.validated_data["title"],
+        content=request.validated_data["content"],
+        source_url=request.validated_data.get("source_url"),
+        source_type=request.validated_data.get("source_type"),
+        reliability_score=request.validated_data.get("reliability_score", 5),
+        confidence_level=request.validated_data.get("confidence_level"),
+        finding_type=request.validated_data.get("finding_type"),
+        tags=request.validated_data.get("tags"),
+        created_by=current_user.id,
     )
 
     db.session.add(finding)
 
     AuditLog.log(
         user_id=current_user.id,
-        action='create',
-        entity_type='finding',
+        action="create",
+        entity_type="finding",
         entity_id=finding.id,
         ip_address=request.remote_addr,
-        case_id=request.validated_data['case_id'],
-        description=f"Added finding: {finding.title}"
+        case_id=request.validated_data["case_id"],
+        description=f"Added finding: {finding.title}",
     )
     db.session.commit()
 
     if request.is_json:
-        return jsonify({'message': 'Finding created', 'finding': finding.to_dict()}), 201
+        return jsonify(
+            {"message": "Finding created", "finding": finding.to_dict()}
+        ), 201
 
-    return jsonify({'message': 'Finding created', 'finding': finding.to_dict()})
+    return jsonify({"message": "Finding created", "finding": finding.to_dict()})

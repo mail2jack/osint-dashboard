@@ -1,0 +1,303 @@
+{% extends "cms/base.html" %}
+
+{% block title %}API Keys - Settings{% endblock %}
+
+{% block content %}
+<style>
+.api-key-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+.api-key-header h1 { margin: 0; }
+.key-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+.key-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color);
+}
+.key-table td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.key-table tr:last-child td { border-bottom: none; }
+.key-table tr:hover td { background: var(--table-hover); }
+.key-prefix { font-family: monospace; font-size: 0.8125rem; }
+.scope-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 0.25rem;
+}
+.scope-read { background: var(--info-bg); color: var(--info-text); }
+.scope-write { background: var(--warning-bg); color: var(--warning-text); }
+.scope-admin { background: var(--danger-bg); color: var(--danger-text); }
+.badge-active {
+    display: inline-block;
+    background: #059669;
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.badge-inactive {
+    display: inline-block;
+    background: #9ca3af;
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.created-key-display {
+    background: var(--bg-card);
+    border: 2px solid #059669;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    display: none;
+}
+.created-key-display code {
+    display: block;
+    padding: 1rem;
+    background: #1e293b;
+    color: #10b981;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    word-break: break-all;
+    margin-top: 0.5rem;
+    user-select: all;
+}
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.modal-box h2 { margin-top: 0; }
+.modal-box label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+.modal-box input, .modal-box select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+.scope-checkboxes label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 1rem;
+    font-weight: normal;
+    cursor: pointer;
+}
+.scope-checkboxes input[type="checkbox"] { width: auto; margin: 0; }
+</style>
+
+<div class="back">
+    <a href="{{ url_for('cms.settings') }}">← Back to Settings</a>
+</div>
+
+<div class="api-key-header">
+    <h1>🔑 Per-User API Keys</h1>
+    <button class="btn-cms primary" data-click="showCreateModal">+ New API Key</button>
+</div>
+
+{% if keys %}
+<table class="key-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>User</th>
+            <th>Key Prefix</th>
+            <th>Scopes</th>
+            <th>Status</th>
+            <th>Last Used</th>
+            <th>Created</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for key in keys %}
+        <tr>
+            <td>{{ key.name }}</td>
+            <td>{{ key.creator.username if key.creator else '—' }}</td>
+            <td><span class="key-prefix">{{ key.key_prefix }}...</span></td>
+            <td>
+                {% for scope in (key.scopes or ['read']) %}
+                <span class="scope-badge scope-{{ scope }}">{{ scope }}</span>
+                {% endfor %}
+            </td>
+            <td>
+                {% if key.is_active %}
+                <span class="badge-active">Active</span>
+                {% else %}
+                <span class="badge-inactive">Inactive</span>
+                {% endif %}
+            </td>
+            <td style="font-size:0.8125rem;color:var(--text-secondary)">
+                {{ key.last_used_at.strftime('%Y-%m-%d %H:%M') if key.last_used_at else 'Never' }}
+            </td>
+            <td style="font-size:0.8125rem;color:var(--text-secondary)">
+                {{ key.created_at.strftime('%Y-%m-%d') if key.created_at else '—' }}
+            </td>
+            <td>
+                {% if key.is_active %}
+                <button class="btn-cms small" data-click="deactivateKey" data-arg0="{{ key.id }}">Deactivate</button>
+                {% else %}
+                <button class="btn-cms small" data-click="activateKey" data-arg0="{{ key.id }}">Activate</button>
+                {% endif %}
+                <button class="btn-cms danger small" data-click="deleteKey" data-arg0="{{ key.id }}">Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div style="text-align:center;padding:3rem;color:var(--text-secondary)">
+    <p>No API keys configured yet.</p>
+</div>
+{% endif %}
+
+<!-- Create Key Modal -->
+<div id="createModal" class="modal-overlay">
+    <div class="modal-box">
+        <h2>Create API Key</h2>
+        <label for="keyName">Key Name</label>
+        <input type="text" id="keyName" placeholder="e.g. Development">
+
+        <label for="keyUser">User</label>
+        <select id="keyUser">
+            {% for user in users %}
+            <option value="{{ user.id }}">{{ user.username }} ({{ user.role }})</option>
+            {% endfor %}
+        </select>
+
+        <label>Scopes</label>
+        <div class="scope-checkboxes">
+            {% for scope in scope_options %}
+            <label>
+                <input type="checkbox" class="scope-cb" value="{{ scope }}"
+                    {% if scope == 'read' %}checked{% endif %}>
+                {{ scope }}
+            </label>
+            {% endfor %}
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:1rem">
+            <button class="btn-cms primary" data-click="createKey">Create</button>
+            <button class="btn-cms" data-click="closeCreateModal">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Created Key Display -->
+<div id="createdKeyDisplay" class="created-key-display">
+    <strong style="color:#059669">✅ API Key Created</strong>
+    <p style="font-size:0.875rem;color:var(--text-secondary);margin:0.5rem 0">
+        Copy this key now — it will not be shown again.
+    </p>
+    <code id="createdKeyValue"></code>
+    <button class="btn-cms small" style="margin-top:0.5rem" data-click="copyCreatedKey">📋 Copy</button>
+    <button class="btn-cms small" data-click="closeCreatedKey">Close</button>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function showCreateModal(btn) {
+    document.getElementById('createModal').classList.add('show');
+}
+function closeCreateModal(btn) {
+    document.getElementById('createModal').classList.remove('show');
+}
+function closeCreatedKey(btn) {
+    document.getElementById('createdKeyDisplay').style.display = 'none';
+}
+
+function createKey(btn) {
+    const name = document.getElementById('keyName').value.trim();
+    const userId = document.getElementById('keyUser').value;
+    const scopes = Array.from(document.querySelectorAll('.scope-cb:checked')).map(cb => cb.value);
+
+    if (!name) { alert('Please enter a key name.'); return; }
+    if (!scopes.length) { alert('Select at least one scope.'); return; }
+
+    fetch('{{ url_for("cms.api_create_api_key") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ user_id: userId, name: name, scopes: scopes })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        closeCreateModal();
+        document.getElementById('createdKeyValue').textContent = data.key;
+        document.getElementById('createdKeyDisplay').style.display = 'block';
+        setTimeout(() => location.reload(), 500);
+    });
+}
+
+function deactivateKey(btn, id) {
+    if (!confirm('Deactivate this API key?')) return;
+    fetch('{{ url_for("cms.api_deactivate_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+    }).then(r => r.json()).then(() => location.reload());
+}
+
+function activateKey(btn, id) {
+    fetch('{{ url_for("cms.api_activate_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+    }).then(r => r.json()).then(() => location.reload());
+}
+
+function deleteKey(btn, id) {
+    if (!confirm('Delete this API key? This cannot be undone.')) return;
+    fetch('{{ url_for("cms.api_delete_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+    }).then(r => r.json()).then(() => location.reload());
+}
+
+function copyCreatedKey(btn) {
+    const el = document.getElementById('createdKeyValue');
+    navigator.clipboard.writeText(el.textContent).then(() => alert('Copied!'));
+}
+</script>
+{% endblock %}

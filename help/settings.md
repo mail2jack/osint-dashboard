@@ -2,6 +2,19 @@
 
 De **Settings** pagina beheert de applicatieconfiguratie. Alleen admin-gebruikers hebben toegang.
 
+## Statistieken
+
+De **📊 Statistieken** pagina (`/cms/settings/statistics`) bevat alle voormalige dashboard-widgets:
+- Cases by Status, Priority en Criminal Code (bar charts)
+- Lead Investigator Workload
+- My Active Cases & Priority Cases
+- Reminders (overdue/upcoming)
+- Subject Types
+- SpiderFoot Scans overzicht
+- Recent Activity feed
+
+Deze is bereikbaar via de Settings sidebar of via de quick links op het dashboard.
+
 ## Algemene Instellingen
 
 | Setting | Omschrijving |

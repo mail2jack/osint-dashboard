@@ -47,11 +47,11 @@
         font-weight: 600;
         text-transform: uppercase;
     }
-    .action-create { background: #dcfce7; color: #166534; }
-    .action-update { background: #dbeafe; color: #1e40af; }
-    .action-delete { background: #fee2e2; color: #dc2626; }
-    .action-login { background: #fef3c7; color: #92400e; }
-    .action-read { background: #f3f4f6; color: #374151; }
+    .action-create { background: var(--success-bg); color: var(--success-text); }
+    .action-update { background: var(--info-bg); color: var(--info-text); }
+    .action-delete { background: var(--danger-bg); color: var(--danger-text); }
+    .action-login { background: var(--warning-bg); color: var(--warning-text); }
+    .action-read { background: var(--bg-secondary); color: var(--text-secondary); }
     
     .activity-time {
         font-size: 0.85rem;
@@ -119,7 +119,7 @@
         <h1 style="margin: 0;">{{ user.full_name }}</h1>
         <span style="color: var(--text-secondary);">{{ user.role|replace('_', ' ')|title }}</span>
     </div>
-    <a href="{{ url_for('users.list_users') }}" class="btn" style="background: #666;">← Back to Users</a>
+    <a href="{{ url_for('users.list_users') }}" class="btn-cms gray">← Back to Users</a>
 </div>
 
 <div class="stats-grid">
@@ -161,7 +161,7 @@
                 <option value="comment" {% if filters.entity_type == 'comment' %}selected{% endif %}>Comment</option>
             </select>
             {% if filters.action or filters.entity_type %}
-            <a href="{{ url_for('users.user_activity', user_id=user.id) }}" class="btn" style="padding: 0.4rem 0.75rem; background: #666;">Clear</a>
+            <a href="{{ url_for('users.user_activity', user_id=user.id) }}" class="btn-cms gray small">Clear</a>
             {% endif %}
         </form>
         
@@ -190,16 +190,16 @@
         {% if pagination.pages > 1 %}
         <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
             {% if pagination.has_prev %}
-            <a href="{{ url_for('users.user_activity', user_id=user.id, page=pagination.prev_num, action=filters.action, entity_type=filters.entity_type) }}" class="btn" style="padding: 0.4rem 0.75rem;">Previous</a>
+            <a href="{{ url_for('users.user_activity', user_id=user.id, page=pagination.prev_num, action=filters.action, entity_type=filters.entity_type) }}" class="btn-cms small">Previous</a>
             {% endif %}
             <span style="padding: 0.4rem 0.75rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
             {% if pagination.has_next %}
-            <a href="{{ url_for('users.user_activity', user_id=user.id, page=pagination.next_num, action=filters.action, entity_type=filters.entity_type) }}" class="btn" style="padding: 0.4rem 0.75rem;">Next</a>
+            <a href="{{ url_for('users.user_activity', user_id=user.id, page=pagination.next_num, action=filters.action, entity_type=filters.entity_type) }}" class="btn-cms small">Next</a>
             {% endif %}
         </div>
         {% endif %}
         {% else %}
-        <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No activity found.</p>
+        <div class="empty-state"><div class="icon">📭</div><p>No activity found.</p></div>
         {% endif %}
     </div>
     

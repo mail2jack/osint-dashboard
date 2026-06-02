@@ -5,7 +5,7 @@ SpiderFoot scan management, status, results, import, and settings.
 """
 
 import logging
-from datetime import datetime as dt
+from datetime import datetime, timezone
 import flask
 from flask import request, jsonify, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
@@ -148,7 +148,7 @@ def spiderfoot_index() -> str:
                     )
         for s in recent_scans:
             if isinstance(s, dict):
-                if isinstance(s.get("created_at"), dt):
+                if isinstance(s.get("created_at"), datetime):
                     s["created_at"] = s["created_at"].strftime("%Y-%m-%d %H:%M:%S")
         recent_scans.sort(
             key=lambda s: (
@@ -390,7 +390,7 @@ def spiderfoot_scan_status(scan_id: str) -> flask.Response:
                 progress=progress,
                 created_by="system",
             )
-            scan_record.created_at = dt.utcnow()
+            scan_record.created_at = datetime.now(timezone.utc)
             db.session.add(scan_record)
         else:
             scan_record.status = status

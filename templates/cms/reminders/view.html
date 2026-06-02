@@ -14,43 +14,23 @@
         flex-shrink: 0;
     }
     .detail-value { color: var(--text-primary); }
-    
-    .priority-badge {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-    .priority-critical { background: #fee2e2; color: #dc2626; }
-    .priority-high { background: #ffedd5; color: #ea580c; }
-    .priority-medium { background: #dbeafe; color: #2563eb; }
-    .priority-low { background: #dcfce7; color: #16a34a; }
-    
-    .action-buttons {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1.5rem;
-        flex-wrap: wrap;
-    }
 </style>
 
 <div style="max-width: 700px; margin: 0 auto;">
     <div style="margin-bottom: 1rem;">
-        <a href="{{ url_for('cms.reminders') }}" style="color: var(--link-color); text-decoration: none; font-size: 0.85rem;">← Back to Reminders</a>
+        <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray small">← Back to Reminders</a>
     </div>
     
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
             <div>
                 <h2 style="margin: 0;">{{ reminder.title }}</h2>
-                <span class="priority-badge priority-{{ reminder.priority }}">{{ reminder.priority }}</span>
+                <span class="badge badge-priority-{{ reminder.priority }}">{{ reminder.priority }}</span>
                 {% if reminder.is_overdue and not reminder.is_completed %}
-                <span class="priority-badge" style="background: #dc2626; color: white;">OVERDUE</span>
+                <span class="badge" style="background: #dc2626; color: white;">OVERDUE</span>
                 {% endif %}
                 {% if reminder.is_completed %}
-                <span class="priority-badge" style="background: #d1d5db; color: #374151;">COMPLETED</span>
+                <span class="badge badge-closed">COMPLETED</span>
                 {% endif %}
             </div>
         </div>
@@ -115,21 +95,21 @@
             <span class="detail-value">{{ reminder.created_at.strftime('%Y-%m-%d %H:%M') if reminder.created_at else 'Unknown' }}</span>
         </div>
         
-        <div class="action-buttons">
+        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
             {% if not reminder.is_completed %}
 <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn" style="background: #22c55e;">✓ Mark Complete</button>
+    <button type="submit" class="btn-cms small" style="background:#22c55e;color:white;border-color:#22c55e;">✓ Mark Complete</button>
 </form>
 
 <form method="POST" action="{{ url_for('cms.snooze_reminder', reminder_id=reminder.id, minutes=30) }}" style="display: inline;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn" style="background: #f59e0b;">⏰ Snooze 30 min</button>
+    <button type="submit" class="btn-cms small" style="background:#f59e0b;color:white;border-color:#f59e0b;">⏰ Snooze 30 min</button>
 </form>
 
 <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="Delete this reminder?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn" style="background: #dc2626;">🗑️ Delete</button>
+    <button type="submit" class="btn-cms danger small">🗑️ Delete</button>
             </form>
             {% endif %}
         </div>

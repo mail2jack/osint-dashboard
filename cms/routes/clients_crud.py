@@ -9,7 +9,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..validation import validate, CreateClientSchema, EditClientSchema
 from ..models import db, Client, Case, AuditLog, Contact, Address
-from ..auth import roles_required, admin_required
+from ..auth import roles_required, admin_required, audit_read
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_clients, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/clients")
 @login_required
-@roles_required("admin", "senior_investigator", "junior_investigator")
+@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 def clients() -> str:
     """List all clients."""
     page = request.args.get("page", 1, type=int)
@@ -67,7 +67,8 @@ def clients() -> str:
 
 @cms_bp.route("/clients/<client_id>")
 @login_required
-@roles_required("admin", "senior_investigator", "junior_investigator")
+@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@audit_read("client")
 def view_client(client_id: str) -> str:
     """View client details with all associated cases."""
     client = db.session.get(Client, client_id) or abort(404)
@@ -88,16 +89,6 @@ def view_client(client_id: str) -> str:
         Case.is_deleted == False,
         Case.status.in_(["open", "active", "suspended"]),
     ).count()
-
-    AuditLog.log(
-        user_id=current_user.id,
-        action="read",
-        entity_type="client",
-        entity_id=client_id,
-        ip_address=request.remote_addr,
-        description=f"Viewed client: {client.name}",
-    )
-    db.session.commit()
 
     return render_template(
         "cms/clients/view.html",

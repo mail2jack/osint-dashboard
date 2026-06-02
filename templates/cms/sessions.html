@@ -10,7 +10,7 @@
 <div class="card" style="padding: 1.5rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <span id="sessionCount" style="font-weight: 600;"></span>
-        <button type="button" data-click="deleteAllSessions" class="btn" style="background: #dc2626;">Delete All (except mine)</button>
+        <button type="button" data-click="deleteAllSessions" class="btn-cms danger">Delete All (except mine)</button>
     </div>
 
     <table class="data-table">
@@ -29,7 +29,7 @@
     </table>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 async function loadSessions() {
     try {
         const r = await fetch('/cms/admin/sessions');
@@ -42,26 +42,26 @@ async function loadSessions() {
             return;
         }
 
-        tbody.innerHTML = d.sessions.map(s => `
-            <tr>
-                <td><code>${s.session_id.slice(0, 16)}...</code></td>
-                <td>${s.user_id || '-'}</td>
-                <td>${s.ip || '-'}</td>
-                <td>${s.is_current ? '<span style="color: #059669;">✓ Current</span>' : ''}</td>
-                <td>
-                    ${s.is_current ? '—' : `<button type="button" data-click="deleteSession" data-arg0="${s.session_id}" class="btn" style="background: #dc2626; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Revoke</button>`}
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = d.sessions.map(s => {
+            const sid = s.session_id ? s.session_id.slice(0, 16) + '...' : '-';
+            const currentBadge = s.is_current ? '<span style="color: #059669;">✓ Current</span>' : '';
+            const revokeCell = s.is_current ? '—' : '<button type="button" data-click="deleteSession" data-arg0="' + esc(s.session_id) + '" class="btn-cms danger small">Revoke</button>';
+            return '<tr>' +
+                '<td><code>' + esc(sid) + '</code></td>' +
+                '<td>' + esc(s.user_id || '-') + '</td>' +
+                '<td>' + esc(s.ip || '-') + '</td>' +
+                '<td>' + currentBadge + '</td>' +
+                '<td>' + revokeCell + '</td></tr>';
+        }).join('');
     } catch (e) {
-        document.getElementById('sessionsBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: #dc2626;">Failed to load sessions: ' + e.message + '</td></tr>';
+        document.getElementById('sessionsBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--danger-text);">Failed to load sessions: ' + esc(e.message) + '</td></tr>';
     }
 }
 
-window.deleteSession = async function(id) {
+window.deleteSession = async function(btn, id) {
     if (!confirm('Revoke this session? The user will be logged out.')) return;
     try {
-        const r = await fetch('/cms/admin/sessions/' + id + '/delete', { method: 'POST' });
+        const r = await fetch('/cms/admin/sessions/' + id + '/delete', { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token() }}'} });
         if (r.ok) {
             loadSessions();
         } else {
@@ -76,7 +76,7 @@ window.deleteSession = async function(id) {
 window.deleteAllSessions = async function() {
     if (!confirm('Revoke ALL sessions except your current one? All other users will be logged out.')) return;
     try {
-        const r = await fetch('/cms/admin/sessions/delete-all', { method: 'POST' });
+        const r = await fetch('/cms/admin/sessions/delete-all', { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token() }}'} });
         const d = await r.json();
         if (r.ok) {
             showToast('Deleted ' + d.deleted + ' sessions', 'success');

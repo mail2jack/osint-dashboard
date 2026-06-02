@@ -260,6 +260,54 @@ def set_rate_limited(site_name: str, retry_after: int = 60):
     _save_now()
 
 
+def rate_limit_after_n(
+    site_name: str,
+    max_attempts: int = 3,
+    retry_after: int = 15,
+    reset_after: int = 300,
+):
+    """Increment failure count; set rate limit only after max_attempts failures.
+
+    Counter resets if last attempt was more than ``reset_after`` seconds ago.
+    Returns the current attempt count (1-based).
+    """
+    with _platform_lock:
+        now = datetime.now()
+        current = _platform_rate_limits.get(site_name, {})
+        last_attempt = current.get("limited_at")
+        if isinstance(last_attempt, str):
+            try:
+                last_attempt = datetime.fromisoformat(last_attempt)
+            except Exception:
+                last_attempt = None
+
+        count = current.get("count", 0)
+
+        # Reset if last attempt was too long ago
+        if (
+            isinstance(last_attempt, datetime)
+            and (now - last_attempt).total_seconds() > reset_after
+        ):
+            count = 0
+
+        count += 1
+
+        if count >= max_attempts:
+            _platform_rate_limits[site_name] = {
+                "limited_at": now,
+                "reset_at": now + timedelta(seconds=retry_after),
+                "count": count,
+            }
+        else:
+            _platform_rate_limits[site_name] = {
+                "limited_at": now,
+                "count": count,
+            }
+
+    _save_now()
+    return count
+
+
 def get_rate_limit_status() -> list:
     with _platform_lock:
         now = datetime.now()

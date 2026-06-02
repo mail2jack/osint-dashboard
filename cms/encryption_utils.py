@@ -19,134 +19,161 @@ from cryptography.fernet import Fernet, InvalidToken
 
 logger = logging.getLogger(__name__)
 
+
 class EncryptionError(Exception):
     """Raised when encryption/decryption fails."""
+
     pass
 
 
 class FieldEncryptor:
     """
     Handles field-level encryption and decryption for sensitive data.
-    
+
     Usage:
         encryptor = FieldEncryptor()
         encrypted = encryptor.encrypt("sensitive data")
         decrypted = encryptor.decrypt(encrypted)
     """
-    
-    _instance: Optional['FieldEncryptor'] = None
+
+    _instance: Optional["FieldEncryptor"] = None
     _fernet: Optional[Fernet] = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     def _get_key(self) -> bytes:
         """
         Retrieve encryption key from environment variable.
         Generate a new key if not set (development only).
-        
+
         SECURITY NOTE: In production, ALWAYS set ENCRYPTION_KEY env var.
         Generate key with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
         """
-        key = os.environ.get('CMS_ENCRYPTION_KEY')
-        
+        key = os.environ.get("CMS_ENCRYPTION_KEY")
+
         if not key:
-            if os.environ.get('FLASK_ENV') == 'production':
+            key_file = os.path.join(os.path.dirname(__file__), "..", ".cms_key")
+            key_file = os.path.abspath(key_file)
+            if os.path.exists(key_file):
+                with open(key_file) as f:
+                    key = f.read().strip()
+                logger.info("Loaded CMS encryption key from .cms_key file")
+                os.environ["CMS_ENCRYPTION_KEY"] = key
+
+        if not key:
+            if os.environ.get("FLASK_ENV") == "production":
                 raise EncryptionError(
                     "CMS_ENCRYPTION_KEY environment variable not set. "
                     "This is required in production for GDPR compliance."
                 )
             # Development fallback - generate a new key (not for production!)
             key = Fernet.generate_key().decode()
-            logger.warning("Using generated encryption key. Set CMS_ENCRYPTION_KEY for production!")
-        
+            # Persist to .cms_key for dev restart survival
+            try:
+                key_file = os.path.join(os.path.dirname(__file__), "..", ".cms_key")
+                key_file = os.path.abspath(key_file)
+                with open(key_file, "w") as f:
+                    f.write(key)
+                os.chmod(key_file, 0o600)
+                logger.warning(
+                    "Generated new CMS encryption key — saved to .cms_key (chmod 600)."
+                )
+            except Exception:
+                logger.warning(
+                    "Using generated encryption key. Set CMS_ENCRYPTION_KEY for persistence!"
+                )
+
         # Ensure key is valid base64
         try:
             key_bytes = key.encode() if isinstance(key, str) else key
             base64.urlsafe_b64decode(key_bytes)
             return key_bytes
-        except Exception:
-            raise EncryptionError("Invalid encryption key format. Must be a valid Fernet key.")
-    
+        except (ValueError, TypeError) as e:
+            raise EncryptionError(
+                f"Invalid encryption key format: {e}. Must be a valid Fernet key."
+            )
+
     def _get_fernet(self) -> Fernet:
         """Get or create Fernet instance."""
         if self._fernet is None:
             self._fernet = Fernet(self._get_key())
         return self._fernet
-    
+
     def encrypt(self, data: Union[str, bytes, None]) -> Optional[str]:
         """
         Encrypt sensitive data.
-        
+
         Args:
             data: String or bytes to encrypt. None returns None.
-            
+
         Returns:
             Base64-encoded encrypted string, or None if input was None.
-            
+
         Raises:
             EncryptionError: If encryption fails.
         """
         if data is None:
             return None
-        
+
         if isinstance(data, str):
-            data = data.encode('utf-8')
-        
+            data = data.encode("utf-8")
+
         try:
             encrypted = self._get_fernet().encrypt(data)
-            return encrypted.decode('utf-8')
+            return encrypted.decode("utf-8")
         except Exception as e:
             raise EncryptionError(f"Encryption failed: {str(e)}")
-    
+
     def decrypt(self, encrypted_data: Union[str, bytes, None]) -> Optional[str]:
         """
         Decrypt previously encrypted data.
-        
+
         Args:
             encrypted_data: Base64-encoded encrypted string.
-            
+
         Returns:
             Decrypted string, or None if input was None.
-            
+
         Raises:
             EncryptionError: If decryption fails (e.g., wrong key, corrupted data).
         """
         if encrypted_data is None:
             return None
-        
+
         try:
             if isinstance(encrypted_data, str):
-                encrypted_data = encrypted_data.encode('utf-8')
-            
+                encrypted_data = encrypted_data.encode("utf-8")
+
             decrypted = self._get_fernet().decrypt(encrypted_data)
-            return decrypted.decode('utf-8')
+            return decrypted.decode("utf-8")
         except InvalidToken:
             raise EncryptionError("Decryption failed: Invalid token or wrong key")
         except Exception as e:
             raise EncryptionError(f"Decryption failed: {str(e)}")
-    
+
     def rotate_key(self, new_key: str) -> bool:
         """
         Rotate encryption key. Note: This requires re-encrypting all data.
         Use with caution and proper data migration strategy.
-        
+
         Args:
             new_key: New Fernet-compatible key.
-            
+
         Returns:
             True if successful.
         """
         try:
-            os.environ['CMS_ENCRYPTION_KEY'] = new_key
+            os.environ["CMS_ENCRYPTION_KEY"] = new_key
             self._fernet = None  # Reset Fernet instance
             self._get_fernet()  # Validate new key
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Key rotation failed: {e}")
             return False
-    
+
     @classmethod
     def reset(cls):
         """Reset singleton instance (useful for testing)."""
@@ -171,11 +198,11 @@ def decrypt_field(data: Union[str, bytes, None]) -> Optional[str]:
 def encrypt_dict_fields(data: dict, fields: list) -> dict:
     """
     Encrypt multiple fields in a dictionary.
-    
+
     Args:
         data: Dictionary containing sensitive fields.
         fields: List of field names to encrypt.
-        
+
     Returns:
         Dictionary with specified fields encrypted.
     """
@@ -189,11 +216,11 @@ def encrypt_dict_fields(data: dict, fields: list) -> dict:
 def decrypt_dict_fields(data: dict, fields: list) -> dict:
     """
     Decrypt multiple fields in a dictionary.
-    
+
     Args:
         data: Dictionary with encrypted fields.
         fields: List of field names to decrypt.
-        
+
     Returns:
         Dictionary with specified fields decrypted.
     """
@@ -208,31 +235,31 @@ def decrypt_dict_fields(data: dict, fields: list) -> dict:
 class EncryptedString:
     """
     SQLAlchemy-compatible encrypted string type.
-    
+
     Usage in models:
         from sqlalchemy import Column, String
         class MyModel(db.Model):
             sensitive_data = Column(EncryptedString(500), nullable=True)
     """
-    
+
     def __init__(self, max_length: int = 1000):
         self.max_length = max_length
-    
+
     def __call__(self):
         from sqlalchemy import String, TypeDecorator
-        
+
         class EncryptedType(TypeDecorator):
             impl = String(self.max_length)
             cache_ok = True
-            
+
             def process_bind_param(self, value, dialect):
                 if value is not None:
                     return encryptor.encrypt(value)
                 return value
-            
+
             def process_result_value(self, value, dialect):
                 if value is not None:
                     return encryptor.decrypt(value)
                 return value
-        
+
         return EncryptedType()

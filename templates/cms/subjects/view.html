@@ -18,40 +18,40 @@
     </div>
     <div>
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
-            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
-            <button data-click="confirmDeleteSubject" class="btn-sm" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">🗑️ Delete</button>
+            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
+            <button data-click="confirmDeleteSubject" class="btn-cms small" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">🗑️ Delete</button>
         </h1>
         <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             {% if subject.subject_type == 'person' %}
             {% if first_case_id %}
-            <button data-click="openOsintModal" class="btn-osint" style="border: none; cursor: pointer;">
+            <button data-click="openOsintModal" class="btn-cms primary small">
                 🔍 OSINT Search
             </button>
             {% else %}
-            <button data-click="openOsintModalNoCase" class="btn-osint" style="border: none; cursor: pointer; opacity: 0.6;" title="Link subject to a case first">
+            <button data-click="openOsintModalNoCase" class="btn-cms primary small" style="opacity: 0.6;" title="Link subject to a case first">
                 🔍 OSINT Search
             </button>
             {% endif %}
-            <button data-click="checkPolitieData" id="policieCheckBtn" class="btn-osint" style="background: #1e40af; border: none; cursor: pointer;">
+            <button data-click="checkPolitieData" id="policieCheckBtn" class="btn-cms primary small" style="background: #1e40af;">
                 🌍 Check Interpol
             </button>
             {% endif %}
             {% if subject.subject_type == 'vessel' %}
-            <button data-click="checkVessel" id="vesselCheckBtn" class="btn-osint" style="background: #0e7490; border: none; cursor: pointer;">
+            <button data-click="checkVessel" id="vesselCheckBtn" class="btn-cms primary small" style="background: #0e7490;">
                 🚢 Check Vessel
             </button>
             {% endif %}
             {% if subject.photo_path %}
-            <button data-click="encodeFace" id="encodeFaceBtn" class="btn-osint" style="background: #7c3aed; border: none; cursor: pointer;">
+            <button data-click="encodeFace" id="encodeFaceBtn" class="btn-cms primary small" style="background: #7c3aed;">
                 👤 Encode Face
             </button>
-            <button data-click="searchTinEye" class="btn-osint" style="background: #059669; border: none; cursor: pointer;">
+            <button data-click="searchTinEye" class="btn-cms primary small" style="background: #059669;">
                 🔍 TinEye Search
             </button>
             {% endif %}
             {% if subject.face_encoding %}
-            <span class="face-badge" style="background: #059669; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; font-size: 0.75rem;">✅ Face Encoded</span>
-            <button data-click="deleteFaceEncoding" class="btn-sm" style="background: #dc2626; padding: 0.3rem 0.6rem; font-size: 0.7rem;">Remove</button>
+            <span class="badge badge-status-success">✅ Face Encoded</span>
+            <button data-click="deleteFaceEncoding" class="btn-cms small" style="background: #dc2626; padding: 0.3rem 0.6rem;">Remove</button>
             {% endif %}
         </div>
         <div id="faceStatus" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
@@ -65,59 +65,71 @@
 <div id="vesselResults" class="card" style="display: none;"></div>
 
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0;">
+    <div class="card-header">
+        <h2>
             {% if subject.subject_type == 'vehicle' %}🚗 Vehicle Details{% elif subject.subject_type == 'vessel' %}🚢 Vessel Details{% else %}Subject Details{% endif %}
-        </h3>
-        <button data-click="openNetworkModal" class="btn-sm" style="background: #7c3aed;">🔗 View Relationships</button>
+        </h2>
+        <button data-click="openNetworkModal" class="btn-cms small" style="background: #7c3aed;">🔗 View Relationships</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
         <div>
-            <div class="info-item"><label>Type</label><span>{{ subject.subject_type }}</span></div>
-            <div class="info-item"><label>Risk Score</label><span>{{ subject.risk_score }}/100</span></div>
+            <div class="info-row">
+                <span class="info-label">Type</span>
+                <span class="info-value">{{ subject.subject_type }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Risk Score</span>
+                <span class="info-value">{{ subject.risk_score }}/100</span>
+            </div>
             {% if subject.subject_type != 'vehicle' %}
-            <div class="info-item">
-                <label>Email(s)</label>
-                <div style="margin-top: 0.25rem;">
+            <div class="info-row" style="flex-direction:column;align-items:stretch;">
+                <span class="info-label">Email(s)</span>
+                <div class="info-value" style="margin-top:0.25rem;">
                     {% set emails = subject.contacts.filter_by(contact_type='email') if subject.contacts else [] %}
                     {% if emails.count() > 0 %}
                         {% for c in emails %}
-                        <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
-                            <span>{{ c.value }}</span>
-                            {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                            <button data-click="emailCheck" data-arg0="{{ c.value|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
-                            <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        <div class="contact-row">
+                            <span class="icon">✉️</span>
+                            <span class="value">{{ c.value|redact_for_viewer }}</span>
+                            {% if c.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% else %}<span></span>{% endif %}
+                            <span class="actions"><button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">✉️ Check</button></span>
+                            <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                         </div>
                         {% endfor %}
                     {% elif subject.email %}
-                        <div style="display:flex;align-items:center;gap:0.35rem;">
-                            <span>{{ subject.email }}</span>
-                            <button data-click="emailCheck" data-arg0="{{ subject.email|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">✉️ Check</button>
-                            <div class="email-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        <div class="contact-row">
+                            <span class="icon">✉️</span>
+                            <span class="value">{{ subject.email|redact_for_viewer }}</span>
+                            <span></span>
+                            <span class="actions"><button data-click="emailCheck" data-arg0="{{ subject.email }}" class="btn-cms purple small">✉️ Check</button></span>
+                            <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                         </div>
                     {% else %}
                         <span>-</span>
                     {% endif %}
                 </div>
             </div>
-            <div class="info-item">
-                <label>Phone(s)</label>
-                <div style="margin-top: 0.25rem;">
+            <div class="info-row" style="flex-direction:column;align-items:stretch;">
+                <span class="info-label">Phone(s)</span>
+                <div class="info-value" style="margin-top:0.25rem;">
                     {% set phones = subject.contacts.filter_by(contact_type='phone') if subject.contacts else [] %}
                     {% if phones.count() > 0 %}
                         {% for c in phones %}
-                        <div style="display:flex;align-items:center;gap:0.35rem;margin-bottom:0.25rem;">
-                            <span>{{ c.value }}</span>
-                            {% if c.is_primary %}<span style="background:#16a34a;color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:4px;">PRIMARY</span>{% endif %}
-                            <button data-click="phoneLookup" data-arg0="{{ c.value|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
-                            <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        <div class="contact-row">
+                            <span class="icon">📞</span>
+                            <span class="value">{{ c.value|redact_for_viewer }}</span>
+                            {% if c.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% else %}<span></span>{% endif %}
+                            <span class="actions"><button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">📞 Check</button></span>
+                            <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                         </div>
                         {% endfor %}
                     {% elif subject.phone %}
-                        <div style="display:flex;align-items:center;gap:0.35rem;">
-                            <span>{{ subject.phone }}</span>
-                            <button data-click="phoneLookup" data-arg0="{{ subject.phone|tojson }}" class="btn-sm" style="background:#7c3aed;font-size:0.65rem;padding:0.15rem 0.45rem;">📞 Check</button>
-                            <div class="phone-result" style="display:none;width:100%;margin-top:0.25rem;"></div>
+                        <div class="contact-row">
+                            <span class="icon">📞</span>
+                            <span class="value">{{ subject.phone|redact_for_viewer }}</span>
+                            <span></span>
+                            <span class="actions"><button data-click="phoneLookup" data-arg0="{{ subject.phone }}" class="btn-cms purple small">📞 Check</button></span>
+                            <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                         </div>
                     {% else %}
                         <span>-</span>
@@ -126,98 +138,132 @@
             </div>
             {% endif %}
             {% if subject.subject_type == 'person' %}
-            <div class="info-item"><label>Date of Birth</label><span>{{ subject.date_of_birth if subject.date_of_birth else '-' }}</span></div>
-            <div class="info-item"><label>Place of Birth</label><span>{{ subject.place_of_birth if subject.place_of_birth else '-' }}</span></div>
-            <div class="info-item"><label>ID/Passport Number</label><span>{{ subject.identification_number if subject.identification_number else '-' }}</span></div>
+            <div class="info-row">
+                <span class="info-label">Date of Birth</span>
+                <span class="info-value">{{ subject.date_of_birth if subject.date_of_birth else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Place of Birth</span>
+                <span class="info-value">{{ subject.place_of_birth if subject.place_of_birth else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">ID/Passport Number</span>
+                <span class="info-value">{{ subject.identification_number|redact_for_viewer if subject.identification_number else '-' }}</span>
+            </div>
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
-            <div class="info-item"><label>License Plate (Kenteken)</label>
-                <span style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate if subject.license_plate else '-' }}</span>
+            <div class="info-row">
+                <span class="info-label">License Plate (Kenteken)</span>
+                <span class="info-value" style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate|redact_for_viewer if subject.license_plate else '-' }}</span>
                 {% if subject.license_plate %}
-                <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate|tojson }}" data-arg1="{{ subject.id|tojson }}" class="btn-sm" style="background: #f59e0b; margin-left: 0.5rem; font-size: 0.7rem;">🚗 Check RDW</button>
+                <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate }}" data-arg1="{{ subject.id }}" class="btn-cms small" style="background: #f59e0b; margin-left: 0.5rem;">🚗 Check RDW</button>
                 {% else %}
                 <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">(Add license plate first)</span>
                 {% endif %}
             </div>
-            <div class="info-item"><label>VIN (Chassisnummer)</label><span>{{ subject.vin if subject.vin else '-' }}</span></div>
-            <div class="info-item"><label>Merk (Brand)</label><span>{{ subject.brand if subject.brand else '-' }}</span></div>
-            <div class="info-item"><label>Inrichting (Vehicle Type)</label><span>{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span></div>
-            <div class="info-item"><label>Verzekeringsmaatschappij (Insurance)</label><span>{{ subject.insurance_company if subject.insurance_company else '-' }}</span></div>
+            <div class="info-row">
+                <span class="info-label">VIN (Chassisnummer)</span>
+                <span class="info-value">{{ subject.vin|redact_for_viewer if subject.vin else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Merk (Brand)</span>
+                <span class="info-value">{{ subject.brand if subject.brand else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Inrichting (Vehicle Type)</span>
+                <span class="info-value">{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Verzekeringsmaatschappij (Insurance)</span>
+                <span class="info-value">{{ subject.insurance_company if subject.insurance_company else '-' }}</span>
+            </div>
             
             {% if subject.rdw_data %}
             <div style="margin-top: 1rem; padding: 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px;">
                 <h4 style="margin: 0 0 0.75rem 0; color: #0369a1;">RDW Voertuiggegevens</h4>
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
                     {% if subject.rdw_data.get('handelsbenaming') %}
-                    <div class="info-item"><label>Model (Handelsbenaming)</label><span>{{ subject.rdw_data.handelsbenaming }}</span></div>
+                    <div class="info-row"><span class="info-label">Model (Handelsbenaming)</span><span class="info-value">{{ subject.rdw_data.handelsbenaming }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('voertuigsoort') %}
-                    <div class="info-item"><label>Voertuigsoort</label><span>{{ subject.rdw_data.voertuigsoort }}</span></div>
+                    <div class="info-row"><span class="info-label">Voertuigsoort</span><span class="info-value">{{ subject.rdw_data.voertuigsoort }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('eerste_kleur') %}
-                    <div class="info-item"><label>Kleur (Eerste)</label><span>{{ subject.rdw_data.eerste_kleur }}</span></div>
+                    <div class="info-row"><span class="info-label">Kleur (Eerste)</span><span class="info-value">{{ subject.rdw_data.eerste_kleur }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('tweede_kleur') %}
-                    <div class="info-item"><label>Kleur (Tweede)</label><span>{{ subject.rdw_data.tweede_kleur }}</span></div>
+                    <div class="info-row"><span class="info-label">Kleur (Tweede)</span><span class="info-value">{{ subject.rdw_data.tweede_kleur }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_deuren') %}
-                    <div class="info-item"><label>Aantal Deuren</label><span>{{ subject.rdw_data.aantal_deuren }}</span></div>
+                    <div class="info-row"><span class="info-label">Aantal Deuren</span><span class="info-value">{{ subject.rdw_data.aantal_deuren }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_zitplaatsen') %}
-                    <div class="info-item"><label>Aantal Zitplaatsen</label><span>{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
+                    <div class="info-row"><span class="info-label">Aantal Zitplaatsen</span><span class="info-value">{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('cilinderinhoud') %}
-                    <div class="info-item"><label>Cilinderinhoud (cc)</label><span>{{ subject.rdw_data.cilinderinhoud }}</span></div>
+                    <div class="info-row"><span class="info-label">Cilinderinhoud (cc)</span><span class="info-value">{{ subject.rdw_data.cilinderinhoud }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_cilinders') %}
-                    <div class="info-item"><label>Aantal Cilinders</label><span>{{ subject.rdw_data.aantal_cilinders }}</span></div>
+                    <div class="info-row"><span class="info-label">Aantal Cilinders</span><span class="info-value">{{ subject.rdw_data.aantal_cilinders }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('massa_ledig') %}
-                    <div class="info-item"><label>Massa Ledig (kg)</label><span>{{ subject.rdw_data.massa_ledig }}</span></div>
+                    <div class="info-row"><span class="info-label">Massa Ledig (kg)</span><span class="info-value">{{ subject.rdw_data.massa_ledig }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('maximum_massa') %}
-                    <div class="info-item"><label>Maximum Massa (kg)</label><span>{{ subject.rdw_data.maximum_massa }}</span></div>
+                    <div class="info-row"><span class="info-label">Maximum Massa (kg)</span><span class="info-value">{{ subject.rdw_data.maximum_massa }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('vervaldatum_apk') %}
-                    <div class="info-item"><label>APK Vervaldatum</label><span>{{ subject.rdw_data.vervaldatum_apk }}</span></div>
+                    <div class="info-row"><span class="info-label">APK Vervaldatum</span><span class="info-value">{{ subject.rdw_data.vervaldatum_apk }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('wam_verzekerd') %}
-                    <div class="info-item"><label>WAM Verzekerd</label>
-                        <span style="color: {% if subject.rdw_data.wam_verzekerd == 'Ja' %}#16a34a{% else %}#dc2626{% endif %};">
+                    <div class="info-row"><span class="info-label">WAM Verzekerd</span>
+                        <span class="info-value" style="color: {% if subject.rdw_data.wam_verzekerd == 'Ja' %}#16a34a{% else %}#dc2626{% endif %};">
                             {{ subject.rdw_data.wam_verzekerd }}
                         </span>
                     </div>
                     {% endif %}
                     {% if subject.rdw_data.get('taxi_indicator') %}
-                    <div class="info-item"><label>Taxi</label><span>{{ subject.rdw_data.taxi_indicator }}</span></div>
+                    <div class="info-row"><span class="info-label">Taxi</span><span class="info-value">{{ subject.rdw_data.taxi_indicator }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('export_indicator') %}
-                    <div class="info-item"><label>Geexporteerd</label><span>{{ subject.rdw_data.export_indicator }}</span></div>
+                    <div class="info-row"><span class="info-label">Geexporteerd</span><span class="info-value">{{ subject.rdw_data.export_indicator }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('europese_voertuigcategorie') %}
-                    <div class="info-item"><label>EU Categorie</label><span>{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
+                    <div class="info-row"><span class="info-label">EU Categorie</span><span class="info-value">{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('zuinigheidsclassificatie') %}
-                    <div class="info-item"><label>Zuinigheidsclassificatie</label><span>{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
+                    <div class="info-row"><span class="info-label">Zuinigheidsclassificatie</span><span class="info-value">{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('catalogusprijs') %}
-                    <div class="info-item"><label>Catalogusprijs (EUR)</label><span>€{{ subject.rdw_data.catalogusprijs }}</span></div>
+                    <div class="info-row"><span class="info-label">Catalogusprijs (EUR)</span><span class="info-value">€{{ subject.rdw_data.catalogusprijs }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('datum_eerste_toelating') %}
-                    <div class="info-item"><label>Datum Eerste Toelating</label><span>{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
+                    <div class="info-row"><span class="info-label">Datum Eerste Toelating</span><span class="info-value">{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
                     {% endif %}
                 </div>
                 <div style="margin-top: 0.75rem;">
-                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="background: #0ea5e9; text-decoration: none;">✏️ Edit RDW Data</a>
+                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="background: #0ea5e9; text-decoration: none;">✏️ Edit RDW Data</a>
                 </div>
             </div>
             {% endif %}
             {% endif %}
             {% if subject.subject_type == 'vessel' %}
-            <div class="info-item"><label>IMO Nummer</label><span>{{ subject.imo_number if subject.imo_number else '-' }}</span></div>
-            <div class="info-item"><label>MMSI</label><span>{{ subject.mmsi if subject.mmsi else '-' }}</span></div>
-            <div class="info-item"><label>ENI (Binnenvaart)</label><span>{{ subject.eni_number if subject.eni_number else '-' }}</span></div>
-            <div class="info-item"><label>Vlag (Flag State)</label><span>{{ subject.vessel_nationality if subject.vessel_nationality else '-' }}</span></div>
+            <div class="info-row">
+                <span class="info-label">IMO Nummer</span>
+                <span class="info-value">{{ subject.imo_number if subject.imo_number else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">MMSI</span>
+                <span class="info-value">{{ subject.mmsi if subject.mmsi else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">ENI (Binnenvaart)</span>
+                <span class="info-value">{{ subject.eni_number if subject.eni_number else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Vlag (Flag State)</span>
+                <span class="info-value">{{ subject.vessel_nationality if subject.vessel_nationality else '-' }}</span>
+            </div>
 
             {% if subject.vessel_data and subject.vessel_data is mapping %}
             <div style="margin-top: 1rem; padding: 1rem; background: #ecfeff; border: 1px solid #0e7490; border-radius: 8px;">
@@ -227,42 +273,37 @@
                         {% if source_val is mapping %}
                             {% for k, v in source_val.items() %}
                                 {% if v and k not in ('source', 'source_url') %}
-                                <div class="info-item"><label>{{ k|capitalize|replace('_', ' ') }}</label><span>{{ v }}</span></div>
+                                <div class="info-row"><span class="info-label">{{ k|capitalize|replace('_', ' ') }}</span><span class="info-value">{{ v }}</span></div>
                                 {% endif %}
                             {% endfor %}
                         {% endif %}
                     {% endfor %}
                 </div>
                 <div style="margin-top: 0.75rem;">
-                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-sm" style="background: #0e7490; text-decoration: none;">✏️ Edit Vessel Data</a>
+                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">✏️ Edit Vessel Data</a>
                 </div>
             </div>
             {% endif %}
             {% endif %}
-            <div class="info-item">
-                <label>Address(es)</label>
-                <div style="margin-top: 0.25rem;">
+            <div class="info-row" style="flex-direction:column;align-items:stretch;">
+                <span class="info-label">Address(es)</span>
+                <div class="info-value" style="margin-top:0.25rem;">
                     {% if subject.addresses.count() > 0 %}
                         {% for addr in subject.addresses %}
-                        <div style="background:{% if addr.is_primary %}#f0fdf4{% else %}#f9fafb{% endif %};border:1px solid {% if addr.is_primary %}#bbf7d0{% else %}#e5e7eb{% endif %};border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div class="address-card{% if addr.is_primary %} primary{% endif %}">
+                            <div class="address-header">
                                 <div>
                                     <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
-                                    {% if addr.is_primary %}<span style="background:#16a34a;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.5rem;">PRIMARY</span>{% endif %}
-                                    {% if addr.kadaster_verified %}<span style="background:#2563eb;color:white;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;">✓ KADASTER</span>{% endif %}
-                                    <br>
-                                    <span class="addr-zip-town" style="color:#666;font-size:0.875rem;">
+                                    {% if addr.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% endif %}
+                                    {% if addr.kadaster_verified %}<span class="badge badge-kadaster">✓ KADASTER</span>{% endif %}
+                                    <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
                                         {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
                                         {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
-                                    </span>
+                                    </div>
                                 </div>
-                                <div style="display:flex;gap:0.35rem;">
-                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id|tojson }}" class="kadaster-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
-                                        🏛 Kadaster
-                                    </button>
-                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id|tojson }}" class="politie-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:#b91c1c;color:white;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">
-                                        🚔 Politiebureau
-                                    </button>
+                                <div class="btn-group" style="margin:0;">
+                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;">🏛 Kadaster</button>
+                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#b91c1c;">🚔 Politiebureau</button>
                                 </div>
                             </div>
                             <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
@@ -291,9 +332,9 @@
 
 <!-- Comments section for subject notes (with timestamps & authors) -->
 <div class="card subject-comments-section">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0;">📝 Notities & Comments <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h3>
-        <button data-click="loadSubjectComments" class="btn btn-sm">🔄 Refresh</button>
+    <div class="card-header">
+        <h2>📝 Notities & Comments <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h2>
+        <button data-click="loadSubjectComments" class="btn-cms small">🔄 Refresh</button>
     </div>
     <div class="comment-form">
         <textarea id="newSubjectComment" placeholder="Add a note or comment about this subject..." style="width:100%;padding:0.75rem;border:1px solid var(--border-input);border-radius:8px;resize:vertical;min-height:80px;background:var(--bg-card);color:var(--text-primary);"></textarea>
@@ -307,7 +348,7 @@
                 <option value="meeting">🤝 Meeting</option>
             </select>
             <label style="font-size:0.875rem;display:flex;align-items:center;gap:0.25rem;"><input type="checkbox" id="subjectCommentPinned"> Pin</label>
-            <button data-click="addSubjectComment" class="btn-sm" style="background:#059669;">Add Note</button>
+            <button data-click="addSubjectComment" class="btn-cms small" style="background:#059669;">Add Note</button>
         </div>
     </div>
     <div id="subjectCommentsList" style="margin-top:1rem;">
@@ -317,11 +358,11 @@
 
 <!-- Social Media IDs Section -->
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0;">Social Media IDs</h3>
-        <div style="display: flex; gap: 0.5rem;">
-            <button data-click="bulkExtractSocialIds" class="btn-sm" style="background: #059669;" id="bulkExtractBtn">🔍 Bulk Extract from Findings</button>
-            <button data-click="openAddSocialIdModal" class="btn-sm" style="background: #8b5cf6;">+ Add ID</button>
+    <div class="card-header">
+        <h2>Social Media IDs</h2>
+        <div class="btn-group">
+            <button data-click="bulkExtractSocialIds" class="btn-cms small" style="background: #059669;" id="bulkExtractBtn">🔍 Bulk Extract from Findings</button>
+            <button data-click="openAddSocialIdModal" class="btn-cms small" style="background: #8b5cf6;">+ Add ID</button>
         </div>
     </div>
     <div id="socialIdsList">
@@ -343,15 +384,18 @@
                         {% endif %}
                     </td>
                     <td>
-                        <button data-click="editSocialId" data-arg0="{{ platform|tojson }}" class="btn-sm" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">Edit</button>
-                        <button data-click="deleteSocialId" data-arg0="{{ platform|tojson }}" class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
+                        <button data-click="editSocialId" data-arg0="{{ platform }}" class="btn-cms small" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">Edit</button>
+                        <button data-click="deleteSocialId" data-arg0="{{ platform }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <p style="color: #666;">No social media IDs recorded yet.</p>
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>No social media IDs recorded yet.</p>
+        </div>
         <p style="color: #888; font-size: 0.875rem;">Tip: Click "Extract ID" on any URL in findings to automatically extract and save social media IDs.</p>
         {% endif %}
     </div>
@@ -359,9 +403,9 @@
 
 <!-- Social Accounts (Usernames) Section -->
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0;">🌐 Social Accounts (Usernames)</h3>
-        <button data-click="openAddSocialAccountModal" class="btn-sm" style="background: #8b5cf6;">+ Add Username</button>
+    <div class="card-header">
+        <h2>🌐 Social Accounts (Usernames)</h2>
+        <button data-click="openAddSocialAccountModal" class="btn-cms small" style="background: #8b5cf6;">+ Add Username</button>
     </div>
     <div id="socialAccountsList">
         {% if subject.social_accounts and subject.social_accounts.count() > 0 %}
@@ -376,14 +420,17 @@
                     <td><strong>{{ acct.username }}</strong></td>
                     <td>{% if acct.url %}<a href="{{ acct.url }}" target="_blank" style="font-size:0.8rem;">🔗 link</a>{% else %}-{% endif %}</td>
                     <td>
-                        <button data-click="deleteSocialAccount" data-arg0="{{ acct.id }}" class="btn-sm" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
+                        <button data-click="deleteSocialAccount" data-arg0="{{ acct.id }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px;">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <p style="color: #666;">No social accounts recorded yet.</p>
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>No social accounts recorded yet.</p>
+        </div>
         <p style="color: #888; font-size: 0.875rem;">Tip: Found a username during OSINT search? Save it here so you can search by it later.</p>
         {% endif %}
     </div>
@@ -391,17 +438,17 @@
 
 <!-- Username Search Section -->
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0;">🔍 Username Search</h3>
+    <div class="card-header">
+        <h2>🔍 Username Search</h2>
         <span id="usageBadge" style="font-size:0.75rem;color:var(--text-secondary);display:none;"></span>
     </div>
     <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
         <input type="text" id="usernameSearchInput" placeholder="Enter username..." style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
-        <button data-click="searchUsername" class="btn-sm" style="background:#8b5cf6;">🔍 Check</button>
+        <button data-click="searchUsername" class="btn-cms small" style="background:#8b5cf6;">🔍 Check</button>
     </div>
     <div id="usernameResults"></div>
     <div id="usernameSaveBar" style="display:none; margin-top: 0.75rem;">
-        <button data-click="saveUsernameFindings" class="btn-sm" style="background:#059669;" id="saveUsernameBtn">📥 Save Selected as Findings (<span id="usernameSelectedCount">0</span>)</button>
+        <button data-click="saveUsernameFindings" class="btn-cms small" style="background:#059669;" id="saveUsernameBtn">📥 Save Selected as Findings (<span id="usernameSelectedCount">0</span>)</button>
     </div>
 </div>
 
@@ -575,109 +622,55 @@
 
 <!-- Findings Section -->
 <div class="card" id="findingsSection">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0;">📋 Bevindingen (Findings)</h3>
+    <div class="card-header">
+        <h2>📋 Bevindingen (Findings)</h2>
     </div>
     <div id="findingsList">
         {% if findings and findings|length > 0 %}
             {% for finding in findings %}
-            <div class="finding-item" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">
+            <div class="finding-item" style="border:1px solid var(--border-color);border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                     <div>
-                        <strong style="color:#1a1a2e;">{{ finding.title }}</strong>
-                        <span class="finding-badge" style="display:inline-block;background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.5rem;">{{ finding.source_type }}</span>
+                        <strong>{{ finding.title }}</strong>
+                        <span class="badge badge-info" style="margin-left:0.5rem;">{{ finding.source_type }}</span>
                         {% if finding.confidence_level %}
-                        <span class="finding-confidence" style="display:inline-block;font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:4px;margin-left:0.25rem;
-                            {% if finding.confidence_level == 'high' or finding.confidence_level == 'verified' %}background:#dcfce7;color:#16a34a;
-                            {% elif finding.confidence_level == 'medium' %}background:#fef3c7;color:#92400e;
-                            {% else %}background:#f3f4f6;color:#6b7280;{% endif %}">{{ finding.confidence_level }}</span>
+                        <span class="badge {% if finding.confidence_level == 'high' or finding.confidence_level == 'verified' %}badge-status-success{% elif finding.confidence_level == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;">{{ finding.confidence_level }}</span>
                         {% endif %}
                     </div>
-                    <span style="color:#9ca3af;font-size:0.75rem;">{{ finding.created_at.strftime('%d-%m-%Y') if finding.created_at else '' }}</span>
+                    <span style="color:var(--text-muted);font-size:0.75rem;">{{ finding.created_at.strftime('%d-%m-%Y') if finding.created_at else '' }}</span>
                 </div>
-                <div style="margin-top:0.5rem;color:#4b5563;font-size:0.875rem;white-space:pre-wrap;">{{ finding.content }}</div>
+                <div style="margin-top:0.5rem;color:var(--text-primary);font-size:0.875rem;white-space:pre-wrap;">{{ finding.content }}</div>
                 {% if finding.source_url %}
-                <div style="margin-top:0.25rem;"><a href="{{ finding.source_url }}" target="_blank" style="font-size:0.8rem;color:#2563eb;">🔗 {{ finding.source_url }}</a></div>
+                <div style="margin-top:0.25rem;"><a href="{{ finding.source_url }}" target="_blank" style="font-size:0.8rem;color:var(--link-color);">🔗 {{ finding.source_url }}</a></div>
                 {% endif %}
             </div>
             {% endfor %}
             {% if findings_pagination and findings_pagination.pages > 1 %}
             <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
                 {% if findings_pagination.has_prev %}
-                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.prev_num) }}" class="btn btn-sm">Previous</a>
+                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">Previous</a>
                 {% endif %}
                 <span style="padding: 0.5rem 1rem;">Page {{ findings_pagination.page }} of {{ findings_pagination.pages }}</span>
                 {% if findings_pagination.has_next %}
-                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.next_num) }}" class="btn btn-sm">Next</a>
+                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">Next</a>
                 {% endif %}
             </div>
             {% endif %}
         {% else %}
-        <p style="color:#888;font-size:0.875rem;">Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan.</p>
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan.</p>
+        </div>
         {% endif %}
     </div>
 </div>
 
 <style>
-    :root {
-        --bg-secondary: #f5f5f5;
-        --bg-card: #ffffff;
-        --text-primary: #1a1a2e;
-        --text-secondary: #666666;
-        --text-muted: #888888;
-        --border-color: #e5e7eb;
-        --accent-primary: #16213e;
-        --link-color: #0066cc;
-        --shadow: rgba(0,0,0,0.1);
-        --modal-bg: rgba(0,0,0,0.5);
-        --chart-bg: #f9fafb;
-        --success-bg: #dcfce7;
-        --success-text: #16a34a;
-        --danger-bg: #fee2e2;
-        --danger-text: #dc2626;
-        --warning-bg: #fef3c7;
-        --warning-text: #92400e;
-        --info-bg: #dbeafe;
-        --info-text: #2563eb;
-        --border-input: #dddddd;
-    }
-    [data-theme="dark"] {
-        --bg-secondary: #1a1a2e;
-        --bg-card: #16213e;
-        --text-primary: #e5e5e5;
-        --text-secondary: #9ca3af;
-        --text-muted: #6b7280;
-        --border-color: #374151;
-        --accent-primary: #3b82f6;
-        --link-color: #60a5fa;
-        --shadow: rgba(0,0,0,0.3);
-        --modal-bg: rgba(0,0,0,0.7);
-        --chart-bg: #1f2937;
-        --success-bg: #064e3b;
-        --success-text: #6ee7b7;
-        --danger-bg: #7f1d1d;
-        --danger-text: #fca5a5;
-        --warning-bg: #78350f;
-        --warning-text: #fcd34d;
-        --info-bg: #1e3a8a;
-        --info-text: #93c5fd;
-        --border-input: #4b5563;
-    }
-    body { font-family: -apple-system, sans-serif; margin: 0; padding: 2rem; background: var(--bg-secondary); color: var(--text-primary); }
-    h1 { color: var(--text-primary); display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-    .card { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px var(--shadow); margin-bottom: 1rem; }
-    .info-item { margin-bottom: 1rem; }
-    .info-item label { display: block; color: var(--text-secondary); font-size: 0.875rem; }
-    .info-item span { font-weight: 500; color: var(--text-primary); }
-    .back { margin-bottom: 1rem; }
-    .back a { color: var(--link-color); text-decoration: none; }
     .btn-osint { display: inline-block; padding: 0.5rem 1rem; background: #059669; color: white; border-radius: 4px; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
     .btn-osint:hover { background: #047857; }
-    .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.875rem; background: var(--accent-primary); color: white; border: none; border-radius: 4px; cursor: pointer; }
     .case-list { margin-top: 1rem; }
     .case-item { padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 0.5rem; }
     .case-item a { color: var(--link-color); }
-    
     #networkModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: var(--modal-bg); }
     #networkModal.show { display: flex; align-items: center; justify-content: center; }
     #networkModal .modal-content { background: var(--bg-card); border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 900px; max-height: 90vh; overflow: auto; }
@@ -686,95 +679,9 @@
     .relation-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border-color); color: var(--text-primary); }
     .relation-item:last-child { border-bottom: none; }
     .relation-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-secondary); color: var(--text-secondary); }
-    
-    /* Comments Section */
-    .subject-comments-section { margin-top: 1.5rem; }
-    .subject-comments-section .comment-item { padding: 1rem; border-bottom: 1px solid var(--border-color); }
-    .subject-comments-section .comment-item:last-child { border-bottom: none; }
-    .subject-comments-section .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-    .subject-comments-section .comment-author { font-weight: 600; color: var(--text-primary); }
-    .subject-comments-section .comment-time { font-size: 0.8rem; color: var(--text-muted); }
-    .subject-comments-section .comment-content { color: var(--text-primary); line-height: 1.5; white-space: pre-wrap; }
-    .subject-comments-section .comment-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-    .subject-comments-section .comment-actions button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; padding: 0; }
-    .subject-comments-section .comment-actions button:hover { color: var(--accent-primary); }
-    .subject-comments-section .comment-pinned { background: #fef3c7; border-left: 3px solid #f59e0b; }
-    .subject-comments-section .comment-type-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; background: var(--bg-secondary); color: var(--text-muted); }
-    .subject-comments-section .comment-edited { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
-    .subject-comments-section .comment-edit-history { margin-top: 0.75rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.8rem; }
-    .subject-comments-section .comment-edit-history summary { cursor: pointer; color: var(--text-muted); font-weight: 500; }
-    .subject-comments-section .comment-edit-entry { padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); }
-    .subject-comments-section .comment-edit-entry:last-child { border-bottom: none; }
-    .subject-comments-section .comment-edit-entry .edit-by { font-weight: 500; color: var(--text-primary); }
-    .subject-comments-section .comment-edit-entry .edit-date { color: var(--text-muted); font-size: 0.75rem; }
-    .subject-comments-section .comment-edit-entry .edit-diff { margin-top: 0.25rem; padding: 0.4rem; background: var(--bg-card); border-radius: 4px; font-size: 0.8rem; }
-    .subject-comments-section .comment-edit-entry .edit-old { color: var(--danger-text); text-decoration: line-through; }
-    .subject-comments-section .comment-edit-entry .edit-new { color: var(--success-text); }
-    .subject-comments-section .comment-edit-form { margin-top: 0.5rem; }
-    .subject-comments-section .comment-edit-form textarea { width: 100%; padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 6px; resize: vertical; min-height: 60px; font-family: inherit; background: var(--bg-card); color: var(--text-primary); }
-    .subject-comments-section .comment-edit-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-    
-    .subject-photo-container { display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 1.5rem; }
-    .photo-frame {
-        width: 120px;
-        height: 150px;
-        border: 2px solid var(--border-color);
-        border-radius: 4px;
-        overflow: hidden;
-        background: var(--bg-secondary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        flex-shrink: 0;
-    }
-    .photo-frame img { width: 100%; height: 100%; object-fit: cover; }
-    .photo-placeholder { color: var(--text-muted); font-size: 3rem; }
-    .photo-upload-btn {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(0,0,0,0.6);
-        color: white;
-        text-align: center;
-        padding: 0.3rem;
-        font-size: 0.7rem;
-        cursor: pointer;
-    }
-    .photo-upload-btn:hover { background: rgba(0,0,0,0.8); }
-    .photo-input { display: none; }
-    
-    #osintModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: var(--modal-bg); }
-    #osintModal.show { display: flex; align-items: center; justify-content: center; }
-    #osintModal .modal-content { background: var(--bg-card); border-radius: 12px; padding: 1.5rem; width: 90%; max-width: 700px; max-height: 90vh; overflow: auto; }
-    #osintModal h2, #osintModal h3 { color: var(--text-primary); }
-    #osintModal p { color: var(--text-secondary); }
-    
-    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .searching { animation: blink 1.5s infinite; }
-    
-    .result-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card); color: var(--text-primary); }
-    .result-item input[type="checkbox"] { width: auto; min-width: 16px; height: 16px; margin-top: 0.35rem; margin-right: 0; padding: 0; border: none; flex-shrink: 0; accent-color: var(--accent-primary); }
-    .result-content { flex: 1; min-width: 0; color: var(--text-primary); }
-    .result-engine { font-weight: 600; color: var(--text-primary); margin-bottom: 0.15rem; }
-    .result-name { color: var(--accent-primary); margin-bottom: 0.25rem; }
-    .result-query { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.2rem; line-height: 1.4; }
-    .result-url { font-size: 0.75rem; color: var(--link-color); word-break: break-all; }
-    .result-url a { color: var(--link-color); text-decoration: none; }
-    .result-url a:hover { text-decoration: underline; }
-    .source-badge { display:inline-block; padding:2px 7px; border-radius:4px; font-size:0.65rem; font-weight:500; margin-left:0.5rem; vertical-align:middle; }
-    .source-badge.brave { background:#f97316; color:#fff; }
-    .source-badge.ddg { background:#25D366; color:#fff; }
-    .source-badge.rapidapi { background:#8b5cf6; color:#fff; }
-    .source-badge.verified { background:#22c55e; color:#fff; }
-    .source-badge.unconfirmed { background:#f59e0b; color:#fff; }
-    
-    .btn-success { background: #059669; }
-    .btn-success:hover { background: #047857; }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     let networkData = null;
     
     function openNetworkModal() {
@@ -884,7 +791,7 @@
             if (other) {
                 html += `<div class="relation-item">
                     <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || 'related'}</span></div>
-                    <button data-click="removeRelationship" data-arg0="${other.id}"" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
+                    <button data-click="removeRelationship" data-arg0="${other.id}" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
                 </div>`;
             }
         });
@@ -914,7 +821,7 @@
             let foundOther = false;
             subs.forEach(s => {
                 if (s.id !== currentId) {
-                    select.innerHTML += `<option value="${s.id}">${s.name} (${s.type || s.subject_type})</option>`;
+                    select.innerHTML += '<option value="' + esc(s.id) + '">' + esc(s.name) + ' (' + esc(s.type || s.subject_type) + ')</option>';
                     foundOther = true;
                 }
             });
@@ -949,7 +856,7 @@
         .catch(err => { errDiv.textContent = 'Network error: ' + err.message; });
     }
     
-    function removeRelationship(relatedId) {
+    function removeRelationship(btn, relatedId) {
         if (!confirm('Remove this relationship?')) return;
         fetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1060,9 +967,9 @@
                 if (existingImg) {
                     existingImg.src = '/static' + data.photo_path + '?t=' + new Date().getTime();
                 } else {
-                    photoFrame.innerHTML = `<img src="/static${data.photo_path}?t=${new Date().getTime()}" alt="Photo">
-                        <label class="photo-upload-btn" for="photoInput">📷 Change</label>
-                        <input type="file" id="photoInput" class="photo-input" accept="image/*" data-change="uploadPhoto">`;
+                    photoFrame.innerHTML = '<img src="/static' + esc(data.photo_path) + '?t=' + esc(new Date().getTime()) + '" alt="Photo">' +
+                        '<label class="photo-upload-btn" for="photoInput">📷 Change</label>' +
+                        '<input type="file" id="photoInput" class="photo-input" accept="image/*" data-change="uploadPhoto">';
                 }
             }
         })
@@ -1092,7 +999,7 @@
             _lastInterpolData = data;
             
             if (data.error) {
-                container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> ' + data.error + '</div>';
+                container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> ' + esc(data.error) + '</div>';
                 return;
             }
             
@@ -1106,21 +1013,21 @@
                 return;
             }
             
-            let html = '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:1rem;color:#92400e;font-weight:600;"> ' + total + ' POTENTIELE MATCH(S) GEVONDEN!</div>';
+            let html = '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:1rem;color:#92400e;font-weight:600;"> ' + esc(total) + ' POTENTIELE MATCH(S) GEVONDEN!</div>';
             
             if (wanted.length > 0) {
                 html += '<h4 style="margin:0 0 0.5rem 0;color:#991b1b;"> Red Notices (Wanted)</h4>';
                 wanted.forEach((p, i) => {
                     html += '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-                    html += '<div><strong style="color:#991b1b;">' + p.name + '</strong>';
-                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + p.date_of_birth + '</span>';
-                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + p.nationality + '</span>';
-                    if (p.charge) html += '<br><span style="color:#666;font-size:0.85rem;">Charge: ' + p.charge + '</span>';
-                    if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">Issued by: ' + p.issuing_country + '</span>';
-                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> INTERPOL link</a>';
+                    html += '<div><strong style="color:#991b1b;">' + esc(p.name) + '</strong>';
+                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + esc(p.date_of_birth) + '</span>';
+                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + esc(p.nationality) + '</span>';
+                    if (p.charge) html += '<br><span style="color:#666;font-size:0.85rem;">Charge: ' + esc(p.charge) + '</span>';
+                    if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">Issued by: ' + esc(p.issuing_country) + '</span>';
+                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> INTERPOL link</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + i + '" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;"> Bewaar als bevinding</button>';
                     html += '</div></div>';
                 });
             }
@@ -1130,16 +1037,16 @@
                 missing.forEach((p, i) => {
                     html += '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-                    html += '<div><strong style="color:#92400e;">' + p.name + '</strong>';
-                    if (p.source) html += '<br><span style="color:#666;font-size:0.85rem;">Source: ' + p.source + '</span>';
-                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + p.date_of_birth + '</span>';
-                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + p.nationality + '</span>';
-                    if (p.date_missing) html += '<br><span style="color:#666;font-size:0.85rem;">Missing since: ' + p.date_missing + '</span>';
-                    if (p.place) html += '<br><span style="color:#666;font-size:0.85rem;">Place: ' + p.place + '</span>';
-                    if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">Info: ' + p.description + '</span>';
-                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Link</a>';
+                    html += '<div><strong style="color:#92400e;">' + esc(p.name) + '</strong>';
+                    if (p.source) html += '<br><span style="color:#666;font-size:0.85rem;">Source: ' + esc(p.source) + '</span>';
+                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + esc(p.date_of_birth) + '</span>';
+                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + esc(p.nationality) + '</span>';
+                    if (p.date_missing) html += '<br><span style="color:#666;font-size:0.85rem;">Missing since: ' + esc(p.date_missing) + '</span>';
+                    if (p.place) html += '<br><span style="color:#666;font-size:0.85rem;">Place: ' + esc(p.place) + '</span>';
+                    if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">Info: ' + esc(p.description) + '</span>';
+                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Link</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + i + '" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;"> Bewaar als bevinding</button>';
                     html += '</div></div>';
                 });
             }
@@ -1151,16 +1058,16 @@
                     html += '<div style="display:flex;gap:0.75rem;">';
                     if (p.image_url) {
                         html += '<div style="flex-shrink:0;width:80px;height:80px;border-radius:6px;overflow:hidden;background:#dbeafe;">';
-                        html += '<img src="' + p.image_url + '" alt="' + (p.image_alt || '') + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">';
+                        html += '<img src="' + esc(p.image_url) + '" alt="' + esc(p.image_alt || '') + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">';
                         html += '</div>';
                     }
                     html += '<div style="flex:1;min-width:0;">';
-                    html += '<strong style="color:#1e40af;">' + p.title + '</strong>';
-                    if (p.location) html += '<br><span style="color:#666;font-size:0.85rem;"> Locatie: ' + p.location + '</span>';
-                    if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;"> Datum: ' + p.date + '</span>';
-                    if (p.url) html += '<br><a href="' + p.url + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Bekijk op politie.nl</a>';
+                    html += '<strong style="color:#1e40af;">' + esc(p.title) + '</strong>';
+                    if (p.location) html += '<br><span style="color:#666;font-size:0.85rem;"> Locatie: ' + esc(p.location) + '</span>';
+                    if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;"> Datum: ' + esc(p.date) + '</span>';
+                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Bekijk op politie.nl</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + i + '" class="btn-sm" style="background:#059669;white-space:nowrap;flex-shrink:0;align-self:flex-start;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;"> Bewaar als bevinding</button>';
                     html += '</div></div>';
                 });
             }
@@ -1172,7 +1079,7 @@
             container.innerHTML = html;
         })
         .catch(err => {
-            container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> Failed to check data: ' + err.message + '</div>';
+            container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> Failed to check data: ' + esc(err.message) + '</div>';
         })
         .finally(() => {
             btn.disabled = false;
@@ -1259,7 +1166,7 @@
             _lastVesselData = data;
 
             if (data.error) {
-                container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + data.error + '</div>';
+                container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + esc(data.error) + '</div>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -1276,22 +1183,22 @@
 
             // Unified summary section (shown when ANY source found data)
             html += '<div style="background:linear-gradient(135deg,#0e7490,#0891b2);color:white;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-            html += '<h4 style="margin:0 0 0.75rem 0;">🚢 ' + (data.name || 'Unknown') + '</h4>';
+            html += '<h4 style="margin:0 0 0.75rem 0;">🚢 ' + esc(data.name || 'Unknown') + '</h4>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-            html += '<div><strong>Type:</strong> ' + (data.ship_type || '-') + '</div>';
-            html += '<div><strong>MMSI:</strong> ' + (data.mmsi || '-') + '</div>';
+            html += '<div><strong>Type:</strong> ' + esc(data.ship_type || '-') + '</div>';
+            html += '<div><strong>MMSI:</strong> ' + esc(data.mmsi || '-') + '</div>';
             if (data.imo) {
-                html += '<div><strong>IMO:</strong> ' + data.imo + '</div>';
+                html += '<div><strong>IMO:</strong> ' + esc(data.imo) + '</div>';
             }
             if (data.flag) {
-                html += '<div><strong>Flag:</strong> ' + data.flag + '</div>';
+                html += '<div><strong>Flag:</strong> ' + esc(data.flag) + '</div>';
             }
             if (data.position) {
-                html += '<div><strong>Positie:</strong> ' + data.position.lat + ', ' + data.position.lon +
-                    ' <a href="https://www.openstreetmap.org/?mlat=' + data.position.lat + '&mlon=' + data.position.lon + '&zoom=12" target="_blank" style="color:#bae6fd;">📍 Map</a></div>';
+                html += '<div><strong>Positie:</strong> ' + esc(data.position.lat) + ', ' + esc(data.position.lon) +
+                    ' <a href="https://www.openstreetmap.org/?mlat=' + esc(data.position.lat) + '&mlon=' + esc(data.position.lon) + '&zoom=12" target="_blank" style="color:#bae6fd;">📍 Map</a></div>';
             }
             let srcListSummary = (data.sources || []).join(', ');
-            html += '<div style="grid-column:1/-1;font-size:0.8rem;opacity:0.8;margin-top:0.25rem;">Bronnen: ' + srcListSummary + '</div>';
+            html += '<div style="grid-column:1/-1;font-size:0.8rem;opacity:0.8;margin-top:0.25rem;">Bronnen: ' + esc(srcListSummary) + '</div>';
             html += '</div></div>';
 
             // Per-source detail cards
@@ -1301,14 +1208,14 @@
                 html += '<div style="background:#f0f9ff;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
                 html += '<h4 style="margin:0 0 0.75rem 0;color:#3b82f6;">🔍 VesselFinder</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (vf.name || '-') + '</div>';
-                html += '<div><strong>MMSI:</strong> ' + (vf.mmsi || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + (vf.imo || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (vf.ship_type || '-') + '</div>';
+                html += '<div><strong>Name:</strong> ' + esc(vf.name || '-') + '</div>';
+                html += '<div><strong>MMSI:</strong> ' + esc(vf.mmsi || '-') + '</div>';
+                html += '<div><strong>IMO:</strong> ' + esc(vf.imo || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + esc(vf.ship_type || '-') + '</div>';
                 if (vf.position) {
                     html += '<div style="grid-column:1/-1;"><strong>Position:</strong> ' +
-                        vf.position.lat + ', ' + vf.position.lon +
-                        ' <a href="https://www.openstreetmap.org/?mlat=' + vf.position.lat + '&mlon=' + vf.position.lon + '&zoom=12" target="_blank">📍 Map</a></div>';
+                        esc(vf.position.lat) + ', ' + esc(vf.position.lon) +
+                        ' <a href="https://www.openstreetmap.org/?mlat=' + esc(vf.position.lat) + '&mlon=' + esc(vf.position.lon) + '&zoom=12" target="_blank">📍 Map</a></div>';
                 }
                 html += '</div></div>';
             }
@@ -1319,18 +1226,18 @@
                 html += '<div style="background:#ecfeff;border:1px solid #0e7490;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
                 html += '<h4 style="margin:0 0 0.75rem 0;color:#0e7490;">🛰️ MarinePlan (AIS)</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (mp.name || '-') + '</div>';
-                html += '<div><strong>MMSI:</strong> ' + (mp.mmsi || '-') + '</div>';
-                html += '<div><strong>Callsign:</strong> ' + (mp.callsign || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (mp.ship_type || '-') + '</div>';
-                html += '<div><strong>Length:</strong> ' + (mp.length || '-') + ' m</div>';
-                html += '<div><strong>Beam:</strong> ' + (mp.beam || '-') + ' m</div>';
-                html += '<div><strong>Speed:</strong> ' + (mp.speed || '-') + ' km/h</div>';
-                html += '<div><strong>Destination:</strong> ' + (mp.destination || '-') + '</div>';
+                html += '<div><strong>Name:</strong> ' + esc(mp.name || '-') + '</div>';
+                html += '<div><strong>MMSI:</strong> ' + esc(mp.mmsi || '-') + '</div>';
+                html += '<div><strong>Callsign:</strong> ' + esc(mp.callsign || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + esc(mp.ship_type || '-') + '</div>';
+                html += '<div><strong>Length:</strong> ' + esc(mp.length || '-') + ' m</div>';
+                html += '<div><strong>Beam:</strong> ' + esc(mp.beam || '-') + ' m</div>';
+                html += '<div><strong>Speed:</strong> ' + esc(mp.speed || '-') + ' km/h</div>';
+                html += '<div><strong>Destination:</strong> ' + esc(mp.destination || '-') + '</div>';
                 if (mp.position) {
                     html += '<div style="grid-column:1/-1;"><strong>Position:</strong> ' +
-                        mp.position.lat + ', ' + mp.position.lon +
-                        ' <a href="https://www.openstreetmap.org/?mlat=' + mp.position.lat + '&mlon=' + mp.position.lon + '&zoom=12" target="_blank">📍 Map</a></div>';
+                        esc(mp.position.lat) + ', ' + esc(mp.position.lon) +
+                        ' <a href="https://www.openstreetmap.org/?mlat=' + esc(mp.position.lat) + '&mlon=' + esc(mp.position.lon) + '&zoom=12" target="_blank">📍 Map</a></div>';
                 }
                 html += '</div></div>';
             }
@@ -1341,9 +1248,9 @@
                 html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
                 html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">🇳🇱 KVNR Schepenzoeker</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (kv.name || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + (kv.imo || '-') + '</div>';
-                html += '<div><strong>Flag:</strong> ' + (kv.flag || '-') + '</div>';
+                html += '<div><strong>Name:</strong> ' + esc(kv.name || '-') + '</div>';
+                html += '<div><strong>IMO:</strong> ' + esc(kv.imo || '-') + '</div>';
+                html += '<div><strong>Flag:</strong> ' + esc(kv.flag || '-') + '</div>';
                 html += '</div></div>';
             }
 
@@ -1353,10 +1260,10 @@
                 html += '<div style="background:#fefce8;border:1px solid #ca8a04;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
                 html += '<h4 style="margin:0 0 0.75rem 0;color:#ca8a04;">🌊 Binnenvaart.eu</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (bv.name || '-') + '</div>';
-                html += '<div><strong>ENI:</strong> ' + (bv.eni || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (bv.ship_type || '-') + '</div>';
-                html += '<div><strong>Year Built:</strong> ' + (bv.year_built || '-') + '</div>';
+                html += '<div><strong>Name:</strong> ' + esc(bv.name || '-') + '</div>';
+                html += '<div><strong>ENI:</strong> ' + esc(bv.eni || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + esc(bv.ship_type || '-') + '</div>';
+                html += '<div><strong>Year Built:</strong> ' + esc(bv.year_built || '-') + '</div>';
                 html += '</div></div>';
             }
 
@@ -1366,10 +1273,10 @@
                 html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
                 html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">🚢 DeBinnenvaart.nl</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (dbv.name || '-') + '</div>';
-                html += '<div><strong>ENI:</strong> ' + (dbv.eni || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (dbv.ship_type || '-') + '</div>';
-                html += '<div><strong>Year Built:</strong> ' + (dbv.year_built || '-') + '</div>';
+                html += '<div><strong>Name:</strong> ' + esc(dbv.name || '-') + '</div>';
+                html += '<div><strong>ENI:</strong> ' + esc(dbv.eni || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + esc(dbv.ship_type || '-') + '</div>';
+                html += '<div><strong>Year Built:</strong> ' + esc(dbv.year_built || '-') + '</div>';
                 html += '</div></div>';
             }
 
@@ -1379,39 +1286,38 @@
                 html += '<div style="background:#f3e8ff;border:1px solid #9333ea;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
                 html += '<h4 style="margin:0 0 0.75rem 0;color:#9333ea;">📋 Equasis</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + (eq.name || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + (eq.imo || '-') + '</div>';
-                html += '<div><strong>Flag:</strong> ' + (eq.flag || '-') + '</div>';
-                html += '<div><strong>GT:</strong> ' + (eq.gt || '-') + '</div>';
-                html += '<div><strong>DWT:</strong> ' + (eq.dwt || '-') + '</div>';
-                html += '<div><strong>Year:</strong> ' + (eq.year_built || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (eq.ship_type || '-') + '</div>';
-                html += '<div><strong>Owner:</strong> ' + (eq.owner || '-') + '</div>';
-                html += '<div><strong>Manager:</strong> ' + (eq.manager || '-') + '</div>';
+                html += '<div><strong>Name:</strong> ' + esc(eq.name || '-') + '</div>';
+                html += '<div><strong>IMO:</strong> ' + esc(eq.imo || '-') + '</div>';
+                html += '<div><strong>Flag:</strong> ' + esc(eq.flag || '-') + '</div>';
+                html += '<div><strong>GT:</strong> ' + esc(eq.gt || '-') + '</div>';
+                html += '<div><strong>DWT:</strong> ' + esc(eq.dwt || '-') + '</div>';
+                html += '<div><strong>Year:</strong> ' + esc(eq.year_built || '-') + '</div>';
+                html += '<div><strong>Type:</strong> ' + esc(eq.ship_type || '-') + '</div>';
+                html += '<div><strong>Owner:</strong> ' + esc(eq.owner || '-') + '</div>';
+                html += '<div><strong>Manager:</strong> ' + esc(eq.manager || '-') + '</div>';
                 html += '</div></div>';
             }
 
             // Sources list + suggested update
             let srcList = (data.sources || []).join(', ');
-            html += '<div style="font-size:0.8rem;color:#666;margin-bottom:1rem;">Sources: ' + srcList + '</div>';
+            html += '<div style="font-size:0.8rem;color:#666;margin-bottom:1rem;">Sources: ' + esc(srcList) + '</div>';
 
             // Save as finding button
             const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
             if (firstCaseId) {
-                html += '<button data-click="saveVesselFinding"" class="btn-sm" style="background:#0e7490;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;">📥 Bewaar als bevinding</button>';
+html += '<button data-click="saveVesselFinding" class="btn-cms small" style="background:#0e7490;">📥 Bewaar als bevinding</button>';
 
-                // Update subject button
-                html += ' <button data-click="updateVesselFromCheck"" class="btn-sm" style="background:#0891b2;border:none;color:white;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;margin-left:0.5rem;">💾 Update vessel fields</button>';
+                html += ' <button data-click="updateVesselFromCheck" class="btn-cms small" style="background:#0891b2;">💾 Update vessel fields</button>';
             } else {
                 html += '<div style="font-size:0.8rem;color:#888;">Link subject to a case to save findings.</div>';
             }
 
             html += '</div>';
             container.innerHTML = html;
-            btn.textContent = '✅ Checked (' + srcList + ')';
+            btn.textContent = '✅ Checked (' + esc(srcList) + ')';
         })
         .catch(err => {
-            container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + err.message + '</div>';
+            container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + esc(err.message) + '</div>';
             btn.disabled = false;
             btn.textContent = origText;
         });
@@ -1631,14 +1537,14 @@
         const ddgCount = results.ddg_results_count || 0;
         let sourceInfo = '';
         if (braveCount > 0 || ddgCount > 0) {
-            sourceInfo = `<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem;">Brave: ${braveCount}</span>`;
+            sourceInfo = '<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem;">Brave: ' + esc(braveCount) + '</span>';
             if (ddgCount > 0) {
-                sourceInfo += `<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem;">DDG: ${ddgCount}</span>`;
+                sourceInfo += '<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; margin-left: 0.5rem;">DDG: ' + esc(ddgCount) + '</span>';
             }
         }
         
         const totalCount = dorksResults.length + searchLinks.length;
-        document.getElementById('resultsCount').innerHTML = `${totalCount} results found${sourceInfo}`;
+        document.getElementById('resultsCount').innerHTML = esc(totalCount) + ' results found' + sourceInfo;
         
         const resultsList = document.getElementById('resultsList');
         resultsList.innerHTML = '';
@@ -1669,24 +1575,23 @@
             const catDiv = document.createElement('div');
             catDiv.style.marginBottom = '1rem';
             catDiv.dataset.category = cat;
-            catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">${categoryLabels[cat] || cat} (${items.length})</h4>
-                <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">
-                    <input type="checkbox" class="cat-select-all" data-cat="${cat}" data-change="toggleCategory""> Select all
-                </label>`;
+            catDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">' + esc(categoryLabels[cat] || cat) + ' (' + esc(items.length) + ')</h4>' +
+                '<label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">' +
+                    '<input type="checkbox" class="cat-select-all" data-cat="' + esc(cat) + '" data-change="toggleCategory""> Select all' +
+                '</label>';
             
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
                 const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">Brave</span>' : 
                                      item.source === 'duckduckgo' ? '<span class="source-badge ddg">DDG</span>' : '';
-                div.innerHTML = `
-                    <input type="checkbox" class="result-checkbox" data-url="${item.url}" data-domain="${item.domain || ''}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || 'general'}" data-change="updateSelectedCount"">
-                    <div class="result-content">
-                        <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
-                        ${item.query ? `<div class="result-query">${item.query}</div>` : ''}
-                        <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
-                    </div>
-                `;
+                div.innerHTML =
+                    '<input type="checkbox" class="result-checkbox" data-url="' + esc(item.url) + '" data-domain="' + esc(item.domain || '') + '" data-query="' + esc(item.query || '') + '" data-source="' + esc(item.source || '') + '" data-category="' + esc(item.category || 'general') + '" data-change="updateSelectedCount"">' +
+                    '<div class="result-content">' +
+                        '<div class="result-engine">' + esc(item.domain || 'Unknown') + sourceBadge + '</div>' +
+                        (item.query ? '<div class="result-query">' + esc(item.query) + '</div>' : '') +
+                        '<div class="result-url"><a href="' + esc(item.url) + '" target="_blank">' + esc(item.url) + '</a></div>' +
+                    '</div>';
                 catDiv.appendChild(div);
             });
             resultsList.appendChild(catDiv);
@@ -1695,21 +1600,20 @@
         if (searchLinks.length > 0) {
             const searchDiv = document.createElement('div');
             searchDiv.style.marginBottom = '1rem';
-            searchDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (${searchLinks.length})</h4>
-                <label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">
-                    <input type="checkbox" class="cat-select-all" data-cat="search" data-change="toggleCategory""> Select all
-                </label>`;
+            searchDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (' + esc(searchLinks.length) + ')</h4>' +
+                '<label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">' +
+                    '<input type="checkbox" class="cat-select-all" data-cat="search" data-change="toggleCategory""> Select all' +
+                '</label>';
             
             searchLinks.forEach(link => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
-                div.innerHTML = `
-                    <input type="checkbox" class="result-checkbox" data-url="${link.url}" data-domain="${link.engine || 'Unknown'}" data-query="${link.name || ''}" data-source="search_link" data-category="search" data-change="updateSelectedCount"">
-                    <div class="result-content">
-                        <div class="result-engine">${link.engine || 'Unknown'}</div>
-                        <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
-                    </div>
-                `;
+                div.innerHTML =
+                    '<input type="checkbox" class="result-checkbox" data-url="' + esc(link.url) + '" data-domain="' + esc(link.engine || 'Unknown') + '" data-query="' + esc(link.name || '') + '" data-source="search_link" data-category="search" data-change="updateSelectedCount"">' +
+                    '<div class="result-content">' +
+                        '<div class="result-engine">' + esc(link.engine || 'Unknown') + '</div>' +
+                        '<div class="result-url"><a href="' + esc(link.url) + '" target="_blank">' + esc(link.name || link.url) + '</a></div>' +
+                    '</div>';
                 searchDiv.appendChild(div);
             });
             resultsList.appendChild(searchDiv);
@@ -1910,12 +1814,12 @@
         });
     }
     
-    function editSocialId(platform) {
+    function editSocialId(btn, platform) {
         const socialIds = {{ subject.social_media_ids|tojson }} || {};
         openAddSocialIdModal(platform, socialIds[platform]);
     }
     
-    function deleteSocialId(platform) {
+    function deleteSocialId(btn, platform) {
         if (!confirm('Delete ' + platform + ' ID?')) return;
         
         const socialIds = {{ subject.social_media_ids|tojson }} || {};
@@ -1964,7 +1868,7 @@
         })
         .catch(err => alert('Error: ' + err.message));
     }
-    function deleteSocialAccount(accountId) {
+    function deleteSocialAccount(btn, accountId) {
         if (!confirm('Delete this social account?')) return;
         fetch('/cms/api/subjects/{{ subject.id }}/social-accounts/' + accountId, {
             method: 'DELETE'
@@ -2056,13 +1960,13 @@
             const data = await response.json();
             
             if (data.error) {
-                statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                btn.disabled = false;
             } else {
                 statusEl.innerHTML = '<span style="color: #059669;">✅ Face encoding saved!</span>';
-                setTimeout(() => location.reload(), 1000);
             }
         } catch (err) {
-            statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             console.error('Face encoding error:', err);
         }
         
@@ -2107,39 +2011,39 @@
 
         if (data.services && data.services.whatsapp && data.services.whatsapp.profile_picture) {
             html += '<div style="grid-column:1/-1;text-align:center;margin-bottom:0.5rem;">';
-            html += '<img src="' + data.services.whatsapp.profile_picture + '" style="width:80px;height:80px;border-radius:50%;border:2px solid #ddd6fe;object-fit:cover;">';
+            html += '<img src="' + esc(data.services.whatsapp.profile_picture) + '" style="width:80px;height:80px;border-radius:50%;border:2px solid #ddd6fe;object-fit:cover;">';
             html += '</div>';
         }
 
         html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
-        html += '<div><strong>Number:</strong> ' + (data.formatted || '-') + '</div>';
-        html += '<div><strong>Country:</strong> ' + (data.country || '-') + '</div>';
-        html += '<div><strong>Region:</strong> ' + (data.region || '-') + '</div>';
-        html += '<div><strong>Carrier:</strong> ' + (data.carrier || '-') + '</div>';
-        html += '<div><strong>Line Type:</strong> ' + (data.line_type || '-') + '</div>';
+        html += '<div><strong>Number:</strong> ' + esc(data.formatted || '-') + '</div>';
+        html += '<div><strong>Country:</strong> ' + esc(data.country || '-') + '</div>';
+        html += '<div><strong>Region:</strong> ' + esc(data.region || '-') + '</div>';
+        html += '<div><strong>Carrier:</strong> ' + esc(data.carrier || '-') + '</div>';
+        html += '<div><strong>Line Type:</strong> ' + esc(data.line_type || '-') + '</div>';
 
         if (data.services && data.services.whatsapp) {
             const wa = data.services.whatsapp;
             const exists = wa.exists;
             html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>📱 WhatsApp</strong></div>';
             html += '<div><strong>Registered:</strong> ' + (exists ? '✅ Yes' : (exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
-            if (exists) html += '<div><strong>Chat:</strong> <a href="' + wa.url + '" target="_blank">Open</a></div>';
-            if (wa.about !== undefined && wa.about !== null) html += '<div style="grid-column:1/-1;"><strong>About:</strong> ' + escapeHtml(wa.about || '-') + '</div>';
+            if (exists) html += '<div><strong>Chat:</strong> <a href="' + esc(wa.url) + '" target="_blank">Open</a></div>';
+            if (wa.about !== undefined && wa.about !== null) html += '<div style="grid-column:1/-1;"><strong>About:</strong> ' + esc(wa.about || '-') + '</div>';
             if (wa.business !== undefined) html += '<div><strong>Business:</strong> ' + (wa.business ? '✅ Yes' : 'No') + '</div>';
             if (wa.enterprise !== undefined) html += '<div><strong>Enterprise:</strong> ' + (wa.enterprise ? '✅ Yes' : 'No') + '</div>';
             if (wa.verified !== undefined) html += '<div><strong>Verified:</strong> ' + (wa.verified ? '✅ Yes' : 'No') + '</div>';
             if (wa.banned !== undefined) html += '<div><strong>Banned:</strong> ' + (wa.banned ? '⚠ Yes' : 'No') + '</div>';
-            if (wa.line_type) html += '<div><strong>API Type:</strong> ' + wa.line_type + '</div>';
+            if (wa.line_type) html += '<div><strong>API Type:</strong> ' + esc(wa.line_type) + '</div>';
             if (wa.cached) html += '<div><strong>Cached:</strong> ' + (wa.cached ? 'Yes' : 'Fresh') + '</div>';
-            if (wa.check_date) html += '<div><strong>Checked:</strong> ' + new Date(wa.check_date).toLocaleString() + '</div>';
+            if (wa.check_date) html += '<div><strong>Checked:</strong> ' + esc(new Date(wa.check_date).toLocaleString()) + '</div>';
         }
 
         if (data.services && data.services.telegram) {
             const tg = data.services.telegram;
             html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>✈️ Telegram</strong></div>';
             html += '<div><strong>Registered:</strong> ' + (tg.exists ? '✅ Yes' : (tg.exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
-            if (tg.exists) html += '<div><strong>Chat:</strong> <a href="' + tg.url + '" target="_blank">Open</a></div>';
-            if (tg.error) html += '<div style="grid-column:1/-1;"><strong>Detail:</strong> ' + tg.error + '</div>';
+            if (tg.exists) html += '<div><strong>Chat:</strong> <a href="' + esc(tg.url) + '" target="_blank">Open</a></div>';
+            if (tg.error) html += '<div style="grid-column:1/-1;"><strong>Detail:</strong> ' + esc(tg.error) + '</div>';
         }
 
         if (data.api_usage) {
@@ -2147,9 +2051,9 @@
             const pct = Math.round(u.used / u.limit * 100);
             const color = pct >= 80 ? '#dc2626' : pct >= 50 ? '#d97706' : '#16a34a';
             html += '<div style="grid-column:1/-1;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #ddd6fe;font-size:0.75rem;color:#666;">';
-            html += 'API: ' + u.used + '/' + u.limit + ' deze maand';
-            html += ' <span style="color:' + color + ';">(' + u.remaining + ' over)</span>';
-            if (u.note) html += ' — <em style="color:#dc2626;">' + u.note + '</em>';
+            html += 'API: ' + esc(u.used) + '/' + esc(u.limit) + ' deze maand';
+            html += ' <span style="color:' + color + ';">(' + esc(u.remaining) + ' over)</span>';
+            if (u.note) html += ' — <em style="color:#dc2626;">' + esc(u.note) + '</em>';
             html += '</div>';
         }
 
@@ -2158,7 +2062,7 @@
     }
 
     async function phoneLookup(btn, phone) {
-        const resultDiv = btn.parentElement.querySelector('.phone-result');
+        const resultDiv = btn.closest('.contact-row').querySelector('.phone-result');
         const origText = btn.textContent;
 
         btn.disabled = true;
@@ -2174,9 +2078,9 @@
                 const raw = storedData.raw_response;
                 const ts = storedData.created_at ? new Date(storedData.created_at).toLocaleString() : 'onbekend';
                 let html = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.5rem;margin-bottom:0.5rem;font-size:0.8rem;text-align:center;color:#15803d;">';
-                html += '📦 Previously checked on ' + ts;
-                if (storedData.created_by_name) html += ' by ' + storedData.created_by_name;
-                html += ' <button data-click="phoneLookupRefresh" data-arg0="' + phone.replace(/'/g, '\\x27') + '" style="background:#7c3aed;color:white;border:none;border-radius:4px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">🔄 Refresh</button>';
+                html += '📦 Previously checked on ' + esc(ts);
+                if (storedData.created_by_name) html += ' by ' + esc(storedData.created_by_name);
+                html += ' <button data-click="phoneLookupRefresh" data-arg0="' + esc(phone) + '" style="background:#7c3aed;color:white;border:none;border-radius:4px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">🔄 Refresh</button>';
                 html += '</div>';
                 html += renderPhoneResult(raw);
                 resultDiv.innerHTML = html;
@@ -2198,7 +2102,7 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2208,20 +2112,20 @@
             btn.textContent = '✅ Done';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
     }
 
-    async function phoneLookupRefresh(refreshBtn, phone) {
-        const resultDiv = refreshBtn.closest('.phone-result') || refreshBtn.parentElement.querySelector('.phone-result');
-        const phoneBtn = refreshBtn.closest('.phone-result') ? null : null;
-        refreshBtn.disabled = true;
-        refreshBtn.textContent = '⏳';
+    async function phoneLookupRefresh(btn, phone) {
+        const resultDiv = btn.closest('.phone-result') || btn.parentElement.querySelector('.phone-result');
+        const phoneBtn = btn.closest('.phone-result') ? null : null;
+        btn.disabled = true;
+        btn.textContent = '⏳';
         if (resultDiv) resultDiv.innerHTML = '<span style="color: #666;">Refreshing...</span>';
         // Find the original button
-        const parent = refreshBtn.closest('[style*="display:flex"]') || refreshBtn.parentElement;
+        const parent = btn.closest('.contact-row') || btn.parentElement;
         const origBtn = parent.querySelector('[onclick*="phoneLookup"]');
         if (origBtn) {
             phoneLookup(origBtn, phone);
@@ -2238,13 +2142,13 @@
                     resultDiv.innerHTML = renderPhoneResult(data);
                 }
             } catch (err) {
-                if (resultDiv) resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+                if (resultDiv) resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             }
         }
     }
 
     async function emailCheck(btn, email) {
-        const resultDiv = btn.parentElement.querySelector('.email-result');
+        const resultDiv = btn.closest('.contact-row').querySelector('.email-result');
         const origText = btn.textContent;
 
         btn.disabled = true;
@@ -2261,7 +2165,7 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2270,7 +2174,7 @@
             let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
             html += '<div><strong>Valid Format:</strong> ' + (data.valid_format ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Domain:</strong> ' + (data.domain || '-') + '</div>';
+            html += '<div><strong>Domain:</strong> ' + esc(data.domain || '-') + '</div>';
             html += '<div><strong>MX Records:</strong> ' + (data.has_mx ? '✅ Found' : '❌ None') + '</div>';
             html += '<div><strong>Disposable:</strong> ' + (data.disposable ? '⚠️ Yes' : '✅ No') + '</div>';
 
@@ -2278,9 +2182,9 @@
                 html += '<div style="grid-column:1/-1;"><strong>🔴 Breaches (' + data.hibp_breaches.length + '):</strong></div>';
                 data.hibp_breaches.forEach(b => {
                     html += '<div style="grid-column:1/-1;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:0.4rem;margin-bottom:0.2rem;">';
-                    html += '<strong>' + b.name + '</strong> (' + (b.date || 'unknown') + ')';
+                    html += '<strong>' + esc(b.name) + '</strong> (' + esc(b.date || 'unknown') + ')';
                     if (b.data_classes && b.data_classes.length > 0) {
-                        html += '<br><span style="font-size:0.75rem;color:#666;">Data: ' + b.data_classes.join(', ') + '</span>';
+                        html += '<br><span style="font-size:0.75rem;color:#666;">Data: ' + esc(b.data_classes.join(', ')) + '</span>';
                     }
                     html += '</div>';
                 });
@@ -2291,9 +2195,9 @@
             if (data.emailrep) {
                 const rep = data.emailrep;
                 html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
-                html += '<strong>EmailRep:</strong> ' + (rep.reputation || 'unknown') + ' | ';
+                html += '<strong>EmailRep:</strong> ' + esc(rep.reputation || 'unknown') + ' | ';
                 html += 'Suspicious: ' + (rep.suspicious ? '⚠️ Yes' : '✅ No') + ' | ';
-                html += 'Details: ' + (rep.details ? rep.details.join(', ') : '-');
+                html += 'Details: ' + (rep.details ? esc(rep.details.join(', ')) : '-');
                 html += '</div>';
             }
 
@@ -2302,7 +2206,7 @@
                 html += '<strong>🔍 Investigate further:</strong> ';
                 data.search_links.forEach(function(link, i) {
                     if (i > 0) html += ' | ';
-                    html += '<a href="' + link.url + '" target="_blank" style="color:#2563eb;">' + link.label + '</a>';
+                    html += '<a href="' + esc(link.url) + '" target="_blank" style="color:#2563eb;">' + esc(link.label) + '</a>';
                 });
                 html += '</div>';
             }
@@ -2312,67 +2216,76 @@
             btn.textContent = '✅ Done';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
     }
 
     async function kadasterLookup(btn, addressId) {
-        const entry = btn.closest('div[style*="background"]');
-        const resultDiv = entry.querySelector('.kadaster-result');
+        const card = btn.closest('.address-card');
+        const resultDiv = card.querySelector('.kadaster-result');
         const origText = btn.textContent;
         
         btn.disabled = true;
-        btn.textContent = '🔍 Checking...';
+        btn.textContent = '🔍 Looking up...';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Looking up address in BAG registry...</span>';
-        
-        const street = entry.querySelector('strong')?.textContent.trim() || '';
-        const townSpan = entry.querySelector('.addr-zip-town');
-        const town = townSpan ? townSpan.textContent.trim() : '';
+        resultDiv.innerHTML = '<span style="color: #666;">Contacting PDOK BAG...</span>';
         
         try {
             const resp = await fetch('/cms/api/kadaster-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: street + ' ' + town })
+                body: JSON.stringify({ address_id: addressId })
             });
             const data = await resp.json();
             
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
-            } else if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ Address not found in Kadaster/BAG</span>';
-            } else {
-                const b = data.bag_data;
-                let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-                html += '<div><strong>Status:</strong> ' + (b.status || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + (b.type || '-') + '</div>';
-                html += '<div><strong>Purpose:</strong> ' + (b.purpose || '-') + '</div>';
-                html += '<div><strong>Surface:</strong> ' + (b.surface ? b.surface + ' m²' : '-') + '</div>';
-                html += '<div><strong>Year built:</strong> ' + (b.building_year || '-') + '</div>';
-                html += '<div><strong>Municipality:</strong> ' + (b.municipality || '-') + '</div>';
-                if (b.coordinates) {
-                    const coords = b.coordinates.replace('POINT(', '').replace(')', '');
-                    const [lng, lat] = coords.split(' ');
-                    html += '<div style="grid-column: 1 / -1;"><strong>Coordinates:</strong> ' + lat + ', ' + lng + ' (<a href="https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '&zoom=16" target="_blank">View on map</a>)</div>';
-                }
-                html += '</div></div>';
-                resultDiv.innerHTML = html;
-                btn.textContent = '✅ Verified';
-                btn.style.background = '#16a34a';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
             }
+            
+            if (!data.found) {
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'Address not found in BAG') + '</span>';
+                btn.disabled = false;
+                btn.textContent = origText;
+                return;
+            }
+            
+            const b = data.bag_data;
+            let html = '<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
+            html += '<div><strong>Address:</strong> ' + esc(b.street || '') + ' ' + esc(b.number || '') + (b.number_addition ? '-' + esc(b.number_addition) : '') + '</div>';
+            html += '<div><strong>Zipcode:</strong> ' + esc(b.zipcode || '-') + '</div>';
+            html += '<div><strong>Town:</strong> ' + esc(b.town || '-') + '</div>';
+            html += '<div><strong>Municipality:</strong> ' + esc(b.municipality || '-') + '</div>';
+            html += '<div><strong>Province:</strong> ' + esc(b.province || '-') + '</div>';
+            html += '<div><strong>Building year:</strong> ' + esc(b.building_year || '-') + '</div>';
+            html += '<div><strong>Surface:</strong> ' + esc(b.surface ? b.surface + ' m²' : '-') + '</div>';
+            html += '<div><strong>Purpose:</strong> ' + esc(b.purpose || '-') + '</div>';
+            html += '<div><strong>Status:</strong> ' + esc(b.status || '-') + '</div>';
+            html += '<div><strong>Type:</strong> ' + esc(b.type || '-') + '</div>';
+            html += '<div><strong>BAG ID:</strong> ' + esc(b.bag_id || '-') + '</div>';
+            if (b.coordinates) {
+                const coords = b.coordinates.replace('POINT(', '').replace(')', '');
+                const [lng, lat] = coords.split(' ');
+                html += '<div style="grid-column:1/-1;"><strong>Coordinates:</strong> ' + esc(lat) + ', ' + esc(lng) + ' (<a href="https://www.openstreetmap.org/?mlat=' + esc(lat) + '&mlon=' + esc(lng) + '&zoom=16" target="_blank">View on map</a>)</div>';
+            }
+            html += '</div></div>';
+            resultDiv.innerHTML = html;
+            btn.textContent = '✅ Verified';
+            btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
     }
 
     async function politiebureauLookup(btn, addressId) {
-        const entry = btn.closest('div[style*="background"]');
+        const entry = btn.closest('.address-card');
         const resultDiv = entry.querySelector('.politiebureau-result');
         const origText = btn.textContent;
 
@@ -2390,14 +2303,14 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + data.error + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + (data.message || 'No police station found') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'No police station found') + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2405,25 +2318,25 @@
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + (s.name || 'Politiebureau') + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || 'Politiebureau') + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + (s.address || '-') + '</div>';
-            html += '<div><strong>Phone:</strong> ' + (s.phone || '-') + '</div>';
+            html += '<div><strong>Address:</strong> ' + esc(s.address || '-') + '</div>';
+            html += '<div><strong>Phone:</strong> ' + esc(s.phone || '-') + '</div>';
             if (s.opening_hours) {
-                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + s.opening_hours + '</div>';
+                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + esc(s.opening_hours) + '</div>';
             }
             if (s.location && s.location.latitude && s.location.longitude) {
-                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + s.location.latitude + '&mlon=' + s.location.longitude + '&zoom=16" target="_blank">📍 View on map</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">📍 View on map</a></div>';
             }
             if (s.url) {
-                html += '<div style="grid-column:1/-1;"><a href="' + s.url + '" target="_blank">🔗 Politie.nl page</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">🔗 Politie.nl page</a></div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
             btn.textContent = '✅ Station found';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + err.message + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2458,42 +2371,39 @@
             if (c.edit_count > 0) {
                 const editDate = c.last_edited_at ? new Date(c.last_edited_at) : null;
                 const editDateStr = editDate ? editDate.toLocaleDateString()+' '+editDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
-                editInfo = `<div class="comment-edited">Edited ${c.edit_count} time${c.edit_count>1?'s':''}${c.last_edited_by_name?' by '+c.last_edited_by_name:''}${editDateStr?' on '+editDateStr:''}</div>`;
+                editInfo = '<div class="comment-edited">Edited ' + esc(c.edit_count) + ' time' + (c.edit_count>1?'s':'') + (c.last_edited_by_name?' by '+esc(c.last_edited_by_name):'') + (editDateStr?' on '+esc(editDateStr):'') + '</div>';
             }
             let editHistory = '';
             if (c.edit_history && c.edit_history.length > 0) {
-                editHistory = `<details class="comment-edit-history"><summary>View edit history (${c.edit_history.length})</summary>${c.edit_history.map(h => {
+                editHistory = '<details class="comment-edit-history"><summary>View edit history (' + esc(c.edit_history.length) + ')</summary>' + c.edit_history.map(h => {
                     const hDate = new Date(h.edited_at);
                     const hDateStr = hDate.toLocaleDateString()+' '+hDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-                    return `<div class="comment-edit-entry"><div><span class="edit-by">${h.edited_by_name}</span> <span class="edit-date">${hDateStr}</span></div><div class="edit-diff"><div class="edit-old">- ${escapeHtml(h.previous_content.substring(0,100))}${h.previous_content.length>100?'...':''}</div><div class="edit-new">+ ${escapeHtml(h.new_content.substring(0,100))}${h.new_content.length>100?'...':''}</div></div></div>`;
-                }).join('')}</details>`;
+                    return '<div class="comment-edit-entry"><div><span class="edit-by">' + esc(h.edited_by_name) + '</span> <span class="edit-date">' + esc(hDateStr) + '</span></div><div class="edit-diff"><div class="edit-old">- ' + escapeHtml(h.previous_content.substring(0,100)) + (h.previous_content.length>100?'...':'') + '</div><div class="edit-new">+ ' + escapeHtml(h.new_content.substring(0,100)) + (h.new_content.length>100?'...':'') + '</div></div></div>';
+                }).join('') + '</details>';
             }
-            html += `
-                <div class="comment-item ${pinnedClass}" id="comment-${c.id}">
-                    <div class="comment-header">
-                        <div>
-                            <span class="comment-author">${c.author_name}</span>
-                            <span class="comment-type-badge">${c.comment_type}</span>
-                            ${c.is_pinned ? '📌' : ''}
-                        </div>
-                        <div class="comment-time">${timeStr}</div>
-                    </div>
-                    ${editInfo}
-                    <div class="comment-content" id="content-${c.id}">${escapeHtml(c.content)}</div>
-                    ${editHistory}
-                    <div class="comment-edit-form" id="edit-form-${c.id}" style="display:none;">
-                        <textarea id="edit-content-${c.id}">${escapeHtml(c.content)}</textarea>
-                        <div class="comment-edit-actions">
-                            <button data-click="saveSubjectComment" data-arg0="${c.id}"" class="btn btn-sm" style="background:#059669;">Save</button>
-                            <button data-click="cancelSubjectCommentEdit" data-arg0="${c.id}"" class="btn btn-sm" style="background:#666;">Cancel</button>
-                        </div>
-                    </div>
-                    <div class="comment-actions">
-                        ${canEdit ? `<button data-click="showSubjectCommentEditForm" data-arg0="${c.id}"">Edit</button>` : ''}
-                        <button data-click="deleteSubjectComment" data-arg0="${c.id}"">Delete</button>
-                    </div>
-                </div>
-            `;
+            html += '<div class="comment-item ' + esc(pinnedClass) + '" id="comment-' + esc(c.id) + '">' +
+                '<div class="comment-header">' +
+                    '<div>' +
+                        '<span class="comment-author">' + esc(c.author_name) + '</span>' +
+                        '<span class="comment-type-badge">' + esc(c.comment_type) + '</span>' +
+                        (c.is_pinned ? '📌' : '') +
+                    '</div>' +
+                    '<div class="comment-time">' + esc(timeStr) + '</div>' +
+                '</div>' +
+                editInfo +
+                '<div class="comment-content" id="content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</div>' +
+                editHistory +
+                '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '" style="display:none;">' +
+                    '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
+                    '<div class="comment-edit-actions">' +
+                        '<button data-click="saveSubjectComment" data-arg0="' + esc(c.id) + '" class="btn btn-sm" style="background:#059669;">Save</button>' +
+                        '<button data-click="cancelSubjectCommentEdit" data-arg0="' + esc(c.id) + '" class="btn btn-sm" style="background:#666;">Cancel</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="comment-actions">' +
+                    (canEdit ? '<button data-click="showSubjectCommentEditForm" data-arg0="' + esc(c.id) + '">Edit</button>' : '') +
+                    '<button data-click="deleteSubjectComment" data-arg0="' + esc(c.id) + '">Delete</button>' +
+                '</div></div>';
         });
         container.innerHTML = html;
     }
@@ -2520,15 +2430,15 @@
         })
         .catch(err => alert('Error: ' + err.message));
     }
-    function showSubjectCommentEditForm(commentId) {
+    function showSubjectCommentEditForm(btn, commentId) {
         document.getElementById('edit-form-'+commentId).style.display = 'block';
         document.getElementById('content-'+commentId).style.display = 'none';
     }
-    function cancelSubjectCommentEdit(commentId) {
+    function cancelSubjectCommentEdit(btn, commentId) {
         document.getElementById('edit-form-'+commentId).style.display = 'none';
         document.getElementById('content-'+commentId).style.display = 'block';
     }
-    function saveSubjectComment(commentId) {
+    function saveSubjectComment(btn, commentId) {
         const newContent = document.getElementById('edit-content-'+commentId).value.trim();
         if (!newContent) { alert('Comment cannot be empty.'); return; }
         fetch('/cms/api/comments/'+commentId, {
@@ -2543,7 +2453,7 @@
         })
         .catch(err => alert('Error: ' + err.message));
     }
-    function deleteSubjectComment(commentId) {
+    function deleteSubjectComment(btn, commentId) {
         if (!confirm('Delete this comment?')) return;
         fetch('/cms/api/comments/'+commentId, { method: 'DELETE' })
         .then(() => loadSubjectComments())
@@ -2602,13 +2512,12 @@
             const data = await res.json();
 
             if (data.fallback_to_sherlock) {
-                resultsDiv.innerHTML = `<div class="card" style="padding:1rem;border-left:4px solid #f59e0b;">
-                    <strong>RapidAPI limit reached</strong><br>
-                    <span style="font-size:0.85rem;color:var(--text-secondary);">
-                        ${data.api_usage.used}/${data.api_usage.limit} used this month.
-                        Use the Sherlock button on the main dashboard.
-                    </span>
-                </div>`;
+                resultsDiv.innerHTML = '<div class="card" style="padding:1rem;border-left:4px solid #f59e0b;">' +
+                    '<strong>RapidAPI limit reached</strong><br>' +
+                    '<span style="font-size:0.85rem;color:var(--text-secondary);">' +
+                    esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) + ' used this month. ' +
+                    'Use the Sherlock button on the main dashboard.' +
+                    '</span></div>';
                 return;
             }
 
@@ -2622,13 +2531,11 @@
             if (data.api_usage) {
                 const pct = Math.min(100, Math.round((data.api_usage.used / data.api_usage.limit) * 100));
                 const color = pct >= 80 ? '#f44336' : pct >= 50 ? '#f59e0b' : '#4caf50';
-                html += `
-                    <div style="margin-bottom:1rem;padding:0.75rem;background:var(--bg-card);border-radius:8px;font-size:0.85rem;">
-                        <strong>API Usage:</strong> ${data.api_usage.used}/${data.api_usage.limit}
-                        <div style="height:6px;background:var(--border-color);border-radius:3px;margin-top:4px;max-width:200px;">
-                            <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
-                        </div>
-                    </div>`;
+                html += '<div style="margin-bottom:1rem;padding:0.75rem;background:var(--bg-card);border-radius:8px;font-size:0.85rem;">' +
+                    '<strong>API Usage:</strong> ' + esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) +
+                    '<div style="height:6px;background:var(--border-color);border-radius:3px;margin-top:4px;max-width:200px;">' +
+                    '<div style="height:100%;width:' + esc(pct) + '%;background:' + color + ';border-radius:3px;"></div>' +
+                    '</div></div>';
             }
 
             if (platforms.length === 0) {
@@ -2641,13 +2548,12 @@
             const verifiedCount = platforms.filter(p => p.verified === true && p.available === true).length;
             const fpCount = platforms.filter(p => p.available === false && p.verification_note === 'likely_false_positive').length;
             const notFound = platforms.filter(p => p.available === false && !p.verification_note).length;
-            html += `
-                <div style="display:flex;gap:1.5rem;margin-bottom:0.75rem;padding:0.75rem;background:var(--bg-card);border-radius:8px;">
-                    <div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">${taken.length}</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Found</div></div>
-                    <div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;">${platforms.length}</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Checked</div></div>
-                    <div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">${verifiedCount}</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Verified</div></div>
-                    ${fpCount ? `<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#f59e0b;">${fpCount}</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">False Pos.</div></div>` : ''}
-                </div>`;
+            html += '<div style="display:flex;gap:1.5rem;margin-bottom:0.75rem;padding:0.75rem;background:var(--bg-card);border-radius:8px;">' +
+                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(taken.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Found</div></div>' +
+                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;">' + esc(platforms.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Checked</div></div>' +
+                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(verifiedCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Verified</div></div>' +
+                (fpCount ? '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#f59e0b;">' + esc(fpCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">False Pos.</div></div>' : '') +
+                '</div>';
 
             // Group by category
             const categories = {};
@@ -2658,7 +2564,7 @@
             });
 
             for (const [cat, items] of Object.entries(categories)) {
-                html += `<h4 style="margin:1rem 0 0.5rem 0;color:var(--text-primary);font-size:0.85rem;">${cat} (${items.length})</h4>`;
+                html += '<h4 style="margin:1rem 0 0.5rem 0;color:var(--text-primary);font-size:0.85rem;">' + esc(cat) + ' (' + esc(items.length) + ')</h4>';
 
                 const takenInCat = items.filter(p => p.available === true && p.verified !== false);
                 const otherInCat = items.filter(p => p.available !== true || p.verified === false);
@@ -2670,34 +2576,29 @@
                     const badgeHtml = '<span class="source-badge rapidapi">RapidAPI</span>'
                         + (isVerified ? ' <span class="source-badge verified">Verified</span>' : '')
                         + (isUnconfirmed ? ' <span class="source-badge unconfirmed">Unconfirmed</span>' : '');
-                    html += `
-                        <div class="result-item">
-                            <input type="checkbox" class="username-result-cb" data-platform="${p.platform}" data-url="${p.url || ''}" data-username="${username}" checked>
-                            <div class="result-content">
-                                <div class="result-engine">${p.platform}${badgeHtml}</div>
-                                <div class="result-query">${username}</div>
-                                ${p.url ? `<div class="result-url"><a href="${p.url}" target="_blank">${p.url}</a></div>` : ''}
-                            </div>
-                        </div>`;
+                    html += '<div class="result-item">' +
+                        '<input type="checkbox" class="username-result-cb" data-platform="' + esc(p.platform) + '" data-url="' + esc(p.url || '') + '" data-username="' + esc(username) + '" checked>' +
+                        '<div class="result-content">' +
+                        '<div class="result-engine">' + esc(p.platform) + badgeHtml + '</div>' +
+                        '<div class="result-query">' + esc(username) + '</div>' +
+                        (p.url ? '<div class="result-url"><a href="' + esc(p.url) + '" target="_blank">' + esc(p.url) + '</a></div>' : '') +
+                        '</div></div>';
                 });
 
                 // Non-taken (available + false positives)
                 if (otherInCat.length > 0) {
                     const availCount = otherInCat.filter(p => p.available === false && !p.verification_note).length;
                     const fpInCat = otherInCat.filter(p => p.verification_note === 'likely_false_positive').length;
-                    html += `<details style="font-size:0.85rem;margin:0.25rem 0;">
-                        <summary style="cursor:pointer;color:var(--text-secondary);padding:0.3rem 0;">
-                            ${availCount} available${fpInCat ? `, ${fpInCat} false positive` : ''}
-                            <span style="font-size:0.75rem;">(click to expand)</span>
-                        </summary>`;
+                    html += '<details style="font-size:0.85rem;margin:0.25rem 0;">' +
+                        '<summary style="cursor:pointer;color:var(--text-secondary);padding:0.3rem 0;">' +
+                        esc(availCount) + ' available' + (fpInCat ? ', ' + esc(fpInCat) + ' false positive' : '') +
+                        '<span style="font-size:0.75rem;">(click to expand)</span></summary>';
                     otherInCat.forEach(p => {
                         const isFp = p.verification_note === 'likely_false_positive';
-                        html += `
-                            <div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.5rem;font-size:0.8rem;color:var(--text-muted);">
-                                <span>${isFp ? '🟠' : '🔴'}</span>
-                                <span style="flex:1;">${p.platform}</span>
-                                <span style="font-size:0.7rem;">${isFp ? 'False Positive' : 'Available'}</span>
-                            </div>`;
+                        html += '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.5rem;font-size:0.8rem;color:var(--text-muted);">' +
+                            '<span>' + (isFp ? '🟠' : '🔴') + '</span>' +
+                            '<span style="flex:1;">' + esc(p.platform) + '</span>' +
+                            '<span style="font-size:0.7rem;">' + (isFp ? 'False Positive' : 'Available') + '</span></div>';
                     });
                     html += '</details>';
                 }
@@ -2714,7 +2615,7 @@
                 });
             }
         } catch (e) {
-            resultsDiv.innerHTML = `<div style="color:#dc2626;padding:0.5rem;">Error: ${e.message}</div>`;
+            resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">Error: ' + esc(e.message) + '</div>';
         }
     }
 

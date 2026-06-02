@@ -1,44 +1,53 @@
 # Dashboard
 
-Het Dashboard is de centrale hub na het inloggen. Het geeft een overzicht van de actieve onderzoeken, subjects en systeemstatus.
+Het Dashboard is de startpagina na het inloggen. Het is nu **search-centric**: de zoekbalk staat prominent centraal voor snel zoeken in cases, subjects, clients, findings en documenten.
 
-## Statistiek-kaarten
+## Zoeken
 
-Elke kaart toont een belangrijke metriek:
+Typ een zoekterm in de centrale balk en druk op Enter — je wordt doorgestuurd naar de search pagina met resultaten. Of gebruik de quick links eronder om direct naar een sectie te navigeren.
 
-- **📋 Open Cases** — aantal cases met status `Open` of `In Progress`
-- **👥 Subjects** — totaal aantal subjects in de database
-- **⏰ Pending Reminders** — herinneringen die binnen 7 dagen vervallen
-- **📄 Recent Activity** — laatste 30 audit log entries (nieuwe cases, bewerkingen, etc.)
+## Quick Links
+
+- 📁 All Cases
+- ➕ New Case
+- 👤 All Subjects
+- ➕ New Subject
+- 🏢 All Clients
+- ⏰ Reminders
+- 📥 Export
+- ⚙️ Settings (alleen admin)
+- 📊 Statistieken (alleen admin)
+
+## Stat Counters
+
+Een rij van 7 kaarten toont het totaal aantal:
+
+- **Open** — cases met status Open
+- **Active** — cases met status Active
+- **Suspended** — cases met status Suspended
+- **Closed** — cases met status Closed
+- **Clients** — actieve clients
+- **Subjects** — totaal subjects
+- **Findings** — totaal findings
+
+## My Open / Active Cases
+
+Tabel met jouw toegewezen cases (status Open of Active), gesorteerd op laatste update.
 
 ## OSINT Service Health
 
-Een rij van 6 service-kaarten toont de status van externe OSINT-bronnen:
+Een rij van 7 service-kaarten toont de status van externe OSINT-bronnen:
 
+- **Database** — PostgreSQL verbinding
 - **SpiderFoot** — OSINT scan engine
-- **Kadaster/PDOK** — Nederlandse BAG adresdata
 - **RDW** — Nederlandse voertuigregistratie
+- **Kadaster/PDOK** — Nederlandse BAG adresdata
 - **HIBP** — Have I Been Pwned (datalekken check)
-- **Overheid.io** — Nederlandse open data API
+- **Overheid.io** — Nederlandse open data API (OpenKVK KvK lookup)
 - **Brave Search** — web search API
 
-Groen = bereikbaar, Rood = onbereikbaar. De health wordt gecheckt bij het laden van de pagina via `/health?quick=1`.
+Groen = Online, Oranje = geen key geconfigureerd, Rood = fout. De health wordt gecheckt bij het laden van de pagina.
 
-## Trending Subjects
+## Statistieken
 
-De "Trending Subjects" sectie toont subjects die in de meeste cases voorkomen. Dit helpt bij het identificeren van veelvoorkomende targets over meerdere onderzoeken heen.
-
-## SpiderFoot Statistieken
-
-Als SpiderFoot geconfigureerd is, verschijnt een extra kaart "🔍 Scans" met:
-
-- **Completed** — aantal voltooide scans
-- **Running** — aantal actieve scans
-- **Failed** — aantal mislukte scans
-- **Last scan** — datum/tijd van de laatste scan
-
-Klik op de kaart voor een detailweergave.
-
-## Recente Cases
-
-De "Recent Cases" tabel toont de 10 meest recent bijgewerkte cases met status, prioriteit en een link naar de case-detailpagina.
+Voor alle grafieken en widgets (Cases by Status, Criminal Code, Priority, Lead Investigator Workload, Recent Activity, SpiderFoot stats, Reminders, Subject Types) ga je naar **Settings → Statistieken** (`/cms/settings/statistics`). Deze pagina bevat alle voormalige dashboard-widgets.

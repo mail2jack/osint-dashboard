@@ -63,10 +63,16 @@ def create_cms_module(app: Flask):
     # Inject theme_style into all templates
     @app.context_processor
     def inject_theme():
-        from .models import Setting
+        try:
+            from .models import Setting
 
-        style = Setting.get("theme_style", "classic")
-        return {"theme_style": style}
+            style = Setting.get("theme_style", "classic")
+            return {"theme_style": style}
+        except Exception:
+            from .models import db
+
+            db.session.rollback()
+            return {"theme_style": "classic"}
 
     # Schema management via Alembic
     with app.app_context():
@@ -96,7 +102,7 @@ def create_cms_module(app: Flask):
             # Fresh DB — create all tables from migration
             command.upgrade(alembic_cfg, "head")
 
-        # All schema migrations are now managed by Alembic.
+            # All schema migrations are now managed by Alembic.
         # See migrations/versions/ for the current schema revision.
 
         # Data migration: Subject.notes free-text → Comment model
@@ -148,6 +154,7 @@ def create_cms_module(app: Flask):
                     )
         except Exception as e:
             app.logger.debug(f"Audit log purge note: {e}")
+            db.session.rollback()
 
         # Purge expired password reset tokens on startup
         try:
@@ -177,6 +184,38 @@ def create_cms_module(app: Flask):
             cleanup_old_tasks(max_age_hours=48)
         except Exception as e:
             app.logger.debug(f"Background task cleanup note: {e}")
+            db.session.rollback()
+
+        # Purge old phone lookups on startup
+        try:
+            from .models import PhoneLookup
+
+            retention = int(Setting.get("phone_lookup_retention_days", "90"))
+            if retention > 0:
+                deleted = PhoneLookup.purge_old(retention)
+                if deleted:
+                    app.logger.info(
+                        f"Startup: purged {deleted} phone lookup entries older than {retention} days"
+                    )
+        except Exception as e:
+            app.logger.debug(f"Phone lookup purge note: {e}")
+            db.session.rollback()
+
+        # Purge old login logs on startup
+        try:
+            from .models import LoginLog
+            from datetime import timedelta
+
+            cutoff = datetime.now(timezone.utc) - timedelta(days=365)
+            deleted = LoginLog.query.filter(LoginLog.created_at < cutoff).delete()
+            if deleted:
+                db.session.commit()
+                app.logger.info(
+                    f"Startup: purged {deleted} login log entries older than 365 days"
+                )
+        except Exception as e:
+            app.logger.debug(f"Login log purge note: {e}")
+            db.session.rollback()
 
         # Create default admin user if none exists
         if not User.query.filter_by(role="admin").first():
@@ -197,9 +236,8 @@ def create_cms_module(app: Flask):
             app.logger.warning(
                 "Default admin user created. Set a password immediately via Settings > Users or the password reset flow."
             )
-            print(
-                f"\n{'=' * 60}\n  DEFAULT ADMIN CREATED — CHANGE PASSWORD IMMEDIATELY\n  Username: admin\n  Go to Settings > Users to set a password.\n{'=' * 60}\n",
-                flush=True,
+            app.logger.warning(
+                "Default admin created — change password immediately. Username: admin."
             )
 
     return app

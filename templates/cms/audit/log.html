@@ -5,11 +5,11 @@
 {% block content %}
 <style>
     .action-badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
-    .action-create { background: var(--success-bg, #dcfce7); color: var(--success-text, #166534); }
-    .action-update { background: var(--info-bg, #dbeafe); color: var(--info-text, #1e40af); }
-    .action-delete { background: var(--danger-bg, #fee2e2); color: var(--danger-text, #dc2626); }
-    .action-login { background: var(--warning-bg, #fef3c7); color: var(--warning-text, #92400e); }
-    .action-read { background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #374151); }
+    .action-create { background: var(--success-bg); color: var(--success-text); }
+    .action-update { background: var(--info-bg); color: var(--info-text); }
+    .action-delete { background: var(--danger-bg); color: var(--danger-text); }
+    .action-login { background: var(--warning-bg); color: var(--warning-text); }
+    .action-read { background: var(--bg-secondary); color: var(--text-secondary); }
     .empty { text-align: center; padding: 2rem; color: var(--text-secondary, #666); }
     .filter-group { display: flex; flex-direction: column; gap: 0.25rem; }
     .filter-group label { font-size: 0.75rem; color: var(--text-secondary, #666); }
@@ -54,16 +54,16 @@
         </div>
         <div class="filter-group" style="justify-content: flex-end;">
             <label>&nbsp;</label>
-            <button type="submit">Filter</button>
+            <button type="submit" class="btn-cms primary">Filter</button>
         </div>
         <div class="filter-group" style="justify-content: flex-end;">
             <label>&nbsp;</label>
-            <a href="{{ url_for('cms.audit_log') }}" class="btn" style="background: #666;">Clear</a>
+            <a href="{{ url_for('cms.audit_log') }}" class="btn-cms gray">Clear</a>
         </div>
     </form>
     
     {% if logs %}
-    <table>
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Time</th>
@@ -109,7 +109,7 @@
     </div>
     {% endif %}
     {% else %}
-    <div class="empty">No audit logs found matching your criteria.</div>
+    <div class="empty-state"><div class="icon">📭</div><p>No audit logs found matching your criteria.</p></div>
     {% endif %}
 </div>
 {% endblock %}

@@ -44,7 +44,7 @@ def _read_session_data(session_id: str) -> dict:
 @cms_bp.route("/admin/sessions", methods=["GET"])
 @login_required
 @admin_required
-def list_sessions():
+def list_sessions() -> dict:
     """List active server-side sessions."""
     accept_html = "text/html" in flask.request.accept_mimetypes.values()
     if accept_html:
@@ -257,15 +257,15 @@ def check_update() -> flask.Response:
         current_app.config[cache_key] = {"data": data, "cached_at": now}
         return jsonify(data)
 
-    except Exception as e:
-        logger.warning(f"Update check failed ({type(e).__name__}): {e}")
+    except Exception:
+        logger.exception("Update check failed")
         return jsonify(
             {
                 "update_available": False,
                 "current_version": current_ver,
                 "latest_version": None,
                 "check_enabled": True,
-                "error": str(e),
+                "error": "Update check failed",
             }
         )
 
@@ -319,9 +319,9 @@ def do_update() -> flask.Response:
                     )
                     results[-1] = {"step": msg, "status": "error", "output": output}
                     logger.error(f"Update step failed: {msg}\n{output}")
-            except Exception as e:
-                results[-1] = {"step": msg, "status": "error", "output": str(e)}
-                logger.error(f"Update step exception ({type(e).__name__}): {msg}\n{e}")
+            except Exception:
+                logger.exception("Update step exception: %s", msg)
+                results[-1] = {"step": msg, "status": "error", "output": "Step failed"}
 
         import shutil
 
@@ -428,14 +428,18 @@ def do_update() -> flask.Response:
                 else "Update had errors, check results",
             }
         ), 200 if success else 500
-    except Exception as e:
-        logger.exception(f"do_update crashed ({type(e).__name__}): {e}")
+    except Exception:
+        logger.exception("do_update crashed")
         return jsonify(
             {
                 "success": False,
                 "current_version": "unknown",
                 "results": [
-                    {"step": "Update crashed", "status": "error", "output": str(e)}
+                    {
+                        "step": "Update crashed",
+                        "status": "error",
+                        "output": "Update crashed",
+                    }
                 ],
                 "message": "Update crashed with an unexpected error",
             }

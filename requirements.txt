@@ -8,6 +8,7 @@ flask-cors>=4.0.0
 flask-bcrypt>=1.0.0
 flask-limiter>=3.0.0
 flask-session>=0.8.0
+cachelib>=0.14.0
 
 # HTTP clients
 phonenumbers>=8.13.0
@@ -48,6 +49,9 @@ sentry-sdk>=2.0.0
 spiderfoot-client>=1.0.0
 
 pydantic>=2.0,<3.0
+
+# API documentation
+flasgger>=0.9.7
 
 # Testing
 pytest-timeout>=2.3.1

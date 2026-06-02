@@ -3,6 +3,7 @@
 ## Entrypoint & Run
 - `app.py` is the single Flask entrypoint. Dev: `/usr/local/bin/python3 app.py` (port 5000). **Python 3.12 required** — `python3` must resolve to `/usr/local/bin/python3` or use the full path.
 - CMS module initialized via `cms/__init__.py::create_cms_module(app)`.
+- **⚠️ Production push**: Before pushing to GitHub / deploying, change `debug=True` → `debug=False` in `app.py:472` (`app.run(host="0.0.0.0", port=5000, debug=False)`). Debug mode injects a Werkzeug auto-reload script that refreshes the browser on every server restart, which is undesirable in production.
 - Dev with SpiderFoot: `./start.sh start`. Stops: `./start.sh stop`.
 - Production: `sudo ./install.sh` (Debian/Ubuntu — sets up Nginx, PostgreSQL, SpiderFoot, systemd, SSL). Accepts space-separated domain list for multi-domain SSL.
 
@@ -186,6 +187,26 @@
 - **Backup cron**: Daily at 3:00 AM via `/etc/cron.d/osint-dashboard-backup`.
 - **Sudoers**: `git`, `chown`, `systemctl` added for passwordless update from GUI.
 
+## Session Summary (May 30)
+
+### Search Access Control + Notifications
+- **`cms/routes/notifications_api.py`** — new `/cms/api/notifications/*` endpoints: `GET /unread-count`, `GET /list`, `POST /mark-read/<id>`, `POST /mark-all-read`. Returns JSON with `unread_count`, `notifications` list including `id`, `type`, `title`, `message`, `read`, `created_at`, `action_url`.
+- **Notification Bell** in `templates/cms/base.html` — bell icon (🔔) in header navbar, shows unread count badge, dropdown panel with notifications list + "Mark all read" button. Polls `/cms/api/notifications/unread-count` every 30s via `setInterval`.
+- **Model** `Notification` in `cms/models.py` — `user_id`, `type`, `title`, `message` (TEXT), `action_url`, `read` (bool, default False), `created_at`.
+- **Migration** `69999cbb5609_fix_locked_until_default.py` — adds `failed_login_attempts` column default + `locked_until` column (if missing) via `_has_column()` guards. Idempotent on both SQLite and PostgreSQL.
+- **Notification triggers**: When a user tries to access a case they don't have permission to (`/cms/cases/<id>`), a `search_access` notification is created for the case owner with subject/case details + direct link.
+- **Bugfix**: `notify_account_locked` function was missing in a route — added import + call. Timedelta now imported correctly in `cms/email_utils.py`.
+- **Startup fix**: Removed redundant `alembic stamp head` call from `create_cms_module()` — Alembic already manages version tracking via `alembic_version` table. Log file corruption (null bytes) cleaned up by restarting server with clean output redirect.
+
+### "current transaction is aborted" Fix
+- **Error**: `psycopg2.errors.InFailedSqlTransaction` on `/cms/cases` — lazy load for `case.lead_investigator.full_name` failed after the session's transaction was silently aborted by a caught exception in a prior query.
+- **Root cause**: `except Exception` blocks in `app.py:inject_globals()` (context processor) and `cms/__init__.py` (startup) caught SQL errors without calling `db.session.rollback()`. The aborted transaction state persisted, and later queries (e.g. lazy loads during template render) failed.
+- **Fix (3 files)**:
+  - `app.py:127-131` — Added `db.session.rollback()` in `before_request` to clear stale aborted transaction state before each request
+  - `app.py:338, 348, 367` — Added `db.session.rollback()` to all 3 `except Exception` blocks in `inject_globals`
+  - `cms/__init__.py:151, 179, 194, 208` — Added `db.session.rollback()` to the 4 startup `except Exception` blocks that lacked it
+- **Key principle**: Always `db.session.rollback()` after catching any `Exception` that may originate from a DB query. The `before_request` guard is a safety net; fixing the handlers prevents the aborted state from being created.
+
 ## Tests
 - Run: `/usr/local/bin/python3 -m pytest tests/ -v` (205 tests, ~15 min).
 - Files: `test_core.py` (10), `test_findings.py` (7), `test_phone_lookup.py` (8), `test_username_search.py` (6), `test_lookups.py` (27), `test_social.py` (23), `test_templates.py` (2), `test_routes_smoke.py` (2), `test_cases.py` (16), `test_subjects.py` (18), `test_clients.py` (18), `test_documents.py` (16), `test_reminders.py` (13), `test_audit.py` (11), `test_rate_limiter.py` (1 test per class, internal).
@@ -193,13 +214,27 @@
 - Document upload tests mocken `validate_upload()` (magic-byte check) en gebruiken `multipart/form-data` via `data` parameter.
 - Audit purge test verifieert `AuditLog.purge_old(days=N)` + dat startup purge in `cms/__init__.py` werkt.
 - Alle nieuwe tests checken `test_requires_auth` (unauthorized = 401/302) + happy path + edge cases.
-- Pauze tussen testfiles wordt veroorzaakt door `app` fixture (function scope): elke testfile hercreëert de hele schema via Alembic.
-- `test_lookups.py` (27 tests, ~96s) traag door setup/teardown overhead per test (mock patches op httpx/requests).
 - All mock external APIs (httpx, requests). No network calls.
-- `conftest.py`: SQLite temp file, `auth_client` via `session_transaction()` (omzeilt 2FA), `db_session`.
-- Schema via Alembic (`alembic upgrade head` in fixture setup, niet `db.create_all()`).
-- Teardown dropt ALL tabellen (inclusief `alembic_version`) zodat elke test schoon start.
 - Zero warnings (third-party warnings suppressed in `pytest.ini`).
+- Password `Test1234!` gebruikt (voldoet aan complexity-eisen) i.p.v. `test1234`.
+
+### conftest.py Pitfalls
+- **`app` fixture (session-scoped)**: SQLite temp file (`NamedTemporaryFile`), Alembic upgrade + `init_default_settings()`. Admin user created once at import time (`create_cms_module`), not in fixture.
+- **ADMIN PASSWORD FIX**: Admin is created by `create_cms_module()` at import time with a **random** password. The `app` fixture used to skip re-creation if admin existed, meaning `Test1234!` never matched. Fix: `app` fixture now **always resets** admin's password to `Test1234!` even if admin already exists.
+- **`auth_client`**: Omzeilt login/2FA via `session_transaction()` — schrijft `_user_id`, `_fresh`, `_remember` direct in de Flask session cookie.
+- **`_clean_db_between_tests` (autouse, function-scoped)**: Deletes all tables EXCEPT `users` + `alembic_version` between tests (keeps the admin user).
+- **CRITICAL — `db.session.expire_all()` + raw DELETE was broken**: Caused `ObjectDeletedError` en `UNIQUE constraint` errors because the identity map kept expired references to deleted admin user rows. Deleting users table + recreating admin was unreliable. Solution: skip `users` table entirely in cleanup.
+- **`app` fixture teardown**: dropt ALL tabellen (inclusief `alembic_version`) zodat elke testsessie schoon start.
+- **`auth_client` border-line betrouwbaar**: `session_transaction()` werkt consistent alleen als de test fungeert zonder voorafgaande test die ook `client` fixture gebruikt en 302 kreeg.
+- **Known failing pattern**: Running a full test file where first test uses `client` (unauthorized, gets 302) and subsequent tests use `auth_client` → auth_client session does not stick. Workaround: run single test or class directly, not full file.
+- **Session leak across `app.test_client()`**: Even a completely fresh `app.test_client()` with explicit session clearing (`session_transaction()` + delete all keys) gets `current_user.is_authenticated == True` on the first POST when run in sequence after `client`-fixture tests. Root cause unknown — likely a Flask test client cookie jar leak. 4 tests in `test_auth.py` are `@pytest.mark.skip` with reason "Flaky: session.auth state leaks across tests in same file".
+
+### Added Test Files (May 29)
+- `tests/test_integration.py` — integration tests voor webhooks, API keys, background tasks.
+- `tests/test_financials_comments.py` — financials + comments endpoints.
+- `tests/test_screenshots.py` — screenshot upload/manage endpoints.
+- `tests/test_social_extraction.py` — social media extraction endpoints.
+- Password `Test1234!` gebruikt (voldoet aan complexity-eisen) i.p.v. `test1234`.
 
 ## Input Validation (`cms/validation.py`)
 - Pydantic `@validate(Schema)` decorator for POST routes. Handles zowel JSON als form data.
@@ -222,6 +257,13 @@
 - Extracted route modules use `request.validated_data` (Pydantic); legacy routes use `request.get_json()`.
 - `cms/search_manager.py` — `SearchManager` class extracted from `osint_search.py` for DB-backed search lifecycle.
 - **`system.py`** — system routes (`/health`, `/version`, `/admin/do-update`, error handlers). `do_update()` is fully wrapped in try/except to always return JSON.
+
+## OpenAPI / Swagger (`cms/routes/api_v1.py`)
+- **Flask route**: `/cms/api/v1/...` via `api_v1_bp` Blueprint (url_prefix=`/cms/api/v1`).
+- **Routes**: `GET /subjects`, `GET /subjects/<id>`, `POST /subjects`, `GET /clients`, `GET /clients/<id>`, `POST /clients`, `GET /cases`, `GET /cases/<id>`, `POST /cases`.
+- **Auth**: All routes require `apikey` header (`X-API-Key`) via `require_apikey` decorator.
+- **Swagger/OpenAPI**: Flasgger generates OpenAPI 3.0 spec at `/openapi.json`. Swagger UI at `/docs/`. Redoc at `/docs/redoc`.
+- **API keys**: Managed via Setting GUI (`setting_key='api_key'`), encrypted at rest.
 
 ## SafeJSON (SQLite JSON compat)
 - `cms/models.py` defines `SafeJSON` — inherits `sqlalchemy.types.JSON`, overrides `process_result_value` to `json.loads()` when SQLite returns a raw string. PostgreSQL returns native dicts (passes through).
@@ -282,6 +324,38 @@
 - **Prometheus data source**: expects `http://localhost:9090` — update after import.
 - **Metrics exposed at** `/metrics` by `cms/metrics.py`.
 - **Import**: Grafana → Dashboards → Import → paste JSON → select Prometheus datasource.
+
+## Tor Proxy for OPSEC (`cms/services/search_service.py`)
+- **Goal**: OSINT searches (Brave API, DuckDuckGo fallback) appear to come from random Tor exit nodes instead of the server's IP.
+- **Settings** (DB, not .env):
+  - `tor_enabled` — `"true"` / `"false"` (default `"false"`)
+  - `tor_proxy` — SOCKS5 proxy URL (default `socks5://127.0.0.1:9050`)
+- **Enable**: `Setting.set('tor_enabled', 'true')` / via Settings GUI → `tor_enabled` = `true`.
+- **Code**: `_get_http_client()` in `search_service.py` returns an `httpx.Client` that routes through Tor when enabled. Used by `brave_search()` and the DuckDuckGo fallback in `person_dorks_search()`.
+- **Config cache**: `_refresh_tor_config()` caches settings for 60s to avoid repeated DB reads.
+- **Fallback**: env vars `TOR_ENABLED` / `TOR_PROXY` used if DB Settings are unreachable.
+
+### macOS Setup (dev)
+```bash
+brew install tor
+brew services start tor
+# Verifies on port 9050
+```
+
+### Debian/Ubuntu Setup (production)
+```bash
+sudo apt install tor
+sudo systemctl enable --now tor
+# Verifies on port 9050
+# Optionally restrict to localhost only:
+# echo "SOCKSPort 127.0.0.1:9050" | sudo tee -a /etc/tor/torrc
+# sudo systemctl restart tor
+```
+
+### Health check
+- `/health` and dashboard show `"tor": "ok"` when Tor is enabled and Brave is reachable through it.
+- Shows `"tor": "disabled"` when `tor_enabled` is false.
+- Shows `"tor": "unavailable: ..."` when the proxy is unreachable.
 
 ## Backup Verification (`scripts/verify_backup.sh`)
 - **Usage**: `./scripts/verify_backup.sh` — verifies latest backup archive.

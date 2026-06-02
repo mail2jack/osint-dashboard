@@ -40,9 +40,9 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem;">
-            <button type="submit" class="btn" style="background: #059669;">Generate & Save</button>
-            <button type="button" data-click="loadPreview" class="btn">Preview</button>
-            <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn" style="background: #666;">Cancel</a>
+            <button type="submit" class="btn-cms teal">Generate & Save</button>
+            <button type="button" data-click="loadPreview" class="btn-cms primary">Preview</button>
+            <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn-cms gray">Cancel</a>
         </div>
     </form>
 </div>
@@ -53,7 +53,7 @@
     <div id="previewContent" style="white-space: pre-wrap; font-family: monospace; background: #f5f5f5; padding: 1rem; border-radius: 8px; max-height: 60vh; overflow-y: auto;"></div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function loadPreview() {
     const templateId = document.getElementById('template_id').value;
     const previewSection = document.getElementById('previewSection');

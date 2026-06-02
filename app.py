@@ -1,5 +1,6 @@
 import os
 import re
+import secrets
 import logging
 import uuid as uuid_mod
 
@@ -52,6 +53,14 @@ def add_request_id():
         request.headers.get("X-Request-ID") or uuid_mod.uuid4().hex[:12]
     )
     g.request_id = request.request_id
+    g.csp_nonce = secrets.token_hex(16)
+    # Clear any stale aborted transaction from the connection pool
+    from cms.models import db
+
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
 
 
 # Load security and application configuration based on FLASK_ENV
@@ -79,13 +88,6 @@ app.config["SESSION_CACHELIB"] = FileSystemCache(
     cache_dir=_session_dir, threshold=5000, default_timeout=28800
 )
 Session(app)
-
-# Deprecated module-level env var constants (kept for backward compat)
-HIBP_API_KEY = os.environ.get("HIBP_API_KEY", "")
-TWOCHAT_API_KEY = os.environ.get("TWOCHAT_API_KEY", "")
-TWOCHAT_WHATSAPP_NUMBER = os.environ.get("TWOCHAT_WHATSAPP_NUMBER", "")
-OVERHEID_API_KEY = os.environ.get("OVERHEID_API_KEY", "")
-BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
 
 # =============================================================================
 # Case Management System (CMS) Integration
@@ -116,14 +118,34 @@ if not os.environ.get("CMS_ENCRYPTION_KEY"):
 
 # Set secret key for sessions (required for CMS)
 if not app.config.get("SECRET_KEY"):
-    app.config["SECRET_KEY"] = os.environ.get(
-        "SECRET_KEY", "dev-secret-key-change-in-production"
-    )
+    secret = os.environ.get("SECRET_KEY")
+    if not secret:
+        if os.environ.get("FLASK_ENV") == "production":
+            raise RuntimeError(
+                "SECRET_KEY environment variable is REQUIRED in production."
+            )
+        import secrets
+
+        secret = secrets.token_hex(32)
+        import warnings
+
+        warnings.warn(
+            "Using randomly generated SECRET_KEY (not persisted). Set SECRET_KEY env var for production!"
+        )
+    app.config["SECRET_KEY"] = secret
 
 # Database: PostgreSQL if DATABASE_URL is set, fallback to SQLite
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    # Resolve relative SQLite paths to absolute to prevent mismatch with Alembic
+    if database_url.startswith("sqlite:///") and not database_url.startswith(
+        "sqlite:////"
+    ):
+        rel_path = database_url[len("sqlite:///") :]
+        abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path))
+        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{abs_path}"
+    else:
+        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 else:
     CMS_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "cms.db"))
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{CMS_DB_PATH}"
@@ -273,6 +295,34 @@ def platform_color_filter(url):
     return "#666"
 
 
+@app.template_filter("redact_for_viewer")
+def redact_for_viewer_filter(value):
+    """Redact sensitive values when the current user is a viewer."""
+    if not value:
+        return value
+    from flask_login import current_user
+
+    if current_user and current_user.is_authenticated and current_user.role == "viewer":
+        s = str(value)
+        # Phone numbers: show last 4 digits
+        if any(c.isdigit() for c in s) and ("+" in s or any(c.isdigit() for c in s)):
+            digits = "".join(c for c in s if c.isdigit())
+            if len(digits) >= 4:
+                return s[:-4] + "****" if len(s) > 4 else "****"
+        # Email: show first char + domain
+        if "@" in s:
+            local, domain = s.split("@", 1)
+            if local:
+                return local[0] + "***@" + domain
+        # General: show first 3 + last 3 chars
+        if len(s) > 12:
+            return s[:3] + "..." + s[-3:]
+        if len(s) > 6:
+            return s[:2] + "..." + s[-2:]
+        return s[0] + "..." if len(s) > 1 else "***"
+    return value
+
+
 # =============================================================================
 # End CMS Integration
 # =============================================================================
@@ -285,7 +335,24 @@ def inject_globals():
 
     ctx = {
         "current_version": get_version(),
+        "csp_nonce": getattr(g, "csp_nonce", ""),
     }
+    # Notification count for bell icon
+    try:
+        from cms.models import Notification
+        from flask_login import current_user
+
+        if current_user and current_user.is_authenticated:
+            ctx["notification_count"] = Notification.query.filter_by(
+                user_id=current_user.id, is_read=False
+            ).count()
+        else:
+            ctx["notification_count"] = 0
+    except Exception:
+        from cms.models import db
+
+        db.session.rollback()
+        ctx["notification_count"] = 0
     try:
         from cms.setting_cache import cached_setting_get
 
@@ -294,8 +361,52 @@ def inject_globals():
         ctx["spiderfoot_health"] = sf_health
         ctx["spiderfoot_last_ok"] = sf_last_ok
     except Exception:
+        from cms.models import db
+
+        db.session.rollback()
         ctx["spiderfoot_health"] = ""
         ctx["spiderfoot_last_ok"] = ""
+    # Check for recent login anomalies
+    try:
+        from flask import request
+        from cms.models import LoginLog, db
+        from datetime import datetime, timezone, timedelta
+        from flask_login import current_user
+
+        # Only check if user is authenticated and admin
+        if (
+            current_user
+            and current_user.is_authenticated
+            and hasattr(current_user, "role")
+            and current_user.role == "admin"
+        ):
+            recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+            anomaly_count = LoginLog.query.filter(
+                LoginLog.is_anomaly == True,
+                LoginLog.created_at >= recent_cutoff,
+            ).count()
+            ctx["login_anomaly_count"] = anomaly_count
+        else:
+            ctx["login_anomaly_count"] = 0
+    except Exception:
+        from cms.models import db
+
+        db.session.rollback()
+        ctx["login_anomaly_count"] = 0
+
+    # Session expiry time for timeout warning
+    try:
+        from datetime import timedelta
+        from flask import session
+
+        if session.permanent:
+            lifetime = app.permanent_session_lifetime
+            ctx["session_lifetime_seconds"] = int(lifetime.total_seconds())
+        else:
+            ctx["session_lifetime_seconds"] = 28800  # 8h default
+    except Exception:
+        ctx["session_lifetime_seconds"] = 28800
+
     # Derive help topic from request endpoint
     try:
         from flask import request
@@ -354,15 +465,17 @@ def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-XSS-Protection"] = "1; mode=block"
+    nonce = getattr(g, "csp_nonce", "")
+    # 'unsafe-eval' required by TensorFlow.js (face-api) for WebGL backend
     csp = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https:; "
-        "connect-src 'self' https:; "
-        "frame-src 'none'; "
-        "object-src 'none'"
+        f"default-src 'self'; "
+        f"script-src 'self' 'unsafe-eval' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
+        f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        f"font-src 'self' https://fonts.gstatic.com; "
+        f"img-src 'self' data: https:; "
+        f"connect-src 'self' https:; "
+        f"frame-src 'none'; "
+        f"object-src 'none'"
     )
     response.headers["Content-Security-Policy"] = csp
     # Only set HSTS for non-localhost
@@ -379,4 +492,4 @@ def add_security_headers(response):
 # =============================================================================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)

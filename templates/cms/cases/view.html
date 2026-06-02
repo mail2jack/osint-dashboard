@@ -5,99 +5,6 @@
 {% block content %}
 <style>
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-    h1 { color: #1a1a2e; }
-    .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1rem; }
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-    .info-item label { display: block; color: #666; font-size: 0.875rem; margin-bottom: 0.25rem; }
-    .info-item span { font-weight: 500; }
-    .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
-    .badge-open { background: #fef3c7; color: #92400e; }
-    .badge-active { background: #dbeafe; color: #1e40af; }
-    .badge-closed { background: #d1fae5; color: #065f46; }
-    .badge-suspended { background: #fef3c7; color: #92400e; }
-    .badge-archived { background: #e5e7eb; color: #374151; }
-    .badge-critical { background: #fee2e2; color: #dc2626; }
-    .badge-high { background: #fed7aa; color: #c2410c; }
-    .badge-medium { background: #fef3c7; color: #92400e; }
-    .badge-low { background: #d1fae5; color: #065f46; }
-    .back { margin-bottom: 1rem; }
-    .back a { color: #0066cc; text-decoration: none; }
-    h2 { margin-top: 1.5rem; color: #1a1a2e; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
-    tbody tr:nth-child(odd) { background: #f9f9f9; }
-    tbody tr:nth-child(even) { background: #ffffff; }
-    tbody tr:hover { background: #e8f4ff; }
-    .btn {
-        padding: 0.75rem 1.5rem; background: #16213e;
-        color: white; border: none; border-radius: 8px;
-        font-size: 1rem; cursor: pointer; font-weight: 500; text-decoration: none;
-        display: inline-block;
-    }
-    .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
-    .btn-danger { background: #dc2626; }
-    .btn-success { background: #059669; }
-    
-    /* Modal Styles */
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-    .modal.show { display: flex; align-items: center; justify-content: center; }
-    .modal-content { background: white; border-radius: 12px; padding: 2rem; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; position: relative; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-    .modal-header h2 { margin: 0; }
-    .close { font-size: 1.5rem; cursor: pointer; color: #666; }
-    .close:hover { color: #000; }
-    
-    /* Blinking animation */
-    @keyframes blink { 
-        0%, 100% { opacity: 1; } 
-        50% { opacity: 0.3; } 
-    }
-    .searching { animation: blink 1.5s infinite; }
-    
-    /* Results list */
-    .result-item { padding: 0.75rem; border: 1px solid var(--border-color,#e5e7eb); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card,#fff); color: var(--text-primary,#1a1a2e); }
-    .result-item input[type="checkbox"] { width: auto; min-width: 16px; height: 16px; margin-top: 0.35rem; margin-right: 0; padding: 0; border: none; flex-shrink: 0; accent-color: var(--accent-primary,#16213e); }
-    .result-content { flex: 1; min-width: 0; color: var(--text-primary,#1a1a2e); }
-    .result-engine { font-weight: 600; color: var(--text-primary,#1a1a2e); margin-bottom: 0.15rem; }
-    .result-query { font-size: 0.8rem; color: var(--text-secondary,#666); margin-bottom: 0.2rem; line-height: 1.4; }
-    .result-url { font-size: 0.75rem; color: var(--link-color,#0066cc); word-break: break-all; }
-    .result-url a { color: var(--link-color,#0066cc); text-decoration: none; }
-    .result-url a:hover { text-decoration: underline; }
-    .source-badge { display:inline-block; padding:2px 7px; border-radius:4px; font-size:0.65rem; font-weight:500; margin-left:0.5rem; vertical-align:middle; }
-    .source-badge.brave { background:#f97316; color:#fff; }
-    .source-badge.ddg { background:#25D366; color:#fff; }
-    
-    /* Select all checkbox */
-    .select-all-row { padding: 0.5rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb; }
-    
-    /* Comments Section */
-    .comments-section { margin-top: 1.5rem; }
-    .comment-form { margin-bottom: 1rem; }
-    .comment-form textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; resize: vertical; min-height: 80px; }
-    .comment-item { padding: 1rem; border-bottom: 1px solid #eee; }
-    .comment-item:last-child { border-bottom: none; }
-    .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-    .comment-author { font-weight: 600; }
-    .comment-time { font-size: 0.8rem; color: #888; }
-    .comment-content { color: #333; line-height: 1.5; }
-    .comment-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-    .comment-actions button { background: none; border: none; color: #666; cursor: pointer; font-size: 0.8rem; padding: 0; }
-    .comment-actions button:hover { color: #16213e; }
-    .comment-pinned { background: #fef3c7; border-left: 3px solid #f59e0b; }
-    .comment-type-badge { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; background: #e5e7eb; color: #666; }
-    .comment-edited { font-size: 0.75rem; color: #888; font-style: italic; }
-    .comment-edit-history { margin-top: 0.75rem; padding: 0.5rem; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 0.8rem; }
-    .comment-edit-history summary { cursor: pointer; color: #666; font-weight: 500; }
-    .comment-edit-entry { padding: 0.4rem 0; border-bottom: 1px solid #eee; }
-    .comment-edit-entry:last-child { border-bottom: none; }
-    .comment-edit-entry .edit-by { font-weight: 500; color: #333; }
-    .comment-edit-entry .edit-date { color: #888; font-size: 0.75rem; }
-    .comment-edit-entry .edit-diff { margin-top: 0.25rem; padding: 0.4rem; background: #fff; border-radius: 4px; font-size: 0.8rem; }
-    .comment-edit-entry .edit-old { color: #dc2626; text-decoration: line-through; }
-    .comment-edit-entry .edit-new { color: #059669; }
-    .comment-edit-form { margin-top: 0.5rem; }
-    .comment-edit-form textarea { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; resize: vertical; min-height: 60px; font-family: inherit; }
-    .comment-edit-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 </style>
 
 <div style="padding: 0 2rem; margin-top: 1rem;">
@@ -105,38 +12,56 @@
     
     <div class="header">
         <h1>{{ case.case_number }}: {{ case.title }}</h1>
-    <div style="display: flex; gap: 0.5rem;">
-        <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn btn-sm" style="background: #059669;">📥 Export CSV</a>
-        <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn btn-sm" style="background: #7c3aed;">📄 Generate Report</a>
-        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn btn-sm">✏️ Edit Case</a>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <div style="display: flex; gap: 0.3rem; align-items: center; padding-right: 0.5rem; border-right: 1px solid var(--border, #ddd);">
+            {% if case.status == 'open' %}
+            <button data-click="changeStatus" data-arg0="active" class="btn-cms small" style="background: #059669;">▶ Start Investigation</button>
+            {% elif case.status == 'active' %}
+            <button data-click="changeStatus" data-arg0="suspended" class="btn-cms small" style="background: #f59e0b;">⏸ Suspend</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small" style="background: #059669;">✓ Close Case</button>
+            {% elif case.status == 'suspended' %}
+            <button data-click="changeStatus" data-arg0="active" class="btn-cms small" style="background: #059669;">▶ Resume</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small" style="background: #059669;">✓ Close Case</button>
+            {% elif case.status == 'closed' %}
+            <button data-click="changeStatus" data-arg0="archived" class="btn-cms small" style="background: #6b7280;">📁 Archive</button>
+            {% elif case.status == 'archived' %}
+            <button class="btn-cms small" style="background: #6b7280; opacity: 0.6;" disabled>📁 Archived</button>
+            {% endif %}
+            {% if case.status in ['closed', 'archived'] %}
+            <button data-click="reopenCase" class="btn-cms small" style="background: #059669;">↩ Reopen</button>
+            {% endif %}
+        </div>
+        <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small" style="background: #059669;">📥 Export CSV</a>
+        <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small" style="background: #7c3aed;">📄 Report</a>
+        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
     </div>
 </div>
 
 <div class="card">
     <div class="info-grid">
-        <div class="info-item">
-            <label>Client</label>
-            <span>{{ case.client.name if case.client else '-' }}</span>
+        <div class="info-row">
+            <span class="info-label">Client</span>
+            <span class="info-value">{{ case.client.name if case.client else '-' }}</span>
         </div>
-        <div class="info-item">
-            <label>Lead Investigator</label>
-            <span>{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</span>
+        <div class="info-row">
+            <span class="info-label">Lead Investigator</span>
+            <span class="info-value">{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</span>
         </div>
-        <div class="info-item">
-            <label>Priority</label>
-            <span class="badge badge-{{ case.priority }}">{{ case.priority }}</span>
+        <div class="info-row">
+            <span class="info-label">Priority</span>
+            <span class="info-value"><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></span>
         </div>
-        <div class="info-item">
-            <label>Status</label>
-            <span class="badge badge-{{ case.status }}">{{ case.status }}</span>
+        <div class="info-row">
+            <span class="info-label">Status</span>
+            <span class="info-value"><span class="badge badge-{{ case.status }}">{{ case.status }}</span></span>
         </div>
-        <div class="info-item">
-            <label>Start Date</label>
-            <span>{{ case.start_date.strftime('%Y-%m-%d') if case.start_date else '-' }}</span>
+        <div class="info-row">
+            <span class="info-label">Start Date</span>
+            <span class="info-value">{{ case.start_date.strftime('%Y-%m-%d') if case.start_date else '-' }}</span>
         </div>
-        <div class="info-item">
-            <label>Criminal Code</label>
-            <span>
+        <div class="info-row">
+            <span class="info-label">Criminal Code</span>
+            <span class="info-value">
                 {% if case.case_type %}
                     {% set parts = case.case_type.split('|') %}
                     <strong>{{ parts[0] }}</strong> - {{ parts[1] if parts[1] else '' }}
@@ -149,15 +74,15 @@
     </div>
     
     {% if case.description %}
-    <div class="info-item">
-        <label>Description</label>
-        <p>{{ case.description }}</p>
+    <div class="info-row">
+        <span class="info-label">Description</span>
+        <div class="info-value">{{ case.description }}</div>
     </div>
     {% endif %}
     
     {% if case.tags %}
-    <div class="info-item">
-        <label>Tags</label>
+    <div class="info-row">
+        <span class="info-label">Tags</span>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
             {% for tag in case.tags %}
             <span style="background: #e8f4ff; color: #1e40af; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">{{ tag }}</span>
@@ -180,9 +105,9 @@
 
 {% if case.parent_case or case.child_cases.count() > 0 %}
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="margin: 0;">Case Hierarchy</h2>
-        <button data-click="openHierarchyModal" class="btn btn-sm" style="background: #7c3aed;">Manage Hierarchy</button>
+    <div class="card-header">
+        <h2>Case Hierarchy</h2>
+        <button data-click="openHierarchyModal" class="btn-cms small" style="background: #7c3aed;">Manage Hierarchy</button>
     </div>
     
     {% if case.parent_case %}
@@ -215,10 +140,10 @@
     
     {% if case.status not in ['closed', 'archived'] %}
     <div style="margin-bottom: 1rem;">
-        <button data-click="showAddSubjectForm" class="btn btn-sm">+ Add Subject</button>
-        <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Create New Subject</a>
-        <button data-click="openCreateFromUsernameModal" class="btn btn-sm" style="background: #8b5cf6;">@ Create from Username</button>
-        <button data-click="openOsintModal" class="btn btn-sm" style="background: #7c3aed;">OSINT Search</button>
+        <button data-click="showAddSubjectForm" class="btn-cms small">+ Add Subject</button>
+        <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small" style="background: #059669;">+ Create New Subject</a>
+        <button data-click="openCreateFromUsernameModal" class="btn-cms small" style="background: #8b5cf6;">@ Create from Username</button>
+        <button data-click="openOsintModal" class="btn-cms small" style="background: #7c3aed;">OSINT Search</button>
     </div>
     
     <div id="addSubjectForm" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
@@ -233,8 +158,8 @@
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="btn btn-sm">Add to Case</button>
-            <button type="button" data-click="hideAddSubjectForm" class="btn btn-sm" style="background: #666;">Cancel</button>
+            <button type="submit" class="btn-cms small">Add to Case</button>
+            <button type="button" data-click="hideAddSubjectForm" class="btn-cms small" style="background: #666;">Cancel</button>
         </form>
     </div>
     {% else %}
@@ -244,7 +169,7 @@
     {% endif %}
     
     {% if subjects %}
-    <table>
+    <table class="data-table">
         <thead>
             <tr><th>Name</th><th>Type</th><th>Social Accounts</th><th>Risk Score</th><th>Actions</th></tr>
         </thead>
@@ -281,34 +206,19 @@
         </tbody>
     </table>
     {% else %}
-    <p>No subjects linked.</p>
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>No subjects linked.</p>
+    </div>
     {% endif %}
 </div>
 
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Findings ({{ findings|length }})</h2>
+    <div class="card-header">
+        <h2>Findings ({{ findings|length }})</h2>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <span style="font-weight: 500;">Status:</span>
-            <span class="badge badge-{{ case.status }}">{{ case.status|upper }}</span>
-            {% if case.status == 'open' %}
-            <button data-click="changeStatus" data-arg0="active" class="btn btn-sm" style="background: #059669;">Start Investigation</button>
-            {% elif case.status == 'active' %}
-            <button data-click="changeStatus" data-arg0="suspended" class="btn btn-sm" style="background: #f59e0b;">Suspend</button>
-            <button data-click="changeStatus" data-arg0="closed" class="btn btn-sm" style="background: #059669;">Close Case</button>
-            {% elif case.status == 'suspended' %}
-            <button data-click="changeStatus" data-arg0="active" class="btn btn-sm" style="background: #059669;">Resume</button>
-            <button data-click="changeStatus" data-arg0="closed" class="btn btn-sm" style="background: #059669;">Close Case</button>
-            {% elif case.status == 'closed' %}
-            <button data-click="changeStatus" data-arg0="archived" class="btn btn-sm" style="background: #6b7280;">Archive</button>
-            {% elif case.status == 'archived' %}
-            <button data-click="changeStatus" data-arg0="archived" class="btn btn-sm" style="background: #6b7280;" disabled>Archived</button>
-            {% endif %}
-            {% if case.status in ['closed', 'archived'] %}
-            <button data-click="reopenCase" class="btn btn-sm" style="background: #059669;">Reopen Case</button>
-            {% endif %}
-            <button data-click="openTimeline" class="btn btn-sm" style="background: #7c3aed;">Timeline</button>
-            <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn btn-sm" style="background: #0e7490; text-decoration: none;">📋 Report</a>
+            <button data-click="openTimeline" class="btn-cms small" style="background: #7c3aed;">Timeline</button>
+            <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">📋 Report</a>
         </div>
     </div>
     
@@ -330,7 +240,7 @@
             <span id="findingCount" style="margin-left: auto; color: #666; font-size: 0.875rem;"></span>
         </div>
     </div>
-    <table id="findingsTable">
+    <table id="findingsTable" class="data-table">
         <thead>
             <tr><th>Title</th><th>Subject</th><th>Source</th><th>Added By</th><th>Date</th></tr>
         </thead>
@@ -349,7 +259,7 @@
                     {% if finding.source_url and finding.subject_id %}
                     <br>
                     <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" 
-                            class="btn btn-sm" style="font-size: 0.65rem; padding: 2px 6px; background: #8b5cf6; margin-top: 4px;">
+                            class="btn-cms small" style="font-size: 0.65rem; padding: 2px 6px; background: #8b5cf6; margin-top: 4px;">
                         🔍 Extract ID
                     </button>
                     {% endif %}
@@ -363,7 +273,7 @@
                     <span style="color: #999;">-</span>
                     {% endif %}
                 </td>
-                <td><span class="badge" style="background: #e5e7eb; color: #374151;">{{ finding.source_type or 'manual' }}</span></td>
+                <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span></td>
                 <td>{{ finding.author.full_name if finding.author else 'Unknown' }}</td>
                 <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
             </tr>
@@ -371,17 +281,20 @@
         </tbody>
     </table>
     {% else %}
-    <p>No findings yet.</p>
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>No findings yet.</p>
+    </div>
     {% endif %}
     
     {% if findings_pagination and findings_pagination.pages > 1 %}
     <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
         {% if findings_pagination.has_prev %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn btn-sm">Previous</a>
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">Previous</a>
         {% endif %}
         <span style="padding: 0.5rem 1rem;">Page {{ findings_pagination.page }} of {{ findings_pagination.pages }}</span>
         {% if findings_pagination.has_next %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn btn-sm">Next</a>
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">Next</a>
         {% endif %}
     </div>
     {% endif %}
@@ -389,16 +302,16 @@
 
 <!-- Documents Section -->
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Documents (<span id="docCount">{{ documents_pagination.total if documents_pagination else documents|length }}</span>)</h2>
+    <div class="card-header">
+        <h2>Documents (<span id="docCount">{{ documents_pagination.total if documents_pagination else documents|length }}</span>)</h2>
         {% if case.status not in ['closed', 'archived'] %}
-        <button data-click="openUploadModal" class="btn btn-sm" style="background: #059669;">+ Upload Document</button>
+        <button data-click="openUploadModal" class="btn-cms small" style="background: #059669;">+ Upload Document</button>
         {% endif %}
     </div>
     
     <div id="documentsList">
         {% if documents %}
-        <table>
+        <table class="data-table">
             <thead>
                 <tr><th>Filename</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr>
             </thead>
@@ -406,7 +319,7 @@
                 {% for doc in documents %}
                 <tr>
                     <td>{{ doc.original_filename }}</td>
-                    <td><span class="badge" style="background: #e5e7eb;">{{ doc.document_type or 'file' }}</span></td>
+                    <td><span class="badge badge-primary">{{ doc.document_type or 'file' }}</span></td>
                     <td>{{ (doc.file_size / 1024)|round(1) }} KB</td>
                     <td>{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '-' }}</td>
                     <td>
@@ -422,25 +335,28 @@
         {% if documents_pagination and documents_pagination.pages > 1 %}
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
             {% if documents_pagination.has_prev %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.prev_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn btn-sm">Previous</a>
+            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.prev_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">Previous</a>
             {% endif %}
             <span style="padding: 0.5rem 1rem;">Page {{ documents_pagination.page }} of {{ documents_pagination.pages }}</span>
             {% if documents_pagination.has_next %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.next_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn btn-sm">Next</a>
+            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.next_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">Next</a>
             {% endif %}
         </div>
         {% endif %}
         {% else %}
-        <p>No documents uploaded.</p>
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>No documents uploaded.</p>
+        </div>
         {% endif %}
     </div>
 </div>
 
 <!-- Screenshots Section -->
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Screenshots (<span id="screenshotCount">0</span>)</h2>
-        <button data-click="openAddScreenshotModal" class="btn btn-sm" style="background: #7c3aed;">+ Add Screenshot</button>
+    <div class="card-header">
+        <h2>Screenshots (<span id="screenshotCount">0</span>)</h2>
+        <button data-click="openAddScreenshotModal" class="btn-cms small" style="background: #7c3aed;">+ Add Screenshot</button>
     </div>
     
     <div id="screenshotsGallery">
@@ -463,7 +379,7 @@
         </div>
         
         <div style="margin-bottom: 1rem;">
-            <button data-click="openLinkForScreenshot" id="openLinkBtn" class="btn btn-sm" style="background: #3b82f6; margin-bottom: 0.5rem;">
+            <button data-click="openLinkForScreenshot" id="openLinkBtn" class="btn-cms small" style="background: #3b82f6; margin-bottom: 0.5rem;">
                 🔗 Open Link in New Tab
             </button>
             <p style="color: #888; font-size: 0.75rem; margin: 0;">Open the link, take a screenshot manually (Cmd+Shift+4 on Mac, Win+PrtSc on Windows), then upload below.</p>
@@ -482,8 +398,8 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button data-click="closeAddScreenshotModal" class="btn btn-sm" style="background: #666;">Cancel</button>
-            <button data-click="uploadScreenshot" id="uploadBtn" class="btn btn-sm" style="background: #059669;">Save Screenshot</button>
+            <button data-click="closeAddScreenshotModal" class="btn-cms small" style="background: #666;">Cancel</button>
+            <button data-click="uploadScreenshot" id="uploadBtn" class="btn-cms small" style="background: #059669;">Save Screenshot</button>
         </div>
         
         <div id="screenshotStatus" style="margin-top: 0.5rem; text-align: center;"></div>
@@ -505,8 +421,8 @@
         </div>
         
         <div style="margin-top: 1rem; text-align: center;">
-            <a id="viewScreenshotLink" href="#" target="_blank" class="btn btn-sm" style="background: #3b82f6;">Open Original URL</a>
-            <button data-click="closeViewScreenshotModal" class="btn btn-sm" style="background: #666;">Close</button>
+            <a id="viewScreenshotLink" href="#" target="_blank" class="btn-cms small" style="background: #3b82f6;">Open Original URL</a>
+            <button data-click="closeViewScreenshotModal" class="btn-cms small" style="background: #666;">Close</button>
         </div>
     </div>
 </div>
@@ -550,8 +466,8 @@
                 <textarea id="docDescription" name="description" rows="2" style="width: 100%; padding: 0.5rem;"></textarea>
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button type="submit" class="btn btn-sm" style="background: #059669;">Upload</button>
-                <button type="button" data-click="closeUploadModal" class="btn btn-sm" style="background: #666;">Cancel</button>
+                <button type="submit" class="btn-cms small" style="background: #059669;">Upload</button>
+                <button type="button" data-click="closeUploadModal" class="btn-cms small" style="background: #666;">Cancel</button>
             </div>
         </form>
     </div>
@@ -559,9 +475,9 @@
 
 <!-- Financial Summary Section -->
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Financial Summary</h2>
-        <button data-click="openFinancialSummary" class="btn btn-sm" style="background: #7c3aed;">📊 View Charts</button>
+    <div class="card-header">
+        <h2>Financial Summary</h2>
+        <button data-click="openFinancialSummary" class="btn-cms small" style="background: #7c3aed;">📊 View Charts</button>
     </div>
     
     <div id="financialSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
@@ -627,9 +543,9 @@
 
 <!-- Reminders Section -->
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">⏰ Reminders ({{ case_reminders|length }})</h2>
-        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn btn-sm" style="background: #059669;">+ Add Reminder</a>
+    <div class="card-header">
+        <h2>⏰ Reminders ({{ case_reminders|length }})</h2>
+        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn-cms small" style="background: #059669;">+ Add Reminder</a>
     </div>
     
     {% if case_reminders %}
@@ -647,12 +563,12 @@
                 {% if not reminder.is_completed %}
 <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
+    <button type="submit" class="btn-cms small" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
 </form>
 
 <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="Delete this reminder?">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn btn-sm" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #dc2626;">🗑️</button>
+    <button type="submit" class="btn-cms small" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #dc2626;">🗑️</button>
 </form>
 {% endif %}
             </div>
@@ -660,15 +576,18 @@
         {% endfor %}
     </div>
     {% else %}
-    <p style="color: #888; text-align: center; padding: 1rem;">No reminders for this case. <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" style="color: #059669;">Add one</a></p>
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>No reminders for this case. <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}">Add one</a></p>
+    </div>
     {% endif %}
 </div>
 
 <!-- Comments Section -->
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Notes & Comments <span id="commentCount" style="font-size: 0.9rem; color: #888;"></span></h2>
-        <button data-click="loadComments" class="btn btn-sm">🔄 Refresh</button>
+    <div class="card-header">
+        <h2>Notes & Comments <span id="commentCount" style="font-size: 0.9rem; color: #888;"></span></h2>
+        <button data-click="loadComments" class="btn-cms small">🔄 Refresh</button>
     </div>
     
     <div class="comment-form">
@@ -682,7 +601,7 @@
             <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: #666;">
                 <input type="checkbox" id="commentPinned"> Pin comment
             </label>
-            <button data-click="addComment" class="btn btn-sm" style="background: #059669;">Add Comment</button>
+            <button data-click="addComment" class="btn-cms small" style="background: #059669;">Add Comment</button>
         </div>
     </div>
     
@@ -724,8 +643,8 @@
                 <input type="url" id="cuUrl" style="width:100%;padding:0.5rem;" placeholder="https://...">
             </div>
             <div style="display:flex;gap:0.5rem;margin-top:1rem;">
-                <button type="submit" class="btn btn-success">Create Subject</button>
-                <button type="button" data-click="closeCreateFromUsernameModal" class="btn" style="background:#666;">Cancel</button>
+                <button type="submit" class="btn-cms success small">Create Subject</button>
+                <button type="button" data-click="closeCreateFromUsernameModal" class="btn-cms">Cancel</button>
             </div>
         </form>
     </div>
@@ -758,7 +677,7 @@
             {% endif %}
             
             <div id="osintActions">
-                <button data-click="startOsintSearch" class="btn btn-success">Search</button>
+                <button data-click="startOsintSearch" class="btn-cms success small">Search</button>
             </div>
         </div>
         
@@ -769,13 +688,13 @@
                 <p id="searchQueryDisplay" style="color: #666;"></p>
             </div>
             <div style="margin-top: 1.5rem;">
-                <button data-click="cancelOsintSearch" class="btn btn-danger">Cancel Search</button>
+                <button data-click="cancelOsintSearch" class="btn-cms danger small">Cancel Search</button>
             </div>
         </div>
         
         <div id="osintResults" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 style="margin: 0;">Search Results</h3>
+            <div class="card-header">
+                <h2>Search Results</h2>
                 <span id="resultsCount"></span>
             </div>
             
@@ -789,9 +708,9 @@
             <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
             
             <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button data-click="closeOsintModal" class="btn" style="background: #666;">Close</button>
-                <button data-click="saveSelectedAsSocialAccounts" class="btn" style="background: #8b5cf6;" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
-                <button data-click="addSelectedFindings" class="btn btn-success" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
+                <button data-click="closeOsintModal" class="btn-cms">Close</button>
+                <button data-click="saveSelectedAsSocialAccounts" class="btn-cms primary" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
+                <button data-click="addSelectedFindings" class="btn-cms success small" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
         
@@ -814,7 +733,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 let currentSearchId = null;
 let currentResults = null;
 let pollInterval = null;
@@ -828,7 +747,7 @@ function hideAddSubjectForm() {
     document.getElementById('addSubjectForm').style.display = 'none';
 }
 
-function changeStatus(newStatus) {
+function changeStatus(btn, newStatus) {
     let body = { status: newStatus };
     
     if (newStatus === 'closed') {
@@ -1029,13 +948,13 @@ function displayResults(results) {
     const ddgCount = results.ddg_results_count || 0;
     let sourceInfo = '';
     if (braveCount > 0 || ddgCount > 0) {
-        sourceInfo = `<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">Brave: ${braveCount}</span>`;
+        sourceInfo = '<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">Brave: ' + esc(braveCount) + '</span>';
         if (ddgCount > 0) {
-            sourceInfo += `<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">DDG: ${ddgCount}</span>`;
+            sourceInfo += '<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">DDG: ' + esc(ddgCount) + '</span>';
         }
     }
     
-    document.getElementById('resultsCount').innerHTML = (dorksResults.length + searchLinks.length) + ' results found' + sourceInfo;
+    document.getElementById('resultsCount').innerHTML = esc(dorksResults.length + searchLinks.length) + ' results found' + sourceInfo;
     
     const resultsList = document.getElementById('resultsList');
     resultsList.innerHTML = '';
@@ -1067,21 +986,19 @@ function displayResults(results) {
         
         const catDiv = document.createElement('div');
         catDiv.style.marginBottom = '1rem';
-        catDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">${categoryLabels[cat] || cat} (${items.length})</h4>`;
+        catDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">' + esc(categoryLabels[cat] || cat) + ' (' + esc(items.length) + ')</h4>';
         
         items.forEach((item) => {
             const div = document.createElement('div');
             div.className = 'result-item';
             const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">Brave</span>' : 
                                  item.source === 'duckduckgo' ? '<span class="source-badge ddg">DDG</span>' : '';
-            div.innerHTML = `
-                <input type="checkbox" class="result-checkbox" data-domain="${item.domain || ''}" data-url="${item.url}" data-query="${item.query || ''}" data-source="${item.source || ''}" data-category="${item.category || ''}" data-change="updateSelectedCount"">
-                <div class="result-content">
-                    <div class="result-engine">${item.domain || 'Unknown'}${sourceBadge}</div>
-                    ${item.query ? `<div class="result-query">${item.query}</div>` : ''}
-                    <div class="result-url"><a href="${item.url}" target="_blank">${item.url}</a></div>
-                </div>
-            `;
+            div.innerHTML = '<input type="checkbox" class="result-checkbox" data-domain="' + esc(item.domain || '') + '" data-url="' + esc(item.url) + '" data-query="' + esc(item.query || '') + '" data-source="' + esc(item.source || '') + '" data-category="' + esc(item.category || '') + '" data-change="updateSelectedCount"">' +
+                '<div class="result-content">' +
+                    '<div class="result-engine">' + esc(item.domain || 'Unknown') + sourceBadge + '</div>' +
+                    (item.query ? '<div class="result-query">' + esc(item.query) + '</div>' : '') +
+                    '<div class="result-url"><a href="' + esc(item.url) + '" target="_blank">' + esc(item.url) + '</a></div>' +
+                '</div>';
             catDiv.appendChild(div);
         });
         resultsList.appendChild(catDiv);
@@ -1090,19 +1007,17 @@ function displayResults(results) {
     if (searchLinks.length > 0) {
         const linksDiv = document.createElement('div');
         linksDiv.style.marginBottom = '1rem';
-        linksDiv.innerHTML = `<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">Search Links (${searchLinks.length})</h4>`;
+        linksDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">Search Links (' + esc(searchLinks.length) + ')</h4>';
         
         searchLinks.forEach((link) => {
             const div = document.createElement('div');
             div.className = 'result-item';
-            div.innerHTML = `
-                <input type="checkbox" class="result-checkbox" data-domain="${link.engine || ''}" data-url="${link.url}" data-query="${link.query || ''}" data-source="search_link" data-category="search_link" data-change="updateSelectedCount"">
-                <div class="result-content">
-                    <div class="result-engine">${link.engine || 'Unknown'}</div>
-                    ${link.query ? `<div class="result-query">${link.query}</div>` : ''}
-                    <div class="result-url"><a href="${link.url}" target="_blank">${link.name || link.url}</a></div>
-                </div>
-            `;
+            div.innerHTML = '<input type="checkbox" class="result-checkbox" data-domain="' + esc(link.engine || '') + '" data-url="' + esc(link.url) + '" data-query="' + esc(link.query || '') + '" data-source="search_link" data-category="search_link" data-change="updateSelectedCount"">' +
+                '<div class="result-content">' +
+                    '<div class="result-engine">' + esc(link.engine || 'Unknown') + '</div>' +
+                    (link.query ? '<div class="result-query">' + esc(link.query) + '</div>' : '') +
+                    '<div class="result-url"><a href="' + esc(link.url) + '" target="_blank">' + esc(link.name || link.url) + '</a></div>' +
+                '</div>';
             linksDiv.appendChild(div);
         });
         resultsList.appendChild(linksDiv);
@@ -1360,7 +1275,7 @@ function loadTimeline() {
     .then(data => {
         if (data.error) {
             document.getElementById('timelineContent').innerHTML = 
-                '<div style="padding: 2rem; text-align: center; color: #dc2626;">' + data.error + '</div>';
+                '<div style="padding: 2rem; text-align: center; color: #dc2626;">' + esc(data.error) + '</div>';
             return;
         }
         displayTimeline(data);
@@ -1397,21 +1312,18 @@ function displayTimeline(data) {
         const color = typeColors[item.type] || '#6b7280';
         const date = item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Unknown';
         
-        html += `
-            <div style="position: relative; padding: 1rem; margin-bottom: 0.5rem; background: #f9fafb; border-radius: 8px; margin-left: 1rem;">
-                <div style="position: absolute; left: -21px; top: 1.2rem; width: 12px; height: 12px; border-radius: 50%; background: ${color}; border: 2px solid white;"></div>
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.25rem;">
-                    <span style="font-size: 1.5rem;">${item.icon}</span>
-                    <span style="font-size: 0.75rem; color: #666;">${date}</span>
-                </div>
-                <div style="font-weight: 600; color: #1a1a2e;">${item.title}</div>
-                <div style="color: #374151; margin: 0.25rem 0;">${item.description}</div>
-                <div style="font-size: 0.75rem; color: #6b7280;">
-                    By: ${item.user_name}
-                    ${item.details ? ' • ' + item.details : ''}
-                </div>
-            </div>
-        `;
+        html += '<div style="position: relative; padding: 1rem; margin-bottom: 0.5rem; background: #f9fafb; border-radius: 8px; margin-left: 1rem;">' +
+            '<div style="position: absolute; left: -21px; top: 1.2rem; width: 12px; height: 12px; border-radius: 50%; background: ' + color + '; border: 2px solid white;"></div>' +
+            '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.25rem;">' +
+                '<span style="font-size: 1.5rem;">' + esc(item.icon) + '</span>' +
+                '<span style="font-size: 0.75rem; color: #666;">' + esc(date) + '</span>' +
+            '</div>' +
+            '<div style="font-weight: 600; color: #1a1a2e;">' + esc(item.title) + '</div>' +
+            '<div style="color: #374151; margin: 0.25rem 0;">' + esc(item.description) + '</div>' +
+            '<div style="font-size: 0.75rem; color: #6b7280;">' +
+                'By: ' + esc(item.user_name) +
+                (item.details ? ' • ' + esc(item.details) : '') +
+            '</div></div>';
     });
     
     html += '</div>';
@@ -1471,7 +1383,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     });
 });
 
-function deleteDocument(docId) {
+function deleteDocument(btn, docId) {
     if (!confirm('Are you sure you want to delete this document?')) return;
     
     fetch('/cms/documents/' + docId, {
@@ -1522,22 +1434,19 @@ function displayScreenshots(screenshots) {
     let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem;">';
     
     screenshots.forEach(s => {
-        html += `
-            <div style="background: #f5f5f5; border-radius: 8px; overflow: hidden; position: relative;">
-                <div style="cursor: pointer;" data-click="viewScreenshot" data-arg0="${s.id}" data-arg1="${(s.title || s.url || '').replace(/'/g, '\\x27')}" data-arg2="${s.url || ''}">
-                    <img src="${s.thumbnail_url}" alt="${s.title || 'Screenshot'}" 
-                         style="width: 100%; height: 120px; object-fit: cover; display: block;"
-                         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 fill=%22%23666%22 text-anchor=%22middle%22 font-size=%2212%22>No preview</text></svg>'">
-                </div>
-                <button data-click="deleteScreenshot" data-arg0="${s.id}" 
-                        style="position: absolute; top: 5px; right: 5px; background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 24px; text-align: center;"
-                        title="Delete screenshot">×</button>
-                <div style="padding: 0.5rem;">
-                    <div style="font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.title || 'Screenshot'}</div>
-                    <div style="font-size: 0.65rem; color: #999;">${s.creator_name || 'Unknown'} - ${new Date(s.created_at).toLocaleDateString()}</div>
-                </div>
-            </div>
-        `;
+        html += '<div style="background: #f5f5f5; border-radius: 8px; overflow: hidden; position: relative;">' +
+            '<div style="cursor: pointer;" data-click="viewScreenshot" data-arg0="' + esc(s.id) + '" data-arg1="' + esc((s.title || s.url || '').replace(/'/g, '\\x27')) + '" data-arg2="' + esc(s.url || '') + '">' +
+                '<img src="' + esc(s.thumbnail_url) + '" alt="' + esc(s.title || 'Screenshot') + '" ' +
+                     'style="width: 100%; height: 120px; object-fit: cover; display: block;"' +
+                     'onerror="this.src=\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 fill=%22%23666%22 text-anchor=%22middle%22 font-size=%2212%22>No preview</text></svg>\'">' +
+            '</div>' +
+            '<button data-click="deleteScreenshot" data-arg0="' + esc(s.id) + '" ' +
+                    'style="position: absolute; top: 5px; right: 5px; background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 24px; text-align: center;"' +
+                    'title="Delete screenshot">×</button>' +
+            '<div style="padding: 0.5rem;">' +
+                '<div style="font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(s.title || 'Screenshot') + '</div>' +
+                '<div style="font-size: 0.65rem; color: #999;">' + esc(s.creator_name || 'Unknown') + ' - ' + esc(new Date(s.created_at).toLocaleDateString()) + '</div>' +
+            '</div></div>';
     });
     
     html += '</div>';
@@ -1729,7 +1638,7 @@ function closeViewScreenshotModal() {
     document.getElementById('viewScreenshotImage').src = '';
 }
 
-function deleteScreenshot(screenshotId) {
+function deleteScreenshot(btn, screenshotId) {
     if (!confirm('Are you sure you want to delete this screenshot?')) return;
     
     fetch(`/cms/cases/{{ case.id }}/screenshots/${screenshotId}`, {
@@ -1809,62 +1718,56 @@ function displayFinancialCharts(summary) {
     
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
     
-    let html = `
-        <div style="margin-bottom: 2rem;">
-            <h3 style="margin-bottom: 1rem;">By Transaction Type</h3>
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                ${Object.entries(summary.by_type || {}).map(([type, data], i) => `
-                    <div style="flex: 1; min-width: 150px; background: ${colors[i % colors.length]}15; padding: 1rem; border-radius: 8px; border-left: 4px solid ${colors[i % colors.length]};">
-                        <div style="font-weight: bold;">${type}</div>
-                        <div>${data.count} transactions</div>
-                        <div style="color: #666;">${formatCurrency(data.total, summary.currency)}</div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
+    let html = '<div style="margin-bottom: 2rem;">' +
+        '<h3 style="margin-bottom: 1rem;">By Transaction Type</h3>' +
+        '<div style="display: flex; flex-wrap: wrap; gap: 1rem;">' +
+        Object.entries(summary.by_type || {}).map(([type, data], i) => {
+            return '<div style="flex: 1; min-width: 150px; background: ' + colors[i % colors.length] + '15; padding: 1rem; border-radius: 8px; border-left: 4px solid ' + colors[i % colors.length] + ';">' +
+                '<div style="font-weight: bold;">' + esc(type) + '</div>' +
+                '<div>' + esc(data.count) + ' transactions</div>' +
+                '<div style="color: #666;">' + formatCurrency(data.total, summary.currency) + '</div>' +
+            '</div>';
+        }).join('') +
+        '</div></div>' +
         
-        <div style="margin-bottom: 2rem;">
-            <h3 style="margin-bottom: 1rem;">By Month</h3>
-            <div style="display: flex; align-items: end; gap: 0.5rem; height: 150px; padding: 1rem; background: #f9fafb; border-radius: 8px;">
-                ${Object.entries(summary.by_month || {}).sort().map(([month, data]) => {
-                    const max = Math.max(...Object.values(summary.by_month || {}).map(m => m.total));
-                    const height = max > 0 ? (data.total / max) * 100 : 0;
-                    return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <div style="width: 100%; background: #3b82f6; border-radius: 4px 4px 0 0; height: ${height}%;"></div>
-                        <div style="font-size: 0.7rem; color: #666; margin-top: 0.25rem;">${month.slice(5)}</div>
-                    </div>`;
-                }).join('')}
-            </div>
-        </div>
+        '<div style="margin-bottom: 2rem;">' +
+            '<h3 style="margin-bottom: 1rem;">By Month</h3>' +
+            '<div style="display: flex; align-items: end; gap: 0.5rem; height: 150px; padding: 1rem; background: #f9fafb; border-radius: 8px;">' +
+            Object.entries(summary.by_month || {}).sort().map(([month, data]) => {
+                const max = Math.max(...Object.values(summary.by_month || {}).map(m => m.total));
+                const height = max > 0 ? (data.total / max) * 100 : 0;
+                return '<div style="flex: 1; display: flex; flex-direction: column; align-items: center;">' +
+                    '<div style="width: 100%; background: #3b82f6; border-radius: 4px 4px 0 0; height: ' + esc(height) + '%;"></div>' +
+                    '<div style="font-size: 0.7rem; color: #666; margin-top: 0.25rem;">' + esc(month.slice(5)) + '</div>' +
+                '</div>';
+            }).join('') +
+            '</div></div>' +
         
-        <div style="margin-bottom: 2rem;">
-            <h3 style="margin-bottom: 1rem;">By Verification Status</h3>
-            <div style="display: flex; gap: 1rem;">
-                ${Object.entries(summary.by_status || {}).map(([status, data], i) => `
-                    <div style="flex: 1; background: ${status === 'verified' ? '#dcfce7' : status === 'flagged' ? '#fee2e2' : '#fef3c7'}; padding: 1rem; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 1.25rem; font-weight: bold;">${data.count}</div>
-                        <div style="text-transform: capitalize; color: #666;">${status}</div>
-                        <div style="color: #666;">${formatCurrency(data.total, summary.currency)}</div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
+        '<div style="margin-bottom: 2rem;">' +
+            '<h3 style="margin-bottom: 1rem;">By Verification Status</h3>' +
+            '<div style="display: flex; gap: 1rem;">' +
+            Object.entries(summary.by_status || {}).map(([status, data], i) => {
+                return '<div style="flex: 1; background: ' + (status === 'verified' ? '#dcfce7' : status === 'flagged' ? '#fee2e2' : '#fef3c7') + '; padding: 1rem; border-radius: 8px; text-align: center;">' +
+                    '<div style="font-size: 1.25rem; font-weight: bold;">' + esc(data.count) + '</div>' +
+                    '<div style="text-transform: capitalize; color: #666;">' + esc(status) + '</div>' +
+                    '<div style="color: #666;">' + formatCurrency(data.total, summary.currency) + '</div>' +
+                '</div>';
+            }).join('') +
+            '</div></div>' +
         
-        <div>
-            <h3 style="margin-bottom: 1rem;">Top Counterparties</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead><tr style="background: #f5f5f5;"><th style="padding: 0.75rem; text-align: left;">Counterparty</th><th style="padding: 0.75rem; text-align: right;">Total Amount</th></tr></thead>
-                <tbody>
-                    ${summary.top_counterparties.map((cp, i) => `
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 0.75rem;">${i + 1}. ${cp.name}</td>
-                            <td style="padding: 0.75rem; text-align: right; font-weight: 500;">${formatCurrency(cp.total, summary.currency)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+        '<div>' +
+            '<h3 style="margin-bottom: 1rem;">Top Counterparties</h3>' +
+            '<table style="width: 100%; border-collapse: collapse;">' +
+                '<thead><tr style="background: #f5f5f5;"><th style="padding: 0.75rem; text-align: left;">Counterparty</th><th style="padding: 0.75rem; text-align: right;">Total Amount</th></tr></thead>' +
+                '<tbody>' +
+                (summary.top_counterparties || []).map((cp, i) => {
+                    return '<tr style="border-bottom: 1px solid #eee;">' +
+                        '<td style="padding: 0.75rem;">' + esc(i + 1) + '. ' + esc(cp.name) + '</td>' +
+                        '<td style="padding: 0.75rem; text-align: right; font-weight: 500;">' + formatCurrency(cp.total, summary.currency) + '</td>' +
+                    '</tr>';
+                }).join('') +
+                '</tbody>' +
+            '</table></div>';
     
     container.innerHTML = html;
 }
@@ -1895,7 +1798,7 @@ function loadAvailableParents() {
             <div>
                 <strong>{{ case.parent_case.case_number }}</strong>: {{ case.parent_case.title }}
             </div>
-            <button data-click="removeParent"" class="btn btn-sm" style="background: #dc2626;">Remove</button>
+            <button data-click="removeParent" class="btn-cms small" style="background: #dc2626;">Remove</button>
         </div>
     `;
     {% else %}
@@ -1925,22 +1828,20 @@ function searchParentCases() {
                 
                 let html = '';
                 data.cases.forEach(c => {
-                    html += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-bottom: 0.5rem;">
-                            <div>
-                                <a href="/cms/cases/${c.id}" target="_blank">${c.case_number}</a>: ${c.title}
-                                <span class="badge badge-${c.status}" style="margin-left: 0.5rem;">${c.status}</span>
-                            </div>
-                            <button data-click="setParent" data-arg0="${c.id}"" class="btn btn-sm" style="background: #059669;">Set as Parent</button>
-                        </div>
-                    `;
+                    html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-bottom: 0.5rem;">' +
+                        '<div>' +
+                            '<a href="/cms/cases/' + esc(c.id) + '" target="_blank">' + esc(c.case_number) + '</a>: ' + esc(c.title) +
+                            '<span class="badge badge-' + esc(c.status) + '" style="margin-left: 0.5rem;">' + esc(c.status) + '</span>' +
+                        '</div>' +
+                        '<button data-click="setParent" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #059669;">Set as Parent</button>' +
+                    '</div>';
                 });
                 document.getElementById('parentSearchResults').innerHTML = html;
             });
     }, 300);
 }
 
-function setParent(parentId) {
+function setParent(btn, parentId) {
     fetch(`/cms/cases/{{ case.id }}/set-parent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2014,53 +1915,49 @@ function displayComments(comments) {
         if (c.edit_count > 0) {
             const editDate = c.last_edited_at ? new Date(c.last_edited_at) : null;
             const editDateStr = editDate ? editDate.toLocaleDateString() + ' ' + editDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-            editInfo = `<div class="comment-edited">Edited ${c.edit_count} time${c.edit_count > 1 ? 's' : ''}${c.last_edited_by_name ? ' by ' + c.last_edited_by_name : ''}${editDateStr ? ' on ' + editDateStr : ''}</div>`;
+            editInfo = '<div class="comment-edited">Edited ' + esc(c.edit_count) + ' time' + (c.edit_count > 1 ? 's' : '') + (c.last_edited_by_name ? ' by ' + esc(c.last_edited_by_name) : '') + (editDateStr ? ' on ' + esc(editDateStr) : '') + '</div>';
         }
         
         let editHistory = '';
         if (c.edit_history && c.edit_history.length > 0) {
-            editHistory = `<details class="comment-edit-history">
-                <summary>View edit history (${c.edit_history.length})</summary>
-                ${c.edit_history.map(h => {
+            editHistory = '<details class="comment-edit-history">' +
+                '<summary>View edit history (' + esc(c.edit_history.length) + ')</summary>' +
+                c.edit_history.map(h => {
                     const hDate = new Date(h.edited_at);
                     const hDateStr = hDate.toLocaleDateString() + ' ' + hDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    return `<div class="comment-edit-entry">
-                        <div><span class="edit-by">${h.edited_by_name}</span> <span class="edit-date">${hDateStr}</span></div>
-                        <div class="edit-diff">
-                            <div class="edit-old">- ${escapeHtml(h.previous_content.substring(0, 100))}${h.previous_content.length > 100 ? '...' : ''}</div>
-                            <div class="edit-new">+ ${escapeHtml(h.new_content.substring(0, 100))}${h.new_content.length > 100 ? '...' : ''}</div>
-                        </div>
-                    </div>`;
-                }).join('')}
-            </details>`;
+                    return '<div class="comment-edit-entry">' +
+                        '<div><span class="edit-by">' + esc(h.edited_by_name) + '</span> <span class="edit-date">' + esc(hDateStr) + '</span></div>' +
+                        '<div class="edit-diff">' +
+                            '<div class="edit-old">- ' + escapeHtml(h.previous_content.substring(0, 100)) + (h.previous_content.length > 100 ? '...' : '') + '</div>' +
+                            '<div class="edit-new">+ ' + escapeHtml(h.new_content.substring(0, 100)) + (h.new_content.length > 100 ? '...' : '') + '</div>' +
+                        '</div></div>';
+                }).join('') +
+            '</details>';
         }
         
-        html += `
-            <div class="comment-item ${pinnedClass}" id="comment-${c.id}">
-                <div class="comment-header">
-                    <div>
-                        <span class="comment-author">${c.author_name}</span>
-                        <span class="comment-type-badge">${c.comment_type}</span>
-                        ${c.is_pinned ? '📌' : ''}
-                    </div>
-                    <div class="comment-time">${timeStr}</div>
-                </div>
-                ${editInfo}
-                <div class="comment-content" id="content-${c.id}">${escapeHtml(c.content)}</div>
-                ${editHistory}
-                <div class="comment-edit-form" id="edit-form-${c.id}" style="display: none;">
-                    <textarea id="edit-content-${c.id}">${escapeHtml(c.content)}</textarea>
-                    <div class="comment-edit-actions">
-                        <button data-click="saveEdit" data-arg0="${c.id}"" class="btn btn-sm" style="background: #059669;">Save</button>
-                        <button data-click="cancelEdit" data-arg0="${c.id}"" class="btn btn-sm" style="background: #666;">Cancel</button>
-                    </div>
-                </div>
-                <div class="comment-actions">
-                    ${canEdit ? `<button data-click="showEditForm" data-arg0="${c.id}"">Edit</button>` : ''}
-                    <button data-click="deleteComment" data-arg0="${c.id}"">Delete</button>
-                </div>
-            </div>
-        `;
+        html += '<div class="comment-item ' + esc(pinnedClass) + '" id="comment-' + esc(c.id) + '">' +
+            '<div class="comment-header">' +
+                '<div>' +
+                    '<span class="comment-author">' + esc(c.author_name) + '</span>' +
+                    '<span class="comment-type-badge">' + esc(c.comment_type) + '</span>' +
+                    (c.is_pinned ? '📌' : '') +
+                '</div>' +
+                '<div class="comment-time">' + esc(timeStr) + '</div>' +
+            '</div>' +
+            editInfo +
+            '<div class="comment-content" id="content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</div>' +
+            editHistory +
+            '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '" style="display: none;">' +
+                '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
+                '<div class="comment-edit-actions">' +
+                    '<button data-click="saveEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #059669;">Save</button>' +
+                    '<button data-click="cancelEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #666;">Cancel</button>' +
+                '</div>' +
+            '</div>' +
+            '<div class="comment-actions">' +
+                (canEdit ? '<button data-click="showEditForm" data-arg0="' + esc(c.id) + '">Edit</button>' : '') +
+                '<button data-click="deleteComment" data-arg0="' + esc(c.id) + '">Delete</button>' +
+            '</div></div>';
     });
     
     container.innerHTML = html;
@@ -2073,17 +1970,17 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showEditForm(commentId) {
+function showEditForm(btn, commentId) {
     document.getElementById(`edit-form-${commentId}`).style.display = 'block';
     document.getElementById(`content-${commentId}`).style.display = 'none';
 }
 
-function cancelEdit(commentId) {
+function cancelEdit(btn, commentId) {
     document.getElementById(`edit-form-${commentId}`).style.display = 'none';
     document.getElementById(`content-${commentId}`).style.display = 'block';
 }
 
-function saveEdit(commentId) {
+function saveEdit(btn, commentId) {
     const newContent = document.getElementById(`edit-content-${commentId}`).value.trim();
     if (!newContent) {
         alert('Comment cannot be empty.');
@@ -2135,7 +2032,7 @@ function addComment() {
     .catch(err => alert('Error: ' + err.message));
 }
 
-function deleteComment(commentId) {
+function deleteComment(btn, commentId) {
     if (!confirm('Delete this comment?')) return;
     
     fetch(`/cms/api/comments/${commentId}`, {

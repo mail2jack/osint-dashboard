@@ -1,0 +1,268 @@
+{% extends "cms/base.html" %}
+
+{% block title %}Login History - Settings{% endblock %}
+
+{% block content %}
+<style>
+.login-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.login-history-header h1 { margin: 0; }
+.filters {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.filters input, .filters select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.filters label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+.login-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+.login-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color);
+}
+.login-table td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.login-table tr:last-child td { border-bottom: none; }
+.login-table tr:hover td { background: var(--table-hover); }
+.login-table tr.anomaly { background: rgba(220, 38, 38, 0.06); }
+.login-table tr.anomaly:hover td { background: rgba(220, 38, 38, 0.1); }
+.badge-anomaly {
+    display: inline-block;
+    background: var(--danger-bg);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.badge-success {
+    display: inline-block;
+    background: var(--success-bg);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.badge-failure {
+    display: inline-block;
+    background: var(--danger-bg);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.geo-info { font-size: 0.8125rem; color: var(--text-secondary); }
+.ip-addr { font-family: monospace; font-size: 0.8125rem; }
+.ua-preview {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+}
+.pagination a, .pagination span {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+.pagination a {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    text-decoration: none;
+    color: var(--text-primary);
+}
+.pagination a:hover { background: var(--table-hover); }
+.pagination span.current {
+    background: var(--accent-primary);
+    color: white;
+    font-weight: 600;
+}
+.purge-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.purge-form input[type="number"] {
+    width: 70px;
+    padding: 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+</style>
+
+<div class="back">
+    <a href="{{ url_for('cms.settings') }}">← Back to Settings</a>
+</div>
+
+<div class="login-history-header">
+    <h1>Login History</h1>
+    <div class="filters">
+        <form method="GET" action="{{ url_for('cms.login_history') }}" style="display:contents">
+            <label>
+                <input type="checkbox" name="anomalies" value="1" {% if show_anomalies_only %}checked{% endif %} data-change="submitParentForm">
+                Anomalies only
+            </label>
+            <input type="text" name="user" placeholder="Filter by username" value="{{ user_filter }}" data-change="submitParentForm">
+            <button type="submit" class="btn-cms small">Filter</button>
+            <a href="{{ url_for('cms.login_history') }}" class="btn-cms gray small">Clear</a>
+        </form>
+        <form class="purge-form" method="POST" action="{{ url_for('cms.purge_login_logs') }}" data-confirm="Delete old login logs? This cannot be undone.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="number" name="days" value="90" min="1" max="999">
+            <span style="font-size:0.875rem;color:var(--text-secondary)">days</span>
+            <button type="submit" class="btn-cms danger small">Purge</button>
+        </form>
+    </div>
+</div>
+
+{% if logs %}
+<table class="login-table">
+    <thead>
+        <tr>
+            <th>When</th>
+            <th>User</th>
+            <th>Status</th>
+            <th>IP</th>
+            <th>Location</th>
+            <th>ISP</th>
+            <th>User Agent</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr class="{% if log.is_anomaly %}anomaly{% endif %}">
+            <td style="white-space:nowrap">{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '—' }}</td>
+            <td>{{ log.user.username if log.user else 'Unknown' }}</td>
+            <td>
+                {% if log.is_anomaly %}
+                <span class="badge-anomaly">Anomaly</span>
+                {% elif log.is_success %}
+                <span class="badge-success">Success</span>
+                {% else %}
+                <span class="badge-failure">Failed</span>
+                {% endif %}
+            </td>
+            <td><span class="ip-addr">{{ log.ip_address }}</span></td>
+            <td>
+                {% if log.country %}
+                <div class="geo-info">
+                    {% if log.city %}{{ log.city }}, {% endif %}{{ log.country }}
+                    {% if log.region %} ({{ log.region }}){% endif %}
+                </div>
+                {% else %}
+                <span class="geo-info">—</span>
+                {% endif %}
+                {% if log.lat and log.lon %}
+                <div class="geo-info" style="font-size:0.7rem">{{ "%.2f"|format(log.lat) }}, {{ "%.2f"|format(log.lon) }}</div>
+                {% endif %}
+            </td>
+            <td><span class="geo-info">{{ log.isp or '—' }}</span></td>
+            <td><div class="ua-preview" title="{{ log.user_agent or '' }}">{{ log.user_agent or '—' }}</div></td>
+            <td>
+                {% if log.is_anomaly and log.anomaly_reason %}
+                <span class="geo-info" title="{{ log.anomaly_reason }}">{{ log.anomaly_reason[:40] }}{% if log.anomaly_reason|length > 40 %}…{% endif %}</span>
+                <button class="btn-cms small" data-click="dismissAnomaly" data-arg0="{{ log.id }}" title="Dismiss">✓</button>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="pagination">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('cms.login_history', page=pagination.prev_num, anomalies='1' if show_anomalies_only else None, user=user_filter) }}">← Previous</a>
+    {% endif %}
+    {% for p in pagination.iter_pages() %}
+        {% if p %}
+        <a href="{{ url_for('cms.login_history', page=p, anomalies='1' if show_anomalies_only else None, user=user_filter) }}" {% if p == pagination.page %}class="current"{% endif %}>{{ p }}</a>
+        {% else %}
+        <span>…</span>
+        {% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+    <a href="{{ url_for('cms.login_history', page=pagination.next_num, anomalies='1' if show_anomalies_only else None, user=user_filter) }}">Next →</a>
+    {% endif %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>No login records found.</p>
+</div>
+{% endif %}
+
+<script nonce="{{ csp_nonce }}">
+function dismissAnomaly(btn, logId) {
+    fetch('{{ url_for("cms.dismiss_anomaly", log_id="__ID__") }}'.replace('__ID__', logId), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+    }).then(r => r.json()).then(() => location.reload());
+}
+
+// Convert purge form to use fetch
+document.querySelector('.purge-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!confirm('Delete old login logs? This cannot be undone.')) return;
+    const days = this.querySelector('input[name="days"]').value;
+    fetch('{{ url_for("cms.purge_login_logs") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({days: parseInt(days) || 90})
+    }).then(r => r.json()).then(data => {
+        alert(data.message);
+        location.reload();
+    });
+});
+</script>
+{% endblock %}
