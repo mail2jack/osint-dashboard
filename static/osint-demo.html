@@ -10,6 +10,9 @@
     h2 { margin-bottom: 0.5rem; color: #f1f5f9; }
     .subtitle { color: #94a3b8; margin-bottom: 2rem; font-size: 0.9rem; }
 
+    /* Mirror real app: global input width:100% would make checkboxes full-width if not overridden */
+    input { width: 100%; }
+
     .result-item {
         padding: 0.75rem;
         border: 1px solid #374151;
@@ -24,6 +27,7 @@
         margin-top: 0.35rem;
         flex-shrink: 0;
         accent-color: #3b82f6;
+        width: auto;
     }
     .result-content {
         flex: 1;
