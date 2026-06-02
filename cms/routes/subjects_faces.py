@@ -7,6 +7,7 @@ from flask import request, jsonify, abort, current_app
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from .. import csrf
 from ..models import db, Subject, AuditLog
 from ..auth import roles_required
 from ..image_validation import validate_image_file
@@ -76,6 +77,7 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["POST"])
 @login_required
+@csrf.exempt
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @validate(SaveFaceEncodingSchema)
 def save_face_encoding(subject_id: str) -> flask.Response:
@@ -104,6 +106,7 @@ def save_face_encoding(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["DELETE"])
 @login_required
+@csrf.exempt
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 def delete_face_encoding(subject_id: str) -> flask.Response:
     """Delete face encoding for a subject."""
@@ -126,6 +129,7 @@ def delete_face_encoding(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/compare-faces", methods=["POST"])
 @login_required
+@csrf.exempt
 @validate(CompareFacesSchema)
 def compare_faces() -> flask.Response:
     """Compare face encodings. Returns list of matching subjects."""

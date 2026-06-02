@@ -6,13 +6,15 @@
 <div class="back"><a href="{{ url_for('cms.subjects') }}">← Back to Subjects</a></div>
 
 <div class="subject-photo-container">
-    <div class="photo-frame" id="photoFrame">
-        {% if subject.photo_path %}
-        <img src="/static{{ subject.photo_path }}" alt="Photo of {{ subject.name }}" id="subjectPhoto">
-        {% else %}
-        <span class="photo-placeholder">👤</span>
-        <img id="subjectPhoto" style="display:none;">
-        {% endif %}
+    <div class="subject-photo-column">
+        <div class="photo-frame" id="photoFrame">
+            {% if subject.photo_path %}
+            <img src="/static{{ subject.photo_path }}" alt="Photo of {{ subject.name }}" id="subjectPhoto">
+            {% else %}
+            <span class="photo-placeholder">👤</span>
+            <img id="subjectPhoto" style="display:none;">
+            {% endif %}
+        </div>
         <label class="photo-upload-btn" for="photoInput">📷 Upload</label>
         <input type="file" id="photoInput" class="photo-input" accept="image/*" data-change="uploadPhoto">
     </div>
@@ -688,14 +690,13 @@
     .relation-item:last-child { border-bottom: none; }
     .relation-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-secondary); color: var(--text-secondary); }
     .photo-input { display: none; }
-    .photo-upload-btn { display: inline-block; padding: 0.3rem 0.7rem; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; font-size: 0.75rem; background: var(--bg-card); color: var(--text-primary); }
+    .photo-upload-btn { display: inline-block; padding: 0.3rem 0.7rem; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; font-size: 0.85rem; background: var(--bg-card); color: var(--text-primary); align-self: center; }
     .photo-upload-btn:hover { background: var(--table-hover); border-color: var(--accent-primary); }
-    .photo-frame { width: 100px; height: 100px; border-radius: 50%; overflow: hidden; border: 3px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); flex-shrink: 0; position: relative; }
+    .photo-frame { width: 150px; height: 150px; border-radius: 50%; overflow: hidden; border: 3px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); flex-shrink: 0; }
     .photo-frame img { width: 100%; height: 100%; object-fit: cover; }
-    .photo-placeholder { font-size: 2.5rem; opacity: 0.4; }
-    .photo-frame .photo-upload-btn { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; padding: 0.2rem; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 0; font-size: 0.7rem; cursor: pointer; }
-    .photo-frame .photo-upload-btn:hover { background: rgba(0,0,0,0.8); }
-    .subject-photo-container { display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; }
+    .photo-placeholder { font-size: 3.5rem; opacity: 0.4; }
+    .subject-photo-column { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+    .subject-photo-container { display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 1.5rem; }
     .result-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card); }
     .result-item input[type="checkbox"] { margin-top: 0.35rem; flex-shrink: 0; accent-color: var(--accent-primary); width: auto; }
     .result-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
@@ -995,10 +996,9 @@
                 if (existingImg) {
                     existingImg.src = '/static' + data.photo_path + '?t=' + new Date().getTime();
                 } else {
-                    photoFrame.innerHTML = '<img src="/static' + esc(data.photo_path) + '?t=' + esc(new Date().getTime()) + '" alt="Photo">' +
-                        '<label class="photo-upload-btn" for="photoInput">📷 Change</label>' +
-                        '<input type="file" id="photoInput" class="photo-input" accept="image/*" data-change="uploadPhoto">';
+                    photoFrame.innerHTML = '<img src="/static' + esc(data.photo_path) + '?t=' + esc(new Date().getTime()) + '" alt="Photo">';
                 }
+                document.querySelector('.photo-upload-btn').textContent = '📷 Change';
             }
         })
         .catch(err => alert('Upload failed: ' + err.message));
