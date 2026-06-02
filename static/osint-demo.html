@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSINT Result Demo</title>
+<style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h2 { margin-bottom: 0.5rem; color: #f1f5f9; }
+    .subtitle { color: #94a3b8; margin-bottom: 2rem; font-size: 0.9rem; }
+
+    .result-item {
+        padding: 0.75rem;
+        border: 1px solid #374151;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        background: #1e293b;
+    }
+    .result-item input[type="checkbox"] {
+        margin-top: 0.35rem;
+        flex-shrink: 0;
+        accent-color: #3b82f6;
+    }
+    .result-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .result-engine { font-weight: 600; color: #f1f5f9; font-size: 0.9rem; }
+    .result-query { font-size: 0.85rem; color: #94a3b8; line-height: 1.4; }
+    .result-url {
+        font-size: 0.8rem;
+        word-break: break-all;
+        align-self: center;
+    }
+    .result-url a {
+        color: #60a5fa;
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 280px;
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .result-url a:hover { text-decoration: underline; }
+
+    .source-badge {
+        display: inline-block;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 500;
+        margin-left: 0.5rem;
+        vertical-align: middle;
+    }
+    .source-badge.brave { background: #f97316; color: #fff; }
+    .source-badge.ddg { background: #25D366; color: #fff; }
+
+    .section { margin-bottom: 2rem; }
+    .section h3 {
+        margin-bottom: 1rem; color: #64748b; font-size: 0.85rem;
+        text-transform: uppercase; letter-spacing: 0.08em;
+        border-bottom: 1px solid #334155; padding-bottom: 0.5rem;
+    }
+    .select-all {
+        display: block; font-size: 0.75rem; color: #64748b;
+        margin-bottom: 0.5rem;
+    }
+    .select-all input { margin-right: 0.4rem; }
+
+    .demo-controls { margin: 2rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .demo-controls button {
+        padding: 0.5rem 1rem; border: 1px solid #475569; border-radius: 6px;
+        background: #1e293b; color: #e2e8f0; cursor: pointer; font-size: 0.85rem;
+    }
+    .demo-controls button:hover { background: #334155; }
+    .demo-controls button.active { background: #3b82f6; border-color: #3b82f6; }
+
+    .layout-a .result-url { flex-shrink: 0; margin-left: auto; padding-left: 0.5rem; }
+    .layout-b .result-url { flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h2>OSINT Search Results — Layout Demo</h2>
+    <p class="subtitle" id="layoutLabel">Active: Layout A — checkbox | description | link (separate, right-aligned)</p>
+
+    <div class="demo-controls">
+        <button class="active" data-layout="layout-a" onclick="switchLayout('layout-a')">Layout A: link right-aligned</button>
+        <button data-layout="layout-b" onclick="switchLayout('layout-b')">Layout B: link under content</button>
+    </div>
+
+    <div id="resultsContainer" class="layout-a">
+
+        <div class="section">
+            <h3>Person Search Results</h3>
+            <label class="select-all"><input type="checkbox"> Select all</label>
+
+            <div class="result-item">
+                <input type="checkbox" class="result-checkbox">
+                <div class="result-content">
+                    <div class="result-engine">linkedin.com<span class="source-badge brave">Brave</span></div>
+                    <div class="result-query">John Doe — Software Engineer at ACME, Amsterdam. 500+ connections.</div>
+                </div>
+                <div class="result-url"><a href="https://linkedin.com/in/johndoe" target="_blank">https://linkedin.com/in/johndoe</a></div>
+            </div>
+
+            <div class="result-item">
+                <input type="checkbox" class="result-checkbox">
+                <div class="result-content">
+                    <div class="result-engine">twitter.com<span class="source-badge brave">Brave</span></div>
+                    <div class="result-query">@johndoe — Tech lead. Posts about Python, OSINT, DevOps. 2.4K followers.</div>
+                </div>
+                <div class="result-url"><a href="https://twitter.com/johndoe" target="_blank">https://twitter.com/johndoe</a></div>
+            </div>
+
+            <div class="result-item">
+                <input type="checkbox" class="result-checkbox">
+                <div class="result-content">
+                    <div class="result-engine">github.com<span class="source-badge ddg">DDG</span></div>
+                    <div class="result-query">johndoe — 42 public repos. Python, JavaScript, Go. Contributor to OSINT-tools.</div>
+                </div>
+                <div class="result-url"><a href="https://github.com/johndoe" target="_blank">https://github.com/johndoe</a></div>
+            </div>
+
+            <div class="result-item">
+                <input type="checkbox" class="result-checkbox">
+                <div class="result-content">
+                    <div class="result-engine">facebook.com<span class="source-badge brave">Brave</span></div>
+                    <div class="result-query">John Doe — Lives in Amsterdam. Works at ACME. Studied at UvA.</div>
+                </div>
+                <div class="result-url"><a href="https://facebook.com/johndoe" target="_blank">https://facebook.com/johndoe</a></div>
+            </div>
+
+            <div class="result-item">
+                <input type="checkbox" class="result-checkbox">
+                <div class="result-content">
+                    <div class="result-engine">instagram.com<span class="source-badge brave">Brave</span></div>
+                    <div class="result-query">johndoe_ams — 1.2K posts. 8.5K followers. Travel, tech, photography.</div>
+                </div>
+                <div class="result-url"><a href="https://instagram.com/johndoe_ams" target="_blank">https://instagram.com/johndoe_ams</a></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Search Links</h3>
+            <label class="select-all"><input type="checkbox"> Select all</label>
+
+            <div class="result-item">
+                <input type="checkbox" class="result-checkbox">
+                <div class="result-content">
+                    <div class="result-engine">Google</div>
+                    <div class="result-query">Google Search: "John Doe Amsterdam"</div>
+                </div>
+                <div class="result-url"><a href="https://google.com/search?q=johndoe" target="_blank">https://google.com/search?q=johndoe</a></div>
+            </div>
+
+            <div class="result-item">
+                <input type="checkbox" class="result-checkbox">
+                <div class="result-content">
+                    <div class="result-engine">Bing</div>
+                    <div class="result-query">Bing Search: "John Doe"</div>
+                </div>
+                <div class="result-url"><a href="https://bing.com/search?q=johndoe" target="_blank">https://bing.com/search?q=johndoe</a></div>
+            </div>
+        </div>
+
+    </div>
+
+    <hr style="border-color:#334155;margin:3rem 0;">
+
+    <h3>Proposed template JS change</h3>
+    <pre style="background:#1e293b;padding:1rem;border-radius:8px;font-size:0.8rem;color:#94a3b8;overflow-x:auto;">
+div.innerHTML =
+    '&lt;input type="checkbox" class="result-checkbox" ...&gt;' +
+    '&lt;div class="result-content"&gt;' +
+        '&lt;div class="result-engine"&gt;domain + badge&lt;/div&gt;' +
+        '(query ? &lt;div class="result-query"&gt;query&lt;/div&gt; : "")' +
+    '&lt;/div&gt;' +
+    '&lt;div class="result-url"&gt;&lt;a href="url" target="_blank"&gt;url&lt;/a&gt;&lt;/div&gt;';  ← separate, not nested
+    </pre>
+</div>
+
+<script>
+function switchLayout(name) {
+    document.getElementById('resultsContainer').className = name;
+    document.querySelectorAll('.demo-controls button').forEach(b => {
+        b.classList.toggle('active', b.dataset.layout === name);
+    });
+    const labels = {
+        'layout-a': 'Layout A — checkbox | description | link (separate, right-aligned)',
+        'layout-b': 'Layout B — checkbox | description + link (nested, original)'
+    };
+    document.getElementById('layoutLabel').textContent = 'Active: ' + labels[name];
+}
+</script>
+</body>
+</html>
