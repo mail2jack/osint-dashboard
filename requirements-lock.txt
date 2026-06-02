@@ -126,7 +126,7 @@ publicsuffixlist==0.9.4
 pure_eval==0.2.3
 pyHanko==0.34.1
 pyOpenSSL==21.0.0
-pycares==4.11.0
+pycares==5.0.1
 pycodestyle==2.14.0
 pycountry==24.6.1
 pycparser==3.0
