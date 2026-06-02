@@ -679,6 +679,17 @@
     .relation-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border-color); color: var(--text-primary); }
     .relation-item:last-child { border-bottom: none; }
     .relation-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-secondary); color: var(--text-secondary); }
+    .result-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card); }
+    .result-item input[type="checkbox"] { margin-top: 0.35rem; flex-shrink: 0; accent-color: var(--accent-primary); }
+    .result-content { flex: 1; min-width: 0; }
+    .result-engine { font-weight: 600; color: var(--text-primary); margin-bottom: 0.15rem; }
+    .result-query { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.2rem; line-height: 1.4; }
+    .result-url { font-size: 0.75rem; color: var(--link-color); word-break: break-all; }
+    .result-url a { color: var(--link-color); text-decoration: none; }
+    .result-url a:hover { text-decoration: underline; }
+    .source-badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.65rem; font-weight: 500; margin-left: 0.5rem; vertical-align: middle; }
+    .source-badge.brave { background: #f97316; color: #fff; }
+    .source-badge.ddg { background: #25D366; color: #fff; }
 </style>
 
 <script nonce="{{ csp_nonce }}">
@@ -1577,16 +1588,16 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             catDiv.dataset.category = cat;
             catDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">' + esc(categoryLabels[cat] || cat) + ' (' + esc(items.length) + ')</h4>' +
                 '<label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">' +
-                    '<input type="checkbox" class="cat-select-all" data-cat="' + esc(cat) + '" data-change="toggleCategory""> Select all' +
+                    '<input type="checkbox" class="cat-select-all" data-cat="' + esc(cat) + '" data-change="toggleCategory"> Select all' +
                 '</label>';
-            
+
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
                 const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">Brave</span>' : 
                                      item.source === 'duckduckgo' ? '<span class="source-badge ddg">DDG</span>' : '';
                 div.innerHTML =
-                    '<input type="checkbox" class="result-checkbox" data-url="' + esc(item.url) + '" data-domain="' + esc(item.domain || '') + '" data-query="' + esc(item.query || '') + '" data-source="' + esc(item.source || '') + '" data-category="' + esc(item.category || 'general') + '" data-change="updateSelectedCount"">' +
+                    '<input type="checkbox" class="result-checkbox" data-url="' + esc(item.url) + '" data-domain="' + esc(item.domain || '') + '" data-query="' + esc(item.query || '') + '" data-source="' + esc(item.source || '') + '" data-category="' + esc(item.category || 'general') + '" data-change="updateSelectedCount">' +
                     '<div class="result-content">' +
                         '<div class="result-engine">' + esc(item.domain || 'Unknown') + sourceBadge + '</div>' +
                         (item.query ? '<div class="result-query">' + esc(item.query) + '</div>' : '') +
@@ -1602,14 +1613,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             searchDiv.style.marginBottom = '1rem';
             searchDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (' + esc(searchLinks.length) + ')</h4>' +
                 '<label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">' +
-                    '<input type="checkbox" class="cat-select-all" data-cat="search" data-change="toggleCategory""> Select all' +
+                    '<input type="checkbox" class="cat-select-all" data-cat="search" data-change="toggleCategory"> Select all' +
                 '</label>';
-            
+
             searchLinks.forEach(link => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
                 div.innerHTML =
-                    '<input type="checkbox" class="result-checkbox" data-url="' + esc(link.url) + '" data-domain="' + esc(link.engine || 'Unknown') + '" data-query="' + esc(link.name || '') + '" data-source="search_link" data-category="search" data-change="updateSelectedCount"">' +
+                    '<input type="checkbox" class="result-checkbox" data-url="' + esc(link.url) + '" data-domain="' + esc(link.engine || 'Unknown') + '" data-query="' + esc(link.name || '') + '" data-source="search_link" data-category="search" data-change="updateSelectedCount">' +
                     '<div class="result-content">' +
                         '<div class="result-engine">' + esc(link.engine || 'Unknown') + '</div>' +
                         '<div class="result-url"><a href="' + esc(link.url) + '" target="_blank">' + esc(link.name || link.url) + '</a></div>' +

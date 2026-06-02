@@ -5,6 +5,17 @@
 {% block content %}
 <style>
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    .result-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card); }
+    .result-item input[type="checkbox"] { margin-top: 0.35rem; flex-shrink: 0; accent-color: var(--accent-primary); }
+    .result-content { flex: 1; min-width: 0; }
+    .result-engine { font-weight: 600; color: var(--text-primary); margin-bottom: 0.15rem; }
+    .result-query { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.2rem; line-height: 1.4; }
+    .result-url { font-size: 0.75rem; color: var(--link-color); word-break: break-all; }
+    .result-url a { color: var(--link-color); text-decoration: none; }
+    .result-url a:hover { text-decoration: underline; }
+    .source-badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.65rem; font-weight: 500; margin-left: 0.5rem; vertical-align: middle; }
+    .source-badge.brave { background: #f97316; color: #fff; }
+    .source-badge.ddg { background: #25D366; color: #fff; }
 </style>
 
 <div style="padding: 0 2rem; margin-top: 1rem;">
@@ -993,7 +1004,7 @@ function displayResults(results) {
             div.className = 'result-item';
             const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">Brave</span>' : 
                                  item.source === 'duckduckgo' ? '<span class="source-badge ddg">DDG</span>' : '';
-            div.innerHTML = '<input type="checkbox" class="result-checkbox" data-domain="' + esc(item.domain || '') + '" data-url="' + esc(item.url) + '" data-query="' + esc(item.query || '') + '" data-source="' + esc(item.source || '') + '" data-category="' + esc(item.category || '') + '" data-change="updateSelectedCount"">' +
+            div.innerHTML = '<input type="checkbox" class="result-checkbox" data-domain="' + esc(item.domain || '') + '" data-url="' + esc(item.url) + '" data-query="' + esc(item.query || '') + '" data-source="' + esc(item.source || '') + '" data-category="' + esc(item.category || '') + '" data-change="updateSelectedCount">' +
                 '<div class="result-content">' +
                     '<div class="result-engine">' + esc(item.domain || 'Unknown') + sourceBadge + '</div>' +
                     (item.query ? '<div class="result-query">' + esc(item.query) + '</div>' : '') +
@@ -1012,7 +1023,7 @@ function displayResults(results) {
         searchLinks.forEach((link) => {
             const div = document.createElement('div');
             div.className = 'result-item';
-            div.innerHTML = '<input type="checkbox" class="result-checkbox" data-domain="' + esc(link.engine || '') + '" data-url="' + esc(link.url) + '" data-query="' + esc(link.query || '') + '" data-source="search_link" data-category="search_link" data-change="updateSelectedCount"">' +
+            div.innerHTML = '<input type="checkbox" class="result-checkbox" data-domain="' + esc(link.engine || '') + '" data-url="' + esc(link.url) + '" data-query="' + esc(link.query || '') + '" data-source="search_link" data-category="search_link" data-change="updateSelectedCount">' +
                 '<div class="result-content">' +
                     '<div class="result-engine">' + esc(link.engine || 'Unknown') + '</div>' +
                     (link.query ? '<div class="result-query">' + esc(link.query) + '</div>' : '') +
