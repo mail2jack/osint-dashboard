@@ -122,7 +122,7 @@ propcache==0.4.1
 psutil==7.2.2
 psycopg2-binary==2.9.12
 ptyprocess==0.7.0
-publicsuffixlist==0.9.4
+publicsuffixlist==1.0.2.20260529
 pure_eval==0.2.3
 pyHanko==0.34.1
 pyOpenSSL==21.0.0
