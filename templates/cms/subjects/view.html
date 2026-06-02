@@ -535,15 +535,15 @@
 <!-- OSINT Search Modal -->
 <div id="osintModal" class="modal">
     <div class="modal-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">OSINT Person Search</h2>
-            <span data-click="closeOsintModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+        <div class="modal-header">
+            <h2>OSINT Person Search</h2>
+            <span class="close" data-click="closeOsintModal">&times;</span>
         </div>
         
         <div id="osintSearchForm">
             <p style="margin-bottom: 1rem; color: var(--text-secondary);">Search for information about <strong>{{ subject.name }}</strong></p>
             <div id="osintActions">
-                <button data-click="startOsintSearch" class="btn-sm btn-success">Start Search</button>
+                <button data-click="startOsintSearch" class="btn-cms success small">Search</button>
             </div>
         </div>
         
@@ -553,20 +553,28 @@
                 <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
             </div>
             <div style="margin-top: 1.5rem;">
-                <button data-click="cancelOsintSearch" class="btn-sm" style="background: var(--danger-text);">Cancel Search</button>
+                <button data-click="cancelOsintSearch" class="btn-cms danger small">Cancel Search</button>
             </div>
         </div>
         
         <div id="osintResults" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 style="margin: 0;">Search Results</h3>
+            <div class="card-header">
+                <h2 style="margin: 0; font-size: 1.1rem;">Search Results</h2>
                 <span id="resultsCount"></span>
             </div>
-            <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button data-click="closeOsintModal" class="btn-sm" style="background: #666;">Close</button>
-                <button data-click="saveSelectedAsSocialAccounts" class="btn-sm" style="background: #8b5cf6;" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
-                <button data-click="addSelectedFindings" class="btn-sm btn-success" id="addFindingsBtn" disabled>Add Selected to Findings (<span id="selectedCount">0</span>)</button>
+            
+            <div class="select-all-row" style="margin-bottom: 0.5rem;">
+                <label>
+                    <input type="checkbox" id="selectAllResults" data-change="toggleAllResults">
+                    <strong>Select All</strong>
+                </label>
+            </div>
+            
+            <div id="resultsList" style="max-height: 400px; overflow-y: auto; margin-bottom: 0.5rem;"></div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+                <button data-click="closeOsintModal" class="btn-cms">Close</button>
+                <button data-click="saveSelectedAsSocialAccounts" class="btn-cms primary" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
+                <button data-click="addSelectedFindings" class="btn-cms success small" id="addFindingsBtn" disabled>Add Selected to Findings (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
         
@@ -1571,8 +1579,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             'public_records': 'Public Records',
             'news': 'News',
             'people_search': 'People Search',
-            'general': 'Other',
-            'search': 'Search Links'
+            'general': 'Other'
         };
         
         const grouped = {};
@@ -1585,11 +1592,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         for (const [cat, items] of Object.entries(grouped)) {
             const catDiv = document.createElement('div');
             catDiv.style.marginBottom = '1rem';
-            catDiv.dataset.category = cat;
-            catDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">' + esc(categoryLabels[cat] || cat) + ' (' + esc(items.length) + ')</h4>' +
-                '<label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">' +
-                    '<input type="checkbox" class="cat-select-all" data-cat="' + esc(cat) + '" data-change="toggleCategory"> Select all' +
-                '</label>';
+            catDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">' + esc(categoryLabels[cat] || cat) + ' (' + esc(items.length) + ')</h4>';
 
             items.forEach(item => {
                 const div = document.createElement('div');
@@ -1611,10 +1614,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         if (searchLinks.length > 0) {
             const searchDiv = document.createElement('div');
             searchDiv.style.marginBottom = '1rem';
-            searchDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (' + esc(searchLinks.length) + ')</h4>' +
-                '<label style="display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">' +
-                    '<input type="checkbox" class="cat-select-all" data-cat="search" data-change="toggleCategory"> Select all' +
-                '</label>';
+            searchDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (' + esc(searchLinks.length) + ')</h4>';
 
             searchLinks.forEach(link => {
                 const div = document.createElement('div');
@@ -1649,13 +1649,15 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                         const badge = document.createElement('span');
                         badge.textContent = '📌 Already saved';
                         badge.style.cssText = 'font-size:0.65rem;padding:0.1rem 0.4rem;border-radius:4px;background:var(--success-bg,#dcfce7);color:var(--success-text,#16a34a);margin-left:0.5rem;white-space:nowrap;';
-                        cb.closest('.result-content')?.querySelector('.result-engine')?.after(badge);
+                        cb.parentElement.querySelector('.result-content')?.appendChild(badge);
                     }
                 });
             })
             .catch(() => {});
         })();
         {% endif %}
+        
+        updateSelectedCount();
     }
     
     function showOsintError(message) {
@@ -1666,9 +1668,8 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         document.getElementById('errorMessage').textContent = message;
     }
 
-    function toggleCategory(checkbox) {
-        const cat = checkbox.dataset.cat;
-        document.querySelectorAll(`.result-checkbox[data-category="${cat}"]`).forEach(cb => {
+    function toggleAllResults(checkbox) {
+        document.querySelectorAll('.result-checkbox').forEach(cb => {
             cb.checked = checkbox.checked;
         });
         updateSelectedCount();
