@@ -92,16 +92,26 @@ def subjects() -> str:
                         Subject.is_deleted == False,
                         Subject.name.ilike(f"%{search}%"),
                     ).all()
-                restricted_case_numbers = set()
-                for subj in restricted_subjects:
-                    case_ids = [
-                        r[0]
-                        for r in db.session.query(case_subjects.c.case_id)
-                        .filter(case_subjects.c.subject_id == subj.id)
-                        .all()
-                    ]
-                    for cid in case_ids:
-                        case = db.session.get(Case, cid)
+            restricted_case_numbers = set()
+            if restricted_subjects:
+                restricted_ids = [s.id for s in restricted_subjects]
+                case_mappings = (
+                    db.session.query(
+                        case_subjects.c.subject_id, case_subjects.c.case_id
+                    )
+                    .filter(case_subjects.c.subject_id.in_(restricted_ids))
+                    .all()
+                )
+                all_case_ids = list(set(m.case_id for m in case_mappings))
+                if all_case_ids:
+                    cases_map = {
+                        c.id: c
+                        for c in Case.query.filter(
+                            Case.id.in_(all_case_ids), Case.is_deleted.is_(False)
+                        ).all()
+                    }
+                    for mapping in case_mappings:
+                        case = cases_map.get(mapping.case_id)
                         if case:
                             restricted_case_numbers.add(case.case_number)
                 owner_names = notify_search_restricted(
@@ -178,21 +188,19 @@ def _get_accessible_case_ids():
         return None
     from ..models import Case
 
-    # Non-admin: only cases they created, lead, or are assigned to
-    assigned_ids = [c.id for c in user.assigned_cases]
-    created_ids = [
-        c.id for c in Case.query.filter_by(created_by=user.id, is_deleted=False).all()
-    ]
-    lead_ids = [
+    case_ids = [
         c.id
-        for c in Case.query.filter_by(
-            lead_investigator_id=user.id, is_deleted=False
+        for c in Case.query.filter(
+            Case.is_deleted == False,
+            db.or_(
+                Case.created_by == user.id,
+                Case.lead_investigator_id == user.id,
+                Case.assigned_to == user.id,
+            ),
         ).all()
     ]
-    direct = [
-        c.id for c in Case.query.filter_by(assigned_to=user.id, is_deleted=False).all()
-    ]
-    return list(set(assigned_ids + created_ids + lead_ids + direct))
+    assigned_ids = [c.id for c in user.assigned_cases]
+    return list(set(case_ids + assigned_ids))
 
 
 @cms_bp.route("/subjects/<subject_id>")
