@@ -686,12 +686,8 @@ def username_search_stream() -> FlaskResponse:
                 }
             )
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(
-                search_username_async(username, progress_callback)
-            )
+            result = asyncio.run(search_username_async(username, progress_callback))
             found_count = result.get("found_count", 0)
             search_history.add_entry(
                 "username", username, f"{found_count} accounts found", found_count
@@ -701,7 +697,6 @@ def username_search_stream() -> FlaskResponse:
             logger.exception("Username search failed")
             q.put({"error": "Search error"})
         finally:
-            loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
@@ -782,12 +777,8 @@ def email_search_stream() -> FlaskResponse:
                 }
             )
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(
-                search_email_async(email, progress_callback, limit)
-            )
+            result = asyncio.run(search_email_async(email, progress_callback, limit))
             found_count = result.get("found_count", 0)
             search_history.add_entry(
                 "email", email, f"{found_count} accounts found", found_count
@@ -797,7 +788,6 @@ def email_search_stream() -> FlaskResponse:
             logger.exception("Email Sherlock search failed")
             q.put({"error": "Search error"})
         finally:
-            loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
@@ -867,12 +857,8 @@ def email_holehe() -> FlaskResponse:
                 }
             )
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(
-                search_email_holehe(email, progress_callback)
-            )
+            result = asyncio.run(search_email_holehe(email, progress_callback))
             search_history.add_entry(
                 "holehe",
                 email,
@@ -884,7 +870,6 @@ def email_holehe() -> FlaskResponse:
             logger.exception("Email Holehe search failed")
             q.put({"error": "Search error"})
         finally:
-            loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
@@ -959,12 +944,8 @@ def email_combined() -> FlaskResponse:
                 }
             )
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(
-                search_email_combined(email, progress_callback)
-            )
+            result = asyncio.run(search_email_combined(email, progress_callback))
             found_count = result.get("found_count", 0)
             search_history.add_entry(
                 "email",
@@ -977,7 +958,6 @@ def email_combined() -> FlaskResponse:
             logger.exception("Email combined search failed")
             q.put({"error": "Search error"})
         finally:
-            loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
@@ -1052,12 +1032,8 @@ def email_cross_validated() -> FlaskResponse:
                 }
             )
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
-            result = loop.run_until_complete(
-                search_email_combined(email, progress_callback)
-            )
+            result = asyncio.run(search_email_combined(email, progress_callback))
             found_count = result.get("found_count", 0)
             cross_count = result.get("cross_validated_count", 0)
             search_history.add_entry(
@@ -1071,7 +1047,6 @@ def email_cross_validated() -> FlaskResponse:
             logger.exception("Email cross-validated search failed")
             q.put({"error": "Search error"})
         finally:
-            loop.close()
             if current_user and current_user.is_authenticated:
                 release_search_slot(current_user.id)
 
