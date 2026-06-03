@@ -8,7 +8,6 @@ from flask import jsonify, current_app, render_template
 from flask_login import login_required
 
 from . import cms_bp
-from .. import csrf
 from ..models import Setting
 from ..auth import admin_required
 
@@ -72,7 +71,6 @@ def list_sessions() -> dict:
 
 
 @cms_bp.route("/admin/sessions/<session_id>/delete", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def delete_session(session_id: str) -> flask.Response:
@@ -87,7 +85,6 @@ def delete_session(session_id: str) -> flask.Response:
 
 
 @cms_bp.route("/admin/sessions/delete-all", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def delete_all_sessions() -> flask.Response:
@@ -271,7 +268,6 @@ def check_update() -> flask.Response:
 
 
 @cms_bp.route("/admin/do-update", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def do_update() -> flask.Response:

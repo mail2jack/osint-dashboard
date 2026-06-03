@@ -6,7 +6,6 @@ from flask import request, jsonify, render_template, redirect, url_for, flash, a
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..validation import validate, CreateCaseSchema, EditCaseSchema, BulkDeleteSchema
 from ..models import db, Case, Client, Subject, AuditLog, User, CaseStatus, CasePriority
 from ..auth import (
@@ -22,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 @cms_bp.route("/api/cases/bulk-delete", methods=["POST"])
-@csrf.exempt
 @login_required
 @roles_required("admin", "senior_investigator")
 @validate(BulkDeleteSchema)

@@ -16,7 +16,6 @@ from ..validation import (
 from ..models import db, Subject, Case, Address, Contact, AuditLog
 from ..auth import roles_required, subject_access_required
 from ..encryption_utils import encryptor
-from .. import csrf
 from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
@@ -600,7 +599,6 @@ def edit_subject(subject_id: str) -> flask.Response:
 
 
 @cms_bp.route("/api/subjects/bulk-delete", methods=["POST"])
-@csrf.exempt
 @login_required
 @roles_required("admin", "senior_investigator")
 @validate(BulkDeleteSchema)

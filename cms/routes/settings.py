@@ -6,7 +6,6 @@ from flask import request, jsonify, render_template, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Setting, AuditLog, LoginLog, User, init_default_settings
 from ..auth import admin_required
 from ..validation import validate, SaveSettingsSchema
@@ -73,7 +72,6 @@ def get_setting_api(setting_id: str) -> flask.Response:
 
 
 @cms_bp.route("/api/settings", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 @validate(SaveSettingsSchema)
@@ -137,7 +135,6 @@ def save_settings_api() -> flask.Response:
 
 
 @cms_bp.route("/api/settings/<setting_id>/reset", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def reset_setting_api(setting_id: str) -> flask.Response:
@@ -240,7 +237,6 @@ def login_history() -> str:
 
 
 @cms_bp.route("/api/login-logs/<log_id>/dismiss-anomaly", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def dismiss_anomaly(log_id: str) -> flask.Response:
@@ -253,7 +249,6 @@ def dismiss_anomaly(log_id: str) -> flask.Response:
 
 
 @cms_bp.route("/api/login-logs/purge", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def purge_login_logs() -> flask.Response:
@@ -287,7 +282,6 @@ def manage_api_keys() -> str:
 
 
 @cms_bp.route("/api/api-keys/create", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def api_create_api_key() -> flask.Response:
@@ -343,7 +337,6 @@ def api_create_api_key() -> flask.Response:
 
 
 @cms_bp.route("/api/api-keys/<key_id>/deactivate", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def api_deactivate_api_key(key_id: str) -> flask.Response:
@@ -357,7 +350,6 @@ def api_deactivate_api_key(key_id: str) -> flask.Response:
 
 
 @cms_bp.route("/api/api-keys/<key_id>/activate", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def api_activate_api_key(key_id: str) -> flask.Response:
@@ -371,7 +363,6 @@ def api_activate_api_key(key_id: str) -> flask.Response:
 
 
 @cms_bp.route("/api/api-keys/<key_id>/delete", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def api_delete_api_key(key_id: str) -> flask.Response:

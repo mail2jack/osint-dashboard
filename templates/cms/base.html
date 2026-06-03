@@ -879,7 +879,7 @@
         progress.style.display = 'block';
         steps.innerHTML = '<div style="color:#666;">Starting update...</div>';
 
-        fetch('/cms/admin/do-update', { method: 'POST' })
+        fetch('/cms/admin/do-update', { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token() }}'} })
             .then(r => r.json())
             .then(data => {
                 progress.style.display = 'none';
