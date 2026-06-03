@@ -17,13 +17,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-logger = logging.getLogger('alembic.env')
+logger = logging.getLogger("alembic.env")
 
 # Read DATABASE_URL from environment (same source as Flask app)
 import os
-database_url = os.environ.get('DATABASE_URL')
+
+database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    config.set_main_option('sqlalchemy.url', database_url)
+    config.set_main_option("sqlalchemy.url", database_url)
 
 # Import all models to register them with SQLAlchemy metadata
 # This must happen before target_metadata is assigned.
@@ -33,8 +34,9 @@ if database_url:
 try:
     from cms.models import db
     import cms.models  # noqa: F401 — registers all ORM models
+
     target_metadata = db.metadata
-except Exception as exc:
+except Exception:
     logger.error("Failed to import CMS models. Ensure DATABASE_URL is set.")
     raise
 

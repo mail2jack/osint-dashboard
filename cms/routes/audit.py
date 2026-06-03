@@ -10,18 +10,18 @@ from ..auth import senior_required
 logger = logging.getLogger(__name__)
 
 
-@cms_bp.route('/audit')
+@cms_bp.route("/audit")
 @login_required
 @senior_required
 def audit_log() -> str:
     """View audit log with filtering."""
-    page = request.args.get('page', 1, type=int)
+    page = request.args.get("page", 1, type=int)
     per_page = 50
-    entity_type = request.args.get('entity_type', '')
-    action = request.args.get('action', '')
-    user_id = request.args.get('user_id', '')
-    case_id = request.args.get('case_id', '')
-    search = request.args.get('search', '')
+    entity_type = request.args.get("entity_type", "")
+    action = request.args.get("action", "")
+    user_id = request.args.get("user_id", "")
+    case_id = request.args.get("case_id", "")
+    search = request.args.get("search", "")
 
     query = AuditLog.query.options(db.joinedload(AuditLog.user))
 
@@ -36,8 +36,8 @@ def audit_log() -> str:
     if search:
         query = query.filter(
             db.or_(
-                AuditLog.description.ilike(f'%{search}%'),
-                AuditLog.action.ilike(f'%{search}%')
+                AuditLog.description.ilike(f"%{search}%"),
+                AuditLog.action.ilike(f"%{search}%"),
             )
         )
 
@@ -52,12 +52,18 @@ def audit_log() -> str:
     actions = db.session.query(AuditLog.action).distinct().all()
     actions = [a[0] for a in actions]
 
-    return render_template('cms/audit/log.html',
-                           logs=pagination.items,
-                           pagination=pagination,
-                           filters={'entity_type': entity_type, 'action': action,
-                                    'user_id': user_id, 'case_id': case_id, 'search': search},
-                           users=users,
-                           entity_types=entity_types,
-                           actions=actions
-                           )
+    return render_template(
+        "cms/audit/log.html",
+        logs=pagination.items,
+        pagination=pagination,
+        filters={
+            "entity_type": entity_type,
+            "action": action,
+            "user_id": user_id,
+            "case_id": case_id,
+            "search": search,
+        },
+        users=users,
+        entity_types=entity_types,
+        actions=actions,
+    )

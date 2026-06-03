@@ -23,9 +23,8 @@ def verify_profile(response_text, username, url=None):
         r"^<!doctype html>\s*<html>\s*<head>\s*<title>\s*</title>",
     ]
     for pattern in generic_patterns:
-        if re.search(pattern, text_lower):
-            if len(response_text) < 500:
-                return "likely_false"
+        if re.search(pattern, text_lower) and len(response_text) < 500:
+            return "likely_false"
     return "unconfirmed"
 
 
@@ -38,7 +37,7 @@ def validate_ip(ip):
     try:
         socket.inet_aton(ip)
         return True
-    except socket.error:
+    except OSError:
         return False
 
 

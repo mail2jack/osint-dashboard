@@ -134,10 +134,7 @@ def notify_search_restricted(
             db.session.add(n)
 
     # Notify the searching user about the restriction
-    if owner_names:
-        owners_str = ", ".join(sorted(owner_names))
-    else:
-        owners_str = "the case owner"
+    owners_str = ", ".join(sorted(owner_names)) if owner_names else "the case owner"
     searching_notification = Notification(
         user_id=user_id,
         message=f'🔍 Your search for "{query}" matched restricted content. '

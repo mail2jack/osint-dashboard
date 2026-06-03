@@ -3,6 +3,7 @@ import re
 import secrets
 import logging
 import uuid as uuid_mod
+import contextlib
 
 from flask import Flask, request, g
 from dotenv import load_dotenv
@@ -57,10 +58,8 @@ def add_request_id():
     # Clear any stale aborted transaction from the connection pool
     from cms.models import db
 
-    try:
+    with contextlib.suppress(Exception):
         db.session.rollback()
-    except Exception:
-        pass
 
 
 # Load security and application configuration based on FLASK_ENV
@@ -207,9 +206,7 @@ def result_link_filter(data, type_name):
 
     if not data:
         return ""
-    if type_name == "email":
-        return f'<a href="/cms/search?q={quote(data)}&type=all" class="result-link">{data}</a>'
-    elif type_name in ("ip", "domain"):
+    if type_name == "email" or type_name in ("ip", "domain"):
         return f'<a href="/cms/search?q={quote(data)}&type=all" class="result-link">{data}</a>'
     return str(data)
 

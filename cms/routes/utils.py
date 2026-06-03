@@ -4,7 +4,6 @@ Utility functions for CMS routes.
 
 import re
 import logging
-from typing import Optional
 
 from ..models import Subject, Client
 
@@ -13,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import phonenumbers
+
     HAS_PHONENUMBERS = True
 except ImportError:
     HAS_PHONENUMBERS = False
@@ -24,11 +24,11 @@ def normalize_name(name: str) -> str:
         return ""
     # Lowercase, remove extra spaces, remove common prefixes/suffixes
     normalized = name.lower().strip()
-    normalized = re.sub(r'\s+', ' ', normalized)  # Multiple spaces to single
+    normalized = re.sub(r"\s+", " ", normalized)  # Multiple spaces to single
     # Remove common prefixes
-    for prefix in ['mr.', 'mrs.', 'ms.', 'dr.', 'ing.', 'ir.']:
+    for prefix in ["mr.", "mrs.", "ms.", "dr.", "ing.", "ir."]:
         if normalized.startswith(prefix):
-            normalized = normalized[len(prefix):].strip()
+            normalized = normalized[len(prefix) :].strip()
     return normalized
 
 
@@ -66,10 +66,13 @@ def find_similar_subjects(name: str, threshold: float = 0.7) -> list:
 
     # Filter by first letter in DB to avoid loading all records
     first_letter = normalized_input[0]
-    candidates = Subject.query.filter(
-        Subject.is_deleted == False,
-        Subject.name.ilike(f'{first_letter}%')
-    ).limit(500).all()
+    candidates = (
+        Subject.query.filter(
+            Subject.is_deleted == False, Subject.name.ilike(f"{first_letter}%")
+        )
+        .limit(500)
+        .all()
+    )
 
     for subject in candidates:
         if normalize_name(subject.name) == normalized_input:
@@ -77,14 +80,16 @@ def find_similar_subjects(name: str, threshold: float = 0.7) -> list:
 
         similarity = calculate_similarity(name, subject.name)
         if similarity >= threshold:
-            similar.append({
-                'id': subject.id,
-                'name': subject.name,
-                'type': subject.subject_type,
-                'similarity': round(similarity * 100)
-            })
+            similar.append(
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "type": subject.subject_type,
+                    "similarity": round(similarity * 100),
+                }
+            )
 
-    return sorted(similar, key=lambda x: x['similarity'], reverse=True)[:10]
+    return sorted(similar, key=lambda x: x["similarity"], reverse=True)[:10]
 
 
 def find_similar_clients(name: str, threshold: float = 0.7) -> list:
@@ -96,11 +101,15 @@ def find_similar_clients(name: str, threshold: float = 0.7) -> list:
     similar = []
 
     first_letter = normalized_input[0]
-    candidates = Client.query.filter(
-        Client.is_deleted == False,
-        Client.is_active == True,
-        Client.name.ilike(f'{first_letter}%')
-    ).limit(500).all()
+    candidates = (
+        Client.query.filter(
+            Client.is_deleted == False,
+            Client.is_active == True,
+            Client.name.ilike(f"{first_letter}%"),
+        )
+        .limit(500)
+        .all()
+    )
 
     for client in candidates:
         if normalize_name(client.name) == normalized_input:
@@ -108,45 +117,46 @@ def find_similar_clients(name: str, threshold: float = 0.7) -> list:
 
         similarity = calculate_similarity(name, client.name)
         if similarity >= threshold:
-            similar.append({
-                'id': client.id,
-                'name': client.name,
-                'similarity': round(similarity * 100)
-            })
+            similar.append(
+                {
+                    "id": client.id,
+                    "name": client.name,
+                    "similarity": round(similarity * 100),
+                }
+            )
 
-    return sorted(similar, key=lambda x: x['similarity'], reverse=True)[:10]
+    return sorted(similar, key=lambda x: x["similarity"], reverse=True)[:10]
 
 
-def check_for_exact_match(name: str, entity_type: str) -> Optional[dict]:
+def check_for_exact_match(name: str, entity_type: str) -> dict | None:
     """Check for exact or very close match."""
     if not name:
         return None
 
     normalized = normalize_name(name)
 
-    if entity_type == 'subject':
+    if entity_type == "subject":
         subject = Subject.query.filter(
-            Subject.is_deleted == False,
-            Subject.name.ilike(normalized)
+            Subject.is_deleted == False, Subject.name.ilike(normalized)
         ).first()
         if subject:
             return {
-                'id': subject.id,
-                'name': subject.name,
-                'type': subject.subject_type,
-                'exact': normalize_name(subject.name) == normalized
+                "id": subject.id,
+                "name": subject.name,
+                "type": subject.subject_type,
+                "exact": normalize_name(subject.name) == normalized,
             }
-    elif entity_type == 'client':
+    elif entity_type == "client":
         client = Client.query.filter(
             Client.is_deleted == False,
             Client.is_active == True,
-            Client.name.ilike(normalized)
+            Client.name.ilike(normalized),
         ).first()
         if client:
             return {
-                'id': client.id,
-                'name': client.name,
-                'exact': normalize_name(client.name) == normalized
+                "id": client.id,
+                "name": client.name,
+                "exact": normalize_name(client.name) == normalized,
             }
 
     return None
@@ -159,13 +169,15 @@ def normalize_phone(phone) -> str | None:
     phone = phone.strip()
     if HAS_PHONENUMBERS:
         try:
-            parsed = phonenumbers.parse(phone, 'NL')
+            parsed = phonenumbers.parse(phone, "NL")
             if phonenumbers.is_valid_number(parsed):
-                return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+                return phonenumbers.format_number(
+                    parsed, phonenumbers.PhoneNumberFormat.E164
+                )
         except Exception:
             logger.debug("Phone number normalization failed for %s", phone)
     # Fallback: strip all non-digits, prepend +
-    digits = re.sub(r'[^0-9]', '', phone)
-    if digits.startswith('0'):
-        digits = '31' + digits[1:]  # assume NL
-    return '+' + digits
+    digits = re.sub(r"[^0-9]", "", phone)
+    if digits.startswith("0"):
+        digits = "31" + digits[1:]  # assume NL
+    return "+" + digits

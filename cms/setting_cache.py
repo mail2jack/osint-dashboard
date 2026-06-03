@@ -23,6 +23,7 @@ def cached_setting_get(key: str, default: Any = None) -> Any:
             return cached[1]
 
     from .models import Setting
+
     value = Setting.get(key, default)
 
     with _lock:

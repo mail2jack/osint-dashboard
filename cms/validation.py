@@ -3,7 +3,7 @@ import re
 from functools import wraps
 from flask import request, jsonify
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -33,24 +33,24 @@ class EmailCheckSchema(BaseModel):
 
 
 class KadasterLookupSchema(BaseModel):
-    address_id: Optional[str] = None
-    query: Optional[str] = None
-    street: Optional[str] = None
-    number: Optional[str] = None
-    zipcode: Optional[str] = None
-    town: Optional[str] = None
+    address_id: str | None = None
+    query: str | None = None
+    street: str | None = None
+    number: str | None = None
+    zipcode: str | None = None
+    town: str | None = None
 
 
 class PolitiebureauLookupSchema(BaseModel):
-    address_id: Optional[str] = None
-    lat: Optional[float] = None
-    lon: Optional[float] = None
-    query: Optional[str] = None
+    address_id: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    query: str | None = None
 
 
 class RDWCheckSchema(BaseModel):
     kenteken: str = Field(min_length=1, description="License plate")
-    subject_id: Optional[str] = None
+    subject_id: str | None = None
 
 
 class RDWUpdateSchema(BaseModel):
@@ -58,33 +58,33 @@ class RDWUpdateSchema(BaseModel):
 
 
 class VesselLookupSchema(BaseModel):
-    name: Optional[str] = None
-    imo: Optional[str] = None
-    mmsi: Optional[str] = None
-    eni: Optional[str] = None
-    subject_id: Optional[str] = None
+    name: str | None = None
+    imo: str | None = None
+    mmsi: str | None = None
+    eni: str | None = None
+    subject_id: str | None = None
 
 
 class VesselUpdateSubjectSchema(BaseModel):
     subject_id: str = Field(min_length=1)
-    imo_number: Optional[str] = None
-    mmsi: Optional[str] = None
-    eni_number: Optional[str] = None
-    vessel_nationality: Optional[str] = None
-    vessel_data: Optional[dict] = None
+    imo_number: str | None = None
+    mmsi: str | None = None
+    eni_number: str | None = None
+    vessel_nationality: str | None = None
+    vessel_data: dict | None = None
 
 
 class VesselFindingSchema(BaseModel):
     case_id: str = Field(min_length=1)
-    subject_id: Optional[str] = None
+    subject_id: str | None = None
     vessel_data: dict = Field(default_factory=dict)
     source: str = "vessel_lookup"
-    source_url: Optional[str] = None
+    source_url: str | None = None
 
 
 class InterpolFindingSchema(BaseModel):
     case_id: str = Field(min_length=1)
-    subject_id: Optional[str] = None
+    subject_id: str | None = None
     wanted_persons: list = Field(default_factory=list)
     missing_persons: list = Field(default_factory=list)
     opsporingsberichten: list = Field(default_factory=list)
@@ -95,16 +95,16 @@ class PhoneLookupSchema(BaseModel):
 
 
 class CheckPolicieDataSchema(BaseModel):
-    subject_id: Optional[str] = None
-    name: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    date_of_birth: Optional[str] = None
+    subject_id: str | None = None
+    name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    date_of_birth: str | None = None
     country: str = "NL"
 
 
 class CheckExistingUrlsSchema(BaseModel):
-    case_id: Optional[str] = None
+    case_id: str | None = None
     urls: list = Field(default_factory=list)
 
 
@@ -116,8 +116,8 @@ class AddSocialAccountSchema(BaseModel):
 
 
 class SaveFindingAsSocialAccountSchema(BaseModel):
-    finding_id: Optional[str] = None
-    subject_id: Optional[str] = None
+    finding_id: str | None = None
+    subject_id: str | None = None
     url: str = ""
     platform: str = ""
     username: str = ""
@@ -127,19 +127,19 @@ class SaveUsernameFindingsSchema(BaseModel):
     results: list = Field(
         default_factory=list, description="List of {platform, url, username}"
     )
-    case_id: Optional[str] = None
+    case_id: str | None = None
 
 
 class CreateSubjectFromUsernameSchema(BaseModel):
     username: str = ""
     platform: str = ""
     url: str = ""
-    case_id: Optional[str] = None
+    case_id: str | None = None
 
 
 class ExtractSocialIdSchema(BaseModel):
     url: str = Field(min_length=1, description="URL to extract social IDs from")
-    subject_id: Optional[str] = None
+    subject_id: str | None = None
 
 
 # =============================================================================
@@ -243,29 +243,29 @@ class CreateUserSchema(BaseModel):
     email: str = ""
     full_name: str = ""
     role: str = ""
-    password: Optional[str] = None
-    generated_password: Optional[str] = None
+    password: str | None = None
+    generated_password: str | None = None
     send_email: Any = None
     send_sms: Any = None
 
     @field_validator("password")
     @classmethod
-    def check_password_complexity(cls, v: Optional[str]) -> Optional[str]:
+    def check_password_complexity(cls, v: str | None) -> str | None:
         if v:
             return validate_password_complexity(v)
         return v
 
 
 class EditUserSchema(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[str] = None
-    role: Optional[str] = None
+    full_name: str | None = None
+    email: str | None = None
+    role: str | None = None
     is_active: Any = None
-    password: Optional[str] = None
+    password: str | None = None
 
     @field_validator("password")
     @classmethod
-    def check_password_complexity(cls, v: Optional[str]) -> Optional[str]:
+    def check_password_complexity(cls, v: str | None) -> str | None:
         if v:
             return validate_password_complexity(v)
         return v
@@ -306,10 +306,10 @@ class CreateCommentSchema(BaseModel):
     content: str = ""
     comment_type: str = "note"
     is_pinned: Any = None
-    case_id: Optional[str] = None
-    subject_id: Optional[str] = None
-    client_id: Optional[str] = None
-    financial_record_id: Optional[str] = None
+    case_id: str | None = None
+    subject_id: str | None = None
+    client_id: str | None = None
+    financial_record_id: str | None = None
 
 
 # =============================================================================
@@ -322,15 +322,15 @@ class CreateFinancialSchema(BaseModel):
     transaction_date: str = ""
     amount: Any = ""
     currency: str = "EUR"
-    subject_id: Optional[str] = None
-    transaction_type: Optional[str] = None
-    source: Optional[str] = None
-    source_reference: Optional[str] = None
-    description: Optional[str] = None
-    counterparty_name: Optional[str] = None
-    counterparty_account: Optional[str] = None
-    counterparty_bank: Optional[str] = None
-    counterparty_country: Optional[str] = None
+    subject_id: str | None = None
+    transaction_type: str | None = None
+    source: str | None = None
+    source_reference: str | None = None
+    description: str | None = None
+    counterparty_name: str | None = None
+    counterparty_account: str | None = None
+    counterparty_bank: str | None = None
+    counterparty_country: str | None = None
 
 
 class VerifyFinancialSchema(BaseModel):
@@ -347,12 +347,12 @@ class CreateFindingSchema(BaseModel):
     case_id: str = ""
     title: str = ""
     content: str = ""
-    subject_id: Optional[str] = None
-    source_url: Optional[str] = None
-    source_type: Optional[str] = None
+    subject_id: str | None = None
+    source_url: str | None = None
+    source_type: str | None = None
     reliability_score: int = 5
-    confidence_level: Optional[str] = None
-    finding_type: Optional[str] = None
+    confidence_level: str | None = None
+    finding_type: str | None = None
     tags: Any = None
 
 
@@ -373,10 +373,10 @@ class SaveSettingsSchema(BaseModel):
 class CreateCaseSchema(BaseModel):
     title: str = ""
     client_id: str = ""
-    description: Optional[str] = None
-    priority: Optional[str] = None
-    case_type: Optional[str] = None
-    jurisdiction: Optional[str] = None
+    description: str | None = None
+    priority: str | None = None
+    case_type: str | None = None
+    jurisdiction: str | None = None
     tags: Any = None
     start_date: Any = None
     target_end_date: Any = None
@@ -386,15 +386,15 @@ class CreateCaseSchema(BaseModel):
 
 
 class EditCaseSchema(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    priority: Optional[str] = None
-    case_type: Optional[str] = None
-    jurisdiction: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
+    priority: str | None = None
+    case_type: str | None = None
+    jurisdiction: str | None = None
     tags: Any = None
     target_end_date: Any = None
     lead_investigator_id: Any = None
-    status: Optional[str] = None
+    status: str | None = None
 
 
 # =============================================================================
@@ -403,13 +403,13 @@ class EditCaseSchema(BaseModel):
 
 
 class SetCaseParentSchema(BaseModel):
-    parent_case_id: Optional[str] = None
+    parent_case_id: str | None = None
 
 
 class TransitionCaseSchema(BaseModel):
     status: str = ""
-    closure_reason: Optional[str] = None
-    reopened_reason: Optional[str] = None
+    closure_reason: str | None = None
+    reopened_reason: str | None = None
 
 
 # =============================================================================
@@ -434,37 +434,37 @@ class CreateClientSchema(BaseModel):
     name: str = ""
     is_company: Any = None
     confirm_duplicate: Any = None
-    contact_person: Optional[str] = None
-    contact_email: Optional[str] = None
-    contact_phone: Optional[str] = None
-    social_security_number: Optional[str] = None
-    bank_account: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    place_of_birth: Optional[str] = None
+    contact_person: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    social_security_number: str | None = None
+    bank_account: str | None = None
+    date_of_birth: str | None = None
+    place_of_birth: str | None = None
     contacts_data: Any = None
     addresses_data: Any = None
-    contract_number: Optional[str] = None
-    contract_info: Optional[str] = None
-    vat_number: Optional[str] = None
-    financial_notes: Optional[str] = None
+    contract_number: str | None = None
+    contract_info: str | None = None
+    vat_number: str | None = None
+    financial_notes: str | None = None
 
 
 class EditClientSchema(BaseModel):
-    name: Optional[str] = None
+    name: str | None = None
     is_company: Any = None
-    contact_person: Optional[str] = None
-    contact_email: Optional[str] = None
-    contact_phone: Optional[str] = None
-    social_security_number: Optional[str] = None
-    bank_account: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    place_of_birth: Optional[str] = None
+    contact_person: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    social_security_number: str | None = None
+    bank_account: str | None = None
+    date_of_birth: str | None = None
+    place_of_birth: str | None = None
     contacts_data: Any = None
     addresses_data: Any = None
-    contract_number: Optional[str] = None
-    contract_info: Optional[str] = None
-    vat_number: Optional[str] = None
-    financial_notes: Optional[str] = None
+    contract_number: str | None = None
+    contract_info: str | None = None
+    vat_number: str | None = None
+    financial_notes: str | None = None
 
 
 # =============================================================================
@@ -476,105 +476,105 @@ class CreateSubjectSchema(BaseModel):
     name: str = ""
     subject_type: str = ""
     risk_score: int = 0
-    risk_factors: Optional[str] = None
-    notes: Optional[str] = None
-    registration_number: Optional[str] = None
-    legal_form: Optional[str] = None
-    asset_type: Optional[str] = None
-    estimated_value: Optional[str] = None
+    risk_factors: str | None = None
+    notes: str | None = None
+    registration_number: str | None = None
+    legal_form: str | None = None
+    asset_type: str | None = None
+    estimated_value: str | None = None
     currency: str = "EUR"
-    license_plate: Optional[str] = None
-    vin: Optional[str] = None
-    insurance_company: Optional[str] = None
-    brand: Optional[str] = None
-    vehicle_type: Optional[str] = None
-    imo_number: Optional[str] = None
-    mmsi: Optional[str] = None
-    eni_number: Optional[str] = None
-    vessel_nationality: Optional[str] = None
+    license_plate: str | None = None
+    vin: str | None = None
+    insurance_company: str | None = None
+    brand: str | None = None
+    vehicle_type: str | None = None
+    imo_number: str | None = None
+    mmsi: str | None = None
+    eni_number: str | None = None
+    vessel_nationality: str | None = None
     vessel_data: Any = None
-    date_of_birth: Optional[str] = None
-    place_of_birth: Optional[str] = None
-    identification_number: Optional[str] = None
-    case_id: Optional[str] = None
+    date_of_birth: str | None = None
+    place_of_birth: str | None = None
+    identification_number: str | None = None
+    case_id: str | None = None
     addresses_data: Any = None
     contacts_data: Any = None
     confirm_duplicate: Any = None
     # RDW fields
-    handelsbenaming: Optional[str] = None
-    voertuigsoort: Optional[str] = None
-    eerste_kleur: Optional[str] = None
-    tweede_kleur: Optional[str] = None
-    aantal_deuren: Optional[str] = None
-    aantal_zitplaatsen: Optional[str] = None
-    cilinderinhoud: Optional[str] = None
-    aantal_cilinders: Optional[str] = None
-    massa_ledig: Optional[str] = None
-    maximum_massa: Optional[str] = None
-    vervaldatum_apk: Optional[str] = None
-    wam_verzekerd: Optional[str] = None
-    taxi_indicator: Optional[str] = None
-    export_indicator: Optional[str] = None
-    europese_voertuigcategorie: Optional[str] = None
-    zuinigheidsclassificatie: Optional[str] = None
-    catalogusprijs: Optional[str] = None
-    datum_eerste_toelating: Optional[str] = None
-    type_: Optional[str] = Field(None, alias="type")
-    variant: Optional[str] = None
-    uitvoering: Optional[str] = None
-    typegoedkeuringsnummer: Optional[str] = None
-    wielbasis: Optional[str] = None
+    handelsbenaming: str | None = None
+    voertuigsoort: str | None = None
+    eerste_kleur: str | None = None
+    tweede_kleur: str | None = None
+    aantal_deuren: str | None = None
+    aantal_zitplaatsen: str | None = None
+    cilinderinhoud: str | None = None
+    aantal_cilinders: str | None = None
+    massa_ledig: str | None = None
+    maximum_massa: str | None = None
+    vervaldatum_apk: str | None = None
+    wam_verzekerd: str | None = None
+    taxi_indicator: str | None = None
+    export_indicator: str | None = None
+    europese_voertuigcategorie: str | None = None
+    zuinigheidsclassificatie: str | None = None
+    catalogusprijs: str | None = None
+    datum_eerste_toelating: str | None = None
+    type_: str | None = Field(None, alias="type")
+    variant: str | None = None
+    uitvoering: str | None = None
+    typegoedkeuringsnummer: str | None = None
+    wielbasis: str | None = None
 
 
 class EditSubjectSchema(BaseModel):
-    name: Optional[str] = None
-    subject_type: Optional[str] = None
+    name: str | None = None
+    subject_type: str | None = None
     risk_score: Any = None
-    notes: Optional[str] = None
-    registration_number: Optional[str] = None
-    legal_form: Optional[str] = None
-    asset_type: Optional[str] = None
-    estimated_value: Optional[str] = None
-    currency: Optional[str] = None
-    license_plate: Optional[str] = None
-    vin: Optional[str] = None
-    insurance_company: Optional[str] = None
-    brand: Optional[str] = None
-    vehicle_type: Optional[str] = None
-    imo_number: Optional[str] = None
-    mmsi: Optional[str] = None
-    eni_number: Optional[str] = None
-    vessel_nationality: Optional[str] = None
+    notes: str | None = None
+    registration_number: str | None = None
+    legal_form: str | None = None
+    asset_type: str | None = None
+    estimated_value: str | None = None
+    currency: str | None = None
+    license_plate: str | None = None
+    vin: str | None = None
+    insurance_company: str | None = None
+    brand: str | None = None
+    vehicle_type: str | None = None
+    imo_number: str | None = None
+    mmsi: str | None = None
+    eni_number: str | None = None
+    vessel_nationality: str | None = None
     vessel_data: Any = None
-    date_of_birth: Optional[str] = None
-    place_of_birth: Optional[str] = None
-    identification_number: Optional[str] = None
+    date_of_birth: str | None = None
+    place_of_birth: str | None = None
+    identification_number: str | None = None
     addresses_data: Any = None
     contacts_data: Any = None
     # RDW fields
-    handelsbenaming: Optional[str] = None
-    voertuigsoort: Optional[str] = None
-    eerste_kleur: Optional[str] = None
-    tweede_kleur: Optional[str] = None
-    aantal_deuren: Optional[str] = None
-    aantal_zitplaatsen: Optional[str] = None
-    cilinderinhoud: Optional[str] = None
-    aantal_cilinders: Optional[str] = None
-    massa_ledig: Optional[str] = None
-    maximum_massa: Optional[str] = None
-    vervaldatum_apk: Optional[str] = None
-    wam_verzekerd: Optional[str] = None
-    taxi_indicator: Optional[str] = None
-    export_indicator: Optional[str] = None
-    europese_voertuigcategorie: Optional[str] = None
-    zuinigheidsclassificatie: Optional[str] = None
-    catalogusprijs: Optional[str] = None
-    datum_eerste_toelating: Optional[str] = None
-    type_: Optional[str] = Field(None, alias="type")
-    variant: Optional[str] = None
-    uitvoering: Optional[str] = None
-    typegoedkeuringsnummer: Optional[str] = None
-    wielbasis: Optional[str] = None
+    handelsbenaming: str | None = None
+    voertuigsoort: str | None = None
+    eerste_kleur: str | None = None
+    tweede_kleur: str | None = None
+    aantal_deuren: str | None = None
+    aantal_zitplaatsen: str | None = None
+    cilinderinhoud: str | None = None
+    aantal_cilinders: str | None = None
+    massa_ledig: str | None = None
+    maximum_massa: str | None = None
+    vervaldatum_apk: str | None = None
+    wam_verzekerd: str | None = None
+    taxi_indicator: str | None = None
+    export_indicator: str | None = None
+    europese_voertuigcategorie: str | None = None
+    zuinigheidsclassificatie: str | None = None
+    catalogusprijs: str | None = None
+    datum_eerste_toelating: str | None = None
+    type_: str | None = Field(None, alias="type")
+    variant: str | None = None
+    uitvoering: str | None = None
+    typegoedkeuringsnummer: str | None = None
+    wielbasis: str | None = None
 
 
 # =============================================================================
@@ -602,7 +602,7 @@ class UpdateSocialIdsSchema(BaseModel):
 
 
 class UpdateCommentSchema(BaseModel):
-    content: Optional[str] = None
+    content: str | None = None
     is_pinned: Any = None
     is_resolved: Any = None
 
@@ -663,7 +663,7 @@ class StartOSINTSearchSchema(BaseModel):
 
 class AddOSINTFindingsSchema(BaseModel):
     results: list = Field(default_factory=list)
-    subject_id: Optional[str] = None
+    subject_id: str | None = None
 
 
 # =============================================================================
@@ -674,10 +674,10 @@ class AddOSINTFindingsSchema(BaseModel):
 class SpiderFootScanSchema(BaseModel):
     target: str = ""
     target_type: str = "DOMAIN_NAME"
-    scan_name: Optional[str] = None
-    case_id: Optional[str] = None
-    subject_id: Optional[str] = None
-    profile: Optional[str] = None
+    scan_name: str | None = None
+    case_id: str | None = None
+    subject_id: str | None = None
+    profile: str | None = None
     use_case: str = "passive"
 
 
@@ -702,7 +702,7 @@ class SpiderFootTestSchema(BaseModel):
 class SpiderFootScanSubjectSchema(BaseModel):
     profile: str = "basic"
     use_case: str = "passive"
-    case_id: Optional[str] = None
+    case_id: str | None = None
 
 
 # =============================================================================
@@ -712,25 +712,25 @@ class SpiderFootScanSubjectSchema(BaseModel):
 
 class CreateTemplateSchema(BaseModel):
     name: str = ""
-    description: Optional[str] = None
+    description: str | None = None
     template_type: str = "report"
     content: str = ""
-    category: Optional[str] = None
+    category: str | None = None
     is_default: Any = None
 
 
 class EditTemplateSchema(BaseModel):
     name: str = ""
-    description: Optional[str] = None
+    description: str | None = None
     template_type: str = "report"
     content: str = ""
-    category: Optional[str] = None
+    category: str | None = None
     is_default: Any = None
 
 
 class RenderPreviewSchema(BaseModel):
     template_id: str = ""
-    case_id: Optional[str] = None
+    case_id: str | None = None
     conclusion: str = ""
     recommendation: str = ""
     classification: str = "Confidential"
@@ -744,27 +744,27 @@ class RenderPreviewSchema(BaseModel):
 class CreateReminderSchema(BaseModel):
     title: str = ""
     description: str = ""
-    reminder_date: Optional[str] = None
-    due_date: Optional[str] = None
+    reminder_date: str | None = None
+    due_date: str | None = None
     reminder_type: str = "manual"
     recurrence: str = "none"
     priority: str = "medium"
-    case_id: Optional[str] = None
-    subject_id: Optional[str] = None
-    client_id: Optional[str] = None
+    case_id: str | None = None
+    subject_id: str | None = None
+    client_id: str | None = None
     assigned_to: Any = None
     notify_email: Any = None
     notify_dashboard: Any = None
 
 
 class EditReminderSchema(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    reminder_date: Optional[str] = None
-    due_date: Optional[str] = None
-    reminder_type: Optional[str] = None
-    recurrence: Optional[str] = None
-    priority: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
+    reminder_date: str | None = None
+    due_date: str | None = None
+    reminder_type: str | None = None
+    recurrence: str | None = None
+    priority: str | None = None
     assigned_to: Any = None
     notify_email: Any = None
     notify_dashboard: Any = None
@@ -781,7 +781,7 @@ class PhoneNumberSchema(BaseModel):
 
 class PhoneLookupAllSchema(BaseModel):
     phone: str = Field(default="", min_length=1)
-    services: Optional[list[str]] = None
+    services: list[str] | None = None
 
 
 # =============================================================================
@@ -800,7 +800,7 @@ class ScreenshotUploadSchema(BaseModel):
 
 
 class GenerateReportSchema(BaseModel):
-    template_id: Optional[str] = None
+    template_id: str | None = None
     conclusion: str = Field(default="", max_length=10000)
     recommendation: str = Field(default="", max_length=10000)
     classification: str = Field(default="Confidential", max_length=50)

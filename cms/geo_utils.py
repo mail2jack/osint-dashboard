@@ -3,7 +3,6 @@ import time
 import threading
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Optional
 
 import requests
 
@@ -49,13 +48,11 @@ def _is_private_ip(ip: str) -> bool:
         )
     ):
         return True
-    if ip.startswith("127.") or ip == "::1" or ip == "localhost":
-        return True
-    return False
+    return ip.startswith("127.") or ip == "::1" or ip == "localhost"
 
 
 @lru_cache(maxsize=256)
-def _lookup_ip_api(ip: str) -> Optional[dict]:
+def _lookup_ip_api(ip: str) -> dict | None:
     """Call ip-api.com JSON API. LRU-cached to avoid duplicate lookups."""
     if _is_private_ip(ip):
         return {

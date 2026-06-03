@@ -13,13 +13,14 @@ logger = logging.getLogger(__name__)
 
 try:
     from sociallinks import detect_platform as _sl_detect, extract_id as _sl_extract
+
     _HAS_SOCIALLINKS = True
 except ImportError:
     _HAS_SOCIALLINKS = False
     logger.warning("social-links not installed — using fallback extraction")
 
 _PLATFORM_ALIASES = {
-    'x': 'twitter',
+    "x": "twitter",
 }
 
 
@@ -35,7 +36,7 @@ def detect_platform(url):
         except Exception:
             logger.debug("Platform alias resolution failed for %s", url)
     parsed = urlparse(url)
-    domain = parsed.netloc.lower().replace('www.', '').split('.')[0]
+    domain = parsed.netloc.lower().replace("www.", "").split(".")[0]
     return domain if domain and domain != urlparse(url).netloc else None
 
 
@@ -53,10 +54,10 @@ def extract_username(url, platform=None):
             if p:
                 uid = _sl_extract(p, url)
                 if uid:
-                    return uid.lstrip('@')
+                    return uid.lstrip("@")
         except Exception:
             logger.debug("Social UID extraction failed for %s", url)
-    path = urlparse(url).path.strip('/')
+    path = urlparse(url).path.strip("/")
     if path:
-        return path.split('/')[-1].split('?')[0]
+        return path.split("/")[-1].split("?")[0]
     return None

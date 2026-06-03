@@ -16,15 +16,16 @@ def test_all_templates_compile(app):
             continue
         for root, _dirs, files in os.walk(searchpath):
             for f in files:
-                if not f.endswith('.html'):
+                if not f.endswith(".html"):
                     continue
                 rel = os.path.relpath(os.path.join(root, f), searchpath)
                 try:
                     app.jinja_env.get_template(rel)
                     compiled += 1
                 except Exception as e:
-                    errors.append(f'{rel}: {e}')
+                    errors.append(f"{rel}: {e}")
 
-    assert errors == [], \
-        f'{len(errors)} template(s) failed to compile:\n' + '\n'.join(errors)
-    assert compiled > 0, 'No templates found to compile'
+    assert errors == [], f"{len(errors)} template(s) failed to compile:\n" + "\n".join(
+        errors
+    )
+    assert compiled > 0, "No templates found to compile"

@@ -284,9 +284,7 @@ class User(UserMixin, db.Model):
         if case.assigned_to == self.id:
             return True
         # Assigned via case_assignments table has access
-        if self in case.investigators:
-            return True
-        return False
+        return self in case.investigators
 
     @property
     def is_admin(self) -> bool:

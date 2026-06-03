@@ -6,7 +6,7 @@ Create Date: 2026-05-30 14:00:00.000000
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
@@ -15,9 +15,9 @@ import cms.models  # noqa: F401 — provides SafeJSON type
 
 # revision identifiers, used by Alembic.
 revision: str = "3f9b7c1e5d2a"
-down_revision: Union[str, Sequence[str], None] = "343e157d02a4"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "343e157d02a4"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

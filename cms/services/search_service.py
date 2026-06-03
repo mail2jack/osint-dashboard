@@ -2,10 +2,12 @@ import logging
 import re
 import time
 import os
+import threading
 import httpx
 from urllib.parse import quote, unquote
 
 logger = logging.getLogger(__name__)
+_dorks_log_lock = threading.Lock()
 
 _TOR_ENABLED: bool | None = None
 _TOR_PROXY: str | None = None
@@ -144,7 +146,7 @@ def person_dorks_search(full_name) -> dict:
     )
     log_start = f"\n=== {datetime.now()} - Dorks search: {full_name} ===\n"
     try:
-        with open(dorks_log_file, "a") as f:
+        with _dorks_log_lock, open(dorks_log_file, "a") as f:
             f.write(log_start)
     except Exception:
         logger.warning("Failed to write search log")
@@ -322,7 +324,7 @@ def person_dorks_search(full_name) -> dict:
 
     def log_ddg(msg):
         try:
-            with open(dorks_log_file, "a") as f:
+            with _dorks_log_lock, open(dorks_log_file, "a") as f:
                 f.write(msg + "\n")
                 f.flush()
         except Exception:

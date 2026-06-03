@@ -147,9 +147,8 @@ def spiderfoot_index() -> str:
                         }
                     )
         for s in recent_scans:
-            if isinstance(s, dict):
-                if isinstance(s.get("created_at"), datetime):
-                    s["created_at"] = s["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+            if isinstance(s, dict) and isinstance(s.get("created_at"), datetime):
+                s["created_at"] = s["created_at"].strftime("%Y-%m-%d %H:%M:%S")
         recent_scans.sort(
             key=lambda s: (
                 s.get("created_at", "")

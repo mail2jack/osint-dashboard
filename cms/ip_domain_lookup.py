@@ -98,7 +98,7 @@ def lookup_ip(ip_address):
             try:
                 if sock.connect_ex((ip_address, port)) == 0:
                     result["ports"].append(port)
-            except (socket.error, OSError):
+            except OSError:
                 logger.debug("Port check failed for %s:%s", ip_address, port)
             finally:
                 sock.close()
@@ -324,23 +324,25 @@ def lookup_domain(domain):
                 full_domain = f"{sub}.{domain}"
                 socket.getaddrinfo(full_domain, 80, socket.AF_INET)
                 result["subdomains"].append(full_domain)
-            except (socket.gaierror, socket.timeout):
+            except (TimeoutError, socket.gaierror):
                 logger.debug("DNS resolution failed for %s", full_domain)
 
         try:
             import ssl
 
             context = ssl.create_default_context()
-            with socket.create_connection((domain, 443), timeout=5) as sock:
-                with context.wrap_socket(sock, server_hostname=domain) as ssock:
-                    cert = ssock.getpeercert()
-                    result["ssl_info"] = {
-                        "issuer": dict(x[0] for x in cert["issuer"]),
-                        "subject": dict(x[0] for x in cert["subject"]),
-                        "version": cert["version"],
-                        "not_before": cert["notBefore"],
-                        "not_after": cert["notAfter"],
-                    }
+            with (
+                socket.create_connection((domain, 443), timeout=5) as sock,
+                context.wrap_socket(sock, server_hostname=domain) as ssock,
+            ):
+                cert = ssock.getpeercert()
+                result["ssl_info"] = {
+                    "issuer": dict(x[0] for x in cert["issuer"]),
+                    "subject": dict(x[0] for x in cert["subject"]),
+                    "version": cert["version"],
+                    "not_before": cert["notBefore"],
+                    "not_after": cert["notAfter"],
+                }
         except Exception as e:
             logger.debug(f"SSL cert lookup failed ({type(e).__name__}): {e}")
             result["ssl_info"] = "SSL info unavailable"

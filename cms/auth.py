@@ -18,7 +18,7 @@ import base64
 import secrets
 import logging
 from datetime import datetime, timezone
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import flask
 import pyotp
@@ -78,13 +78,13 @@ login_manager = LoginManager()
 
 
 @login_manager.user_loader
-def load_user(user_id: str) -> Optional[User]:
+def load_user(user_id: str) -> User | None:
     """Load user by ID for Flask-Login."""
     return db.session.get(User, user_id)
 
 
 @login_manager.request_loader
-def load_user_from_request(request: flask.Request) -> Optional[User]:
+def load_user_from_request(request: flask.Request) -> User | None:
     """Load user from X-API-Key header for non-session REST access."""
     api_key = request.headers.get("X-API-Key", "")
     if not api_key:

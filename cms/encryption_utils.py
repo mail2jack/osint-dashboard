@@ -14,7 +14,7 @@ Security Design Decisions:
 import base64
 import logging
 import os
-from typing import Optional, Union
+from typing import Optional
 from cryptography.fernet import Fernet, InvalidToken
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class FieldEncryptor:
     """
 
     _instance: Optional["FieldEncryptor"] = None
-    _fernet: Optional[Fernet] = None
+    _fernet: Fernet | None = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -102,7 +102,7 @@ class FieldEncryptor:
             self._fernet = Fernet(self._get_key())
         return self._fernet
 
-    def encrypt(self, data: Union[str, bytes, None]) -> Optional[str]:
+    def encrypt(self, data: str | bytes | None) -> str | None:
         """
         Encrypt sensitive data.
 
@@ -127,7 +127,7 @@ class FieldEncryptor:
         except Exception as e:
             raise EncryptionError(f"Encryption failed: {str(e)}")
 
-    def decrypt(self, encrypted_data: Union[str, bytes, None]) -> Optional[str]:
+    def decrypt(self, encrypted_data: str | bytes | None) -> str | None:
         """
         Decrypt previously encrypted data.
 
@@ -185,12 +185,12 @@ class FieldEncryptor:
 encryptor = FieldEncryptor()
 
 
-def encrypt_field(data: Union[str, bytes, None]) -> Optional[str]:
+def encrypt_field(data: str | bytes | None) -> str | None:
     """Convenience function for encrypting a single field."""
     return encryptor.encrypt(data)
 
 
-def decrypt_field(data: Union[str, bytes, None]) -> Optional[str]:
+def decrypt_field(data: str | bytes | None) -> str | None:
     """Convenience function for decrypting a single field."""
     return encryptor.decrypt(data)
 

@@ -27,15 +27,14 @@ class SearchHistory:
     def _read_json(self, filepath):
         with self._lock:
             try:
-                with open(filepath, "r") as f:
+                with open(filepath) as f:
                     return json.load(f)
             except (json.JSONDecodeError, FileNotFoundError):
                 return []
 
     def _write_json(self, filepath, data):
-        with self._lock:
-            with open(filepath, "w") as f:
-                json.dump(data, f, indent=2, default=str)
+        with self._lock, open(filepath, "w") as f:
+            json.dump(data, f, indent=2, default=str)
 
     def add_entry(self, tool, query, results_summary, results_count=0):
         entry = {

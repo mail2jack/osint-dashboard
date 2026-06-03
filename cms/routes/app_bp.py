@@ -262,13 +262,16 @@ def person_search_stream() -> FlaskResponse:
 
     from flask_login import current_user
 
-    if current_user and current_user.is_authenticated:
-        if not acquire_search_slot(current_user.id):
-            return jsonify(
-                {
-                    "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
-                }
-            ), 429
+    if (
+        current_user
+        and current_user.is_authenticated
+        and not acquire_search_slot(current_user.id)
+    ):
+        return jsonify(
+            {
+                "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
+            }
+        ), 429
 
     def search_worker(q, stop_event):
         try:
@@ -645,13 +648,16 @@ def username_search_stream() -> FlaskResponse:
 
     from flask_login import current_user
 
-    if current_user and current_user.is_authenticated:
-        if not acquire_search_slot(current_user.id):
-            return jsonify(
-                {
-                    "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
-                }
-            ), 429
+    if (
+        current_user
+        and current_user.is_authenticated
+        and not acquire_search_slot(current_user.id)
+    ):
+        return jsonify(
+            {
+                "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
+            }
+        ), 429
 
     email_sites = get_sherlock_sites()
 
@@ -722,13 +728,16 @@ def email_search_stream() -> FlaskResponse:
 
     from flask_login import current_user
 
-    if current_user and current_user.is_authenticated:
-        if not acquire_search_slot(current_user.id):
-            return jsonify(
-                {
-                    "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
-                }
-            ), 429
+    if (
+        current_user
+        and current_user.is_authenticated
+        and not acquire_search_slot(current_user.id)
+    ):
+        return jsonify(
+            {
+                "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
+            }
+        ), 429
 
     # Map tags to site limits (handle both string and numeric)
     limit = 30  # Default to Quick
@@ -814,13 +823,16 @@ def email_holehe() -> FlaskResponse:
 
     from flask_login import current_user
 
-    if current_user and current_user.is_authenticated:
-        if not acquire_search_slot(current_user.id):
-            return jsonify(
-                {
-                    "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
-                }
-            ), 429
+    if (
+        current_user
+        and current_user.is_authenticated
+        and not acquire_search_slot(current_user.id)
+    ):
+        return jsonify(
+            {
+                "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
+            }
+        ), 429
 
     from holehe.core import import_submodules, get_functions
 
@@ -894,13 +906,16 @@ def email_combined() -> FlaskResponse:
 
     from flask_login import current_user
 
-    if current_user and current_user.is_authenticated:
-        if not acquire_search_slot(current_user.id):
-            return jsonify(
-                {
-                    "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
-                }
-            ), 429
+    if (
+        current_user
+        and current_user.is_authenticated
+        and not acquire_search_slot(current_user.id)
+    ):
+        return jsonify(
+            {
+                "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
+            }
+        ), 429
 
     from holehe.core import import_submodules, get_functions
     from argparse import Namespace
@@ -982,13 +997,16 @@ def email_cross_validated() -> FlaskResponse:
 
     from flask_login import current_user
 
-    if current_user and current_user.is_authenticated:
-        if not acquire_search_slot(current_user.id):
-            return jsonify(
-                {
-                    "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
-                }
-            ), 429
+    if (
+        current_user
+        and current_user.is_authenticated
+        and not acquire_search_slot(current_user.id)
+    ):
+        return jsonify(
+            {
+                "error": f"Maximum {MAX_CONCURRENT_SEARCHES_PER_USER} concurrent searches allowed. Please wait for running searches to complete."
+            }
+        ), 429
 
     from holehe.core import import_submodules, get_functions
     from argparse import Namespace

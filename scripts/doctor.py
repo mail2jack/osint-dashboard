@@ -21,7 +21,6 @@ import argparse
 import os
 import pwd
 import shutil
-import stat
 import subprocess
 import sys
 from datetime import datetime
@@ -63,7 +62,9 @@ def log(msg: str, status: str = "", **kwargs):
 
 def run(cmd: list, timeout: int = 30, **kwargs) -> subprocess.CompletedProcess:
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, **kwargs)
+        return subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, **kwargs
+        )
     except subprocess.TimeoutExpired:
         return subprocess.CompletedProcess(cmd, -1, "", "TIMEOUT")
 
@@ -156,7 +157,9 @@ def check_spiderfoot_service(dry: bool) -> bool:
     r3 = run(["journalctl", "-u", SF_SERVICE, "-n", "20", "--no-pager"])
     if "Permission denied" in r3.stdout:
         log("  Detected: Permission denied in SF logs")
-        path_line = [l for l in r3.stdout.split("\n") if "Permission denied" in l]
+        path_line = [
+            line for line in r3.stdout.split("\n") if "Permission denied" in line
+        ]
         if path_line:
             log(f"  Path: {path_line[0].strip()}")
     return False
@@ -199,7 +202,12 @@ def check_alembic(dry: bool) -> bool:
     log(FAIL + " (pending migrations)")
     if dry:
         return False
-    r2 = run([python, "-m", "alembic", "upgrade", "head"], cwd=str(APP_DIR), env=env, timeout=60)
+    r2 = run(
+        [python, "-m", "alembic", "upgrade", "head"],
+        cwd=str(APP_DIR),
+        env=env,
+        timeout=60,
+    )
     if r2.returncode == 0:
         log(f"  {FIXED} (upgrade OK)")
         return True
@@ -225,7 +233,9 @@ def check_git_perms(dry: bool) -> bool:
                 log(FIXED + f" (was {owner})")
             else:
                 # Try with sudo
-                r = run(["sudo", "chown", "-R", f"{OSINT_USER}:{OSINT_USER}", str(git_dir)])
+                r = run(
+                    ["sudo", "chown", "-R", f"{OSINT_USER}:{OSINT_USER}", str(git_dir)]
+                )
                 if r.returncode == 0:
                     log(FIXED + f" (was {owner}, via sudo)")
                 else:
@@ -420,7 +430,12 @@ def check_gunicorn_logging(dry: bool) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description="OSINT Dashboard doctor")
-    parser.add_argument("--dry-run", "-n", action="store_true", help="Show what would be fixed without making changes")
+    parser.add_argument(
+        "--dry-run",
+        "-n",
+        action="store_true",
+        help="Show what would be fixed without making changes",
+    )
     args = parser.parse_args()
     dry = args.dry_run
 
@@ -430,10 +445,12 @@ def main():
         if not dry:
             sys.exit(1)
 
-    print(f"\n{'='*60}")
-    print(f"  OSINT Dashboard — Server Diagnostics")
-    print(f"  {'DRY RUN — no changes will be made' if dry else 'Fixing issues automatically'}")
-    print(f"{'='*60}\n")
+    print(f"\n{'=' * 60}")
+    print("  OSINT Dashboard — Server Diagnostics")
+    print(
+        f"  {'DRY RUN — no changes will be made' if dry else 'Fixing issues automatically'}"
+    )
+    print(f"{'=' * 60}\n")
 
     checks = [
         ("osint user", check_osint_user),
@@ -446,11 +463,11 @@ def main():
         ("Alembic migrations", check_alembic),
         ("spiderfoot.service", check_spiderfoot_service),
         ("Flask health", check_flask_health),
-    ("SF URL in Settings", check_spiderfoot_url_settings),
-    ("SSL cert renewal", check_ssl_renewal),
-    ("Backup cron", check_backup_cron),
-    ("Gunicorn error log", check_gunicorn_logging),
-]
+        ("SF URL in Settings", check_spiderfoot_url_settings),
+        ("SSL cert renewal", check_ssl_renewal),
+        ("Backup cron", check_backup_cron),
+        ("Gunicorn error log", check_gunicorn_logging),
+    ]
 
     good = bad = 0
     for name, func in checks:
@@ -460,16 +477,16 @@ def main():
         else:
             bad += 1
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Results: {good}/{len(checks)} passed, {bad} failed")
     if bad == 0:
-        print(f"  All checks passed!")
+        print("  All checks passed!")
     else:
         if dry:
-            print(f"  Re-run without --dry-run to fix issues")
+            print("  Re-run without --dry-run to fix issues")
         else:
-            print(f"  Some issues could not be auto-fixed — check output above")
-    print(f"{'='*60}\n")
+            print("  Some issues could not be auto-fixed — check output above")
+    print(f"{'=' * 60}\n")
     sys.exit(0 if bad == 0 else 1)
 
 

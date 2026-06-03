@@ -181,10 +181,7 @@ def search() -> str:
                     .filter(case_subjects.c.subject_id == s.id)
                     .all()
                 )
-                for (cid,) in linked:
-                    if cid in accessible_ids:
-                        return True
-                return False
+                return any(cid in accessible_ids for (cid,) in linked)
 
             if current_user.is_admin:
                 filtered_subjects = total_subjects
@@ -294,9 +291,7 @@ def search() -> str:
                     comment_cases_map[_c.id] = _c
             filtered_comments = []
             for c in total_comments:
-                if c.case_id and c.case_id in accessible_ids:
-                    filtered_comments.append(c)
-                elif current_user.is_admin:
+                if c.case_id and c.case_id in accessible_ids or current_user.is_admin:
                     filtered_comments.append(c)
             results["comments"] = []
             for c in filtered_comments:
@@ -335,10 +330,7 @@ def search() -> str:
                     .filter(case_subjects.c.subject_id == s.id)
                     .all()
                 )
-                for (cid,) in linked:
-                    if cid in accessible_ids:
-                        return True
-                return False
+                return any(cid in accessible_ids for (cid,) in linked)
 
             filtered_subject_notes = (
                 total_subject_notes
@@ -487,10 +479,7 @@ def api_search() -> flask.Response:
                 .filter(case_subjects.c.subject_id == s.id)
                 .all()
             )
-            for (cid,) in linked:
-                if cid in accessible_ids:
-                    return True
-            return False
+            return any(cid in accessible_ids for (cid,) in linked)
 
         filtered_subjects = (
             total_subjects
