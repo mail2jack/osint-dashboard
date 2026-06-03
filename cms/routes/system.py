@@ -37,7 +37,7 @@ def _read_session_data(session_id: str) -> dict:
                 "ip": data.get("_ip", data.get("ip", "")),
             }
     except Exception:
-        pass
+        logger.exception("Failed to read session data")
     return {}
 
 

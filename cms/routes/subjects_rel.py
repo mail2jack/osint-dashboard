@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from .. import csrf
 from ..models import db, Subject, subject_relations, AuditLog
-from ..auth import roles_required
+from ..auth import roles_required, subject_access_required
 from ..validation import validate, AddRelationSchema, RemoveRelationSchema
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/subjects/<subject_id>/relationships")
 @login_required
+@subject_access_required
 def get_subject_relationships(subject_id: str) -> flask.Response:
     """Get relationship network data for a subject."""
     try:
@@ -179,6 +180,7 @@ def get_subject_relationships(subject_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/add-relationship", methods=["POST"])
 @csrf.exempt
 @login_required
+@subject_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @validate(AddRelationSchema)
 def add_subject_relationship(subject_id: str) -> flask.Response:
@@ -260,6 +262,7 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/remove-relationship", methods=["POST"])
 @csrf.exempt
 @login_required
+@subject_access_required
 @roles_required("admin", "senior_investigator")
 @validate(RemoveRelationSchema)
 def remove_subject_relationship(subject_id: str) -> flask.Response:

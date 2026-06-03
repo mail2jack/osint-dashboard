@@ -830,7 +830,7 @@ def _complete_2fa_login(user) -> flask.Response:
     )
 
     next_page = request.args.get("next") or session.pop("_2fa_next", None)
-    if next_page and next_page.startswith("/"):
+    if next_page and next_page.startswith("/") and not next_page.startswith("//"):
         return redirect(next_page)
     return redirect(url_for("cms.dashboard"))
 

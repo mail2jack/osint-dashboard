@@ -9,7 +9,12 @@ from werkzeug.utils import secure_filename
 
 from . import cms_bp
 from ..models import db, Case, Subject, Document, AuditLog
-from ..auth import roles_required, case_access_required, case_edit_required
+from ..auth import (
+    roles_required,
+    case_access_required,
+    case_edit_required,
+    subject_access_required,
+)
 from ..image_validation import validate_upload
 from ..validation import validate, DocumentUploadSchema
 
@@ -121,6 +126,7 @@ def upload_case_document(case_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/upload", methods=["POST"])
 @login_required
+@subject_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @validate(DocumentUploadSchema)
 def upload_subject_document(subject_id: str) -> flask.Response:

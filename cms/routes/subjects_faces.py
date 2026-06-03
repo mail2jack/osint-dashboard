@@ -9,7 +9,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from .. import csrf
 from ..models import db, Subject, AuditLog
-from ..auth import roles_required
+from ..auth import roles_required, subject_access_required
 from ..image_validation import validate_image_file
 from ..validation import validate, SaveFaceEncodingSchema, CompareFacesSchema
 
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/subjects/<subject_id>/photo", methods=["POST"])
 @login_required
+@subject_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 def upload_subject_photo(subject_id: str) -> flask.Response:
     """Upload a photo for a subject."""
@@ -78,6 +79,7 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["POST"])
 @login_required
 @csrf.exempt
+@subject_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @validate(SaveFaceEncodingSchema)
 def save_face_encoding(subject_id: str) -> flask.Response:
@@ -107,6 +109,7 @@ def save_face_encoding(subject_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["DELETE"])
 @login_required
 @csrf.exempt
+@subject_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 def delete_face_encoding(subject_id: str) -> flask.Response:
     """Delete face encoding for a subject."""
