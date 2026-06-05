@@ -34,7 +34,9 @@ def api_key_required(f):
                 file=sys.stderr,
                 flush=True,
             )
-            return jsonify({"error": "GEEN API KEY HEADER"}), 401
+            return jsonify(
+                {"error": "API key required. Provide X-API-Key header."}
+            ), 401
 
         prefix = api_key[:8] if len(api_key) >= 8 else api_key
         print(
@@ -50,7 +52,7 @@ def api_key_required(f):
                 file=sys.stderr,
                 flush=True,
             )
-            return jsonify({"error": "API KEY PREFIX NIET GEVONDEN"}), 401
+            return jsonify({"error": "Invalid API key"}), 401
 
         if not key_record.verify_key(api_key):
             print(
@@ -58,7 +60,7 @@ def api_key_required(f):
                 file=sys.stderr,
                 flush=True,
             )
-            return jsonify({"error": "API KEY HASH MISMATCH"}), 401
+            return jsonify({"error": "Invalid API key"}), 401
 
         key_record.last_used_at = __import__("datetime").datetime.now(
             __import__("datetime").timezone.utc

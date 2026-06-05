@@ -339,10 +339,8 @@ async def _error_handler(update: Optional[Update], context: ContextTypes.DEFAULT
 
 
 async def cmd_start(update: Update, _context: ContextTypes.DEFAULT_TYPE):
-    if not await _auth(update):
-        return await update.message.reply_text(
-            "⛔ Unauthorized. Your Telegram ID is not in the allowed users list."
-        )
+    if not update.message or not await _auth(update):
+        return
     name = update.effective_user.first_name or "User"
     await update.message.reply_text(
         f"👋 Hello *{name}*!\n\n"
@@ -352,8 +350,8 @@ async def cmd_start(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_help(update: Update, _context: ContextTypes.DEFAULT_TYPE):
-    if not await _auth(update):
-        return await update.message.reply_text("⛔ Unauthorized.")
+    if not update.message or not await _auth(update):
+        return
     await update.message.reply_text(
         "🔍 *OSINT Bot Commands*\n\n"
         "`/email <address>` — Email breach & social lookup\n"
@@ -368,8 +366,8 @@ async def cmd_help(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await _auth(update):
-        return await update.message.reply_text("⛔ Unauthorized.")
+    if not update.message or not await _auth(update):
+        return
     if not context.args:
         return await update.message.reply_text(
             "Usage: `/email user@example.com`", parse_mode="Markdown"
@@ -389,8 +387,8 @@ async def cmd_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await _auth(update):
-        return await update.message.reply_text("⛔ Unauthorized.")
+    if not update.message or not await _auth(update):
+        return
     if not context.args:
         return await update.message.reply_text(
             "Usage: `/phone +31612345678`", parse_mode="Markdown"
@@ -410,8 +408,8 @@ async def cmd_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await _auth(update):
-        return await update.message.reply_text("⛔ Unauthorized.")
+    if not update.message or not await _auth(update):
+        return
     if not context.args:
         return await update.message.reply_text(
             "Usage: `/ip 8.8.8.8`", parse_mode="Markdown"
@@ -431,8 +429,8 @@ async def cmd_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_domain(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await _auth(update):
-        return await update.message.reply_text("⛔ Unauthorized.")
+    if not update.message or not await _auth(update):
+        return
     if not context.args:
         return await update.message.reply_text(
             "Usage: `/domain example.com`", parse_mode="Markdown"
@@ -452,12 +450,13 @@ async def cmd_domain(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_person(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await _auth(update):
-        return await update.message.reply_text("⛔ Unauthorized.")
+    if not update.message or not await _auth(update):
+        return
     if not context.args:
-        return await update.message.reply_text(
+        await update.message.reply_text(
             "Usage: `/person Jan Jansen`", parse_mode="Markdown"
         )
+        return
     name = " ".join(context.args)
     msg = await update.message.reply_text(
         f"🔍 Searching for `{name}`...", parse_mode="Markdown"
@@ -466,15 +465,16 @@ async def cmd_person(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if status == 200:
         await msg.edit_text(_fmt_person(data), parse_mode="Markdown")
     else:
+        err = data.get("error", data.get("raw", str(status)))
         await msg.edit_text(
-            f"❌ *Error*: {data.get('error', data.get('raw', status))}",
+            f"❌ *Error*: {err}",
             parse_mode="Markdown",
         )
 
 
 async def cmd_status(update: Update, _context: ContextTypes.DEFAULT_TYPE):
-    if not await _auth(update):
-        return await update.message.reply_text("⛔ Unauthorized.")
+    if not update.message or not await _auth(update):
+        return
     status, data = await _api_get("/health?quick=1")
     if status == 200:
         await update.message.reply_text(
