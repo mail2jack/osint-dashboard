@@ -40,6 +40,12 @@ def _ensure_api_key(app):
         + hashlib.sha256((secret + ":telegram-bot-internal").encode()).hexdigest()[:32]
     )
 
+    logger.info(
+        "_ensure_api_key: computed deterministic key prefix=%s len=%d",
+        raw[:8],
+        len(raw),
+    )
+
     existing = ApiKey.query.filter_by(
         name="Telegram Bot Internal", is_active=True
     ).first()
@@ -48,7 +54,10 @@ def _ensure_api_key(app):
             logger.info("Reusing existing bot API key (deterministic match)")
             _internal_api_key = raw
             return raw
-        logger.info("Bot API key hash mismatch – updating existing record")
+        logger.info(
+            "Bot API key hash mismatch for name=%s – updating existing record",
+            existing.name,
+        )
         existing.key_hash = generate_password_hash(raw, method="pbkdf2:sha256")
         existing.key_prefix = raw[:8]
         db.session.commit()
@@ -68,7 +77,7 @@ def _ensure_api_key(app):
     db.session.add(record)
     db.session.commit()
     _internal_api_key = raw
-    logger.info("Telegram bot internal API key created")
+    logger.info("Telegram bot internal API key created (new record)")
     return raw
 
 

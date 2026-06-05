@@ -28,6 +28,9 @@ def api_key_required(f):
 
         api_key = request.headers.get("X-API-Key", "")
         if not api_key:
+            logger.warning(
+                "api_key_required: no X-API-Key header from %s", request.remote_addr
+            )
             return jsonify(
                 {"error": "API key required. Provide X-API-Key header."}
             ), 401
@@ -35,7 +38,20 @@ def api_key_required(f):
         prefix = api_key[:8] if len(api_key) >= 8 else api_key
         key_record = ApiKey.query.filter_by(key_prefix=prefix, is_active=True).first()
 
-        if not key_record or not key_record.verify_key(api_key):
+        if not key_record:
+            logger.warning(
+                "api_key_required: no active key found for prefix=%s (key_len=%d)",
+                prefix,
+                len(api_key),
+            )
+            return jsonify({"error": "Invalid API key"}), 401
+
+        if not key_record.verify_key(api_key):
+            logger.warning(
+                "api_key_required: key hash mismatch for name=%s prefix=%s",
+                key_record.name,
+                prefix,
+            )
             return jsonify({"error": "Invalid API key"}), 401
 
         key_record.last_used_at = __import__("datetime").datetime.now(
