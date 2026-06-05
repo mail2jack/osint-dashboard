@@ -3,8 +3,6 @@ import logging
 import flask
 from flask import request, jsonify, render_template, abort
 from flask_login import login_required, current_user
-
-from sqlalchemy.orm import joinedload
 from . import cms_bp
 from ..models import db, Subject, Case, Finding, SocialAccount, case_subjects
 from .utils import find_similar_subjects, find_similar_clients, check_for_exact_match
@@ -210,14 +208,12 @@ def _get_accessible_case_ids():
 @audit_read("subject")
 def view_subject(subject_id: str) -> str:
     """View subject details."""
-    subject = Subject.query.options(
-        joinedload(Subject.addresses), joinedload(Subject.contacts)
-    ).filter_by(id=subject_id).first() or abort(404)
+    subject = Subject.query.filter_by(id=subject_id).first() or abort(404)
     subject.decrypt_identifiers()
     subject.vessel_data = subject.vessel_data or {}
-    for addr in subject.addresses:
+    for addr in list(subject.addresses):
         addr.decrypt_fields()
-    for c in subject.contacts:
+    for c in list(subject.contacts):
         c.decrypt_fields()
 
     findings_page = request.args.get("findings_page", 1, type=int)
