@@ -34,9 +34,7 @@ def api_key_required(f):
                 file=sys.stderr,
                 flush=True,
             )
-            return jsonify(
-                {"error": "API key required. Provide X-API-Key header."}
-            ), 401
+            return jsonify({"error": "GEEN API KEY HEADER"}), 401
 
         prefix = api_key[:8] if len(api_key) >= 8 else api_key
         print(
@@ -52,7 +50,7 @@ def api_key_required(f):
                 file=sys.stderr,
                 flush=True,
             )
-            return jsonify({"error": "Invalid API key (not found)"}), 401
+            return jsonify({"error": "API KEY PREFIX NIET GEVONDEN"}), 401
 
         if not key_record.verify_key(api_key):
             print(
@@ -60,7 +58,7 @@ def api_key_required(f):
                 file=sys.stderr,
                 flush=True,
             )
-            return jsonify({"error": "Invalid API key (hash)"}), 401
+            return jsonify({"error": "API KEY HASH MISMATCH"}), 401
 
         key_record.last_used_at = __import__("datetime").datetime.now(
             __import__("datetime").timezone.utc
@@ -70,9 +68,20 @@ def api_key_required(f):
         g.api_user_id = key_record.user_id
         g.api_key_name = key_record.name
 
+        print(
+            f"[api_key_required] KEY OK - name={key_record.name} user={key_record.user_id}",
+            file=sys.stderr,
+            flush=True,
+        )
+
         # Log in via Flask-Login so @login_required wrappers pass
         user = db.session.get(User, key_record.user_id)
         if user:
+            print(
+                f"[api_key_required] login_user({user.username}) active={user.is_active}",
+                file=sys.stderr,
+                flush=True,
+            )
             login_user(user)
 
         return f(*args, **kwargs)

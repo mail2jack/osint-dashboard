@@ -107,7 +107,7 @@ def load_user_from_request(request: flask.Request) -> User | None:
 def unauthorized() -> flask.Response:
     """Handle unauthorized access."""
     if request.is_json:
-        return jsonify({"error": "Authentication required (login)"}), 401
+        return jsonify({"error": "NIET INGELOGD VIA SESSIE"}), 401
     return redirect(url_for("auth.login"))
 
 
