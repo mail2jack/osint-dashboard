@@ -21,28 +21,46 @@ _cached_allowed_users: str = ""
 
 
 def _ensure_api_key(app):
-    """Create or retrieve a dedicated API key for the bot's internal use."""
+    """Create or retrieve a dedicated API key for the bot's internal use.
+
+    Uses a deterministic key derived from SECRET_KEY so all gunicorn
+    workers produce the same key (no race between worker processes).
+    """
     global _internal_api_key
     if _internal_api_key:
         return _internal_api_key
+    import hashlib
+    from werkzeug.security import generate_password_hash
+
     from .models import db, ApiKey, User
+
+    secret = app.config.get("SECRET_KEY", "dev-fallback-key")
+    raw = (
+        "osint_tg_"
+        + hashlib.sha256((secret + ":telegram-bot-internal").encode()).hexdigest()[:32]
+    )
 
     existing = ApiKey.query.filter_by(
         name="Telegram Bot Internal", is_active=True
     ).first()
     if existing:
-        logger.info(
-            "Found existing bot API key record (can't extract raw key) – generating fresh one"
-        )
-        db.session.delete(existing)
+        if existing.verify_key(raw):
+            logger.info("Reusing existing bot API key (deterministic match)")
+            _internal_api_key = raw
+            return raw
+        logger.info("Bot API key hash mismatch – updating existing record")
+        existing.key_hash = generate_password_hash(raw, method="pbkdf2:sha256")
+        existing.key_prefix = raw[:8]
         db.session.commit()
+        _internal_api_key = raw
+        return raw
+
     admin = User.query.filter_by(role="admin").first()
-    raw, key_hash = ApiKey.generate_key()
-    prefix = raw[:8]
+    key_hash = generate_password_hash(raw, method="pbkdf2:sha256")
     record = ApiKey(
         name="Telegram Bot Internal",
         key_hash=key_hash,
-        key_prefix=prefix,
+        key_prefix=raw[:8],
         user_id=admin.id if admin else User.query.first().id,
         scopes=["read", "write"],
         is_active=True,
