@@ -6,15 +6,19 @@ import logging
 from functools import wraps
 
 from flask import request, jsonify, g
-from flask_login import current_user
+from flask_login import current_user, login_user
 
-from .models import db, ApiKey
+from .models import db, ApiKey, User
 
 logger = logging.getLogger(__name__)
 
 
 def api_key_required(f):
-    """Decorator: require valid X-API-Key header. Sets g.api_user on success."""
+    """Decorator: require valid X-API-Key header.
+
+    Sets g.api_user_id / g.api_key_name on success, and logs the user in
+    via Flask-Login so that @login_required deeper in the chain works.
+    """
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -41,6 +45,11 @@ def api_key_required(f):
 
         g.api_user_id = key_record.user_id
         g.api_key_name = key_record.name
+
+        # Log in via Flask-Login so @login_required wrappers pass
+        user = db.session.get(User, key_record.user_id)
+        if user:
+            login_user(user)
 
         return f(*args, **kwargs)
 
