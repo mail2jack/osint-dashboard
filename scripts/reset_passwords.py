@@ -10,12 +10,11 @@ os.environ.setdefault("FLASK_ENV", "production")
 
 from app import app
 from cms.models import db, User
-from werkzeug.security import generate_password_hash
 
 with app.app_context():
     users = User.query.all()
     for u in users:
-        u.password = generate_password_hash("Test1234!")
+        u.set_password("Test1234!")
     db.session.commit()
     print(f"✅ Passwords reset to Test1234! for {len(users)} user(s):")
     for u in users:
