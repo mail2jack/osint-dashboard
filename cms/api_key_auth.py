@@ -3,6 +3,7 @@ API Key authentication for external tool access.
 """
 
 import logging
+import sys
 from functools import wraps
 
 from flask import request, jsonify, g
@@ -28,31 +29,38 @@ def api_key_required(f):
 
         api_key = request.headers.get("X-API-Key", "")
         if not api_key:
-            logger.warning(
-                "api_key_required: no X-API-Key header from %s", request.remote_addr
+            print(
+                f"[api_key_required] no X-API-Key header from {request.remote_addr}",
+                file=sys.stderr,
+                flush=True,
             )
             return jsonify(
                 {"error": "API key required. Provide X-API-Key header."}
             ), 401
 
         prefix = api_key[:8] if len(api_key) >= 8 else api_key
+        print(
+            f"[api_key_required] checking prefix={prefix} key_len={len(api_key)}",
+            file=sys.stderr,
+            flush=True,
+        )
         key_record = ApiKey.query.filter_by(key_prefix=prefix, is_active=True).first()
 
         if not key_record:
-            logger.warning(
-                "api_key_required: no active key found for prefix=%s (key_len=%d)",
-                prefix,
-                len(api_key),
+            print(
+                f"[api_key_required] no active key for prefix={prefix}",
+                file=sys.stderr,
+                flush=True,
             )
-            return jsonify({"error": "Invalid API key"}), 401
+            return jsonify({"error": "Invalid API key (not found)"}), 401
 
         if not key_record.verify_key(api_key):
-            logger.warning(
-                "api_key_required: key hash mismatch for name=%s prefix=%s",
-                key_record.name,
-                prefix,
+            print(
+                f"[api_key_required] hash mismatch for {key_record.name}",
+                file=sys.stderr,
+                flush=True,
             )
-            return jsonify({"error": "Invalid API key"}), 401
+            return jsonify({"error": "Invalid API key (hash)"}), 401
 
         key_record.last_used_at = __import__("datetime").datetime.now(
             __import__("datetime").timezone.utc
