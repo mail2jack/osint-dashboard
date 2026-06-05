@@ -96,12 +96,29 @@ async def _auth(update: Update) -> bool:
 
 def _fmt_email(data: dict) -> str:
     lines = ["📧 *Email Lookup*"]
-    if data.get("breaches"):
-        lines.append(f"\n⚠️ *Breaches*: {', '.join(data['breaches'][:5])}")
-    if data.get("social"):
-        found = [s["name"] for s in data["social"] if s.get("exists")]
-        if found:
-            lines.append(f"\n🔗 *Social*: {', '.join(found[:10])}")
+    email = data.get("email", "")
+    if email:
+        lines.append(f"\n📧 `{email}`")
+    if not data.get("valid_format", True):
+        lines.append("\n❌ Invalid email format")
+        return "\n".join(lines)
+    provider = data.get("provider", "")
+    if provider:
+        lines.append(f"\n🏢 *Provider*: {provider}")
+    if data.get("disposable"):
+        lines.append("\n⚠️ *Disposable email*")
+    mx = data.get("mx_records")
+    if mx:
+        lines.append(f"\n📡 *MX*: {' '.join(mx[:3])}")
+    checks = data.get("account_checks", [])
+    found = [c for c in checks if c.get("exists") == True]
+    if found:
+        sites = [c.get("site", "?") for c in found[:10]]
+        lines.append(f"\n🔗 *Accounts found* ({len(found)}): {', '.join(sites)}")
+    links = data.get("search_links", [])
+    if links:
+        names = [link.get("name", "?") for link in links[:5]]
+        lines.append(f"\n🔍 *Manual checks*: {', '.join(names)}")
     if not lines[1:]:
         lines.append("\nℹ️ No significant findings.")
     return "\n".join(lines)
@@ -131,43 +148,91 @@ def _fmt_phone(data: dict) -> str:
 
 def _fmt_ip(data: dict) -> str:
     lines = ["🌐 *IP Lookup*"]
-    for key, label in [
-        ("ip", "IP"),
-        ("city", "City"),
-        ("region", "Region"),
-        ("country_name", "Country"),
-        ("org", "ISP"),
-        ("asn", "ASN"),
-        ("hostname", "Hostname"),
-    ]:
-        v = data.get(key)
-        if v:
-            lines.append(f"\n*{label}*: {v}")
-    if data.get("proxy", False):
-        lines.append("\n⚠️ *Proxy/VPN detected*")
+    ip = data.get("ip", "")
+    if ip:
+        lines.append(f"\n🌐 `{ip}`")
+    if not data.get("valid", True):
+        lines.append("\n❌ Invalid IP address")
+        return "\n".join(lines)
+    rdns = data.get("reverse_dns")
+    if rdns and rdns != "N/A":
+        lines.append(f"\n📡 *RDNS*: {rdns}")
+    geo = data.get("geolocation")
+    if geo:
+        for label, key in [
+            ("Country", "country"),
+            ("Region", "region"),
+            ("City", "city"),
+            ("ISP", "isp"),
+            ("Org", "org"),
+        ]:
+            v = geo.get(key)
+            if v and v != "N/A":
+                lines.append(f"\n*{label}*: {v}")
+    ipapi = data.get("ipapi")
+    if ipapi:
+        if not geo:
+            for label, key in [
+                ("Country", "country_name"),
+                ("Region", "region"),
+                ("City", "city"),
+            ]:
+                v = ipapi.get(key)
+                if v and v != "N/A":
+                    lines.append(f"\n*{label}*: {v}")
+        asn = ipapi.get("asn")
+        if asn and asn != "N/A":
+            lines.append(f"\n*ASN*: {asn}")
+        org = ipapi.get("org")
+        if org and org != "N/A" and not (geo and geo.get("org")):
+            lines.append(f"\n*Org*: {org}")
+    ports = data.get("ports", [])
+    if ports:
+        lines.append(f"\n🔌 *Open ports*: {', '.join(str(p) for p in ports[:10])}")
+    score = data.get("reputation_score", 0)
+    icon = "✅" if score >= 80 else "⚠️" if score >= 50 else "❌"
+    lines.append(f"\n{icon} *Reputation*: {score}/100")
     return "\n".join(lines)
 
 
 def _fmt_domain(data: dict) -> str:
     lines = ["🌍 *Domain Lookup*"]
-    for key, label in [
-        ("domain", "Domain"),
-        ("registrar", "Registrar"),
-        ("creation_date", "Created"),
-        ("expiration_date", "Expires"),
-        ("organization", "Org"),
-    ]:
-        v = data.get(key)
-        if v:
-            lines.append(f"\n*{label}*: {v}")
-    ns = data.get("name_servers")
+    domain = data.get("domain", "")
+    if domain:
+        lines.append(f"\n🌍 `{domain}`")
+    if not data.get("valid", True):
+        lines.append("\n❌ Invalid domain")
+        return "\n".join(lines)
+    ips = data.get("ip_addresses", [])
+    if ips:
+        lines.append(f"\n📡 *A*: {', '.join(ips[:3])}")
+    whois = data.get("whois", {})
+    if whois.get("registrar"):
+        lines.append(f"\n🏢 *Registrar*: {whois['registrar']}")
+    if whois.get("registration_date"):
+        lines.append(f"\n📅 *Created*: {whois['registration_date']}")
+    if whois.get("expiration_date"):
+        lines.append(f"\n⏳ *Expires*: {whois['expiration_date']}")
+    ns = whois.get("name_servers", [])
     if ns:
-        items = ns if isinstance(ns, list) else [ns]
-        lines.append(f"\n*NS*: {' '.join(items[:4])}")
-    mx = data.get("mx_records")
+        lines.append(f"\n*NS*: {' '.join(ns[:4])}")
+    dns = data.get("dns_records", {})
+    mx = dns.get("MX")
     if mx:
-        items = mx if isinstance(mx, list) else [mx]
-        lines.append(f"\n*MX*: {' '.join(items[:4])}")
+        hosts = [m.get("host", str(m)) for m in (mx if isinstance(mx, list) else [mx])]
+        lines.append(f"\n*MX*: {' '.join(hosts[:4])}")
+    txt = dns.get("TXT")
+    if txt:
+        items = txt if isinstance(txt, list) else [txt]
+        lines.append(f"\n*TXT*: {' '.join(items[:2])}")
+    subs = data.get("subdomains", [])
+    if subs:
+        lines.append(f"\n🔗 *Subdomains*: {', '.join(subs[:6])}")
+    ssl = data.get("ssl_info")
+    if ssl and isinstance(ssl, dict) and ssl.get("issuer"):
+        org = ssl["issuer"].get("organizationName", "")
+        if org:
+            lines.append(f"\n🔒 *SSL issuer*: {org}")
     return "\n".join(lines)
 
 
