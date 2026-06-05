@@ -76,6 +76,7 @@ def brave_search(query, api_key) -> list:
 
     Returns list of results or empty list if failed.
     Requires BRAVE_API_KEY environment variable.
+    Brave API uses direct HTTPS (no Tor) since it uses an API key for auth.
     """
     if not api_key:
         return []
@@ -86,7 +87,9 @@ def brave_search(query, api_key) -> list:
         url = "https://api.search.brave.com/res/v1/web/search"
         params = {"q": query, "count": 10}
 
-        with _get_http_client(timeout=8.0, headers=headers) as client:
+        with curl_requests.Session(
+            timeout=12.0, impersonate=next_impersonate(), headers=headers
+        ) as client:
             jitter_sleep(domain_hint=url)
             response = client.get(url, params=params)
 
