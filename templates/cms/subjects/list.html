@@ -1,49 +1,49 @@
 {% extends "cms/base.html" %}
 
-{% block title %}Subjects - CMS{% endblock %}
+{% block title %}{{ _('Subjects') }} - CMS{% endblock %}
 
 {% block content %}
 <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-    <h1 style="margin: 0;">Subjects</h1>
+    <h1 style="margin: 0;">{{ _('Subjects') }}</h1>
     <div style="display: flex; gap: 0.5rem;">
-        <a href="{{ url_for('cms.export_subjects', format='csv') }}" class="btn-cms teal">📥 Export</a>
-        <a href="{{ url_for('cms.create_subject') }}" class="btn-cms primary">+ New Subject</a>
+        <a href="{{ url_for('cms.export_subjects', format='csv') }}" class="btn-cms teal">📥 {{ _('Export') }}</a>
+        <a href="{{ url_for('cms.create_subject') }}" class="btn-cms primary">+ {{ _('New Subject') }}</a>
     </div>
 </div>
 
 <div id="bulkActionsBar" class="bulk-actions">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <span id="selectedCount">0</span> subject(s) selected
+            <span id="selectedCount">0</span> {{ _('subject(s) selected') }}
         </div>
         <div style="display: flex; gap: 0.5rem;">
-            <button data-click="openBulkLinkModal" class="btn-cms primary small" id="linkBtn" disabled>Link to Case</button>
-            <button data-click="clearSelection" class="btn-cms small">Clear Selection</button>
+            <button data-click="openBulkLinkModal" class="btn-cms primary small" id="linkBtn" disabled>{{ _('Link to Case') }}</button>
+            <button data-click="clearSelection" class="btn-cms small">{{ _('Clear Selection') }}</button>
         </div>
     </div>
 </div>
 
 <div class="card">
     <form method="GET" style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
-        <input type="text" name="search" placeholder="Search by name..." value="{{ filters.search or '' }}" 
+        <input type="text" name="search" placeholder="{{ _('Search by name...') }}" value="{{ filters.search or '' }}" data-immediate-search
                style="padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 4px; flex: 1; min-width: 200px; background: var(--bg-card); color: var(--text-primary);">
         <select name="type" style="padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
-            <option value="">All Types</option>
-            <option value="person" {% if filters.type == 'person' %}selected{% endif %}>Person</option>
-            <option value="company" {% if filters.type == 'company' %}selected{% endif %}>Company</option>
-            <option value="organization" {% if filters.type == 'organization' %}selected{% endif %}>Organization</option>
-            <option value="vehicle" {% if filters.type == 'vehicle' %}selected{% endif %}>Vehicle</option>
-            <option value="vessel" {% if filters.type == 'vessel' %}selected{% endif %}>Vessel</option>
-            <option value="property" {% if filters.type == 'property' %}selected{% endif %}>Property</option>
+            <option value="">{{ _('All Types') }}</option>
+            <option value="person" {% if filters.type == 'person' %}selected{% endif %}>{{ _('Person') }}</option>
+            <option value="company" {% if filters.type == 'company' %}selected{% endif %}>{{ _('Company') }}</option>
+            <option value="organization" {% if filters.type == 'organization' %}selected{% endif %}>{{ _('Organization') }}</option>
+            <option value="vehicle" {% if filters.type == 'vehicle' %}selected{% endif %}>{{ _('Vehicle') }}</option>
+            <option value="vessel" {% if filters.type == 'vessel' %}selected{% endif %}>{{ _('Vessel') }}</option>
+            <option value="property" {% if filters.type == 'property' %}selected{% endif %}>{{ _('Property') }}</option>
         </select>
         <select name="case_filter" style="padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
-            <option value="all" {% if filters.case_filter == 'all' %}selected{% endif %}>All Subjects</option>
-            <option value="has_case" {% if filters.case_filter == 'has_case' %}selected{% endif %}>Has Case</option>
-            <option value="no_case" {% if filters.case_filter == 'no_case' %}selected{% endif %}>No Case</option>
+            <option value="all" {% if filters.case_filter == 'all' %}selected{% endif %}>{{ _('All Subjects') }}</option>
+            <option value="has_case" {% if filters.case_filter == 'has_case' %}selected{% endif %}>{{ _('Has Case') }}</option>
+            <option value="no_case" {% if filters.case_filter == 'no_case' %}selected{% endif %}>{{ _('No Case') }}</option>
         </select>
-        <button type="submit" class="btn-cms primary">Filter</button>
+        <button type="submit" class="btn-cms primary">{{ _('Filter') }}</button>
         {% if filters.search or filters.type or filters.case_filter != 'all' %}
-        <a href="{{ url_for('cms.subjects') }}" class="btn-cms gray">Clear</a>
+        <a href="{{ url_for('cms.subjects') }}" class="btn-cms gray">{{ _('Clear') }}</a>
         {% endif %}
     </form>
     
@@ -57,20 +57,20 @@
                     </th>
                     <th>
                         <a href="?sort=name&order={% if filters.sort == 'name' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}{% if filters.case_filter and filters.case_filter != 'all' %}&case_filter={{ filters.case_filter }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
-                            Name {% if filters.sort == 'name' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
+                            {{ _('Name') }} {% if filters.sort == 'name' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
                         </a>
                     </th>
                     <th>
                         <a href="?sort=type&order={% if filters.sort == 'type' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}{% if filters.case_filter and filters.case_filter != 'all' %}&case_filter={{ filters.case_filter }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
-                            Type {% if filters.sort == 'type' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
+                            {{ _('Type') }} {% if filters.sort == 'type' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
                         </a>
                     </th>
                     <th>
                         <a href="?sort=risk&order={% if filters.sort == 'risk' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.type %}&type={{ filters.type }}{% endif %}{% if filters.case_filter and filters.case_filter != 'all' %}&case_filter={{ filters.case_filter }}{% endif %}" style="color: var(--text-secondary); text-decoration: none;">
-                            Risk Score {% if filters.sort == 'risk' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
+                            {{ _('Risk Score') }} {% if filters.sort == 'risk' %}{{ '↑' if filters.order == 'asc' else '↓' }}{% endif %}
                         </a>
                     </th>
-                    <th>Actions</th>
+                    <th>{{ _('Actions') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -79,7 +79,7 @@
                         <input type="checkbox" id="selectAllOnPage" data-change="toggleSelectAllOnPage">
                     </td>
                     <td colspan="4" style="color: var(--text-secondary); font-size: 0.875rem;">
-                        Select all <span id="totalOnPage">{{ subjects|length }}</span> subjects on this page
+                        {{ _('Select all') }} <span id="totalOnPage">{{ subjects|length }}</span> {{ _('subjects on this page') }}
                     </td>
                 </tr>
                 {% for subject in subjects %}
@@ -90,7 +90,7 @@
                     <td><strong>{{ subject.name }}</strong></td>
                     <td>{{ subject.subject_type }}</td>
                     <td>{{ subject.risk_score }}</td>
-                    <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">View</a>
+                    <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">{{ _('View') }}</a>
                         <button data-click="deleteSubject" data-arg0="{{ subject.id }}" data-arg1="{{ subject.name }}" class="btn-cms danger small" style="margin-left: 0.5rem;">🗑️</button>
                     </td>
                 </tr>
@@ -99,17 +99,17 @@
         </table>
     </form>
     {% else %}
-    <div class="empty-state"><div class="icon">📭</div><p>No subjects found.</p></div>
+    <div class="empty-state"><div class="icon">📭</div><p>{{ _('No subjects found.') }}</p></div>
     {% endif %}
     
     {% if pagination.pages > 1 %}
     <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
         {% if pagination.has_prev %}
-        <a href="{{ url_for('cms.subjects', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type, case_filter=filters.case_filter if filters.case_filter != 'all' else none) }}" class="btn-cms small">Previous</a>
+        <a href="{{ url_for('cms.subjects', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type, case_filter=filters.case_filter if filters.case_filter != 'all' else none) }}" class="btn-cms small">{{ _('Previous') }}</a>
         {% endif %}
-        <span style="padding: 0.3rem 0.8rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        <span style="padding: 0.3rem 0.8rem;">{{ _('Page') }} {{ pagination.page }} {{ _('of') }} {{ pagination.pages }}</span>
         {% if pagination.has_next %}
-        <a href="{{ url_for('cms.subjects', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type, case_filter=filters.case_filter if filters.case_filter != 'all' else none) }}" class="btn-cms small">Next</a>
+        <a href="{{ url_for('cms.subjects', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, type=filters.type, case_filter=filters.case_filter if filters.case_filter != 'all' else none) }}" class="btn-cms small">{{ _('Next') }}</a>
         {% endif %}
     </div>
     {% endif %}
@@ -118,24 +118,24 @@
 <div id="bulkLinkModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Link Subjects to Case</h2>
+            <h2>{{ _('Link Subjects to Case') }}</h2>
             <span class="close" data-click="closeBulkLinkModal">&times;</span>
         </div>
         
         <p style="margin-bottom: 1rem; color: var(--text-secondary);">
-            Link <strong id="bulkSubjectCount">0</strong> selected subject(s) to a case.
+            {{ _('Link') }} <strong id="bulkSubjectCount">0</strong> {{ _('selected subject(s) to a case.') }}
         </p>
         
         <div class="form-group">
-            <label for="caseSelect">Select Case</label>
+            <label for="caseSelect">{{ _('Select Case') }}</label>
             <select id="caseSelect" required style="padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 4px; width: 100%;">
-                <option value="">Loading cases...</option>
+                <option value="">{{ _('Loading cases...') }}</option>
             </select>
         </div>
         
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button data-click="closeBulkLinkModal" class="btn-cms gray">Cancel</button>
-            <button data-click="submitBulkLink" class="btn-cms primary">Link Subjects</button>
+            <button data-click="closeBulkLinkModal" class="btn-cms gray">{{ _('Cancel') }}</button>
+            <button data-click="submitBulkLink" class="btn-cms primary">{{ _('Link Subjects') }}</button>
         </div>
     </div>
 </div>
@@ -203,7 +203,7 @@ function clearSelection() {
 
 function openBulkLinkModal() {
     if (selectedSubjects.size === 0) {
-        alert('Please select at least one subject.');
+        alert('{{ _('Please select at least one subject.')|e }}');
         return;
     }
     
@@ -211,7 +211,7 @@ function openBulkLinkModal() {
         .then(r => r.json())
         .then(data => {
             const select = document.getElementById('caseSelect');
-            select.innerHTML = '<option value="">Select a case...</option>';
+            select.innerHTML = '<option value="">{{ _('Select a case...') }}</option>';
             (data.cases || []).forEach(c => {
                 select.innerHTML += '<option value="' + esc(c.id) + '">' + esc(c.case_number) + ': ' + esc(c.title) + '</option>';
             });
@@ -227,7 +227,7 @@ function closeBulkLinkModal() {
 function submitBulkLink() {
     const caseId = document.getElementById('caseSelect').value;
     if (!caseId) {
-        alert('Please select a case.');
+        alert('{{ _('Please select a case.')|e }}');
         return;
     }
     
@@ -240,14 +240,14 @@ function submitBulkLink() {
     })
     .then(r => r.json())
     .then(data => {
-        alert(`Added ${data.total_added || 0} subject(s) to case.`);
+        alert(`{{ _('Added') }} ${data.total_added || 0} {{ _('subject(s) to case.') }}`);
         if (data.skipped && data.skipped.length > 0) {
-            alert(`Skipped: ${data.skipped.map(s => s.name || s.id).join(', ')}`);
+            alert(`{{ _('Skipped') }}: ${data.skipped.map(s => s.name || s.id).join(', ')}`);
         }
         closeBulkLinkModal();
         clearSelection();
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert('{{ _('Error') }}: ' + err.message));
 }
 
 document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
@@ -268,7 +268,7 @@ document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
             location.reload();
         }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert('{{ _('Error') }}: ' + err.message));
 }
 </script>
 {% endblock %}

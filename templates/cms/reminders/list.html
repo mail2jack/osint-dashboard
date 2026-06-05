@@ -114,31 +114,31 @@
 </style>
 
 <div class="card-header" style="margin-bottom: 1.5rem;">
-    <h2>Reminders</h2>
-    <a href="{{ url_for('cms.create_reminder') }}" class="btn-cms primary">+ New Reminder</a>
+    <h2>{{ _('Reminders') }}</h2>
+    <a href="{{ url_for('cms.create_reminder') }}" class="btn-cms primary">+ {{ _('New Reminder') }}</a>
 </div>
 
 <div class="stats-row">
     <div class="stat-card">
         <div class="value">{{ stats.total }}</div>
-        <div class="label">Pending</div>
+        <div class="label">{{ _('Pending') }}</div>
     </div>
     <div class="stat-card warning">
         <div class="value">{{ stats.overdue }}</div>
-        <div class="label">Overdue</div>
+        <div class="label">{{ _('Overdue') }}</div>
     </div>
     <div class="stat-card">
         <div class="value">{{ stats.today }}</div>
-        <div class="label">Due Today</div>
+        <div class="label">{{ _('Due Today') }}</div>
     </div>
 </div>
 
 <div class="filter-tabs">
-    <a href="{{ url_for('cms.reminders', filter='all') }}" class="filter-tab {% if filter_type == 'all' %}active{% endif %}">All</a>
-    <a href="{{ url_for('cms.reminders', filter='overdue') }}" class="filter-tab {% if filter_type == 'overdue' %}active{% endif %}">Overdue</a>
-    <a href="{{ url_for('cms.reminders', filter='upcoming') }}" class="filter-tab {% if filter_type == 'upcoming' %}active{% endif %}">Upcoming</a>
-    <a href="{{ url_for('cms.reminders', filter='completed') }}" class="filter-tab {% if filter_type == 'completed' %}active{% endif %}">Completed</a>
-    <a href="{{ url_for('cms.reminders', filter='mine') }}" class="filter-tab {% if filter_type == 'mine' %}active{% endif %}">Assigned to Me</a>
+    <a href="{{ url_for('cms.reminders', filter='all') }}" class="filter-tab {% if filter_type == 'all' %}active{% endif %}">{{ _('All') }}</a>
+    <a href="{{ url_for('cms.reminders', filter='overdue') }}" class="filter-tab {% if filter_type == 'overdue' %}active{% endif %}">{{ _('Overdue') }}</a>
+    <a href="{{ url_for('cms.reminders', filter='upcoming') }}" class="filter-tab {% if filter_type == 'upcoming' %}active{% endif %}">{{ _('Upcoming') }}</a>
+    <a href="{{ url_for('cms.reminders', filter='completed') }}" class="filter-tab {% if filter_type == 'completed' %}active{% endif %}">{{ _('Completed') }}</a>
+    <a href="{{ url_for('cms.reminders', filter='mine') }}" class="filter-tab {% if filter_type == 'mine' %}active{% endif %}">{{ _('Assigned to Me') }}</a>
 </div>
 
 {% if reminders %}
@@ -149,19 +149,19 @@
                 {{ reminder.title }}
                 <span class="badge-priority-{{ reminder.priority }}" style="font-size:0.65rem;text-transform:uppercase;vertical-align:middle;">{{ reminder.priority }}</span>
                 {% if reminder.is_overdue and not reminder.is_completed %}
-                <span class="overdue-badge">Overdue</span>
+                <span class="overdue-badge">{{ _('Overdue') }}</span>
                 {% endif %}
                 {% if reminder.is_completed %}
-                <span class="badge badge-closed">Completed</span>
+                <span class="badge badge-closed">{{ _('Completed') }}</span>
                 {% endif %}
             </h3>
             <div class="reminder-meta">
-                <span>📅 {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else 'No date' }}</span>
+                <span>📅 {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else _('No date') }}</span>
                 {% if reminder.due_date %}
-                <span>⏰ Due: {{ reminder.due_date.strftime('%Y-%m-%d') }}</span>
+                <span>⏰ {{ _('Due') }}: {{ reminder.due_date.strftime('%Y-%m-%d') }}</span>
                 {% endif %}
                 {% if reminder.case_id %}
-                <span>📁 Case linked</span>
+                <span>📁 {{ _('Case linked') }}</span>
                 {% endif %}
                 {% if reminder.assigned_user %}
                 <span>👤 {{ reminder.assigned_user.full_name }}</span>
@@ -175,15 +175,15 @@
             {% if not reminder.is_completed %}
             <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-cms small" style="background:#22c55e;color:white;border-color:#22c55e;" title="Mark complete">✓</button>
+                <button type="submit" class="btn-cms small" style="background:#22c55e;color:white;border-color:#22c55e;" title="{{ _('Mark complete') }}">✓</button>
             </form>
             <form method="POST" action="{{ url_for('cms.snooze_reminder', reminder_id=reminder.id, minutes=30) }}" style="display: inline;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-cms small" style="background:#f59e0b;color:white;border-color:#f59e0b;" title="Snooze 30 min">⏰</button>
+                <button type="submit" class="btn-cms small" style="background:#f59e0b;color:white;border-color:#f59e0b;" title="{{ _('Snooze 30 min') }}">⏰</button>
             </form>
             <form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="Delete this reminder?">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-cms small danger" title="Delete">🗑️</button>
+                <button type="submit" class="btn-cms small danger" title="{{ _('Delete') }}">🗑️</button>
             </form>
             {% endif %}
         </div>
@@ -193,19 +193,19 @@
     {% if pagination.pages > 1 %}
     <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
         {% if pagination.has_prev %}
-        <a href="{{ url_for('cms.reminders', page=pagination.prev_num, filter=filter_type) }}" class="btn-cms small">Previous</a>
+        <a href="{{ url_for('cms.reminders', page=pagination.prev_num, filter=filter_type) }}" class="btn-cms small">{{ _('Previous') }}</a>
         {% endif %}
-        <span style="padding: 0.4rem 0.75rem;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        <span style="padding: 0.4rem 0.75rem;">{{ _('Page') }} {{ pagination.page }} {{ _('of') }} {{ pagination.pages }}</span>
         {% if pagination.has_next %}
-        <a href="{{ url_for('cms.reminders', page=pagination.next_num, filter=filter_type) }}" class="btn-cms small">Next</a>
+        <a href="{{ url_for('cms.reminders', page=pagination.next_num, filter=filter_type) }}" class="btn-cms small">{{ _('Next') }}</a>
         {% endif %}
     </div>
     {% endif %}
 {% else %}
     <div class="empty-state">
         <div class="icon">📋</div>
-        <p>No reminders found.</p>
-        <a href="{{ url_for('cms.create_reminder') }}" class="btn-cms primary" style="margin-top: 1rem;">Create your first reminder</a>
+        <p>{{ _('No reminders found.') }}</p>
+        <a href="{{ url_for('cms.create_reminder') }}" class="btn-cms primary" style="margin-top: 1rem;">{{ _('Create your first reminder') }}</a>
     </div>
 {% endif %}
 {% endblock %}

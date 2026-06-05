@@ -2,7 +2,8 @@ import logging
 import os
 import asyncio
 import re
-import requests
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -57,7 +58,7 @@ from cms.validation import (
     GeneratePDFSchema,
 )
 from cms.services.ai_service import (
-    get_ollama_config,
+    get_ai_config,
     summarize_results,
     analyze_natural_language,
     enrich_profile,
@@ -77,16 +78,16 @@ app_routes_bp = Blueprint("app_routes", __name__)
 
 @app_routes_bp.route("/api/ai/status", methods=["GET"])
 def ai_status() -> FlaskResponse:
-    """Check if Ollama AI is available."""
-    available = check_ollama_available()
-    _, model = get_ollama_config()
+    """Check if AI provider is available (OpenRouter or Ollama)."""
+    config = get_ai_config()
     return jsonify(
         {
-            "available": available,
-            "model": model if available else None,
-            "message": "AI features ready"
-            if available
-            else "Ollama not running. Install from https://ollama.com",
+            "available": config["available"],
+            "provider": config["provider"] if config["available"] else None,
+            "model": config["model"] if config["available"] else None,
+            "message": f"AI features ready ({config['provider']})"
+            if config["available"]
+            else "No AI provider configured. Set up OpenRouter API key or install Ollama.",
         }
     )
 
@@ -287,6 +288,23 @@ def person_search_stream() -> FlaskResponse:
     return run_sse_search(search_worker)
 
 
+@app_routes_bp.route("/api/person", methods=["POST"])
+@csrf.exempt
+@api_key_required
+@tool_enabled("username")
+@rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="person")
+@validate(PersonSearchSchema)
+def person_search_json() -> FlaskResponse:
+    """Synchronous person search returning JSON (not streaming)."""
+    from cms.services.search_service import search_person
+
+    name = request.validated_data.get("name", "")
+    if not name:
+        return jsonify({"error": "Name required"}), 400
+    result = search_person(name)
+    return jsonify(result)
+
+
 # =============================================================================
 # IP / Email / Domain Lookup
 # =============================================================================
@@ -382,7 +400,8 @@ def openkvk_lookup() -> FlaskResponse:
 
         headers = {"Accept": "application/json", "ovio-api-key": api_key}
 
-        response = requests.get(search_url, headers=headers, timeout=15)
+        jitter_sleep(domain_hint=search_url)
+        response = curl_requests.get(search_url, headers=headers, timeout=15)
 
         if response.status_code == 200:
             data = response.json()
@@ -394,13 +413,14 @@ def openkvk_lookup() -> FlaskResponse:
                     slug = slug.lstrip("/")
                     detail_url = f"https://api.overheid.io/v3/openkvk/{slug}"
                     try:
-                        detail_resp = requests.get(
+                        jitter_sleep(domain_hint=detail_url)
+                        detail_resp = curl_requests.get(
                             detail_url, headers=headers, timeout=10
                         )
                         if detail_resp.status_code == 200:
                             detail = detail_resp.json()
                             company.update(detail)
-                    except requests.RequestException as e:
+                    except curl_requests.RequestException as e:
                         logger.debug(
                             f"OpenKVK detail fetch failed ({type(e).__name__}): {e}"
                         )
@@ -456,9 +476,9 @@ def openkvk_lookup() -> FlaskResponse:
         else:
             result["error"] = f"API error: {response.status_code}"
 
-    except requests.Timeout:
+    except curl_requests.Timeout:
         result["error"] = "Request timed out"
-    except requests.RequestException:
+    except curl_requests.RequestException:
         logger.exception("OpenKVK request failed")
         result["error"] = "Request failed"
     except Exception:
@@ -586,7 +606,8 @@ def hibp_check() -> FlaskResponse:
     try:
         headers = {"User-Agent": "OSINT-Dashboard", "hibp-api-key": hibp_key}
 
-        response = requests.get(
+        jitter_sleep(domain_hint="https://haveibeenpwned.com")
+        response = curl_requests.get(
             f"https://haveibeenpwned.com/api/v3/breachedaccount/{quote(email)}?truncateResponse=false",
             headers=headers,
             timeout=15,
@@ -621,7 +642,7 @@ def hibp_check() -> FlaskResponse:
                 }
             )
 
-    except requests.Timeout:
+    except curl_requests.Timeout:
         return jsonify({"email": email, "error": "Request timeout", "breaches": []})
     except Exception:
         logger.exception("HIBP check error")
@@ -1131,7 +1152,10 @@ def username_rapidapi() -> FlaskResponse:
                 "x-rapidapi-key": api_key,
                 "x-rapidapi-host": "osint-username-availability-brand-checker-api.p.rapidapi.com",
             }
-            resp = requests.get(
+            jitter_sleep(
+                domain_hint="https://osint-username-availability-brand-checker-api.p.rapidapi.com"
+            )
+            resp = curl_requests.get(
                 f"https://osint-username-availability-brand-checker-api.p.rapidapi.com/check?username={username}",
                 headers=headers,
                 timeout=15,
@@ -1168,7 +1192,8 @@ def username_rapidapi() -> FlaskResponse:
 
                     def _verify(url, timeout=5):
                         try:
-                            r = requests.get(
+                            jitter_sleep(domain_hint=url)
+                            r = curl_requests.get(
                                 url,
                                 timeout=timeout,
                                 allow_redirects=True,

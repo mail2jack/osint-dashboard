@@ -3,7 +3,8 @@ import logging
 import re
 from datetime import datetime
 
-import httpx
+from curl_cffi import requests as curl_requests
+from curl_cffi import CurlError
 
 from cms.constants import HEADERS
 from cms.validators import verify_profile, interpolate_string
@@ -40,9 +41,7 @@ async def check_username_async(client, platform, info, username):
             finding["exists"] = response.status_code == 200
             finding["verified"] = True
         else:
-            response = await client.head(
-                url, timeout=3, allow_redirects=True, headers=HEADERS
-            )
+            response = await client.head(url, timeout=3, headers=HEADERS)
             finding["exists"] = response.status_code != 404
             if finding["exists"] and response.status_code == 200:
                 verification = verify_profile("", username, url)
@@ -50,10 +49,13 @@ async def check_username_async(client, platform, info, username):
                 if verification == "likely_false":
                     finding["exists"] = None
                     finding["status"] = "unverified"
-    except httpx.TimeoutException:
-        finding["exists"] = "Timeout"
-    except httpx.ConnectError:
-        finding["exists"] = "Connection Error"
+    except CurlError as e:
+        if "timeout" in str(e).lower() or "timed out" in str(e).lower():
+            finding["exists"] = "Timeout"
+        elif "connection" in str(e).lower() or "couldn't connect" in str(e).lower():
+            finding["exists"] = "Connection Error"
+        else:
+            finding["exists"] = "Unknown"
     except Exception:
         finding["exists"] = "Unknown"
     return finding
@@ -88,25 +90,18 @@ async def check_sherlock_site(client, site_name, site_info, username):
 
     try:
         if request_method == "GET":
-            response = await client.get(
-                url, headers=headers, timeout=5, follow_redirects=True
-            )
+            response = await client.get(url, headers=headers, timeout=5)
         elif request_method == "HEAD":
-            response = await client.head(
-                url, headers=headers, timeout=10, follow_redirects=True
-            )
+            response = await client.head(url, headers=headers, timeout=10)
         elif request_method == "POST":
             response = await client.post(
                 url,
                 headers=headers,
                 json=request_payload,
                 timeout=10,
-                follow_redirects=True,
             )
         else:
-            response = await client.get(
-                url, headers=headers, timeout=5, follow_redirects=True
-            )
+            response = await client.get(url, headers=headers, timeout=5)
 
         finding["http_status"] = response.status_code
         response_text = response.text if hasattr(response, "text") else ""
@@ -167,11 +162,13 @@ async def check_sherlock_site(client, site_name, site_info, username):
                 finding["exists"] = response.status_code != 404
                 finding["status"] = "unknown"
 
-    except httpx.TimeoutException:
-        finding["status"] = "timeout"
-        finding["exists"] = None
-    except httpx.ConnectError:
-        finding["status"] = "connection_error"
+    except CurlError as e:
+        if "timeout" in str(e).lower() or "timed out" in str(e).lower():
+            finding["status"] = "timeout"
+        elif "connection" in str(e).lower() or "couldn't connect" in str(e).lower():
+            finding["status"] = "connection_error"
+        else:
+            finding["status"] = "error"
         finding["exists"] = None
     except Exception:
         finding["status"] = "error"
@@ -197,7 +194,9 @@ async def search_username_async(username, progress_callback=None, max_sites=150)
     found_count = 0
     batch_size = 30
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
+    async with curl_requests.AsyncSession(
+        impersonate="chrome124", timeout=30
+    ) as client:
         for i in range(0, total_sites, batch_size):
             batch = sites_list[i : i + batch_size]
             tasks = []

@@ -1,7 +1,8 @@
 import logging
 from functools import lru_cache
 
-import requests
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 from cms.constants import SHERLOCK_DATA_URL
 
@@ -11,7 +12,8 @@ logger = logging.getLogger(__name__)
 @lru_cache(maxsize=1)
 def get_sherlock_sites():
     try:
-        response = requests.get(SHERLOCK_DATA_URL, timeout=30)
+        jitter_sleep(domain_hint=SHERLOCK_DATA_URL)
+        response = curl_requests.get(SHERLOCK_DATA_URL, timeout=30)
         if response.status_code == 200:
             data = response.json()
             data.pop("$schema", None)

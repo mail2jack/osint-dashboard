@@ -120,7 +120,7 @@
                 <option value="{{ t }}" {% if entity_filter == t %}selected{% endif %}>{{ t }}</option>
                 {% endfor %}
             </select>
-            <input type="text" name="user" placeholder="Filter by username" value="{{ user_filter }}">
+            <input type="text" name="user" placeholder="Filter by username" value="{{ user_filter }}" data-immediate-search>
             <button type="submit" class="btn-cms small">Filter</button>
             <a href="{{ url_for('cms.read_audit_dashboard') }}" class="btn-cms gray small">Clear</a>
         </form>

@@ -4,18 +4,10 @@ logger = logging.getLogger(__name__)
 
 
 def check_ollama_available() -> bool:
-    from cms.services.ai_service import get_ollama_config
+    """Check if any AI provider (OpenRouter or Ollama) is available."""
+    from cms.services.ai_service import check_ai_available
 
-    url, _model = get_ollama_config()
-    if not url:
-        return False
-    try:
-        import httpx
-
-        r = httpx.get(f"{url}/api/tags", timeout=3)
-        return r.status_code == 200
-    except Exception:
-        return False
+    return check_ai_available()
 
 
 __all__ = ["check_ollama_available"]

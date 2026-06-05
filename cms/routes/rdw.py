@@ -1,5 +1,6 @@
 import logging
-import requests as http_requests
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 import flask
 from flask import request, jsonify
@@ -56,7 +57,8 @@ def check_rdw_vehicle() -> flask.Response:
             "Accept": "application/json",
         }
         url = f"{RDW_API_BASE}?kenteken={kenteken_normalized}"
-        r = http_requests.get(url, headers=headers, timeout=15)
+        jitter_sleep(domain_hint=url)
+        r = curl_requests.get(url, headers=headers, timeout=15)
 
         if r.status_code != 200:
             return jsonify(
@@ -124,7 +126,7 @@ def check_rdw_vehicle() -> flask.Response:
             }
 
         return jsonify(vehicle_data), 200
-    except http_requests.exceptions.RequestException:
+    except curl_requests.RequestException:
         logger.exception("RDW API connection error")
         return jsonify({"error": "Failed to connect to RDW API"}), 503
     except Exception:
@@ -156,7 +158,8 @@ def update_subject_from_rdw(subject_id: str) -> flask.Response:
             "Accept": "application/json",
         }
         url = f"{RDW_API_BASE}?kenteken={kenteken}"
-        r = http_requests.get(url, headers=headers, timeout=15)
+        jitter_sleep(domain_hint=url)
+        r = curl_requests.get(url, headers=headers, timeout=15)
 
         if r.status_code != 200 or not r.json():
             return jsonify({"error": "Vehicle not found in RDW database"}), 404

@@ -3,8 +3,12 @@ import re
 import time
 import os
 import threading
-import httpx
 from urllib.parse import quote, unquote
+
+from curl_cffi import requests as curl_requests
+from curl_cffi import CurlError
+
+from cms.services.http_utils import jitter_sleep, get_next_proxy, next_impersonate
 
 logger = logging.getLogger(__name__)
 _dorks_log_lock = threading.Lock()
@@ -40,16 +44,26 @@ def _refresh_tor_config() -> None:
 
 
 def _get_http_client(
-    timeout: float = 10.0, headers: dict | None = None, follow_redirects: bool = True
-) -> httpx.Client:
-    """Return httpx.Client — routes through Tor proxy when enabled."""
+    timeout: float = 10.0, headers: dict | None = None
+) -> curl_requests.Session:
+    """Return curl_cffi.Session with rotating browser TLS fingerprint impersonation.
+
+    Routes through Tor SOCKS5 proxy when enabled, else uses proxy rotation.
+    """
     _refresh_tor_config()
-    kwargs: dict = {"timeout": timeout, "follow_redirects": follow_redirects}
+    kwargs: dict = {
+        "timeout": timeout,
+        "impersonate": next_impersonate(),
+    }
     if headers:
         kwargs["headers"] = headers
     if _TOR_ENABLED and _TOR_PROXY:
-        kwargs["proxy"] = _TOR_PROXY
-    return httpx.Client(**kwargs)
+        kwargs["proxies"] = {"http": _TOR_PROXY, "https": _TOR_PROXY}
+    else:
+        proxies = get_next_proxy()
+        if proxies:
+            kwargs["proxies"] = proxies
+    return curl_requests.Session(**kwargs)
 
 
 def search_person(full_name):
@@ -73,6 +87,7 @@ def brave_search(query, api_key) -> list:
         params = {"q": query, "count": 10}
 
         with _get_http_client(timeout=8.0, headers=headers) as client:
+            jitter_sleep(domain_hint=url)
             response = client.get(url, params=params)
 
         if response.status_code != 200:
@@ -94,14 +109,13 @@ def brave_search(query, api_key) -> list:
 
         return results
 
-    except httpx.TimeoutException:
-        logger.debug("Brave search timeout")
-        return []
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 429:
-            logger.warning("Brave search rate limited (429)")
+    except CurlError as e:
+        if "timed out" in str(e).lower():
+            logger.debug("Brave search timeout")
+        elif "429" in str(e):
+            logger.warning("Brave search rate limited")
         else:
-            logger.debug(f"Brave search HTTP {e.response.status_code}")
+            logger.debug(f"Brave search CurlError: {e}")
         return []
     except Exception as e:
         logger.debug(f"Brave search error ({type(e).__name__}): {e}")
@@ -390,7 +404,9 @@ def person_dorks_search(full_name) -> dict:
                     params = {"q": query}
 
                     try:
+                        jitter_sleep(domain_hint=method_url)
                         response = client.get(method_url, params=params)
+
                         log_ddg(f"DDG Query: {query}")
                         log_ddg(f"  Status: {response.status_code}")
 
@@ -421,11 +437,8 @@ def person_dorks_search(full_name) -> dict:
                                 if "duckduckgo" not in results["sources_used"]:
                                     results["sources_used"].append("duckduckgo")
 
-                    except httpx.TimeoutException:
-                        log_ddg("  Timeout")
-                        continue
-                    except httpx.HTTPStatusError as e:
-                        log_ddg(f"  HTTP {e.response.status_code}")
+                    except CurlError as e:
+                        log_ddg(f"  CurlError: {str(e)[:80]}")
                         continue
                     except Exception as e:
                         log_ddg(f"  Exception ({type(e).__name__}): {str(e)}")

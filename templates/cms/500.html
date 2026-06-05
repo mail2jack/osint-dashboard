@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>500 - Server Error</title>
+    <title>500 - {{ _('Server Error') }}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -18,9 +18,9 @@
 <body>
     <div class="container">
         <div class="code">500</div>
-        <div class="title">Internal Server Error</div>
-        <div class="message">Something went wrong. Please try again later.</div>
-        <a href="/cms/" class="btn">Back to Dashboard</a>
+        <div class="title">{{ _('Internal Server Error') }}</div>
+        <div class="message">{{ _('Something went wrong. Please try again later.') }}</div>
+        <a href="/cms/" class="btn">{{ _('Back to Dashboard') }}</a>
     </div>
 </body>
 </html>

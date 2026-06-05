@@ -64,9 +64,9 @@ def create_cms_module(app: Flask):
     @app.context_processor
     def inject_theme():
         try:
-            from .models import Setting
+            from .setting_cache import cached_setting_get
 
-            style = Setting.get("theme_style", "classic")
+            style = cached_setting_get("theme_style", "classic")
             return {"theme_style": style}
         except Exception:
             from .models import db
@@ -239,6 +239,17 @@ def create_cms_module(app: Flask):
             app.logger.warning(
                 "Default admin created — change password immediately. Username: admin."
             )
+
+        # Start Telegram bot in background thread
+        try:
+            from .telegram_bot import start_bot
+
+            start_bot(app)
+        except Exception as e:
+            app.logger.error("Failed to start Telegram bot: %s", e)
+            import traceback
+
+            app.logger.debug(traceback.format_exc())
 
     return app
 

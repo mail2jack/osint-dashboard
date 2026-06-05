@@ -2,8 +2,10 @@ import logging
 import re
 import copy
 import base64
-import httpx
 from datetime import datetime, timezone
+
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 import flask
 from flask import request, jsonify
@@ -160,7 +162,10 @@ def phone_lookup() -> flask.Response:
                         "x-rapidapi-key": api_key,
                         "x-rapidapi-host": "whatsapp-data1.p.rapidapi.com",
                     }
-                    cl_resp = httpx.get(cl_url, headers=cl_headers, timeout=15)
+                    jitter_sleep(domain_hint=cl_url)
+                    cl_resp = curl_requests.get(
+                        cl_url, headers=cl_headers, impersonate="chrome124", timeout=15
+                    )
                     cl_data = cl_resp.json()
                     if "isWAContact" in cl_data or "isUser" in cl_data:
                         wa_exists = cl_data.get("isWAContact") or cl_data.get("isUser")
@@ -180,8 +185,12 @@ def phone_lookup() -> flask.Response:
                         ):
                             try:
                                 pic_url = f"https://whatsapp-data1.p.rapidapi.com/picture/{normalized}"
-                                pic_resp = httpx.get(
-                                    pic_url, headers=cl_headers, timeout=10
+                                jitter_sleep(domain_hint=pic_url)
+                                pic_resp = curl_requests.get(
+                                    pic_url,
+                                    headers=cl_headers,
+                                    impersonate="chrome124",
+                                    timeout=10,
                                 )
                                 if pic_resp.status_code == 200 and pic_resp.headers.get(
                                     "content-type", ""
@@ -253,59 +262,66 @@ def phone_lookup() -> flask.Response:
             "whatsapp" not in result["services"]
             or result["services"]["whatsapp"].get("exists") is None
         ):
-            with httpx.Client(follow_redirects=True, timeout=10) as client:
-                try:
-                    wa_url = f"https://api.whatsapp.com/send?phone={normalized}"
-                    wa_resp = client.get(wa_url, headers={"User-Agent": "Mozilla/5.0"})
-                    wa_text = wa_resp.text.lower()
-                    if "phone number is not on whatsapp" in wa_text:
-                        result["services"]["whatsapp"] = {"exists": False}
-                    else:
-                        result["services"]["whatsapp"] = {
-                            "exists": True,
-                            "url": f"https://wa.me/{normalized}",
-                        }
-                except Exception as e:
-                    logger.debug(
-                        f"Phone lookup WhatsApp fallback scrape failed ({type(e).__name__}): {e}"
-                    )
+            try:
+                jitter_sleep(domain_hint="https://api.whatsapp.com")
+                wa_resp = curl_requests.get(
+                    f"https://api.whatsapp.com/send?phone={normalized}",
+                    headers={"User-Agent": "Mozilla/5.0"},
+                    impersonate="chrome124",
+                    timeout=10,
+                )
+                wa_text = wa_resp.text.lower()
+                if "phone number is not on whatsapp" in wa_text:
+                    result["services"]["whatsapp"] = {"exists": False}
+                else:
                     result["services"]["whatsapp"] = {
-                        "exists": None,
-                        "note": "Check failed",
+                        "exists": True,
+                        "url": f"https://wa.me/{normalized}",
                     }
+            except Exception as e:
+                logger.debug(
+                    f"Phone lookup WhatsApp fallback scrape failed ({type(e).__name__}): {e}"
+                )
+                result["services"]["whatsapp"] = {
+                    "exists": None,
+                    "note": "Check failed",
+                }
 
         if (
             "telegram" not in result["services"]
             or result["services"]["telegram"].get("exists") is None
         ):
-            with httpx.Client(follow_redirects=True, timeout=10) as client:
-                try:
-                    tg_url = f"https://t.me/+{normalized}"
-                    tg_resp = client.get(
-                        tg_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5
-                    )
-                    tg_text = tg_resp.text.lower()
-                    if (
-                        tg_resp.status_code == 400
-                        or "join" in tg_text
-                        or "subscribe" in tg_text
-                    ):
-                        result["services"]["telegram"] = {"exists": True, "url": tg_url}
-                    elif tg_resp.status_code == 200:
-                        result["services"]["telegram"] = {"exists": False}
-                    else:
-                        result["services"]["telegram"] = {
-                            "exists": None,
-                            "note": "Unable to verify",
-                        }
-                except Exception as e:
-                    logger.debug(
-                        f"Phone lookup Telegram fallback scrape failed ({type(e).__name__}): {e}"
-                    )
+            try:
+                tg_url = f"https://t.me/+{normalized}"
+                jitter_sleep(domain_hint="https://t.me")
+                tg_resp = curl_requests.get(
+                    tg_url,
+                    headers={"User-Agent": "Mozilla/5.0"},
+                    impersonate="chrome124",
+                    timeout=5,
+                )
+                tg_text = tg_resp.text.lower()
+                if (
+                    tg_resp.status_code == 400
+                    or "join" in tg_text
+                    or "subscribe" in tg_text
+                ):
+                    result["services"]["telegram"] = {"exists": True, "url": tg_url}
+                elif tg_resp.status_code == 200:
+                    result["services"]["telegram"] = {"exists": False}
+                else:
                     result["services"]["telegram"] = {
                         "exists": None,
-                        "note": "Check failed",
+                        "note": "Unable to verify",
                     }
+            except Exception as e:
+                logger.debug(
+                    f"Phone lookup Telegram fallback scrape failed ({type(e).__name__}): {e}"
+                )
+                result["services"]["telegram"] = {
+                    "exists": None,
+                    "note": "Check failed",
+                }
 
         if result["country_code"] == "+31":
             try:
@@ -314,7 +330,10 @@ def phone_lookup() -> flask.Response:
                     "country_code": "nl",
                     "phone": phone.lstrip("+").lstrip("00"),
                 }
-                bd_resp = httpx.get(bd_url, params=bd_params, timeout=10)
+                jitter_sleep(domain_hint=bd_url)
+                bd_resp = curl_requests.get(
+                    bd_url, params=bd_params, impersonate="chrome124", timeout=10
+                )
                 if bd_resp.status_code == 200:
                     bd_data = bd_resp.json().get("phone", {})
                     result["nl_info"] = {

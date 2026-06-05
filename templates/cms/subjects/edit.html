@@ -1,37 +1,37 @@
 {% extends "cms/base.html" %}
 {% block content %}
-<h2 style="margin-bottom: 1.5rem;">Edit Subject</h2>
+<h2 style="margin-bottom: 1.5rem;">{{ _('Edit Subject') }}</h2>
 <form method="POST" id="subjectForm" data-submit="handleEditSubmit">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="name">Name *</label>
+        <label for="name">{{ _('Name *') }}</label>
         <input type="text" name="name" id="name" value="{{ subject.name }}" required>
     </div>
     <div class="form-group">
-        <label for="subject_type">Type *</label>
+        <label for="subject_type">{{ _('Type *') }}</label>
         <select name="subject_type" id="subject_type" required data-change="toggleTypeFields">
-            <option value="person" {% if subject.subject_type == 'person' %}selected{% endif %}>Person</option>
-            <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>Company</option>
-            <option value="organization" {% if subject.subject_type == 'organization' %}selected{% endif %}>Organization</option>
-            <option value="vehicle" {% if subject.subject_type == 'vehicle' %}selected{% endif %}>Vehicle</option>
-            <option value="vessel" {% if subject.subject_type == 'vessel' %}selected{% endif %}>Vessel</option>
-            <option value="property" {% if subject.subject_type == 'property' %}selected{% endif %}>Property</option>
+            <option value="person" {% if subject.subject_type == 'person' %}selected{% endif %}>{{ _('Person') }}</option>
+            <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>{{ _('Company') }}</option>
+            <option value="organization" {% if subject.subject_type == 'organization' %}selected{% endif %}>{{ _('Organization') }}</option>
+            <option value="vehicle" {% if subject.subject_type == 'vehicle' %}selected{% endif %}>{{ _('Vehicle') }}</option>
+            <option value="vessel" {% if subject.subject_type == 'vessel' %}selected{% endif %}>{{ _('Vessel') }}</option>
+            <option value="property" {% if subject.subject_type == 'property' %}selected{% endif %}>{{ _('Property') }}</option>
         </select>
     </div>
     
     <div id="person-fields" style="display:none;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div class="form-group">
-                <label for="date_of_birth">Date of Birth</label>
+                <label for="date_of_birth">{{ _('Date of Birth') }}</label>
                 <input type="date" name="date_of_birth" id="date_of_birth" value="{{ subject.date_of_birth or '' }}">
             </div>
             <div class="form-group">
-                <label for="place_of_birth">Place of Birth</label>
-                <input type="text" name="place_of_birth" id="place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="e.g. Amsterdam, Netherlands">
+                <label for="place_of_birth">{{ _('Place of Birth') }}</label>
+                <input type="text" name="place_of_birth" id="place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="{{ _('e.g. Amsterdam, Netherlands') }}">
             </div>
         </div>
         <div class="form-group">
-            <label for="identification_number">ID/Passport Number</label>
+            <label for="identification_number">{{ _('ID/Passport Number') }}</label>
             <input type="text" name="identification_number" id="identification_number" value="{{ subject.identification_number or '' }}">
         </div>
     </div>
@@ -40,13 +40,13 @@
         <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong style="color: #0369a1;">RDW Vehicle Data</strong>
+                    <strong style="color: #0369a1;">{{ _('RDW Vehicle Data') }}</strong>
                     <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: #64748b;">
-                        Enter a license plate (kenteken) and fetch official RDW data
+                        {{ _('Enter a license plate (kenteken) and fetch official RDW data') }}
                     </p>
                 </div>
                 <button type="button" data-click="fetchRDWData" id="fetchRdwBtn" class="btn-cms" style="background: #0ea5e9;">
-                    🚗 Fetch from RDW
+                    {{ _('🚗 Fetch from RDW') }}
                 </button>
             </div>
             <div id="rdwStatus" style="margin-top: 0.5rem; font-size: 0.875rem;"></div>
@@ -54,104 +54,103 @@
         
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div class="form-group">
-                <label for="license_plate">License Plate (Kenteken)</label>
-                <input type="text" name="license_plate" id="license_plate" value="{{ subject.license_plate or '' }}" placeholder="e.g. AB-12-CD">
+                <label for="license_plate">{{ _('License Plate (Kenteken)') }}</label>
+                <input type="text" name="license_plate" id="license_plate" value="{{ subject.license_plate or '' }}" placeholder="{{ _('e.g. AB-12-CD') }}">
             </div>
             <div class="form-group">
-                <label for="vin">VIN (Chassisnummer)</label>
-                <input type="text" name="vin" id="vin" value="{{ subject.vin or '' }}" placeholder="17 characters">
+                <label for="vin">{{ _('VIN (Chassisnummer)') }}</label>
+                <input type="text" name="vin" id="vin" value="{{ subject.vin or '' }}" placeholder="{{ _('17 characters') }}">
             </div>
             <div class="form-group">
-                <label for="brand">Merk</label>
+                <label for="brand">{{ _('Merk') }}</label>
                 <input type="text" name="brand" id="brand" value="{{ subject.brand or '' }}">
             </div>
             <div class="form-group">
-                <label for="handelsbenaming">Model (Handelsbenaming)</label>
+                <label for="handelsbenaming">{{ _('Model (Handelsbenaming)') }}</label>
                 <input type="text" name="handelsbenaming" id="handelsbenaming" value="">
             </div>
             <div class="form-group">
-                <label for="vehicle_type">Inrichting</label>
-                <input type="text" name="vehicle_type" id="vehicle_type" value="{{ subject.vehicle_type or '' }}" placeholder="e.g. sedan, stationwagen">
+                <label for="vehicle_type">{{ _('Inrichting') }}</label>
+                <input type="text" name="vehicle_type" id="vehicle_type" value="{{ subject.vehicle_type or '' }}" placeholder="{{ _('e.g. sedan, stationwagen') }}">
             </div>
             <div class="form-group">
-                <label for="voertuigsoort">Voertuigsoort</label>
+                <label for="voertuigsoort">{{ _('Voertuigsoort') }}</label>
                 <input type="text" name="voertuigsoort" id="voertuigsoort" value="">
             </div>
             <div class="form-group">
-                <label for="eerste_kleur">Kleur (Eerste)</label>
+                <label for="eerste_kleur">{{ _('Kleur (Eerste)') }}</label>
                 <input type="text" name="eerste_kleur" id="eerste_kleur" value="">
             </div>
             <div class="form-group">
-                <label for="tweede_kleur">Kleur (Tweede)</label>
+                <label for="tweede_kleur">{{ _('Kleur (Tweede)') }}</label>
                 <input type="text" name="tweede_kleur" id="tweede_kleur" value="">
             </div>
             <div class="form-group">
-                <label for="aantal_deuren">Aantal Deuren</label>
+                <label for="aantal_deuren">{{ _('Aantal Deuren') }}</label>
                 <input type="number" name="aantal_deuren" id="aantal_deuren" value="">
             </div>
             <div class="form-group">
-                <label for="aantal_zitplaatsen">Aantal Zitplaatsen</label>
+                <label for="aantal_zitplaatsen">{{ _('Aantal Zitplaatsen') }}</label>
                 <input type="number" name="aantal_zitplaatsen" id="aantal_zitplaatsen" value="">
             </div>
             <div class="form-group">
-                <label for="cilinderinhoud">Cilinderinhoud (cc)</label>
+                <label for="cilinderinhoud">{{ _('Cilinderinhoud (cc)') }}</label>
                 <input type="number" name="cilinderinhoud" id="cilinderinhoud" value="">
             </div>
             <div class="form-group">
-                <label for="aantal_cilinders">Aantal Cilinders</label>
+                <label for="aantal_cilinders">{{ _('Aantal Cilinders') }}</label>
                 <input type="number" name="aantal_cilinders" id="aantal_cilinders" value="">
             </div>
             <div class="form-group">
-                <label for="massa_ledig">Massa Ledig (kg)</label>
+                <label for="massa_ledig">{{ _('Massa Ledig (kg)') }}</label>
                 <input type="number" name="massa_ledig" id="massa_ledig" value="">
             </div>
             <div class="form-group">
-                <label for="maximum_massa">Maximum Massa (kg)</label>
+                <label for="maximum_massa">{{ _('Maximum Massa (kg)') }}</label>
                 <input type="number" name="maximum_massa" id="maximum_massa" value="">
             </div>
             <div class="form-group">
-                <label for="vervaldatum_apk">APK Vervaldatum</label>
-                <input type="text" name="vervaldatum_apk" id="vervaldatum_apk" value="" placeholder="YYYYMMDD">
+                <label for="vervaldatum_apk">{{ _('APK Vervaldatum') }}</label>
+                <input type="text" name="vervaldatum_apk" id="vervaldatum_apk" value="" placeholder="{{ _('YYYYMMDD') }}">
             </div>
             <div class="form-group">
-                <label for="wam_verzekerd">WAM Verzekerd</label>
+                <label for="wam_verzekerd">{{ _('WAM Verzekerd') }}</label>
                 <input type="text" name="wam_verzekerd" id="wam_verzekerd" value="">
             </div>
             <div class="form-group">
-                <label for="taxi_indicator">Taxi</label>
+                <label for="taxi_indicator">{{ _('Taxi') }}</label>
                 <input type="text" name="taxi_indicator" id="taxi_indicator" value="">
             </div>
             <div class="form-group">
-                <label for="export_indicator">Geexporteerd</label>
+                <label for="export_indicator">{{ _('Geexporteerd') }}</label>
                 <input type="text" name="export_indicator" id="export_indicator" value="">
             </div>
             <div class="form-group">
-                <label for="europese_voertuigcategorie">EU Categorie</label>
+                <label for="europese_voertuigcategorie">{{ _('EU Categorie') }}</label>
                 <input type="text" name="europese_voertuigcategorie" id="europese_voertuigcategorie" value="">
             </div>
             <div class="form-group">
-                <label for="zuinigheidsclassificatie">Zuinigheidsclassificatie</label>
+                <label for="zuinigheidsclassificatie">{{ _('Zuinigheidsclassificatie') }}</label>
                 <input type="text" name="zuinigheidsclassificatie" id="zuinigheidsclassificatie" value="">
             </div>
             <div class="form-group">
-                <label for="catalogusprijs">Catalogusprijs (EUR)</label>
+                <label for="catalogusprijs">{{ _('Catalogusprijs (EUR)') }}</label>
                 <input type="number" name="catalogusprijs" id="catalogusprijs" value="">
             </div>
             <div class="form-group">
-                <label for="datum_eerste_toelating">Datum Eerste Toelating</label>
-                <input type="text" name="datum_eerste_toelating" id="datum_eerste_toelating" value="" placeholder="YYYYMMDD">
+                <label for="datum_eerste_toelating">{{ _('Datum Eerste Toelating') }}</label>
+                <input type="text" name="datum_eerste_toelating" id="datum_eerste_toelating" value="" placeholder="{{ _('YYYYMMDD') }}">
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
-                <label for="insurance_company">Verzekeringsmaatschappij</label>
+                <label for="insurance_company">{{ _('Verzekeringsmaatschappij') }}</label>
                 <input type="text" name="insurance_company" id="insurance_company" value="{{ subject.insurance_company or '' }}">
             </div>
         </div>
         
         <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
-            <strong style="color: #92400e;">Note:</strong>
+            <strong style="color: #92400e;">{{ _('Note:') }}</strong>
             <span style="color: #78350f; font-size: 0.875rem;">
-                All fields above are fetched from RDW (open data). 
-                The kenteken and merk are also saved to the basic vehicle fields.
+                {{ _('All fields above are fetched from RDW (open data). The kenteken and merk are also saved to the basic vehicle fields.') }}
             </span>
         </div>
     </div>
@@ -160,17 +159,17 @@
         <div style="background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                    <h3 style="margin: 0 0 0.25rem 0;">🚢 Vessel Information</h3>
-                    <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Look up vessel data from MarinePlan, KVNR, Binnenvaart.eu</p>
+                    <h3 style="margin: 0 0 0.25rem 0;">{{ _('🚢 Vessel Information') }}</h3>
+                    <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">{{ _('Look up vessel data from MarinePlan, KVNR, Binnenvaart.eu') }}</p>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <input type="text" id="vessel_lookup_imo" placeholder="IMO" value="{{ subject.imo_number or '' }}"
+                    <input type="text" id="vessel_lookup_imo" placeholder="{{ _('IMO') }}" value="{{ subject.imo_number or '' }}"
                            style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 140px;">
-                    <input type="text" id="vessel_lookup_mmsi" placeholder="MMSI" value="{{ subject.mmsi or '' }}"
+                    <input type="text" id="vessel_lookup_mmsi" placeholder="{{ _('MMSI') }}" value="{{ subject.mmsi or '' }}"
                            style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 140px;">
                     <button type="button" data-click="lookupVesselEdit" id="fetchVesselBtn"
                             style="padding: 0.75rem 1.5rem; background: white; color: #0e7490; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
-                        🔍 Zoek Schip
+                        {{ _('🔍 Zoek Schip') }}
                     </button>
                 </div>
             </div>
@@ -179,51 +178,51 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div class="form-group">
-                <label for="imo_number">IMO Nummer</label>
-                <input type="text" name="imo_number" id="imo_number" value="{{ subject.imo_number or '' }}" placeholder="e.g. 9175717">
+                <label for="imo_number">{{ _('IMO Nummer') }}</label>
+                <input type="text" name="imo_number" id="imo_number" value="{{ subject.imo_number or '' }}" placeholder="{{ _('e.g. 9175717') }}">
             </div>
             <div class="form-group">
-                <label for="mmsi_id">MMSI</label>
-                <input type="text" name="mmsi" id="mmsi_id" value="{{ subject.mmsi or '' }}" placeholder="9 digits">
+                <label for="mmsi_id">{{ _('MMSI') }}</label>
+                <input type="text" name="mmsi" id="mmsi_id" value="{{ subject.mmsi or '' }}" placeholder="{{ _('9 digits') }}">
             </div>
             <div class="form-group">
-                <label for="eni_number">ENI (Binnenvaart)</label>
-                <input type="text" name="eni_number" id="eni_number" value="{{ subject.eni_number or '' }}" placeholder="7 or 8 digits">
+                <label for="eni_number">{{ _('ENI (Binnenvaart)') }}</label>
+                <input type="text" name="eni_number" id="eni_number" value="{{ subject.eni_number or '' }}" placeholder="{{ _('7 or 8 digits') }}">
             </div>
             <div class="form-group">
-                <label for="vessel_nationality">Vlag / Flag State</label>
-                <input type="text" name="vessel_nationality" id="vessel_nationality" value="{{ subject.vessel_nationality or '' }}" placeholder="e.g. Netherlands">
+                <label for="vessel_nationality">{{ _('Vlag / Flag State') }}</label>
+                <input type="text" name="vessel_nationality" id="vessel_nationality" value="{{ subject.vessel_nationality or '' }}" placeholder="{{ _('e.g. Netherlands') }}">
             </div>
         </div>
     </div>
     
     <div class="form-group">
-        <label>Address(es)</label>
+        <label>{{ _('Address(es)') }}</label>
         <div id="addresses-container">
             {% if subject.addresses.count() > 0 %}
                 {% for addr in subject.addresses %}
                 <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
                     <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
                         <div>
-                            <label style="font-size:0.75rem;">Street</label>
-                            <input type="text" class="addr-street" value="{{ addr.street or '' }}" placeholder="Street name" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                            <input type="text" class="addr-street" value="{{ addr.street or '' }}" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
-                            <label style="font-size:0.75rem;">Number</label>
-                            <input type="text" class="addr-number" value="{{ addr.number or '' }}" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Number') }}</label>
+                            <input type="text" class="addr-number" value="{{ addr.number or '' }}" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
-                            <label style="font-size:0.75rem;">Zipcode</label>
-                            <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                            <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
-                            <label style="font-size:0.75rem;">Town</label>
-                            <input type="text" class="addr-town" value="{{ addr.town or '' }}" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Town') }}</label>
+                            <input type="text" class="addr-town" value="{{ addr.town or '' }}" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div style="display:flex;align-items:center;gap:0.25rem;">
-                            <button type="button" data-click="postcodeCheck" title="Look up zipcode + number" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
+                            <button type="button" data-click="postcodeCheck" title="{{ _('Look up zipcode + number') }}" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
                             <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
-                                <input type="checkbox" class="addr-primary" {% if addr.is_primary %}checked{% endif %}> Primary
+                                <input type="checkbox" class="addr-primary" {% if addr.is_primary %}checked{% endif %}> {{ _('Primary') }}
                             </label>
                             <button type="button" data-click="removeEntry" data-arg0=".address-entry" style="font-size:0.75rem;padding:0.25rem 0.5rem;background:#fee2e2;border:1px solid #fecaca;border-radius:4px;cursor:pointer;color:#991b1b;">✕</button>
                         </div>
@@ -235,25 +234,25 @@
             <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
                 <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
                     <div>
-                        <label style="font-size:0.75rem;">Street</label>
-                        <input type="text" class="addr-street" placeholder="Street name" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                        <input type="text" class="addr-street" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
-                        <label style="font-size:0.75rem;">Number</label>
-                        <input type="text" class="addr-number" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <label style="font-size:0.75rem;">{{ _('Number') }}</label>
+                        <input type="text" class="addr-number" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
-                        <label style="font-size:0.75rem;">Zipcode</label>
-                        <input type="text" class="addr-zipcode" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                        <input type="text" class="addr-zipcode" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
-                        <label style="font-size:0.75rem;">Town</label>
-                        <input type="text" class="addr-town" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <label style="font-size:0.75rem;">{{ _('Town') }}</label>
+                        <input type="text" class="addr-town" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div style="display:flex;align-items:center;gap:0.25rem;">
-                        <button type="button" data-click="postcodeCheck" title="Look up zipcode + number" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
+                        <button type="button" data-click="postcodeCheck" title="{{ _('Look up zipcode + number') }}" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
                         <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
-                            <input type="checkbox" class="addr-primary" checked> Primary
+                            <input type="checkbox" class="addr-primary" checked> {{ _('Primary') }}
                         </label>
                     </div>
                 </div>
@@ -261,30 +260,30 @@
             </div>
             {% endif %}
         </div>
-        <button type="button" data-click="addAddress" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another address</button>
+        <button type="button" data-click="addAddress" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another address') }}</button>
         <input type="hidden" name="addresses_data" id="addresses-data" value="">
     </div>
     <div class="form-group">
-        <label>Contact(s)</label>
+        <label>{{ _('Contact(s)') }}</label>
         <div id="contacts-container">
             {% if subject.contacts.count() > 0 %}
                 {% for c in subject.contacts %}
                 <div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
                     <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                         <div>
-                            <label style="font-size:0.75rem;">Type</label>
+                            <label style="font-size:0.75rem;">{{ _('Type') }}</label>
                             <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
-                                <option value="email" {% if c.contact_type == 'email' %}selected{% endif %}>Email</option>
-                                <option value="phone" {% if c.contact_type == 'phone' %}selected{% endif %}>Phone</option>
+                                <option value="email" {% if c.contact_type == 'email' %}selected{% endif %}>{{ _('Email') }}</option>
+                                <option value="phone" {% if c.contact_type == 'phone' %}selected{% endif %}>{{ _('Phone') }}</option>
                             </select>
                         </div>
                         <div>
-                            <label style="font-size:0.75rem;">Value</label>
-                            <input type="text" class="contact-value" value="{{ c.value }}" placeholder="email@example.com or +31612345678" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Value') }}</label>
+                            <input type="text" class="contact-value" value="{{ c.value }}" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                             <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
-                                <input type="checkbox" class="contact-primary" {% if c.is_primary %}checked{% endif %}> Primary
+                                <input type="checkbox" class="contact-primary" {% if c.is_primary %}checked{% endif %}> {{ _('Primary') }}
                             </label>
                             <button type="button" data-click="removeEntry" data-arg0=".contact-entry" style="font-size:0.75rem;padding:0.25rem 0.5rem;background:#fee2e2;border:1px solid #fecaca;border-radius:4px;cursor:pointer;color:#991b1b;">✕</button>
                         </div>
@@ -295,37 +294,37 @@
             <div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;{% if subject.contacts.count() > 0 %}display:none;{% endif %}">
                 <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                     <div>
-                        <label style="font-size:0.75rem;">Type</label>
+                        <label style="font-size:0.75rem;">{{ _('Type') }}</label>
                         <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
-                            <option value="email">Email</option>
-                            <option value="phone">Phone</option>
+                            <option value="email">{{ _('Email') }}</option>
+                            <option value="phone">{{ _('Phone') }}</option>
                         </select>
                     </div>
                     <div>
-                        <label style="font-size:0.75rem;">Value</label>
-                        <input type="text" class="contact-value" placeholder="email@example.com or +31612345678" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <label style="font-size:0.75rem;">{{ _('Value') }}</label>
+                        <input type="text" class="contact-value" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                         <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
-                            <input type="checkbox" class="contact-primary" checked> Primary
+                            <input type="checkbox" class="contact-primary" checked> {{ _('Primary') }}
                         </label>
                     </div>
                 </div>
             </div>
         </div>
-        <button type="button" data-click="addContact" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">+ Add another contact</button>
+        <button type="button" data-click="addContact" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another contact') }}</button>
         <input type="hidden" name="contacts_data" id="contacts-data" value="">
     </div>
     <div class="form-group">
-        <label for="risk_score">Risk Score (0-100)</label>
+        <label for="risk_score">{{ _('Risk Score (0-100)') }}</label>
         <input type="number" name="risk_score" id="risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100">
     </div>
     <div class="form-group">
-        <label for="notes">Notes</label>
-        <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)</p>
+        <label for="notes">{{ _('Notes') }}</label>
+        <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">{{ _('📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)') }}</p>
     </div>
-    <button type="submit" class="btn-cms primary">Save Changes</button>
-    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">Cancel</a>
+    <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
+    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Cancel') }}</a>
 </form>
 <script nonce="{{ csp_nonce }}">
 function toggleTypeFields() {
@@ -341,13 +340,13 @@ function fetchRDWData() {
     const btn = document.getElementById('fetchRdwBtn');
     
     if (!kenteken) {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">Please enter a license plate (kenteken) first</span>';
+        statusDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Please enter a license plate (kenteken) first")|replace("'", "\\\\'")|safe }}</span>';
         return;
     }
     
     btn.disabled = true;
-    btn.textContent = 'Loading...';
-    statusDiv.innerHTML = '<span style="color: #0369a1;">Fetching RDW data...</span>';
+    btn.textContent = '{{ _("Loading...")|replace("'", "\\\\'")|safe }}';
+    statusDiv.innerHTML = '<span style="color: #0369a1;">{{ _("Fetching RDW data...")|replace("'", "\\\\'")|safe }}</span>';
     
     fetch('/cms/check-rdw-vehicle', {
         method: 'POST',
@@ -357,16 +356,16 @@ function fetchRDWData() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+            statusDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:")|replace("'", "\\\\'")|safe }} ' + esc(data.error) + '</span>';
             btn.disabled = false;
-            btn.textContent = '🚗 Fetch from RDW';
+            btn.textContent = '{{ _("🚗 Fetch from RDW")|replace("'", "\\\\'")|safe }}';
             return;
         }
         
         if (!data.found) {
-            statusDiv.innerHTML = '<span style="color: #f59e0b;">No vehicle found for: ' + esc(kenteken) + '</span>';
+            statusDiv.innerHTML = '<span style="color: #f59e0b;">{{ _("No vehicle found for:")|replace("'", "\\\\'")|safe }} ' + esc(kenteken) + '</span>';
             btn.disabled = false;
-            btn.textContent = '🚗 Fetch from RDW';
+            btn.textContent = '{{ _("🚗 Fetch from RDW")|replace("'", "\\\\'")|safe }}';
             return;
         }
         
@@ -393,14 +392,14 @@ function fetchRDWData() {
         if (data.catalogusprijs) document.getElementById('catalogusprijs').value = data.catalogusprijs;
         if (data.datum_eerste_toelating) document.getElementById('datum_eerste_toelating').value = data.datum_eerste_toelating;
         
-        statusDiv.innerHTML = '<span style="color: #16a34a;">✅ RDW data loaded for ' + esc(data.merk) + ' ' + esc(data.handelsbenaming) + '</span>';
+        statusDiv.innerHTML = '<span style="color: #16a34a;">{{ _("✅ RDW data loaded for")|replace("'", "\\\\'")|safe }} ' + esc(data.merk) + ' ' + esc(data.handelsbenaming) + '</span>';
         btn.disabled = false;
-        btn.textContent = '🚗 Fetch from RDW';
+        btn.textContent = '{{ _("🚗 Fetch from RDW")|replace("'", "\\\\'")|safe }}';
     })
     .catch(err => {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+        statusDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:")|replace("'", "\\\\'")|safe }} ' + esc(err.message) + '</span>';
         btn.disabled = false;
-        btn.textContent = '🚗 Fetch from RDW';
+        btn.textContent = '{{ _("🚗 Fetch from RDW")|replace("'", "\\\\'")|safe }}';
     });
 }
 
@@ -438,7 +437,7 @@ function postcodeCheck(btn) {
     const number = entry.querySelector('.addr-number').value.trim();
 
     if (!zipcode || !number) {
-        alert('Enter zipcode and house number first');
+        alert('{{ _("Enter zipcode and house number first")|replace("'", "\\\\'")|safe }}');
         return;
     }
 
@@ -516,13 +515,13 @@ function lookupVesselEdit() {
     const btn = document.getElementById('fetchVesselBtn');
 
     if (!imo && !mmsi && !name) {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">Enter IMO, MMSI, or name</span>';
+        statusDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Enter IMO, MMSI, or name")|replace("'", "\\\\'")|safe }}</span>';
         return;
     }
 
     btn.disabled = true;
-    btn.textContent = 'Loading...';
-    statusDiv.innerHTML = '<span style="color: #0891b2;">Looking up vessel...</span>';
+    btn.textContent = '{{ _("Loading...")|replace("'", "\\\\'")|safe }}';
+    statusDiv.innerHTML = '<span style="color: #0891b2;">{{ _("Looking up vessel...")|replace("'", "\\\\'")|safe }}</span>';
 
     fetch('/cms/api/vessel-lookup', {
         method: 'POST',
@@ -532,16 +531,16 @@ function lookupVesselEdit() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+            statusDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:")|replace("'", "\\\\'")|safe }} ' + esc(data.error) + '</span>';
             btn.disabled = false;
-            btn.textContent = '🔍 Zoek Schip';
+            btn.textContent = '{{ _("🔍 Zoek Schip")|replace("'", "\\\\'")|safe }}';
             return;
         }
 
         if (!data.found) {
-            statusDiv.innerHTML = '<span style="color: #f59e0b;">No vessel found</span>';
+            statusDiv.innerHTML = '<span style="color: #f59e0b;">{{ _("No vessel found")|replace("'", "\\\\'")|safe }}</span>';
             btn.disabled = false;
-            btn.textContent = '🔍 Zoek Schip';
+            btn.textContent = '{{ _("🔍 Zoek Schip")|replace("'", "\\\\'")|safe }}';
             return;
         }
 
@@ -551,14 +550,14 @@ function lookupVesselEdit() {
         if (data.flag) document.getElementById('vessel_nationality').value = data.flag;
 
         let sources = (data.sources || []).join(', ');
-        statusDiv.innerHTML = '<span style="color: #16a34a;">✅ Found: ' + esc(data.name) + ' (' + esc(sources) + ')</span>';
+        statusDiv.innerHTML = '<span style="color: #16a34a;">{{ _("✅ Found:")|replace("'", "\\\\'")|safe }} ' + esc(data.name) + ' (' + esc(sources) + ')</span>';
         btn.disabled = false;
-        btn.textContent = '🔍 Zoek Schip';
+        btn.textContent = '{{ _("🔍 Zoek Schip")|replace("'", "\\\\'")|safe }}';
     })
     .catch(err => {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+        statusDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:")|replace("'", "\\\\'")|safe }} ' + esc(err.message) + '</span>';
         btn.disabled = false;
-        btn.textContent = '🔍 Zoek Schip';
+        btn.textContent = '{{ _("🔍 Zoek Schip")|replace("'", "\\\\'")|safe }}';
     });
 }
 

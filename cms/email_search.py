@@ -2,7 +2,8 @@ import asyncio
 import logging
 import socket
 
-import httpx
+from curl_cffi import requests as curl_requests
+from curl_cffi import CurlError
 
 from cms.constants import HEADERS
 from cms.validators import validate_email, interpolate_string
@@ -92,9 +93,7 @@ async def check_email_site(client, site_name, site_info, email):
     url = interpolate_string(site_info.get("url", ""), email)
     finding["url"] = url
     try:
-        response = await client.head(
-            url, headers=HEADERS, timeout=10, follow_redirects=True
-        )
+        response = await client.head(url, headers=HEADERS, timeout=10)
         finding["http_status"] = response.status_code
         if response.status_code == 200:
             finding["exists"] = True
@@ -102,11 +101,14 @@ async def check_email_site(client, site_name, site_info, email):
         else:
             finding["exists"] = False
             finding["status"] = "not_found"
-    except httpx.TimeoutException:
-        finding["status"] = "timeout"
-        finding["rateLimit"] = True
-    except httpx.ConnectError:
-        finding["status"] = "connection_error"
+    except CurlError as e:
+        if "timeout" in str(e).lower() or "timed out" in str(e).lower():
+            finding["status"] = "timeout"
+            finding["rateLimit"] = True
+        elif "connection" in str(e).lower() or "couldn't connect" in str(e).lower():
+            finding["status"] = "connection_error"
+        else:
+            finding["status"] = "error"
     except Exception:
         finding["status"] = "error"
     return finding
@@ -219,7 +221,9 @@ async def search_email_async(email, progress_callback=None, limit=30):
     rate_limits_hit = []
     batch_size = 30
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
+    async with curl_requests.AsyncSession(
+        impersonate="chrome124", timeout=30
+    ) as client:
         site_items = list(email_sites.items())
 
         for i in range(0, total_sites, batch_size):
@@ -323,7 +327,9 @@ async def search_email_holehe(email, progress_callback=None):
     websites = get_functions(modules, args)
     total = len(websites)
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
+    async with curl_requests.AsyncSession(
+        impersonate="chrome124", timeout=30
+    ) as client:
         for website in websites:
             website_name = website.__name__
             try:

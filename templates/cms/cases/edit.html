@@ -75,42 +75,42 @@
     }
 </style>
 
-<h2 style="margin-bottom: 1.5rem;">Edit Case</h2>
+<h2 style="margin-bottom: 1.5rem;">{{ _('Edit Case') }}</h2>
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="title">Case Title *</label>
+        <label for="title">{{ _('Case Title *') }}</label>
         <input type="text" name="title" id="title" value="{{ case.title }}" required>
     </div>
     
     <div class="form-group">
-        <label for="description">Description</label>
+        <label for="description">{{ _('Description') }}</label>
         <textarea name="description" id="description" rows="4" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;">{{ case.description or '' }}</textarea>
     </div>
     
     <div class="form-group">
-        <label for="priority">Priority</label>
+        <label for="priority">{{ _('Priority') }}</label>
         <select name="priority" id="priority">
-            <option value="low" {% if case.priority == 'low' %}selected{% endif %}>Low</option>
-            <option value="medium" {% if case.priority == 'medium' %}selected{% endif %}>Medium</option>
-            <option value="high" {% if case.priority == 'high' %}selected{% endif %}>High</option>
-            <option value="critical" {% if case.priority == 'critical' %}selected{% endif %}>Critical</option>
+            <option value="low" {% if case.priority == 'low' %}selected{% endif %}>{{ _('Low') }}</option>
+            <option value="medium" {% if case.priority == 'medium' %}selected{% endif %}>{{ _('Medium') }}</option>
+            <option value="high" {% if case.priority == 'high' %}selected{% endif %}>{{ _('High') }}</option>
+            <option value="critical" {% if case.priority == 'critical' %}selected{% endif %}>{{ _('Critical') }}</option>
         </select>
     </div>
     
     <div class="form-group">
-        <label for="case_type">Criminal Code (searchable)</label>
+        <label for="case_type">{{ _('Criminal Code (searchable)') }}</label>
         <div class="combobox-container">
-            <input type="text" id="case_type" class="combobox-input" placeholder="Type to search..." value="{{ case.case_type or '' }}" autocomplete="off">
+            <input type="text" id="case_type" class="combobox-input" placeholder="{{ _('Type to search...') }}" value="{{ case.case_type or '' }}" autocomplete="off">
             <input type="hidden" name="case_type" id="case_type_value" value="{{ case.case_type or '' }}">
             <div id="case_type_list" class="combobox-list"></div>
         </div>
     </div>
     
     <div class="form-group">
-        <label for="lead_investigator_id">Lead Investigator</label>
+        <label for="lead_investigator_id">{{ _('Lead Investigator') }}</label>
         <select name="lead_investigator_id" id="lead_investigator_id">
-            <option value="">Select lead investigator</option>
+            <option value="">{{ _('Select lead investigator') }}</option>
             {% for investigator in investigators %}
             <option value="{{ investigator.id }}" {% if case.lead_investigator_id == investigator.id %}selected{% endif %}>{{ investigator.full_name }} ({{ investigator.role }})</option>
             {% endfor %}
@@ -118,22 +118,22 @@
     </div>
     
     <div class="form-group">
-        <label for="jurisdiction">Jurisdiction</label>
+        <label for="jurisdiction">{{ _('Jurisdiction') }}</label>
         <input type="text" name="jurisdiction" id="jurisdiction" value="{{ case.jurisdiction or '' }}">
     </div>
     
     <div class="form-group">
-        <label for="tags">Tags (comma-separated)</label>
-        <input type="text" name="tags" id="tags" value="{{ case.tags|join(', ') if case.tags else '' }}" placeholder="e.g. fraud, urgent, offshore">
+        <label for="tags">{{ _('Tags (comma-separated)') }}</label>
+        <input type="text" name="tags" id="tags" value="{{ case.tags|join(', ') if case.tags else '' }}" placeholder="{{ _('e.g. fraud, urgent, offshore') }}">
     </div>
     
     <div class="form-group">
-        <label for="target_end_date">Target End Date</label>
+        <label for="target_end_date">{{ _('Target End Date') }}</label>
         <input type="date" name="target_end_date" id="target_end_date" value="{{ case.target_end_date.strftime('%Y-%m-%d') if case.target_end_date else '' }}">
     </div>
     
-    <button type="submit" class="btn-cms primary">Save Changes</button>
-    <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">Cancel</a>
+    <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
+    <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Cancel') }}</a>
 </form>
 
 <script nonce="{{ csp_nonce }}">
@@ -188,7 +188,7 @@ function getItemsWithHeaders(items) {
 
 function renderList(items, scrollTop = 0) {
     if (items.length === 0) {
-        list.innerHTML = '<div class="combobox-header">No matches found</div>';
+        list.innerHTML = '<div class="combobox-header">' + {{ _('No matches found')|tojson }} + '</div>';
         list.classList.add('show');
         return;
     }

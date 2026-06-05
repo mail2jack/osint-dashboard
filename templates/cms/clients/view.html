@@ -1,39 +1,39 @@
 {% extends "cms/base.html" %}
-{% block title %}{{ client.name }} — CMS{% endblock %}
+{% block title %}{{ client.name }} — {{ _('CMS') }}{% endblock %}
 {% block content %}
-    <div class="back"><a href="{{ url_for('cms.clients') }}">← Back to Clients</a></div>
+    <div class="back"><a href="{{ url_for('cms.clients') }}">← {{ _('Back to Clients') }}</a></div>
     
     <div class="card">
         <div class="card-header">
-            <h2>{{ client.name }}{% if client.is_company %} <span class="badge">Company</span>{% endif %}
-                {% if not client.is_active %}<span class="badge badge-archived">GEARCHIVEERD</span>{% endif %}
+            <h2>{{ client.name }}{% if client.is_company %} <span class="badge">{{ _('Company') }}</span>{% endif %}
+                {% if not client.is_active %}<span class="badge badge-archived">{{ _('GEARCHIVEERD') }}</span>{% endif %}
             </h2>
             <div class="btn-group" style="margin:0;">
                 {% if active_cases_count == 0 and client.is_active %}
-                <button data-click="archiveClient" data-arg0="{{ client.id }}" class="btn-cms danger small">📁 Archiveer</button>
+                <button data-click="archiveClient" data-arg0="{{ client.id }}" class="btn-cms danger small">📁 {{ _('Archiveer') }}</button>
                 {% elif not client.is_active %}
-                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small" style="background:#059669;color:white;border-color:#059669;">↩️ Herstellen</button>
+                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small" style="background:#059669;color:white;border-color:#059669;">↩️ {{ _('Herstellen') }}</button>
                 {% endif %}
-                <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-cms small">✏️ Edit</a>
+                <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-cms small">✏️ {{ _('Edit') }}</a>
             </div>
         </div>
     
     <div class="card">
-        <div class="card-header"><h2>📞 Contact Information</h2></div>
+        <div class="card-header"><h2>📞 {{ _('Contact Information') }}</h2></div>
         <div class="info-grid">
             {% if client.is_company %}
             <div class="info-row">
-                <span class="info-label">Contact Person</span>
+                <span class="info-label">{{ _('Contact Person') }}</span>
                 <span class="info-value">{{ client.contact_person if client.contact_person else '-' }}</span>
             </div>
             {% endif %}
             {% if not client.is_company %}
             <div class="info-row">
-                <span class="info-label">Date of Birth</span>
+                <span class="info-label">{{ _('Date of Birth') }}</span>
                 <span class="info-value">{{ client.date_of_birth if client.date_of_birth else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Place of Birth</span>
+                <span class="info-label">{{ _('Place of Birth') }}</span>
                 <span class="info-value">{{ client.place_of_birth if client.place_of_birth else '-' }}</span>
             </div>
             {% endif %}
@@ -46,9 +46,9 @@
             <div class="contact-row">
                 <span class="icon">✉️</span>
                 <span class="value">{{ c.value }}</span>
-                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">PRIMARY</span>{% else %}<span></span>{% endif %}
+                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
                 <span class="actions">
-                    <button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">✉️ Check</button>
+                    <button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">✉️ {{ _('Check') }}</button>
                 </span>
                 <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
             </div>
@@ -60,7 +60,7 @@
             <span class="value">{{ client.contact_email }}</span>
             <span></span>
             <span class="actions">
-                <button data-click="emailCheck" data-arg0="{{ client.contact_email }}" class="btn-cms purple small">✉️ Check</button>
+                <button data-click="emailCheck" data-arg0="{{ client.contact_email }}" class="btn-cms purple small">✉️ {{ _('Check') }}</button>
             </span>
             <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
         </div>
@@ -71,9 +71,9 @@
             <div class="contact-row">
                 <span class="icon">📞</span>
                 <span class="value">{{ c.value }}</span>
-                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">PRIMARY</span>{% else %}<span></span>{% endif %}
+                {% if c.is_primary %}<span class="badge badge-primary" style="font-size:0.6rem;padding:0.15rem 0.45rem;">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
                 <span class="actions">
-                    <button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">📞 Check</button>
+                    <button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">📞 {{ _('Check') }}</button>
                 </span>
                 <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
             </div>
@@ -85,7 +85,7 @@
             <span class="value">{{ client.contact_phone }}</span>
             <span></span>
             <span class="actions">
-                <button data-click="phoneLookup" data-arg0="{{ client.contact_phone }}" class="btn-cms purple small">📞 Check</button>
+                <button data-click="phoneLookup" data-arg0="{{ client.contact_phone }}" class="btn-cms purple small">📞 {{ _('Check') }}</button>
             </span>
             <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
         </div>
@@ -93,23 +93,23 @@
     </div>
     
     <div class="card">
-        <div class="card-header"><h2>📍 Address(es)</h2></div>
+        <div class="card-header"><h2>📍 {{ _('Address(es)') }}</h2></div>
         {% if client.addresses.count() > 0 %}
             {% for addr in client.addresses %}
             <div class="address-card {% if addr.is_primary %}primary{% endif %}">
                 <div class="address-header">
                     <div>
                         <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
-                        {% if addr.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% endif %}
-                        {% if addr.kadaster_verified %}<span class="badge badge-kadaster">✓ KADASTER</span>{% endif %}
+                        {% if addr.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}
+                        {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ KADASTER') }}</span>{% endif %}
                         <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
                             {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
                             {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
                         </div>
                     </div>
                     <div class="btn-group" style="margin:0;">
-                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;">🏛 Kadaster</button>
-                        <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms danger small">🚔 Politiebureau</button>
+                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;">🏛 {{ _('Kadaster') }}</button>
+                        <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms danger small">🚔 {{ _('Politiebureau') }}</button>
                     </div>
                 </div>
                 <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
@@ -119,55 +119,55 @@
         {% else %}
             <div class="info-grid">
                 <div class="info-row">
-                    <span class="info-label">Street</span>
+                    <span class="info-label">{{ _('Street') }}</span>
                     <span class="info-value">{{ client.address_street or '' }}{% if client.address_street and client.address_number %}, {% endif %}{{ client.address_number or '' }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Postal Code</span>
+                    <span class="info-label">{{ _('Postal Code') }}</span>
                     <span class="info-value">{{ client.address_postal or '-' }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">City</span>
+                    <span class="info-label">{{ _('City') }}</span>
                     <span class="info-value">{{ client.address_city or '-' }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Country</span>
-                    <span class="info-value">{{ client.address_country or 'Netherlands' }}</span>
+                    <span class="info-label">{{ _('Country') }}</span>
+                    <span class="info-value">{{ client.address_country or _('Netherlands') }}</span>
                 </div>
             </div>
         {% endif %}
     </div>
     
     <div class="card">
-        <div class="card-header"><h2>📄 Contract Information</h2></div>
+        <div class="card-header"><h2>📄 {{ _('Contract Information') }}</h2></div>
         <div class="info-grid">
             <div class="info-row">
-                <span class="info-label">Contract Number</span>
+                <span class="info-label">{{ _('Contract Number') }}</span>
                 <span class="info-value">{{ client.contract_number if client.contract_number else '-' }}</span>
             </div>
         </div>
     </div>
     
     <div class="card">
-        <div class="card-header"><h2>💰 Financial Information</h2></div>
+        <div class="card-header"><h2>💰 {{ _('Financial Information') }}</h2></div>
         <div class="info-grid">
             <div class="info-row">
-                <span class="info-label">Social Security Number</span>
+                <span class="info-label">{{ _('Social Security Number') }}</span>
                 <span class="info-value">{{ client.social_security_number if client.social_security_number else '-' }}</span>
             </div>
             {% if client.is_company %}
             <div class="info-row">
-                <span class="info-label">VAT Number</span>
+                <span class="info-label">{{ _('VAT Number') }}</span>
                 <span class="info-value">{{ client.vat_number if client.vat_number else '-' }}</span>
             </div>
             {% endif %}
             <div class="info-row">
-                <span class="info-label">Bank Account</span>
+                <span class="info-label">{{ _('Bank Account') }}</span>
                 <span class="info-value">{{ client.bank_account if client.bank_account else '-' }}</span>
             </div>
             {% if client.financial_notes %}
             <div class="info-row" style="grid-column:1/-1;">
-                <span class="info-label">Financial Notes</span>
+                <span class="info-label">{{ _('Financial Notes') }}</span>
                 <span class="info-value">{{ client.financial_notes }}</span>
             </div>
             {% endif %}
@@ -176,12 +176,12 @@
     
     <div class="card">
         <div class="card-header">
-            <h2>📁 Cases ({{ cases|length }})</h2>
+            <h2>📁 {{ _('Cases') }} ({{ cases|length }})</h2>
             <span></span>
         </div>
         {% if cases %}
         <table class="data-table">
-            <thead><tr><th>Case Number</th><th>Title</th><th>Status</th></tr></thead>
+            <thead><tr><th>{{ _('Case Number') }}</th><th>{{ _('Title') }}</th><th>{{ _('Status') }}</th></tr></thead>
             <tbody>
                 {% for case in cases %}
                 <tr>
@@ -195,14 +195,14 @@
         {% else %}
         <div class="empty-state">
             <div class="icon">📂</div>
-            <p>No cases for this client.</p>
+            <p>{{ _('No cases for this client.') }}</p>
         </div>
         {% endif %}
     </div>
     
     <script nonce="{{ csp_nonce }}">
     function archiveClient(btn, clientId) {
-        if (!confirm('Are you sure you want to archive this client?')) return;
+        if (!confirm({{ _('Are you sure you want to archive this client?')|tojson }})) return;
         
         fetch('/cms/clients/' + clientId + '/archive', {
             method: 'POST',
@@ -214,16 +214,16 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('Error: ' + data.error);
+                alert({{ _('Error')|tojson }} + ': ' + data.error);
             } else {
                 window.location.href = '/cms/clients';
             }
         })
-        .catch(err => alert('Error: ' + err.message));
+        .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
     }
 
     function restoreClient(btn, clientId) {
-        if (!confirm('Weet u zeker dat u deze client wilt herstellen?')) return;
+        if (!confirm({{ _('Weet u zeker dat u deze client wilt herstellen?')|tojson }})) return;
         
         fetch('/cms/clients/' + clientId + '/restore', {
             method: 'POST',
@@ -235,12 +235,12 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('Fout: ' + data.error);
+                alert({{ _('Error')|tojson }} + ': ' + data.error);
             } else {
                 location.reload();
             }
         })
-        .catch(err => alert('Fout: ' + err.message));
+        .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
     }
 
     async function kadasterLookup(btn, addrId) {
@@ -249,9 +249,9 @@
         const origText = btn.textContent;
 
         btn.disabled = true;
-        btn.textContent = '🔍 Looking up...';
+        btn.textContent = {{ _('🔍 Looking up...')|tojson }};
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Contacting PDOK BAG...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Contacting PDOK BAG...')|tojson }} + '</span>';
 
         try {
             const resp = await fetch('/cms/api/kadaster-lookup', {
@@ -262,14 +262,14 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'Address not found') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || {{ _('Address not found')|tojson }}) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -278,28 +278,28 @@
             const b = data.bag_data;
             let html = '<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + esc(b.street || '') + ' ' + esc(b.number || '') + (b.number_addition ? '-' + esc(b.number_addition) : '') + '</div>';
-            html += '<div><strong>Zipcode:</strong> ' + esc(b.zipcode || '-') + '</div>';
-            html += '<div><strong>Town:</strong> ' + esc(b.town || '-') + '</div>';
-            html += '<div><strong>Municipality:</strong> ' + esc(b.municipality || '-') + '</div>';
-            html += '<div><strong>Province:</strong> ' + esc(b.province || '-') + '</div>';
-            html += '<div><strong>Building year:</strong> ' + esc(b.building_year || '-') + '</div>';
-            html += '<div><strong>Surface:</strong> ' + esc(b.surface ? b.surface + ' m²' : '-') + '</div>';
-            html += '<div><strong>Purpose:</strong> ' + esc(b.purpose || '-') + '</div>';
-            html += '<div><strong>Status:</strong> ' + esc(b.status || '-') + '</div>';
-            html += '<div><strong>Type:</strong> ' + esc(b.type || '-') + '</div>';
-            html += '<div><strong>BAG ID:</strong> ' + esc(b.bag_id || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Address')|tojson }} + ':</strong> ' + esc(b.street || '') + ' ' + esc(b.number || '') + (b.number_addition ? '-' + esc(b.number_addition) : '') + '</div>';
+            html += '<div><strong>' + {{ _('Zipcode')|tojson }} + ':</strong> ' + esc(b.zipcode || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Town')|tojson }} + ':</strong> ' + esc(b.town || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Municipality')|tojson }} + ':</strong> ' + esc(b.municipality || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Province')|tojson }} + ':</strong> ' + esc(b.province || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Building year')|tojson }} + ':</strong> ' + esc(b.building_year || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Surface')|tojson }} + ':</strong> ' + esc(b.surface ? b.surface + ' m²' : '-') + '</div>';
+            html += '<div><strong>' + {{ _('Purpose')|tojson }} + ':</strong> ' + esc(b.purpose || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Status')|tojson }} + ':</strong> ' + esc(b.status || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Type')|tojson }} + ':</strong> ' + esc(b.type || '-') + '</div>';
+            html += '<div><strong>' + {{ _('BAG ID')|tojson }} + ':</strong> ' + esc(b.bag_id || '-') + '</div>';
             if (b.coordinates) {
                 const coords = b.coordinates.replace('POINT(', '').replace(')', '');
                 const [lng, lat] = coords.split(' ');
-                html += '<div style="grid-column:1/-1;"><strong>Coordinates:</strong> ' + esc(lat) + ', ' + esc(lng) + ' (<a href="https://www.openstreetmap.org/?mlat=' + esc(lat) + '&mlon=' + esc(lng) + '&zoom=16" target="_blank">View on map</a>)</div>';
+                html += '<div style="grid-column:1/-1;"><strong>' + {{ _('Coordinates')|tojson }} + ':</strong> ' + esc(lat) + ', ' + esc(lng) + ' (<a href="https://www.openstreetmap.org/?mlat=' + esc(lat) + '&mlon=' + esc(lng) + '&zoom=16" target="_blank">' + {{ _('View on map')|tojson }} + '</a>)</div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
-            btn.textContent = '✅ Verified';
+            btn.textContent = {{ _('✅ Verified')|tojson }};
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -311,9 +311,9 @@
         const origText = btn.textContent;
 
         btn.disabled = true;
-        btn.textContent = '🔍 Looking up...';
+        btn.textContent = {{ _('🔍 Looking up...')|tojson }};
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Contacting politie.nl...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Contacting politie.nl...')|tojson }} + '</span>';
 
         try {
             const resp = await fetch('/cms/api/politiebureau-lookup', {
@@ -324,14 +324,14 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'No police station found') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || {{ _('No police station found')|tojson }}) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -339,25 +339,25 @@
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || 'Politiebureau') + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || {{ _('Politiebureau')|tojson }}) + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + esc(s.address || '-') + '</div>';
-            html += '<div><strong>Phone:</strong> ' + esc(s.phone || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Address')|tojson }} + ':</strong> ' + esc(s.address || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Phone')|tojson }} + ':</strong> ' + esc(s.phone || '-') + '</div>';
             if (s.opening_hours) {
-                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + esc(s.opening_hours) + '</div>';
+                html += '<div style="grid-column:1/-1;"><strong>' + {{ _('Opening hours')|tojson }} + ':</strong><br>' + esc(s.opening_hours) + '</div>';
             }
             if (s.location && s.location.latitude && s.location.longitude) {
-                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">📍 View on map</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">📍 ' + {{ _('View on map')|tojson }} + '</a></div>';
             }
             if (s.url) {
-                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">🔗 Politie.nl page</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">🔗 ' + {{ _('Politie.nl page')|tojson }} + '</a></div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
-            btn.textContent = '✅ Station found';
+            btn.textContent = {{ _('✅ Station found')|tojson }};
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -368,9 +368,9 @@
         const origText = btn.textContent;
 
         btn.disabled = true;
-        btn.textContent = '🔍 Checking...';
+        btn.textContent = {{ _('🔍 Checking...')|tojson }};
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Looking up phone number...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Looking up phone number...')|tojson }} + '</span>';
 
         try {
             const resp = await fetch('/cms/api/phone-lookup', {
@@ -381,7 +381,7 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -389,26 +389,26 @@
 
             let html = '<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Formatted:</strong> ' + esc(data.formatted || '-') + '</div>';
-            html += '<div><strong>Country:</strong> ' + esc(data.country || '-') + '</div>';
-            html += '<div><strong>Region:</strong> ' + esc(data.region || '-') + '</div>';
-            html += '<div><strong>Carrier:</strong> ' + esc(data.carrier || '-') + '</div>';
-            html += '<div><strong>Line Type:</strong> ' + esc(data.line_type || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Valid')|tojson }} + ':</strong> ' + (data.valid ? '✅ ' + {{ _('Yes')|tojson }} : '❌ ' + {{ _('No')|tojson }}) + '</div>';
+            html += '<div><strong>' + {{ _('Formatted')|tojson }} + ':</strong> ' + esc(data.formatted || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Country')|tojson }} + ':</strong> ' + esc(data.country || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Region')|tojson }} + ':</strong> ' + esc(data.region || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Carrier')|tojson }} + ':</strong> ' + esc(data.carrier || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Line Type')|tojson }} + ':</strong> ' + esc(data.line_type || '-') + '</div>';
             if (data.services && data.services.whatsapp) {
                 const wa = data.services.whatsapp;
-                html += '<div><strong>WhatsApp:</strong> ' + (wa.exists ? '✅ <a href="' + esc(wa.url) + '" target="_blank">Chat</a>' : (wa.exists === false ? '❌ Not found' : '⚠ ' + esc(wa.note || 'Unknown'))) + '</div>';
+                html += '<div><strong>' + {{ _('WhatsApp')|tojson }} + ':</strong> ' + (wa.exists ? '✅ <a href="' + esc(wa.url) + '" target="_blank">' + {{ _('Chat')|tojson }} + '</a>' : (wa.exists === false ? '❌ ' + {{ _('Not found')|tojson }} : '⚠ ' + esc(wa.note || {{ _('Unknown')|tojson }}))) + '</div>';
             }
             if (data.services && data.services.telegram) {
                 const tg = data.services.telegram;
-                html += '<div><strong>Telegram:</strong> ' + (tg.exists ? '✅ <a href="' + esc(tg.url) + '" target="_blank">Open</a>' : (tg.exists === false ? '❌ Not found' : '⚠ ' + esc(tg.note || 'Unknown'))) + '</div>';
+                html += '<div><strong>' + {{ _('Telegram')|tojson }} + ':</strong> ' + (tg.exists ? '✅ <a href="' + esc(tg.url) + '" target="_blank">' + {{ _('Open')|tojson }} + '</a>' : (tg.exists === false ? '❌ ' + {{ _('Not found')|tojson }} : '⚠ ' + esc(tg.note || {{ _('Unknown')|tojson }}))) + '</div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
-            btn.textContent = '✅ Done';
+            btn.textContent = {{ _('✅ Done')|tojson }};
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -419,9 +419,9 @@
         const origText = btn.textContent;
 
         btn.disabled = true;
-        btn.textContent = '🔍 Checking...';
+        btn.textContent = {{ _('🔍 Checking...')|tojson }};
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Checking email...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Checking email...')|tojson }} + '</span>';
 
         try {
             const resp = await fetch('/cms/api/email-check', {
@@ -432,7 +432,7 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -440,37 +440,37 @@
 
             let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Valid Format:</strong> ' + (data.valid_format ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Domain:</strong> ' + esc(data.domain || '-') + '</div>';
-            html += '<div><strong>MX Records:</strong> ' + (data.has_mx ? '✅ Found' : '❌ None') + '</div>';
-            html += '<div><strong>Disposable:</strong> ' + (data.disposable ? '⚠️ Yes' : '✅ No') + '</div>';
+            html += '<div><strong>' + {{ _('Valid Format')|tojson }} + ':</strong> ' + (data.valid_format ? '✅ ' + {{ _('Yes')|tojson }} : '❌ ' + {{ _('No')|tojson }}) + '</div>';
+            html += '<div><strong>' + {{ _('Domain')|tojson }} + ':</strong> ' + esc(data.domain || '-') + '</div>';
+            html += '<div><strong>' + {{ _('MX Records')|tojson }} + ':</strong> ' + (data.has_mx ? '✅ ' + {{ _('Found')|tojson }} : '❌ ' + {{ _('None')|tojson }}) + '</div>';
+            html += '<div><strong>' + {{ _('Disposable')|tojson }} + ':</strong> ' + (data.disposable ? '⚠️ ' + {{ _('Yes')|tojson }} : '✅ ' + {{ _('No')|tojson }}) + '</div>';
 
             if (data.hibp_breaches && data.hibp_breaches.length > 0) {
-                html += '<div style="grid-column:1/-1;"><strong>🔴 Breaches (' + data.hibp_breaches.length + '):</strong></div>';
+                html += '<div style="grid-column:1/-1;"><strong>🔴 ' + {{ _('Breaches')|tojson }} + ' (' + data.hibp_breaches.length + '):</strong></div>';
                 data.hibp_breaches.forEach(b => {
                     html += '<div style="grid-column:1/-1;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:0.4rem;margin-bottom:0.2rem;">';
-                    html += '<strong>' + esc(b.name) + '</strong> (' + esc(b.date || 'unknown') + ')';
+                    html += '<strong>' + esc(b.name) + '</strong> (' + esc(b.date || {{ _('unknown')|tojson }}) + ')';
                     if (b.data_classes && b.data_classes.length > 0) {
-                        html += '<br><span style="font-size:0.75rem;color:#666;">Data: ' + esc(b.data_classes.join(', ')) + '</span>';
+                        html += '<br><span style="font-size:0.75rem;color:#666;">' + {{ _('Data')|tojson }} + ': ' + esc(b.data_classes.join(', ')) + '</span>';
                     }
                     html += '</div>';
                 });
             } else {
-                html += '<div style="grid-column:1/-1;"><strong>Breaches:</strong> ' + (data.hibp_found === false ? '✅ None found' : '⚠️ Not checked') + '</div>';
+                html += '<div style="grid-column:1/-1;"><strong>' + {{ _('Breaches')|tojson }} + ':</strong> ' + (data.hibp_found === false ? '✅ ' + {{ _('None found')|tojson }} : '⚠️ ' + {{ _('Not checked')|tojson }}) + '</div>';
             }
 
             if (data.emailrep) {
                 const rep = data.emailrep;
                 html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
-                html += '<strong>EmailRep:</strong> ' + esc(rep.reputation || 'unknown') + ' | ';
-                html += 'Suspicious: ' + (rep.suspicious ? '⚠️ Yes' : '✅ No') + ' | ';
-                html += 'Details: ' + (rep.details ? esc(rep.details.join(', ')) : '-');
+                html += '<strong>' + {{ _('EmailRep')|tojson }} + ':</strong> ' + esc(rep.reputation || {{ _('unknown')|tojson }}) + ' | ';
+                html += {{ _('Suspicious')|tojson }} + ': ' + (rep.suspicious ? '⚠️ ' + {{ _('Yes')|tojson }} : '✅ ' + {{ _('No')|tojson }}) + ' | ';
+                html += {{ _('Details')|tojson }} + ': ' + (rep.details ? esc(rep.details.join(', ')) : '-');
                 html += '</div>';
             }
 
             if (data.search_links && data.search_links.length > 0) {
                 html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
-                html += '<strong>🔍 Investigate further:</strong> ';
+                html += '<strong>🔍 ' + {{ _('Investigate further')|tojson }} + ':</strong> ';
                 data.search_links.forEach(function(link, i) {
                     if (i > 0) html += ' | ';
                     html += '<a href="' + esc(link.url) + '" target="_blank" style="color:#2563eb;">' + esc(link.label) + '</a>';
@@ -480,10 +480,10 @@
 
             html += '</div></div>';
             resultDiv.innerHTML = html;
-            btn.textContent = '✅ Done';
+            btn.textContent = {{ _('✅ Done')|tojson }};
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -501,14 +501,14 @@
         const query = [street, postal, city, country].filter(Boolean).join(', ');
 
         if (!query) {
-            alert('No address available for this client.');
+            alert({{ _('No address available for this client.')|tojson }});
             return;
         }
 
         btn.disabled = true;
-        btn.textContent = '🔍 Looking up...';
+        btn.textContent = {{ _('🔍 Looking up...')|tojson }};
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Contacting politie.nl...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Contacting politie.nl...')|tojson }} + '</span>';
 
         try {
             const resp = await fetch('/cms/api/politiebureau-lookup', {
@@ -519,14 +519,14 @@
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'No police station found') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || {{ _('No police station found')|tojson }}) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -534,25 +534,25 @@
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || 'Politiebureau') + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || {{ _('Politiebureau')|tojson }}) + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + esc(s.address || '-') + '</div>';
-            html += '<div><strong>Phone:</strong> ' + esc(s.phone || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Address')|tojson }} + ':</strong> ' + esc(s.address || '-') + '</div>';
+            html += '<div><strong>' + {{ _('Phone')|tojson }} + ':</strong> ' + esc(s.phone || '-') + '</div>';
             if (s.opening_hours) {
-                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + esc(s.opening_hours) + '</div>';
+                html += '<div style="grid-column:1/-1;"><strong>' + {{ _('Opening hours')|tojson }} + ':</strong><br>' + esc(s.opening_hours) + '</div>';
             }
             if (s.location && s.location.latitude && s.location.longitude) {
-                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">📍 View on map</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">📍 ' + {{ _('View on map')|tojson }} + '</a></div>';
             }
             if (s.url) {
-                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">🔗 Politie.nl page</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">🔗 ' + {{ _('Politie.nl page')|tojson }} + '</a></div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
-            btn.textContent = '✅ Station found';
+            btn.textContent = {{ _('✅ Station found')|tojson }};
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">' + {{ _('Error')|tojson }} + ': ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }

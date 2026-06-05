@@ -1,0 +1,4068 @@
+# Dutch translations for Iveras OSINT Dashboard.
+# Copyright (C) 2026
+# This file is distributed under the same license as the Iveras project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Iveras OSINT Dashboard 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-05 09:21+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: \n"
+"Language: nl\n"
+"Language-Team: Dutch\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: cms/routes/exports.py:39
+msgid "Case Report"
+msgstr "Dossier rapport"
+
+#: templates/cms/404.html:6
+msgid "Not Found"
+msgstr "Niet gevonden"
+
+#: templates/cms/404.html:21
+msgid "Page Not Found"
+msgstr "Pagina niet gevonden"
+
+#: templates/cms/404.html:22
+msgid "The page you are looking for does not exist."
+msgstr "De pagina die u zoekt bestaat niet."
+
+#: templates/cms/404.html:23 templates/cms/500.html:23
+#: templates/cms/settings/index.html:173
+msgid "Back to Dashboard"
+msgstr "Terug naar dashboard"
+
+#: templates/cms/500.html:6
+msgid "Server Error"
+msgstr "Server fout"
+
+#: templates/cms/500.html:21
+msgid "Internal Server Error"
+msgstr "Interne server fout"
+
+#: templates/cms/500.html:22
+msgid "Something went wrong. Please try again later."
+msgstr "Er is iets misgegaan. Probeer het later opnieuw."
+
+#: templates/cms/base.html:14 templates/cms/clients/edit.html:2
+#: templates/cms/clients/view.html:2 templates/cms/subjects/view.html:3
+msgid "CMS"
+msgstr "CMS"
+
+#: templates/cms/base.html:530 templates/cms/dashboard.html:2
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: templates/cms/base.html:531 templates/cms/cases/list.html:3
+#: templates/cms/cases/list.html:8 templates/cms/clients/view.html:179
+#: templates/cms/search.html:172 templates/cms/search.html:213
+#: templates/cms/search.html:256
+msgid "Cases"
+msgstr "Zaken"
+
+#: templates/cms/base.html:532 templates/cms/clients/list.html:3
+#: templates/cms/clients/list.html:7 templates/cms/dashboard.html:167
+#: templates/cms/search.html:173 templates/cms/search.html:219
+#: templates/cms/search.html:274
+msgid "Clients"
+msgstr "Cliënten"
+
+#: templates/cms/base.html:533 templates/cms/dashboard.html:171
+#: templates/cms/search.html:174 templates/cms/search.html:225
+#: templates/cms/search.html:292 templates/cms/subjects/list.html:3
+#: templates/cms/subjects/list.html:7
+msgid "Subjects"
+msgstr "Subjecten"
+
+#: templates/cms/base.html:534 templates/cms/search.html:3
+#: templates/cms/search.html:167 templates/cms/subjects/view.html:551
+msgid "Search"
+msgstr "Zoeken"
+
+#: templates/cms/base.html:535 templates/cms/dashboard.html:140
+#: templates/cms/reminders/list.html:117
+msgid "Reminders"
+msgstr "Herinneringen"
+
+#: templates/cms/base.html:540 templates/cms/dashboard.html:143
+#: templates/cms/settings/index.html:3
+msgid "Settings"
+msgstr "Instellingen"
+
+#: templates/cms/base.html:550
+msgid "Logout"
+msgstr "Uitloggen"
+
+#: templates/cms/base.html:551
+msgid "Notifications"
+msgstr "Meldingen"
+
+#: templates/cms/base.html:558
+msgid "Toggle dark mode"
+msgstr "Donker modus"
+
+#: templates/cms/base.html:561
+msgid "Help"
+msgstr "Help"
+
+#: templates/cms/base.html:567
+msgid "Update available"
+msgstr "Update beschikbaar"
+
+#: templates/cms/base.html:571
+msgid "SpiderFoot is unreachable. Some OSINT features may not work."
+msgstr "SpiderFoot is onbereikbaar. Sommige OSINT-functies werken mogelijk niet."
+
+#: templates/cms/base.html:575
+msgid "login anomaly/anomalies detected in the last 24 hours."
+msgstr "login-afwijking(en) gedetecteerd in de laatste 24 uur."
+
+#: templates/cms/base.html:576
+msgid "Review"
+msgstr "Bekijken"
+
+#: templates/cms/base.html:800
+msgid "No notifications"
+msgstr "Geen meldingen"
+
+#: templates/cms/dashboard.html:129
+msgid "Search cases, subjects, clients, findings, and documents"
+msgstr "Zoek in dossiers, subjecten, cliënten, bevindingen en documenten"
+
+#: templates/cms/dashboard.html:132
+msgid "Search by case number, name, email, phone, address..."
+msgstr "Zoek op dossiersnummer, naam, e-mail, telefoon, adres..."
+
+#: templates/cms/dashboard.html:135
+msgid "All Cases"
+msgstr "Alle dossiers"
+
+#: templates/cms/cases/list.html:11 templates/cms/dashboard.html:136
+msgid "New Case"
+msgstr "Nieuw dossier"
+
+#: templates/cms/dashboard.html:137 templates/cms/subjects/list.html:40
+msgid "All Subjects"
+msgstr "Alle subjecten"
+
+#: templates/cms/dashboard.html:138 templates/cms/subjects/list.html:10
+msgid "New Subject"
+msgstr "Subjecten"
+
+#: templates/cms/cases/list.html:34 templates/cms/dashboard.html:139
+msgid "All Clients"
+msgstr "Cliënten"
+
+#: templates/cms/clients/list.html:9 templates/cms/dashboard.html:141
+#: templates/cms/subjects/list.html:9
+msgid "Export"
+msgstr "Volgende"
+
+#: templates/cms/cases/list.html:20 templates/cms/clients/view.html:404
+#: templates/cms/dashboard.html:151 templates/cms/subjects/view.html:2054
+#: templates/cms/subjects/view.html:2069
+msgid "Open"
+msgstr "Open"
+
+#: templates/cms/cases/list.html:21 templates/cms/dashboard.html:155
+#: templates/cms/search.html:281 templates/cms/settings/index.html:451
+msgid "Active"
+msgstr "Actief"
+
+#: templates/cms/cases/list.html:22 templates/cms/dashboard.html:159
+msgid "Suspended"
+msgstr "Geschorst"
+
+#: templates/cms/cases/list.html:23 templates/cms/dashboard.html:163
+msgid "Closed"
+msgstr "Gesloten"
+
+#: templates/cms/dashboard.html:175 templates/cms/search.html:175
+#: templates/cms/search.html:231 templates/cms/search.html:309
+msgid "Findings"
+msgstr "Bevindingen"
+
+#: templates/cms/dashboard.html:183
+msgid "My Open / Active Cases"
+msgstr "Mijn open / actieve dossiers"
+
+#: templates/cms/dashboard.html:184
+msgid "View All"
+msgstr "Alles bekijken"
+
+#: templates/cms/dashboard.html:189 templates/cms/search.html:266
+msgid "Case"
+msgstr "Zaken"
+
+#: templates/cms/cases/list.html:126 templates/cms/cases/view.html:66
+#: templates/cms/clients/view.html:184 templates/cms/clients/view.html:289
+#: templates/cms/dashboard.html:190 templates/cms/settings/index.html:310
+msgid "Status"
+msgstr "Status"
+
+#: templates/cms/cases/create.html:123 templates/cms/cases/edit.html:92
+#: templates/cms/cases/list.html:121 templates/cms/cases/view.html:62
+#: templates/cms/dashboard.html:191
+msgid "Priority"
+msgstr "Prioriteit"
+
+#: templates/cms/dashboard.html:192
+msgid "Updated"
+msgstr "Datum"
+
+#: templates/cms/dashboard.html:211
+msgid "OSINT Service Health"
+msgstr "OSINT Service Status"
+
+#: templates/cms/dashboard.html:220
+msgid "Online"
+msgstr "Online"
+
+#: templates/cms/dashboard.html:221
+msgid "No key configured"
+msgstr "Geen sleutel ingesteld"
+
+#: templates/cms/dashboard.html:222
+msgid "Auth error (invalid key)"
+msgstr "Auth-fout (ongeldige sleutel)"
+
+#: templates/cms/login.html:6
+msgid "CMS Login"
+msgstr "Inloggen"
+
+#: templates/cms/login.html:35
+msgid "Case Management"
+msgstr "Case Management"
+
+#: templates/cms/login.html:46 templates/cms/subjects/view.html:419
+#: templates/cms/subjects/view.html:488
+msgid "Username"
+msgstr "Gebruikersnaam"
+
+#: templates/cms/login.html:50
+msgid "Password"
+msgstr "Wachtwoord"
+
+#: templates/cms/login.html:53
+msgid "Login"
+msgstr "Inloggen"
+
+#: templates/cms/search.html:160
+msgid "Global Search"
+msgstr "Globaal zoeken"
+
+#: templates/cms/search.html:161
+msgid "Search across cases, clients, subjects, findings, comments, and notes"
+msgstr ""
+"Zoeken in dossiers, cliënten, subjecten, bevindingen, opmerkingen en "
+"notitiesZoeken in zaken, cliënten, subjecten, bevindingen, opmerkingen en"
+" notitiesZoek door dossiers, cliënten, subjecten, bevindingen, "
+"opmerkingen en notitiesZoek door dossiers, cliënten, subjecten, "
+"bevindingen, opmerkingen en notities"
+
+#: templates/cms/search.html:166
+msgid "Search for anything..."
+msgstr "Zoek naar iets..."
+
+#: templates/cms/reminders/list.html:137 templates/cms/search.html:171
+msgid "All"
+msgstr "Alle"
+
+#: templates/cms/search.html:176 templates/cms/search.html:243
+#: templates/cms/search.html:345
+msgid "Comments"
+msgstr "Cliënten"
+
+#: templates/cms/search.html:177 templates/cms/search.html:249
+#: templates/cms/subjects/create.html:146
+#: templates/cms/subjects/create.html:291 templates/cms/subjects/edit.html:323
+msgid "Notes"
+msgstr "Notities"
+
+#: templates/cms/search.html:186
+msgid "Find Similar Faces"
+msgstr "Vind gelijkende gezichten"
+
+#: templates/cms/search.html:187
+msgid "Upload a photo to find subjects with similar faces"
+msgstr "Upload een foto om subjecten met gelijkende gezichten te vinden"
+
+#: templates/cms/search.html:192
+msgid "Upload Photo"
+msgstr "Foto uploaden"
+
+#: templates/cms/search.html:198
+msgid "Matching Subjects"
+msgstr "Subjecten"
+
+#: templates/cms/search.html:237
+msgid "Financials"
+msgstr "Financiële gegevens"
+
+#: templates/cms/search.html:262
+msgid "No client"
+msgstr "Cliënten"
+
+#: templates/cms/search.html:281
+msgid "Inactive"
+msgstr "Inactief"
+
+#: templates/cms/cases/list.html:116 templates/cms/cases/view.html:54
+#: templates/cms/search.html:284
+msgid "Client"
+msgstr "Cliënten"
+
+#: templates/cms/cases/report.html:31 templates/cms/cases/view.html:241
+#: templates/cms/cases/view.html:256 templates/cms/search.html:301
+msgid "Subject"
+msgstr "Subjecten"
+
+#: templates/cms/search.html:318
+msgid "Finding"
+msgstr "Bevinding"
+
+#: templates/cms/search.html:326
+msgid "Financial Records"
+msgstr "Financiële gegevens"
+
+#: templates/cms/search.html:337
+msgid "Financial"
+msgstr "Financieel"
+
+#: templates/cms/search.html:358
+msgid "Comment"
+msgstr "Opmerking"
+
+#: templates/cms/search.html:368
+msgid "Subject Notes"
+msgstr "Subjecten"
+
+#: templates/cms/cases/view.html:608 templates/cms/search.html:378
+#: templates/cms/subjects/view.html:348
+msgid "Note"
+msgstr "Notitie"
+
+#: templates/cms/search.html:390
+msgid "No results found"
+msgstr "Geen resultaten"
+
+#: templates/cms/search.html:391
+msgid "No matches found for"
+msgstr "Geen overeenkomsten gevonden voor"
+
+#: templates/cms/search.html:391
+msgid "Try different keywords."
+msgstr "Probeer andere zoekwoorden."
+
+#: templates/cms/search.html:397
+msgid "Start searching"
+msgstr "Begin met zoeken"
+
+#: templates/cms/search.html:398
+msgid "Enter a search term to find cases, clients, subjects, findings, and more."
+msgstr ""
+"Voer een zoekterm in om dossiers, cliënten, subjecten, bevindingen en "
+"meer te vinden.Voer een zoekterm in om zaken, cliënten, subjecten, "
+"bevindingen en meer te vinden.Voer een zoekterm in om dossiers, cliënten,"
+" subjecten, bevindingen en meer te vinden.Voer een zoekterm in om "
+"dossiers, cliënten, subjecten, bevindingen en meer te vinden."
+
+#: templates/cms/cases/create.html:93
+msgid "Create New Case"
+msgstr "Nieuw dossier"
+
+#: templates/cms/cases/create.html:97 templates/cms/cases/edit.html:82
+msgid "Case Title *"
+msgstr "Dossier gekoppeld"
+
+#: templates/cms/cases/create.html:101
+msgid "Client *"
+msgstr "Cliënten"
+
+#: templates/cms/cases/create.html:103
+msgid "Select a client"
+msgstr "Alles selecteren"
+
+#: templates/cms/cases/create.html:110 templates/cms/cases/edit.html:111
+#: templates/cms/cases/list.html:134 templates/cms/cases/view.html:58
+msgid "Lead Investigator"
+msgstr "Hoofdonderzoeker"
+
+#: templates/cms/cases/create.html:112 templates/cms/cases/edit.html:113
+msgid "Select lead investigator"
+msgstr "Hoofdonderzoeker"
+
+#: templates/cms/cases/create.html:119 templates/cms/cases/edit.html:87
+#: templates/cms/cases/view.html:89 templates/cms/cases/view.html:476
+msgid "Description"
+msgstr "Beschrijving"
+
+#: templates/cms/cases/create.html:125 templates/cms/cases/edit.html:94
+#: templates/cms/cases/list.html:31
+msgid "Low"
+msgstr "Laag"
+
+#: templates/cms/cases/create.html:126 templates/cms/cases/edit.html:95
+#: templates/cms/cases/list.html:30
+msgid "Medium"
+msgstr "Bewerken"
+
+#: templates/cms/cases/create.html:127 templates/cms/cases/edit.html:96
+#: templates/cms/cases/list.html:29
+msgid "High"
+msgstr "Hoog"
+
+#: templates/cms/cases/create.html:128 templates/cms/cases/edit.html:97
+#: templates/cms/cases/list.html:28
+msgid "Critical"
+msgstr "Kritiek"
+
+#: templates/cms/cases/create.html:132
+msgid "Criminal Code (searchable - type to search)"
+msgstr "Classificatie (doorzoekbaar - typ om te zoeken)"
+
+#: templates/cms/cases/create.html:134
+msgid "Type to search (e.g. diefstal, woning, 1.1.1)..."
+msgstr "Typ om te zoeken (bijv. diefstal, woning, 1.1.1)..."
+
+#: templates/cms/cases/create.html:139
+msgid "Create Case"
+msgstr "Aanmaken"
+
+#: templates/cms/cases/create.html:140 templates/cms/cases/edit.html:136
+#: templates/cms/cases/view.html:173 templates/cms/cases/view.html:412
+#: templates/cms/cases/view.html:481 templates/cms/cases/view.html:658
+#: templates/cms/cases/view.html:1965 templates/cms/clients/create.html:35
+#: templates/cms/clients/create.html:161 templates/cms/clients/edit.html:191
+#: templates/cms/subjects/edit.html:327 templates/cms/subjects/list.html:137
+#: templates/cms/subjects/view.html:497 templates/cms/subjects/view.html:534
+#: templates/cms/subjects/view.html:630 templates/cms/subjects/view.html:2424
+msgid "Cancel"
+msgstr "Annuleren"
+
+#: templates/cms/cases/create.html:195 templates/cms/cases/edit.html:191
+msgid "No matches found"
+msgstr "Geen overeenkomsten gevonden voor"
+
+#: templates/cms/cases/edit.html:78
+msgid "Edit Case"
+msgstr "Nieuw dossier"
+
+#: templates/cms/cases/edit.html:102
+msgid "Criminal Code (searchable)"
+msgstr "Classificatie (doorzoekbaar)"
+
+#: templates/cms/cases/edit.html:104
+msgid "Type to search..."
+msgstr "Typ om te zoeken..."
+
+#: templates/cms/cases/edit.html:121
+msgid "Jurisdiction"
+msgstr "Rechtsgebied"
+
+#: templates/cms/cases/edit.html:126
+msgid "Tags (comma-separated)"
+msgstr "Tags (komma-gescheiden)"
+
+#: templates/cms/cases/edit.html:127
+msgid "e.g. fraud, urgent, offshore"
+msgstr "bijv. fraude, urgent, offshore"
+
+#: templates/cms/cases/edit.html:131
+msgid "Target End Date"
+msgstr "Streefdatum"
+
+#: templates/cms/cases/edit.html:135 templates/cms/clients/edit.html:190
+#: templates/cms/settings/index.html:281 templates/cms/subjects/edit.html:326
+msgid "Save Changes"
+msgstr "Wijzigingen opslaan"
+
+#: templates/cms/cases/list.html:10
+msgid "Export All"
+msgstr "Alles exporteren"
+
+#: templates/cms/cases/list.html:17
+msgid "Search cases, clients..."
+msgstr "Zoek dossiers, cliënten..."
+
+#: templates/cms/cases/list.html:19
+msgid "All Status"
+msgstr "Status"
+
+#: templates/cms/cases/list.html:24
+msgid "Archived"
+msgstr "Gearchiveerd"
+
+#: templates/cms/cases/list.html:27
+msgid "All Priority"
+msgstr "Alle prioriteiten"
+
+#: templates/cms/cases/list.html:40 templates/cms/subjects/list.html:31
+msgid "All Types"
+msgstr "Type"
+
+#: templates/cms/cases/list.html:96 templates/cms/cases/report.html:39
+#: templates/cms/clients/list.html:22 templates/cms/subjects/list.html:44
+msgid "Filter"
+msgstr "Filteren"
+
+#: templates/cms/cases/list.html:97 templates/cms/cases/report.html:41
+#: templates/cms/cases/view.html:250 templates/cms/clients/list.html:24
+#: templates/cms/subjects/list.html:46
+msgid "Clear"
+msgstr "Wissen"
+
+#: templates/cms/cases/list.html:106 templates/cms/clients/view.html:184
+msgid "Case Number"
+msgstr "Dossiersnummer"
+
+#: templates/cms/cases/list.html:111 templates/cms/cases/view.html:240
+#: templates/cms/cases/view.html:256 templates/cms/clients/view.html:184
+msgid "Title"
+msgstr "Titel"
+
+#: templates/cms/cases/list.html:131 templates/cms/cases/view.html:185
+#: templates/cms/cases/view.html:327 templates/cms/clients/create.html:80
+#: templates/cms/clients/edit.html:50 templates/cms/clients/edit.html:73
+#: templates/cms/clients/view.html:290 templates/cms/subjects/create.html:120
+#: templates/cms/subjects/edit.html:274 templates/cms/subjects/edit.html:297
+#: templates/cms/subjects/list.html:65 templates/cms/subjects/view.html:79
+msgid "Type"
+msgstr "Type"
+
+#: templates/cms/cases/list.html:135 templates/cms/cases/view.html:185
+#: templates/cms/cases/view.html:327 templates/cms/clients/list.html:48
+#: templates/cms/settings/index.html:314 templates/cms/subjects/list.html:73
+#: templates/cms/subjects/view.html:377 templates/cms/subjects/view.html:419
+msgid "Actions"
+msgstr "Acties"
+
+#: templates/cms/cases/list.html:148 templates/cms/clients/list.html:66
+#: templates/cms/subjects/list.html:93
+msgid "View"
+msgstr "Bekijken"
+
+#: templates/cms/cases/list.html:157
+msgid "Prev"
+msgstr "Vorige"
+
+#: templates/cms/cases/list.html:167 templates/cms/cases/view.html:308
+#: templates/cms/cases/view.html:353 templates/cms/clients/list.html:82
+#: templates/cms/reminders/list.html:200 templates/cms/subjects/list.html:112
+#: templates/cms/subjects/view.html:668
+msgid "Next"
+msgstr "Volgende"
+
+#: templates/cms/cases/list.html:172
+msgid "No cases found. Try adjusting your filters."
+msgstr "Geen dossiers gevonden. Pas uw filters aan."
+
+#: templates/cms/cases/report.html:2
+#, python-format
+msgid "Report - %(num)s"
+msgstr "Rapport - %(num)s"
+
+#: templates/cms/cases/report.html:4
+msgid "← Back to Case"
+msgstr "Koppelen aan dossier"
+
+#: templates/cms/cases/report.html:9
+msgid "📋 Case Report"
+msgstr "📋 Dossier rapport"
+
+#: templates/cms/cases/report.html:12
+msgid "Client:"
+msgstr "Cliënten"
+
+#: templates/cms/cases/report.html:15
+msgid "🖨️ Print / PDF"
+msgstr "🖨️ Printen / PDF"
+
+#: templates/cms/cases/report.html:23
+msgid "Van"
+msgstr "Van"
+
+#: templates/cms/cases/report.html:27
+msgid "Tot"
+msgstr "Tot"
+
+#: templates/cms/cases/report.html:33
+msgid "Alle subjects"
+msgstr "Alle subjecten"
+
+#: templates/cms/cases/report.html:96
+msgid "Geen entries gevonden voor deze filters."
+msgstr "Geen entries gevonden voor deze filters."
+
+#: templates/cms/cases/report.html:97
+msgid "Voeg findings of notities toe aan deze case om het rapport te vullen."
+msgstr "Voeg bevindingen of notities toe aan dit dossier om het rapport te vullen."
+
+#: templates/cms/cases/view.html:22
+msgid "← Back to Cases"
+msgstr "Koppelen aan dossier"
+
+#: templates/cms/cases/view.html:29
+msgid "▶ Start Investigation"
+msgstr "▶ Onderzoek starten"
+
+#: templates/cms/cases/view.html:31
+msgid "⏸ Suspend"
+msgstr "Geschorst"
+
+#: templates/cms/cases/view.html:32 templates/cms/cases/view.html:35
+msgid "✓ Close Case"
+msgstr "Zaken"
+
+#: templates/cms/cases/view.html:34
+msgid "▶ Resume"
+msgstr "▶ Hervatten"
+
+#: templates/cms/cases/view.html:37
+msgid "📁 Archive"
+msgstr "Gearchiveerd"
+
+#: templates/cms/cases/view.html:39
+msgid "📁 Archived"
+msgstr "Gearchiveerd"
+
+#: templates/cms/cases/view.html:42
+msgid "↩ Reopen"
+msgstr "Open"
+
+#: templates/cms/cases/view.html:45
+msgid "📥 Export CSV"
+msgstr "Volgende"
+
+#: templates/cms/cases/view.html:46
+msgid "📄 Report"
+msgstr "Volgende"
+
+#: templates/cms/cases/view.html:47 templates/cms/subjects/view.html:23
+msgid "✏️ Edit"
+msgstr "✏️ Bewerken"
+
+#: templates/cms/cases/view.html:70
+msgid "Start Date"
+msgstr "Startdatum"
+
+#: templates/cms/cases/view.html:74
+msgid "Criminal Code"
+msgstr "Classificatie"
+
+#: templates/cms/cases/view.html:96
+msgid "Tags"
+msgstr "Status"
+
+#: templates/cms/cases/view.html:106
+msgid "Closure Reason:"
+msgstr "Sluitingsreden:"
+
+#: templates/cms/cases/view.html:112
+msgid "Reopened Reason:"
+msgstr "Heropeningsreden:"
+
+#: templates/cms/cases/view.html:120 templates/cms/cases/view.html:532
+msgid "Case Hierarchy"
+msgstr "Zoeken"
+
+#: templates/cms/cases/view.html:121
+msgid "Manage Hierarchy"
+msgstr "Beheer hiërarchie"
+
+#: templates/cms/cases/view.html:126
+msgid "Parent Case"
+msgstr "Zaken"
+
+#: templates/cms/cases/view.html:135
+#, python-format
+msgid "Child Cases (%(count)s)"
+msgstr "Subdossiers (%(count)s)"
+
+#: templates/cms/cases/view.html:150
+#, python-format
+msgid "Subjects (%(count)s)"
+msgstr "Subjecten"
+
+#: templates/cms/cases/view.html:154
+msgid "+ Add Subject"
+msgstr "Alle subjecten"
+
+#: templates/cms/cases/view.html:155
+msgid "+ Create New Subject"
+msgstr "Subjecten"
+
+#: templates/cms/cases/view.html:156
+msgid "@ Create from Username"
+msgstr "@ Aanmaken op gebruikersnaam"
+
+#: templates/cms/cases/view.html:157
+msgid "OSINT Search"
+msgstr "OSINT Service Status"
+
+#: templates/cms/cases/view.html:164
+msgid "Select Existing Subject"
+msgstr "Selecteer ten minste één subject."
+
+#: templates/cms/cases/view.html:166
+msgid "Choose a subject..."
+msgstr "Subjecten"
+
+#: templates/cms/cases/view.html:172
+msgid "Add to Case"
+msgstr "Koppelen aan dossier"
+
+#: templates/cms/cases/view.html:178
+msgid "Read-only:"
+msgstr "Alleen-lezen:"
+
+#: templates/cms/cases/view.html:178
+msgid "This case is closed/archived. Reopen to make changes."
+msgstr "Dit dossier is gesloten/gearchiveerd. Heropen om wijzigingen te maken."
+
+#: templates/cms/cases/view.html:185 templates/cms/clients/list.html:34
+#: templates/cms/settings/index.html:308 templates/cms/subjects/list.html:60
+msgid "Name"
+msgstr "Naam"
+
+#: templates/cms/cases/view.html:185
+msgid "Social Accounts"
+msgstr "Sociale accounts"
+
+#: templates/cms/cases/view.html:185 templates/cms/subjects/list.html:70
+#: templates/cms/subjects/view.html:83
+msgid "Risk Score"
+msgstr "Risicoscore"
+
+#: templates/cms/cases/view.html:199
+#, python-format
+msgid "+%(count)s more"
+msgstr "+%(count)s meer"
+
+#: templates/cms/cases/view.html:202
+msgid "-"
+msgstr "-"
+
+#: templates/cms/cases/view.html:209
+#, python-format
+msgid "Remove %(name)s from this case?"
+msgstr "%(name)s verwijderen uit dit dossier?"
+
+#: templates/cms/cases/view.html:209 templates/cms/cases/view.html:1812
+#: templates/cms/subjects/view.html:56 templates/cms/subjects/view.html:826
+msgid "Remove"
+msgstr "Bekijken"
+
+#: templates/cms/cases/view.html:222
+msgid "No subjects linked."
+msgstr "Geen subjecten gekoppeld."
+
+#: templates/cms/cases/view.html:229
+#, python-format
+msgid "Findings (%(count)s)"
+msgstr "Bevindingen (%(count)s)"
+
+#: templates/cms/cases/view.html:231
+msgid "Timeline"
+msgstr "Titel"
+
+#: templates/cms/cases/view.html:232
+msgid "📋 Report"
+msgstr "Volgende"
+
+#: templates/cms/cases/view.html:239
+msgid "Filter:"
+msgstr "Filteren"
+
+#: templates/cms/cases/view.html:243 templates/cms/cases/view.html:256
+msgid "Source"
+msgstr "Bron"
+
+#: templates/cms/cases/view.html:244
+msgid "OSINT"
+msgstr "Inloggen"
+
+#: templates/cms/cases/view.html:245
+msgid "Manual"
+msgstr "Handmatig"
+
+#: templates/cms/cases/view.html:246
+msgid "Document"
+msgstr "Aanmaken"
+
+#: templates/cms/cases/view.html:248 templates/cms/cases/view.html:256
+msgid "Added By"
+msgstr "Toegevoegd door"
+
+#: templates/cms/cases/view.html:256
+msgid "Date"
+msgstr "Datum"
+
+#: templates/cms/cases/view.html:274 templates/cms/cases/view.html:1643
+msgid "🔍 Extract ID"
+msgstr "🔍 ID extraheren"
+
+#: templates/cms/cases/view.html:281 templates/cms/cases/view.html:288
+#: templates/cms/cases/view.html:1009 templates/cms/cases/view.html:1028
+#: templates/cms/cases/view.html:1324 templates/cms/cases/view.html:1459
+#: templates/cms/clients/view.html:400 templates/cms/clients/view.html:404
+#: templates/cms/subjects/view.html:1217 templates/cms/subjects/view.html:1617
+msgid "Unknown"
+msgstr "Onbekende fout"
+
+#: templates/cms/cases/view.html:297
+msgid "No findings yet."
+msgstr "Nog geen bevindingen."
+
+#: templates/cms/cases/view.html:304 templates/cms/cases/view.html:349
+#: templates/cms/clients/list.html:78 templates/cms/reminders/list.html:196
+#: templates/cms/subjects/list.html:108 templates/cms/subjects/view.html:664
+msgid "Previous"
+msgstr "Vorige"
+
+#: templates/cms/cases/view.html:306 templates/cms/cases/view.html:351
+#, python-format
+msgid "Page %(page)s of %(pages)s"
+msgstr "Pagina %(page)s van %(pages)s"
+
+#: templates/cms/cases/view.html:317
+#, python-format
+msgid "Documents (%(count)s)"
+msgstr "Documenten (%(count)s)"
+
+#: templates/cms/cases/view.html:319
+msgid "+ Upload Document"
+msgstr "Foto uploaden"
+
+#: templates/cms/cases/view.html:327
+msgid "Filename"
+msgstr "Naam"
+
+#: templates/cms/cases/view.html:327
+msgid "Size"
+msgstr "Grootte"
+
+#: templates/cms/cases/view.html:327
+msgid "Uploaded"
+msgstr "Datum"
+
+#: templates/cms/cases/view.html:337
+msgid "Download"
+msgstr "Downloaden"
+
+#: templates/cms/cases/view.html:339 templates/cms/cases/view.html:1970
+#: templates/cms/reminders/list.html:186 templates/cms/settings/index.html:453
+#: templates/cms/subjects/view.html:393 templates/cms/subjects/view.html:428
+#: templates/cms/subjects/view.html:1847 templates/cms/subjects/view.html:2429
+msgid "Delete"
+msgstr "Verwijderen"
+
+#: templates/cms/cases/view.html:360
+msgid "No documents uploaded."
+msgstr "Geen documenten geüpload."
+
+#: templates/cms/cases/view.html:369
+msgid "Screenshots"
+msgstr "Schermafbeeldingen"
+
+#: templates/cms/cases/view.html:370
+msgid "+ Add Screenshot"
+msgstr "+ Schermafbeelding toevoegen"
+
+#: templates/cms/cases/view.html:374
+msgid "Loading screenshots..."
+msgstr "Help laden..."
+
+#: templates/cms/cases/view.html:382
+msgid "Add Screenshot"
+msgstr "Schermafbeelding toevoegen"
+
+#: templates/cms/cases/view.html:387
+msgid "Source URL (optional)"
+msgstr "Bron-URL (optioneel)"
+
+#: templates/cms/cases/view.html:394
+msgid "🔗 Open Link in New Tab"
+msgstr "🔗 Link openen in nieuw tabblad"
+
+#: templates/cms/cases/view.html:396
+msgid ""
+"Open the link, take a screenshot manually (Cmd+Shift+4 on Mac, Win+PrtSc "
+"on Windows), then upload below."
+msgstr ""
+"Open de link, maak handmatig een screenshot (Cmd+Shift+4 op Mac, "
+"Win+PrtSc op Windows) en upload hieronder."
+
+#: templates/cms/cases/view.html:402
+msgid "Upload Screenshot *"
+msgstr "Foto uploaden"
+
+#: templates/cms/cases/view.html:413 templates/cms/cases/view.html:1475
+#: templates/cms/cases/view.html:1565 templates/cms/cases/view.html:1588
+msgid "Save Screenshot"
+msgstr "Schermafbeelding opslaan"
+
+#: templates/cms/cases/view.html:435
+msgid "Open Original URL"
+msgstr "Originele URL openen"
+
+#: templates/cms/cases/view.html:436 templates/cms/subjects/view.html:580
+msgid "Close"
+msgstr "Gesloten"
+
+#: templates/cms/cases/view.html:445
+msgid "Upload Document"
+msgstr "Foto uploaden"
+
+#: templates/cms/cases/view.html:452
+msgid "File *"
+msgstr "Filteren"
+
+#: templates/cms/cases/view.html:456
+msgid "Document Type"
+msgstr "Documenttype"
+
+#: templates/cms/cases/view.html:458
+msgid "Evidence"
+msgstr "Bewijsstuk"
+
+#: templates/cms/cases/view.html:459
+msgid "Report"
+msgstr "Volgende"
+
+#: templates/cms/cases/view.html:460 templates/cms/clients/create.html:136
+#: templates/cms/clients/edit.html:161 templates/cms/clients/list.html:45
+msgid "Contract"
+msgstr "Contract"
+
+#: templates/cms/cases/view.html:461
+msgid "Correspondence"
+msgstr "Correspondentie"
+
+#: templates/cms/cases/view.html:462 templates/cms/subjects/view.html:1002
+msgid "Photo"
+msgstr "Foto"
+
+#: templates/cms/cases/view.html:463 templates/cms/cases/view.html:992
+#: templates/cms/subjects/view.html:484 templates/cms/subjects/view.html:521
+#: templates/cms/subjects/view.html:1594 templates/cms/subjects/view.html:2585
+msgid "Other"
+msgstr "Notitie"
+
+#: templates/cms/cases/view.html:467
+msgid "Classification"
+msgstr "Meldingen"
+
+#: templates/cms/cases/view.html:469
+msgid "Confidential"
+msgstr "Kritiek"
+
+#: templates/cms/cases/view.html:470
+msgid "Restricted"
+msgstr "Beperkt"
+
+#: templates/cms/cases/view.html:471
+msgid "Internal"
+msgstr "Voer waarde in"
+
+#: templates/cms/cases/view.html:472
+msgid "Public"
+msgstr "Openbaar"
+
+#: templates/cms/cases/view.html:480
+msgid "Upload"
+msgstr "Uploaden"
+
+#: templates/cms/cases/view.html:490
+msgid "Financial Summary"
+msgstr "Financiële gegevens"
+
+#: templates/cms/cases/view.html:491
+msgid "📊 View Charts"
+msgstr "📊 Grafieken bekijken"
+
+#: templates/cms/cases/view.html:497 templates/cms/cases/view.html:1772
+msgid "Total Amount"
+msgstr "Totaalbedrag"
+
+#: templates/cms/cases/view.html:501
+msgid "Transactions"
+msgstr "Acties"
+
+#: templates/cms/cases/view.html:505 templates/cms/subjects/view.html:2578
+#: templates/cms/subjects/view.html:2601
+msgid "Verified"
+msgstr "Geverifieerd"
+
+#: templates/cms/cases/view.html:509
+msgid "Pending Review"
+msgstr "In afwachting van beoordeling"
+
+#: templates/cms/cases/view.html:518
+msgid "Financial Analysis"
+msgstr "Financiële gegevens"
+
+#: templates/cms/cases/view.html:523 templates/cms/settings/index.html:318
+#: templates/cms/subjects/create.html:354
+#: templates/cms/subjects/create.html:425 templates/cms/subjects/edit.html:348
+#: templates/cms/subjects/edit.html:523 templates/cms/subjects/view.html:608
+#: templates/cms/subjects/view.html:845
+msgid "Loading..."
+msgstr "Laden..."
+
+#: templates/cms/cases/view.html:536
+msgid ""
+"Link this case to a parent case to create a hierarchy of related "
+"investigations."
+msgstr ""
+"Koppel deze zaak aan een hoofdzaak om een hiërarchie van gerelateerde "
+"onderzoeken te maken."
+
+#: templates/cms/cases/view.html:538
+msgid "Current Parent"
+msgstr "Aanmaken"
+
+#: templates/cms/cases/view.html:543
+msgid "Set New Parent"
+msgstr "Nieuwe ouder instellen"
+
+#: templates/cms/cases/view.html:545
+msgid "Search cases by number or title..."
+msgstr "Zoek op naam..."
+
+#: templates/cms/cases/view.html:550 templates/cms/cases/view.html:1804
+msgid "Type to search for a parent case..."
+msgstr "Typ om te zoeken naar een bovenliggend dossier..."
+
+#: templates/cms/cases/view.html:558
+#, python-format
+msgid "⏰ Reminders (%(count)s)"
+msgstr "Herinneringen"
+
+#: templates/cms/cases/view.html:559
+msgid "+ Add Reminder"
+msgstr "Herinneringen"
+
+#: templates/cms/cases/view.html:569 templates/cms/reminders/list.html:159
+msgid "No date"
+msgstr "Geen datum"
+
+#: templates/cms/cases/view.html:570 templates/cms/reminders/list.html:140
+#: templates/cms/reminders/list.html:155
+msgid "Completed"
+msgstr "Voltooid"
+
+#: templates/cms/cases/view.html:570
+msgid "OVERDUE"
+msgstr "Overzicht"
+
+#: templates/cms/cases/view.html:580
+msgid "Delete this reminder?"
+msgstr "Maak uw eerste herinnering"
+
+#: templates/cms/cases/view.html:592
+msgid "No reminders for this case."
+msgstr "Herinneringen"
+
+#: templates/cms/cases/view.html:592
+msgid "Add one"
+msgstr "Een toevoegen"
+
+#: templates/cms/cases/view.html:600
+msgid "Notes & Comments"
+msgstr "Cliënten"
+
+#: templates/cms/cases/view.html:601 templates/cms/subjects/view.html:341
+#: templates/cms/subjects/view.html:2107
+msgid "🔄 Refresh"
+msgstr "🔄 Verversen"
+
+#: templates/cms/cases/view.html:605
+msgid "Add a note or comment..."
+msgstr "Voeg een notitie of opmerking toe..."
+
+#: templates/cms/cases/view.html:609 templates/cms/subjects/view.html:349
+msgid "Discussion"
+msgstr "Discussie"
+
+#: templates/cms/cases/view.html:610 templates/cms/subjects/view.html:350
+msgid "Update"
+msgstr "Update"
+
+#: templates/cms/cases/view.html:613
+msgid "Pin comment"
+msgstr "Opmerking"
+
+#: templates/cms/cases/view.html:615
+msgid "Add Comment"
+msgstr "Opmerking"
+
+#: templates/cms/cases/view.html:620
+msgid "Loading comments..."
+msgstr "Help laden..."
+
+#: templates/cms/cases/view.html:628
+msgid "@ Create Subject from Username"
+msgstr "@ Subject aanmaken op gebruikersnaam"
+
+#: templates/cms/cases/view.html:633
+msgid "Username *"
+msgstr "Gebruikersnaam"
+
+#: templates/cms/cases/view.html:634 templates/cms/subjects/view.html:489
+msgid "@username or profile name"
+msgstr "@gebruikersnaam of profielnaam"
+
+#: templates/cms/cases/view.html:637 templates/cms/subjects/view.html:377
+#: templates/cms/subjects/view.html:419 templates/cms/subjects/view.html:469
+#: templates/cms/subjects/view.html:512
+msgid "Platform"
+msgstr "Platform"
+
+#: templates/cms/cases/view.html:653 templates/cms/subjects/view.html:492
+#: templates/cms/subjects/view.html:529
+msgid "Profile URL (optional)"
+msgstr "Profiel-URL (optioneel)"
+
+#: templates/cms/cases/view.html:657 templates/cms/subjects/create.html:295
+msgid "Create Subject"
+msgstr "Subjecten"
+
+#: templates/cms/cases/view.html:668 templates/cms/subjects/view.html:544
+msgid "OSINT Person Search"
+msgstr "OSINT persoonszoekopdracht"
+
+#: templates/cms/cases/view.html:708 templates/cms/subjects/view.html:567
+msgid "Search Results"
+msgstr "Zoekresultaten"
+
+#: templates/cms/cases/view.html:715 templates/cms/subjects/view.html:574
+msgid "Select All"
+msgstr "Alles selecteren"
+
+#: templates/cms/cases/view.html:765
+msgid "Reason for closing (required):"
+msgstr "Reden voor sluiting (vereist):"
+
+#: templates/cms/cases/view.html:767
+msgid "Closure reason is required"
+msgstr "Sluitingsreden is vereist"
+
+#: templates/cms/cases/view.html:774 templates/cms/cases/view.html:799
+msgid "Reason for reopening (required):"
+msgstr "Reden voor heropening (vereist):"
+
+#: templates/cms/cases/view.html:776 templates/cms/cases/view.html:801
+msgid "Reopening reason is required"
+msgstr "Heropeningsreden is vereist"
+
+#: templates/cms/cases/view.html:790 templates/cms/cases/view.html:795
+#: templates/cms/cases/view.html:813 templates/cms/cases/view.html:818
+#: templates/cms/cases/view.html:1192 templates/cms/cases/view.html:1197
+#: templates/cms/cases/view.html:1562 templates/cms/cases/view.html:1615
+#: templates/cms/cases/view.html:1661 templates/cms/cases/view.html:1864
+#: templates/cms/cases/view.html:1870 templates/cms/cases/view.html:1884
+#: templates/cms/cases/view.html:1890 templates/cms/cases/view.html:2009
+#: templates/cms/cases/view.html:2014 templates/cms/cases/view.html:2043
+#: templates/cms/cases/view.html:2053 templates/cms/clients/view.html:217
+#: templates/cms/clients/view.html:222 templates/cms/clients/view.html:238
+#: templates/cms/clients/view.html:243 templates/cms/clients/view.html:265
+#: templates/cms/clients/view.html:302 templates/cms/clients/view.html:327
+#: templates/cms/clients/view.html:360 templates/cms/clients/view.html:384
+#: templates/cms/clients/view.html:411 templates/cms/clients/view.html:435
+#: templates/cms/clients/view.html:486 templates/cms/clients/view.html:522
+#: templates/cms/clients/view.html:555 templates/cms/settings/index.html:396
+#: templates/cms/settings/index.html:400 templates/cms/subjects/list.html:250
+#: templates/cms/subjects/list.html:271
+msgid "Error"
+msgstr "Fout"
+
+#: templates/cms/cases/view.html:852 templates/cms/subjects/create.html:545
+msgid "Please enter a name"
+msgstr "Selecteer een dossier."
+
+#: templates/cms/cases/view.html:856
+msgid "Please enter a full name (first and last name)"
+msgstr "Voer een naam in voor de API sleutel."
+
+#: templates/cms/cases/view.html:879
+msgid "Failed to start search"
+msgstr "Instellingen opslaan mislukt"
+
+#: templates/cms/cases/view.html:890
+msgid "HTTP"
+msgstr "HTTP"
+
+#: templates/cms/cases/view.html:907 templates/cms/subjects/view.html:1519
+msgid "Search was cancelled"
+msgstr "Zoekopdracht is geannuleerd"
+
+#: templates/cms/cases/view.html:907 templates/cms/subjects/view.html:1519
+msgid "Search failed"
+msgstr "Gearchiveerd"
+
+#: templates/cms/cases/view.html:944
+msgid "Failed to load results"
+msgstr "Resultaten laden mislukt"
+
+#: templates/cms/cases/view.html:962 templates/cms/cases/view.html:1005
+msgid "Brave"
+msgstr "Opslaan"
+
+#: templates/cms/cases/view.html:964 templates/cms/cases/view.html:1006
+msgid "DDG"
+msgstr "DDG"
+
+#: templates/cms/cases/view.html:968 templates/cms/subjects/view.html:1578
+msgid "results found"
+msgstr "Geen resultaten"
+
+#: templates/cms/cases/view.html:974 templates/cms/subjects/view.html:1584
+msgid "No results found."
+msgstr "Geen resultaten"
+
+#: templates/cms/cases/view.html:987 templates/cms/subjects/view.html:1589
+msgid "Social Media"
+msgstr "Sociale media"
+
+#: templates/cms/cases/view.html:988 templates/cms/subjects/view.html:1590
+msgid "Documents"
+msgstr "Cliënten"
+
+#: templates/cms/cases/view.html:989 templates/cms/subjects/view.html:1591
+msgid "Public Records"
+msgstr "Financiële gegevens"
+
+#: templates/cms/cases/view.html:990 templates/cms/subjects/view.html:1592
+msgid "News"
+msgstr "Notities"
+
+#: templates/cms/cases/view.html:991 templates/cms/subjects/view.html:1593
+msgid "People Search"
+msgstr "Zoeken"
+
+#: templates/cms/cases/view.html:1021 templates/cms/subjects/view.html:1629
+msgid "Search Links"
+msgstr "Zoeken"
+
+#: templates/cms/cases/view.html:1051 templates/cms/subjects/view.html:1662
+msgid "📌 Already saved"
+msgstr "📌 Alleen opgeslagen"
+
+#: templates/cms/cases/view.html:1081 templates/cms/settings/index.html:372
+#: templates/cms/subjects/view.html:1701 templates/cms/subjects/view.html:2659
+msgid "Saving..."
+msgstr "Laden..."
+
+#: templates/cms/cases/view.html:1111 templates/cms/cases/view.html:1120
+#: templates/cms/subjects/view.html:582 templates/cms/subjects/view.html:1725
+#: templates/cms/subjects/view.html:1730
+msgid "Add Selected to Findings"
+msgstr "Selectie toevoegen aan bevindingen"
+
+#: templates/cms/cases/view.html:1119
+msgid "Failed to add findings"
+msgstr "Instellingen opslaan mislukt"
+
+#: templates/cms/cases/view.html:1128
+msgid "Please select a subject first."
+msgstr "Selecteer een dossier."
+
+#: templates/cms/cases/view.html:1129
+msgid "Save selected result(s) as social accounts on the selected subject?"
+msgstr ""
+"Geselecteerde resultaten opslaan als sociale accounts op het "
+"geselecteerde subject?Geselecteerde resultaten opslaan als sociale "
+"accounts op het geselecteerde subject?Geselecteerde resultaten opslaan "
+"als sociale accounts op het geselecteerde subject?"
+
+#: templates/cms/cases/view.html:1155 templates/cms/cases/view.html:1162
+#: templates/cms/settings/index.html:387 templates/cms/subjects/view.html:1763
+#: templates/cms/subjects/view.html:1770
+msgid "Saved"
+msgstr "Opslaan"
+
+#: templates/cms/cases/view.html:1155 templates/cms/cases/view.html:1162
+#: templates/cms/subjects/view.html:1763 templates/cms/subjects/view.html:1770
+msgid "social account(s)."
+msgstr "sociale account(s)."
+
+#: templates/cms/cases/view.html:1155 templates/cms/cases/view.html:1162
+#: templates/cms/subjects/view.html:1763 templates/cms/subjects/view.html:1770
+msgid "error(s)."
+msgstr "Fout"
+
+#: templates/cms/cases/view.html:1177 templates/cms/subjects/view.html:1882
+msgid "Username is required"
+msgstr "Gebruikersnaam is vereist"
+
+#: templates/cms/cases/view.html:1193
+msgid "Subject created:"
+msgstr "Subjecten"
+
+#: templates/cms/cases/view.html:1254 templates/cms/cases/view.html:1269
+msgid "Showing"
+msgstr "Toont"
+
+#: templates/cms/cases/view.html:1254 templates/cms/cases/view.html:1269
+#: templates/cms/clients/list.html:80 templates/cms/reminders/list.html:198
+#: templates/cms/subjects/list.html:110 templates/cms/subjects/view.html:666
+msgid "of"
+msgstr "van"
+
+#: templates/cms/cases/view.html:1296
+msgid "Failed to load timeline"
+msgstr "Instellingen opslaan mislukt"
+
+#: templates/cms/cases/view.html:1304
+msgid "No timeline events found."
+msgstr "Geen cliënten gevonden."
+
+#: templates/cms/cases/view.html:1335
+msgid "By:"
+msgstr "Door:"
+
+#: templates/cms/cases/view.html:1367
+msgid "Please select a file"
+msgstr "Selecteer een dossier."
+
+#: templates/cms/cases/view.html:1387
+msgid "Document uploaded successfully"
+msgstr "Instellingen succesvol opgeslagen!"
+
+#: templates/cms/cases/view.html:1393
+msgid "Upload failed"
+msgstr "Mislukt"
+
+#: templates/cms/cases/view.html:1398
+msgid "Are you sure you want to delete this document?"
+msgstr "Weet u zeker dat u dit document wilt verwijderen?"
+
+#: templates/cms/cases/view.html:1432
+msgid "Failed to load screenshots"
+msgstr "Instellingen opslaan mislukt"
+
+#: templates/cms/cases/view.html:1441
+msgid "No screenshots added yet."
+msgstr "Nog geen API sleutels aangemaakt."
+
+#: templates/cms/cases/view.html:1450 templates/cms/cases/view.html:1458
+#: templates/cms/cases/view.html:1593
+msgid "Screenshot"
+msgstr "Schermafbeelding"
+
+#: templates/cms/cases/view.html:1509
+msgid "Please enter a URL first"
+msgstr "Voer een naam in voor de API sleutel."
+
+#: templates/cms/cases/view.html:1530
+msgid "Please select a screenshot file"
+msgstr "Selecteer een dossier."
+
+#: templates/cms/cases/view.html:1535
+msgid "Please select an image file"
+msgstr "Selecteer een dossier."
+
+#: templates/cms/cases/view.html:1540
+msgid "Uploading..."
+msgstr "Laden..."
+
+#: templates/cms/cases/view.html:1541
+msgid "Uploading screenshot..."
+msgstr "Help laden..."
+
+#: templates/cms/cases/view.html:1567
+msgid "Screenshot saved successfully!"
+msgstr "Instellingen succesvol opgeslagen!"
+
+#: templates/cms/cases/view.html:1582
+msgid "Upload timed out. Please try again."
+msgstr "Upload timeout. Probeer het opnieuw."
+
+#: templates/cms/cases/view.html:1584 templates/cms/settings/index.html:505
+#: templates/cms/settings/index.html:508 templates/cms/settings/index.html:521
+#: templates/cms/settings/index.html:524
+msgid "Failed"
+msgstr "Mislukt"
+
+#: templates/cms/cases/view.html:1600
+msgid "Extract social media ID from this URL?"
+msgstr "Social media ID extraheren uit deze URL?"
+
+#: templates/cms/cases/view.html:1600
+msgid "The ID will be saved to the linked subject."
+msgstr "Het ID wordt opgeslagen op het gekoppelde subject."
+
+#: templates/cms/cases/view.html:1605
+msgid "Extracting..."
+msgstr "Laden..."
+
+#: templates/cms/cases/view.html:1617
+msgid "Social media data extracted!"
+msgstr "Social media gegevens geëxtraheerd!"
+
+#: templates/cms/cases/view.html:1623 templates/cms/cases/view.html:1632
+msgid "Platform:"
+msgstr "Platform:"
+
+#: templates/cms/cases/view.html:1624 templates/cms/cases/view.html:1633
+msgid "Username:"
+msgstr "Gebruikersnaam"
+
+#: templates/cms/cases/view.html:1625
+msgid "Saved to subject. Refreshing..."
+msgstr "Opgeslagen op subject. Pagina wordt ververst..."
+
+#: templates/cms/cases/view.html:1629
+msgid "No social media IDs found on this page."
+msgstr "Geen social media IDs gevonden op deze pagina."
+
+#: templates/cms/cases/view.html:1631
+msgid "Detected from URL:"
+msgstr "Gedetecteerd uit URL:"
+
+#: templates/cms/cases/view.html:1639
+msgid "Failed to extract"
+msgstr "Instellingen opslaan mislukt"
+
+#: templates/cms/cases/view.html:1653
+msgid "Are you sure you want to delete this screenshot?"
+msgstr "Weet u zeker dat u deze schermafbeelding wilt verwijderen?"
+
+#: templates/cms/cases/view.html:1667
+msgid "Failed to delete"
+msgstr "Instellingen opslaan mislukt"
+
+#: templates/cms/cases/view.html:1703
+msgid "Failed to load financial data"
+msgstr "Financiële gegevens laden mislukt"
+
+#: templates/cms/cases/view.html:1726
+msgid "No financial records to display."
+msgstr "Financiële gegevens"
+
+#: templates/cms/cases/view.html:1733
+msgid "By Transaction Type"
+msgstr "Per transactietype"
+
+#: templates/cms/cases/view.html:1738
+msgid "transactions"
+msgstr "Acties"
+
+#: templates/cms/cases/view.html:1745
+msgid "By Month"
+msgstr "Per maand"
+
+#: templates/cms/cases/view.html:1758
+msgid "By Verification Status"
+msgstr "Per verificatiestatus"
+
+#: templates/cms/cases/view.html:1770
+msgid "Top Counterparties"
+msgstr "Top tegenpartijen"
+
+#: templates/cms/cases/view.html:1772
+msgid "Counterparty"
+msgstr "Contract"
+
+#: templates/cms/cases/view.html:1816
+msgid "No parent case assigned."
+msgstr "Geen bovenliggend dossier toegewezen."
+
+#: templates/cms/cases/view.html:1827
+msgid "Type at least 2 characters to search..."
+msgstr "Typ minimaal 2 tekens om te zoeken..."
+
+#: templates/cms/cases/view.html:1836
+msgid "No cases found."
+msgstr "Geen cliënten gevonden."
+
+#: templates/cms/cases/view.html:1847
+msgid "Set as Parent"
+msgstr "Instellen als bovenliggend"
+
+#: templates/cms/cases/view.html:1866
+msgid "Parent case set successfully!"
+msgstr "API sleutel succesvol gegenereerd!"
+
+#: templates/cms/cases/view.html:1874
+msgid "Remove this case from its parent?"
+msgstr "Dit dossier loskoppelen van zijn bovenliggende dossier?"
+
+#: templates/cms/cases/view.html:1886
+msgid "Parent case removed!"
+msgstr "Bovenliggend dossier verwijderd!"
+
+#: templates/cms/cases/view.html:1906 templates/cms/subjects/view.html:2379
+msgid "Failed to load comments."
+msgstr "Opmerkingen laden mislukt."
+
+#: templates/cms/cases/view.html:1914
+msgid "No comments yet. Be the first to add one!"
+msgstr "Nog geen opmerkingen. Wees de eerste om er een toe te voegen!"
+
+#: templates/cms/cases/view.html:1929 templates/cms/subjects/view.html:2398
+msgid "Edited"
+msgstr "Datum"
+
+#: templates/cms/cases/view.html:1929 templates/cms/subjects/view.html:2398
+msgid "time"
+msgstr "Titel"
+
+#: templates/cms/cases/view.html:1929 templates/cms/subjects/view.html:2106
+#: templates/cms/subjects/view.html:2398
+msgid "by"
+msgstr "door"
+
+#: templates/cms/cases/view.html:1929 templates/cms/subjects/view.html:2398
+msgid "on"
+msgstr "Open"
+
+#: templates/cms/cases/view.html:1935 templates/cms/subjects/view.html:2402
+msgid "View edit history"
+msgstr "Login geschiedenis"
+
+#: templates/cms/cases/view.html:1964 templates/cms/subjects/view.html:496
+#: templates/cms/subjects/view.html:533 templates/cms/subjects/view.html:629
+#: templates/cms/subjects/view.html:1739 templates/cms/subjects/view.html:2423
+#: templates/cms/subjects/view.html:2657
+msgid "Save"
+msgstr "Opslaan"
+
+#: templates/cms/cases/view.html:1969 templates/cms/clients/view.html:17
+#: templates/cms/subjects/view.html:392 templates/cms/subjects/view.html:2428
+msgid "Edit"
+msgstr "Bewerken"
+
+#: templates/cms/cases/view.html:1997 templates/cms/subjects/view.html:2467
+msgid "Comment cannot be empty."
+msgstr "Opmerking mag niet leeg zijn."
+
+#: templates/cms/cases/view.html:2020
+msgid "Please enter a comment."
+msgstr "Selecteer een dossier."
+
+#: templates/cms/cases/view.html:2047 templates/cms/subjects/view.html:2481
+msgid "Delete this comment?"
+msgstr "Deze opmerking verwijderen?"
+
+#: templates/cms/clients/create.html:3
+msgid "Create New Client"
+msgstr "Nieuw dossier"
+
+#: templates/cms/clients/create.html:7
+msgid "Duplicate Detection Warning"
+msgstr "Duplicaat Detectie Waarschuwing"
+
+#: templates/cms/clients/create.html:11
+msgid "Exact match found:"
+msgstr "Exacte match gevonden:"
+
+#: templates/cms/clients/create.html:12
+msgid ""
+"A client with this name already exists. Creating a duplicate may cause "
+"confusion."
+msgstr ""
+"Een cliënt met deze naam bestaat al. Het aanmaken van een duplicaat kan "
+"verwarring veroorzaken."
+
+#: templates/cms/clients/create.html:18 templates/cms/clients/create.html:213
+msgid "Similar clients found:"
+msgstr "Vergelijkbare cliënten gevonden:"
+
+#: templates/cms/clients/create.html:21 templates/cms/clients/create.html:215
+msgid "similar"
+msgstr "vergelijkbaar"
+
+#: templates/cms/clients/create.html:33
+msgid "Create Anyway"
+msgstr "Nieuw dossier"
+
+#: templates/cms/clients/create.html:36
+msgid "Please verify this is not a duplicate before proceeding."
+msgstr "Controleer of dit geen duplicaat is voordat u doorgaat."
+
+#: templates/cms/clients/create.html:44 templates/cms/clients/edit.html:12
+msgid "Client Name *"
+msgstr "Cliënten"
+
+#: templates/cms/clients/create.html:50 templates/cms/clients/edit.html:18
+msgid "This is a company/organization"
+msgstr "Dit is een bedrijf/organisatie"
+
+#: templates/cms/clients/create.html:55 templates/cms/clients/edit.html:23
+#: templates/cms/clients/view.html:26
+msgid "Contact Person"
+msgstr "Contact"
+
+#: templates/cms/clients/create.html:63 templates/cms/clients/edit.html:31
+#: templates/cms/clients/view.html:32 templates/cms/subjects/create.html:154
+#: templates/cms/subjects/edit.html:25 templates/cms/subjects/view.html:144
+msgid "Date of Birth"
+msgstr "Geboortedatum"
+
+#: templates/cms/clients/create.html:67 templates/cms/clients/edit.html:35
+#: templates/cms/clients/view.html:36 templates/cms/subjects/create.html:158
+#: templates/cms/subjects/edit.html:29 templates/cms/subjects/view.html:148
+msgid "Place of Birth"
+msgstr "Geboorteplaats"
+
+#: templates/cms/clients/create.html:68 templates/cms/clients/edit.html:36
+#: templates/cms/subjects/create.html:159 templates/cms/subjects/edit.html:30
+msgid "e.g. Amsterdam, Netherlands"
+msgstr "bijv. Amsterdam, Nederland"
+
+#: templates/cms/clients/create.html:75 templates/cms/clients/edit.html:43
+#: templates/cms/subjects/create.html:115 templates/cms/subjects/edit.html:267
+msgid "Contact(s)"
+msgstr "Contact"
+
+#: templates/cms/clients/create.html:82 templates/cms/clients/edit.html:52
+#: templates/cms/clients/edit.html:75 templates/cms/subjects/create.html:122
+#: templates/cms/subjects/edit.html:276 templates/cms/subjects/edit.html:299
+msgid "Email"
+msgstr "E-mail"
+
+#: templates/cms/clients/create.html:83 templates/cms/clients/edit.html:53
+#: templates/cms/clients/edit.html:76 templates/cms/clients/view.html:345
+#: templates/cms/clients/view.html:540 templates/cms/subjects/create.html:123
+#: templates/cms/subjects/edit.html:277 templates/cms/subjects/edit.html:300
+msgid "Phone"
+msgstr "Telefoon"
+
+#: templates/cms/clients/create.html:87 templates/cms/clients/edit.html:57
+#: templates/cms/clients/edit.html:80 templates/cms/subjects/create.html:127
+#: templates/cms/subjects/edit.html:281 templates/cms/subjects/edit.html:304
+msgid "Value"
+msgstr "Voer waarde in"
+
+#: templates/cms/clients/create.html:88 templates/cms/clients/edit.html:58
+#: templates/cms/clients/edit.html:81 templates/cms/subjects/create.html:128
+#: templates/cms/subjects/edit.html:282 templates/cms/subjects/edit.html:305
+msgid "email@example.com or +31612345678"
+msgstr "email@voorbeeld.nl of +31612345678"
+
+#: templates/cms/clients/create.html:92 templates/cms/clients/create.html:126
+#: templates/cms/clients/edit.html:62 templates/cms/clients/edit.html:85
+#: templates/cms/clients/edit.html:121 templates/cms/clients/edit.html:151
+#: templates/cms/subjects/create.html:104
+#: templates/cms/subjects/create.html:132 templates/cms/subjects/edit.html:225
+#: templates/cms/subjects/edit.html:255 templates/cms/subjects/edit.html:286
+#: templates/cms/subjects/edit.html:309
+msgid "Primary"
+msgstr "Prioriteit"
+
+#: templates/cms/clients/create.html:98 templates/cms/clients/edit.html:91
+msgid "Add another contact"
+msgstr "Voeg een notitie of opmerking toe..."
+
+#: templates/cms/clients/create.html:101 templates/cms/clients/edit.html:94
+#: templates/cms/clients/view.html:96 templates/cms/subjects/create.html:81
+#: templates/cms/subjects/edit.html:200 templates/cms/subjects/view.html:291
+msgid "Address(es)"
+msgstr "Adres"
+
+#: templates/cms/clients/create.html:108 templates/cms/clients/edit.html:103
+#: templates/cms/clients/edit.html:133 templates/cms/clients/view.html:122
+#: templates/cms/subjects/create.html:86 templates/cms/subjects/edit.html:207
+#: templates/cms/subjects/edit.html:237
+msgid "Street"
+msgstr "Schermafbeelding"
+
+#: templates/cms/clients/create.html:109 templates/cms/clients/edit.html:104
+#: templates/cms/clients/edit.html:134 templates/cms/subjects/create.html:87
+#: templates/cms/subjects/edit.html:208 templates/cms/subjects/edit.html:238
+msgid "Street name"
+msgstr "Startdatum"
+
+#: templates/cms/clients/create.html:112 templates/cms/clients/edit.html:107
+#: templates/cms/clients/edit.html:137 templates/cms/subjects/create.html:90
+#: templates/cms/subjects/edit.html:211 templates/cms/subjects/edit.html:241
+msgid "Number"
+msgstr "Dossiersnummer"
+
+#: templates/cms/clients/create.html:113 templates/cms/clients/edit.html:108
+#: templates/cms/clients/edit.html:138 templates/cms/subjects/create.html:91
+#: templates/cms/subjects/edit.html:212 templates/cms/subjects/edit.html:242
+msgid "1"
+msgstr "1"
+
+#: templates/cms/clients/create.html:116 templates/cms/clients/edit.html:111
+#: templates/cms/clients/edit.html:141 templates/cms/clients/view.html:282
+#: templates/cms/subjects/create.html:94 templates/cms/subjects/edit.html:215
+#: templates/cms/subjects/edit.html:245
+msgid "Zipcode"
+msgstr "Postcode"
+
+#: templates/cms/clients/create.html:117 templates/cms/clients/edit.html:112
+#: templates/cms/clients/edit.html:142 templates/cms/subjects/create.html:95
+#: templates/cms/subjects/edit.html:216 templates/cms/subjects/edit.html:246
+msgid "1234 AB"
+msgstr "1234 AB"
+
+#: templates/cms/clients/create.html:120 templates/cms/clients/edit.html:115
+#: templates/cms/clients/edit.html:145 templates/cms/clients/view.html:283
+#: templates/cms/subjects/create.html:98 templates/cms/subjects/edit.html:219
+#: templates/cms/subjects/edit.html:249
+msgid "Town"
+msgstr "Open"
+
+#: templates/cms/clients/create.html:121 templates/cms/clients/edit.html:116
+#: templates/cms/clients/edit.html:146 templates/cms/subjects/create.html:99
+#: templates/cms/subjects/edit.html:220 templates/cms/subjects/edit.html:250
+msgid "Amsterdam"
+msgstr "Amsterdam"
+
+#: templates/cms/clients/create.html:124 templates/cms/clients/edit.html:119
+#: templates/cms/clients/edit.html:149 templates/cms/subjects/create.html:102
+#: templates/cms/subjects/edit.html:223 templates/cms/subjects/edit.html:253
+msgid "Look up zipcode + number"
+msgstr "Zoek postcode + huisnummer op"
+
+#: templates/cms/clients/create.html:133 templates/cms/clients/edit.html:158
+msgid "Add another address"
+msgstr "Nog een adres toevoegen"
+
+#: templates/cms/clients/create.html:138
+msgid "Contract Number (auto-generated)"
+msgstr "Contractnummer (automatisch gegenereerd)"
+
+#: templates/cms/clients/create.html:142 templates/cms/clients/edit.html:171
+#: templates/cms/clients/view.html:152
+msgid "Financial Information"
+msgstr "Financiële gegevens"
+
+#: templates/cms/clients/create.html:144 templates/cms/clients/edit.html:173
+#: templates/cms/clients/view.html:155
+msgid "Social Security Number"
+msgstr "Dossiersnummer"
+
+#: templates/cms/clients/create.html:148 templates/cms/clients/edit.html:177
+#: templates/cms/clients/view.html:160
+msgid "VAT Number"
+msgstr "Dossiersnummer"
+
+#: templates/cms/clients/create.html:152 templates/cms/clients/edit.html:181
+#: templates/cms/clients/view.html:165
+msgid "Bank Account"
+msgstr "Sociale accounts"
+
+#: templates/cms/clients/create.html:156 templates/cms/clients/edit.html:185
+#: templates/cms/clients/view.html:170
+msgid "Financial Notes"
+msgstr "Financiële gegevens"
+
+#: templates/cms/clients/create.html:160
+msgid "Create Client"
+msgstr "Aanmaken"
+
+#: templates/cms/clients/create.html:208
+msgid "Exact match:"
+msgstr "Exacte match:"
+
+#: templates/cms/clients/create.html:282 templates/cms/clients/edit.html:275
+#: templates/cms/subjects/create.html:578 templates/cms/subjects/edit.html:440
+msgid "Enter zipcode and house number first"
+msgstr "Voer eerst postcode en huisnummer in"
+
+#: templates/cms/clients/edit.html:2 templates/cms/clients/edit.html:6
+msgid "Edit Client"
+msgstr "Cliënten"
+
+#: templates/cms/clients/edit.html:4
+msgid "Back to Client"
+msgstr "Terug naar Cliënt"
+
+#: templates/cms/clients/edit.html:163 templates/cms/clients/view.html:145
+msgid "Contract Number"
+msgstr "Contract"
+
+#: templates/cms/clients/edit.html:163
+msgid "read-only"
+msgstr "Alleen-lezen:"
+
+#: templates/cms/clients/list.html:10
+msgid "New Client"
+msgstr "Cliënten"
+
+#: templates/cms/clients/list.html:16 templates/cms/subjects/list.html:28
+msgid "Search by name..."
+msgstr "Zoek op naam..."
+
+#: templates/cms/clients/list.html:39
+msgid "Contact"
+msgstr "Contact"
+
+#: templates/cms/clients/list.html:42 templates/cms/clients/view.html:281
+#: templates/cms/clients/view.html:344 templates/cms/clients/view.html:539
+msgid "Address"
+msgstr "Adres"
+
+#: templates/cms/clients/list.html:72
+msgid "No clients found."
+msgstr "Geen cliënten gevonden."
+
+#: templates/cms/clients/list.html:80 templates/cms/reminders/list.html:198
+#: templates/cms/subjects/list.html:110 templates/cms/subjects/view.html:666
+msgid "Page"
+msgstr "Pagina"
+
+#: templates/cms/clients/view.html:4
+msgid "Back to Clients"
+msgstr "Cliënten"
+
+#: templates/cms/clients/view.html:8 templates/cms/subjects/create.html:14
+#: templates/cms/subjects/edit.html:14 templates/cms/subjects/list.html:33
+msgid "Company"
+msgstr "Bedrijf"
+
+#: templates/cms/clients/view.html:9
+msgid "GEARCHIVEERD"
+msgstr "GEARCHIVEERD"
+
+#: templates/cms/clients/view.html:13
+msgid "Archiveer"
+msgstr "Archiveer"
+
+#: templates/cms/clients/view.html:15
+msgid "Herstellen"
+msgstr "Herstellen"
+
+#: templates/cms/clients/view.html:22
+msgid "Contact Information"
+msgstr "Contactgegevens"
+
+#: templates/cms/clients/view.html:49 templates/cms/clients/view.html:74
+#: templates/cms/clients/view.html:103 templates/cms/subjects/view.html:96
+#: templates/cms/subjects/view.html:123 templates/cms/subjects/view.html:299
+msgid "PRIMARY"
+msgstr "PRIMARY"
+
+#: templates/cms/clients/view.html:51 templates/cms/clients/view.html:63
+#: templates/cms/clients/view.html:76 templates/cms/clients/view.html:88
+msgid "Check"
+msgstr "Controleren"
+
+#: templates/cms/clients/view.html:104 templates/cms/subjects/view.html:300
+msgid "✓ KADASTER"
+msgstr "✓ KADASTER"
+
+#: templates/cms/clients/view.html:111
+msgid "Kadaster"
+msgstr "Kadaster"
+
+#: templates/cms/clients/view.html:112 templates/cms/clients/view.html:342
+#: templates/cms/clients/view.html:537 templates/cms/subjects/view.html:2345
+msgid "Politiebureau"
+msgstr "Politiebureau"
+
+#: templates/cms/clients/view.html:126
+msgid "Postal Code"
+msgstr "Postcode"
+
+#: templates/cms/clients/view.html:130
+msgid "City"
+msgstr "Plaats"
+
+#: templates/cms/clients/view.html:134 templates/cms/clients/view.html:394
+msgid "Country"
+msgstr "Contract"
+
+#: templates/cms/clients/view.html:135
+msgid "Netherlands"
+msgstr "Nederland"
+
+#: templates/cms/clients/view.html:142
+msgid "Contract Information"
+msgstr "Contractgegevens"
+
+#: templates/cms/clients/view.html:198
+msgid "No cases for this client."
+msgstr "Herinneringen"
+
+#: templates/cms/clients/view.html:205
+msgid "Are you sure you want to archive this client?"
+msgstr "Weet u zeker dat u dit document wilt verwijderen?"
+
+#: templates/cms/clients/view.html:226
+msgid "Weet u zeker dat u deze client wilt herstellen?"
+msgstr "Weet u zeker dat u deze cliënt wilt herstellen?"
+
+#: templates/cms/clients/view.html:252 templates/cms/clients/view.html:314
+#: templates/cms/clients/view.html:509 templates/cms/subjects/view.html:2255
+#: templates/cms/subjects/view.html:2317
+msgid "🔍 Looking up..."
+msgstr "🔍 Bezig met opzoeken..."
+
+#: templates/cms/clients/view.html:254 templates/cms/subjects/view.html:2257
+msgid "Contacting PDOK BAG..."
+msgstr "Bezig met verbinden met PDOK BAG..."
+
+#: templates/cms/clients/view.html:272
+msgid "Address not found"
+msgstr "Pagina niet gevonden"
+
+#: templates/cms/clients/view.html:284
+msgid "Municipality"
+msgstr "Gemeente"
+
+#: templates/cms/clients/view.html:285
+msgid "Province"
+msgstr "Provincie"
+
+#: templates/cms/clients/view.html:286
+msgid "Building year"
+msgstr "Bouwjaar"
+
+#: templates/cms/clients/view.html:287
+msgid "Surface"
+msgstr "Oppervlakte"
+
+#: templates/cms/clients/view.html:288
+msgid "Purpose"
+msgstr "Doel"
+
+#: templates/cms/clients/view.html:291
+msgid "BAG ID"
+msgstr "BAG ID"
+
+#: templates/cms/clients/view.html:295
+msgid "Coordinates"
+msgstr "Coördinaten"
+
+#: templates/cms/clients/view.html:295 templates/cms/clients/view.html:350
+#: templates/cms/clients/view.html:545 templates/cms/subjects/view.html:2298
+msgid "View on map"
+msgstr "Alles bekijken"
+
+#: templates/cms/clients/view.html:299 templates/cms/subjects/view.html:2302
+msgid "✅ Verified"
+msgstr "✅ Geverifieerd"
+
+#: templates/cms/clients/view.html:316 templates/cms/clients/view.html:511
+#: templates/cms/subjects/view.html:2319
+msgid "Contacting politie.nl..."
+msgstr "Bezig met verbinden met politie.nl..."
+
+#: templates/cms/clients/view.html:334 templates/cms/clients/view.html:529
+#: templates/cms/subjects/view.html:2337
+msgid "No police station found"
+msgstr "Geen cliënten gevonden."
+
+#: templates/cms/clients/view.html:347 templates/cms/clients/view.html:542
+msgid "Opening hours"
+msgstr "Openingstijden"
+
+#: templates/cms/clients/view.html:353 templates/cms/clients/view.html:548
+msgid "Politie.nl page"
+msgstr "Politie.nl pagina"
+
+#: templates/cms/clients/view.html:357 templates/cms/clients/view.html:552
+#: templates/cms/subjects/view.html:2360
+msgid "✅ Station found"
+msgstr "✅ Station gevonden"
+
+#: templates/cms/clients/view.html:371 templates/cms/clients/view.html:422
+#: templates/cms/subjects/view.html:2093 templates/cms/subjects/view.html:2179
+msgid "🔍 Checking..."
+msgstr "🔍 Bezig met controleren..."
+
+#: templates/cms/clients/view.html:373 templates/cms/subjects/view.html:2095
+msgid "Looking up phone number..."
+msgstr "Telefoonnummer opzoeken..."
+
+#: templates/cms/clients/view.html:392
+msgid "Valid"
+msgstr "Geldig"
+
+#: templates/cms/clients/view.html:392 templates/cms/clients/view.html:443
+#: templates/cms/clients/view.html:446 templates/cms/clients/view.html:466
+#: templates/cms/subjects/view.html:2061
+msgid "Yes"
+msgstr "Ja"
+
+#: templates/cms/clients/view.html:392 templates/cms/clients/view.html:443
+#: templates/cms/clients/view.html:446 templates/cms/clients/view.html:466
+#: templates/cms/subjects/view.html:2056 templates/cms/subjects/view.html:2057
+#: templates/cms/subjects/view.html:2058 templates/cms/subjects/view.html:2059
+msgid "No"
+msgstr "Notitie"
+
+#: templates/cms/clients/view.html:393
+msgid "Formatted"
+msgstr "Geformatteerd"
+
+#: templates/cms/clients/view.html:395
+msgid "Region"
+msgstr "Regio"
+
+#: templates/cms/clients/view.html:396
+msgid "Carrier"
+msgstr "Aanbieder"
+
+#: templates/cms/clients/view.html:397
+msgid "Line Type"
+msgstr "Lijntype"
+
+#: templates/cms/clients/view.html:400
+msgid "WhatsApp"
+msgstr "WhatsApp"
+
+#: templates/cms/clients/view.html:400
+msgid "Chat"
+msgstr "Chat"
+
+#: templates/cms/clients/view.html:400 templates/cms/clients/view.html:404
+msgid "Not found"
+msgstr "Niet gevonden"
+
+#: templates/cms/clients/view.html:404 templates/cms/subjects/view.html:479
+msgid "Telegram"
+msgstr "Telegram"
+
+#: templates/cms/clients/view.html:408 templates/cms/clients/view.html:483
+#: templates/cms/subjects/view.html:2136 templates/cms/subjects/view.html:2240
+msgid "✅ Done"
+msgstr "✅ Klaar"
+
+#: templates/cms/clients/view.html:424 templates/cms/subjects/view.html:2181
+msgid "Checking email..."
+msgstr "E-mail controleren..."
+
+#: templates/cms/clients/view.html:443
+msgid "Valid Format"
+msgstr "Geldig formaat"
+
+#: templates/cms/clients/view.html:444
+msgid "Domain"
+msgstr "Domein"
+
+#: templates/cms/clients/view.html:445
+msgid "MX Records"
+msgstr "MX Records"
+
+#: templates/cms/clients/view.html:445 templates/cms/subjects/view.html:2576
+msgid "Found"
+msgstr "Niet gevonden"
+
+#: templates/cms/clients/view.html:445
+msgid "None"
+msgstr "Geen"
+
+#: templates/cms/clients/view.html:446
+msgid "Disposable"
+msgstr "Wegwerp"
+
+#: templates/cms/clients/view.html:449 templates/cms/clients/view.html:459
+msgid "Breaches"
+msgstr "Datalekken"
+
+#: templates/cms/clients/view.html:452 templates/cms/clients/view.html:465
+#: templates/cms/subjects/view.html:2222
+msgid "unknown"
+msgstr "onbekend"
+
+#: templates/cms/clients/view.html:454
+msgid "Data"
+msgstr "Gegevens"
+
+#: templates/cms/clients/view.html:459
+msgid "None found"
+msgstr "Niet gevonden"
+
+#: templates/cms/clients/view.html:459
+msgid "Not checked"
+msgstr "Niet gecontroleerd"
+
+#: templates/cms/clients/view.html:465
+msgid "EmailRep"
+msgstr "EmailRep"
+
+#: templates/cms/clients/view.html:466
+msgid "Suspicious"
+msgstr "Verdacht"
+
+#: templates/cms/clients/view.html:467
+msgid "Details"
+msgstr "Details"
+
+#: templates/cms/clients/view.html:473
+msgid "Investigate further"
+msgstr "Verder onderzoeken"
+
+#: templates/cms/clients/view.html:504
+msgid "No address available for this client."
+msgstr "Herinneringen"
+
+#: templates/cms/reminders/list.html:118
+msgid "New Reminder"
+msgstr "Herinneringen"
+
+#: templates/cms/reminders/list.html:124
+msgid "Pending"
+msgstr "Openstaand"
+
+#: templates/cms/reminders/list.html:128 templates/cms/reminders/list.html:138
+#: templates/cms/reminders/list.html:152
+msgid "Overdue"
+msgstr "Overzicht"
+
+#: templates/cms/reminders/list.html:132
+msgid "Due Today"
+msgstr "Vandaag"
+
+#: templates/cms/reminders/list.html:139
+msgid "Upcoming"
+msgstr "Aankomend"
+
+#: templates/cms/reminders/list.html:141
+msgid "Assigned to Me"
+msgstr "Aan mij toegewezen"
+
+#: templates/cms/reminders/list.html:161
+msgid "Due"
+msgstr "Deadline"
+
+#: templates/cms/reminders/list.html:164
+msgid "Case linked"
+msgstr "Dossier gekoppeld"
+
+#: templates/cms/reminders/list.html:178
+msgid "Mark complete"
+msgstr "Als voltooid markeren"
+
+#: templates/cms/reminders/list.html:182
+msgid "Snooze 30 min"
+msgstr "Uitstellen 30 min"
+
+#: templates/cms/reminders/list.html:207
+msgid "No reminders found."
+msgstr "Herinneringen"
+
+#: templates/cms/reminders/list.html:208
+msgid "Create your first reminder"
+msgstr "Maak uw eerste herinnering"
+
+#: templates/cms/settings/index.html:190
+msgid "Security"
+msgstr "Beveiliging"
+
+#: templates/cms/settings/index.html:194
+msgid "Sessions"
+msgstr "Instellingen"
+
+#: templates/cms/settings/index.html:198
+msgid "Login History"
+msgstr "Login geschiedenis"
+
+#: templates/cms/settings/index.html:202
+msgid "Read Audit"
+msgstr "Lees audit"
+
+#: templates/cms/settings/index.html:206
+msgid "API Keys"
+msgstr "API sleutels"
+
+#: templates/cms/settings/index.html:216
+#, python-format
+msgid "Configure %(category)s settings for the application."
+msgstr "Configureer %(category)s instellingen voor de applicatie."
+
+#: templates/cms/settings/index.html:224
+msgid "(sensitive)"
+msgstr "(gevoelig)"
+
+#: templates/cms/settings/index.html:232
+msgid "Enabled"
+msgstr "Ingeschakeld"
+
+#: templates/cms/settings/index.html:233
+msgid "Disabled"
+msgstr "Uitgeschakeld"
+
+#: templates/cms/settings/index.html:251
+msgid "Enter value"
+msgstr "Voer waarde in"
+
+#: templates/cms/settings/index.html:259
+msgid "Current"
+msgstr "Aanmaken"
+
+#: templates/cms/settings/index.html:279
+msgid "Reset All"
+msgstr "Alles resetten"
+
+#: templates/cms/settings/index.html:286
+msgid "No settings in this category."
+msgstr "Geen instellingen in deze categorie."
+
+#: templates/cms/settings/index.html:294
+msgid "API Keys for Programmatic Access"
+msgstr "API sleutels voor programmatische toegang"
+
+#: templates/cms/settings/index.html:296
+msgid ""
+"Generate API keys for external tools and scripts to access the CMS REST "
+"API. Keys are shown once after creation and use X-API-Key header "
+"authentication."
+msgstr ""
+"Genereer API-sleutels voor externe tools en scripts om toegang te krijgen"
+" tot de CMS REST API. Sleutels worden eenmalig getoond na aanmaak en "
+"gebruiken X-API-Key header authenticatie."
+
+#: templates/cms/settings/index.html:300
+msgid "Key name (e.g. automation-script)"
+msgstr "Sleutelnaam (bijv. automation-script)"
+
+#: templates/cms/settings/index.html:302
+msgid "Generate Key"
+msgstr "Sleutel genereren"
+
+#: templates/cms/settings/index.html:309
+msgid "Key Prefix"
+msgstr "Sleutel voorvoegsel"
+
+#: templates/cms/settings/index.html:311
+msgid "Created"
+msgstr "Aanmaken"
+
+#: templates/cms/settings/index.html:312
+msgid "Last Used"
+msgstr "Laatst gebruikt"
+
+#: templates/cms/settings/index.html:313
+msgid "Created By"
+msgstr "Aanmaken"
+
+#: templates/cms/settings/index.html:323
+msgid "Copy this key now — it will not be shown again!"
+msgstr "Kopieer deze sleutel nu — deze wordt niet meer getoond!"
+
+#: templates/cms/settings/index.html:388
+msgid "Settings saved successfully!"
+msgstr "Instellingen succesvol opgeslagen!"
+
+#: templates/cms/settings/index.html:397 templates/cms/settings/index.html:401
+msgid "Failed to save settings"
+msgstr "Instellingen opslaan mislukt"
+
+#: templates/cms/settings/index.html:397 templates/cms/settings/index.html:505
+#: templates/cms/settings/index.html:521 templates/cms/subjects/view.html:1384
+msgid "Unknown error"
+msgstr "Onbekende fout"
+
+#: templates/cms/settings/index.html:406
+msgid "Reset all settings in this category to defaults?"
+msgstr "Alle instellingen in deze categorie terugzetten naar standaard?"
+
+#: templates/cms/settings/index.html:424
+msgid "Settings reset to defaults"
+msgstr "Instellingen teruggezet naar standaard"
+
+#: templates/cms/settings/index.html:444
+msgid "No API keys created yet."
+msgstr "Nog geen API sleutels aangemaakt."
+
+#: templates/cms/settings/index.html:449
+msgid "Never"
+msgstr "Nooit"
+
+#: templates/cms/settings/index.html:451
+msgid "Revoked"
+msgstr "Bekijken"
+
+#: templates/cms/settings/index.html:452
+msgid "Revoke"
+msgstr "Bekijken"
+
+#: templates/cms/settings/index.html:472
+msgid "Please enter a name for the API key."
+msgstr "Voer een naam in voor de API sleutel."
+
+#: templates/cms/settings/index.html:486
+msgid "API key generated successfully!"
+msgstr "API sleutel succesvol gegenereerd!"
+
+#: templates/cms/settings/index.html:497
+msgid "Revoke this API key? Existing integrations using it will stop working."
+msgstr "Deze API sleutel intrekken? Bestaande integraties stoppen met werken."
+
+#: templates/cms/settings/index.html:502
+msgid "Key revoked"
+msgstr "Sleutel ingetrokken"
+
+#: templates/cms/settings/index.html:513
+msgid "Permanently delete this API key record?"
+msgstr "API sleutel permanent verwijderen?"
+
+#: templates/cms/settings/index.html:518
+msgid "Key deleted"
+msgstr "Verwijderen"
+
+#: templates/cms/settings/index.html:538
+msgid "You have unsaved changes. Are you sure you want to leave?"
+msgstr "U heeft niet-opgeslagen wijzigingen. Weet u zeker dat u wilt vertrekken?"
+
+#: templates/cms/subjects/create.html:3
+msgid "Create New Subject"
+msgstr "Subjecten"
+
+#: templates/cms/subjects/create.html:6
+msgid "Select the type of subject you want to create:"
+msgstr "Selecteer het type subject dat u wilt aanmaken:"
+
+#: templates/cms/subjects/create.html:10 templates/cms/subjects/edit.html:13
+#: templates/cms/subjects/list.html:32
+msgid "Person"
+msgstr "Persoon"
+
+#: templates/cms/subjects/create.html:18 templates/cms/subjects/edit.html:15
+#: templates/cms/subjects/list.html:34
+msgid "Organization"
+msgstr "Organisatie"
+
+#: templates/cms/subjects/create.html:22 templates/cms/subjects/edit.html:16
+#: templates/cms/subjects/list.html:35
+msgid "Vehicle"
+msgstr "Voertuig"
+
+#: templates/cms/subjects/create.html:26 templates/cms/subjects/edit.html:17
+#: templates/cms/subjects/list.html:36
+msgid "Vessel"
+msgstr "Vaartuig"
+
+#: templates/cms/subjects/create.html:30 templates/cms/subjects/edit.html:18
+#: templates/cms/subjects/list.html:37
+msgid "Property"
+msgstr "Eigendom"
+
+#: templates/cms/subjects/create.html:68
+msgid "Subject will be automatically linked to this case."
+msgstr "Subject wordt automatisch aan deze zaak gekoppeld."
+
+#: templates/cms/subjects/create.html:76 templates/cms/subjects/edit.html:7
+msgid "Name *"
+msgstr "Naam"
+
+#: templates/cms/subjects/create.html:111 templates/cms/subjects/edit.html:263
+msgid "+ Add another address"
+msgstr "+ Nog een adres toevoegen"
+
+#: templates/cms/subjects/create.html:138 templates/cms/subjects/edit.html:315
+msgid "+ Add another contact"
+msgstr "+ Nog een contact toevoegen"
+
+#: templates/cms/subjects/create.html:142 templates/cms/subjects/edit.html:319
+msgid "Risk Score (0-100)"
+msgstr "Risicoscore"
+
+#: templates/cms/subjects/create.html:147
+#: templates/cms/subjects/create.html:292 templates/cms/subjects/edit.html:324
+msgid ""
+"📝 Notes zijn verplaatst naar het subject detailscherm → Notities & "
+"Comments sectie (met timestamp & auteur)"
+msgstr ""
+"📝 Notes zijn verplaatst naar het subject detailscherm → Notities & "
+"Comments sectie (met timestamp & auteur)"
+
+#: templates/cms/subjects/create.html:163 templates/cms/subjects/edit.html:34
+#: templates/cms/subjects/view.html:152
+msgid "ID/Passport Number"
+msgstr "Dossiersnummer"
+
+#: templates/cms/subjects/create.html:172
+msgid "🚗 Vehicle Information"
+msgstr "🚗 Voertuiginformatie"
+
+#: templates/cms/subjects/create.html:173
+msgid "Enter license plate to fetch RDW data, or fill in manually"
+msgstr "Voer kenteken in om RDW-gegevens op te halen, of vul handmatig in"
+
+#: templates/cms/subjects/create.html:176
+#: templates/cms/subjects/create.html:191 templates/cms/subjects/edit.html:58
+msgid "e.g. AB-12-CD"
+msgstr "bijv. AB-12-CD"
+
+#: templates/cms/subjects/create.html:180
+#: templates/cms/subjects/create.html:367
+#: templates/cms/subjects/create.html:374
+#: templates/cms/subjects/create.html:402
+#: templates/cms/subjects/create.html:407
+msgid "📡 Fetch RDW"
+msgstr "📡 RDW Ophalen"
+
+#: templates/cms/subjects/create.html:189 templates/cms/subjects/edit.html:57
+#: templates/cms/subjects/view.html:158
+msgid "License Plate (Kenteken)"
+msgstr "Kenteken"
+
+#: templates/cms/subjects/create.html:194 templates/cms/subjects/edit.html:61
+#: templates/cms/subjects/view.html:167
+msgid "VIN (Chassisnummer)"
+msgstr "VIN (Chassisnummer)"
+
+#: templates/cms/subjects/create.html:195 templates/cms/subjects/edit.html:62
+msgid "17 characters"
+msgstr "17 karakters"
+
+#: templates/cms/subjects/create.html:198 templates/cms/subjects/view.html:171
+msgid "Merk (Brand)"
+msgstr "Merk"
+
+#: templates/cms/subjects/create.html:202 templates/cms/subjects/edit.html:69
+#: templates/cms/subjects/view.html:188
+msgid "Model (Handelsbenaming)"
+msgstr "Model (Handelsbenaming)"
+
+#: templates/cms/subjects/create.html:206
+msgid "Inrichting (Body Type)"
+msgstr "Inrichting (Carrosserietype)"
+
+#: templates/cms/subjects/create.html:207
+msgid "e.g. hatchback, sedan"
+msgstr "bijv. hatchback, sedan"
+
+#: templates/cms/subjects/create.html:210
+msgid "Kleur (Color)"
+msgstr "Kleur"
+
+#: templates/cms/subjects/create.html:214 templates/cms/subjects/edit.html:77
+#: templates/cms/subjects/view.html:191
+msgid "Voertuigsoort"
+msgstr "Voertuigsoort"
+
+#: templates/cms/subjects/create.html:218 templates/cms/subjects/edit.html:89
+#: templates/cms/subjects/view.html:200
+msgid "Aantal Deuren"
+msgstr "Aantal Deuren"
+
+#: templates/cms/subjects/create.html:222 templates/cms/subjects/edit.html:93
+#: templates/cms/subjects/view.html:203
+msgid "Aantal Zitplaatsen"
+msgstr "Aantal Zitplaatsen"
+
+#: templates/cms/subjects/create.html:226 templates/cms/subjects/edit.html:113
+#: templates/cms/subjects/view.html:218
+msgid "APK Vervaldatum"
+msgstr "APK Vervaldatum"
+
+#: templates/cms/subjects/create.html:227 templates/cms/subjects/edit.html:114
+#: templates/cms/subjects/edit.html:142
+msgid "YYYYMMDD"
+msgstr "JJJJMMDD"
+
+#: templates/cms/subjects/create.html:230 templates/cms/subjects/edit.html:117
+#: templates/cms/subjects/view.html:221
+msgid "WAM Verzekerd"
+msgstr "WAM Verzekerd"
+
+#: templates/cms/subjects/create.html:236 templates/cms/subjects/view.html:179
+msgid "Verzekeringsmaatschappij (Insurance)"
+msgstr "Verzekeringsmaatschappij"
+
+#: templates/cms/subjects/create.html:245 templates/cms/subjects/edit.html:162
+msgid "🚢 Vessel Information"
+msgstr "🚢 Scheepsinformatie"
+
+#: templates/cms/subjects/create.html:246
+msgid "Enter IMO, MMSI, ENI or ship name to look up vessel data"
+msgstr "Voer IMO, MMSI, ENI of scheepsnaam in om gegevens op te zoeken"
+
+#: templates/cms/subjects/create.html:249
+msgid "IMO number"
+msgstr "IMO nummer"
+
+#: templates/cms/subjects/create.html:251
+#: templates/cms/subjects/create.html:270 templates/cms/subjects/edit.html:168
+#: templates/cms/subjects/edit.html:185 templates/cms/subjects/view.html:258
+msgid "MMSI"
+msgstr "MMSI"
+
+#: templates/cms/subjects/create.html:253
+msgid "ENI"
+msgstr "ENI"
+
+#: templates/cms/subjects/create.html:257
+#: templates/cms/subjects/create.html:438
+#: templates/cms/subjects/create.html:445
+#: templates/cms/subjects/create.html:458
+#: templates/cms/subjects/create.html:463 templates/cms/subjects/edit.html:172
+#: templates/cms/subjects/edit.html:536 templates/cms/subjects/edit.html:543
+#: templates/cms/subjects/edit.html:555 templates/cms/subjects/edit.html:560
+msgid "🔍 Zoek Schip"
+msgstr "🔍 Zoek Schip"
+
+#: templates/cms/subjects/create.html:266 templates/cms/subjects/edit.html:181
+#: templates/cms/subjects/view.html:254
+msgid "IMO Nummer"
+msgstr "IMO Nummer"
+
+#: templates/cms/subjects/create.html:267 templates/cms/subjects/edit.html:182
+msgid "e.g. 9175717"
+msgstr "bijv. 9175717"
+
+#: templates/cms/subjects/create.html:271 templates/cms/subjects/edit.html:186
+msgid "9 digits"
+msgstr "9 cijfers"
+
+#: templates/cms/subjects/create.html:274 templates/cms/subjects/edit.html:189
+#: templates/cms/subjects/view.html:262
+msgid "ENI (Binnenvaart)"
+msgstr "ENI (Binnenvaart)"
+
+#: templates/cms/subjects/create.html:275 templates/cms/subjects/edit.html:190
+msgid "7 or 8 digits"
+msgstr "7 of 8 cijfers"
+
+#: templates/cms/subjects/create.html:278 templates/cms/subjects/edit.html:193
+msgid "Vlag / Flag State"
+msgstr "Vlag / Flag State"
+
+#: templates/cms/subjects/create.html:279 templates/cms/subjects/edit.html:194
+msgid "e.g. Netherlands"
+msgstr "bijv. Nederland"
+
+#: templates/cms/subjects/create.html:285
+msgid "💡 Leave the name field empty to auto-fill from lookup results."
+msgstr "💡 Laat het naamveld leeg om automatisch in te vullen uit zoekresultaten."
+
+#: templates/cms/subjects/create.html:296
+msgid "Back"
+msgstr "Terug"
+
+#: templates/cms/subjects/create.html:322
+msgid "Vehicle name (e.g. Toyota Aygo) or leave empty"
+msgstr "Voertuignaam (bijv. Toyota Aygo) of laat leeg"
+
+#: templates/cms/subjects/create.html:327
+msgid "Ship name or leave empty to fill from lookup"
+msgstr "Scheepsnaam of laat leeg om in te vullen uit zoekopdracht"
+
+#: templates/cms/subjects/create.html:349
+msgid "Enter a license plate first"
+msgstr "Voer eerst een kenteken in"
+
+#: templates/cms/subjects/create.html:355 templates/cms/subjects/edit.html:349
+msgid "Fetching RDW data..."
+msgstr "RDW-gegevens ophalen..."
+
+#: templates/cms/subjects/create.html:365
+#: templates/cms/subjects/create.html:405
+#: templates/cms/subjects/create.html:436
+#: templates/cms/subjects/create.html:461 templates/cms/subjects/edit.html:359
+#: templates/cms/subjects/edit.html:400 templates/cms/subjects/edit.html:534
+#: templates/cms/subjects/edit.html:558 templates/cms/subjects/view.html:740
+#: templates/cms/subjects/view.html:754 templates/cms/subjects/view.html:761
+#: templates/cms/subjects/view.html:885 templates/cms/subjects/view.html:899
+#: templates/cms/subjects/view.html:930 templates/cms/subjects/view.html:995
+#: templates/cms/subjects/view.html:1033 templates/cms/subjects/view.html:1200
+#: templates/cms/subjects/view.html:1351 templates/cms/subjects/view.html:1420
+#: templates/cms/subjects/view.html:1427 templates/cms/subjects/view.html:1837
+#: templates/cms/subjects/view.html:1862 templates/cms/subjects/view.html:1890
+#: templates/cms/subjects/view.html:1893 templates/cms/subjects/view.html:1902
+#: templates/cms/subjects/view.html:1987 templates/cms/subjects/view.html:1993
+#: templates/cms/subjects/view.html:2014 templates/cms/subjects/view.html:2129
+#: templates/cms/subjects/view.html:2139 templates/cms/subjects/view.html:2169
+#: templates/cms/subjects/view.html:2192 templates/cms/subjects/view.html:2243
+#: templates/cms/subjects/view.html:2268 templates/cms/subjects/view.html:2305
+#: templates/cms/subjects/view.html:2330 templates/cms/subjects/view.html:2363
+#: templates/cms/subjects/view.html:2455 templates/cms/subjects/view.html:2475
+#: templates/cms/subjects/view.html:2478 templates/cms/subjects/view.html:2484
+#: templates/cms/subjects/view.html:2511 templates/cms/subjects/view.html:2642
+#: templates/cms/subjects/view.html:2681 templates/cms/subjects/view.html:2688
+msgid "Error:"
+msgstr "Fout:"
+
+#: templates/cms/subjects/create.html:372 templates/cms/subjects/edit.html:366
+msgid "No vehicle found for:"
+msgstr "Geen voertuig gevonden voor:"
+
+#: templates/cms/subjects/create.html:400
+msgid "✅ Loaded:"
+msgstr "✅ Geladen:"
+
+#: templates/cms/subjects/create.html:420
+msgid "Enter IMO, MMSI, ENI, or name"
+msgstr "Voer IMO, MMSI, ENI of naam in"
+
+#: templates/cms/subjects/create.html:426 templates/cms/subjects/edit.html:524
+msgid "Looking up vessel..."
+msgstr "Help laden..."
+
+#: templates/cms/subjects/create.html:443 templates/cms/subjects/edit.html:541
+msgid "No vessel found"
+msgstr "Geen resultaten"
+
+#: templates/cms/subjects/create.html:456 templates/cms/subjects/edit.html:553
+msgid "✅ Found:"
+msgstr "✅ Gevonden:"
+
+#: templates/cms/subjects/create.html:513
+msgid "⚠️ Exact match:"
+msgstr "⚠️ Exacte match:"
+
+#: templates/cms/subjects/create.html:518
+msgid "Similar subjects found:"
+msgstr "Vergelijkbare subjecten gevonden:"
+
+#: templates/cms/subjects/create.html:520
+#, python-format
+msgid "%% similar"
+msgstr "%% vergelijkbaar"
+
+#: templates/cms/subjects/create.html:659
+msgid "Creating..."
+msgstr "Bezig met aanmaken..."
+
+#: templates/cms/subjects/edit.html:3
+msgid "Edit Subject"
+msgstr "Subjecten"
+
+#: templates/cms/subjects/edit.html:11
+msgid "Type *"
+msgstr "Type"
+
+#: templates/cms/subjects/edit.html:43
+msgid "RDW Vehicle Data"
+msgstr "Voertuig"
+
+#: templates/cms/subjects/edit.html:45
+msgid "Enter a license plate (kenteken) and fetch official RDW data"
+msgstr "Voer een kenteken in en haal officiële RDW-gegevens op"
+
+#: templates/cms/subjects/edit.html:49 templates/cms/subjects/edit.html:361
+#: templates/cms/subjects/edit.html:368 templates/cms/subjects/edit.html:397
+#: templates/cms/subjects/edit.html:402
+msgid "🚗 Fetch from RDW"
+msgstr "🚗 Ophalen van RDW"
+
+#: templates/cms/subjects/edit.html:65
+msgid "Merk"
+msgstr "Merk"
+
+#: templates/cms/subjects/edit.html:73
+msgid "Inrichting"
+msgstr "Inrichting"
+
+#: templates/cms/subjects/edit.html:74
+msgid "e.g. sedan, stationwagen"
+msgstr "bijv. sedan, stationwagen"
+
+#: templates/cms/subjects/edit.html:81 templates/cms/subjects/view.html:194
+msgid "Kleur (Eerste)"
+msgstr "Kleur (Eerste)"
+
+#: templates/cms/subjects/edit.html:85 templates/cms/subjects/view.html:197
+msgid "Kleur (Tweede)"
+msgstr "Kleur (Tweede)"
+
+#: templates/cms/subjects/edit.html:97 templates/cms/subjects/view.html:206
+msgid "Cilinderinhoud (cc)"
+msgstr "Cilinderinhoud (cc)"
+
+#: templates/cms/subjects/edit.html:101 templates/cms/subjects/view.html:209
+msgid "Aantal Cilinders"
+msgstr "Aantal Cilinders"
+
+#: templates/cms/subjects/edit.html:105 templates/cms/subjects/view.html:212
+msgid "Massa Ledig (kg)"
+msgstr "Massa Ledig (kg)"
+
+#: templates/cms/subjects/edit.html:109 templates/cms/subjects/view.html:215
+msgid "Maximum Massa (kg)"
+msgstr "Maximum Massa (kg)"
+
+#: templates/cms/subjects/edit.html:121 templates/cms/subjects/view.html:228
+msgid "Taxi"
+msgstr "Taxi"
+
+#: templates/cms/subjects/edit.html:125 templates/cms/subjects/view.html:231
+msgid "Geexporteerd"
+msgstr "Geëxporteerd"
+
+#: templates/cms/subjects/edit.html:129 templates/cms/subjects/view.html:234
+msgid "EU Categorie"
+msgstr "EU Categorie"
+
+#: templates/cms/subjects/edit.html:133 templates/cms/subjects/view.html:237
+msgid "Zuinigheidsclassificatie"
+msgstr "Zuinigheidsclassificatie"
+
+#: templates/cms/subjects/edit.html:137 templates/cms/subjects/view.html:240
+msgid "Catalogusprijs (EUR)"
+msgstr "Catalogusprijs (EUR)"
+
+#: templates/cms/subjects/edit.html:141 templates/cms/subjects/view.html:243
+msgid "Datum Eerste Toelating"
+msgstr "Datum Eerste Toelating"
+
+#: templates/cms/subjects/edit.html:145
+msgid "Verzekeringsmaatschappij"
+msgstr "Verzekeringsmaatschappij"
+
+#: templates/cms/subjects/edit.html:151
+msgid "Note:"
+msgstr "Notitie"
+
+#: templates/cms/subjects/edit.html:153
+msgid ""
+"All fields above are fetched from RDW (open data). The kenteken and merk "
+"are also saved to the basic vehicle fields."
+msgstr ""
+"Alle bovenstaande velden worden opgehaald uit RDW (open data). Het "
+"kenteken en merk worden ook opgeslagen in de basis voertuigvelden."
+
+#: templates/cms/subjects/edit.html:163
+msgid "Look up vessel data from MarinePlan, KVNR, Binnenvaart.eu"
+msgstr "Zoek scheepsgegevens op via MarinePlan, KVNR, Binnenvaart.eu"
+
+#: templates/cms/subjects/edit.html:166
+msgid "IMO"
+msgstr "IMO"
+
+#: templates/cms/subjects/edit.html:343
+msgid "Please enter a license plate (kenteken) first"
+msgstr "Voer een naam in voor de API sleutel."
+
+#: templates/cms/subjects/edit.html:395
+msgid "✅ RDW data loaded for"
+msgstr "✅ RDW-gegevens geladen voor"
+
+#: templates/cms/subjects/edit.html:518
+msgid "Enter IMO, MMSI, or name"
+msgstr "Voer IMO, MMSI of naam in"
+
+#: templates/cms/subjects/list.html:17
+msgid "subject(s) selected"
+msgstr "subject(en) geselecteerd"
+
+#: templates/cms/subjects/list.html:20
+msgid "Link to Case"
+msgstr "Koppelen aan dossier"
+
+#: templates/cms/subjects/list.html:21
+msgid "Clear Selection"
+msgstr "Selectie wissen"
+
+#: templates/cms/subjects/list.html:41
+msgid "Has Case"
+msgstr "Zaken"
+
+#: templates/cms/subjects/list.html:42
+msgid "No Case"
+msgstr "Zaken"
+
+#: templates/cms/subjects/list.html:82
+msgid "Select all"
+msgstr "Alles selecteren"
+
+#: templates/cms/subjects/list.html:82
+msgid "subjects on this page"
+msgstr "subjecten op deze pagina"
+
+#: templates/cms/subjects/list.html:102
+msgid "No subjects found."
+msgstr "Subjecten"
+
+#: templates/cms/subjects/list.html:121
+msgid "Link Subjects to Case"
+msgstr "Subjecten koppelen aan dossier"
+
+#: templates/cms/subjects/list.html:126 templates/cms/subjects/view.html:1078
+msgid "Link"
+msgstr "Inloggen"
+
+#: templates/cms/subjects/list.html:126
+msgid "selected subject(s) to a case."
+msgstr "geselecteerde subject(en) aan een dossier."
+
+#: templates/cms/subjects/list.html:130
+msgid "Select Case"
+msgstr "Selecteer dossier"
+
+#: templates/cms/subjects/list.html:132
+msgid "Loading cases..."
+msgstr "Help laden..."
+
+#: templates/cms/subjects/list.html:138
+msgid "Link Subjects"
+msgstr "Subjecten"
+
+#: templates/cms/subjects/list.html:206
+msgid "Please select at least one subject."
+msgstr "Selecteer ten minste één subject."
+
+#: templates/cms/subjects/list.html:214
+msgid "Select a case..."
+msgstr "Selecteer een dossier..."
+
+#: templates/cms/subjects/list.html:230
+msgid "Please select a case."
+msgstr "Selecteer een dossier."
+
+#: templates/cms/subjects/list.html:243
+msgid "Added"
+msgstr "Toegevoegd"
+
+#: templates/cms/subjects/list.html:243
+msgid "subject(s) to case."
+msgstr "subject(en) aan dossier."
+
+#: templates/cms/subjects/list.html:245
+msgid "Skipped"
+msgstr "Overgeslagen"
+
+#: templates/cms/subjects/view.html:6
+msgid "Back to Subjects"
+msgstr "Terug naar Subjecten"
+
+#: templates/cms/subjects/view.html:18
+msgid "📷 Upload"
+msgstr "📷 Uploaden"
+
+#: templates/cms/subjects/view.html:24 templates/cms/subjects/view.html:2505
+#: templates/cms/subjects/view.html:2513
+msgid "🗑️ Delete"
+msgstr "🗑️ Verwijderen"
+
+#: templates/cms/subjects/view.html:30 templates/cms/subjects/view.html:34
+msgid "🔍 OSINT Search"
+msgstr "🔍 OSINT Zoeken"
+
+#: templates/cms/subjects/view.html:33
+msgid "Link subject to a case first"
+msgstr "Koppel subject eerst aan een zaak"
+
+#: templates/cms/subjects/view.html:38
+msgid "🌍 Check Interpol"
+msgstr "🌍 Interpol Controleren"
+
+#: templates/cms/subjects/view.html:43
+msgid "🚢 Check Vessel"
+msgstr "🚢 Schip Controleren"
+
+#: templates/cms/subjects/view.html:48 templates/cms/subjects/view.html:1946
+#: templates/cms/subjects/view.html:1970 templates/cms/subjects/view.html:1998
+msgid "👤 Encode Face"
+msgstr "👤 Gezicht Coderen"
+
+#: templates/cms/subjects/view.html:51
+msgid "🔍 TinEye Search"
+msgstr "🔍 TinEye Zoeken"
+
+#: templates/cms/subjects/view.html:55
+msgid "✅ Face Encoded"
+msgstr "✅ Gezicht Gecodeerd"
+
+#: templates/cms/subjects/view.html:72
+msgid "🚗 Vehicle Details"
+msgstr "🚗 Voertuigdetails"
+
+#: templates/cms/subjects/view.html:72
+msgid "🚢 Vessel Details"
+msgstr "🚢 Scheepsdetails"
+
+#: templates/cms/subjects/view.html:72
+msgid "Subject Details"
+msgstr "Subjecten"
+
+#: templates/cms/subjects/view.html:74
+msgid "🔗 View Relationships"
+msgstr "🔗 Relaties Bekijken"
+
+#: templates/cms/subjects/view.html:88
+msgid "Email(s)"
+msgstr "E-mail(s)"
+
+#: templates/cms/subjects/view.html:97 templates/cms/subjects/view.html:106
+msgid "✉️ Check"
+msgstr "✉️ Controleren"
+
+#: templates/cms/subjects/view.html:115
+msgid "Phone(s)"
+msgstr "Telefoon(s)"
+
+#: templates/cms/subjects/view.html:124 templates/cms/subjects/view.html:133
+msgid "📞 Check"
+msgstr "📞 Controleren"
+
+#: templates/cms/subjects/view.html:161
+msgid "🚗 Check RDW"
+msgstr "🚗 RDW Controleren"
+
+#: templates/cms/subjects/view.html:163
+msgid "(Add license plate first)"
+msgstr "(Voer eerst kenteken in)"
+
+#: templates/cms/subjects/view.html:175
+msgid "Inrichting (Vehicle Type)"
+msgstr "Inrichting (Voertuigtype)"
+
+#: templates/cms/subjects/view.html:185
+msgid "RDW Voertuiggegevens"
+msgstr "RDW Voertuiggegevens"
+
+#: templates/cms/subjects/view.html:247
+msgid "✏️ Edit RDW Data"
+msgstr "✏️ RDW Gegevens Bewerken"
+
+#: templates/cms/subjects/view.html:266
+msgid "Vlag (Flag State)"
+msgstr "Vlag (Flag State)"
+
+#: templates/cms/subjects/view.html:272
+msgid "🚢 Vessel Data"
+msgstr "🚢 Scheepsgegevens"
+
+#: templates/cms/subjects/view.html:285
+msgid "✏️ Edit Vessel Data"
+msgstr "✏️ Scheepsgegevens Bewerken"
+
+#: templates/cms/subjects/view.html:307
+msgid "🏛 Kadaster"
+msgstr "🏛 Kadaster"
+
+#: templates/cms/subjects/view.html:308
+msgid "🚔 Politiebureau"
+msgstr "🚔 Politiebureau"
+
+#: templates/cms/subjects/view.html:324
+msgid "Linked Cases"
+msgstr "Koppelen aan dossier"
+
+#: templates/cms/subjects/view.html:338
+msgid "📝 Notities & Comments"
+msgstr "📝 Notities & Opmerkingen"
+
+#: templates/cms/subjects/view.html:340
+msgid "Add Note"
+msgstr "Notitie toevoegen"
+
+#: templates/cms/subjects/view.html:345
+msgid "Add a note or comment about this subject..."
+msgstr "Voeg een notitie of opmerking toe..."
+
+#: templates/cms/subjects/view.html:351
+msgid "📞 Phone Call"
+msgstr "📞 Telefoongesprek"
+
+#: templates/cms/subjects/view.html:352
+msgid "📧 Email"
+msgstr "📧 E-mail"
+
+#: templates/cms/subjects/view.html:353
+msgid "🤝 Meeting"
+msgstr "🤝 Vergadering"
+
+#: templates/cms/subjects/view.html:354
+msgid "Proces-verbaal"
+msgstr "Proces-verbaal"
+
+#: templates/cms/subjects/view.html:356
+msgid "Pin"
+msgstr "Openstaand"
+
+#: templates/cms/subjects/view.html:360
+msgid "Loading notes..."
+msgstr "Help laden..."
+
+#: templates/cms/subjects/view.html:367
+msgid "Social Media IDs"
+msgstr "Sociale media"
+
+#: templates/cms/subjects/view.html:369 templates/cms/subjects/view.html:753
+#: templates/cms/subjects/view.html:760
+msgid "🔍 Bulk Extract from Findings"
+msgstr "🔍 Bulk Extraheren uit Bevindingen"
+
+#: templates/cms/subjects/view.html:370
+msgid "+ Add ID"
+msgstr "+ ID Toevoegen"
+
+#: templates/cms/subjects/view.html:377
+msgid "ID/Value"
+msgstr "ID/Waarde"
+
+#: templates/cms/subjects/view.html:402
+msgid "No social media IDs recorded yet."
+msgstr "Geen social media IDs gevonden op deze pagina."
+
+#: templates/cms/subjects/view.html:404
+msgid ""
+"Tip: Click \"Extract ID\" on any URL in findings to automatically extract"
+" and save social media IDs."
+msgstr ""
+"Tip: Klik op \"Extraheer ID\" op elke URL in bevindingen om automatisch "
+"social media ID's te extraheren en op te slaan."
+
+#: templates/cms/subjects/view.html:412
+msgid "🌐 Social Accounts (Usernames)"
+msgstr "🌐 Sociale Accounts (Gebruikersnamen)"
+
+#: templates/cms/subjects/view.html:413
+msgid "+ Add Username"
+msgstr "+ Gebruikersnaam Toevoegen"
+
+#: templates/cms/subjects/view.html:419
+msgid "URL"
+msgstr "URL"
+
+#: templates/cms/subjects/view.html:426
+msgid "🔗 link"
+msgstr "🔗 link"
+
+#: templates/cms/subjects/view.html:437
+msgid "No social accounts recorded yet."
+msgstr "sociale account(s)."
+
+#: templates/cms/subjects/view.html:439
+msgid ""
+"Tip: Found a username during OSINT search? Save it here so you can search"
+" by it later."
+msgstr ""
+"Tip: Een gebruikersnaam gevonden tijdens OSINT-zoekopdracht? Sla het hier"
+" op zodat u er later naar kunt zoeken."
+
+#: templates/cms/subjects/view.html:447
+msgid "🔍 Username Search"
+msgstr "🔍 Gebruikersnaam Zoeken"
+
+#: templates/cms/subjects/view.html:451
+msgid "Enter username..."
+msgstr "@ Aanmaken op gebruikersnaam"
+
+#: templates/cms/subjects/view.html:452
+msgid "🔍 Check"
+msgstr "🔍 Controleren"
+
+#: templates/cms/subjects/view.html:456
+msgid "📥 Save Selected as Findings"
+msgstr "📥 Selectie Opslaan als Bevindingen"
+
+#: templates/cms/subjects/view.html:464
+msgid "Add Social Account"
+msgstr "Sociale accounts"
+
+#: templates/cms/subjects/view.html:471 templates/cms/subjects/view.html:517
+msgid "Twitter/X"
+msgstr "Twitter/X"
+
+#: templates/cms/subjects/view.html:472 templates/cms/subjects/view.html:514
+msgid "Facebook"
+msgstr "Facebook"
+
+#: templates/cms/subjects/view.html:473 templates/cms/subjects/view.html:516
+msgid "Instagram"
+msgstr "Instagram"
+
+#: templates/cms/subjects/view.html:474 templates/cms/subjects/view.html:518
+msgid "LinkedIn"
+msgstr "LinkedIn"
+
+#: templates/cms/subjects/view.html:475 templates/cms/subjects/view.html:519
+msgid "TikTok"
+msgstr "TikTok"
+
+#: templates/cms/subjects/view.html:476 templates/cms/subjects/view.html:520
+msgid "Reddit"
+msgstr "Reddit"
+
+#: templates/cms/subjects/view.html:477
+msgid "YouTube"
+msgstr "YouTube"
+
+#: templates/cms/subjects/view.html:478
+msgid "GitHub"
+msgstr "GitHub"
+
+#: templates/cms/subjects/view.html:480
+msgid "Signal"
+msgstr "Signal"
+
+#: templates/cms/subjects/view.html:481
+msgid "Discord"
+msgstr "Discord"
+
+#: templates/cms/subjects/view.html:482
+msgid "Snapchat"
+msgstr "Snapchat"
+
+#: templates/cms/subjects/view.html:483
+msgid "Pinterest"
+msgstr "Pinterest"
+
+#: templates/cms/subjects/view.html:507 templates/cms/subjects/view.html:1784
+msgid "Add Social Media ID"
+msgstr "Sociale media"
+
+#: templates/cms/subjects/view.html:515
+msgid "VK"
+msgstr "VK"
+
+#: templates/cms/subjects/view.html:525
+msgid "ID / Username"
+msgstr "ID / Gebruikersnaam"
+
+#: templates/cms/subjects/view.html:526
+msgid "Enter ID or username"
+msgstr "Voer ID of gebruikersnaam in"
+
+#: templates/cms/subjects/view.html:549
+msgid "Search for information about"
+msgstr "Zoek naar informatie over"
+
+#: templates/cms/subjects/view.html:558
+msgid "Searching..."
+msgstr "Laden..."
+
+#: templates/cms/subjects/view.html:561
+msgid "Cancel Search"
+msgstr "Zoeken"
+
+#: templates/cms/subjects/view.html:581
+msgid "🌐 Save as Social Accounts"
+msgstr "🌐 Opslaan als Sociale Accounts"
+
+#: templates/cms/subjects/view.html:596
+msgid "Subject Network"
+msgstr "Subjecten"
+
+#: templates/cms/subjects/view.html:607
+msgid "Direct Relationships"
+msgstr "Directe Relaties"
+
+#: templates/cms/subjects/view.html:612
+msgid "+ Add Relationship"
+msgstr "+ Relatie Toevoegen"
+
+#: templates/cms/subjects/view.html:617 templates/cms/subjects/view.html:850
+msgid "Select a subject..."
+msgstr "Subjecten"
+
+#: templates/cms/subjects/view.html:620
+msgid "Family Member"
+msgstr "Familielid"
+
+#: templates/cms/subjects/view.html:621
+msgid "Business Partner"
+msgstr "Zakenpartner"
+
+#: templates/cms/subjects/view.html:622
+msgid "Colleague"
+msgstr "Collega"
+
+#: templates/cms/subjects/view.html:623
+msgid "Associate"
+msgstr "Kennis"
+
+#: templates/cms/subjects/view.html:624
+msgid "Neighbor"
+msgstr "Buur"
+
+#: templates/cms/subjects/view.html:625
+msgid "Related"
+msgstr "Aanmaken"
+
+#: templates/cms/subjects/view.html:639
+msgid "📋 Bevindingen (Findings)"
+msgstr "📋 Bevindingen"
+
+#: templates/cms/subjects/view.html:675
+msgid ""
+"Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om "
+"resultaten op te slaan."
+msgstr ""
+"Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om "
+"resultaten op te slaan."
+
+#: templates/cms/subjects/view.html:745
+msgid ""
+"Extract social media IDs from all findings linked to this subject? This "
+"may take a while."
+msgstr ""
+"Social media ID's extraheren uit alle bevindingen die aan dit subject "
+"zijn gekoppeld? Dit kan even duren."
+
+#: templates/cms/subjects/view.html:748
+msgid "⏳ Extracting..."
+msgstr "⏳ Bezig met extraheren..."
+
+#: templates/cms/subjects/view.html:815
+msgid "No relationships yet."
+msgstr "Nog geen bevindingen."
+
+#: templates/cms/subjects/view.html:825
+msgid "related"
+msgstr "gerelateerd"
+
+#: templates/cms/subjects/view.html:840
+msgid "Form elements not found! Contact admin."
+msgstr "Formulierelementen niet gevonden! Neem contact op met beheerder."
+
+#: templates/cms/subjects/view.html:861
+msgid "No other subjects available"
+msgstr "Geen andere subjecten beschikbaar"
+
+#: templates/cms/subjects/view.html:865
+msgid "Error loading subjects"
+msgstr "Fout bij laden subjecten"
+
+#: templates/cms/subjects/view.html:866
+msgid "Failed to load subjects list:"
+msgstr "Kon subjectenlijst niet laden:"
+
+#: templates/cms/subjects/view.html:877
+msgid "Select a subject"
+msgstr "Selecteer een subject"
+
+#: templates/cms/subjects/view.html:888 templates/cms/subjects/view.html:902
+msgid "Network error:"
+msgstr "Netwerkfout:"
+
+#: templates/cms/subjects/view.html:892
+msgid "Remove this relationship?"
+msgstr "Deze relatie verwijderen?"
+
+#: templates/cms/subjects/view.html:910
+msgid "No license plate (kenteken) available for this vehicle."
+msgstr "Geen kenteken beschikbaar voor dit voertuig."
+
+#: templates/cms/subjects/view.html:915
+msgid "Check RDW (Dutch Vehicle Authority) data for:"
+msgstr "RDW-gegevens controleren voor:"
+
+#: templates/cms/subjects/view.html:916 templates/cms/subjects/view.html:941
+msgid "Kenteken:"
+msgstr "Kenteken:"
+
+#: templates/cms/subjects/view.html:917
+msgid "This will fetch official vehicle data and offer to update the subject."
+msgstr ""
+"Dit haalt officiële voertuiggegevens op en biedt aan om het subject bij "
+"te werken.Dit haalt officiële voertuiggegevens op en biedt aan het "
+"subject bij te werken."
+
+#: templates/cms/subjects/view.html:935
+msgid "No vehicle found in RDW database for:"
+msgstr "Geen voertuig gevonden in RDW-database voor:"
+
+#: templates/cms/subjects/view.html:940
+msgid "RDW Data Found:"
+msgstr "RDW Gegevens Gevonden:"
+
+#: templates/cms/subjects/view.html:942
+msgid "Merk:"
+msgstr "Merk:"
+
+#: templates/cms/subjects/view.html:943
+msgid "Model:"
+msgstr "Model:"
+
+#: templates/cms/subjects/view.html:944 templates/cms/subjects/view.html:1219
+#: templates/cms/subjects/view.html:1245 templates/cms/subjects/view.html:1263
+#: templates/cms/subjects/view.html:1296 templates/cms/subjects/view.html:1309
+#: templates/cms/subjects/view.html:1326 templates/cms/subjects/view.html:2293
+msgid "Type:"
+msgstr "Type:"
+
+#: templates/cms/subjects/view.html:945
+msgid "Inrichting:"
+msgstr "Inrichting:"
+
+#: templates/cms/subjects/view.html:946
+msgid "Kleur:"
+msgstr "Kleur:"
+
+#: templates/cms/subjects/view.html:947
+msgid "APK vervalt:"
+msgstr "APK vervalt:"
+
+#: templates/cms/subjects/view.html:948
+msgid "Verzekerd (WAM):"
+msgstr "Verzekerd (WAM):"
+
+#: templates/cms/subjects/view.html:949
+msgid "Update subject with this data?"
+msgstr "Subject bijwerken met deze gegevens?"
+
+#: templates/cms/subjects/view.html:956
+msgid "Failed to check RDW:"
+msgstr "RDW-controle mislukt:"
+
+#: templates/cms/subjects/view.html:969
+msgid "Error updating:"
+msgstr "Fout bij bijwerken:"
+
+#: templates/cms/subjects/view.html:971
+msgid "Subject updated successfully!"
+msgstr "Subject succesvol bijgewerkt!"
+
+#: templates/cms/subjects/view.html:976
+msgid "Failed to update:"
+msgstr "Bijwerken mislukt:"
+
+#: templates/cms/subjects/view.html:1004
+msgid "📷 Change"
+msgstr "📷 Wijzigen"
+
+#: templates/cms/subjects/view.html:1007
+msgid "Upload failed:"
+msgstr "Uploaden mislukt:"
+
+#: templates/cms/subjects/view.html:1019
+msgid "Checking INTERPOL..."
+msgstr "INTERPOL controleren..."
+
+#: templates/cms/subjects/view.html:1021
+msgid "Checking INTERPOL and politie.nl..."
+msgstr "INTERPOL en politie.nl controleren..."
+
+#: templates/cms/subjects/view.html:1043
+msgid "Geen matches gevonden in INTERPOL data."
+msgstr "Geen matches gevonden in INTERPOL-gegevens."
+
+#: templates/cms/subjects/view.html:1047
+msgid "POTENTIELE MATCH(S) GEVONDEN!"
+msgstr "POTENTIËLE MATCH(ES) GEVONDEN!"
+
+#: templates/cms/subjects/view.html:1050
+msgid "Red Notices (Wanted)"
+msgstr "Red Notices (Gezocht)"
+
+#: templates/cms/subjects/view.html:1055 templates/cms/subjects/view.html:1073
+msgid "DOB:"
+msgstr "Geboortedatum:"
+
+#: templates/cms/subjects/view.html:1056 templates/cms/subjects/view.html:1074
+msgid "Nationality:"
+msgstr "Nationaliteit:"
+
+#: templates/cms/subjects/view.html:1057
+msgid "Charge:"
+msgstr "Aanklacht:"
+
+#: templates/cms/subjects/view.html:1058
+msgid "Issued by:"
+msgstr "Uitgegeven door:"
+
+#: templates/cms/subjects/view.html:1059
+msgid "INTERPOL link"
+msgstr "INTERPOL link"
+
+#: templates/cms/subjects/view.html:1061 templates/cms/subjects/view.html:1080
+#: templates/cms/subjects/view.html:1101 templates/cms/subjects/view.html:1167
+msgid "Bewaar als bevinding"
+msgstr "Bewaar als bevinding"
+
+#: templates/cms/subjects/view.html:1067
+msgid "Yellow Notices / Vermist (Missing)"
+msgstr "Yellow Notices / Vermist"
+
+#: templates/cms/subjects/view.html:1072
+msgid "Source:"
+msgstr "Bron:"
+
+#: templates/cms/subjects/view.html:1075
+msgid "Missing since:"
+msgstr "Vermist sinds:"
+
+#: templates/cms/subjects/view.html:1076
+msgid "Place:"
+msgstr "Plaats:"
+
+#: templates/cms/subjects/view.html:1077
+msgid "Info:"
+msgstr "Info:"
+
+#: templates/cms/subjects/view.html:1086
+msgid "Opsporingsberichten (Politie.nl)"
+msgstr "Opsporingsberichten (Politie.nl)"
+
+#: templates/cms/subjects/view.html:1097
+msgid "Locatie:"
+msgstr "Locatie:"
+
+#: templates/cms/subjects/view.html:1098
+msgid "Datum:"
+msgstr "Datum:"
+
+#: templates/cms/subjects/view.html:1099
+msgid "Bekijk op politie.nl"
+msgstr "Bekijk op politie.nl"
+
+#: templates/cms/subjects/view.html:1107
+msgid "INTERPOL API was blocked (Akamai). Results from politie.nl fallback."
+msgstr "INTERPOL API was geblokkeerd (Akamai). Resultaten van politie.nl fallback."
+
+#: templates/cms/subjects/view.html:1113
+msgid "Failed to check data:"
+msgstr "Gegevenscontrole mislukt:"
+
+#: templates/cms/subjects/view.html:1117
+msgid "Check Interpol"
+msgstr "Interpol Controleren"
+
+#: templates/cms/subjects/view.html:1129
+msgid ""
+"Dit subject is niet gekoppeld aan een zaak. Koppel eerst aan een zaak om "
+"bevindingen op te slaan."
+msgstr ""
+"Dit subject is niet gekoppeld aan een zaak. Koppel eerst aan een zaak om "
+"bevindingen op te slaan."
+
+#: templates/cms/subjects/view.html:1140
+msgid "Bezig met opslaan..."
+msgstr "Bezig met opslaan..."
+
+#: templates/cms/subjects/view.html:1155
+msgid "Onbekende fout"
+msgstr "Onbekende fout"
+
+#: templates/cms/subjects/view.html:1160
+msgid "Opgeslagen!"
+msgstr "Opgeslagen!"
+
+#: templates/cms/subjects/view.html:1165 templates/cms/subjects/view.html:1393
+msgid "Fout:"
+msgstr "Fout:"
+
+#: templates/cms/subjects/view.html:1180
+msgid "🔍 Checking vessel..."
+msgstr "🔍 Schip controleren..."
+
+#: templates/cms/subjects/view.html:1182
+msgid "🔍 Looking up vessel data..."
+msgstr "🔍 Scheepsgegevens opzoeken..."
+
+#: templates/cms/subjects/view.html:1207
+msgid "⚠ No vessel data found"
+msgstr "⚠ Geen scheepsgegevens gevonden"
+
+#: templates/cms/subjects/view.html:1220 templates/cms/subjects/view.html:1243
+#: templates/cms/subjects/view.html:1261
+msgid "MMSI:"
+msgstr "MMSI:"
+
+#: templates/cms/subjects/view.html:1222 templates/cms/subjects/view.html:1244
+#: templates/cms/subjects/view.html:1283 templates/cms/subjects/view.html:1321
+msgid "IMO:"
+msgstr "IMO:"
+
+#: templates/cms/subjects/view.html:1225 templates/cms/subjects/view.html:1284
+#: templates/cms/subjects/view.html:1322
+msgid "Flag:"
+msgstr "Vlag:"
+
+#: templates/cms/subjects/view.html:1228
+msgid "Positie:"
+msgstr "Positie:"
+
+#: templates/cms/subjects/view.html:1229 templates/cms/subjects/view.html:1249
+#: templates/cms/subjects/view.html:1271
+msgid "📍 Map"
+msgstr "📍 Kaart"
+
+#: templates/cms/subjects/view.html:1232
+msgid "Bronnen:"
+msgstr "Bronnen:"
+
+#: templates/cms/subjects/view.html:1240
+msgid "🔍 VesselFinder"
+msgstr "🔍 VesselFinder"
+
+#: templates/cms/subjects/view.html:1242 templates/cms/subjects/view.html:1260
+#: templates/cms/subjects/view.html:1282 templates/cms/subjects/view.html:1294
+#: templates/cms/subjects/view.html:1307 templates/cms/subjects/view.html:1320
+msgid "Name:"
+msgstr "Naam:"
+
+#: templates/cms/subjects/view.html:1247 templates/cms/subjects/view.html:1269
+msgid "Position:"
+msgstr "Positie:"
+
+#: templates/cms/subjects/view.html:1258
+msgid "🛰️ MarinePlan (AIS)"
+msgstr "🛰️ MarinePlan (AIS)"
+
+#: templates/cms/subjects/view.html:1262
+msgid "Callsign:"
+msgstr "Roepnaam:"
+
+#: templates/cms/subjects/view.html:1264
+msgid "Length:"
+msgstr "Lengte:"
+
+#: templates/cms/subjects/view.html:1265
+msgid "Beam:"
+msgstr "Breedte:"
+
+#: templates/cms/subjects/view.html:1266
+msgid "Speed:"
+msgstr "Snelheid:"
+
+#: templates/cms/subjects/view.html:1267
+msgid "Destination:"
+msgstr "Bestemming:"
+
+#: templates/cms/subjects/view.html:1280
+msgid "🇳🇱 KVNR Schepenzoeker"
+msgstr "🇳🇱 KVNR Schepenzoeker"
+
+#: templates/cms/subjects/view.html:1292
+msgid "🌊 Binnenvaart.eu"
+msgstr "🌊 Binnenvaart.eu"
+
+#: templates/cms/subjects/view.html:1295 templates/cms/subjects/view.html:1308
+msgid "ENI:"
+msgstr "ENI:"
+
+#: templates/cms/subjects/view.html:1297 templates/cms/subjects/view.html:1310
+msgid "Year Built:"
+msgstr "Bouwjaar:"
+
+#: templates/cms/subjects/view.html:1305
+msgid "🚢 DeBinnenvaart.nl"
+msgstr "🚢 DeBinnenvaart.nl"
+
+#: templates/cms/subjects/view.html:1318
+msgid "📋 Equasis"
+msgstr "📋 Equasis"
+
+#: templates/cms/subjects/view.html:1323
+msgid "GT:"
+msgstr "GT:"
+
+#: templates/cms/subjects/view.html:1324
+msgid "DWT:"
+msgstr "DWT:"
+
+#: templates/cms/subjects/view.html:1325
+msgid "Year:"
+msgstr "Jaar:"
+
+#: templates/cms/subjects/view.html:1327
+msgid "Owner:"
+msgstr "Eigenaar:"
+
+#: templates/cms/subjects/view.html:1328
+msgid "Manager:"
+msgstr "Beheerder:"
+
+#: templates/cms/subjects/view.html:1334
+msgid "Sources:"
+msgstr "Bronnen:"
+
+#: templates/cms/subjects/view.html:1339 templates/cms/subjects/view.html:1395
+msgid "📥 Bewaar als bevinding"
+msgstr "📥 Bewaar als bevinding"
+
+#: templates/cms/subjects/view.html:1341
+msgid "💾 Update vessel fields"
+msgstr "💾 Scheepsvelden bijwerken"
+
+#: templates/cms/subjects/view.html:1343
+msgid "Link subject to a case to save findings."
+msgstr "Koppel subject aan een zaak om bevindingen op te slaan."
+
+#: templates/cms/subjects/view.html:1348
+msgid "✅ Checked"
+msgstr "✅ Gecontroleerd"
+
+#: templates/cms/subjects/view.html:1365
+msgid "This subject is not linked to a case."
+msgstr "Dit subject is niet gekoppeld aan een zaak."
+
+#: templates/cms/subjects/view.html:1370
+msgid "⏳ Bezig met opslaan..."
+msgstr "⏳ Bezig met opslaan..."
+
+#: templates/cms/subjects/view.html:1388
+msgid "✅ Opgeslagen!"
+msgstr "✅ Opgeslagen!"
+
+#: templates/cms/subjects/view.html:1422
+msgid "✅ Vessel fields updated!"
+msgstr "✅ Scheepsvelden bijgewerkt!"
+
+#: templates/cms/subjects/view.html:1442
+msgid ""
+"This subject is not linked to any case yet.\\n\\nPlease link this subject"
+" to a case first before using OSINT search.\\nYou can do this from the "
+"Case view."
+msgstr ""
+"Dit subject is nog niet aan een zaak gekoppeld.\\n\\nKoppel dit subject "
+"eerst aan een zaak voordat u OSINT-zoekopdracht gebruikt.\\nDit kunt u "
+"doen vanuit de zaakweergave."
+
+#: templates/cms/subjects/view.html:1488
+msgid "Failed to start search:"
+msgstr "Zoekopdracht starten mislukt:"
+
+#: templates/cms/subjects/view.html:1491 templates/cms/subjects/view.html:1732
+msgid "This subject is not linked to any case. Link the subject to a case first."
+msgstr ""
+"Dit subject is niet aan een zaak gekoppeld. Koppel het subject eerst aan "
+"een zaak.Dit subject is niet gekoppeld aan een zaak. Koppel het subject "
+"eerst aan een zaak."
+
+#: templates/cms/subjects/view.html:1556
+msgid "Failed to load results:"
+msgstr "Resultaten laden mislukt:"
+
+#: templates/cms/subjects/view.html:1730
+msgid "Failed to add findings:"
+msgstr "Bevindingen toevoegen mislukt:"
+
+#: templates/cms/subjects/view.html:1739
+msgid "selected result(s) as social accounts?"
+msgstr ""
+"geselecteerde resultaten als sociale accounts?geselecteerde resultaten "
+"als sociale accounts?Geselecteerde resultaten opslaan als sociale "
+"accounts op het geselecteerde subject?"
+
+#: templates/cms/subjects/view.html:1784
+msgid "Edit Social Media ID"
+msgstr "Sociale media"
+
+#: templates/cms/subjects/view.html:1815
+msgid "Please enter an ID or URL"
+msgstr "Voer een ID of URL in"
+
+#: templates/cms/subjects/view.html:1833
+msgid "Social media ID saved!"
+msgstr "Social media ID opgeslagen!"
+
+#: templates/cms/subjects/view.html:1847
+msgid "ID?"
+msgstr "ID?"
+
+#: templates/cms/subjects/view.html:1896
+msgid "Delete this social account?"
+msgstr "Deze opmerking verwijderen?"
+
+#: templates/cms/subjects/view.html:1917
+msgid "Loading face recognition models..."
+msgstr "Gezichtsherkenningsmodellen laden..."
+
+#: templates/cms/subjects/view.html:1926
+msgid "Face recognition ready"
+msgstr "Gezichtsherkenning gereed"
+
+#: templates/cms/subjects/view.html:1929
+msgid "Failed to load face recognition"
+msgstr "Gezichtsherkenning laden mislukt"
+
+#: templates/cms/subjects/view.html:1941
+msgid "Processing..."
+msgstr "Bezig met verwerken..."
+
+#: templates/cms/subjects/view.html:1951
+msgid "Detecting face..."
+msgstr "Gezicht detecteren..."
+
+#: templates/cms/subjects/view.html:1968
+msgid "No face detected. Try a clearer photo."
+msgstr "Geen gezicht gedetecteerd. Probeer een duidelijkere foto."
+
+#: templates/cms/subjects/view.html:1974
+msgid "Saving face encoding..."
+msgstr "Gezichtscodering opslaan..."
+
+#: templates/cms/subjects/view.html:1990
+msgid "✅ Face encoding saved!"
+msgstr "✅ Gezichtscodering opgeslagen!"
+
+#: templates/cms/subjects/view.html:2002
+msgid "Remove face encoding for this subject?"
+msgstr "Gezichtscodering voor dit subject verwijderen?"
+
+#: templates/cms/subjects/view.html:2021
+msgid "No photo available for this subject"
+msgstr "Geen foto beschikbaar voor dit subject"
+
+#: templates/cms/subjects/view.html:2042
+msgid "Valid:"
+msgstr "Geldig:"
+
+#: templates/cms/subjects/view.html:2042 templates/cms/subjects/view.html:2053
+#: templates/cms/subjects/view.html:2056 templates/cms/subjects/view.html:2057
+#: templates/cms/subjects/view.html:2058 templates/cms/subjects/view.html:2068
+#: templates/cms/subjects/view.html:2200
+msgid "✅ Yes"
+msgstr "✅ Ja"
+
+#: templates/cms/subjects/view.html:2042 templates/cms/subjects/view.html:2053
+#: templates/cms/subjects/view.html:2068 templates/cms/subjects/view.html:2200
+msgid "❌ No"
+msgstr "❌ Nee"
+
+#: templates/cms/subjects/view.html:2043
+msgid "Number:"
+msgstr "Nummer:"
+
+#: templates/cms/subjects/view.html:2044
+msgid "Country:"
+msgstr "Land:"
+
+#: templates/cms/subjects/view.html:2045
+msgid "Region:"
+msgstr "Regio:"
+
+#: templates/cms/subjects/view.html:2046
+msgid "Carrier:"
+msgstr "Aanbieder:"
+
+#: templates/cms/subjects/view.html:2047
+msgid "Line Type:"
+msgstr "Lijntype:"
+
+#: templates/cms/subjects/view.html:2052
+msgid "📱 WhatsApp"
+msgstr "📱 WhatsApp"
+
+#: templates/cms/subjects/view.html:2053 templates/cms/subjects/view.html:2068
+msgid "Registered:"
+msgstr "Geregistreerd:"
+
+#: templates/cms/subjects/view.html:2053 templates/cms/subjects/view.html:2068
+msgid "⚠ Unknown"
+msgstr "⚠ Onbekend"
+
+#: templates/cms/subjects/view.html:2054 templates/cms/subjects/view.html:2069
+msgid "Chat:"
+msgstr "Chat:"
+
+#: templates/cms/subjects/view.html:2055
+msgid "About:"
+msgstr "Over:"
+
+#: templates/cms/subjects/view.html:2056
+msgid "Business:"
+msgstr "Zakelijk:"
+
+#: templates/cms/subjects/view.html:2057
+msgid "Enterprise:"
+msgstr "Enterprise:"
+
+#: templates/cms/subjects/view.html:2058
+msgid "Verified:"
+msgstr "Geverifieerd:"
+
+#: templates/cms/subjects/view.html:2059
+msgid "Banned:"
+msgstr "Verbannen:"
+
+#: templates/cms/subjects/view.html:2059
+msgid "⚠ Yes"
+msgstr "⚠ Ja"
+
+#: templates/cms/subjects/view.html:2060
+msgid "API Type:"
+msgstr "API Type:"
+
+#: templates/cms/subjects/view.html:2061
+msgid "Cached:"
+msgstr "Gecached:"
+
+#: templates/cms/subjects/view.html:2061
+msgid "Fresh"
+msgstr "Vers"
+
+#: templates/cms/subjects/view.html:2062
+msgid "Checked:"
+msgstr "Gecontroleerd:"
+
+#: templates/cms/subjects/view.html:2067
+msgid "✈️ Telegram"
+msgstr "✈️ Telegram"
+
+#: templates/cms/subjects/view.html:2070
+msgid "Detail:"
+msgstr "Detail:"
+
+#: templates/cms/subjects/view.html:2078
+msgid "API:"
+msgstr "API:"
+
+#: templates/cms/subjects/view.html:2078
+msgid "deze maand"
+msgstr "deze maand"
+
+#: templates/cms/subjects/view.html:2079
+msgid "over"
+msgstr "over"
+
+#: templates/cms/subjects/view.html:2103
+msgid "onbekend"
+msgstr "onbekend"
+
+#: templates/cms/subjects/view.html:2105
+msgid "📦 Previously checked on"
+msgstr "📦 Eerder gecontroleerd op"
+
+#: templates/cms/subjects/view.html:2111
+msgid "✅ Cached"
+msgstr "✅ Gecached"
+
+#: templates/cms/subjects/view.html:2150
+msgid "Refreshing..."
+msgstr "Verversen..."
+
+#: templates/cms/subjects/view.html:2200
+msgid "Valid Format:"
+msgstr "Geldig formaat:"
+
+#: templates/cms/subjects/view.html:2201
+msgid "Domain:"
+msgstr "Domein:"
+
+#: templates/cms/subjects/view.html:2202
+msgid "MX Records:"
+msgstr "MX Records:"
+
+#: templates/cms/subjects/view.html:2202
+msgid "✅ Found"
+msgstr "✅ Gevonden"
+
+#: templates/cms/subjects/view.html:2202
+msgid "❌ None"
+msgstr "❌ Geen"
+
+#: templates/cms/subjects/view.html:2203
+msgid "Disposable:"
+msgstr "Wegwerp:"
+
+#: templates/cms/subjects/view.html:2203 templates/cms/subjects/view.html:2223
+msgid "⚠️ Yes"
+msgstr "⚠️ Ja"
+
+#: templates/cms/subjects/view.html:2203 templates/cms/subjects/view.html:2223
+msgid "✅ No"
+msgstr "✅ Nee"
+
+#: templates/cms/subjects/view.html:2206
+msgid "🔴 Breaches"
+msgstr "🔴 Datalekken"
+
+#: templates/cms/subjects/view.html:2216
+msgid "Breaches:"
+msgstr "Datalekken:"
+
+#: templates/cms/subjects/view.html:2216
+msgid "✅ None found"
+msgstr "✅ Geen gevonden"
+
+#: templates/cms/subjects/view.html:2216
+msgid "⚠️ Not checked"
+msgstr "⚠️ Niet gecontroleerd"
+
+#: templates/cms/subjects/view.html:2222
+msgid "EmailRep:"
+msgstr "EmailRep:"
+
+#: templates/cms/subjects/view.html:2223
+msgid "Suspicious:"
+msgstr "Verdacht:"
+
+#: templates/cms/subjects/view.html:2224
+msgid "Details:"
+msgstr "Details:"
+
+#: templates/cms/subjects/view.html:2230
+msgid "🔍 Investigate further:"
+msgstr "🔍 Verder onderzoeken:"
+
+#: templates/cms/subjects/view.html:2275
+msgid "Address not found in BAG"
+msgstr "Adres niet gevonden in BAG"
+
+#: templates/cms/subjects/view.html:2284 templates/cms/subjects/view.html:2347
+msgid "Address:"
+msgstr "Adres"
+
+#: templates/cms/subjects/view.html:2285
+msgid "Zipcode:"
+msgstr "Postcode:"
+
+#: templates/cms/subjects/view.html:2286
+msgid "Town:"
+msgstr "Plaats:"
+
+#: templates/cms/subjects/view.html:2287
+msgid "Municipality:"
+msgstr "Gemeente:"
+
+#: templates/cms/subjects/view.html:2288
+msgid "Province:"
+msgstr "Provincie:"
+
+#: templates/cms/subjects/view.html:2289
+msgid "Building year:"
+msgstr "Bouwjaar:"
+
+#: templates/cms/subjects/view.html:2290
+msgid "Surface:"
+msgstr "Oppervlakte:"
+
+#: templates/cms/subjects/view.html:2291
+msgid "Purpose:"
+msgstr "Doel:"
+
+#: templates/cms/subjects/view.html:2292
+msgid "Status:"
+msgstr "Status:"
+
+#: templates/cms/subjects/view.html:2294
+msgid "BAG ID:"
+msgstr "BAG ID:"
+
+#: templates/cms/subjects/view.html:2298
+msgid "Coordinates:"
+msgstr "Coördinaten:"
+
+#: templates/cms/subjects/view.html:2348
+msgid "Phone:"
+msgstr "Telefoon:"
+
+#: templates/cms/subjects/view.html:2350
+msgid "Opening hours:"
+msgstr "Openingstijden:"
+
+#: templates/cms/subjects/view.html:2353
+msgid "📍 View on map"
+msgstr "📍 Bekijk op kaart"
+
+#: templates/cms/subjects/view.html:2356
+msgid "🔗 Politie.nl page"
+msgstr "🔗 Politie.nl pagina"
+
+#: templates/cms/subjects/view.html:2385
+msgid "No notes yet. Add one above."
+msgstr "Nog geen notities. Voeg er een toe hierboven."
+
+#: templates/cms/subjects/view.html:2436
+msgid "Please enter a note."
+msgstr "Selecteer een dossier."
+
+#: templates/cms/subjects/view.html:2492
+msgid "Weet je zeker dat je dit subject wilt verwijderen?"
+msgstr "Weet je zeker dat je dit subject wilt verwijderen?"
+
+#: templates/cms/subjects/view.html:2527
+msgid "Searching"
+msgstr "Zoeken"
+
+#: templates/cms/subjects/view.html:2540
+msgid "RapidAPI limit reached"
+msgstr "RapidAPI limiet bereikt"
+
+#: templates/cms/subjects/view.html:2542
+msgid "used this month."
+msgstr "gebruikt deze maand."
+
+#: templates/cms/subjects/view.html:2543
+msgid "Use the Sherlock button on the main dashboard."
+msgstr "Gebruik de Sherlock-knop op het hoofddashboard."
+
+#: templates/cms/subjects/view.html:2559
+msgid "API Usage:"
+msgstr "API Gebruik:"
+
+#: templates/cms/subjects/view.html:2566
+msgid "No results"
+msgstr "Geen resultaten"
+
+#: templates/cms/subjects/view.html:2577
+msgid "Checked"
+msgstr "Gecontroleerd"
+
+#: templates/cms/subjects/view.html:2579
+msgid "False Pos."
+msgstr "Fout-positief"
+
+#: templates/cms/subjects/view.html:2600
+msgid "RapidAPI"
+msgstr "RapidAPI"
+
+#: templates/cms/subjects/view.html:2602
+msgid "Unconfirmed"
+msgstr "Onbevestigd"
+
+#: templates/cms/subjects/view.html:2618
+msgid "available"
+msgstr "beschikbaar"
+
+#: templates/cms/subjects/view.html:2618
+msgid "false positive"
+msgstr "fout-positief"
+
+#: templates/cms/subjects/view.html:2619
+msgid "(click to expand)"
+msgstr "(klik om uit te vouwen)"
+
+#: templates/cms/subjects/view.html:2625
+msgid "False Positive"
+msgstr "Fout-positief"
+
+#: templates/cms/subjects/view.html:2625
+msgid "Available"
+msgstr "Beschikbaar"
+
+#: templates/cms/subjects/view.html:2657
+msgid "selected account(s) as findings?"
+msgstr "geselecteerde account(s) als bevindingen?"
+
+#: templates/cms/subjects/view.html:2683
+msgid "Saved!"
+msgstr "Opgeslagen!"
+
+#: templates/cms/subjects/view.html:2692
+msgid "Save Selected as Findings"
+msgstr "Selectie toevoegen aan bevindingen"
+
+#: templates/cms/subjects/view.html:2702
+msgid "remaining"
+msgstr "over"
+
+#~ msgid "Mark all read"
+#~ msgstr "Alles gelezen"
+
+#~ msgid "Failed to load content."
+#~ msgstr "Kon inhoud niet laden."
+
+#~ msgid "Are you sure?"
+#~ msgstr "Weet u het zeker?"
+
+#~ msgid "Confirm"
+#~ msgstr "Bevestigen"
+
+#~ msgid "Back"
+#~ msgstr "Terug"
+
+#~ msgid "Email"
+#~ msgstr "E-mail"
+
+#~ msgid "Phone"
+#~ msgstr "Telefoon"
+
+#~ msgid "Description"
+#~ msgstr "Beschrijving"
+
+#~ msgid "Failed to load help content."
+#~ msgstr "Kon help-inhoud niet laden."
+
+#~ msgid "📝 Note"
+#~ msgstr "Notitie"
+
+#~ msgid "💬 Discussion"
+#~ msgstr "Discussie"
+
+#~ msgid "🔄 Update"
+#~ msgstr "Update"
+

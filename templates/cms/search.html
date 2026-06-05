@@ -1,6 +1,6 @@
 {% extends "cms/base.html" %}
 
-{% block title %}Search{% endblock %}
+{% block title %}{{ _('Search') }}{% endblock %}
 
 {% block content %}
 <style>
@@ -157,24 +157,24 @@
 </style>
 
 <div class="search-header">
-    <h1>Global Search</h1>
-    <p style="color: var(--text-secondary);">Search across cases, clients, subjects, findings, comments, and notes</p>
+    <h1>{{ _('Global Search') }}</h1>
+    <p style="color: var(--text-secondary);">{{ _('Search across cases, clients, subjects, findings, comments, and notes') }}</p>
 </div>
 
 <form method="GET" action="{{ url_for('cms.search') }}">
     <div class="search-box">
-        <input type="text" name="q" id="search-input" value="{{ query }}" placeholder="Search for anything..." autofocus>
-        <button type="submit" class="btn-cms primary">Search</button>
+        <input type="text" name="q" id="search-input" value="{{ query }}" placeholder="{{ _('Search for anything...') }}" autofocus data-immediate-search>
+        <button type="submit" class="btn-cms primary">{{ _('Search') }}</button>
     </div>
     
     <div class="search-filters">
-        <button type="button" class="filter-btn {% if not active_filter or active_filter == 'all' %}active{% endif %}" data-click="filterResults" data-arg0="all">All</button>
-        <button type="button" class="filter-btn {% if active_filter == 'cases' %}active{% endif %}" data-click="filterResults" data-arg0="cases">Cases</button>
-        <button type="button" class="filter-btn {% if active_filter == 'clients' %}active{% endif %}" data-click="filterResults" data-arg0="clients">Clients</button>
-        <button type="button" class="filter-btn {% if active_filter == 'subjects' %}active{% endif %}" data-click="filterResults" data-arg0="subjects">Subjects</button>
-        <button type="button" class="filter-btn {% if active_filter == 'findings' %}active{% endif %}" data-click="filterResults" data-arg0="findings">Findings</button>
-        <button type="button" class="filter-btn {% if active_filter == 'comments' %}active{% endif %}" data-click="filterResults" data-arg0="comments">Comments</button>
-        <button type="button" class="filter-btn {% if active_filter == 'notes' %}active{% endif %}" data-click="filterResults" data-arg0="notes">Notes</button>
+        <button type="button" class="filter-btn {% if not active_filter or active_filter == 'all' %}active{% endif %}" data-click="filterResults" data-arg0="all">{{ _('All') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'cases' %}active{% endif %}" data-click="filterResults" data-arg0="cases">{{ _('Cases') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'clients' %}active{% endif %}" data-click="filterResults" data-arg0="clients">{{ _('Clients') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'subjects' %}active{% endif %}" data-click="filterResults" data-arg0="subjects">{{ _('Subjects') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'findings' %}active{% endif %}" data-click="filterResults" data-arg0="findings">{{ _('Findings') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'comments' %}active{% endif %}" data-click="filterResults" data-arg0="comments">{{ _('Comments') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'notes' %}active{% endif %}" data-click="filterResults" data-arg0="notes">{{ _('Notes') }}</button>
     </div>
     
     <input type="hidden" name="type" id="filter-type" value="{{ active_filter or 'all' }}">
@@ -183,19 +183,19 @@
 <div class="card" style="margin-top: 1rem; background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <h3 style="margin: 0 0 0.25rem 0; color: white;">👤 Find Similar Faces</h3>
-            <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">Upload a photo to find subjects with similar faces</p>
+            <h3 style="margin: 0 0 0.25rem 0; color: white;">👤 {{ _('Find Similar Faces') }}</h3>
+            <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">{{ _('Upload a photo to find subjects with similar faces') }}</p>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
             <input type="file" id="faceSearchInput" accept="image/*" data-change="searchByFace" style="display: none;">
             <label for="faceSearchInput" style="padding: 0.75rem 1.5rem; background: white; color: #7c3aed; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                📷 Upload Photo
+                📷 {{ _('Upload Photo') }}
             </label>
         </div>
     </div>
     <div id="faceSearchStatus" style="margin-top: 0.75rem; font-size: 0.875rem;"></div>
     <div id="faceSearchResults" style="margin-top: 1rem; display: none;">
-        <h4 style="margin: 0 0 0.75rem 0; color: white;">Matching Subjects</h4>
+        <h4 style="margin: 0 0 0.75rem 0; color: white;">{{ _('Matching Subjects') }}</h4>
         <div id="faceMatchesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;"></div>
     </div>
 </div>
@@ -210,60 +210,60 @@
             {% if results.cases %}
             <div class="quick-stat">
                 <div class="quick-stat-value">{{ results.cases|length }}</div>
-                <div class="quick-stat-label">Cases</div>
+                <div class="quick-stat-label">{{ _('Cases') }}</div>
             </div>
             {% endif %}
             {% if results.clients %}
             <div class="quick-stat">
                 <div class="quick-stat-value">{{ results.clients|length }}</div>
-                <div class="quick-stat-label">Clients</div>
+                <div class="quick-stat-label">{{ _('Clients') }}</div>
             </div>
             {% endif %}
             {% if results.subjects %}
             <div class="quick-stat">
                 <div class="quick-stat-value">{{ results.subjects|length }}</div>
-                <div class="quick-stat-label">Subjects</div>
+                <div class="quick-stat-label">{{ _('Subjects') }}</div>
             </div>
             {% endif %}
             {% if results.findings %}
             <div class="quick-stat">
                 <div class="quick-stat-value">{{ results.findings|length }}</div>
-                <div class="quick-stat-label">Findings</div>
+                <div class="quick-stat-label">{{ _('Findings') }}</div>
             </div>
             {% endif %}
             {% if results.financials %}
             <div class="quick-stat">
                 <div class="quick-stat-value">{{ results.financials|length }}</div>
-                <div class="quick-stat-label">Financials</div>
+                <div class="quick-stat-label">{{ _('Financials') }}</div>
             </div>
             {% endif %}
             {% if results.comments %}
             <div class="quick-stat">
                 <div class="quick-stat-value">{{ results.comments|length }}</div>
-                <div class="quick-stat-label">Comments</div>
+                <div class="quick-stat-label">{{ _('Comments') }}</div>
             </div>
             {% endif %}
             {% if results.notes %}
             <div class="quick-stat">
                 <div class="quick-stat-value">{{ results.notes|length }}</div>
-                <div class="quick-stat-label">Notes</div>
+                <div class="quick-stat-label">{{ _('Notes') }}</div>
             </div>
             {% endif %}
         </div>
         
         {% if results.cases and (not active_filter or active_filter == 'all' or active_filter == 'cases') %}
         <div class="results-section" data-type="cases">
-            <h3>Cases <span class="result-count">{{ results.cases|length }}</span></h3>
+            <h3>{{ _('Cases') }} <span class="result-count">{{ results.cases|length }}</span></h3>
             {% for case in results.cases %}
             <div class="result-item">
                 <div class="result-info">
                     <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="result-title">{{ case.title }}</a>
                     <div class="result-meta">
-                        {{ case.case_number }} | {{ case.client_name or 'No client' }} | 
+                        {{ case.case_number }} | {{ case.client_name or _('No client') }} | 
                         <span class="badge badge-{{ case.status }}">{{ case.status }}</span>
                     </div>
                 </div>
-                <span class="result-badge badge-case">Case</span>
+                <span class="result-badge badge-case">{{ _('Case') }}</span>
             </div>
             {% endfor %}
         </div>
@@ -271,17 +271,17 @@
         
         {% if results.clients and (not active_filter or active_filter == 'all' or active_filter == 'clients') %}
         <div class="results-section" data-type="clients">
-            <h3>Clients <span class="result-count">{{ results.clients|length }}</span></h3>
+            <h3>{{ _('Clients') }} <span class="result-count">{{ results.clients|length }}</span></h3>
             {% for client in results.clients %}
             <div class="result-item">
                 <div class="result-info">
                     <a href="{{ url_for('cms.view_client', client_id=client.id) }}" class="result-title">{{ client.name }}</a>
                     <div class="result-meta">
                         {% if client.contact_person %}{{ client.contact_person }}{% endif %}
-                        {% if client.is_active %}Active{% else %}Inactive{% endif %}
+                        {% if client.is_active %}{{ _('Active') }}{% else %}{{ _('Inactive') }}{% endif %}
                     </div>
                 </div>
-                <span class="result-badge badge-client">Client</span>
+                <span class="result-badge badge-client">{{ _('Client') }}</span>
             </div>
             {% endfor %}
         </div>
@@ -289,7 +289,7 @@
         
         {% if results.subjects and (not active_filter or active_filter == 'all' or active_filter == 'subjects') %}
         <div class="results-section" data-type="subjects">
-            <h3>Subjects <span class="result-count">{{ results.subjects|length }}</span></h3>
+            <h3>{{ _('Subjects') }} <span class="result-count">{{ results.subjects|length }}</span></h3>
             {% for subject in results.subjects %}
             <div class="result-item">
                 <div class="result-info">
@@ -298,7 +298,7 @@
                         {{ subject.subject_type|title }} | Risk: {{ subject.risk_score or 0 }}
                     </div>
                 </div>
-                <span class="result-badge badge-subject">Subject</span>
+                <span class="result-badge badge-subject">{{ _('Subject') }}</span>
             </div>
             {% endfor %}
         </div>
@@ -306,7 +306,7 @@
         
         {% if results.findings and (not active_filter or active_filter == 'all' or active_filter == 'findings') %}
         <div class="results-section" data-type="findings">
-            <h3>Findings <span class="result-count">{{ results.findings|length }}</span></h3>
+            <h3>{{ _('Findings') }} <span class="result-count">{{ results.findings|length }}</span></h3>
             {% for finding in results.findings %}
             <div class="result-item">
                 <div class="result-info">
@@ -315,7 +315,7 @@
                         Case: {{ finding.case_number }} | {{ finding.finding_type or 'General' }} | {{ finding.source_type or 'manual' }}
                     </div>
                 </div>
-                <span class="result-badge badge-finding">Finding</span>
+                <span class="result-badge badge-finding">{{ _('Finding') }}</span>
             </div>
             {% endfor %}
         </div>
@@ -323,7 +323,7 @@
         
         {% if results.financials and (not active_filter or active_filter == 'all' or active_filter == 'financials') %}
         <div class="results-section" data-type="financials">
-            <h3>Financial Records <span class="result-count">{{ results.financials|length }}</span></h3>
+            <h3>{{ _('Financial Records') }} <span class="result-count">{{ results.financials|length }}</span></h3>
             {% for fin in results.financials %}
             <div class="result-item">
                 <div class="result-info">
@@ -334,7 +334,7 @@
                         Case: {{ fin.case_number }} | {{ fin.transaction_type or 'Transaction' }} | {{ fin.transaction_date }}
                     </div>
                 </div>
-                <span class="result-badge badge-financial">Financial</span>
+                <span class="result-badge badge-financial">{{ _('Financial') }}</span>
             </div>
             {% endfor %}
         </div>
@@ -342,7 +342,7 @@
         
         {% if results.comments and (not active_filter or active_filter == 'all' or active_filter == 'comments') %}
         <div class="results-section" data-type="comments">
-            <h3>Comments <span class="result-count">{{ results.comments|length }}</span></h3>
+            <h3>{{ _('Comments') }} <span class="result-count">{{ results.comments|length }}</span></h3>
             {% for comment in results.comments %}
             <div class="result-item" style="flex-direction: column;">
                 <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.5rem;">
@@ -355,7 +355,7 @@
                             <span class="badge badge-comment">{{ comment.comment_type }}</span>
                         </div>
                     </div>
-                    <span class="result-badge badge-comment">Comment</span>
+                    <span class="result-badge badge-comment">{{ _('Comment') }}</span>
                 </div>
                 <div class="comment-preview">{{ comment.content }}</div>
             </div>
@@ -365,7 +365,7 @@
         
         {% if results.notes and (not active_filter or active_filter == 'all' or active_filter == 'notes') %}
         <div class="results-section" data-type="notes">
-            <h3>Subject Notes <span class="result-count">{{ results.notes|length }}</span></h3>
+            <h3>{{ _('Subject Notes') }} <span class="result-count">{{ results.notes|length }}</span></h3>
             {% for note in results.notes %}
             <div class="result-item" style="flex-direction: column;">
                 <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.5rem;">
@@ -375,7 +375,7 @@
                             {{ note.subject_type|title }}
                         </div>
                     </div>
-                    <span class="result-badge badge-note">Note</span>
+                    <span class="result-badge badge-note">{{ _('Note') }}</span>
                 </div>
                 {% if note.note_preview %}
                 <div class="note-preview">{{ note.note_preview }}</div>
@@ -387,15 +387,15 @@
     {% else %}
         <div class="no-results">
             <div class="no-results-icon">&#128269;</div>
-            <h2>No results found</h2>
-            <p>No matches found for "<strong>{{ query }}</strong>". Try different keywords.</p>
+            <h2>{{ _('No results found') }}</h2>
+            <p>{{ _('No matches found for') }} "<strong>{{ query }}</strong>". {{ _('Try different keywords.') }}</p>
         </div>
     {% endif %}
 {% else %}
     <div class="no-results">
         <div class="no-results-icon">&#128269;</div>
-        <h2>Start searching</h2>
-        <p>Enter a search term to find cases, clients, subjects, findings, and more.</p>
+        <h2>{{ _('Start searching') }}</h2>
+        <p>{{ _('Enter a search term to find cases, clients, subjects, findings, and more.') }}</p>
     </div>
 {% endif %}
 

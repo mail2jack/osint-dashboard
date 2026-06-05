@@ -1,43 +1,43 @@
 {% extends "cms/base.html" %}
 
-{% block title %}Cases - CMS{% endblock %}
+{% block title %}{{ _('Cases') }} - CMS{% endblock %}
 
 {% block content %}
 <div style="padding: 0 2rem; margin-top: 1rem;">
     <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h1 style="margin: 0;">Cases</h1>
+        <h1 style="margin: 0;">{{ _('Cases') }}</h1>
         <div style="display: flex; gap: 0.5rem;">
-            <a href="{{ url_for('cms.export_cases', format='csv') }}" class="btn-cms teal">📥 Export All</a>
-            <a href="{{ url_for('cms.create_case') }}" class="btn-cms primary">+ New Case</a>
+            <a href="{{ url_for('cms.export_cases', format='csv') }}" class="btn-cms teal">📥 {{ _('Export All') }}</a>
+            <a href="{{ url_for('cms.create_case') }}" class="btn-cms primary">+ {{ _('New Case') }}</a>
         </div>
     </div>
 
 <div class="card">
     <form method="GET" class="filters">
-        <input type="text" name="search" placeholder="Search cases, clients..." value="{{ filters.search or '' }}">
+        <input type="text" name="search" placeholder="{{ _('Search cases, clients...') }}" value="{{ filters.search or '' }}" data-immediate-search>
         <select name="status">
-            <option value="">All Status</option>
-            <option value="open" {% if filters.status == 'open' %}selected{% endif %}>Open</option>
-            <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
-            <option value="suspended" {% if filters.status == 'suspended' %}selected{% endif %}>Suspended</option>
-            <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
-            <option value="archived" {% if filters.status == 'archived' %}selected{% endif %}>Archived</option>
+            <option value="">{{ _('All Status') }}</option>
+            <option value="open" {% if filters.status == 'open' %}selected{% endif %}>{{ _('Open') }}</option>
+            <option value="active" {% if filters.status == 'active' %}selected{% endif %}>{{ _('Active') }}</option>
+            <option value="suspended" {% if filters.status == 'suspended' %}selected{% endif %}>{{ _('Suspended') }}</option>
+            <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>{{ _('Closed') }}</option>
+            <option value="archived" {% if filters.status == 'archived' %}selected{% endif %}>{{ _('Archived') }}</option>
         </select>
         <select name="priority">
-            <option value="">All Priority</option>
-            <option value="critical" {% if filters.priority == 'critical' %}selected{% endif %}>Critical</option>
-            <option value="high" {% if filters.priority == 'high' %}selected{% endif %}>High</option>
-            <option value="medium" {% if filters.priority == 'medium' %}selected{% endif %}>Medium</option>
-            <option value="low" {% if filters.priority == 'low' %}selected{% endif %}>Low</option>
+            <option value="">{{ _('All Priority') }}</option>
+            <option value="critical" {% if filters.priority == 'critical' %}selected{% endif %}>{{ _('Critical') }}</option>
+            <option value="high" {% if filters.priority == 'high' %}selected{% endif %}>{{ _('High') }}</option>
+            <option value="medium" {% if filters.priority == 'medium' %}selected{% endif %}>{{ _('Medium') }}</option>
+            <option value="low" {% if filters.priority == 'low' %}selected{% endif %}>{{ _('Low') }}</option>
         </select>
         <select name="client">
-            <option value="">All Clients</option>
+            <option value="">{{ _('All Clients') }}</option>
             {% for client in clients %}
             <option value="{{ client.id }}" {% if filters.client == client.id %}selected{% endif %}>{{ client.name }}</option>
             {% endfor %}
         </select>
         <select name="case_type">
-            <option value="">All Types</option>
+            <option value="">{{ _('All Types') }}</option>
             <option value="1.1.1" {% if filters.case_type == '1.1.1' %}selected{% endif %}>1.1.1 - Diefstal/inbraak woning</option>
             <option value="1.1.2" {% if filters.case_type == '1.1.2' %}selected{% endif %}>1.1.2 - Diefstal box/garage/schuur</option>
             <option value="1.2.1" {% if filters.case_type == '1.2.1' %}selected{% endif %}>1.2.1 - Geweldsmisdrijven</option>
@@ -93,8 +93,8 @@
             <option value="3.9.2" {% if filters.case_type == '3.9.2' %}selected{% endif %}>3.9.2 - Verticale fraude</option>
             <option value="3.9.3" {% if filters.case_type == '3.9.3' %}selected{% endif %}>3.9.3 - Overige fraude</option>
         </select>
-        <button type="submit" class="btn-cms primary">Filter</button>
-        <a href="{{ url_for('cms.cases') }}" class="btn-cms gray">Clear</a>
+        <button type="submit" class="btn-cms primary">{{ _('Filter') }}</button>
+        <a href="{{ url_for('cms.cases') }}" class="btn-cms gray">{{ _('Clear') }}</a>
     </form>
     
     {% if cases %}
@@ -103,36 +103,36 @@
             <tr>
                 <th>
                     <a href="?sort=case_number&order={% if filters.sort == 'case_number' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
-                        Case Number {% if filters.sort == 'case_number' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        {{ _('Case Number') }} {% if filters.sort == 'case_number' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                     </a>
                 </th>
                 <th>
                     <a href="?sort=title&order={% if filters.sort == 'title' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
-                        Title {% if filters.sort == 'title' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        {{ _('Title') }} {% if filters.sort == 'title' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                     </a>
                 </th>
                 <th>
                     <a href="?sort=client&order={% if filters.sort == 'client' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
-                        Client {% if filters.sort == 'client' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        {{ _('Client') }} {% if filters.sort == 'client' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                     </a>
                 </th>
                 <th>
                     <a href="?sort=priority&order={% if filters.sort == 'priority' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
-                        Priority {% if filters.sort == 'priority' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        {{ _('Priority') }} {% if filters.sort == 'priority' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                     </a>
                 </th>
                 <th>
                     <a href="?sort=status&order={% if filters.sort == 'status' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
-                        Status {% if filters.sort == 'status' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        {{ _('Status') }} {% if filters.sort == 'status' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                     </a>
                 </th>
                 <th>
                     <a href="?sort=case_type&order={% if filters.sort == 'case_type' and filters.order == 'asc' %}desc{% else %}asc{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.priority %}&priority={{ filters.priority }}{% endif %}{% if filters.client %}&client={{ filters.client }}{% endif %}{% if filters.case_type %}&case_type={{ filters.case_type }}{% endif %}" style="color: inherit; text-decoration: none;">
-                        Type {% if filters.sort == 'case_type' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
+                        {{ _('Type') }} {% if filters.sort == 'case_type' %}{{ '↓' if filters.order == 'desc' else '↑' }}{% endif %}
                     </a>
                 </th>
-                <th>Lead Investigator</th>
-                <th>Actions</th>
+                <th>{{ _('Lead Investigator') }}</th>
+                <th>{{ _('Actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -145,7 +145,7 @@
                 <td><span class="badge badge-{{ case.status }}">{{ case.status }}</span></td>
                 <td style="font-size: 0.8rem;">{{ case.case_type.split('|')[0] if case.case_type else '-' }}</td>
                 <td>{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</td>
-                <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">View</a></td>
+                <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ _('View') }}</a></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -154,7 +154,7 @@
     {% if pagination.pages > 1 %}
     <div class="pagination">
         {% if pagination.has_prev %}
-        <a href="{{ url_for('cms.cases', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client, case_type=filters.case_type) }}">&laquo; Prev</a>
+        <a href="{{ url_for('cms.cases', page=pagination.prev_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client, case_type=filters.case_type) }}">&laquo; {{ _('Prev') }}</a>
         {% endif %}
         {% for p in range(1, pagination.pages + 1) %}
             {% if p == pagination.page %}
@@ -164,12 +164,12 @@
             {% endif %}
         {% endfor %}
         {% if pagination.has_next %}
-        <a href="{{ url_for('cms.cases', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client, case_type=filters.case_type) }}">Next &raquo;</a>
+        <a href="{{ url_for('cms.cases', page=pagination.next_num, sort=filters.sort, order=filters.order, search=filters.search, status=filters.status, priority=filters.priority, client=filters.client, case_type=filters.case_type) }}">{{ _('Next') }} &raquo;</a>
         {% endif %}
     </div>
     {% endif %}
     {% else %}
-    <div class="empty-state"><div class="icon">📭</div><p>No cases found. Try adjusting your filters.</p></div>
+    <div class="empty-state"><div class="icon">📭</div><p>{{ _('No cases found. Try adjusting your filters.') }}</p></div>
     {% endif %}
 </div>
 </div>

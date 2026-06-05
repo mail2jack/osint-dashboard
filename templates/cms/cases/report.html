@@ -1,18 +1,18 @@
 {% extends "cms/base.html" %}
-{% block title %}Report - {{ case.case_number }}{% endblock %}
+{% block title %}{{ _('Report - %(num)s')|format(num=case.case_number) }}{% endblock %}
 {% block content %}
-<div class="back"><a href="{{ url_for('cms.view_case', case_id=case.id) }}">← Back to Case</a></div>
+<div class="back"><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ _('← Back to Case') }}</a></div>
 
 <div class="card" style="margin-bottom:1.5rem;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
         <div>
-            <h1 style="margin:0 0 0.25rem 0;">📋 Case Report</h1>
+            <h1 style="margin:0 0 0.25rem 0;">{{ _('📋 Case Report') }}</h1>
             <p style="margin:0;color:var(--text-secondary);">
                 <strong>{{ case.case_number }}</strong> — {{ case.title }}
-                {% if case.client %}<br>Client: {{ case.client.name }}{% endif %}
+                {% if case.client %}<br>{{ _('Client:') }} {{ case.client.name }}{% endif %}
             </p>
         </div>
-        <button data-click="printReport" class="btn-cms primary small">🖨️ Print / PDF</button>
+        <button data-click="printReport" class="btn-cms primary small">{{ _('🖨️ Print / PDF') }}</button>
     </div>
 </div>
 
@@ -20,25 +20,25 @@
 <div class="card" style="margin-bottom:1.5rem;">
     <form method="GET" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:end;">
         <div>
-            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">Van</label>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">{{ _('Van') }}</label>
             <input type="date" name="from" value="{{ from_date or '' }}" style="padding:0.4rem;border:1px solid var(--border-input);border-radius:6px;">
         </div>
         <div>
-            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">Tot</label>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">{{ _('Tot') }}</label>
             <input type="date" name="to" value="{{ to_date or '' }}" style="padding:0.4rem;border:1px solid var(--border-input);border-radius:6px;">
         </div>
         <div>
-            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">Subject</label>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.25rem;">{{ _('Subject') }}</label>
             <select name="subject_id" style="padding:0.4rem;border:1px solid var(--border-input);border-radius:6px;">
-                <option value="">Alle subjects</option>
+                <option value="">{{ _('Alle subjects') }}</option>
                 {% for s in subjects %}
                 <option value="{{ s.id }}" {% if subject_filter == s.id %}selected{% endif %}>{{ s.name }}</option>
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn-cms teal small">Filter</button>
+        <button type="submit" class="btn-cms teal small">{{ _('Filter') }}</button>
         {% if from_date or to_date or subject_filter %}
-        <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms gray small">Clear</a>
+        <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms gray small">{{ _('Clear') }}</a>
         {% endif %}
     </form>
 </div>
@@ -93,8 +93,8 @@
 <div class="card">
     <div class="empty-state">
         <div class="icon">📭</div>
-        <p>Geen entries gevonden voor deze filters.</p>
-        <p style="margin-top:0.5rem;">Voeg findings of notities toe aan deze case om het rapport te vullen.</p>
+        <p>{{ _('Geen entries gevonden voor deze filters.') }}</p>
+        <p style="margin-top:0.5rem;">{{ _('Voeg findings of notities toe aan deze case om het rapport te vullen.') }}</p>
     </div>
 </div>
 {% endif %}

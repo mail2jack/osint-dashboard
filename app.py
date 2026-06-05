@@ -1,7 +1,9 @@
 import os
 import re
 import secrets
+import time
 import logging
+import threading
 import uuid as uuid_mod
 import contextlib
 
@@ -14,6 +16,12 @@ from cms.logging_config import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+# CSS cache busting — use file modification time as version
+_CSS_PATH = os.path.join(os.path.dirname(__file__), "static", "css", "base.css")
+CSS_VERSION = (
+    str(int(os.path.getmtime(_CSS_PATH))) if os.path.exists(_CSS_PATH) else "1"
+)
 
 
 def _init_sentry(dsn: str) -> None:
@@ -55,6 +63,7 @@ def add_request_id():
     )
     g.request_id = request.request_id
     g.csp_nonce = secrets.token_hex(16)
+    g.css_version = CSS_VERSION
     # Clear any stale aborted transaction from the connection pool
     from cms.models import db
 
@@ -159,6 +168,12 @@ from cms import create_cms_module
 
 create_cms_module(app)
 logger.info("CMS initialized successfully")
+
+# Internationalization (i18n) via Flask-Babel
+from cms.i18n import init_i18n
+
+init_i18n(app)
+logger.info("i18n initialized (NL default, EN fallback)")
 
 # Sentry fallback: check Setting table if no env var was set
 if not _sentry_dsn:
@@ -325,24 +340,51 @@ def redact_for_viewer_filter(value):
 # =============================================================================
 
 
+# Context processor count caches (30s TTL)
+_count_cache: dict[str, tuple[float, int]] = {}
+_count_cache_lock = threading.Lock()
+
+
+def _cached_count(key: str, ttl: float, factory) -> int:
+    now = time.time()
+    with _count_cache_lock:
+        cached = _count_cache.get(key)
+        if cached and now - cached[0] < ttl:
+            return cached[1]
+        try:
+            val = factory()
+            _count_cache[key] = (now, val)
+            return val
+        except Exception:
+            return 0
+
+
 # Context Processor — inject version + SF health + help topic into all templates
 @app.context_processor
 def inject_globals():
     from version import get_version
 
+    _nonce = secrets.token_hex(16)
+    g.csp_nonce = _nonce
     ctx = {
         "current_version": get_version(),
-        "csp_nonce": getattr(g, "csp_nonce", ""),
+        "csp_nonce": _nonce,
     }
-    # Notification count for bell icon
+    # Notification count for bell icon (cached 30s)
     try:
         from cms.models import Notification
         from flask_login import current_user
 
         if current_user and current_user.is_authenticated:
-            ctx["notification_count"] = Notification.query.filter_by(
-                user_id=current_user.id, is_read=False
-            ).count()
+
+            def _count_notifications():
+                return Notification.query.filter_by(
+                    user_id=current_user.id, is_read=False
+                ).count()
+
+            ctx["notification_count"] = _cached_count(
+                f"notif_{current_user.id}", 30.0, _count_notifications
+            )
         else:
             ctx["notification_count"] = 0
     except Exception:
@@ -363,7 +405,7 @@ def inject_globals():
         db.session.rollback()
         ctx["spiderfoot_health"] = ""
         ctx["spiderfoot_last_ok"] = ""
-    # Check for recent login anomalies
+    # Check for recent login anomalies (cached 30s)
     try:
         from flask import request
         from cms.models import LoginLog, db
@@ -377,12 +419,17 @@ def inject_globals():
             and hasattr(current_user, "role")
             and current_user.role == "admin"
         ):
-            recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-            anomaly_count = LoginLog.query.filter(
-                LoginLog.is_anomaly == True,
-                LoginLog.created_at >= recent_cutoff,
-            ).count()
-            ctx["login_anomaly_count"] = anomaly_count
+
+            def _count_anomalies():
+                recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+                return LoginLog.query.filter(
+                    LoginLog.is_anomaly == True,
+                    LoginLog.created_at >= recent_cutoff,
+                ).count()
+
+            ctx["login_anomaly_count"] = _cached_count(
+                "login_anomalies", 30.0, _count_anomalies
+            )
         else:
             ctx["login_anomaly_count"] = 0
     except Exception:
@@ -437,6 +484,11 @@ def inject_globals():
             ctx["help_topic"] = "general"
     except Exception:
         ctx["help_topic"] = "general"
+    from flask_babel import gettext as _t
+    from cms.i18n import get_locale as _get_locale
+
+    ctx["_"] = _t
+    ctx["current_locale"] = _get_locale()
     return ctx
 
 
@@ -451,6 +503,16 @@ app.register_blueprint(app_routes_bp)
 from cms.routes.system_app import register_system_routes
 
 register_system_routes(app)
+
+
+@app.route("/lang/<lang>")
+def set_lang(lang: str):
+    from flask import redirect, session, request
+
+    if lang in ("nl", "en", "de", "fr"):
+        session["lang"] = lang
+    return redirect(request.referrer or "/")
+
 
 logger.info("App-level routes registered")
 
@@ -482,6 +544,17 @@ def add_security_headers(response):
             "max-age=31536000; includeSubDomains"
         )
     return response
+
+
+# Response compression (brotli/gzip) — initialized last
+from flask_compress import Compress
+
+# Lower min size since brotli is efficient
+app.config["COMPRESS_REGISTER"] = True
+app.config["COMPRESS_ALGORITHM"] = "br"
+app.config["COMPRESS_BR_LEVEL"] = 4
+app.config["COMPRESS_MIN_SIZE"] = 500
+Compress(app)
 
 
 # =============================================================================

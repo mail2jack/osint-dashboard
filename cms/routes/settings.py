@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 def settings() -> str:
     """Settings management page."""
     category = request.args.get("category", "api_keys")
+    search_q = request.args.get("q", "").strip()
 
     categories = {
         "api_keys": {"name": "🔑 API Keys", "icon": "🔑"},
@@ -28,6 +29,8 @@ def settings() -> str:
         "email": {"name": "📧 Email", "icon": "📧"},
         "appearance": {"name": "🎨 Appearance", "icon": "🎨"},
         "feature_flags": {"name": "🚩 Feature Flags", "icon": "🚩"},
+        "ai": {"name": "🤖 AI Provider", "icon": "🤖"},
+        "telegram": {"name": "📱 Telegram Bot", "icon": "📱"},
     }
 
     settings_list = (
@@ -41,6 +44,7 @@ def settings() -> str:
         settings_list=settings_list,
         categories=categories,
         active_category=category,
+        search_query=search_q,
     )
 
 
@@ -59,6 +63,47 @@ def get_settings_api() -> flask.Response:
 
     return jsonify(
         {"settings": [s.to_dict(include_value=False) for s in settings_list]}
+    )
+
+
+@cms_bp.route("/api/settings/search")
+@login_required
+@admin_required
+def search_settings_api() -> flask.Response:
+    """Search settings across all categories by key, description, or category."""
+    query = request.args.get("q", "").strip()
+
+    if not query or len(query) < 2:
+        return jsonify({"settings": [], "total": 0})
+
+    settings = (
+        Setting.query.filter(
+            Setting.is_active == True,
+            db.or_(
+                Setting.key.ilike(f"%{query}%"),
+                Setting.description.ilike(f"%{query}%"),
+                Setting.value.ilike(f"%{query}%"),
+                Setting.category.ilike(f"%{query}%"),
+            ),
+        )
+        .order_by(Setting.category, Setting.display_order)
+        .all()
+    )
+
+    grouped = {}
+    for s in settings:
+        cat = s.category or "general"
+        if cat not in grouped:
+            grouped[cat] = []
+        grouped[cat].append(s.to_dict(include_value=False))
+
+    return jsonify(
+        {
+            "query": query,
+            "total": len(settings),
+            "grouped": grouped,
+            "categories": list(grouped.keys()),
+        }
     )
 
 

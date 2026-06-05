@@ -1,5 +1,26 @@
 # Iveras OSINT Dashboard — Agent Guide
 
+## UI Internationalization (i18n) — Flask-Babel
+- **Setup**: `pip install Flask-Babel` (v4+). Init in `cms/i18n.py`.
+- **Config**: `babel.cfg` at project root — extracts strings from `.py` and `.html` files.
+- **Locale selector** (`cms/i18n.py:get_locale`): reads `session["lang"]` → falls back to browser `Accept-Language` → defaults to `"nl"`.
+- **Switching**: `GET /lang/<locale>` sets `session["lang"]` and redirects back. Links NL/EN in `base.html` header.
+- **Template usage**: `{{ _('Dashboard') }}` or `{{ gettext('Settings') }}` — Jinja2 + Python.
+- **Adding a new string**: wrap in `_('...')`, then:
+  ```
+  pybabel extract -F babel.cfg -o translations/messages.pot .
+  pybabel update -i translations/messages.pot -d translations
+  ```
+  Edit `.po` file in `translations/<lang>/LC_MESSAGES/messages.po`, then:
+  ```
+  pybabel compile -d translations
+  ```
+- **New language**: `pybabel init -i translations/messages.pot -d translations -l de`, edit `.po`, compile.
+- **Current languages**: `nl` (default), `en`. Placeholders for `de`, `fr`.
+- **`.po` files**: `translations/nl/LC_MESSAGES/messages.po` + `translations/en/LC_MESSAGES/messages.po`.
+- **`_()` injected** in `app.py` context processor as `ctx["_"]` — available in all templates.
+- **NOT for content translation**: Helsinki-NLP models not needed. UI strings only.
+
 ## Entrypoint & Run
 - `app.py` is the single Flask entrypoint. Dev: `/usr/local/bin/python3 app.py` (port 5000). **Python 3.12 required** — `python3` must resolve to `/usr/local/bin/python3` or use the full path.
 - CMS module initialized via `cms/__init__.py::create_cms_module(app)`.
@@ -47,7 +68,9 @@
 
 ## Email & AI Config
 - `cms/email_utils.py`: SMTP with `ssl.create_default_context()` (TLS cert verification). `send_password_reset_email()` sends setup link; `send_new_user_credentials()` sends welcome without password.
-- `cms/services/ai_service.py`: `OLLAMA_URL`/`OLLAMA_MODEL` defined once here. `get_ollama_config()` reads Setting/env/hardcoded fallback. `app.py` imports from here — no duplicate constants.
+- `cms/services/ai_service.py`: Dual-provider architecture — **OpenRouter** (primary, 300+ models via unified API) + **Ollama** (fallback for local inference). Config constants (`OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`, `OLLAMA_URL`, `OLLAMA_MODEL`) defined at module top. Provider selection: `_generate()` tries OpenRouter first if API key is configured; falls back to Ollama on failure. `get_ai_config()` returns current provider info + availability. `check_ai_available()` checks either provider. All 3 consumer functions (`summarize_results`, `analyze_natural_language`, `enrich_profile`) are provider-agnostic.
+- Set OpenRouter API key via Settings → API Keys → `openrouter_api_key`, or via env var `OPENROUTER_API_KEY`. Model selection at Settings → AI Provider → `openrouter_model` (default: `openrouter/auto` for automatic model routing).
+- Backward compat: `get_ollama_config()`, `check_ollama_available()`, `ollama_generate()` kept with same signatures. `check_ollama_available()` now checks any available provider.
 
 ## Phone Lookup (`cms/routes/phone.py`)
 - `POST /cms/api/phone-lookup` — validates + enriches phone numbers using `phonenumbers` library + free `bedrijfsdata.nl` API (NL only).
@@ -325,6 +348,44 @@
 - **Metrics exposed at** `/metrics` by `cms/metrics.py`.
 - **Import**: Grafana → Dashboards → Import → paste JSON → select Prometheus datasource.
 
+## Request Timing Jitter + Proxy Rotation + Profile Rotation (`cms/services/http_utils.py`)
+- **Purpose**: Random delay between consecutive OSINT HTTP calls to evade rate limiting + behavioral fingerprinting.
+- **Config via Settings GUI** (all optional, sensible defaults):
+  - `jitter_enabled` — `"true"` (default) / `"false"` to disable all jitter
+  - `jitter_min` — minimum delay in seconds (default `0.3`)
+  - `jitter_max` — maximum delay in seconds (default `2.0`)
+- **Env var fallback**: `JITTER_ENABLED`, `JITTER_MIN`, `JITTER_MAX` (used when DB unreachable).
+- **Per-domain tracking**: Jitter is tracked per domain (not global). Calling `api.pdok.nl` then `api.politie.nl` does NOT add delay — only repeat calls to the same domain within the jitter window trigger a sleep.
+- **Functions**:
+  - `jitter_sleep(domain_hint=None)` — sleep if same domain was called recently. `domain_hint` is a URL string (hostname extracted automatically); omit or `None` for global tracking.
+  - `reset_jitter_state()` — clear all per-domain timestamps (for testing).
+  - `get_next_proxy()` — returns `{"http": proxy, "https": proxy}` dict from round-robin list, or None
+  - `reset_proxy_state()` — reset proxy rotation counter
+  - `next_impersonate()` — returns next browser profile from rotation list (9 profiles: chrome124/123/120/116/110, safari17, firefox123/120)
+- **Proxy rotation config**:
+  - `proxy_rotation_enabled` — `"true"` / `"false"` (default `"false"`). Enables round-robin proxy switching.
+  - `proxy_list` — comma or newline separated proxy URLs (e.g. `http://user:pass@ip1:port, socks5://ip2:port`)
+- **Impersonation rotation config**:
+  - `impersonate_rotation_enabled` — `"true"` (default) / `"false"` — cycle through 9 browser profiles per request
+  - `impersonate_profiles` — custom comma-separated profile names (chrome124, safari17_2_1, firefox123, etc.)
+- **Wrappers** (convenience, same signature as `curl_requests`):
+  - `jittered_get(url, **kwargs)` — jitter_sleep + proxy + profile rotation + `curl_requests.get` with Playwright fallback on failure
+  - `jittered_post(url, **kwargs)` — same with POST
+  - `jittered_head(url, **kwargs)` — same with HEAD
+  - `jittered_session(timeout=10.0, headers=None)` — returns `curl_requests.Session` (proxy + profile rotation applied)
+- **Config cache**: `_refresh_jitter_config()` caches settings for 60s (same pattern as Tor config).
+- **Integration**: Added to ALL sync `curl_requests.get/post/head` calls (39 call sites across 16 files). Async modules (`email_search.py`, `username_search.py`) skip jitter because they scan 400+ sites in parallel.
+- **File**: `cms/services/http_utils.py`
+
+## Playwright Fallback (`cms/services/playwright_service.py`)
+- **Purpose**: Fallback fetch using headless Chromium when curl_cffi fails (403/429/connection error on JS-heavy sites).
+- **Config**: `Setting.set('playwright_fallback_enabled', 'true')` — enables automatic Playwright retry after curl_cffi failure.
+- **Response wrapper**: `PlaywrightResponse(status_code, text, url, headers)` mimics curl_cffi.Response (has `.json()`, `.raise_for_status()`, `.ok`, `.content`, `.text`).
+- **Integration**: `jittered_get/post/head` try Playwright fallback on `CurlError` or exception.
+- **Dependency**: `playwright` package + Chromium browser (`pip install playwright && playwright install chromium`).
+- **Graceful degradation**: If Playwright not installed, `is_playwright_available()` returns False, fallback silently skipped.
+- **File**: `cms/services/playwright_service.py`
+
 ## Tor Proxy for OPSEC (`cms/services/search_service.py`)
 - **Goal**: OSINT searches (Brave API, DuckDuckGo fallback) appear to come from random Tor exit nodes instead of the server's IP.
 - **Settings** (DB, not .env):
@@ -356,6 +417,45 @@ sudo systemctl enable --now tor
 - `/health` and dashboard show `"tor": "ok"` when Tor is enabled and Brave is reachable through it.
 - Shows `"tor": "disabled"` when `tor_enabled` is false.
 - Shows `"tor": "unavailable: ..."` when the proxy is unreachable.
+
+## Telegram Bot (`cms/telegram_bot.py`)
+
+### Configuration (Settings GUI)
+- `telegram_enabled` — `true`/`false`, enables the bot on next server restart.
+- `telegram_bot_token` — Bot token from [@BotFather](https://t.me/botfather).
+- `telegram_allowed_users` — Comma-separated Telegram user IDs allowed to use the bot. Get your ID by messaging [@userinfobot](https://t.me/userinfobot).
+
+### Commands
+| Command | Description | Example |
+|---|---|---|
+| `/start` | Welcome message | — |
+| `/help` | Command list | — |
+| `/email <address>` | Email breach + social lookup | `/email user@example.com` |
+| `/phone <number>` | Phone enrichment (WhatsApp/Telegram presence) | `/phone +31612345678` |
+| `/ip <address>` | IP geolocation + proxy detection | `/ip 8.8.8.8` |
+| `/domain <domain>` | WHOIS + MX/NS records | `/domain example.com` |
+| `/status` | Dashboard + bot health | — |
+
+### Architecture
+- The bot runs as a **daemon thread** (`threading.Thread`) inside the Flask process, started at the end of `create_cms_module()` in `cms/__init__.py`.
+- Uses `python-telegram-bot` v20 with `asyncio` event loop in the dedicated thread.
+- Makes **HTTP calls to `http://127.0.0.1:5000`** using `httpx.AsyncClient` — reuses existing `api_key_required`-protected endpoints.
+- A dedicated internal API key is **auto-generated** at startup (`ApiKey` table, name=`"Telegram Bot Internal"`) and stored in memory. The key is scoped `read`+`write`.
+- Authorization: Telegram `user_id` must be in `telegram_allowed_users` list.
+- Bot only starts polling when `telegram_enabled=true` AND `telegram_bot_token` is set.
+- Polling is **daemon**: it dies when the main process stops (no explicit shutdown needed).
+
+### Adding new commands
+1. Write an async handler function with `_auth()` check
+2. Add a formatter function
+3. Register with `app.add_handler(CommandHandler("name", handler))` in `run_bot_polling()`
+4. Update the `cmd_help` text
+
+### Security notes
+- The auto-generated internal API key bypasses user-scope restrictions — the bot has effectively admin-level access via the local API. This is acceptable because running the bot requires server access.
+- All bot configuration is stored in the `Setting` model (not `.env`), managed via the Settings GUI.
+- The API token from @BotFather is stored encrypted (sensitive setting).
+- Channel messages and inline queries are NOT handled (scope limited to private chat commands).
 
 ## Backup Verification (`scripts/verify_backup.sh`)
 - **Usage**: `./scripts/verify_backup.sh` — verifies latest backup archive.

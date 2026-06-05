@@ -1,5 +1,5 @@
 {% extends "cms/base.html" %}
-{% block title %}Dashboard - CMS{% endblock %}
+{% block title %}{{ _('Dashboard') }} - CMS{% endblock %}
 {% block content %}
 <style>
     .search-hero {
@@ -126,21 +126,21 @@
 
 <div class="search-hero">
     <h1>🔍 Zoeken in dossiers</h1>
-    <p>Search cases, subjects, clients, findings, and documents</p>
+    <p>{{ _('Search cases, subjects, clients, findings, and documents') }}</p>
     <form class="search-box" action="{{ url_for('cms.dashboard') }}" method="GET">
         <span class="search-icon">🔎</span>
-        <input type="text" name="q" placeholder="Search by case number, name, email, phone, address..." autofocus>
+        <input type="text" name="q" placeholder="{{ _('Search by case number, name, email, phone, address...') }}" autofocus data-immediate-search>
     </form>
     <div class="quick-links">
-        <a href="{{ url_for('cms.cases') }}">📁 All Cases</a>
-        <a href="{{ url_for('cms.create_case') }}">➕ New Case</a>
-        <a href="{{ url_for('cms.subjects') }}">👤 All Subjects</a>
-        <a href="{{ url_for('cms.create_subject') }}">➕ New Subject</a>
-        <a href="{{ url_for('cms.clients') }}">🏢 All Clients</a>
-        <a href="{{ url_for('cms.reminders') }}">⏰ Reminders</a>
-        <a href="{{ url_for('cms.export_cases') }}">📥 Export</a>
+        <a href="{{ url_for('cms.cases') }}">📁 {{ _('All Cases') }}</a>
+        <a href="{{ url_for('cms.create_case') }}">➕ {{ _('New Case') }}</a>
+        <a href="{{ url_for('cms.subjects') }}">👤 {{ _('All Subjects') }}</a>
+        <a href="{{ url_for('cms.create_subject') }}">➕ {{ _('New Subject') }}</a>
+        <a href="{{ url_for('cms.clients') }}">🏢 {{ _('All Clients') }}</a>
+        <a href="{{ url_for('cms.reminders') }}">⏰ {{ _('Reminders') }}</a>
+        <a href="{{ url_for('cms.export_cases') }}">📥 {{ _('Export') }}</a>
         {% if current_user.is_admin %}
-        <a href="{{ url_for('cms.settings') }}">⚙️ Settings</a>
+        <a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>
         <a href="{{ url_for('cms.statistics') }}">📊 Statistieken</a>
         {% endif %}
     </div>
@@ -148,31 +148,31 @@
 
 <div class="stats-row">
     <div class="stat-card open">
-        <h3>Open</h3>
+        <h3>{{ _('Open') }}</h3>
         <div class="value">{{ stats.open_cases }}</div>
     </div>
     <div class="stat-card active">
-        <h3>Active</h3>
+        <h3>{{ _('Active') }}</h3>
         <div class="value">{{ stats.active_cases }}</div>
     </div>
     <div class="stat-card suspended">
-        <h3>Suspended</h3>
+        <h3>{{ _('Suspended') }}</h3>
         <div class="value">{{ stats.suspended_cases }}</div>
     </div>
     <div class="stat-card closed">
-        <h3>Closed</h3>
+        <h3>{{ _('Closed') }}</h3>
         <div class="value">{{ stats.closed_cases }}</div>
     </div>
     <div class="stat-card">
-        <h3>Clients</h3>
+        <h3>{{ _('Clients') }}</h3>
         <div class="value">{{ stats.total_clients }}</div>
     </div>
     <div class="stat-card">
-        <h3>Subjects</h3>
+        <h3>{{ _('Subjects') }}</h3>
         <div class="value">{{ stats.total_subjects }}</div>
     </div>
     <div class="stat-card">
-        <h3>Findings</h3>
+        <h3>{{ _('Findings') }}</h3>
         <div class="value">{{ stats.total_findings }}</div>
     </div>
 </div>
@@ -180,16 +180,16 @@
 {% if my_cases %}
 <div class="card">
     <div class="section-header">
-        <h2>📋 My Open / Active Cases</h2>
-        <a href="{{ url_for('cms.cases', assigned='me') }}">View All →</a>
+        <h2>📋 {{ _('My Open / Active Cases') }}</h2>
+        <a href="{{ url_for('cms.cases', assigned='me') }}">{{ _('View All') }} →</a>
     </div>
     <table>
         <thead>
             <tr>
-                <th>Case</th>
-                <th>Status</th>
-                <th>Priority</th>
-                <th>Updated</th>
+                <th>{{ _('Case') }}</th>
+                <th>{{ _('Status') }}</th>
+                <th>{{ _('Priority') }}</th>
+                <th>{{ _('Updated') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -208,7 +208,7 @@
 
 <div class="card" style="margin-top: 1rem;">
     <div class="section-header">
-        <h2>🔌 OSINT Service Health</h2>
+        <h2>🔌 {{ _('OSINT Service Health') }}</h2>
     </div>
     <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
         {% set svcs = {'Database': health.database, 'SpiderFoot': health.spiderfoot, 'RDW': health.rdw, 'Kadaster': health.kadaster, 'HIBP': health.hibp, 'Overheid.io': health.overheid, 'Brave Search': health.brave, 'Tor': health.tor} %}
@@ -217,9 +217,9 @@
             <div style="width: 10px; height: 10px; border-radius: 50%; background: {% if status == 'ok' %}#10b981{% elif status == 'no key configured' %}#f59e0b{% elif status == 'auth error' %}#f97316{% else %}#ef4444{% endif %};"></div>
             <strong>{{ name }}</strong>
             <span style="color: var(--text-secondary); font-size: 0.85rem;">
-                {%- if status == 'ok' -%}✓ Online
-                {%- elif status == 'no key configured' -%}⚙️ No key configured
-                {%- elif status == 'auth error' -%}🔑 Auth error (invalid key)
+                {%- if status == 'ok' -%}✓ {{ _('Online') }}
+                {%- elif status == 'no key configured' -%}⚙️ {{ _('No key configured') }}
+                {%- elif status == 'auth error' -%}🔑 {{ _('Auth error (invalid key)') }}
                 {%- else -%}⚠️ {{ status }}
                 {%- endif -%}
             </span>

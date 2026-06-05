@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..validation import validate, CreateCaseSchema, EditCaseSchema, BulkDeleteSchema
+from sqlalchemy.orm import joinedload
 from ..models import db, Case, Client, Subject, AuditLog, User, CaseStatus, CasePriority
 from ..auth import (
     roles_required,
@@ -59,7 +60,11 @@ def cases() -> str:
     sort = request.args.get("sort", "case_number")
     order = request.args.get("order", "desc")
 
-    query = Case.query.filter_by(is_deleted=False).join(Client)
+    query = (
+        Case.query.filter_by(is_deleted=False)
+        .join(Client)
+        .options(joinedload(Case.client), joinedload(Case.lead_investigator))
+    )
 
     # Non-admin users only see cases they can access
     if not current_user.is_admin:

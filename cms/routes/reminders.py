@@ -6,6 +6,7 @@ from flask import request, jsonify, render_template, redirect, url_for, flash, a
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from sqlalchemy.orm import joinedload
 from ..validation import validate, CreateReminderSchema, EditReminderSchema
 from ..models import (
     db,
@@ -30,7 +31,9 @@ def reminders() -> str:
     per_page = 20
     filter_type = request.args.get("filter", "all")
 
-    query = Reminder.query.filter(Reminder.is_deleted == False)
+    query = Reminder.query.filter(Reminder.is_deleted == False).options(
+        joinedload(Reminder.assigned_user)
+    )
 
     # Filter by status
     if filter_type == "overdue":

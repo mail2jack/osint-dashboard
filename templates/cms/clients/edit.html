@@ -1,26 +1,26 @@
 {% extends "cms/base.html" %}
-{% block title %}Edit Client — CMS{% endblock %}
+{% block title %}{{ _('Edit Client') }} — {{ _('CMS') }}{% endblock %}
 {% block content %}
-    <div class="back"><a href="{{ url_for('cms.view_client', client_id=client.id) }}">← Back to Client</a></div>
+    <div class="back"><a href="{{ url_for('cms.view_client', client_id=client.id) }}">← {{ _('Back to Client') }}</a></div>
     
-    <h1>Edit Client</h1>
+    <h1>{{ _('Edit Client') }}</h1>
 
     <div class="card" style="max-width:700px;">
         <form method="POST" data-submit="handleEditSubmit">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
-                <label for="name">Client Name *</label>
+                <label for="name">{{ _('Client Name *') }}</label>
                 <input type="text" name="name" id="name" value="{{ client.name }}" required>
             </div>
             
             <div class="form-group">
                 <input type="checkbox" name="is_company" id="is_company" value="1" {% if client.is_company %}checked{% endif %} style="width:auto;margin-right:0.5rem;" data-change="toggleCompanyFields">
-                <label for="is_company" style="display:inline;font-weight:normal;color:var(--text-primary);">This is a company/organization</label>
+                <label for="is_company" style="display:inline;font-weight:normal;color:var(--text-primary);">{{ _('This is a company/organization') }}</label>
             </div>
             
             <div id="company-fields" style="{% if not client.is_company %}display:none;{% endif %}">
                 <div class="form-group">
-                    <label for="contact_person">Contact Person</label>
+                    <label for="contact_person">{{ _('Contact Person') }}</label>
                     <input type="text" name="contact_person" id="contact_person" value="{{ client.contact_person or '' }}">
                 </div>
             </div>
@@ -28,38 +28,38 @@
             <div id="person-fields" style="{% if client.is_company %}display:none;{% endif %}">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                     <div class="form-group">
-                        <label for="date_of_birth">Date of Birth</label>
+                        <label for="date_of_birth">{{ _('Date of Birth') }}</label>
                         <input type="date" name="date_of_birth" id="date_of_birth" value="{{ client.date_of_birth or '' }}">
                     </div>
                     <div class="form-group">
-                        <label for="place_of_birth">Place of Birth</label>
-                        <input type="text" name="place_of_birth" id="place_of_birth" value="{{ client.place_of_birth or '' }}" placeholder="e.g. Amsterdam, Netherlands">
+                        <label for="place_of_birth">{{ _('Place of Birth') }}</label>
+                        <input type="text" name="place_of_birth" id="place_of_birth" value="{{ client.place_of_birth or '' }}" placeholder="{{ _('e.g. Amsterdam, Netherlands') }}">
                     </div>
                 </div>
             </div>
             
             <input type="hidden" name="contacts_data" id="contacts-data" value="">
             <div class="form-group">
-                <label>Contact(s)</label>
+                <label>{{ _('Contact(s)') }}</label>
                 <div id="contacts-container">
                     {% if client.contacts.count() > 0 %}
                         {% for c in client.contacts %}
                         <div class="contact-entry" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
                             <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                                 <div>
-                                    <label style="font-size:0.75rem;">Type</label>
+                                    <label style="font-size:0.75rem;">{{ _('Type') }}</label>
                                     <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
-                                        <option value="email" {% if c.contact_type == 'email' %}selected{% endif %}>Email</option>
-                                        <option value="phone" {% if c.contact_type == 'phone' %}selected{% endif %}>Phone</option>
+                                        <option value="email" {% if c.contact_type == 'email' %}selected{% endif %}>{{ _('Email') }}</option>
+                                        <option value="phone" {% if c.contact_type == 'phone' %}selected{% endif %}>{{ _('Phone') }}</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label style="font-size:0.75rem;">Value</label>
-                                    <input type="text" class="contact-value" value="{{ c.value }}" placeholder="email@example.com or +31612345678" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                    <label style="font-size:0.75rem;">{{ _('Value') }}</label>
+                                    <input type="text" class="contact-value" value="{{ c.value }}" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                                 </div>
                                 <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                                     <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
-                                        <input type="checkbox" class="contact-primary" {% if c.is_primary %}checked{% endif %}> Primary
+                                        <input type="checkbox" class="contact-primary" {% if c.is_primary %}checked{% endif %}> {{ _('Primary') }}
                                     </label>
                                     <button type="button" data-click="removeContactEntry" class="btn-cms danger small" style="padding:0.25rem 0.5rem;">✕</button>
                                 </div>
@@ -70,28 +70,28 @@
                     <div class="contact-entry" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:0.5rem;{% if client.contacts.count() > 0 %}display:none;{% endif %}">
                         <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                             <div>
-                                <label style="font-size:0.75rem;">Type</label>
+                                <label style="font-size:0.75rem;">{{ _('Type') }}</label>
                                 <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
-                                    <option value="email">Email</option>
-                                    <option value="phone">Phone</option>
+                                    <option value="email">{{ _('Email') }}</option>
+                                    <option value="phone">{{ _('Phone') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label style="font-size:0.75rem;">Value</label>
-                                <input type="text" class="contact-value" placeholder="email@example.com or +31612345678" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                <label style="font-size:0.75rem;">{{ _('Value') }}</label>
+                                <input type="text" class="contact-value" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                             </div>
                             <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                                 <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
-                                    <input type="checkbox" class="contact-primary" checked> Primary
+                                    <input type="checkbox" class="contact-primary" checked> {{ _('Primary') }}
                                 </label>
                             </div>
                         </div>
                     </div>
                 </div>
-                <button type="button" data-click="addContact" class="btn-cms small" style="border-style:dashed;">+ Add another contact</button>
+                <button type="button" data-click="addContact" class="btn-cms small" style="border-style:dashed;">+ {{ _('Add another contact') }}</button>
             </div>
             
-            <h3 style="margin-top:1.5rem;color:var(--text-primary);">Address(es)</h3>
+            <h3 style="margin-top:1.5rem;color:var(--text-primary);">{{ _('Address(es)') }}</h3>
             <input type="hidden" name="addresses_data" id="addresses-data" value="">
             <div class="form-group">
                 <div id="addresses-container">
@@ -100,25 +100,25 @@
                         <div class="address-entry" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
                             <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
                                 <div>
-                                    <label style="font-size:0.75rem;">Street</label>
-                                    <input type="text" class="addr-street" value="{{ addr.street or '' }}" placeholder="Street name" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                    <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                                    <input type="text" class="addr-street" value="{{ addr.street or '' }}" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                                 </div>
                                 <div>
-                                    <label style="font-size:0.75rem;">Number</label>
-                                    <input type="text" class="addr-number" value="{{ addr.number or '' }}" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                    <label style="font-size:0.75rem;">{{ _('Number') }}</label>
+                                    <input type="text" class="addr-number" value="{{ addr.number or '' }}" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                                 </div>
                                 <div>
-                                    <label style="font-size:0.75rem;">Zipcode</label>
-                                    <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                    <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                                    <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                                 </div>
                                 <div>
-                                    <label style="font-size:0.75rem;">Town</label>
-                                    <input type="text" class="addr-town" value="{{ addr.town or '' }}" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                    <label style="font-size:0.75rem;">{{ _('Town') }}</label>
+                                    <input type="text" class="addr-town" value="{{ addr.town or '' }}" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                                 </div>
                                 <div style="display:flex;align-items:center;gap:0.25rem;">
-                                    <button type="button" data-click="postcodeCheck" title="Look up zipcode + number" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;padding:0.4rem 0.5rem;">🔍</button>
+                                    <button type="button" data-click="postcodeCheck" title="{{ _('Look up zipcode + number') }}" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;padding:0.4rem 0.5rem;">🔍</button>
                                     <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
-                                        <input type="checkbox" class="addr-primary" {% if addr.is_primary %}checked{% endif %}> Primary
+                                        <input type="checkbox" class="addr-primary" {% if addr.is_primary %}checked{% endif %}> {{ _('Primary') }}
                                     </label>
                                     <button type="button" data-click="removeAddressEntry" class="btn-cms danger small" style="padding:0.25rem 0.5rem;">✕</button>
                                 </div>
@@ -130,37 +130,37 @@
                     <div class="address-entry" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:0.5rem;{% if client.addresses.count() > 0 %}display:none;{% endif %}">
                         <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
                             <div>
-                                <label style="font-size:0.75rem;">Street</label>
-                                <input type="text" class="addr-street" placeholder="Street name" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                                <input type="text" class="addr-street" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                             </div>
                             <div>
-                                <label style="font-size:0.75rem;">Number</label>
-                                <input type="text" class="addr-number" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                <label style="font-size:0.75rem;">{{ _('Number') }}</label>
+                                <input type="text" class="addr-number" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                             </div>
                             <div>
-                                <label style="font-size:0.75rem;">Zipcode</label>
-                                <input type="text" class="addr-zipcode" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                                <input type="text" class="addr-zipcode" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                             </div>
                             <div>
-                                <label style="font-size:0.75rem;">Town</label>
-                                <input type="text" class="addr-town" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                <label style="font-size:0.75rem;">{{ _('Town') }}</label>
+                                <input type="text" class="addr-town" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                             </div>
                             <div style="display:flex;align-items:center;gap:0.25rem;">
-                                <button type="button" data-click="postcodeCheck" title="Look up zipcode + number" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;padding:0.4rem 0.5rem;">🔍</button>
+                                <button type="button" data-click="postcodeCheck" title="{{ _('Look up zipcode + number') }}" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;padding:0.4rem 0.5rem;">🔍</button>
                                 <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
-                                    <input type="checkbox" class="addr-primary" checked> Primary
+                                    <input type="checkbox" class="addr-primary" checked> {{ _('Primary') }}
                                 </label>
                             </div>
                         </div>
                         <input type="hidden" class="addr-country" value="Netherlands">
                     </div>
                 </div>
-                <button type="button" data-click="addAddress" class="btn-cms small" style="border-style:dashed;">+ Add another address</button>
+                <button type="button" data-click="addAddress" class="btn-cms small" style="border-style:dashed;">+ {{ _('Add another address') }}</button>
             </div>
             
-            <h3 style="margin-top:1.5rem;color:var(--text-primary);">Contract</h3>
+            <h3 style="margin-top:1.5rem;color:var(--text-primary);">{{ _('Contract') }}</h3>
             <div class="form-group">
-                <label for="contract_number">Contract Number {% if not current_user.is_admin %}(read-only){% endif %}</label>
+                <label for="contract_number">{{ _('Contract Number') }}{% if not current_user.is_admin %} ({{ _('read-only') }}){% endif %}</label>
                 {% if current_user.is_admin %}
                 <input type="text" name="contract_number" id="contract_number" value="{{ client.contract_number or '' }}">
                 {% else %}
@@ -168,27 +168,27 @@
                 {% endif %}
             </div>
             
-            <h3 style="margin-top:1.5rem;color:var(--text-primary);">Financial Information</h3>
+            <h3 style="margin-top:1.5rem;color:var(--text-primary);">{{ _('Financial Information') }}</h3>
             <div class="form-group">
-                <label for="social_security_number">Social Security Number</label>
+                <label for="social_security_number">{{ _('Social Security Number') }}</label>
                 <input type="text" name="social_security_number" id="social_security_number" value="{{ client.social_security_number or '' }}">
             </div>
             <div class="form-group" id="vat-field" style="{% if not client.is_company %}display:none;{% endif %}">
-                <label for="vat_number">VAT Number</label>
+                <label for="vat_number">{{ _('VAT Number') }}</label>
                 <input type="text" name="vat_number" id="vat_number" value="{{ client.vat_number or '' }}">
             </div>
             <div class="form-group">
-                <label for="bank_account">Bank Account</label>
+                <label for="bank_account">{{ _('Bank Account') }}</label>
                 <input type="text" name="bank_account" id="bank_account" value="{{ client.bank_account or '' }}">
             </div>
             <div class="form-group">
-                <label for="financial_notes">Financial Notes</label>
+                <label for="financial_notes">{{ _('Financial Notes') }}</label>
                 <textarea name="financial_notes" id="financial_notes" rows="3">{{ client.financial_notes or '' }}</textarea>
             </div>
             
             <div class="btn-group" style="margin:1.5rem 0 0;">
-                <button type="submit" class="btn-cms primary">Save Changes</button>
-                <a href="{{ url_for('cms.view_client', client_id=client.id) }}" class="btn-cms">Cancel</a>
+                <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
+                <a href="{{ url_for('cms.view_client', client_id=client.id) }}" class="btn-cms">{{ _('Cancel') }}</a>
             </div>
         </form>
     </div>
@@ -272,7 +272,7 @@
         const zipcode = entry.querySelector('.addr-zipcode').value.trim();
         const number = entry.querySelector('.addr-number').value.trim();
         if (!zipcode || !number) {
-            alert('Enter zipcode and house number first');
+            alert({{ _('Enter zipcode and house number first')|tojson }});
             return;
         }
         btn.disabled = true;

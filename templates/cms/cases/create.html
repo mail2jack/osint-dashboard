@@ -90,54 +90,54 @@
     }
 </style>
 
-<h2 style="margin-bottom: 1.5rem;">Create New Case</h2>
+<h2 style="margin-bottom: 1.5rem;">{{ _('Create New Case') }}</h2>
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="title">Case Title *</label>
+        <label for="title">{{ _('Case Title *') }}</label>
         <input type="text" name="title" id="title" required>
     </div>
     <div class="form-group">
-        <label for="client_id">Client *</label>
+        <label for="client_id">{{ _('Client *') }}</label>
         <select name="client_id" id="client_id" required>
-            <option value="">Select a client</option>
+            <option value="">{{ _('Select a client') }}</option>
             {% for client in clients %}
             <option value="{{ client.id }}">{{ client.name }}</option>
             {% endfor %}
         </select>
     </div>
     <div class="form-group">
-        <label for="lead_investigator_id">Lead Investigator</label>
+        <label for="lead_investigator_id">{{ _('Lead Investigator') }}</label>
         <select name="lead_investigator_id" id="lead_investigator_id">
-            <option value="">Select lead investigator</option>
+            <option value="">{{ _('Select lead investigator') }}</option>
             {% for investigator in investigators %}
             <option value="{{ investigator.id }}">{{ investigator.full_name }} ({{ investigator.role }})</option>
             {% endfor %}
         </select>
     </div>
     <div class="form-group">
-        <label for="description">Description</label>
+        <label for="description">{{ _('Description') }}</label>
         <textarea name="description" id="description" rows="4" style="width:100%;padding:0.75rem;border:1px solid #ddd;border-radius:8px;"></textarea>
     </div>
     <div class="form-group">
-        <label for="priority">Priority</label>
+        <label for="priority">{{ _('Priority') }}</label>
         <select name="priority" id="priority">
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
-            <option value="critical">Critical</option>
+            <option value="low">{{ _('Low') }}</option>
+            <option value="medium" selected>{{ _('Medium') }}</option>
+            <option value="high">{{ _('High') }}</option>
+            <option value="critical">{{ _('Critical') }}</option>
         </select>
     </div>
     <div class="form-group">
-        <label for="case_type">Criminal Code (searchable - type to search)</label>
+        <label for="case_type">{{ _('Criminal Code (searchable - type to search)') }}</label>
         <div class="combobox-container">
-            <input type="text" id="case_type" class="combobox-input" placeholder="Type to search (e.g. diefstal, woning, 1.1.1)..." autocomplete="off">
+            <input type="text" id="case_type" class="combobox-input" placeholder="{{ _('Type to search (e.g. diefstal, woning, 1.1.1)...') }}" autocomplete="off">
             <input type="hidden" name="case_type" id="case_type_value" value="">
             <div id="case_type_list" class="combobox-list"></div>
         </div>
     </div>
-    <button type="submit" class="btn-cms primary">Create Case</button>
-    <a href="{{ url_for('cms.cases') }}" class="btn-cms gray" style="margin-left:0.5rem;">Cancel</a>
+    <button type="submit" class="btn-cms primary">{{ _('Create Case') }}</button>
+    <a href="{{ url_for('cms.cases') }}" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Cancel') }}</a>
 </form>
 
 <script nonce="{{ csp_nonce }}">
@@ -192,7 +192,7 @@ function getItemsWithHeaders(items) {
 
 function renderList(items, scrollTop = 0) {
     if (items.length === 0) {
-        list.innerHTML = '<div class="combobox-header">No matches found</div>';
+        list.innerHTML = '<div class="combobox-header">' + {{ _('No matches found')|tojson }} + '</div>';
         list.classList.add('show');
         return;
     }

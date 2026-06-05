@@ -1,9 +1,11 @@
 import logging
 import re
-import httpx
-import requests
 from flask import request, jsonify
 import flask
+
+from curl_cffi import requests as curl_requests
+from curl_cffi import CurlError
+from cms.services.http_utils import jitter_sleep
 from search_history import search_history
 
 logger = logging.getLogger(__name__)
@@ -114,56 +116,66 @@ def phone_osint() -> flask.Response:
         normalized = normalize_phone_number(phone)
         result["normalized"] = normalized
 
-        with httpx.Client(follow_redirects=True, timeout=10) as client:
-            try:
-                wa_url = f"https://api.whatsapp.com/send?phone={normalized}"
-                wa_response = client.get(wa_url, headers=WHATSAPP_HEADERS)
-                wa_text = wa_response.text.lower()
-                if "phone number is not on whatsapp" in wa_text:
-                    result["services"]["whatsapp"] = {
-                        "exists": False,
-                        "url": f"https://wa.me/{normalized}",
-                    }
-                elif "unavailable" in wa_text or "cannot send" in wa_text:
-                    result["services"]["whatsapp"] = {
-                        "exists": None,
-                        "note": "API unavailable",
-                    }
-                else:
-                    result["services"]["whatsapp"] = {
-                        "exists": True,
-                        "url": f"https://wa.me/{normalized}",
-                    }
-            except Exception as e:
-                logger.debug(f"WhatsApp forced check failed ({type(e).__name__}): {e}")
+        try:
+            jitter_sleep(domain_hint="https://api.whatsapp.com")
+            wa_response = curl_requests.get(
+                f"https://api.whatsapp.com/send?phone={normalized}",
+                headers=WHATSAPP_HEADERS,
+                impersonate="chrome124",
+                timeout=10,
+            )
+            wa_text = wa_response.text.lower()
+            if "phone number is not on whatsapp" in wa_text:
+                result["services"]["whatsapp"] = {
+                    "exists": False,
+                    "url": f"https://wa.me/{normalized}",
+                }
+            elif "unavailable" in wa_text or "cannot send" in wa_text:
                 result["services"]["whatsapp"] = {
                     "exists": None,
-                    "note": "Check blocked",
+                    "note": "API unavailable",
                 }
+            else:
+                result["services"]["whatsapp"] = {
+                    "exists": True,
+                    "url": f"https://wa.me/{normalized}",
+                }
+        except Exception as e:
+            logger.debug(f"WhatsApp forced check failed ({type(e).__name__}): {e}")
+            result["services"]["whatsapp"] = {
+                "exists": None,
+                "note": "Check blocked",
+            }
 
-            try:
-                tg_url = f"https://t.me/+{normalized}"
-                tg_response = client.get(tg_url, headers=HEADERS, timeout=5)
-                tg_text = tg_response.text.lower()
-                if (
-                    tg_response.status_code == 400
-                    or "join" in tg_text
-                    or "subscribe" in tg_text
-                ):
-                    result["services"]["telegram"] = {"exists": True, "url": tg_url}
-                elif tg_response.status_code == 200:
-                    result["services"]["telegram"] = {"exists": False}
-                else:
-                    result["services"]["telegram"] = {
-                        "exists": None,
-                        "note": "Unable to verify",
-                    }
-            except Exception as e:
-                logger.debug(f"Telegram forced check failed ({type(e).__name__}): {e}")
+        try:
+            tg_url = f"https://t.me/+{normalized}"
+            jitter_sleep(domain_hint="https://t.me")
+            tg_response = curl_requests.get(
+                tg_url,
+                headers=HEADERS,
+                impersonate="chrome124",
+                timeout=5,
+            )
+            tg_text = tg_response.text.lower()
+            if (
+                tg_response.status_code == 400
+                or "join" in tg_text
+                or "subscribe" in tg_text
+            ):
+                result["services"]["telegram"] = {"exists": True, "url": tg_url}
+            elif tg_response.status_code == 200:
+                result["services"]["telegram"] = {"exists": False}
+            else:
                 result["services"]["telegram"] = {
                     "exists": None,
-                    "note": "Check blocked",
+                    "note": "Unable to verify",
                 }
+        except Exception as e:
+            logger.debug(f"Telegram forced check failed ({type(e).__name__}): {e}")
+            result["services"]["telegram"] = {
+                "exists": None,
+                "note": "Check blocked",
+            }
 
         _tck, _tcn = _get_twochat_credentials()
         if _tck and _tcn:
@@ -171,7 +183,7 @@ def phone_osint() -> flask.Response:
                 phone_e164 = result.get("formatted") or f"+{normalized}"
                 url = f"https://api.p.2chat.io/open/whatsapp/check-number/{_tcn}/{phone_e164}"
                 headers = {"X-User-API-Key": _tck, "Accept": "application/json"}
-                response = requests.get(url, headers=headers, timeout=30)
+                response = curl_requests.get(url, headers=headers, timeout=30)
                 if response.status_code == 200:
                     data = response.json()
                     result["services"]["whatsapp_2chat"] = {
@@ -241,37 +253,40 @@ def whatsapp_lookup() -> flask.Response:
     try:
         url = f"https://api.whatsapp.com/send?phone={normalized}"
 
-        with httpx.Client(follow_redirects=True, timeout=10) as client:
-            response = client.get(url, headers=WHATSAPP_HEADERS)
-            text = response.text.lower()
+        jitter_sleep(domain_hint="https://api.whatsapp.com")
+        response = curl_requests.get(
+            url, headers=WHATSAPP_HEADERS, impersonate="chrome124", timeout=10
+        )
+        text = response.text.lower()
 
-            result["http_status"] = response.status_code
+        result["http_status"] = response.status_code
 
-            absence_patterns = [
-                "phone number is not on whatsapp",
-                "is unavailable",
-                "cannot send messages to this number",
-                "invalid phone number",
-                "check the number",
-            ]
+        absence_patterns = [
+            "phone number is not on whatsapp",
+            "is unavailable",
+            "cannot send messages to this number",
+            "invalid phone number",
+            "check the number",
+        ]
 
-            has_absence = any(pattern in text for pattern in absence_patterns)
+        has_absence = any(pattern in text for pattern in absence_patterns)
 
-            if has_absence:
-                result["exists"] = False
-                result["status"] = "not_found"
-                result["message"] = "Phone number not found on WhatsApp"
-            else:
-                result["exists"] = True
-                result["status"] = "found"
-                result["message"] = "Phone number found on WhatsApp"
+        if has_absence:
+            result["exists"] = False
+            result["status"] = "not_found"
+            result["message"] = "Phone number not found on WhatsApp"
+        else:
+            result["exists"] = True
+            result["status"] = "found"
+            result["message"] = "Phone number found on WhatsApp"
 
-    except httpx.TimeoutException:
-        result["status"] = "timeout"
-        result["message"] = "Request timed out"
-    except httpx.ConnectError:
-        result["status"] = "connection_error"
-        result["message"] = "Connection error"
+    except CurlError as e:
+        if "timed out" in str(e).lower():
+            result["status"] = "timeout"
+            result["message"] = "Request timed out"
+        else:
+            result["status"] = "connection_error"
+            result["message"] = "Connection error"
     except Exception:
         logger.exception("WhatsApp dedicated lookup error")
         result["status"] = "error"
@@ -331,7 +346,7 @@ def check_whatsapp_2chat() -> flask.Response:
 
         headers = {"X-User-API-Key": _tck, "Accept": "application/json"}
 
-        response = requests.get(url, headers=headers, timeout=30)
+        response = curl_requests.get(url, headers=headers, timeout=30)
         data = response.json()
 
         if response.status_code == 200:
@@ -371,10 +386,8 @@ def check_whatsapp_2chat() -> flask.Response:
             result["error"] = data.get("message", "API request failed")
             result["http_status"] = response.status_code
 
-    except requests.Timeout:
-        result["error"] = "Request timed out"
-    except requests.ConnectionError:
-        result["error"] = "Connection error"
+    except CurlError:
+        result["error"] = "Request failed"
     except Exception:
         logger.exception("2Chat API dedicated error")
         result["error"] = "API request failed"
@@ -413,37 +426,40 @@ def telegram_lookup() -> flask.Response:
     try:
         url = f"https://t.me/+{normalized}"
 
-        with httpx.Client(follow_redirects=True, timeout=10) as client:
-            response = client.get(url, headers=HEADERS)
-            result["http_status"] = response.status_code
-            text = response.text.lower()
+        jitter_sleep(domain_hint="https://t.me")
+        response = curl_requests.get(
+            url, headers=HEADERS, impersonate="chrome124", timeout=10
+        )
+        result["http_status"] = response.status_code
+        text = response.text.lower()
 
-            if response.status_code == 400:
-                result["exists"] = False
-                result["status"] = "not_found"
-                result["message"] = "Invalid Telegram link or number not found"
-            elif response.status_code == 200:
-                if "telegram" in text and (
-                    "join" in text or "subscribe" in text or "confirm" in text
-                ):
-                    result["exists"] = True
-                    result["status"] = "found"
-                    result["message"] = "Phone number linked to Telegram"
-                else:
-                    result["exists"] = None
-                    result["status"] = "unknown"
-                    result["message"] = "Unable to determine Telegram status"
+        if response.status_code == 400:
+            result["exists"] = False
+            result["status"] = "not_found"
+            result["message"] = "Invalid Telegram link or number not found"
+        elif response.status_code == 200:
+            if "telegram" in text and (
+                "join" in text or "subscribe" in text or "confirm" in text
+            ):
+                result["exists"] = True
+                result["status"] = "found"
+                result["message"] = "Phone number linked to Telegram"
             else:
                 result["exists"] = None
                 result["status"] = "unknown"
-                result["message"] = f"Status code: {response.status_code}"
+                result["message"] = "Unable to determine Telegram status"
+        else:
+            result["exists"] = None
+            result["status"] = "unknown"
+            result["message"] = f"Status code: {response.status_code}"
 
-    except httpx.TimeoutException:
-        result["status"] = "timeout"
-        result["message"] = "Request timed out"
-    except httpx.ConnectError:
-        result["status"] = "connection_error"
-        result["message"] = "Connection error"
+    except CurlError as e:
+        if "timed out" in str(e).lower():
+            result["status"] = "timeout"
+            result["message"] = "Request timed out"
+        else:
+            result["status"] = "connection_error"
+            result["message"] = "Connection error"
     except Exception:
         logger.exception("Telegram dedicated lookup error")
         result["status"] = "error"

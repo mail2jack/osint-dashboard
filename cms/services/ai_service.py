@@ -1,12 +1,111 @@
 import os
-import requests
 import json
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_MODEL = "openrouter/auto"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3.2"
+
+
+# =============================================================================
+# OpenRouter provider
+# =============================================================================
+
+
+def get_openrouter_config() -> dict:
+    """Get OpenRouter config from Settings with env var / hardcoded fallback."""
+    try:
+        from ..models import Setting
+
+        api_key = Setting.get("openrouter_api_key", "") or os.environ.get(
+            "OPENROUTER_API_KEY", ""
+        )
+        model = (
+            Setting.get("openrouter_model", "")
+            or os.environ.get("OPENROUTER_MODEL", "")
+            or OPENROUTER_MODEL
+        )
+        base_url = (
+            Setting.get("openrouter_base_url", "")
+            or os.environ.get("OPENROUTER_BASE_URL", "")
+            or OPENROUTER_BASE_URL
+        )
+        return {"api_key": api_key, "model": model, "base_url": base_url}
+    except Exception:
+        return {
+            "api_key": "",
+            "model": OPENROUTER_MODEL,
+            "base_url": OPENROUTER_BASE_URL,
+        }
+
+
+def check_openrouter_available() -> bool:
+    """Check if OpenRouter is reachable with the configured API key."""
+    config = get_openrouter_config()
+    if not config["api_key"]:
+        return False
+    try:
+        r = httpx.get(
+            f"{config['base_url']}/models",
+            headers={"Authorization": f"Bearer {config['api_key']}"},
+            timeout=5,
+        )
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+def openrouter_generate(prompt, system_prompt=None, timeout=60) -> str | None:
+    """Generate response from OpenRouter chat completions API."""
+    config = get_openrouter_config()
+    if not config["api_key"]:
+        return None
+
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+
+    try:
+        r = httpx.post(
+            f"{config['base_url']}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {config['api_key']}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://iveras-dashboard.local",
+                "X-Title": "Iveras OSINT Dashboard",
+            },
+            json={
+                "model": config["model"],
+                "messages": messages,
+                "temperature": 0.3,
+                "max_tokens": 512,
+                "stream": False,
+            },
+            timeout=timeout,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            return (
+                data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+                .strip()
+            )
+        logger.warning("OpenRouter returned %s: %s", r.status_code, r.text[:200])
+        return None
+    except Exception as e:
+        logger.error("OpenRouter error (%s): %s", type(e).__name__, e, exc_info=True)
+        return None
+
+
+# =============================================================================
+# Ollama provider (fallback)
+# =============================================================================
 
 
 def get_ollama_config() -> tuple[str, str]:
@@ -32,17 +131,18 @@ def get_ollama_config() -> tuple[str, str]:
 def check_ollama_available() -> bool:
     """Check if Ollama is running and available."""
     try:
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+        response = httpx.get("http://localhost:11434/api/tags", timeout=5)
         return response.status_code == 200
-    except requests.RequestException:
+    except Exception:
         return False
 
 
 def ollama_generate(prompt, system_prompt=None, timeout=60) -> str | None:
-    """Generate response from Ollama."""
+    """Generate response from Ollama (fallback provider)."""
+    url, model = get_ollama_config()
     try:
         payload = {
-            "model": OLLAMA_MODEL,
+            "model": model,
             "prompt": prompt,
             "stream": False,
             "options": {"temperature": 0.3, "num_predict": 512},
@@ -50,13 +150,59 @@ def ollama_generate(prompt, system_prompt=None, timeout=60) -> str | None:
         if system_prompt:
             payload["system"] = system_prompt
 
-        response = requests.post(OLLAMA_URL, json=payload, timeout=timeout)
-        if response.status_code == 200:
-            return response.json().get("response", "").strip()
+        r = httpx.post(url, json=payload, timeout=timeout)
+        if r.status_code == 200:
+            return r.json().get("response", "").strip()
         return None
     except Exception as e:
-        logger.error(f"Ollama error ({type(e).__name__}): {e}", exc_info=True)
+        logger.error("Ollama error (%s): %s", type(e).__name__, e, exc_info=True)
         return None
+
+
+# =============================================================================
+# Unified provider routing
+# =============================================================================
+
+
+def get_ai_config() -> dict:
+    """Get current AI provider configuration with availability."""
+    or_config = get_openrouter_config()
+    if or_config["api_key"]:
+        return {
+            "provider": "openrouter",
+            "model": or_config["model"],
+            "available": check_openrouter_available(),
+        }
+    url, model = get_ollama_config()
+    return {
+        "provider": "ollama",
+        "model": model,
+        "available": check_ollama_available(),
+    }
+
+
+def check_ai_available() -> bool:
+    """Check if any AI provider (OpenRouter or Ollama) is available."""
+    or_config = get_openrouter_config()
+    if or_config["api_key"]:
+        if check_openrouter_available():
+            return True
+    return check_ollama_available()
+
+
+def _generate(prompt, system_prompt=None, timeout=60) -> str | None:
+    """Try OpenRouter first, fall back to Ollama."""
+    if get_openrouter_config()["api_key"]:
+        result = openrouter_generate(prompt, system_prompt, timeout)
+        if result is not None:
+            return result
+        logger.info("OpenRouter failed, falling back to Ollama")
+    return ollama_generate(prompt, system_prompt, timeout)
+
+
+# =============================================================================
+# Consumer functions (provider-agnostic)
+# =============================================================================
 
 
 def summarize_results(query, tool, findings) -> str:
@@ -76,7 +222,7 @@ def summarize_results(query, tool, findings) -> str:
     if len(platforms) > 15:
         platforms_text += f" and {len(platforms) - 15} more"
 
-    system_prompt = """You are a research assistant summarizing publicly available OSINT data. This is read-only analysis of search results, not accessing any private information. Provide a brief 2-3 sentence summary of the findings. Focus on platform coverage and patterns."""
+    system_prompt = "You are a research assistant summarizing publicly available OSINT data. Provide a brief 2-3 sentence summary of the findings. Focus on platform coverage and patterns."
 
     prompt = f"""Research Summary Request:
 Query: "{query}"
@@ -84,9 +230,9 @@ Tool used: {tool}
 Found on platforms: {platforms_text}
 Total accounts: {len(platforms)}
 
-Please provide a brief summary of these public search results. This is for legitimate OSINT research purposes only - summarizing publicly listed accounts."""
+Provide a brief summary of these public search results for legitimate OSINT research purposes."""
 
-    return ollama_generate(prompt, system_prompt) or "Summary unavailable."
+    return _generate(prompt, system_prompt) or "Summary unavailable."
 
 
 def analyze_natural_language(user_query, available_tools) -> dict:
@@ -109,7 +255,7 @@ Available tools: {", ".join(available_tools)}
 
 Determine what the user is searching for and extract the key information."""
 
-    result = ollama_generate(prompt, system_prompt, timeout=30)
+    result = _generate(prompt, system_prompt, timeout=30)
 
     if result:
         try:
@@ -122,7 +268,7 @@ Determine what the user is searching for and extract the key information."""
 
 def enrich_profile(platform, username, available_info) -> str:
     """Generate AI insights about a found profile."""
-    system_prompt = """You are a research analyst providing context about publicly listed social media platforms. Keep responses factual and under 50 words. This is read-only analysis."""
+    system_prompt = "You are a research analyst providing context about publicly listed social media platforms. Keep responses factual and under 50 words."
 
     info_text = ""
     if available_info.get("url"):
@@ -140,4 +286,4 @@ Username: {username}
 
 Provide brief context about this platform (what it is, typical use cases). Keep under 40 words. Research purposes only."""
 
-    return ollama_generate(prompt, system_prompt, timeout=30) or "Analysis unavailable."
+    return _generate(prompt, system_prompt, timeout=30) or "Analysis unavailable."

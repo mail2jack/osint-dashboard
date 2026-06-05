@@ -14,6 +14,8 @@ from ..validation import validate, CheckPolicieDataSchema, InterpolFindingSchema
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 from ..api_key_auth import api_key_required
 from ..feature_flags import tool_enabled
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 logger = logging.getLogger(__name__)
 
@@ -87,9 +89,9 @@ def check_policie_data() -> flask.Response:
 
     interpol_403 = False
     try:
-        import httpx
-
-        client = httpx.Client(headers=_interpol_headers(), timeout=15)
+        client = curl_requests.Session(
+            impersonate="chrome124", headers=_interpol_headers(), timeout=15
+        )
 
         try:
             red_params = {"resultPerPage": 10}
@@ -206,11 +208,12 @@ def check_policie_data() -> flask.Response:
             and len(name_parts) >= 1
         ):
             try:
-                vermist_resp = httpx.get(
+                jitter_sleep(domain_hint="https://www.politie.nl/vermist")
+                vermist_resp = curl_requests.get(
                     "https://www.politie.nl/vermist",
                     headers=_interpol_headers(),
                     timeout=10,
-                    follow_redirects=True,
+                    impersonate="chrome124",
                 )
                 if vermist_resp.status_code == 200:
                     case_links = re.findall(
@@ -218,11 +221,12 @@ def check_policie_data() -> flask.Response:
                     )
                     for link in case_links[:20]:
                         try:
-                            detail = httpx.get(
+                            jitter_sleep(domain_hint="https://www.politie.nl")
+                            detail = curl_requests.get(
                                 f"https://www.politie.nl{link}",
                                 headers=_interpol_headers(),
                                 timeout=10,
-                                follow_redirects=True,
+                                impersonate="chrome124",
                             )
                             if detail.status_code == 200:
                                 text_lower = detail.text.lower()
@@ -295,13 +299,13 @@ def check_policie_api_status() -> flask.Response:
             }
         ), 200
     try:
-        import httpx
-
-        r = httpx.get(
+        jitter_sleep(domain_hint="https://ws-public.interpol.int")
+        r = curl_requests.get(
             "https://ws-public.interpol.int/notices/v1/red",
             params={"resultPerPage": 1},
             headers=_interpol_headers(),
             timeout=10,
+            impersonate="chrome124",
         )
         return jsonify(
             {

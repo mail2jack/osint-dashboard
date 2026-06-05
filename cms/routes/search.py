@@ -14,6 +14,7 @@ from ..models import (
     FinancialRecord,
     Comment,
     AuditLog,
+    case_subjects,
 )
 from ..auth import get_accessible_case_ids
 from ..notifications import notify_search_restricted
@@ -24,12 +25,6 @@ logger = logging.getLogger(__name__)
 def _accessible_ids():
     """Get cached set of accessible case IDs for current user."""
     return set(get_accessible_case_ids(current_user))
-
-
-def _filter_by_case_access(items, case_id_attr):
-    """Filter a list of ORM objects by checking their case_id against accessible set."""
-    accessible = _accessible_ids()
-    return [i for i in items if getattr(i, case_id_attr, None) in accessible]
 
 
 def _record_restricted(
@@ -87,7 +82,7 @@ def search() -> str:
         accessible_ids = _accessible_ids()
 
         if entity_type in ["all", "cases"]:
-            total_cases = (
+            base_q = (
                 Case.query.options(db.contains_eager(Case.client))
                 .join(Client)
                 .filter(
@@ -98,10 +93,9 @@ def search() -> str:
                         Case.description.ilike(f"%{query}%"),
                     ),
                 )
-                .limit(20)
-                .all()
             )
-            filtered = [c for c in total_cases if c.id in accessible_ids]
+            total_count = base_q.count()
+            cases = base_q.filter(Case.id.in_(accessible_ids)).limit(20).all()
             results["cases"] = [
                 {
                     "id": c.id,
@@ -114,40 +108,29 @@ def search() -> str:
                     if c.created_at
                     else None,
                 }
-                for c in filtered
+                for c in cases
             ]
-            if len(filtered) < len(total_cases):
+            if len(cases) < total_count:
+                restricted = base_q.filter(~Case.id.in_(accessible_ids)).limit(20).all()
                 restricted_case_numbers = [
-                    c.case_number for c in total_cases if c.id not in accessible_ids
+                    c.case_number for c in restricted if c.case_number
                 ]
                 _record_restricted(
                     query,
                     "cases",
-                    len(total_cases),
-                    len(filtered),
+                    total_count,
+                    len(cases),
                     restricted_case_numbers,
                 )
 
         if entity_type in ["all", "clients"]:
-            total_clients = (
-                Client.query.filter(
-                    Client.is_deleted == False, Client.name.ilike(f"%{query}%")
-                )
-                .limit(20)
-                .all()
+            clients_q = Client.query.filter(
+                Client.is_deleted == False, Client.name.ilike(f"%{query}%")
             )
-
-            # Filter clients: keep if any of their cases are accessible
-            def _client_accessible(c):
-                for case in c.cases:
-                    if not case.is_deleted and case.id in accessible_ids:
-                        return True
-                return False
-
-            if current_user.is_admin:
-                filtered_clients = total_clients
-            else:
-                filtered_clients = [c for c in total_clients if _client_accessible(c)]
+            if not current_user.is_admin:
+                clients_q = clients_q.filter(
+                    Client.cases.any(Case.id.in_(accessible_ids))
+                )
             results["clients"] = [
                 {
                     "id": c.id,
@@ -157,38 +140,26 @@ def search() -> str:
                     "is_active": c.is_active,
                     "contract_number": c.contract_number,
                 }
-                for c in filtered_clients
+                for c in clients_q.limit(20).all()
             ]
 
         if entity_type in ["all", "subjects"]:
-            total_subjects = (
-                Subject.query.filter(
-                    Subject.is_deleted == False,
-                    db.or_(
-                        Subject.name.ilike(f"%{query}%"),
-                        Subject.identification_number.ilike(f"%{query}%"),
-                    ),
-                )
-                .limit(20)
-                .all()
+            subjects_q = Subject.query.filter(
+                Subject.is_deleted == False,
+                db.or_(
+                    Subject.name.ilike(f"%{query}%"),
+                    Subject.identification_number.ilike(f"%{query}%"),
+                ),
             )
-            # Filter subjects: keep if linked to an accessible case
-            from ..models import case_subjects
-
-            def _subject_accessible(s):
-                linked = (
-                    db.session.query(case_subjects.c.case_id)
-                    .filter(case_subjects.c.subject_id == s.id)
-                    .all()
+            if not current_user.is_admin:
+                subjects_q = subjects_q.filter(
+                    db.exists(
+                        db.session.query(case_subjects.c.case_id).filter(
+                            case_subjects.c.subject_id == Subject.id,
+                            case_subjects.c.case_id.in_(accessible_ids),
+                        )
+                    )
                 )
-                return any(cid in accessible_ids for (cid,) in linked)
-
-            if current_user.is_admin:
-                filtered_subjects = total_subjects
-            else:
-                filtered_subjects = [
-                    s for s in total_subjects if _subject_accessible(s)
-                ]
             results["subjects"] = [
                 {
                     "id": s.id,
@@ -199,11 +170,11 @@ def search() -> str:
                     if s.created_at
                     else None,
                 }
-                for s in filtered_subjects
+                for s in subjects_q.limit(20).all()
             ]
 
         if entity_type in ["all", "findings"]:
-            total_findings = (
+            base_q = (
                 Finding.query.options(db.joinedload(Finding.case))
                 .join(Case)
                 .filter(
@@ -213,10 +184,9 @@ def search() -> str:
                         Finding.content.ilike(f"%{query}%"),
                     ),
                 )
-                .limit(20)
-                .all()
             )
-            filtered_findings = _filter_by_case_access(total_findings, "case_id")
+            total_count = base_q.count()
+            findings = base_q.filter(Case.id.in_(accessible_ids)).limit(20).all()
             results["findings"] = [
                 {
                     "id": f.id,
@@ -229,19 +199,24 @@ def search() -> str:
                     if f.created_at
                     else None,
                 }
-                for f in filtered_findings
+                for f in findings
             ]
-            if len(filtered_findings) < len(total_findings):
-                rcn = list(
-                    set(
-                        f.case.case_number
-                        for f in total_findings
-                        if f.case and f.case_id not in accessible_ids
+            if len(findings) < total_count:
+                restricted = (
+                    Finding.query.join(Case)
+                    .filter(
+                        Finding.is_deleted == False,
+                        ~Case.id.in_(accessible_ids),
+                        db.or_(
+                            Finding.title.ilike(f"%{query}%"),
+                            Finding.content.ilike(f"%{query}%"),
+                        ),
                     )
+                    .limit(20)
+                    .all()
                 )
-                _record_restricted(
-                    query, "findings", len(total_findings), len(filtered_findings), rcn
-                )
+                rcn = list(set(f.case.case_number for f in restricted if f.case))
+                _record_restricted(query, "findings", total_count, len(findings), rcn)
 
         if entity_type in ["all", "financials"]:
             total_financials = (
@@ -249,6 +224,7 @@ def search() -> str:
                 .join(Case)
                 .filter(
                     FinancialRecord.is_deleted == False,
+                    Case.id.in_(accessible_ids),
                     db.or_(
                         FinancialRecord.description.ilike(f"%{query}%"),
                         FinancialRecord.source_reference.ilike(f"%{query}%"),
@@ -257,7 +233,6 @@ def search() -> str:
                 .limit(20)
                 .all()
             )
-            filtered_financials = _filter_by_case_access(total_financials, "case_id")
             results["financials"] = [
                 {
                     "id": f.id,
@@ -271,30 +246,26 @@ def search() -> str:
                     else "",
                     "description": f.description[:100] if f.description else None,
                 }
-                for f in filtered_financials
+                for f in total_financials
             ]
 
         if entity_type in ["all", "comments"]:
-            total_comments = (
-                Comment.query.options(db.joinedload(Comment.author))
-                .filter(
-                    Comment.is_deleted == False, Comment.content.ilike(f"%{query}%")
-                )
-                .limit(20)
-                .all()
+            comments_q = Comment.query.options(db.joinedload(Comment.author)).filter(
+                Comment.is_deleted == False,
+                Comment.content.ilike(f"%{query}%"),
             )
+            if not current_user.is_admin:
+                comments_q = comments_q.filter(Comment.case_id.in_(accessible_ids))
+            total_comments = comments_q.limit(20).all()
+
             # Batch-load cases for comments
             comment_case_ids = {c.case_id for c in total_comments if c.case_id}
             comment_cases_map = {}
             if comment_case_ids:
                 for _c in Case.query.filter(Case.id.in_(comment_case_ids)).all():
                     comment_cases_map[_c.id] = _c
-            filtered_comments = []
-            for c in total_comments:
-                if c.case_id and c.case_id in accessible_ids or current_user.is_admin:
-                    filtered_comments.append(c)
             results["comments"] = []
-            for c in filtered_comments:
+            for c in total_comments:
                 _case = comment_cases_map.get(c.case_id)
                 results["comments"].append(
                     {
@@ -315,28 +286,18 @@ def search() -> str:
                 )
 
         if entity_type in ["all", "notes"]:
-            total_subject_notes = (
-                Subject.query.filter(
-                    Subject.is_deleted == False, Subject.notes.ilike(f"%{query}%")
-                )
-                .limit(10)
-                .all()
+            subject_notes_q = Subject.query.filter(
+                Subject.is_deleted == False, Subject.notes.ilike(f"%{query}%")
             )
-            from ..models import case_subjects
-
-            def _subject_note_accessible(s):
-                linked = (
-                    db.session.query(case_subjects.c.case_id)
-                    .filter(case_subjects.c.subject_id == s.id)
-                    .all()
+            if not current_user.is_admin:
+                subject_notes_q = subject_notes_q.filter(
+                    db.exists(
+                        db.session.query(case_subjects.c.case_id).filter(
+                            case_subjects.c.subject_id == Subject.id,
+                            case_subjects.c.case_id.in_(accessible_ids),
+                        )
+                    )
                 )
-                return any(cid in accessible_ids for (cid,) in linked)
-
-            filtered_subject_notes = (
-                total_subject_notes
-                if current_user.is_admin
-                else [s for s in total_subject_notes if _subject_note_accessible(s)]
-            )
             results["notes"] = [
                 {
                     "id": s.id,
@@ -348,18 +309,21 @@ def search() -> str:
                     else None,
                     "entity_type": "subject",
                 }
-                for s in filtered_subject_notes
+                for s in subject_notes_q.limit(10).all()
             ]
-            total_comment_notes = (
-                Comment.query.options(db.joinedload(Comment.author))
-                .filter(
-                    Comment.is_deleted == False,
-                    Comment.subject_id.isnot(None),
-                    Comment.content.ilike(f"%{query}%"),
+            comment_notes_q = Comment.query.options(
+                db.joinedload(Comment.author)
+            ).filter(
+                Comment.is_deleted == False,
+                Comment.subject_id.isnot(None),
+                Comment.content.ilike(f"%{query}%"),
+            )
+            if not current_user.is_admin:
+                comment_notes_q = comment_notes_q.filter(
+                    Comment.case_id.in_(accessible_ids)
                 )
-                .order_by(Comment.created_at.desc())
-                .limit(10)
-                .all()
+            total_comment_notes = (
+                comment_notes_q.order_by(Comment.created_at.desc()).limit(10).all()
             )
             # Batch-load subjects for comment notes
             note_subject_ids = {
@@ -372,13 +336,6 @@ def search() -> str:
             for c in total_comment_notes:
                 sub = note_subjects_map.get(c.subject_id)
                 if sub and not sub.is_deleted:
-                    # Check case access for this comment's case
-                    if (
-                        c.case_id
-                        and c.case_id not in accessible_ids
-                        and not current_user.is_admin
-                    ):
-                        continue
                     results["notes"].append(
                         {
                             "id": sub.id,
@@ -426,6 +383,7 @@ def api_search() -> flask.Response:
         total_cases = (
             Case.query.filter(
                 Case.is_deleted == False,
+                Case.id.in_(accessible_ids),
                 db.or_(
                     Case.title.ilike(f"%{query}%"), Case.case_number.ilike(f"%{query}%")
                 ),
@@ -433,59 +391,37 @@ def api_search() -> flask.Response:
             .limit(5)
             .all()
         )
-        filtered = [c for c in total_cases if c.id in accessible_ids]
         results["cases"] = [
             {"id": c.id, "title": c.title, "case_number": c.case_number, "type": "case"}
-            for c in filtered
+            for c in total_cases
         ]
 
     if not entity_type or entity_type == "clients":
-        total_clients = (
-            Client.query.filter(
-                Client.is_deleted == False, Client.name.ilike(f"%{query}%")
-            )
-            .limit(5)
-            .all()
+        clients_q = Client.query.filter(
+            Client.is_deleted == False,
+            Client.name.ilike(f"%{query}%"),
         )
-
-        def _client_accessible(c):
-            for case in c.cases:
-                if not case.is_deleted and case.id in accessible_ids:
-                    return True
-            return False
-
-        filtered_clients = (
-            total_clients
-            if current_user.is_admin
-            else [c for c in total_clients if _client_accessible(c)]
-        )
+        if not current_user.is_admin:
+            clients_q = clients_q.filter(Client.cases.any(Case.id.in_(accessible_ids)))
         results["clients"] = [
-            {"id": c.id, "name": c.name, "type": "client"} for c in filtered_clients
+            {"id": c.id, "name": c.name, "type": "client"}
+            for c in clients_q.limit(5).all()
         ]
 
     if not entity_type or entity_type == "subjects":
-        total_subjects = (
-            Subject.query.filter(
-                Subject.is_deleted == False, Subject.name.ilike(f"%{query}%")
-            )
-            .limit(5)
-            .all()
+        subjects_q = Subject.query.filter(
+            Subject.is_deleted == False,
+            Subject.name.ilike(f"%{query}%"),
         )
-        from ..models import case_subjects
-
-        def _subject_accessible(s):
-            linked = (
-                db.session.query(case_subjects.c.case_id)
-                .filter(case_subjects.c.subject_id == s.id)
-                .all()
+        if not current_user.is_admin:
+            subjects_q = subjects_q.filter(
+                db.exists(
+                    db.session.query(case_subjects.c.case_id).filter(
+                        case_subjects.c.subject_id == Subject.id,
+                        case_subjects.c.case_id.in_(accessible_ids),
+                    )
+                )
             )
-            return any(cid in accessible_ids for (cid,) in linked)
-
-        filtered_subjects = (
-            total_subjects
-            if current_user.is_admin
-            else [s for s in total_subjects if _subject_accessible(s)]
-        )
         results["subjects"] = [
             {
                 "id": s.id,
@@ -493,7 +429,7 @@ def api_search() -> flask.Response:
                 "type": "subject",
                 "subject_type": s.subject_type,
             }
-            for s in filtered_subjects
+            for s in subjects_q.limit(5).all()
         ]
 
     return jsonify({"results": results})

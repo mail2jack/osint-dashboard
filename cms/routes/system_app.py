@@ -30,20 +30,34 @@ def register_system_routes(app: Flask) -> None:
     @app.route("/api/changelog", methods=["GET"])
     @login_required
     def get_changelog() -> flask.Response:
-        from version import get_version_info
+        import os
 
-        info = get_version_info()
-        html_parts = [f"<h2>v{info['version']}</h2>"]
-        if info.get("changes"):
-            html_parts.append("<ul>")
-            for change in info["changes"]:
-                html_parts.append(f"<li>{change}</li>")
-            html_parts.append("</ul>")
-        if info.get("commit"):
-            html_parts.append(
-                f"<p style='color:var(--text-secondary);font-size:0.85rem;'>Commit: {info['commit'][:10]}</p>"
-            )
-        return jsonify({"html": "\n".join(html_parts)})
+        _root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        cl_path = os.path.join(_root, "CHANGELOG.md")
+        logger.info("CHANGELOG path: %s exists: %s", cl_path, os.path.exists(cl_path))
+        if not os.path.exists(cl_path):
+            return jsonify({"html": "<p>No changelog available.</p>"})
+        with open(cl_path) as f:
+            raw = f.read()
+        logger.info("CHANGELOG read %d bytes", len(raw))
+        lines = raw.split("\n")
+        html_parts = []
+        for line in lines:
+            if line.startswith("### "):
+                html_parts.append(f"<p><strong>{line[4:]}</strong></p>")
+            elif line.startswith("## "):
+                html_parts.append(f"<h3>{line[3:]}</h3>")
+            elif line.startswith("- "):
+                html_parts.append(f"<li>{line[2:]}</li>")
+            elif line.strip() == "":
+                html_parts.append("<br>")
+            else:
+                html_parts.append(f"<p>{line}</p>")
+        result = "".join(html_parts)
+        logger.info("CHANGELOG html length: %d", len(result))
+        return jsonify({"html": result})
 
     @app.route("/api/config", methods=["GET"])
     @login_required
@@ -166,23 +180,10 @@ def register_system_routes(app: Flask) -> None:
 
 
 def _check_ollama_available() -> bool:
-    """Check if Ollama AI service is available."""
-    from cms.services.ai_service import get_ollama_config
+    """Check if any AI provider (OpenRouter or Ollama) is available."""
+    from cms.services.ai_service import check_ai_available
 
-    config = get_ollama_config()
-    if isinstance(config, tuple):
-        url, _model = config
-    else:
-        url = config.get("url") if isinstance(config, dict) else ""
-    if not url:
-        return False
-    try:
-        import httpx
-
-        r = httpx.get(f"{url}/api/tags", timeout=3)
-        return r.status_code == 200
-    except Exception:
-        return False
+    return check_ai_available()
 
 
 def _build_openapi_spec() -> dict:

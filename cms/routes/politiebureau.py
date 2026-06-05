@@ -10,6 +10,8 @@ from ..models import db, Address
 from ..validation import validate, PolitiebureauLookupSchema
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +61,13 @@ def politiebureau_lookup() -> flask.Response:
             )
             if query:
                 try:
-                    import httpx
-
                     pdok_url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free"
-                    r = httpx.get(
-                        pdok_url, params={"q": query, "rows": 1, "fl": "*"}, timeout=10
+                    jitter_sleep(domain_hint=pdok_url)
+                    r = curl_requests.get(
+                        pdok_url,
+                        params={"q": query, "rows": 1, "fl": "*"},
+                        timeout=10,
+                        impersonate="chrome124",
                     )
                     r.raise_for_status()
                     docs = r.json().get("response", {}).get("docs", [])
@@ -91,11 +95,13 @@ def politiebureau_lookup() -> flask.Response:
         query = request.validated_data.get("query") or ""
         if query:
             try:
-                import httpx
-
                 pdok_url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free"
-                r = httpx.get(
-                    pdok_url, params={"q": query, "rows": 1, "fl": "*"}, timeout=10
+                jitter_sleep(domain_hint=pdok_url)
+                r = curl_requests.get(
+                    pdok_url,
+                    params={"q": query, "rows": 1, "fl": "*"},
+                    timeout=10,
+                    impersonate="chrome124",
                 )
                 r.raise_for_status()
                 docs = r.json().get("response", {}).get("docs", [])
@@ -116,12 +122,12 @@ def politiebureau_lookup() -> flask.Response:
         ), 400
 
     try:
-        import httpx
-
-        r = httpx.get(
+        jitter_sleep(domain_hint="https://api.politie.nl")
+        r = curl_requests.get(
             "https://api.politie.nl/politiebureaus/v1",
             params={"lat": lat, "lon": lon},
             timeout=10,
+            impersonate="chrome124",
         )
         r.raise_for_status()
         result = r.json()
@@ -154,9 +160,6 @@ def politiebureau_lookup() -> flask.Response:
                 "coordinates": {"lat": lat, "lon": lon},
             }
         ), 200
-    except httpx.RequestError:
+    except Exception:
         logger.exception("Politiebureau API connection error")
         return jsonify({"error": "Failed to lookup police station"}), 502
-    except Exception:
-        logger.exception("Politiebureau lookup error")
-        return jsonify({"error": "Internal server error"}), 500

@@ -1,8 +1,8 @@
 import random
-import httpx
 import asyncio
 
-http_limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
+from curl_cffi.requests import AsyncSession
+
 http_client = None
 
 USER_AGENTS = [
@@ -29,11 +29,7 @@ def get_random_headers():
 def get_http_client():
     global http_client
     if http_client is None:
-        http_client = httpx.AsyncClient(
-            limits=http_limits,
-            follow_redirects=True,
-            timeout=httpx.Timeout(10.0, connect=5.0),
-        )
+        http_client = AsyncSession(impersonate="chrome124", timeout=10.0)
     return http_client
 
 

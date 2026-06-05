@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CMS Login</title>
+    <title>{{ _('CMS Login') }}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
@@ -32,7 +32,7 @@
 </head>
 <body>
     <div class="login-container">
-        <h1>Case Management</h1>
+        <h1>{{ _('Case Management') }}</h1>
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -43,14 +43,14 @@
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
-                <label for="username">Username</label>
+                <label for="username">{{ _('Username') }}</label>
                 <input type="text" name="username" id="username" required autocomplete="username">
             </div>
             <div class="form-group">
-                <label for="password">Password</label>
+                <label for="password">{{ _('Password') }}</label>
                 <input type="password" name="password" id="password" required autocomplete="current-password">
             </div>
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="btn">{{ _('Login') }}</button>
         </form>
     </div>
 </body>

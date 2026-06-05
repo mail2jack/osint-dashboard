@@ -172,45 +172,38 @@ kill_by_name() {
     return 1
 }
 
+force_kill_ports() {
+    for port in "$@"; do
+        echo "  Forcefully freeing port $port..."
+        local waited=0
+        while is_port_in_use $port && [ $waited -lt 10 ]; do
+            local pids=$(get_pid_for_port $port)
+            if [ -n "$pids" ]; then
+                echo "    Killing PID(s): $pids"
+                echo "$pids" | xargs kill -9 2>/dev/null
+            fi
+            sleep 1
+            waited=$((waited + 1))
+        done
+        if is_port_in_use $port; then
+            print_warning "Port $port still in use after 10 attempts"
+        else
+            print_success "Port $port is free"
+        fi
+    done
+}
+
 cleanup_old_instances() {
     print_header
     echo " Cleaning Up Old Instances"
     echo "----------------------------------------"
     
-    local cleaned=0
     local app_port=$(get_app_port)
     local sf_port=$(get_sf_port)
     
-    # Kill old app instances
-    if kill_on_port $app_port "Iveras app"; then
-        cleaned=1
-    fi
+    force_kill_ports $app_port $sf_port
     kill_by_name "python.*app.py" "Iveras app"
-    
-    # Kill old SpiderFoot instances
-    if kill_on_port $sf_port "SpiderFoot"; then
-        cleaned=1
-    fi
     kill_by_name "sf.py" "SpiderFoot"
-    
-    # Also check for any Python processes on these ports
-    for port in $app_port $sf_port; do
-        if is_port_in_use $port; then
-            pids=$(get_pid_for_port $port)
-            if [ -n "$pids" ]; then
-                echo "  Force killing on port $port: $pids"
-                echo "$pids" | xargs kill -9 2>/dev/null
-                cleaned=1
-            fi
-        fi
-    done
-    
-    if [ $cleaned -eq 1 ]; then
-        sleep 1
-        print_success "Cleanup complete"
-    else
-        print_info "No old instances found"
-    fi
     
     echo ""
 }
@@ -412,7 +405,7 @@ start_all() {
         echo "  SpiderFoot: $sf_port"
         echo ""
         
-        read -p "Use these ports? (Y/n): " -n 1 -r
+        read -p "Use these ports? (Y/n): " -n 1 -r -t 2
         echo
         if [[ $REPLY =~ ^[Nn]$ ]]; then
             ask_ports

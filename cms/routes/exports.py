@@ -3,6 +3,7 @@ import io
 import logging
 from datetime import datetime
 
+from flask_babel import gettext
 from flask import Response, request, jsonify, abort
 from flask_login import login_required, current_user
 from sqlalchemy import func
@@ -36,7 +37,7 @@ def export_case_csv(case: Case) -> Response:
     writer = csv.writer(output)
 
     # Case info
-    writer.writerow(["Case Report"])
+    writer.writerow([gettext("Case Report")])
     writer.writerow(["Case Number", case.case_number])
     writer.writerow(["Title", case.title])
     writer.writerow(["Client", case.client.name if case.client else "N/A"])

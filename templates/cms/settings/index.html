@@ -1,6 +1,6 @@
 {% extends "cms/base.html" %}
 
-{% block title %}Settings - CMS{% endblock %}
+{% block title %}{{ _('Settings') }} - CMS{% endblock %}
 
 {% block content %}
 <style>
@@ -158,6 +158,130 @@
 .toast.error { background: var(--danger-bg); }
 .toast.warning { background: var(--warning-bg); }
 
+/* Search */
+.settings-search {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+.settings-search-bar {
+    position: relative;
+    max-width: 600px;
+}
+.settings-search-bar input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: var(--input-bg);
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+}
+.settings-search-bar input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(22, 33, 62, 0.1);
+}
+.settings-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    pointer-events: none;
+}
+.settings-search-clear {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    display: none;
+    color: var(--text-secondary);
+    padding: 0.25rem;
+    line-height: 1;
+}
+.settings-search-clear:hover {
+    color: var(--text-primary);
+}
+.settings-search-status {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+.settings-search-results {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 4px var(--shadow);
+    margin-bottom: 1.5rem;
+}
+.settings-search-result-category {
+    margin-bottom: 1.5rem;
+}
+.settings-search-result-category:last-child {
+    margin-bottom: 0;
+}
+.settings-search-result-category h3 {
+    margin: 0 0 0.75rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+.settings-search-result-category .result-count {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: normal;
+    background: var(--bg-secondary);
+    padding: 0.125rem 0.5rem;
+    border-radius: 10px;
+}
+.search-result-item {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.search-result-item:hover {
+    background: var(--table-hover);
+    border-color: var(--accent-primary);
+}
+.search-result-item:last-child {
+    margin-bottom: 0;
+}
+.search-result-item label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+.search-result-item .description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+.search-result-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.4rem;
+    display: flex;
+    gap: 1rem;
+}
+.highlight {
+    background: rgba(245, 158, 11, 0.2);
+    padding: 0 0.125rem;
+    border-radius: 2px;
+}
+
 @media (max-width: 768px) {
     .settings-container {
         grid-template-columns: 1fr;
@@ -170,10 +294,23 @@
 </style>
 
 <div class="back">
-    <a href="{{ url_for('cms.dashboard') }}">← Back to Dashboard</a>
+    <a href="{{ url_for('cms.dashboard') }}">← {{ _('Back to Dashboard') }}</a>
 </div>
 
 <h1 style="margin-bottom: 2rem;">⚙️ Settings</h1>
+
+<div class="settings-search">
+    <div class="settings-search-bar">
+        <span class="settings-search-icon">🔍</span>
+        <input type="text" id="settingsSearchInput"
+               placeholder="{{ _('Search settings by name, description or category...') }}"
+               value="{{ search_query or '' }}">
+        <button type="button" id="settingsSearchClear" class="settings-search-clear">✕</button>
+    </div>
+    <div class="settings-search-status" id="settingsSearchStatus"></div>
+</div>
+
+<div id="settingsSearchResults" class="settings-search-results" style="display: none;"></div>
 
 <div class="settings-container">
     <div class="settings-sidebar">
@@ -187,23 +324,23 @@
         <a href="{{ url_for('cms.settings') }}?category=security" 
            class="category-item {% if active_category == 'security' %}active{% endif %}">
             <span class="icon">🔒</span>
-            <span>Security</span>
+            <span>{{ _('Security') }}</span>
         </a>
         <a href="{{ url_for('cms.list_sessions') }}" class="category-item">
             <span class="icon">🔐</span>
-            <span>Sessions</span>
+            <span>{{ _('Sessions') }}</span>
         </a>
         <a href="{{ url_for('cms.login_history') }}" class="category-item">
             <span class="icon">📋</span>
-            <span>Login History</span>
+            <span>{{ _('Login History') }}</span>
         </a>
         <a href="{{ url_for('cms.read_audit_dashboard') }}" class="category-item">
             <span class="icon">📖</span>
-            <span>Read Audit</span>
+            <span>{{ _('Read Audit') }}</span>
         </a>
         <a href="{{ url_for('cms.manage_api_keys') }}" class="category-item">
             <span class="icon">🔑</span>
-            <span>API Keys</span>
+            <span>{{ _('API Keys') }}</span>
         </a>
         <a href="{{ url_for('cms.statistics') }}" class="category-item">
             <span class="icon">📊</span>
@@ -213,7 +350,7 @@
     
     <div class="settings-content">
         <h2>{{ categories[active_category].icon }} {{ categories[active_category].name.replace(categories[active_category].icon + ' ', '') }}</h2>
-        <p>Configure {{ active_category.replace('_', ' ') }} settings for the application.</p>
+        <p>{{ _('Configure %(category)s settings for the application.', category=active_category.replace('_', ' ')) }}</p>
         
         <form id="settingsForm">
             {% for setting in settings_list %}
@@ -221,7 +358,7 @@
                 <label for="setting-{{ setting.id }}">
                     {{ setting.key.replace('_', ' ').title() }}
                     {% if setting.is_sensitive %}
-                    <span style="color: #f59e0b; font-size: 0.75rem; font-weight: normal;">(sensitive)</span>
+                    <span style="color: #f59e0b; font-size: 0.75rem; font-weight: normal;">{{ _('(sensitive)') }}</span>
                     {% endif %}
                 </label>
                 <p class="description">{{ setting.description or '' }}</p>
@@ -229,8 +366,8 @@
                 {% if setting.value_type == 'boolean' %}
                 <select id="setting-{{ setting.id }}" name="{{ setting.key }}" 
                         data-setting-id="{{ setting.id }}" class="setting-input">
-                    <option value="true" {% if setting.value == 'true' %}selected{% endif %}>Enabled</option>
-                    <option value="false" {% if setting.value == 'false' %}selected{% endif %}>Disabled</option>
+                    <option value="true" {% if setting.value == 'true' %}selected{% endif %}>{{ _('Enabled') }}</option>
+                    <option value="false" {% if setting.value == 'false' %}selected{% endif %}>{{ _('Disabled') }}</option>
                 </select>
                 
                 {% elif setting.value_type == 'select' and setting.options and setting.options.options %}
@@ -248,7 +385,7 @@
                     <input type="password" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
                            value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
                            class="setting-input" autocomplete="new-password"
-                           placeholder="{% if not setting.value %}Enter value{% endif %}">
+                           placeholder="{% if not setting.value %}{{ _('Enter value') }}{% endif %}">
                     <button type="button" data-click="togglePassword" data-arg0="{{ setting.id }}" 
                             style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.5rem;">
                         👁️
@@ -256,7 +393,7 @@
                 </div>
                 {% if setting.value %}
                 <p class="masked-value" style="margin-top: 0.5rem;">
-                    Current: {{ setting.get_masked_value() }}
+                    {{ _('Current') }}: {{ setting.get_masked_value() }}
                 </p>
                 {% endif %}
                 
@@ -276,14 +413,14 @@
             {% if settings_list %}
             <div class="action-buttons">
                 <button type="button" data-click="resetAllSettings" class="btn" style="background: #6b7280;">
-                    Reset All
+                    {{ _('Reset All') }}
                 </button>
-                <button type="submit" class="btn">Save Changes</button>
+                <button type="submit" class="btn">{{ _('Save Changes') }}</button>
                 <div class="save-status" id="saveStatus"></div>
             </div>
             {% else %}
             <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
-                No settings in this category.
+                {{ _('No settings in this category.') }}
             </p>
             {% endif %}
         </form>
@@ -291,37 +428,36 @@
 
     {% if active_category == 'api_keys' %}
     <div class="settings-section" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-        <h3>🔐 API Keys for Programmatic Access</h3>
+        <h3>🔐 {{ _('API Keys for Programmatic Access') }}</h3>
         <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-            Generate API keys for external tools and scripts to access the CMS REST API.
-            Keys are shown once after creation and use <code>X-API-Key</code> header authentication.
+            {{ _('Generate API keys for external tools and scripts to access the CMS REST API. Keys are shown once after creation and use X-API-Key header authentication.') }}
         </p>
 
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-            <input type="text" id="newApiKeyName" placeholder="Key name (e.g. automation-script)"
+            <input type="text" id="newApiKeyName" placeholder="{{ _('Key name (e.g. automation-script)') }}"
                    style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text);">
-            <button type="button" data-click="generateApiKey" class="btn">Generate Key</button>
+            <button type="button" data-click="generateApiKey" class="btn">{{ _('Generate Key') }}</button>
         </div>
 
         <table class="data-table" id="apiKeysTable">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Key Prefix</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th>Last Used</th>
-                    <th>Created By</th>
-                    <th>Actions</th>
+                    <th>{{ _('Name') }}</th>
+                    <th>{{ _('Key Prefix') }}</th>
+                    <th>{{ _('Status') }}</th>
+                    <th>{{ _('Created') }}</th>
+                    <th>{{ _('Last Used') }}</th>
+                    <th>{{ _('Created By') }}</th>
+                    <th>{{ _('Actions') }}</th>
                 </tr>
             </thead>
             <tbody id="apiKeysBody">
-                <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">Loading...</td></tr>
+                <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">{{ _('Loading...') }}</td></tr>
             </tbody>
         </table>
 
         <div id="newApiKeyResult" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 4px; background: var(--warning-bg, #fffbeb); border: 1px solid var(--warning-border, #f59e0b);">
-            <strong style="color: var(--warning-text, #92400e);">⚠️ Copy this key now — it will not be shown again!</strong>
+            <strong style="color: var(--warning-text, #92400e);">⚠️ {{ _('Copy this key now — it will not be shown again!') }}</strong>
             <pre id="newApiKeyDisplay" style="margin-top: 0.5rem; padding: 0.75rem; background: var(--code-bg, #1e1e2e); color: var(--code-text, #a6e3a1); border-radius: 4px; overflow-x: auto; user-select: all; font-size: 0.875rem;"></pre>
         </div>
     </div>
@@ -370,7 +506,7 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     });
     
     const statusEl = document.getElementById('saveStatus');
-    statusEl.innerHTML = '<span style="color: #0ea5e9;">Saving...</span>';
+    statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _('Saving...') }}</span>';
     
     try {
         const response = await fetch('/cms/api/settings', {
@@ -385,8 +521,8 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
         const data = await response.json();
         
         if (response.ok) {
-            statusEl.innerHTML = '<span style="color: #059669;">✅ Saved</span>';
-            showToast('Settings saved successfully!', 'success');
+            statusEl.innerHTML = '<span style="color: #059669;">✅ {{ _('Saved') }}</span>';
+            showToast('{{ _('Settings saved successfully!')|e }}', 'success');
             hasChanges = false;
             
             // Refresh page to show updated masked values
@@ -394,17 +530,17 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
                 window.location.reload();
             }, 1000);
         } else {
-            statusEl.innerHTML = '<span style="color: #dc2626;">❌ Error</span>';
-            showToast('Failed to save settings: ' + (data.error || 'Unknown error'), 'error');
+            statusEl.innerHTML = '<span style="color: #dc2626;">❌ {{ _('Error') }}</span>';
+            showToast('{{ _('Failed to save settings')|e }}: ' + (data.error || '{{ _('Unknown error')|e }}'), 'error');
         }
     } catch (err) {
-        statusEl.innerHTML = '<span style="color: #dc2626;">❌ Error</span>';
-        showToast('Failed to save settings: ' + err.message, 'error');
+        statusEl.innerHTML = '<span style="color: #dc2626;">❌ {{ _('Error') }}</span>';
+        showToast('{{ _('Failed to save settings')|e }}: ' + err.message, 'error');
     }
 });
 
 async function resetAllSettings() {
-    if (!confirm('Reset all settings in this category to defaults?')) return;
+    if (!confirm('{{ _('Reset all settings in this category to defaults?')|e }}')) return;
     
     const settingIds = [];
     document.querySelectorAll('.setting-item').forEach(item => {
@@ -422,7 +558,7 @@ async function resetAllSettings() {
         }
     }
     
-    showToast('Settings reset to defaults', 'success');
+    showToast('{{ _('Settings reset to defaults')|e }}', 'success');
     setTimeout(() => window.location.reload(), 1000);
 }
 
@@ -442,16 +578,16 @@ async function loadApiKeys() {
         const keys = await r.json();
         const tbody = document.getElementById('apiKeysBody');
         if (!keys.length) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No API keys created yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">{{ _('No API keys created yet.') }}</td></tr>';
             return;
         }
         tbody.innerHTML = keys.map(k => {
             const createdAt = k.created_at ? esc(new Date(k.created_at).toLocaleString()) : '-';
-            const lastUsedAt = k.last_used_at ? esc(new Date(k.last_used_at).toLocaleString()) : 'Never';
+            const lastUsedAt = k.last_used_at ? esc(new Date(k.last_used_at).toLocaleString()) : '{{ _('Never') }}';
             const prefix = k.prefix || (k.id.slice(0,8)+'...');
-            const activeBadge = k.is_active ? '<span style="color: #059669;">Active</span>' : '<span style="color: #dc2626;">Revoked</span>';
-            const revokeBtn = k.is_active ? '<button type="button" data-click="revokeApiKey" data-arg0="' + esc(k.id) + '" class="btn" style="background: #dc2626; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Revoke</button>' : '';
-            const deleteBtn = '<button type="button" data-click="deleteApiKey" data-arg0="' + esc(k.id) + '" class="btn" style="background: #6b7280; padding: 0.25rem 0.5rem; font-size: 0.8rem;">Delete</button>';
+            const activeBadge = k.is_active ? '<span style="color: #059669;">{{ _('Active') }}</span>' : '<span style="color: #dc2626;">{{ _('Revoked') }}</span>';
+            const revokeBtn = k.is_active ? '<button type="button" data-click="revokeApiKey" data-arg0="' + esc(k.id) + '" class="btn" style="background: #dc2626; padding: 0.25rem 0.5rem; font-size: 0.8rem;">{{ _('Revoke') }}</button>' : '';
+            const deleteBtn = '<button type="button" data-click="deleteApiKey" data-arg0="' + esc(k.id) + '" class="btn" style="background: #6b7280; padding: 0.25rem 0.5rem; font-size: 0.8rem;">{{ _('Delete') }}</button>';
             return '<tr>' +
                 '<td>' + esc(k.name) + '</td>' +
                 '<td><code>' + esc(prefix) + '</code></td>' +
@@ -470,7 +606,7 @@ window.generateApiKey = async function() {
     const nameInput = document.getElementById('newApiKeyName');
     const name = nameInput.value.trim();
     if (!name) {
-        showToast('Please enter a name for the API key.', 'error');
+        showToast('{{ _('Please enter a name for the API key.')|e }}', 'error');
         return;
     }
     try {
@@ -484,7 +620,7 @@ window.generateApiKey = async function() {
             nameInput.value = '';
             document.getElementById('newApiKeyDisplay').textContent = data.key;
             document.getElementById('newApiKeyResult').style.display = 'block';
-            showToast('API key generated successfully!', 'success');
+            showToast('{{ _('API key generated successfully!')|e }}', 'success');
             loadApiKeys();
         } else {
             showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
@@ -495,34 +631,34 @@ window.generateApiKey = async function() {
 };
 
 window.revokeApiKey = async function(btn, id) {
-    if (!confirm('Revoke this API key? Existing integrations using it will stop working.')) return;
+    if (!confirm('{{ _('Revoke this API key? Existing integrations using it will stop working.')|e }}')) return;
     try {
         const r = await fetch('/cms/api/api-keys/' + id + '/revoke', { method: 'POST' });
         const data = await r.json();
         if (r.ok) {
-            showToast(data.message || 'Key revoked', 'success');
+            showToast(data.message || '{{ _('Key revoked')|e }}', 'success');
             loadApiKeys();
         } else {
-            showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
+            showToast('{{ _('Failed') }}: ' + (data.error || '{{ _('Unknown error')|e }}'), 'error');
         }
     } catch (e) {
-        showToast('Failed: ' + e.message, 'error');
+        showToast('{{ _('Failed') }}: ' + e.message, 'error');
     }
 };
 
 window.deleteApiKey = async function(btn, id) {
-    if (!confirm('Permanently delete this API key record?')) return;
+    if (!confirm('{{ _('Permanently delete this API key record?')|e }}')) return;
     try {
         const r = await fetch('/cms/api/api-keys/' + id + '/delete', { method: 'POST' });
         const data = await r.json();
         if (r.ok) {
-            showToast(data.message || 'Key deleted', 'success');
+            showToast(data.message || '{{ _('Key deleted')|e }}', 'success');
             loadApiKeys();
         } else {
-            showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
+            showToast('{{ _('Failed') }}: ' + (data.error || '{{ _('Unknown error')|e }}'), 'error');
         }
     } catch (e) {
-        showToast('Failed: ' + e.message, 'error');
+        showToast('{{ _('Failed') }}: ' + e.message, 'error');
     }
 };
 
@@ -536,7 +672,157 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('beforeunload', (e) => {
     if (hasChanges) {
         e.preventDefault();
-        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        e.returnValue = '{{ _('You have unsaved changes. Are you sure you want to leave?')|e }}';
+    }
+});
+
+// ── Settings Search ────────────────────────────────────────────────────────
+const categoryIcons = {
+    api_keys: '🔑', search: '🔍', general: '⚙️',
+    security: '🔒', email: '📧', appearance: '🎨',
+    feature_flags: '🚩', ai: '🤖', telegram: '📱',
+    spiderfoot: '🕷️',
+};
+
+function esc(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
+function debounce(fn, delay) {
+    var timer;
+    return function() {
+        var args = arguments;
+        var ctx = this;
+        clearTimeout(timer);
+        timer = setTimeout(function() { fn.apply(ctx, args); }, delay);
+    };
+}
+
+function highlightMatch(text, query) {
+    if (!text || !query) return esc(text || '');
+    var re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    return esc(text).replace(re, '<span class="highlight">$1</span>');
+}
+
+async function searchSettings(query) {
+    var statusEl = document.getElementById('settingsSearchStatus');
+    var resultsEl = document.getElementById('settingsSearchResults');
+    var container = document.querySelector('.settings-container');
+    var clearBtn = document.getElementById('settingsSearchClear');
+
+    if (!query || query.length < 2) {
+        resultsEl.style.display = 'none';
+        container.style.display = 'grid';
+        clearBtn.style.display = 'none';
+        statusEl.textContent = '';
+        return;
+    }
+
+    clearBtn.style.display = 'block';
+    statusEl.textContent = '{{ _('Searching...')|e }}';
+
+    try {
+        var resp = await fetch('/cms/api/settings/search?q=' + encodeURIComponent(query));
+        var data = await resp.json();
+
+        if (data.total === 0) {
+            resultsEl.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">' +
+                '<div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>' +
+                '<p>{{ _('No settings found for')|e }} "<strong>' + esc(query) + '</strong>"</p></div>';
+        } else {
+            var html = '<p style="margin-bottom: 1rem; color: var(--text-secondary);">' +
+                '{{ _('Found')|e }} <strong>' + data.total + '</strong> {{ _('result(s)')|e }}</p>';
+
+            for (var cat in data.grouped) {
+                var icon = categoryIcons[cat] || '⚙️';
+                var catName = cat.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                html += '<div class="settings-search-result-category">' +
+                    '<h3>' + icon + ' ' + catName + ' <span class="result-count">' + data.grouped[cat].length + '</span></h3>';
+
+                for (var i = 0; i < data.grouped[cat].length; i++) {
+                    var s = data.grouped[cat][i];
+                    var displayKey = s.key.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                    html += '<div class="search-result-item" data-category="' + esc(cat) + '" data-key="' + esc(s.key) + '">' +
+                        '<label>' + highlightMatch(displayKey, query) +
+                        (s.is_sensitive ? ' <span style="color: #f59e0b; font-size: 0.75rem; font-weight: normal;">{{ _('(sensitive)')|e }}</span>' : '') +
+                        '</label>' +
+                        '<p class="description">' + highlightMatch(s.description || '', query) + '</p>' +
+                        '<div class="search-result-meta">' +
+                        '<span>' + icon + ' ' + catName + '</span>' +
+                        '<span>{{ _('Type')|e }}: ' + esc(s.value_type) + '</span>' +
+                        '</div></div>';
+                }
+                html += '</div>';
+            }
+            resultsEl.innerHTML = html;
+        }
+
+        container.style.display = 'none';
+        resultsEl.style.display = 'block';
+        statusEl.textContent = '';
+    } catch (err) {
+        statusEl.textContent = '{{ _('Search failed')|e }}: ' + err.message;
+    }
+}
+
+// Click search result → navigate to its category
+document.getElementById('settingsSearchResults').addEventListener('click', function(e) {
+    var item = e.target.closest('.search-result-item');
+    if (item) {
+        var cat = item.dataset.category;
+        var q = document.getElementById('settingsSearchInput').value;
+        window.location.href = '/cms/settings?category=' + encodeURIComponent(cat) + '&q=' + encodeURIComponent(q);
+    }
+});
+
+// Clear search
+document.getElementById('settingsSearchClear').addEventListener('click', function() {
+    var input = document.getElementById('settingsSearchInput');
+    input.value = '';
+    document.getElementById('settingsSearchResults').style.display = 'none';
+    document.querySelector('.settings-container').style.display = 'grid';
+    this.style.display = 'none';
+    document.getElementById('settingsSearchStatus').textContent = '';
+    input.focus();
+});
+
+// Search — immediate at 2 chars, debounced beyond that
+var searchInput = document.getElementById('settingsSearchInput');
+var debouncedSearch = debounce(function() {
+    searchSettings(searchInput.value.trim());
+}, 200);
+
+searchInput.addEventListener('input', function() {
+    var val = this.value.trim();
+    if (val.length === 2) {
+        searchSettings(val);
+    } else {
+        debouncedSearch();
+    }
+});
+
+// Keyboard shortcut: / or Ctrl+F to focus search
+document.addEventListener('keydown', function(e) {
+    if (e.key === '/' && !e.target.matches('input, textarea, select')) {
+        e.preventDefault();
+        document.getElementById('settingsSearchInput').focus();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.target.matches('input, textarea, select')) {
+        e.preventDefault();
+        document.getElementById('settingsSearchInput').focus();
+    }
+});
+
+// Pre-populate search from ?q= param on page load
+document.addEventListener('DOMContentLoaded', function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var q = urlParams.get('q');
+    if (q) {
+        var input = document.getElementById('settingsSearchInput');
+        input.value = q;
+        searchSettings(q);
     }
 });
 </script>

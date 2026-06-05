@@ -11,6 +11,8 @@ from ..validation import validate, KadasterLookupSchema
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
 from ..feature_flags import tool_enabled
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +56,13 @@ def kadaster_lookup() -> flask.Response:
         return jsonify({"error": "No address provided"}), 400
 
     try:
-        import httpx
-
         pdok_url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free"
         params = {"q": query, "rows": 1, "fl": "*"}
 
-        resp = httpx.get(pdok_url, params=params, timeout=10)
+        jitter_sleep(domain_hint=pdok_url)
+        resp = curl_requests.get(
+            pdok_url, params=params, timeout=10, impersonate="chrome124"
+        )
         resp.raise_for_status()
         result = resp.json()
 
@@ -101,9 +104,6 @@ def kadaster_lookup() -> flask.Response:
                 },
             }
         ), 200
-    except httpx.RequestError:
+    except Exception:
         logger.exception("Kadaster API connection error")
         return jsonify({"error": "Failed to lookup address"}), 502
-    except Exception:
-        logger.exception("Kadaster lookup unexpected error")
-        return jsonify({"error": "Unexpected error"}), 500

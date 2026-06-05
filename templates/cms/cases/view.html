@@ -19,59 +19,59 @@
 </style>
 
 <div style="padding: 0 2rem; margin-top: 1rem;">
-    <div class="back"><a href="{{ url_for('cms.cases') }}">← Back to Cases</a></div>
+    <div class="back"><a href="{{ url_for('cms.cases') }}">{{ _('← Back to Cases') }}</a></div>
     
     <div class="header">
         <h1>{{ case.case_number }}: {{ case.title }}</h1>
     <div style="display: flex; gap: 0.5rem; align-items: center;">
         <div style="display: flex; gap: 0.3rem; align-items: center; padding-right: 0.5rem; border-right: 1px solid var(--border, #ddd);">
             {% if case.status == 'open' %}
-            <button data-click="changeStatus" data-arg0="active" class="btn-cms small" style="background: #059669;">▶ Start Investigation</button>
+            <button data-click="changeStatus" data-arg0="active" class="btn-cms small" style="background: #059669;">{{ _('▶ Start Investigation') }}</button>
             {% elif case.status == 'active' %}
-            <button data-click="changeStatus" data-arg0="suspended" class="btn-cms small" style="background: #f59e0b;">⏸ Suspend</button>
-            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small" style="background: #059669;">✓ Close Case</button>
+            <button data-click="changeStatus" data-arg0="suspended" class="btn-cms small" style="background: #f59e0b;">{{ _('⏸ Suspend') }}</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small" style="background: #059669;">{{ _('✓ Close Case') }}</button>
             {% elif case.status == 'suspended' %}
-            <button data-click="changeStatus" data-arg0="active" class="btn-cms small" style="background: #059669;">▶ Resume</button>
-            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small" style="background: #059669;">✓ Close Case</button>
+            <button data-click="changeStatus" data-arg0="active" class="btn-cms small" style="background: #059669;">{{ _('▶ Resume') }}</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small" style="background: #059669;">{{ _('✓ Close Case') }}</button>
             {% elif case.status == 'closed' %}
-            <button data-click="changeStatus" data-arg0="archived" class="btn-cms small" style="background: #6b7280;">📁 Archive</button>
+            <button data-click="changeStatus" data-arg0="archived" class="btn-cms small" style="background: #6b7280;">{{ _('📁 Archive') }}</button>
             {% elif case.status == 'archived' %}
-            <button class="btn-cms small" style="background: #6b7280; opacity: 0.6;" disabled>📁 Archived</button>
+            <button class="btn-cms small" style="background: #6b7280; opacity: 0.6;" disabled>{{ _('📁 Archived') }}</button>
             {% endif %}
             {% if case.status in ['closed', 'archived'] %}
-            <button data-click="reopenCase" class="btn-cms small" style="background: #059669;">↩ Reopen</button>
+            <button data-click="reopenCase" class="btn-cms small" style="background: #059669;">{{ _('↩ Reopen') }}</button>
             {% endif %}
         </div>
-        <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small" style="background: #059669;">📥 Export CSV</a>
-        <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small" style="background: #7c3aed;">📄 Report</a>
-        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
+        <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small" style="background: #059669;">{{ _('📥 Export CSV') }}</a>
+        <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small" style="background: #7c3aed;">{{ _('📄 Report') }}</a>
+        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small">{{ _('✏️ Edit') }}</a>
     </div>
 </div>
 
 <div class="card">
     <div class="info-grid">
         <div class="info-row">
-            <span class="info-label">Client</span>
+            <span class="info-label">{{ _('Client') }}</span>
             <span class="info-value">{{ case.client.name if case.client else '-' }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">Lead Investigator</span>
+            <span class="info-label">{{ _('Lead Investigator') }}</span>
             <span class="info-value">{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">Priority</span>
+            <span class="info-label">{{ _('Priority') }}</span>
             <span class="info-value"><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></span>
         </div>
         <div class="info-row">
-            <span class="info-label">Status</span>
+            <span class="info-label">{{ _('Status') }}</span>
             <span class="info-value"><span class="badge badge-{{ case.status }}">{{ case.status }}</span></span>
         </div>
         <div class="info-row">
-            <span class="info-label">Start Date</span>
+            <span class="info-label">{{ _('Start Date') }}</span>
             <span class="info-value">{{ case.start_date.strftime('%Y-%m-%d') if case.start_date else '-' }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">Criminal Code</span>
+            <span class="info-label">{{ _('Criminal Code') }}</span>
             <span class="info-value">
                 {% if case.case_type %}
                     {% set parts = case.case_type.split('|') %}
@@ -86,14 +86,14 @@
     
     {% if case.description %}
     <div class="info-row">
-        <span class="info-label">Description</span>
+        <span class="info-label">{{ _('Description') }}</span>
         <div class="info-value">{{ case.description }}</div>
     </div>
     {% endif %}
     
     {% if case.tags %}
     <div class="info-row">
-        <span class="info-label">Tags</span>
+        <span class="info-label">{{ _('Tags') }}</span>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
             {% for tag in case.tags %}
             <span style="background: #e8f4ff; color: #1e40af; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">{{ tag }}</span>
@@ -103,13 +103,13 @@
     {% endif %}
     {% if case.closure_reason %}
     <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border-radius: 4px;">
-        <strong>Closure Reason:</strong> {{ case.closure_reason }}
+        <strong>{{ _('Closure Reason:') }}</strong> {{ case.closure_reason }}
     </div>
     {% endif %}
     
     {% if case.reopened_reason %}
     <div style="margin-top: 0.5rem; padding: 0.75rem; background: #dcfce7; border-radius: 4px;">
-        <strong>Reopened Reason:</strong> {{ case.reopened_reason }}
+        <strong>{{ _('Reopened Reason:') }}</strong> {{ case.reopened_reason }}
     </div>
     {% endif %}
 </div>
@@ -117,13 +117,13 @@
 {% if case.parent_case or case.child_cases.count() > 0 %}
 <div class="card">
     <div class="card-header">
-        <h2>Case Hierarchy</h2>
-        <button data-click="openHierarchyModal" class="btn-cms small" style="background: #7c3aed;">Manage Hierarchy</button>
+        <h2>{{ _('Case Hierarchy') }}</h2>
+        <button data-click="openHierarchyModal" class="btn-cms small" style="background: #7c3aed;">{{ _('Manage Hierarchy') }}</button>
     </div>
     
     {% if case.parent_case %}
     <div style="margin-top: 1rem; padding: 0.75rem; background: #ede9fe; border-radius: 8px;">
-        <label style="display: block; color: #666; font-size: 0.875rem;">Parent Case</label>
+        <label style="display: block; color: #666; font-size: 0.875rem;">{{ _('Parent Case') }}</label>
         <a href="{{ url_for('cms.view_case', case_id=case.parent_case.id) }}" style="font-weight: 600;">
             {{ case.parent_case.case_number }}: {{ case.parent_case.title }}
         </a>
@@ -132,7 +132,7 @@
     
     {% if case.child_cases.count() > 0 %}
     <div style="margin-top: 1rem;">
-        <label style="display: block; color: #666; font-size: 0.875rem;">Child Cases ({{ case.child_cases.count() }})</label>
+        <label style="display: block; color: #666; font-size: 0.875rem;">{{ _('Child Cases (%(count)s)', count=case.child_cases.count()) }}</label>
         {% for child in case.child_cases.filter_by(is_deleted=False) %}
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-top: 0.5rem;">
             <a href="{{ url_for('cms.view_case', case_id=child.id) }}">
@@ -147,42 +147,42 @@
 {% endif %}
 
 <div class="card">
-    <h2>Subjects ({{ subjects|length }})</h2>
+    <h2>{{ _('Subjects (%(count)s)', count=subjects|length) }}</h2>
     
     {% if case.status not in ['closed', 'archived'] %}
     <div style="margin-bottom: 1rem;">
-        <button data-click="showAddSubjectForm" class="btn-cms small">+ Add Subject</button>
-        <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small" style="background: #059669;">+ Create New Subject</a>
-        <button data-click="openCreateFromUsernameModal" class="btn-cms small" style="background: #8b5cf6;">@ Create from Username</button>
-        <button data-click="openOsintModal" class="btn-cms small" style="background: #7c3aed;">OSINT Search</button>
+        <button data-click="showAddSubjectForm" class="btn-cms small">{{ _('+ Add Subject') }}</button>
+        <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small" style="background: #059669;">{{ _('+ Create New Subject') }}</a>
+        <button data-click="openCreateFromUsernameModal" class="btn-cms small" style="background: #8b5cf6;">{{ _('@ Create from Username') }}</button>
+        <button data-click="openOsintModal" class="btn-cms small" style="background: #7c3aed;">{{ _('OSINT Search') }}</button>
     </div>
     
     <div id="addSubjectForm" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
 <form action="{{ url_for('cms.add_subject_to_case', case_id=case.id) }}" method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="subject_id">Select Existing Subject</label>
+        <label for="subject_id">{{ _('Select Existing Subject') }}</label>
                 <select name="subject_id" id="subject_id" required style="padding: 0.5rem; width: 100%;">
-                    <option value="">Choose a subject...</option>
+                    <option value="">{{ _('Choose a subject...') }}</option>
                     {% for s in all_subjects %}
                     <option value="{{ s.id }}">{{ s.name }} ({{ s.subject_type }})</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="btn-cms small">Add to Case</button>
-            <button type="button" data-click="hideAddSubjectForm" class="btn-cms small" style="background: #666;">Cancel</button>
+            <button type="submit" class="btn-cms small">{{ _('Add to Case') }}</button>
+            <button type="button" data-click="hideAddSubjectForm" class="btn-cms small" style="background: #666;">{{ _('Cancel') }}</button>
         </form>
     </div>
     {% else %}
     <div style="margin-bottom: 1rem; padding: 0.75rem; background: #fee2e2; border-radius: 4px; color: #991b1b;">
-        <strong>Read-only:</strong> This case is closed/archived. Reopen to make changes.
+        <strong>{{ _('Read-only:') }}</strong> {{ _('This case is closed/archived. Reopen to make changes.') }}
     </div>
     {% endif %}
     
     {% if subjects %}
     <table class="data-table">
         <thead>
-            <tr><th>Name</th><th>Type</th><th>Social Accounts</th><th>Risk Score</th><th>Actions</th></tr>
+            <tr><th>{{ _('Name') }}</th><th>{{ _('Type') }}</th><th>{{ _('Social Accounts') }}</th><th>{{ _('Risk Score') }}</th><th>{{ _('Actions') }}</th></tr>
         </thead>
         <tbody>
             {% for subject in subjects %}
@@ -196,17 +196,17 @@
                             <span style="display:inline-block;background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:0.1rem 0.35rem;margin:0.1rem;font-size:0.7rem;">{{ a.platform }}: {{ a.username }}</span>
                         {% endfor %}
                         {% if accts|length > 3 %}
-                            <span style="color:#888;font-size:0.7rem;">+{{ accts|length - 3 }} more</span>
+                            <span style="color:#888;font-size:0.7rem;">{{ _('+%(count)s more', count=accts|length - 3) }}</span>
                         {% endif %}
                     {% else %}
-                        <span style="color:#9ca3af;">-</span>
+                        <span style="color:#9ca3af;">{{ _('-') }}</span>
                     {% endif %}
                 </td>
                 <td>
                     {% if case.status not in ['closed', 'archived'] %}
 <form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display: inline;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-text" data-confirm="Remove {{ subject.name }} from this case?" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0;">Remove</button>
+    <button type="submit" class="btn-text" data-confirm="{{ _('Remove %(name)s from this case?', name=subject.name) }}" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0;">{{ _('Remove') }}</button>
                     </form>
                     {% else %}
                     -
@@ -219,41 +219,41 @@
     {% else %}
     <div class="empty-state">
         <div class="icon">📭</div>
-        <p>No subjects linked.</p>
+        <p>{{ _('No subjects linked.') }}</p>
     </div>
     {% endif %}
 </div>
 
 <div class="card">
     <div class="card-header">
-        <h2>Findings ({{ findings|length }})</h2>
+        <h2>{{ _('Findings (%(count)s)', count=findings|length) }}</h2>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button data-click="openTimeline" class="btn-cms small" style="background: #7c3aed;">Timeline</button>
-            <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">📋 Report</a>
+            <button data-click="openTimeline" class="btn-cms small" style="background: #7c3aed;">{{ _('Timeline') }}</button>
+            <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">{{ _('📋 Report') }}</a>
         </div>
     </div>
     
     {% if findings %}
     <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 8px;">
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-            <span style="font-weight: 500;">Filter:</span>
-            <input type="text" id="filterTitle" placeholder="Title" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
-            <input type="text" id="filterSubject" placeholder="Subject" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
+            <span style="font-weight: 500;">{{ _('Filter:') }}</span>
+            <input type="text" id="filterTitle" placeholder="{{ _('Title') }}" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
+            <input type="text" id="filterSubject" placeholder="{{ _('Subject') }}" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
             <select id="filterSource" data-change="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                <option value="">Source</option>
-                <option value="osint">OSINT</option>
-                <option value="manual">Manual</option>
-                <option value="document">Document</option>
+                <option value="">{{ _('Source') }}</option>
+                <option value="osint">{{ _('OSINT') }}</option>
+                <option value="manual">{{ _('Manual') }}</option>
+                <option value="document">{{ _('Document') }}</option>
             </select>
-            <input type="text" id="filterAddedBy" placeholder="Added By" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100px;">
+            <input type="text" id="filterAddedBy" placeholder="{{ _('Added By') }}" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100px;">
             <input type="date" id="filterDate" data-change="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-            <button data-click="clearFindingFilters" style="padding: 0.25rem 0.5rem; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Clear</button>
+            <button data-click="clearFindingFilters" style="padding: 0.25rem 0.5rem; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">{{ _('Clear') }}</button>
             <span id="findingCount" style="margin-left: auto; color: #666; font-size: 0.875rem;"></span>
         </div>
     </div>
     <table id="findingsTable" class="data-table">
         <thead>
-            <tr><th>Title</th><th>Subject</th><th>Source</th><th>Added By</th><th>Date</th></tr>
+            <tr><th>{{ _('Title') }}</th><th>{{ _('Subject') }}</th><th>{{ _('Source') }}</th><th>{{ _('Added By') }}</th><th>{{ _('Date') }}</th></tr>
         </thead>
         <tbody>
             {% for finding in findings %}
@@ -271,21 +271,21 @@
                     <br>
                     <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" 
                             class="btn-cms small" style="font-size: 0.65rem; padding: 2px 6px; background: #8b5cf6; margin-top: 4px;">
-                        🔍 Extract ID
+                        {{ _('🔍 Extract ID') }}
                     </button>
                     {% endif %}
                 </td>
                 <td>
                     {% if finding.subject_id %}
                     <a href="{{ url_for('cms.view_subject', subject_id=finding.subject_id) }}">
-                        {{ finding.subject.name if finding.subject else 'Unknown' }}
+                        {{ finding.subject.name if finding.subject else _('Unknown') }}
                     </a>
                     {% else %}
                     <span style="color: #999;">-</span>
                     {% endif %}
                 </td>
                 <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span></td>
-                <td>{{ finding.author.full_name if finding.author else 'Unknown' }}</td>
+                <td>{{ finding.author.full_name if finding.author else _('Unknown') }}</td>
                 <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
             </tr>
             {% endfor %}
@@ -294,18 +294,18 @@
     {% else %}
     <div class="empty-state">
         <div class="icon">📭</div>
-        <p>No findings yet.</p>
+        <p>{{ _('No findings yet.') }}</p>
     </div>
     {% endif %}
     
     {% if findings_pagination and findings_pagination.pages > 1 %}
     <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
         {% if findings_pagination.has_prev %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">Previous</a>
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('Previous') }}</a>
         {% endif %}
-        <span style="padding: 0.5rem 1rem;">Page {{ findings_pagination.page }} of {{ findings_pagination.pages }}</span>
+        <span style="padding: 0.5rem 1rem;">{{ _('Page %(page)s of %(pages)s', page=findings_pagination.page, pages=findings_pagination.pages) }}</span>
         {% if findings_pagination.has_next %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">Next</a>
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next') }}</a>
         {% endif %}
     </div>
     {% endif %}
@@ -314,9 +314,9 @@
 <!-- Documents Section -->
 <div class="card">
     <div class="card-header">
-        <h2>Documents (<span id="docCount">{{ documents_pagination.total if documents_pagination else documents|length }}</span>)</h2>
+        <h2>{{ _('Documents (%(count)s)', count=documents_pagination.total if documents_pagination else documents|length) }}</h2>
         {% if case.status not in ['closed', 'archived'] %}
-        <button data-click="openUploadModal" class="btn-cms small" style="background: #059669;">+ Upload Document</button>
+        <button data-click="openUploadModal" class="btn-cms small" style="background: #059669;">{{ _('+ Upload Document') }}</button>
         {% endif %}
     </div>
     
@@ -324,7 +324,7 @@
         {% if documents %}
         <table class="data-table">
             <thead>
-                <tr><th>Filename</th><th>Type</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr>
+                <tr><th>{{ _('Filename') }}</th><th>{{ _('Type') }}</th><th>{{ _('Size') }}</th><th>{{ _('Uploaded') }}</th><th>{{ _('Actions') }}</th></tr>
             </thead>
             <tbody>
                 {% for doc in documents %}
@@ -334,9 +334,9 @@
                     <td>{{ (doc.file_size / 1024)|round(1) }} KB</td>
                     <td>{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '-' }}</td>
                     <td>
-                        <a href="/cms/documents/{{ doc.id }}/download" target="_blank">Download</a>
+                        <a href="/cms/documents/{{ doc.id }}/download" target="_blank">{{ _('Download') }}</a>
                         {% if current_user.is_admin or current_user.is_senior %}
-                        | <a href="#" data-click="deleteDocument" data-arg0="{{ doc.id }}" style="color: #dc2626;">Delete</a>
+                        | <a href="#" data-click="deleteDocument" data-arg0="{{ doc.id }}" style="color: #dc2626;">{{ _('Delete') }}</a>
                         {% endif %}
                     </td>
                 </tr>
@@ -346,18 +346,18 @@
         {% if documents_pagination and documents_pagination.pages > 1 %}
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
             {% if documents_pagination.has_prev %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.prev_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">Previous</a>
+            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.prev_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">{{ _('Previous') }}</a>
             {% endif %}
-            <span style="padding: 0.5rem 1rem;">Page {{ documents_pagination.page }} of {{ documents_pagination.pages }}</span>
+            <span style="padding: 0.5rem 1rem;">{{ _('Page %(page)s of %(pages)s', page=documents_pagination.page, pages=documents_pagination.pages) }}</span>
             {% if documents_pagination.has_next %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.next_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">Next</a>
+            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.next_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">{{ _('Next') }}</a>
             {% endif %}
         </div>
         {% endif %}
         {% else %}
         <div class="empty-state">
             <div class="icon">📭</div>
-            <p>No documents uploaded.</p>
+            <p>{{ _('No documents uploaded.') }}</p>
         </div>
         {% endif %}
     </div>
@@ -366,12 +366,12 @@
 <!-- Screenshots Section -->
 <div class="card">
     <div class="card-header">
-        <h2>Screenshots (<span id="screenshotCount">0</span>)</h2>
-        <button data-click="openAddScreenshotModal" class="btn-cms small" style="background: #7c3aed;">+ Add Screenshot</button>
+        <h2>{{ _('Screenshots') }} (<span id="screenshotCount">0</span>)</h2>
+        <button data-click="openAddScreenshotModal" class="btn-cms small" style="background: #7c3aed;">{{ _('+ Add Screenshot') }}</button>
     </div>
     
     <div id="screenshotsGallery">
-        <p style="color: #666;">Loading screenshots...</p>
+        <p style="color: #666;">{{ _('Loading screenshots...') }}</p>
     </div>
 </div>
 
@@ -379,27 +379,27 @@
 <div id="addScreenshotModal" class="modal">
     <div class="modal-content" style="max-width: 600px; background: #1a1a2e;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0; color: white;">Add Screenshot</h2>
+            <h2 style="margin: 0; color: white;">{{ _('Add Screenshot') }}</h2>
             <span data-click="closeAddScreenshotModal" style="font-size: 1.5rem; cursor: pointer; color: #888;">&times;</span>
         </div>
         
         <div style="margin-bottom: 1rem;">
-            <label style="color: #ccc; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Source URL (optional)</label>
+            <label style="color: #ccc; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">{{ _('Source URL (optional)') }}</label>
             <input type="url" id="screenshotUrl" placeholder="https://..." 
                    style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 4px; background: #2a2a4e; color: white; font-size: 1rem; box-sizing: border-box;">
         </div>
         
         <div style="margin-bottom: 1rem;">
             <button data-click="openLinkForScreenshot" id="openLinkBtn" class="btn-cms small" style="background: #3b82f6; margin-bottom: 0.5rem;">
-                🔗 Open Link in New Tab
+                {{ _('🔗 Open Link in New Tab') }}
             </button>
-            <p style="color: #888; font-size: 0.75rem; margin: 0;">Open the link, take a screenshot manually (Cmd+Shift+4 on Mac, Win+PrtSc on Windows), then upload below.</p>
+            <p style="color: #888; font-size: 0.75rem; margin: 0;">{{ _('Open the link, take a screenshot manually (Cmd+Shift+4 on Mac, Win+PrtSc on Windows), then upload below.') }}</p>
         </div>
         
         <hr style="border-color: #333; margin: 1rem 0;">
         
         <div style="margin-bottom: 1rem;">
-            <label style="color: #ccc; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Upload Screenshot *</label>
+            <label style="color: #ccc; font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">{{ _('Upload Screenshot *') }}</label>
             <input type="file" id="screenshotFile" accept="image/*" 
                    style="width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 4px; background: #2a2a4e; color: white; box-sizing: border-box;">
         </div>
@@ -409,8 +409,8 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button data-click="closeAddScreenshotModal" class="btn-cms small" style="background: #666;">Cancel</button>
-            <button data-click="uploadScreenshot" id="uploadBtn" class="btn-cms small" style="background: #059669;">Save Screenshot</button>
+            <button data-click="closeAddScreenshotModal" class="btn-cms small" style="background: #666;">{{ _('Cancel') }}</button>
+            <button data-click="uploadScreenshot" id="uploadBtn" class="btn-cms small" style="background: #059669;">{{ _('Save Screenshot') }}</button>
         </div>
         
         <div id="screenshotStatus" style="margin-top: 0.5rem; text-align: center;"></div>
@@ -432,8 +432,8 @@
         </div>
         
         <div style="margin-top: 1rem; text-align: center;">
-            <a id="viewScreenshotLink" href="#" target="_blank" class="btn-cms small" style="background: #3b82f6;">Open Original URL</a>
-            <button data-click="closeViewScreenshotModal" class="btn-cms small" style="background: #666;">Close</button>
+            <a id="viewScreenshotLink" href="#" target="_blank" class="btn-cms small" style="background: #3b82f6;">{{ _('Open Original URL') }}</a>
+            <button data-click="closeViewScreenshotModal" class="btn-cms small" style="background: #666;">{{ _('Close') }}</button>
         </div>
     </div>
 </div>
@@ -442,43 +442,43 @@
 <div id="uploadModal" class="modal">
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
-            <h2>Upload Document</h2>
+            <h2>{{ _('Upload Document') }}</h2>
             <span class="close" data-click="closeUploadModal">&times;</span>
         </div>
         
         <form id="uploadForm" enctype="multipart/form-data" style="margin-top: 1rem;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
-                <label for="uploadFile">File *</label>
+                <label for="uploadFile">{{ _('File *') }}</label>
                 <input type="file" id="uploadFile" name="file" required style="padding: 0.5rem;">
             </div>
             <div class="form-group">
-                <label for="documentType">Document Type</label>
+                <label for="documentType">{{ _('Document Type') }}</label>
                 <select id="documentType" name="document_type" style="padding: 0.5rem;">
-                    <option value="evidence">Evidence</option>
-                    <option value="report">Report</option>
-                    <option value="contract">Contract</option>
-                    <option value="correspondence">Correspondence</option>
-                    <option value="photo">Photo</option>
-                    <option value="other">Other</option>
+                    <option value="evidence">{{ _('Evidence') }}</option>
+                    <option value="report">{{ _('Report') }}</option>
+                    <option value="contract">{{ _('Contract') }}</option>
+                    <option value="correspondence">{{ _('Correspondence') }}</option>
+                    <option value="photo">{{ _('Photo') }}</option>
+                    <option value="other">{{ _('Other') }}</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="classification">Classification</label>
+                <label for="classification">{{ _('Classification') }}</label>
                 <select id="classification" name="classification" style="padding: 0.5rem;">
-                    <option value="confidential">Confidential</option>
-                    <option value="restricted">Restricted</option>
-                    <option value="internal">Internal</option>
-                    <option value="public">Public</option>
+                    <option value="confidential">{{ _('Confidential') }}</option>
+                    <option value="restricted">{{ _('Restricted') }}</option>
+                    <option value="internal">{{ _('Internal') }}</option>
+                    <option value="public">{{ _('Public') }}</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="description">Description</label>
+                <label for="description">{{ _('Description') }}</label>
                 <textarea id="docDescription" name="description" rows="2" style="width: 100%; padding: 0.5rem;"></textarea>
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button type="submit" class="btn-cms small" style="background: #059669;">Upload</button>
-                <button type="button" data-click="closeUploadModal" class="btn-cms small" style="background: #666;">Cancel</button>
+                <button type="submit" class="btn-cms small" style="background: #059669;">{{ _('Upload') }}</button>
+                <button type="button" data-click="closeUploadModal" class="btn-cms small" style="background: #666;">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -487,26 +487,26 @@
 <!-- Financial Summary Section -->
 <div class="card">
     <div class="card-header">
-        <h2>Financial Summary</h2>
-        <button data-click="openFinancialSummary" class="btn-cms small" style="background: #7c3aed;">📊 View Charts</button>
+        <h2>{{ _('Financial Summary') }}</h2>
+        <button data-click="openFinancialSummary" class="btn-cms small" style="background: #7c3aed;">{{ _('📊 View Charts') }}</button>
     </div>
     
     <div id="financialSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
         <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
             <div style="font-size: 1.5rem; font-weight: bold; color: #1a1a2e;" id="finTotal">-</div>
-            <div style="color: #666; font-size: 0.875rem;">Total Amount</div>
+            <div style="color: #666; font-size: 0.875rem;">{{ _('Total Amount') }}</div>
         </div>
         <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
             <div style="font-size: 1.5rem; font-weight: bold; color: #1a1a2e;" id="finCount">-</div>
-            <div style="color: #666; font-size: 0.875rem;">Transactions</div>
+            <div style="color: #666; font-size: 0.875rem;">{{ _('Transactions') }}</div>
         </div>
         <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
             <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;" id="finVerified">-</div>
-            <div style="color: #666; font-size: 0.875rem;">Verified</div>
+            <div style="color: #666; font-size: 0.875rem;">{{ _('Verified') }}</div>
         </div>
         <div style="background: #f5f5f5; padding: 1rem; border-radius: 8px; text-align: center;">
             <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;" id="finPending">-</div>
-            <div style="color: #666; font-size: 0.875rem;">Pending Review</div>
+            <div style="color: #666; font-size: 0.875rem;">{{ _('Pending Review') }}</div>
         </div>
     </div>
 </div>
@@ -515,12 +515,12 @@
 <div id="financialModal" class="modal">
     <div class="modal-content" style="max-width: 900px;">
         <div class="modal-header">
-            <h2>Financial Analysis</h2>
+            <h2>{{ _('Financial Analysis') }}</h2>
             <span class="close" data-click="closeFinancialSummary">&times;</span>
         </div>
         
         <div id="financialCharts" style="max-height: 70vh; overflow-y: auto;">
-            <div style="text-align: center; padding: 2rem;" id="finLoading">Loading...</div>
+            <div style="text-align: center; padding: 2rem;" id="finLoading">{{ _('Loading...') }}</div>
         </div>
     </div>
 </div>
@@ -529,25 +529,25 @@
 <div id="hierarchyModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Case Hierarchy</h2>
+            <h2>{{ _('Case Hierarchy') }}</h2>
             <span class="close" data-click="closeHierarchyModal">&times;</span>
         </div>
         
-        <p style="color: #666; margin-bottom: 1rem;">Link this case to a parent case to create a hierarchy of related investigations.</p>
+        <p style="color: #666; margin-bottom: 1rem;">{{ _('Link this case to a parent case to create a hierarchy of related investigations.') }}</p>
         
-        <h4 style="margin-bottom: 0.5rem;">Current Parent</h4>
+        <h4 style="margin-bottom: 0.5rem;">{{ _('Current Parent') }}</h4>
         <div id="currentParent"></div>
         
         <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #eee;">
         
-        <h4 style="margin-bottom: 0.5rem;">Set New Parent</h4>
+        <h4 style="margin-bottom: 0.5rem;">{{ _('Set New Parent') }}</h4>
         <div style="margin-bottom: 1rem;">
-            <input type="text" id="parentSearchInput" placeholder="Search cases by number or title..." 
+            <input type="text" id="parentSearchInput" placeholder="{{ _('Search cases by number or title...') }}" 
                    style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px;"
                    data-input="searchParentCases">
         </div>
         <div id="parentSearchResults" style="max-height: 300px; overflow-y: auto;">
-            <p style="color: #666;">Type to search for a parent case...</p>
+<p style="color: #666;">{{ _('Type to search for a parent case...') }}</p>
         </div>
     </div>
 </div>
@@ -555,8 +555,8 @@
 <!-- Reminders Section -->
 <div class="card">
     <div class="card-header">
-        <h2>⏰ Reminders ({{ case_reminders|length }})</h2>
-        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn-cms small" style="background: #059669;">+ Add Reminder</a>
+        <h2>{{ _('⏰ Reminders (%(count)s)', count=case_reminders|length) }}</h2>
+        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn-cms small" style="background: #059669;">{{ _('+ Add Reminder') }}</a>
     </div>
     
     {% if case_reminders %}
@@ -566,8 +566,8 @@
             <div>
                 <strong>{{ reminder.title }}</strong>
                 <div style="font-size: 0.8rem; color: #666;">
-                    {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else 'No date' }}
-                    {% if reminder.is_completed %} - Completed{% elif reminder.is_overdue %} - OVERDUE{% endif %}
+                    {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else _('No date') }}
+                    {% if reminder.is_completed %} - {{ _('Completed') }}{% elif reminder.is_overdue %} - {{ _('OVERDUE') }}{% endif %}
                 </div>
             </div>
             <div style="display: flex; gap: 0.25rem;">
@@ -577,7 +577,7 @@
     <button type="submit" class="btn-cms small" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
 </form>
 
-<form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="Delete this reminder?">
+<form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="{{ _('Delete this reminder?') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn-cms small" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #dc2626;">🗑️</button>
 </form>
@@ -589,7 +589,7 @@
     {% else %}
     <div class="empty-state">
         <div class="icon">📭</div>
-        <p>No reminders for this case. <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}">Add one</a></p>
+        <p>{{ _('No reminders for this case.') }} <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}">{{ _('Add one') }}</a></p>
     </div>
     {% endif %}
 </div>
@@ -597,27 +597,27 @@
 <!-- Comments Section -->
 <div class="card">
     <div class="card-header">
-        <h2>Notes & Comments <span id="commentCount" style="font-size: 0.9rem; color: #888;"></span></h2>
-        <button data-click="loadComments" class="btn-cms small">🔄 Refresh</button>
+        <h2>{{ _('Notes & Comments') }} <span id="commentCount" style="font-size: 0.9rem; color: #888;"></span></h2>
+        <button data-click="loadComments" class="btn-cms small">{{ _('🔄 Refresh') }}</button>
     </div>
     
     <div class="comment-form">
-        <textarea id="newComment" placeholder="Add a note or comment..."></textarea>
+        <textarea id="newComment" placeholder="{{ _('Add a note or comment...') }}"></textarea>
         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
             <select id="commentType" style="padding: 0.4rem; border: 1px solid #ddd; border-radius: 4px;">
-                <option value="note">Note</option>
-                <option value="discussion">Discussion</option>
-                <option value="update">Update</option>
+                <option value="note">{{ _('Note') }}</option>
+                <option value="discussion">{{ _('Discussion') }}</option>
+                <option value="update">{{ _('Update') }}</option>
             </select>
             <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: #666;">
-                <input type="checkbox" id="commentPinned"> Pin comment
+                <input type="checkbox" id="commentPinned"> {{ _('Pin comment') }}
             </label>
-            <button data-click="addComment" class="btn-cms small" style="background: #059669;">Add Comment</button>
+            <button data-click="addComment" class="btn-cms small" style="background: #059669;">{{ _('Add Comment') }}</button>
         </div>
     </div>
     
     <div id="commentsList">
-        <p style="color: #888; text-align: center; padding: 1rem;">Loading comments...</p>
+        <p style="color: #888; text-align: center; padding: 1rem;">{{ _('Loading comments...') }}</p>
     </div>
 </div>
 
@@ -625,16 +625,16 @@
 <div id="createFromUsernameModal" class="modal">
     <div class="modal-content" style="max-width: 400px;">
         <div class="modal-header">
-            <h2>@ Create Subject from Username</h2>
+            <h2>{{ _('@ Create Subject from Username') }}</h2>
             <span class="close" data-click="closeCreateFromUsernameModal">&times;</span>
         </div>
         <form id="createFromUsernameForm" data-submit="createSubjectFromUsername">
             <div class="form-group">
-                <label for="cuUsername">Username *</label>
-                <input type="text" id="cuUsername" style="width:100%;padding:0.5rem;" placeholder="@username or profile name" required>
+                <label for="cuUsername">{{ _('Username *') }}</label>
+                <input type="text" id="cuUsername" style="width:100%;padding:0.5rem;" placeholder="{{ _('@username or profile name') }}" required>
             </div>
             <div class="form-group">
-                <label for="cuPlatform">Platform</label>
+                <label for="cuPlatform">{{ _('Platform') }}</label>
                 <select id="cuPlatform" style="width:100%;padding:0.5rem;">
                     <option value="twitter">Twitter/X</option>
                     <option value="facebook">Facebook</option>
@@ -650,12 +650,12 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="cuUrl">Profile URL (optional)</label>
+                <label for="cuUrl">{{ _('Profile URL (optional)') }}</label>
                 <input type="url" id="cuUrl" style="width:100%;padding:0.5rem;" placeholder="https://...">
             </div>
             <div style="display:flex;gap:0.5rem;margin-top:1rem;">
-                <button type="submit" class="btn-cms success small">Create Subject</button>
-                <button type="button" data-click="closeCreateFromUsernameModal" class="btn-cms">Cancel</button>
+                <button type="submit" class="btn-cms success small">{{ _('Create Subject') }}</button>
+                <button type="button" data-click="closeCreateFromUsernameModal" class="btn-cms">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -665,7 +665,7 @@
 <div id="osintModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>OSINT Person Search</h2>
+            <h2>{{ _('OSINT Person Search') }}</h2>
             <span class="close" data-click="closeOsintModal">&times;</span>
         </div>
         
@@ -705,14 +705,14 @@
         
         <div id="osintResults" style="display: none;">
             <div class="card-header">
-                <h2>Search Results</h2>
+                <h2>{{ _('Search Results') }}</h2>
                 <span id="resultsCount"></span>
             </div>
             
             <div class="select-all-row">
                 <label>
                     <input type="checkbox" id="selectAllResults" data-change="toggleAllResults">
-                    <strong>Select All</strong>
+                    <strong>{{ _('Select All') }}</strong>
                 </label>
             </div>
             
@@ -762,18 +762,18 @@ function changeStatus(btn, newStatus) {
     let body = { status: newStatus };
     
     if (newStatus === 'closed') {
-        const reason = prompt('Reason for closing (required):');
+        const reason = prompt({{ _('Reason for closing (required):')|tojson }});
         if (!reason || !reason.trim()) {
-            alert('Closure reason is required');
+            alert({{ _('Closure reason is required')|tojson }});
             return;
         }
         body.closure_reason = reason.trim();
     }
     
     if (newStatus === 'active' && ('{{ case.status }}' === 'closed' || '{{ case.status }}' === 'archived')) {
-        const reason = prompt('Reason for reopening (required):');
+        const reason = prompt({{ _('Reason for reopening (required):')|tojson }});
         if (!reason || !reason.trim()) {
-            alert('Reopening reason is required');
+            alert({{ _('Reopening reason is required')|tojson }});
             return;
         }
         body.reopened_reason = reason.trim();
@@ -787,18 +787,18 @@ function changeStatus(btn, newStatus) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert('Error: ' + data.error);
+            alert({{ _('Error')|tojson }} + ': ' + data.error);
         } else {
             location.reload();
         }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
 }
 
 function reopenCase() {
-    const reason = prompt('Reason for reopening (required):');
+    const reason = prompt({{ _('Reason for reopening (required):')|tojson }});
     if (!reason || !reason.trim()) {
-        alert('Reopening reason is required');
+        alert({{ _('Reopening reason is required')|tojson }});
         return;
     }
     
@@ -810,12 +810,12 @@ function reopenCase() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert('Error: ' + data.error);
+            alert({{ _('Error')|tojson }} + ': ' + data.error);
         } else {
             location.reload();
         }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
 }
 
 // OSINT Search Functions
@@ -849,11 +849,11 @@ function resetOsintModal() {
 function startOsintSearch() {
     const name = document.getElementById('osintName').value.trim();
     if (!name) {
-        alert('Please enter a name');
+        alert({{ _('Please enter a name')|tojson }});
         return;
     }
     if (name.split(' ').length < 2) {
-        alert('Please enter a full name (first and last name)');
+        alert({{ _('Please enter a full name (first and last name)')|tojson }});
         return;
     }
     
@@ -876,7 +876,7 @@ function startOsintSearch() {
         pollSearchStatus();
     })
     .catch(err => {
-        showOsintError('Failed to start search: ' + err.message);
+        showOsintError({{ _('Failed to start search')|tojson }} + ': ' + err.message);
     });
 }
 
@@ -887,7 +887,7 @@ function pollSearchStatus() {
             if (!r.ok) {
                 return r.text().then(text => {
                     try { return JSON.parse(text); }
-                    catch (e) { throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200)); }
+                    catch (e) { throw new Error({{ _('HTTP')|tojson }} + ' ' + r.status + ': ' + text.slice(0, 200)); }
                 });
             }
             return r.json();
@@ -904,7 +904,7 @@ function pollSearchStatus() {
             } else if (data.status === 'cancelled' || data.status === 'failed') {
                 clearInterval(pollInterval);
                 pollInterval = null;
-                showOsintError(data.status === 'cancelled' ? 'Search was cancelled' : data.message || 'Search failed');
+                showOsintError(data.status === 'cancelled' ? {{ _('Search was cancelled')|tojson }} : data.message || {{ _('Search failed')|tojson }});
             }
         })
         .catch(() => {});
@@ -941,7 +941,7 @@ function loadSearchResults() {
         displayResults(data.results);
     })
     .catch(err => {
-        showOsintError('Failed to load results: ' + err.message);
+        showOsintError({{ _('Failed to load results')|tojson }} + ': ' + err.message);
     });
 }
 
@@ -959,19 +959,19 @@ function displayResults(results) {
     const ddgCount = results.ddg_results_count || 0;
     let sourceInfo = '';
     if (braveCount > 0 || ddgCount > 0) {
-        sourceInfo = '<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">Brave: ' + esc(braveCount) + '</span>';
+        sourceInfo = '<span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">' + {{ _('Brave')|tojson }} + ': ' + esc(braveCount) + '</span>';
         if (ddgCount > 0) {
-            sourceInfo += '<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">DDG: ' + esc(ddgCount) + '</span>';
+            sourceInfo += '<span style="background: #25D366; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">' + {{ _('DDG')|tojson }} + ': ' + esc(ddgCount) + '</span>';
         }
     }
     
-    document.getElementById('resultsCount').innerHTML = esc(dorksResults.length + searchLinks.length) + ' results found' + sourceInfo;
+    document.getElementById('resultsCount').innerHTML = esc(dorksResults.length + searchLinks.length) + ' ' + {{ _('results found')|tojson }} + sourceInfo;
     
     const resultsList = document.getElementById('resultsList');
     resultsList.innerHTML = '';
     
     if (dorksResults.length === 0 && searchLinks.length === 0) {
-        resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">No results found.</p>';
+        resultsList.innerHTML = '<p style="color: #666; padding: 1rem;">' + {{ _('No results found.')|tojson }} + '</p>';
         updateSelectedCount();
         return;
     }
@@ -984,12 +984,12 @@ function displayResults(results) {
     });
     
     const categoryLabels = {
-        'social_media': 'Social Media',
-        'files': 'Documents',
-        'public_records': 'Public Records',
-        'news': 'News',
-        'people_search': 'People Search',
-        'general': 'Other'
+        'social_media': {{ _('Social Media')|tojson }},
+        'files': {{ _('Documents')|tojson }},
+        'public_records': {{ _('Public Records')|tojson }},
+        'news': {{ _('News')|tojson }},
+        'people_search': {{ _('People Search')|tojson }},
+        'general': {{ _('Other')|tojson }}
     };
     
     for (const [cat, items] of Object.entries(categories)) {
@@ -1002,11 +1002,11 @@ function displayResults(results) {
         items.forEach((item) => {
             const div = document.createElement('div');
             div.className = 'result-item';
-            const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">Brave</span>' : 
-                                 item.source === 'duckduckgo' ? '<span class="source-badge ddg">DDG</span>' : '';
+            const sourceBadge = item.source === 'brave' ? '<span class="source-badge brave">' + {{ _('Brave')|tojson }} + '</span>' : 
+                                 item.source === 'duckduckgo' ? '<span class="source-badge ddg">' + {{ _('DDG')|tojson }} + '</span>' : '';
             div.innerHTML = '<input type="checkbox" class="result-checkbox" data-domain="' + esc(item.domain || '') + '" data-url="' + esc(item.url) + '" data-query="' + esc(item.query || '') + '" data-source="' + esc(item.source || '') + '" data-category="' + esc(item.category || '') + '" data-change="updateSelectedCount">' +
                 '<div class="result-content">' +
-                    '<div class="result-engine">' + esc(item.domain || 'Unknown') + sourceBadge + '</div>' +
+                    '<div class="result-engine">' + esc(item.domain || {{ _('Unknown')|tojson }}) + sourceBadge + '</div>' +
                     (item.query ? '<div class="result-query">' + esc(item.query) + '</div>' : '') +
                 '</div>' +
                 '<div class="result-url"><a href="' + esc(item.url) + '" target="_blank">' + esc(item.url) + '</a></div>';
@@ -1018,14 +1018,14 @@ function displayResults(results) {
     if (searchLinks.length > 0) {
         const linksDiv = document.createElement('div');
         linksDiv.style.marginBottom = '1rem';
-        linksDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">Search Links (' + esc(searchLinks.length) + ')</h4>';
+        linksDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: #1a1a2e;">' + {{ _('Search Links')|tojson }} + ' (' + esc(searchLinks.length) + ')</h4>';
         
         searchLinks.forEach((link) => {
             const div = document.createElement('div');
             div.className = 'result-item';
             div.innerHTML = '<input type="checkbox" class="result-checkbox" data-domain="' + esc(link.engine || '') + '" data-url="' + esc(link.url) + '" data-query="' + esc(link.query || '') + '" data-source="search_link" data-category="search_link" data-change="updateSelectedCount">' +
                 '<div class="result-content">' +
-                    '<div class="result-engine">' + esc(link.engine || 'Unknown') + '</div>' +
+                    '<div class="result-engine">' + esc(link.engine || {{ _('Unknown')|tojson }}) + '</div>' +
                     (link.query ? '<div class="result-query">' + esc(link.query) + '</div>' : '') +
                 '</div>' +
                 '<div class="result-url"><a href="' + esc(link.url) + '" target="_blank">' + esc(link.name || link.url) + '</a></div>';
@@ -1048,7 +1048,7 @@ function displayResults(results) {
             if (existingUrls.has(cb.dataset.url)) {
                 const badge = document.createElement('span');
                 badge.className = 'already-saved-badge';
-                badge.textContent = '📌 Already saved';
+                badge.textContent = {{ _('📌 Already saved')|tojson }};
                 badge.style.cssText = 'font-size:0.65rem;padding:0.1rem 0.4rem;border-radius:4px;background:var(--success-bg,#dcfce7);color:var(--success-text,#16a34a);margin-left:0.5rem;';
                 cb.parentElement.querySelector('.result-content').appendChild(badge);
             }
@@ -1078,7 +1078,7 @@ function updateSelectedCount() {
 function addSelectedFindings() {
     const btn = document.getElementById('addFindingsBtn');
     if (btn && btn.disabled) return;
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+    if (btn) { btn.disabled = true; btn.textContent = {{ _('Saving...')|tojson }}; }
     
     const checkboxes = document.querySelectorAll('.result-checkbox:checked');
     if (checkboxes.length === 0) return;
@@ -1108,7 +1108,7 @@ function addSelectedFindings() {
     .then(data => {
         if (data.error) {
             showOsintError(data.error);
-            if (btn) { btn.disabled = false; btn.textContent = 'Add Selected to Findings'; }
+            if (btn) { btn.disabled = false; btn.textContent = {{ _('Add Selected to Findings')|tojson }}; }
             return;
         }
         alert(data.message);
@@ -1116,8 +1116,8 @@ function addSelectedFindings() {
         location.reload();
     })
     .catch(err => {
-        showOsintError('Failed to add findings: ' + err.message);
-        if (btn) { btn.disabled = false; btn.textContent = 'Add Selected to Findings'; }
+        showOsintError({{ _('Failed to add findings')|tojson }} + ': ' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = {{ _('Add Selected to Findings')|tojson }}; }
     });
 }
 
@@ -1125,8 +1125,8 @@ function saveSelectedAsSocialAccounts() {
     const checkboxes = document.querySelectorAll('.result-checkbox:checked');
     if (checkboxes.length === 0) return;
     const subjectId = document.getElementById('osintSubject')?.value;
-    if (!subjectId) { alert('Please select a subject first.'); return; }
-    if (!confirm('Save ' + checkboxes.length + ' selected result(s) as social accounts on the selected subject?')) return;
+    if (!subjectId) { alert({{ _('Please select a subject first.')|tojson }}); return; }
+    if (!confirm({{ _('Save selected result(s) as social accounts on the selected subject?')|tojson }})) return;
     let saved = 0;
     let errors = 0;
     let completed = 0;
@@ -1152,14 +1152,14 @@ function saveSelectedAsSocialAccounts() {
             completed++;
             if (data.error) errors++; else saved++;
             if (completed === total) {
-                alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+                alert({{ _('Saved')|tojson }} + ' ' + saved + ' ' + {{ _('social account(s).')|tojson }} + (errors ? ' ' + errors + ' ' + {{ _('error(s).')|tojson }} : ''));
                 if (saved > 0) location.reload();
             }
         })
         .catch(() => {
             completed++;
             errors++;
-            if (completed === total) alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+            if (completed === total) alert({{ _('Saved')|tojson }} + ' ' + saved + ' ' + {{ _('social account(s).')|tojson }} + (errors ? ' ' + errors + ' ' + {{ _('error(s).')|tojson }} : ''));
         });
     });
 }
@@ -1174,7 +1174,7 @@ function closeCreateFromUsernameModal() {
 function createSubjectFromUsername(event) {
     event.preventDefault();
     const username = document.getElementById('cuUsername').value.trim();
-    if (!username) { alert('Username is required'); return false; }
+    if (!username) { alert({{ _('Username is required')|tojson }}); return false; }
     const platform = document.getElementById('cuPlatform').value;
     const url = document.getElementById('cuUrl').value.trim();
     fetch('/cms/api/subjects/create-from-username', {
@@ -1189,12 +1189,12 @@ function createSubjectFromUsername(event) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.error) { alert('Error: ' + data.error); return; }
-        alert('Subject created: ' + data.subject.name);
+        if (data.error) { alert({{ _('Error')|tojson }} + ': ' + data.error); return; }
+        alert({{ _('Subject created:')|tojson }} + ' ' + data.subject.name);
         closeCreateFromUsernameModal();
         location.reload();
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
     return false;
 }
 
@@ -1251,7 +1251,7 @@ function filterFindings() {
         }
     });
     
-    document.getElementById('findingCount').textContent = `Showing ${visibleCount} of ${rows.length}`;
+    document.getElementById('findingCount').textContent = {{ _('Showing')|tojson }} + ' ' + visibleCount + ' ' + {{ _('of')|tojson }} + ' ' + rows.length;
 }
 
 function clearFindingFilters() {
@@ -1266,7 +1266,7 @@ function clearFindingFilters() {
 document.addEventListener('DOMContentLoaded', function() {
     const rows = document.querySelectorAll('#findingsTable tbody tr');
     if (rows.length > 0) {
-        document.getElementById('findingCount').textContent = `Showing ${rows.length} of ${rows.length}`;
+        document.getElementById('findingCount').textContent = {{ _('Showing')|tojson }} + ' ' + rows.length + ' ' + {{ _('of')|tojson }} + ' ' + rows.length;
     }
 });
 
@@ -1293,7 +1293,7 @@ function loadTimeline() {
     })
     .catch(err => {
         document.getElementById('timelineContent').innerHTML = 
-            '<div style="padding: 2rem; text-align: center; color: #dc2626;">Failed to load timeline</div>';
+            '<div style="padding: 2rem; text-align: center; color: #dc2626;">' + {{ _('Failed to load timeline')|tojson }} + '</div>';
     });
 }
 
@@ -1301,7 +1301,7 @@ function displayTimeline(data) {
     const container = document.getElementById('timelineContent');
     
     if (!data.timeline || data.timeline.length === 0) {
-        container.innerHTML = '<div style="padding: 2rem; text-align: center;">No timeline events found.</div>';
+        container.innerHTML = '<div style="padding: 2rem; text-align: center;">' + {{ _('No timeline events found.')|tojson }} + '</div>';
         return;
     }
     
@@ -1321,7 +1321,7 @@ function displayTimeline(data) {
     
     data.timeline.forEach((item, index) => {
         const color = typeColors[item.type] || '#6b7280';
-        const date = item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Unknown';
+        const date = item.timestamp ? new Date(item.timestamp).toLocaleString() : {{ _('Unknown')|tojson }};
         
         html += '<div style="position: relative; padding: 1rem; margin-bottom: 0.5rem; background: #f9fafb; border-radius: 8px; margin-left: 1rem;">' +
             '<div style="position: absolute; left: -21px; top: 1.2rem; width: 12px; height: 12px; border-radius: 50%; background: ' + color + '; border: 2px solid white;"></div>' +
@@ -1332,7 +1332,7 @@ function displayTimeline(data) {
             '<div style="font-weight: 600; color: #1a1a2e;">' + esc(item.title) + '</div>' +
             '<div style="color: #374151; margin: 0.25rem 0;">' + esc(item.description) + '</div>' +
             '<div style="font-size: 0.75rem; color: #6b7280;">' +
-                'By: ' + esc(item.user_name) +
+                {{ _('By:')|tojson }} + ' ' + esc(item.user_name) +
                 (item.details ? ' • ' + esc(item.details) : '') +
             '</div></div>';
     });
@@ -1364,7 +1364,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     const fileInput = document.getElementById('uploadFile');
     
     if (fileInput.files.length === 0) {
-        alert('Please select a file');
+        alert({{ _('Please select a file')|tojson }});
         return;
     }
     
@@ -1384,18 +1384,18 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         if (data.error) {
             alert(data.error);
         } else {
-            alert('Document uploaded successfully');
+            alert({{ _('Document uploaded successfully')|tojson }});
             closeUploadModal();
             location.reload();
         }
     })
     .catch(err => {
-        alert('Upload failed: ' + err.message);
+        alert({{ _('Upload failed')|tojson }} + ': ' + err.message);
     });
 });
 
 function deleteDocument(btn, docId) {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+    if (!confirm({{ _('Are you sure you want to delete this document?')|tojson }})) return;
     
     fetch('/cms/documents/' + docId, {
         method: 'DELETE'
@@ -1429,7 +1429,7 @@ function loadScreenshots() {
     .catch(err => {
         clearTimeout(timeoutId);
         if (err.name !== 'AbortError') {
-            document.getElementById('screenshotsGallery').innerHTML = '<p style="color: #dc2626;">Failed to load screenshots</p>';
+            document.getElementById('screenshotsGallery').innerHTML = '<p style="color: #dc2626;">' + {{ _('Failed to load screenshots')|tojson }} + '</p>';
         }
     });
 }
@@ -1438,7 +1438,7 @@ function displayScreenshots(screenshots) {
     const gallery = document.getElementById('screenshotsGallery');
     
     if (!screenshots || screenshots.length === 0) {
-        gallery.innerHTML = '<p style="color: #666;">No screenshots added yet.</p>';
+        gallery.innerHTML = '<p style="color: #666;">' + {{ _('No screenshots added yet.')|tojson }} + '</p>';
         return;
     }
     
@@ -1447,7 +1447,7 @@ function displayScreenshots(screenshots) {
     screenshots.forEach(s => {
         html += '<div style="background: #f5f5f5; border-radius: 8px; overflow: hidden; position: relative;">' +
             '<div style="cursor: pointer;" data-click="viewScreenshot" data-arg0="' + esc(s.id) + '" data-arg1="' + esc((s.title || s.url || '').replace(/'/g, '\\x27')) + '" data-arg2="' + esc(s.url || '') + '">' +
-                '<img src="' + esc(s.thumbnail_url) + '" alt="' + esc(s.title || 'Screenshot') + '" ' +
+                '<img src="' + esc(s.thumbnail_url) + '" alt="' + esc(s.title || {{ _('Screenshot')|tojson }}) + '" ' +
                      'style="width: 100%; height: 120px; object-fit: cover; display: block;"' +
                      'onerror="this.src=\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 fill=%22%23666%22 text-anchor=%22middle%22 font-size=%2212%22>No preview</text></svg>\'">' +
             '</div>' +
@@ -1455,8 +1455,8 @@ function displayScreenshots(screenshots) {
                     'style="position: absolute; top: 5px; right: 5px; background: rgba(220,38,38,0.9); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 24px; text-align: center;"' +
                     'title="Delete screenshot">×</button>' +
             '<div style="padding: 0.5rem;">' +
-                '<div style="font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(s.title || 'Screenshot') + '</div>' +
-                '<div style="font-size: 0.65rem; color: #999;">' + esc(s.creator_name || 'Unknown') + ' - ' + esc(new Date(s.created_at).toLocaleDateString()) + '</div>' +
+                '<div style="font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + esc(s.title || {{ _('Screenshot')|tojson }}) + '</div>' +
+                '<div style="font-size: 0.65rem; color: #999;">' + esc(s.creator_name || {{ _('Unknown')|tojson }}) + ' - ' + esc(new Date(s.created_at).toLocaleDateString()) + '</div>' +
             '</div></div>';
     });
     
@@ -1472,7 +1472,7 @@ function openAddScreenshotModal(url = '') {
     const fileInput = document.getElementById('screenshotFile');
     
     uploadBtn.disabled = false;
-    uploadBtn.textContent = 'Save Screenshot';
+    uploadBtn.textContent = {{ _('Save Screenshot')|tojson }};
     status.textContent = '';
     status.style.color = '';
     fileInput.value = '';
@@ -1506,7 +1506,7 @@ function openLinkForScreenshot() {
     let url = urlInput.value.trim();
     
     if (!url) {
-        alert('Please enter a URL first');
+        alert({{ _('Please enter a URL first')|tojson }});
         return;
     }
     
@@ -1527,18 +1527,18 @@ function uploadScreenshot() {
     const status = document.getElementById('screenshotStatus');
     
     if (!file) {
-        alert('Please select a screenshot file');
+        alert({{ _('Please select a screenshot file')|tojson }});
         return;
     }
     
     if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        alert({{ _('Please select an image file')|tojson }});
         return;
     }
     
     uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Uploading...';
-    status.textContent = 'Uploading screenshot...';
+    uploadBtn.textContent = {{ _('Uploading...')|tojson }};
+    status.textContent = {{ _('Uploading screenshot...')|tojson }};
     status.style.color = '#888';
     
     const formData = new FormData();
@@ -1559,12 +1559,12 @@ function uploadScreenshot() {
     })
     .then(data => {
         if (data.error) {
-            status.textContent = 'Error: ' + data.error;
+            status.textContent = {{ _('Error')|tojson }} + ': ' + data.error;
             status.style.color = '#dc2626';
             uploadBtn.disabled = false;
-            uploadBtn.textContent = 'Save Screenshot';
+            uploadBtn.textContent = {{ _('Save Screenshot')|tojson }};
         } else {
-            status.textContent = 'Screenshot saved successfully!';
+            status.textContent = {{ _('Screenshot saved successfully!')|tojson }};
             status.style.color = '#10b981';
             
             fileInput.value = '';
@@ -1579,30 +1579,30 @@ function uploadScreenshot() {
     .catch(err => {
         clearTimeout(timeoutId);
         if (err.name === 'AbortError') {
-            status.textContent = 'Upload timed out. Please try again.';
+            status.textContent = {{ _('Upload timed out. Please try again.')|tojson }};
         } else {
-            status.textContent = 'Failed: ' + err.message;
+            status.textContent = {{ _('Failed')|tojson }} + ': ' + err.message;
         }
         status.style.color = '#dc2626';
         uploadBtn.disabled = false;
-        uploadBtn.textContent = 'Save Screenshot';
+        uploadBtn.textContent = {{ _('Save Screenshot')|tojson }};
     });
 }
 
 function viewScreenshot(btn, id, title, url) {
-    document.getElementById('viewScreenshotTitle').textContent = title || 'Screenshot';
+    document.getElementById('viewScreenshotTitle').textContent = title || {{ _('Screenshot')|tojson }};
     document.getElementById('viewScreenshotLink').href = url;
     document.getElementById('viewScreenshotImage').src = `/cms/cases/{{ case.id }}/screenshots/${id}/view`;
     document.getElementById('viewScreenshotModal').classList.add('show');
 }
 
 function extractSocialId(btn, url, subjectId) {
-    if (!confirm('Extract social media ID from this URL?\n\n' + url + '\n\nThe ID will be saved to the linked subject.')) {
+    if (!confirm({{ _('Extract social media ID from this URL?')|tojson }} + '\n\n' + url + '\n\n' + {{ _('The ID will be saved to the linked subject.')|tojson }})) {
         return;
     }
     
     btn.disabled = true;
-    btn.textContent = 'Extracting...';
+    btn.textContent = {{ _('Extracting...')|tojson }};
     
     fetch('/cms/extract-social-id', {
         method: 'POST',
@@ -1612,35 +1612,35 @@ function extractSocialId(btn, url, subjectId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert('Error: ' + data.error);
+            alert({{ _('Error')|tojson }} + ': ' + data.error);
         } else if (data.extracted && Object.keys(data.extracted).length > 0) {
-            let message = 'Social media data extracted!\n\n';
+            let message = {{ _('Social media data extracted!')|tojson }} + '\n\n';
             for (const [key, value] of Object.entries(data.extracted)) {
                 if (key.endsWith('id') || ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit', 'username', 'profile_platform'].includes(key)) {
                     message += key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : value) + '\n';
                 }
             }
-            if (data.platform && !data.extracted.profile_platform) message += '\nPlatform: ' + data.platform;
-            if (data.username && !data.extracted.username) message += '\nUsername: ' + data.username;
-            message += '\n\nSaved to subject. Refreshing...';
+            if (data.platform && !data.extracted.profile_platform) message += '\n' + {{ _('Platform:')|tojson }} + ' ' + data.platform;
+            if (data.username && !data.extracted.username) message += '\n' + {{ _('Username:')|tojson }} + ' ' + data.username;
+            message += '\n\n' + {{ _('Saved to subject. Refreshing...')|tojson }};
             alert(message);
             location.reload();
         } else {
-            let msg = 'No social media IDs found on this page.';
+            let msg = {{ _('No social media IDs found on this page.')|tojson }};
             if (data.platform || data.username) {
-                msg += '\n\nDetected from URL:\n';
-                if (data.platform) msg += 'Platform: ' + data.platform + '\n';
-                if (data.username) msg += 'Username: ' + data.username;
+                msg += '\n\n' + {{ _('Detected from URL:')|tojson }} + '\n';
+                if (data.platform) msg += {{ _('Platform:')|tojson }} + ' ' + data.platform + '\n';
+                if (data.username) msg += {{ _('Username:')|tojson }} + ' ' + data.username;
             }
             alert(msg);
         }
     })
     .catch(err => {
-        alert('Failed to extract: ' + err.message);
+        alert({{ _('Failed to extract')|tojson }} + ': ' + err.message);
     })
     .finally(() => {
         btn.disabled = false;
-        btn.textContent = '🔍 Extract ID';
+        btn.textContent = {{ _('🔍 Extract ID')|tojson }};
     });
 }
 
@@ -1650,7 +1650,7 @@ function closeViewScreenshotModal() {
 }
 
 function deleteScreenshot(btn, screenshotId) {
-    if (!confirm('Are you sure you want to delete this screenshot?')) return;
+    if (!confirm({{ _('Are you sure you want to delete this screenshot?')|tojson }})) return;
     
     fetch(`/cms/cases/{{ case.id }}/screenshots/${screenshotId}`, {
         method: 'DELETE'
@@ -1658,13 +1658,13 @@ function deleteScreenshot(btn, screenshotId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert('Error: ' + data.error);
+            alert({{ _('Error')|tojson }} + ': ' + data.error);
         } else {
             loadScreenshots();
         }
     })
     .catch(err => {
-        alert('Failed to delete: ' + err.message);
+        alert({{ _('Failed to delete')|tojson }} + ': ' + err.message);
     });
 }
 
@@ -1700,7 +1700,7 @@ function loadFinancialSummary() {
         displayFinancialCharts(data.summary);
     })
     .catch(() => {
-        document.getElementById('financialCharts').innerHTML = 'Failed to load financial data';
+        document.getElementById('financialCharts').innerHTML = {{ _('Failed to load financial data')|tojson }};
     });
 }
 
@@ -1723,26 +1723,26 @@ function displayFinancialCharts(summary) {
     const container = document.getElementById('financialCharts');
     
     if (summary.total_records === 0) {
-        container.innerHTML = '<p style="text-align: center; padding: 2rem;">No financial records to display.</p>';
+        container.innerHTML = '<p style="text-align: center; padding: 2rem;">' + {{ _('No financial records to display.')|tojson }} + '</p>';
         return;
     }
     
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
     
     let html = '<div style="margin-bottom: 2rem;">' +
-        '<h3 style="margin-bottom: 1rem;">By Transaction Type</h3>' +
+        '<h3 style="margin-bottom: 1rem;">' + {{ _('By Transaction Type')|tojson }} + '</h3>' +
         '<div style="display: flex; flex-wrap: wrap; gap: 1rem;">' +
         Object.entries(summary.by_type || {}).map(([type, data], i) => {
             return '<div style="flex: 1; min-width: 150px; background: ' + colors[i % colors.length] + '15; padding: 1rem; border-radius: 8px; border-left: 4px solid ' + colors[i % colors.length] + ';">' +
                 '<div style="font-weight: bold;">' + esc(type) + '</div>' +
-                '<div>' + esc(data.count) + ' transactions</div>' +
+                '<div>' + esc(data.count) + ' ' + {{ _('transactions')|tojson }} + '</div>' +
                 '<div style="color: #666;">' + formatCurrency(data.total, summary.currency) + '</div>' +
             '</div>';
         }).join('') +
         '</div></div>' +
         
         '<div style="margin-bottom: 2rem;">' +
-            '<h3 style="margin-bottom: 1rem;">By Month</h3>' +
+            '<h3 style="margin-bottom: 1rem;">' + {{ _('By Month')|tojson }} + '</h3>' +
             '<div style="display: flex; align-items: end; gap: 0.5rem; height: 150px; padding: 1rem; background: #f9fafb; border-radius: 8px;">' +
             Object.entries(summary.by_month || {}).sort().map(([month, data]) => {
                 const max = Math.max(...Object.values(summary.by_month || {}).map(m => m.total));
@@ -1755,7 +1755,7 @@ function displayFinancialCharts(summary) {
             '</div></div>' +
         
         '<div style="margin-bottom: 2rem;">' +
-            '<h3 style="margin-bottom: 1rem;">By Verification Status</h3>' +
+            '<h3 style="margin-bottom: 1rem;">' + {{ _('By Verification Status')|tojson }} + '</h3>' +
             '<div style="display: flex; gap: 1rem;">' +
             Object.entries(summary.by_status || {}).map(([status, data], i) => {
                 return '<div style="flex: 1; background: ' + (status === 'verified' ? '#dcfce7' : status === 'flagged' ? '#fee2e2' : '#fef3c7') + '; padding: 1rem; border-radius: 8px; text-align: center;">' +
@@ -1767,9 +1767,9 @@ function displayFinancialCharts(summary) {
             '</div></div>' +
         
         '<div>' +
-            '<h3 style="margin-bottom: 1rem;">Top Counterparties</h3>' +
+            '<h3 style="margin-bottom: 1rem;">' + {{ _('Top Counterparties')|tojson }} + '</h3>' +
             '<table style="width: 100%; border-collapse: collapse;">' +
-                '<thead><tr style="background: #f5f5f5;"><th style="padding: 0.75rem; text-align: left;">Counterparty</th><th style="padding: 0.75rem; text-align: right;">Total Amount</th></tr></thead>' +
+                '<thead><tr style="background: #f5f5f5;"><th style="padding: 0.75rem; text-align: left;">' + {{ _('Counterparty')|tojson }} + '</th><th style="padding: 0.75rem; text-align: right;">' + {{ _('Total Amount')|tojson }} + '</th></tr></thead>' +
                 '<tbody>' +
                 (summary.top_counterparties || []).map((cp, i) => {
                     return '<tr style="border-bottom: 1px solid #eee;">' +
@@ -1801,7 +1801,7 @@ function closeHierarchyModal() {
 
 function loadAvailableParents() {
     const searchResults = document.getElementById('parentSearchResults');
-    searchResults.innerHTML = '<p style="color: #666;">Type to search for a parent case...</p>';
+    searchResults.innerHTML = '<p style="color: #666;">' + {{ _('Type to search for a parent case...')|tojson }} + '</p>';
     
     {% if case.parent_case %}
     document.getElementById('currentParent').innerHTML = `
@@ -1809,11 +1809,11 @@ function loadAvailableParents() {
             <div>
                 <strong>{{ case.parent_case.case_number }}</strong>: {{ case.parent_case.title }}
             </div>
-            <button data-click="removeParent" class="btn-cms small" style="background: #dc2626;">Remove</button>
+            <button data-click="removeParent" class="btn-cms small" style="background: #dc2626;">` + {{ _('Remove')|tojson }} + `</button>
         </div>
     `;
     {% else %}
-    document.getElementById('currentParent').innerHTML = '<p style="color: #666; font-style: italic;">No parent case assigned.</p>';
+    document.getElementById('currentParent').innerHTML = '<p style="color: #666; font-style: italic;">' + {{ _('No parent case assigned.')|tojson }} + '</p>';
     {% endif %}
 }
 
@@ -1824,7 +1824,7 @@ function searchParentCases() {
     if (parentSearchTimeout) clearTimeout(parentSearchTimeout);
     
     if (query.length < 2) {
-        document.getElementById('parentSearchResults').innerHTML = '<p style="color: #666;">Type at least 2 characters to search...</p>';
+        document.getElementById('parentSearchResults').innerHTML = '<p style="color: #666;">' + {{ _('Type at least 2 characters to search...')|tojson }} + '</p>';
         return;
     }
     
@@ -1833,7 +1833,7 @@ function searchParentCases() {
             .then(r => r.json())
             .then(data => {
                 if (data.cases.length === 0) {
-                    document.getElementById('parentSearchResults').innerHTML = '<p style="color: #666;">No cases found.</p>';
+                    document.getElementById('parentSearchResults').innerHTML = '<p style="color: #666;">' + {{ _('No cases found.')|tojson }} + '</p>';
                     return;
                 }
                 
@@ -1844,7 +1844,7 @@ function searchParentCases() {
                             '<a href="/cms/cases/' + esc(c.id) + '" target="_blank">' + esc(c.case_number) + '</a>: ' + esc(c.title) +
                             '<span class="badge badge-' + esc(c.status) + '" style="margin-left: 0.5rem;">' + esc(c.status) + '</span>' +
                         '</div>' +
-                        '<button data-click="setParent" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #059669;">Set as Parent</button>' +
+                        '<button data-click="setParent" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #059669;">' + {{ _('Set as Parent')|tojson }} + '</button>' +
                     '</div>';
                 });
                 document.getElementById('parentSearchResults').innerHTML = html;
@@ -1861,17 +1861,17 @@ function setParent(btn, parentId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert('Error: ' + data.error);
+            alert({{ _('Error')|tojson }} + ': ' + data.error);
         } else {
-            alert('Parent case set successfully!');
+            alert({{ _('Parent case set successfully!')|tojson }});
             location.reload();
         }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
 }
 
 function removeParent() {
-    if (!confirm('Remove this case from its parent?')) return;
+    if (!confirm({{ _('Remove this case from its parent?')|tojson }})) return;
     
     fetch(`/cms/cases/{{ case.id }}/set-parent`, {
         method: 'POST',
@@ -1881,13 +1881,13 @@ function removeParent() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert('Error: ' + data.error);
+            alert({{ _('Error')|tojson }} + ': ' + data.error);
         } else {
-            alert('Parent case removed!');
+            alert({{ _('Parent case removed!')|tojson }});
             location.reload();
         }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
 }
 
 document.getElementById('hierarchyModal').addEventListener('click', function(e) {
@@ -1903,7 +1903,7 @@ function loadComments() {
             document.getElementById('commentCount').textContent = `(${data.count})`;
         })
         .catch(() => {
-            document.getElementById('commentsList').innerHTML = '<p style="color: #dc2626;">Failed to load comments.</p>';
+            document.getElementById('commentsList').innerHTML = '<p style="color: #dc2626;">' + {{ _('Failed to load comments.')|tojson }} + '</p>';
         });
 }
 
@@ -1911,7 +1911,7 @@ function displayComments(comments) {
     const container = document.getElementById('commentsList');
     
     if (!comments || comments.length === 0) {
-        container.innerHTML = '<p style="color: #888; text-align: center; padding: 1rem;">No comments yet. Be the first to add one!</p>';
+        container.innerHTML = '<p style="color: #888; text-align: center; padding: 1rem;">' + {{ _('No comments yet. Be the first to add one!')|tojson }} + '</p>';
         return;
     }
     
@@ -1926,13 +1926,13 @@ function displayComments(comments) {
         if (c.edit_count > 0) {
             const editDate = c.last_edited_at ? new Date(c.last_edited_at) : null;
             const editDateStr = editDate ? editDate.toLocaleDateString() + ' ' + editDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-            editInfo = '<div class="comment-edited">Edited ' + esc(c.edit_count) + ' time' + (c.edit_count > 1 ? 's' : '') + (c.last_edited_by_name ? ' by ' + esc(c.last_edited_by_name) : '') + (editDateStr ? ' on ' + esc(editDateStr) : '') + '</div>';
+            editInfo = '<div class="comment-edited">' + {{ _('Edited')|tojson }} + ' ' + esc(c.edit_count) + ' ' + {{ _('time')|tojson }} + (c.edit_count > 1 ? 's' : '') + (c.last_edited_by_name ? ' ' + {{ _('by')|tojson }} + ' ' + esc(c.last_edited_by_name) : '') + (editDateStr ? ' ' + {{ _('on')|tojson }} + ' ' + esc(editDateStr) : '') + '</div>';
         }
         
         let editHistory = '';
         if (c.edit_history && c.edit_history.length > 0) {
             editHistory = '<details class="comment-edit-history">' +
-                '<summary>View edit history (' + esc(c.edit_history.length) + ')</summary>' +
+                '<summary>' + {{ _('View edit history')|tojson }} + ' (' + esc(c.edit_history.length) + ')</summary>' +
                 c.edit_history.map(h => {
                     const hDate = new Date(h.edited_at);
                     const hDateStr = hDate.toLocaleDateString() + ' ' + hDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -1961,13 +1961,13 @@ function displayComments(comments) {
             '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '" style="display: none;">' +
                 '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
                 '<div class="comment-edit-actions">' +
-                    '<button data-click="saveEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #059669;">Save</button>' +
-                    '<button data-click="cancelEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #666;">Cancel</button>' +
+                    '<button data-click="saveEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #059669;">' + {{ _('Save')|tojson }} + '</button>' +
+                    '<button data-click="cancelEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small" style="background: #666;">' + {{ _('Cancel')|tojson }} + '</button>' +
                 '</div>' +
             '</div>' +
             '<div class="comment-actions">' +
-                (canEdit ? '<button data-click="showEditForm" data-arg0="' + esc(c.id) + '">Edit</button>' : '') +
-                '<button data-click="deleteComment" data-arg0="' + esc(c.id) + '">Delete</button>' +
+                (canEdit ? '<button data-click="showEditForm" data-arg0="' + esc(c.id) + '">' + {{ _('Edit')|tojson }} + '</button>' : '') +
+                '<button data-click="deleteComment" data-arg0="' + esc(c.id) + '">' + {{ _('Delete')|tojson }} + '</button>' +
             '</div></div>';
     });
     
@@ -1994,7 +1994,7 @@ function cancelEdit(btn, commentId) {
 function saveEdit(btn, commentId) {
     const newContent = document.getElementById(`edit-content-${commentId}`).value.trim();
     if (!newContent) {
-        alert('Comment cannot be empty.');
+        alert({{ _('Comment cannot be empty.')|tojson }});
         return;
     }
     
@@ -2006,18 +2006,18 @@ function saveEdit(btn, commentId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert('Error: ' + data.error);
+            alert({{ _('Error')|tojson }} + ': ' + data.error);
         } else {
             loadComments();
         }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
 }
 
 function addComment() {
     const content = document.getElementById('newComment').value.trim();
     if (!content) {
-        alert('Please enter a comment.');
+        alert({{ _('Please enter a comment.')|tojson }});
         return;
     }
     
@@ -2040,17 +2040,17 @@ function addComment() {
         document.getElementById('commentPinned').checked = false;
         loadComments();
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
 }
 
 function deleteComment(btn, commentId) {
-    if (!confirm('Delete this comment?')) return;
+    if (!confirm({{ _('Delete this comment?')|tojson }})) return;
     
     fetch(`/cms/api/comments/${commentId}`, {
         method: 'DELETE'
     })
     .then(() => loadComments())
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
 }
 
 loadComments();

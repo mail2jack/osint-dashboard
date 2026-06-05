@@ -13,11 +13,13 @@ Integrates with free maritime data sources:
 import logging
 import re
 import threading
+
+from cms.services.http_utils import jitter_sleep
 import time
 from typing import Any
 from urllib.parse import quote
 
-import requests as http_requests
+from curl_cffi import requests as curl_requests
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -72,7 +74,8 @@ def lookup_vesselfinder(
     try:
         param = f"mmsi={query}" if mmsi else f"q={quote(query)}"
         url = f"https://www.vesselfinder.com/?{param}"
-        resp = http_requests.get(url, headers=VESSELFINDER_HEADERS, timeout=15)
+        jitter_sleep(domain_hint=url)
+        resp = curl_requests.get(url, headers=VESSELFINDER_HEADERS, timeout=15)
 
         if resp.status_code != 200:
             return None
@@ -136,7 +139,7 @@ def lookup_vesselfinder(
             else url,
         }
 
-    except http_requests.RequestException as e:
+    except curl_requests.RequestException as e:
         logger.warning(f"VesselFinder request failed: {e}")
         return None
 
@@ -194,7 +197,8 @@ def lookup_marineplan(name: str | None = None, mmsi: str | None = None) -> dict 
     try:
         url = f"{MARINEPLAN_BASE}/ship.json"
         params = {"ship": query_param.replace(" ", ""), "source": "ANY", "key": api_key}
-        resp = http_requests.get(url, params=params, timeout=15)
+        jitter_sleep(domain_hint=url)
+        resp = curl_requests.get(url, params=params, timeout=15)
 
         if resp.status_code == 404:
             logger.info(f"MarinePlan: no ship found for '{query_param}'")
@@ -238,7 +242,7 @@ def lookup_marineplan(name: str | None = None, mmsi: str | None = None) -> dict 
 
         return result
 
-    except http_requests.RequestException as e:
+    except curl_requests.RequestException as e:
         logger.warning(f"MarinePlan request failed: {e}")
         return None
     except (ValueError, TypeError) as e:
@@ -283,7 +287,8 @@ def lookup_kvnr(imo: str | None = None, name: str | None = None) -> dict | None:
 
     try:
         params = {"q": query.strip()}
-        resp = http_requests.get(
+        jitter_sleep(domain_hint=KVNR_SEARCH_URL)
+        resp = curl_requests.get(
             KVNR_SEARCH_URL, params=params, headers=_KVNR_HEADERS, timeout=15
         )
 
@@ -317,7 +322,7 @@ def lookup_kvnr(imo: str | None = None, name: str | None = None) -> dict | None:
 
         return None
 
-    except http_requests.RequestException as e:
+    except curl_requests.RequestException as e:
         logger.warning(f"KVNR request failed: {e}")
         return None
 
@@ -371,7 +376,8 @@ def lookup_binnenvaart(eni: str | None = None, name: str | None = None) -> dict 
 
     try:
         params = {"s": query.strip()}
-        resp = http_requests.get(
+        jitter_sleep(domain_hint=BINNENVAART_URL)
+        resp = curl_requests.get(
             BINNENVAART_URL, params=params, headers=_KVNR_HEADERS, timeout=15
         )
 
@@ -391,7 +397,7 @@ def lookup_binnenvaart(eni: str | None = None, name: str | None = None) -> dict 
 
         return None
 
-    except http_requests.RequestException as e:
+    except curl_requests.RequestException as e:
         logger.warning(f"Binnenvaart.eu request failed: {e}")
         return None
 
@@ -459,7 +465,8 @@ def lookup_debinnenvaart(
         return None
 
     try:
-        resp = http_requests.get(
+        jitter_sleep(domain_hint=DEBINNENVAART_URL)
+        resp = curl_requests.get(
             DEBINNENVAART_URL,
             params={"schip": query.strip()},
             headers=_KVNR_HEADERS,
@@ -482,7 +489,7 @@ def lookup_debinnenvaart(
 
         return None
 
-    except http_requests.RequestException as e:
+    except curl_requests.RequestException as e:
         logger.warning(f"DeBinnenvaart.nl request failed: {e}")
         return None
 
@@ -689,7 +696,7 @@ def lookup_equasis(imo: str) -> dict | None:
     if not imo:
         return None
 
-    session = http_requests.Session()
+    session = curl_requests.Session()
     session.headers.update(
         {
             "User-Agent": (
@@ -701,6 +708,7 @@ def lookup_equasis(imo: str) -> dict | None:
     )
 
     try:
+        jitter_sleep(domain_hint=EQUASIS_LOGIN_URL)
         login_resp = session.post(
             EQUASIS_LOGIN_URL, data={"login": email, "password": password}, timeout=15
         )
@@ -709,6 +717,7 @@ def lookup_equasis(imo: str) -> dict | None:
             logger.warning(f"Equasis login failed: {login_resp.status_code}")
             return None
 
+        jitter_sleep(domain_hint=EQUASIS_SEARCH_URL)
         search_resp = session.get(
             EQUASIS_SEARCH_URL, params={"imo": imo, "searchType": "ship"}, timeout=15
         )
@@ -751,7 +760,7 @@ def lookup_equasis(imo: str) -> dict | None:
 
         return result
 
-    except http_requests.RequestException as e:
+    except curl_requests.RequestException as e:
         logger.warning(f"Equasis request failed: {e}")
         return None
 

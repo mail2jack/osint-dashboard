@@ -2,7 +2,8 @@
 
 import logging
 
-import httpx
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 from cms.models import db, Setting
 
@@ -49,7 +50,8 @@ def check_external_services(quick: bool = False) -> dict:
             ("hibp", "https://haveibeenpwned.com", lambda r: r.status_code == 200),
         ]:
             try:
-                r = httpx.get(svc_url, timeout=5)
+                jitter_sleep(domain_hint=svc_url)
+                r = curl_requests.get(svc_url, impersonate="chrome124", timeout=5)
                 result[svc_name] = (
                     "ok" if svc_check(r) else f"unexpected: {r.status_code}"
                 )
@@ -60,9 +62,11 @@ def check_external_services(quick: bool = False) -> dict:
         overheid_key = Setting.get("overheid_api_key", "")
         if overheid_key:
             try:
-                r = httpx.get(
+                jitter_sleep(domain_hint="https://api.overheid.io")
+                r = curl_requests.get(
                     "https://api.overheid.io/v3/openkvk?query=test&size=1",
                     headers={"ApiKey": overheid_key},
+                    impersonate="chrome124",
                     timeout=5,
                 )
                 result["overheid"] = (
@@ -83,9 +87,14 @@ def check_external_services(quick: bool = False) -> dict:
         brave_key = Setting.get("brave_api_key", "")
         if brave_key:
             try:
-                r = httpx.get(
+                jitter_sleep(domain_hint="https://api.search.brave.com")
+                r = curl_requests.get(
                     "https://api.search.brave.com/res/v1/web/search?q=test&count=1",
-                    headers={"X-Subscription-Token": brave_key},
+                    headers={
+                        "X-Subscription-Token": brave_key,
+                        "Accept": "application/json",
+                    },
+                    impersonate="chrome124",
                     timeout=5,
                 )
                 result["brave"] = (
@@ -106,10 +115,17 @@ def check_external_services(quick: bool = False) -> dict:
             tor_proxy = Setting.get("tor_proxy", "socks5://127.0.0.1:9050")
             if brave_key:
                 try:
-                    with httpx.Client(proxy=tor_proxy, timeout=5.0) as c:
+                    with curl_requests.Session(
+                        impersonate="chrome124",
+                        proxies={"http": tor_proxy, "https": tor_proxy},
+                        timeout=5.0,
+                    ) as c:
                         r = c.get(
                             "https://api.search.brave.com/res/v1/web/search?q=test&count=1",
-                            headers={"X-Subscription-Token": brave_key},
+                            headers={
+                                "X-Subscription-Token": brave_key,
+                                "Accept": "application/json",
+                            },
                         )
                     result["tor"] = (
                         "ok"

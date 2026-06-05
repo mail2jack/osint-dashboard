@@ -13,7 +13,7 @@
 
 <div class="filters">
     <form method="get" class="filter-form">
-        <input type="text" name="search" value="{{ filters.search }}" placeholder="Search by name or target...">
+        <input type="text" name="search" value="{{ filters.search }}" placeholder="Search by name or target..." data-immediate-search>
         <select name="status">
             <option value="">All Statuses</option>
             <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>Pending</option>

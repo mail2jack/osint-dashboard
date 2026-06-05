@@ -12,6 +12,8 @@ from .. import csrf
 from ..validation import validate, EmailCheckSchema
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +27,6 @@ logger = logging.getLogger(__name__)
 def email_check() -> flask.Response:
     """Validate an email address and check for known breaches."""
     email = request.validated_data["email"].strip().lower()
-
-    import httpx
 
     result = {
         "email": email,
@@ -86,12 +86,14 @@ def email_check() -> flask.Response:
     hibp_key = os.environ.get("HIBP_API_KEY", "") or Setting.get("hibp_api_key", "")
     if hibp_key:
         try:
-            resp = httpx.get(
+            jitter_sleep(domain_hint="https://haveibeenpwned.com")
+            resp = curl_requests.get(
                 f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}?truncateResponse=false",
                 headers={
                     "hibp-api-key": hibp_key,
                     "User-Agent": "Iveras-OSINT-Dashboard/3.0",
                 },
+                impersonate="chrome124",
                 timeout=15,
             )
             if resp.status_code == 200:
@@ -116,9 +118,11 @@ def email_check() -> flask.Response:
             logger.warning(f"HIBP lookup failed ({type(e).__name__}): {e}")
 
     try:
-        eresp = httpx.get(
+        jitter_sleep(domain_hint="https://emailrep.io")
+        eresp = curl_requests.get(
             f"https://emailrep.io/{email}",
             headers={"User-Agent": "Iveras-OSINT-Dashboard/3.0"},
+            impersonate="chrome124",
             timeout=10,
         )
         if eresp.status_code == 200:

@@ -1,5 +1,6 @@
 import logging
-import requests as http_requests
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 import flask
 from flask import request, jsonify, abort
@@ -49,7 +50,8 @@ def _extract_social_ids_from_url(url, subject=None):
             headers = {
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
             }
-            r = http_requests.get(url, headers=headers, timeout=15)
+            jitter_sleep(domain_hint=url)
+            r = curl_requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200:
                 html = r.text
                 try:
@@ -61,7 +63,8 @@ def _extract_social_ids_from_url(url, subject=None):
             headers = {
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
             }
-            r = http_requests.get(url, headers=headers, timeout=15)
+            jitter_sleep(domain_hint=url)
+            r = curl_requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200:
                 html = r.text
                 try:

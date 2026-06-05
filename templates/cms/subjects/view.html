@@ -1,9 +1,9 @@
 {% extends "cms/base.html" %}
 
-{% block title %}{{ subject.name }} - CMS{% endblock %}
+{% block title %}{{ subject.name }} - {{ _('CMS') }}{% endblock %}
 
 {% block content %}
-<div class="back"><a href="{{ url_for('cms.subjects') }}">← Back to Subjects</a></div>
+<div class="back"><a href="{{ url_for('cms.subjects') }}">← {{ _('Back to Subjects') }}</a></div>
 
 <div class="subject-photo-container">
     <div class="subject-photo-column">
@@ -15,45 +15,45 @@
             <img id="subjectPhoto" style="display:none;">
             {% endif %}
         </div>
-        <label class="photo-upload-btn" for="photoInput">📷 Upload</label>
+        <label class="photo-upload-btn" for="photoInput">{{ _('📷 Upload') }}</label>
         <input type="file" id="photoInput" class="photo-input" accept="image/*" data-change="uploadPhoto">
     </div>
     <div>
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
-            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="margin-left: 0.5rem; text-decoration: none;">✏️ Edit</a>
-            <button data-click="confirmDeleteSubject" class="btn-cms small" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">🗑️ Delete</button>
+            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="margin-left: 0.5rem; text-decoration: none;">{{ _('✏️ Edit') }}</a>
+            <button data-click="confirmDeleteSubject" class="btn-cms small" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">{{ _('🗑️ Delete') }}</button>
         </h1>
         <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             {% if subject.subject_type == 'person' %}
             {% if first_case_id %}
             <button data-click="openOsintModal" class="btn-cms primary small">
-                🔍 OSINT Search
+                {{ _('🔍 OSINT Search') }}
             </button>
             {% else %}
-            <button data-click="openOsintModalNoCase" class="btn-cms primary small" style="opacity: 0.6;" title="Link subject to a case first">
-                🔍 OSINT Search
+            <button data-click="openOsintModalNoCase" class="btn-cms primary small" style="opacity: 0.6;" title="{{ _('Link subject to a case first') }}">
+                {{ _('🔍 OSINT Search') }}
             </button>
             {% endif %}
             <button data-click="checkPolitieData" id="policieCheckBtn" class="btn-cms primary small" style="background: #1e40af;">
-                🌍 Check Interpol
+                {{ _('🌍 Check Interpol') }}
             </button>
             {% endif %}
             {% if subject.subject_type == 'vessel' %}
             <button data-click="checkVessel" id="vesselCheckBtn" class="btn-cms primary small" style="background: #0e7490;">
-                🚢 Check Vessel
+                {{ _('🚢 Check Vessel') }}
             </button>
             {% endif %}
-            {% if subject.photo_path %}
+            {% if subject.photo_path and subject.subject_type == 'person' %}
             <button data-click="encodeFace" id="encodeFaceBtn" class="btn-cms primary small" style="background: #7c3aed;">
-                👤 Encode Face
+                {{ _('👤 Encode Face') }}
             </button>
             <button data-click="searchTinEye" class="btn-cms primary small" style="background: #059669;">
-                🔍 TinEye Search
+                {{ _('🔍 TinEye Search') }}
             </button>
             {% endif %}
             {% if subject.face_encoding %}
-            <span class="badge badge-status-success">✅ Face Encoded</span>
-            <button data-click="deleteFaceEncoding" class="btn-cms small" style="background: #dc2626; padding: 0.3rem 0.6rem;">Remove</button>
+            <span class="badge badge-status-success">{{ _('✅ Face Encoded') }}</span>
+            <button data-click="deleteFaceEncoding" class="btn-cms small" style="background: #dc2626; padding: 0.3rem 0.6rem;">{{ _('Remove') }}</button>
             {% endif %}
         </div>
         <div id="faceStatus" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
@@ -69,23 +69,23 @@
 <div class="card">
     <div class="card-header">
         <h2>
-            {% if subject.subject_type == 'vehicle' %}🚗 Vehicle Details{% elif subject.subject_type == 'vessel' %}🚢 Vessel Details{% else %}Subject Details{% endif %}
+            {% if subject.subject_type == 'vehicle' %}{{ _('🚗 Vehicle Details') }}{% elif subject.subject_type == 'vessel' %}{{ _('🚢 Vessel Details') }}{% else %}{{ _('Subject Details') }}{% endif %}
         </h2>
-        <button data-click="openNetworkModal" class="btn-cms small" style="background: #7c3aed;">🔗 View Relationships</button>
+        <button data-click="openNetworkModal" class="btn-cms small" style="background: #7c3aed;">{{ _('🔗 View Relationships') }}</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
         <div>
             <div class="info-row">
-                <span class="info-label">Type</span>
+                <span class="info-label">{{ _('Type') }}</span>
                 <span class="info-value">{{ subject.subject_type }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Risk Score</span>
+                <span class="info-label">{{ _('Risk Score') }}</span>
                 <span class="info-value">{{ subject.risk_score }}/100</span>
             </div>
             {% if subject.subject_type != 'vehicle' %}
             <div class="info-row" style="flex-direction:column;align-items:stretch;">
-                <span class="info-label">Email(s)</span>
+                <span class="info-label">{{ _('Email(s)') }}</span>
                 <div class="info-value" style="margin-top:0.25rem;">
                     {% set emails = subject.contacts.filter_by(contact_type='email') if subject.contacts else [] %}
                     {% if emails.count() > 0 %}
@@ -93,8 +93,8 @@
                         <div class="contact-row">
                             <span class="icon">✉️</span>
                             <span class="value">{{ c.value|redact_for_viewer }}</span>
-                            {% if c.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% else %}<span></span>{% endif %}
-                            <span class="actions"><button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">✉️ Check</button></span>
+                            {% if c.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
+                            <span class="actions"><button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">{{ _('✉️ Check') }}</button></span>
                             <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                         </div>
                         {% endfor %}
@@ -103,7 +103,7 @@
                             <span class="icon">✉️</span>
                             <span class="value">{{ subject.email|redact_for_viewer }}</span>
                             <span></span>
-                            <span class="actions"><button data-click="emailCheck" data-arg0="{{ subject.email }}" class="btn-cms purple small">✉️ Check</button></span>
+                            <span class="actions"><button data-click="emailCheck" data-arg0="{{ subject.email }}" class="btn-cms purple small">{{ _('✉️ Check') }}</button></span>
                             <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                         </div>
                     {% else %}
@@ -112,7 +112,7 @@
                 </div>
             </div>
             <div class="info-row" style="flex-direction:column;align-items:stretch;">
-                <span class="info-label">Phone(s)</span>
+                <span class="info-label">{{ _('Phone(s)') }}</span>
                 <div class="info-value" style="margin-top:0.25rem;">
                     {% set phones = subject.contacts.filter_by(contact_type='phone') if subject.contacts else [] %}
                     {% if phones.count() > 0 %}
@@ -120,8 +120,8 @@
                         <div class="contact-row">
                             <span class="icon">📞</span>
                             <span class="value">{{ c.value|redact_for_viewer }}</span>
-                            {% if c.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% else %}<span></span>{% endif %}
-                            <span class="actions"><button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">📞 Check</button></span>
+                            {% if c.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
+                            <span class="actions"><button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">{{ _('📞 Check') }}</button></span>
                             <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                         </div>
                         {% endfor %}
@@ -130,7 +130,7 @@
                             <span class="icon">📞</span>
                             <span class="value">{{ subject.phone|redact_for_viewer }}</span>
                             <span></span>
-                            <span class="actions"><button data-click="phoneLookup" data-arg0="{{ subject.phone }}" class="btn-cms purple small">📞 Check</button></span>
+                            <span class="actions"><button data-click="phoneLookup" data-arg0="{{ subject.phone }}" class="btn-cms purple small">{{ _('📞 Check') }}</button></span>
                             <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
                         </div>
                     {% else %}
@@ -141,135 +141,135 @@
             {% endif %}
             {% if subject.subject_type == 'person' %}
             <div class="info-row">
-                <span class="info-label">Date of Birth</span>
+                <span class="info-label">{{ _('Date of Birth') }}</span>
                 <span class="info-value">{{ subject.date_of_birth if subject.date_of_birth else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Place of Birth</span>
+                <span class="info-label">{{ _('Place of Birth') }}</span>
                 <span class="info-value">{{ subject.place_of_birth if subject.place_of_birth else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">ID/Passport Number</span>
+                <span class="info-label">{{ _('ID/Passport Number') }}</span>
                 <span class="info-value">{{ subject.identification_number|redact_for_viewer if subject.identification_number else '-' }}</span>
             </div>
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
             <div class="info-row">
-                <span class="info-label">License Plate (Kenteken)</span>
+                <span class="info-label">{{ _('License Plate (Kenteken)') }}</span>
                 <span class="info-value" style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate|redact_for_viewer if subject.license_plate else '-' }}</span>
                 {% if subject.license_plate %}
-                <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate }}" data-arg1="{{ subject.id }}" class="btn-cms small" style="background: #f59e0b; margin-left: 0.5rem;">🚗 Check RDW</button>
+                <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate }}" data-arg1="{{ subject.id }}" class="btn-cms small" style="background: #f59e0b; margin-left: 0.5rem;">{{ _('🚗 Check RDW') }}</button>
                 {% else %}
-                <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">(Add license plate first)</span>
+                <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">{{ _('(Add license plate first)') }}</span>
                 {% endif %}
             </div>
             <div class="info-row">
-                <span class="info-label">VIN (Chassisnummer)</span>
+                <span class="info-label">{{ _('VIN (Chassisnummer)') }}</span>
                 <span class="info-value">{{ subject.vin|redact_for_viewer if subject.vin else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Merk (Brand)</span>
+                <span class="info-label">{{ _('Merk (Brand)') }}</span>
                 <span class="info-value">{{ subject.brand if subject.brand else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Inrichting (Vehicle Type)</span>
+                <span class="info-label">{{ _('Inrichting (Vehicle Type)') }}</span>
                 <span class="info-value">{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Verzekeringsmaatschappij (Insurance)</span>
+                <span class="info-label">{{ _('Verzekeringsmaatschappij (Insurance)') }}</span>
                 <span class="info-value">{{ subject.insurance_company if subject.insurance_company else '-' }}</span>
             </div>
             
             {% if subject.rdw_data %}
             <div style="margin-top: 1rem; padding: 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px;">
-                <h4 style="margin: 0 0 0.75rem 0; color: #0369a1;">RDW Voertuiggegevens</h4>
+                <h4 style="margin: 0 0 0.75rem 0; color: #0369a1;">{{ _('RDW Voertuiggegevens') }}</h4>
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
                     {% if subject.rdw_data.get('handelsbenaming') %}
-                    <div class="info-row"><span class="info-label">Model (Handelsbenaming)</span><span class="info-value">{{ subject.rdw_data.handelsbenaming }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Model (Handelsbenaming)') }}</span><span class="info-value">{{ subject.rdw_data.handelsbenaming }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('voertuigsoort') %}
-                    <div class="info-row"><span class="info-label">Voertuigsoort</span><span class="info-value">{{ subject.rdw_data.voertuigsoort }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Voertuigsoort') }}</span><span class="info-value">{{ subject.rdw_data.voertuigsoort }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('eerste_kleur') %}
-                    <div class="info-row"><span class="info-label">Kleur (Eerste)</span><span class="info-value">{{ subject.rdw_data.eerste_kleur }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Kleur (Eerste)') }}</span><span class="info-value">{{ subject.rdw_data.eerste_kleur }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('tweede_kleur') %}
-                    <div class="info-row"><span class="info-label">Kleur (Tweede)</span><span class="info-value">{{ subject.rdw_data.tweede_kleur }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Kleur (Tweede)') }}</span><span class="info-value">{{ subject.rdw_data.tweede_kleur }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_deuren') %}
-                    <div class="info-row"><span class="info-label">Aantal Deuren</span><span class="info-value">{{ subject.rdw_data.aantal_deuren }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Aantal Deuren') }}</span><span class="info-value">{{ subject.rdw_data.aantal_deuren }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_zitplaatsen') %}
-                    <div class="info-row"><span class="info-label">Aantal Zitplaatsen</span><span class="info-value">{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Aantal Zitplaatsen') }}</span><span class="info-value">{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('cilinderinhoud') %}
-                    <div class="info-row"><span class="info-label">Cilinderinhoud (cc)</span><span class="info-value">{{ subject.rdw_data.cilinderinhoud }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Cilinderinhoud (cc)') }}</span><span class="info-value">{{ subject.rdw_data.cilinderinhoud }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_cilinders') %}
-                    <div class="info-row"><span class="info-label">Aantal Cilinders</span><span class="info-value">{{ subject.rdw_data.aantal_cilinders }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Aantal Cilinders') }}</span><span class="info-value">{{ subject.rdw_data.aantal_cilinders }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('massa_ledig') %}
-                    <div class="info-row"><span class="info-label">Massa Ledig (kg)</span><span class="info-value">{{ subject.rdw_data.massa_ledig }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Massa Ledig (kg)') }}</span><span class="info-value">{{ subject.rdw_data.massa_ledig }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('maximum_massa') %}
-                    <div class="info-row"><span class="info-label">Maximum Massa (kg)</span><span class="info-value">{{ subject.rdw_data.maximum_massa }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Maximum Massa (kg)') }}</span><span class="info-value">{{ subject.rdw_data.maximum_massa }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('vervaldatum_apk') %}
-                    <div class="info-row"><span class="info-label">APK Vervaldatum</span><span class="info-value">{{ subject.rdw_data.vervaldatum_apk }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('APK Vervaldatum') }}</span><span class="info-value">{{ subject.rdw_data.vervaldatum_apk }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('wam_verzekerd') %}
-                    <div class="info-row"><span class="info-label">WAM Verzekerd</span>
+                    <div class="info-row"><span class="info-label">{{ _('WAM Verzekerd') }}</span>
                         <span class="info-value" style="color: {% if subject.rdw_data.wam_verzekerd == 'Ja' %}#16a34a{% else %}#dc2626{% endif %};">
                             {{ subject.rdw_data.wam_verzekerd }}
                         </span>
                     </div>
                     {% endif %}
                     {% if subject.rdw_data.get('taxi_indicator') %}
-                    <div class="info-row"><span class="info-label">Taxi</span><span class="info-value">{{ subject.rdw_data.taxi_indicator }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Taxi') }}</span><span class="info-value">{{ subject.rdw_data.taxi_indicator }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('export_indicator') %}
-                    <div class="info-row"><span class="info-label">Geexporteerd</span><span class="info-value">{{ subject.rdw_data.export_indicator }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Geexporteerd') }}</span><span class="info-value">{{ subject.rdw_data.export_indicator }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('europese_voertuigcategorie') %}
-                    <div class="info-row"><span class="info-label">EU Categorie</span><span class="info-value">{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('EU Categorie') }}</span><span class="info-value">{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('zuinigheidsclassificatie') %}
-                    <div class="info-row"><span class="info-label">Zuinigheidsclassificatie</span><span class="info-value">{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Zuinigheidsclassificatie') }}</span><span class="info-value">{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('catalogusprijs') %}
-                    <div class="info-row"><span class="info-label">Catalogusprijs (EUR)</span><span class="info-value">€{{ subject.rdw_data.catalogusprijs }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Catalogusprijs (EUR)') }}</span><span class="info-value">€{{ subject.rdw_data.catalogusprijs }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('datum_eerste_toelating') %}
-                    <div class="info-row"><span class="info-label">Datum Eerste Toelating</span><span class="info-value">{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Datum Eerste Toelating') }}</span><span class="info-value">{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
                     {% endif %}
                 </div>
                 <div style="margin-top: 0.75rem;">
-                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="background: #0ea5e9; text-decoration: none;">✏️ Edit RDW Data</a>
+                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="background: #0ea5e9; text-decoration: none;">{{ _('✏️ Edit RDW Data') }}</a>
                 </div>
             </div>
             {% endif %}
             {% endif %}
             {% if subject.subject_type == 'vessel' %}
             <div class="info-row">
-                <span class="info-label">IMO Nummer</span>
+                <span class="info-label">{{ _('IMO Nummer') }}</span>
                 <span class="info-value">{{ subject.imo_number if subject.imo_number else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">MMSI</span>
+                <span class="info-label">{{ _('MMSI') }}</span>
                 <span class="info-value">{{ subject.mmsi if subject.mmsi else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">ENI (Binnenvaart)</span>
+                <span class="info-label">{{ _('ENI (Binnenvaart)') }}</span>
                 <span class="info-value">{{ subject.eni_number if subject.eni_number else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Vlag (Flag State)</span>
+                <span class="info-label">{{ _('Vlag (Flag State)') }}</span>
                 <span class="info-value">{{ subject.vessel_nationality if subject.vessel_nationality else '-' }}</span>
             </div>
 
             {% if subject.vessel_data and subject.vessel_data is mapping %}
             <div style="margin-top: 1rem; padding: 1rem; background: #ecfeff; border: 1px solid #0e7490; border-radius: 8px;">
-                <h4 style="margin: 0 0 0.75rem 0; color: #0e7490;">🚢 Vessel Data</h4>
+                <h4 style="margin: 0 0 0.75rem 0; color: #0e7490;">{{ _('🚢 Vessel Data') }}</h4>
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
                     {% for source_key, source_val in subject.vessel_data.items() %}
                         {% if source_val is mapping %}
@@ -282,13 +282,13 @@
                     {% endfor %}
                 </div>
                 <div style="margin-top: 0.75rem;">
-                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">✏️ Edit Vessel Data</a>
+                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">{{ _('✏️ Edit Vessel Data') }}</a>
                 </div>
             </div>
             {% endif %}
             {% endif %}
             <div class="info-row" style="flex-direction:column;align-items:stretch;">
-                <span class="info-label">Address(es)</span>
+                <span class="info-label">{{ _('Address(es)') }}</span>
                 <div class="info-value" style="margin-top:0.25rem;">
                     {% if subject.addresses.count() > 0 %}
                         {% for addr in subject.addresses %}
@@ -296,16 +296,16 @@
                             <div class="address-header">
                                 <div>
                                     <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
-                                    {% if addr.is_primary %}<span class="badge badge-primary">PRIMARY</span>{% endif %}
-                                    {% if addr.kadaster_verified %}<span class="badge badge-kadaster">✓ KADASTER</span>{% endif %}
+                                    {% if addr.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}
+                                    {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ KADASTER') }}</span>{% endif %}
                                     <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
                                         {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
                                         {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
                                     </div>
                                 </div>
                                 <div class="btn-group" style="margin:0;">
-                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;">🏛 Kadaster</button>
-                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#b91c1c;">🚔 Politiebureau</button>
+                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;">{{ _('🏛 Kadaster') }}</button>
+                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#b91c1c;">{{ _('🚔 Politiebureau') }}</button>
                                 </div>
                             </div>
                             <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
@@ -321,7 +321,7 @@
         </div>
         {% if linked_cases %}
         <div>
-            <h4 style="margin: 0 0 0.5rem 0;">Linked Cases</h4>
+            <h4 style="margin: 0 0 0.5rem 0;">{{ _('Linked Cases') }}</h4>
             {% for case in linked_cases %}
             <div class="case-item">
                 <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a>
@@ -335,43 +335,46 @@
 <!-- Comments section for subject notes (with timestamps & authors) -->
 <div class="card subject-comments-section">
     <div class="card-header">
-        <h2>📝 Notities & Comments <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h2>
-        <button data-click="loadSubjectComments" class="btn-cms small">🔄 Refresh</button>
+        <h2>{{ _('📝 Notities & Comments') }} <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h2>
+        <div style="display:flex;gap:0.5rem;">
+            <button data-click="addSubjectComment" class="btn-cms small" style="background:#059669;">{{ _('Add Note') }}</button>
+            <button data-click="loadSubjectComments" class="btn-cms small">{{ _('🔄 Refresh') }}</button>
+        </div>
     </div>
     <div class="comment-form">
-        <textarea id="newSubjectComment" placeholder="Add a note or comment about this subject..." style="width:100%;padding:0.75rem;border:1px solid var(--border-input);border-radius:8px;resize:vertical;min-height:80px;background:var(--bg-card);color:var(--text-primary);"></textarea>
+        <textarea id="newSubjectComment" placeholder="{{ _('Add a note or comment about this subject...') }}" style="width:100%;padding:0.75rem;border:1px solid var(--border-input);border-radius:8px;resize:vertical;min-height:80px;background:var(--bg-card);color:var(--text-primary);"></textarea>
         <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap;">
             <select id="subjectCommentType" style="width:auto;padding:0.4rem;border:1px solid var(--border-input);border-radius:4px;background:var(--bg-card);color:var(--text-primary);">
-                <option value="note">Note</option>
-                <option value="discussion">Discussion</option>
-                <option value="update">Update</option>
-                <option value="phone">📞 Phone Call</option>
-                <option value="email">📧 Email</option>
-                <option value="meeting">🤝 Meeting</option>
+                <option value="note">📝 {{ _('Note') }}</option>
+                <option value="discussion">💬 {{ _('Discussion') }}</option>
+                <option value="update">🔄 {{ _('Update') }}</option>
+                <option value="phone">{{ _('📞 Phone Call') }}</option>
+                <option value="email">{{ _('📧 Email') }}</option>
+                <option value="meeting">{{ _('🤝 Meeting') }}</option>
+                <option value="report">📋 {{ _('Proces-verbaal') }}</option>
             </select>
-            <label style="font-size:0.875rem;display:flex;align-items:center;gap:0.25rem;"><input type="checkbox" id="subjectCommentPinned"> Pin</label>
-            <button data-click="addSubjectComment" class="btn-cms small" style="background:#059669;">Add Note</button>
+            <label style="font-size:0.875rem;display:flex;align-items:center;gap:0.25rem;"><input type="checkbox" id="subjectCommentPinned"> {{ _('Pin') }}</label>
         </div>
     </div>
     <div id="subjectCommentsList" style="margin-top:1rem;">
-        <p style="color: var(--text-muted); text-align: center; padding: 1rem;">Loading notes...</p>
+        <p style="color: var(--text-muted); text-align: center; padding: 1rem;">{{ _('Loading notes...') }}</p>
     </div>
 </div>
 
 <!-- Social Media IDs Section -->
 <div class="card">
     <div class="card-header">
-        <h2>Social Media IDs</h2>
+        <h2>{{ _('Social Media IDs') }}</h2>
         <div class="btn-group">
-            <button data-click="bulkExtractSocialIds" class="btn-cms small" style="background: #059669;" id="bulkExtractBtn">🔍 Bulk Extract from Findings</button>
-            <button data-click="openAddSocialIdModal" class="btn-cms small" style="background: #8b5cf6;">+ Add ID</button>
+            <button data-click="bulkExtractSocialIds" class="btn-cms small" style="background: #059669;" id="bulkExtractBtn">{{ _('🔍 Bulk Extract from Findings') }}</button>
+            <button data-click="openAddSocialIdModal" class="btn-cms small" style="background: #8b5cf6;">{{ _('+ Add ID') }}</button>
         </div>
     </div>
     <div id="socialIdsList">
         {% if subject.social_media_ids and subject.social_media_ids|length > 0 %}
         <table style="width: 100%;">
             <thead>
-                <tr><th>Platform</th><th>ID/Value</th><th>Actions</th></tr>
+                <tr><th>{{ _('Platform') }}</th><th>{{ _('ID/Value') }}</th><th>{{ _('Actions') }}</th></tr>
             </thead>
             <tbody>
                 {% for platform, data in subject.social_media_ids.items() %}
@@ -386,8 +389,8 @@
                         {% endif %}
                     </td>
                     <td>
-                        <button data-click="editSocialId" data-arg0="{{ platform }}" class="btn-cms small" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">Edit</button>
-                        <button data-click="deleteSocialId" data-arg0="{{ platform }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">Delete</button>
+                        <button data-click="editSocialId" data-arg0="{{ platform }}" class="btn-cms small" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">{{ _('Edit') }}</button>
+                        <button data-click="deleteSocialId" data-arg0="{{ platform }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">{{ _('Delete') }}</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -396,9 +399,9 @@
         {% else %}
         <div class="empty-state">
             <div class="icon">📭</div>
-            <p>No social media IDs recorded yet.</p>
+            <p>{{ _('No social media IDs recorded yet.') }}</p>
         </div>
-        <p style="color: #888; font-size: 0.875rem;">Tip: Click "Extract ID" on any URL in findings to automatically extract and save social media IDs.</p>
+        <p style="color: #888; font-size: 0.875rem;">{{ _('Tip: Click "Extract ID" on any URL in findings to automatically extract and save social media IDs.') }}</p>
         {% endif %}
     </div>
 </div>
@@ -406,23 +409,23 @@
 <!-- Social Accounts (Usernames) Section -->
 <div class="card">
     <div class="card-header">
-        <h2>🌐 Social Accounts (Usernames)</h2>
-        <button data-click="openAddSocialAccountModal" class="btn-cms small" style="background: #8b5cf6;">+ Add Username</button>
+        <h2>{{ _('🌐 Social Accounts (Usernames)') }}</h2>
+        <button data-click="openAddSocialAccountModal" class="btn-cms small" style="background: #8b5cf6;">{{ _('+ Add Username') }}</button>
     </div>
     <div id="socialAccountsList">
         {% if subject.social_accounts and subject.social_accounts.count() > 0 %}
         <table style="width: 100%;">
             <thead>
-                <tr><th>Platform</th><th>Username</th><th>URL</th><th>Actions</th></tr>
+                <tr><th>{{ _('Platform') }}</th><th>{{ _('Username') }}</th><th>{{ _('URL') }}</th><th>{{ _('Actions') }}</th></tr>
             </thead>
             <tbody>
                 {% for acct in subject.social_accounts %}
                 <tr>
                     <td style="text-transform: capitalize;">{{ acct.platform }}</td>
                     <td><strong>{{ acct.username }}</strong></td>
-                    <td>{% if acct.url %}<a href="{{ acct.url }}" target="_blank" style="font-size:0.8rem;">🔗 link</a>{% else %}-{% endif %}</td>
+                    <td>{% if acct.url %}<a href="{{ acct.url }}" target="_blank" style="font-size:0.8rem;">{{ _('🔗 link') }}</a>{% else %}-{% endif %}</td>
                     <td>
-                        <button data-click="deleteSocialAccount" data-arg0="{{ acct.id }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px;">Delete</button>
+                        <button data-click="deleteSocialAccount" data-arg0="{{ acct.id }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px;">{{ _('Delete') }}</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -431,9 +434,9 @@
         {% else %}
         <div class="empty-state">
             <div class="icon">📭</div>
-            <p>No social accounts recorded yet.</p>
+            <p>{{ _('No social accounts recorded yet.') }}</p>
         </div>
-        <p style="color: #888; font-size: 0.875rem;">Tip: Found a username during OSINT search? Save it here so you can search by it later.</p>
+        <p style="color: #888; font-size: 0.875rem;">{{ _('Tip: Found a username during OSINT search? Save it here so you can search by it later.') }}</p>
         {% endif %}
     </div>
 </div>
@@ -441,16 +444,16 @@
 <!-- Username Search Section -->
 <div class="card">
     <div class="card-header">
-        <h2>🔍 Username Search</h2>
+        <h2>{{ _('🔍 Username Search') }}</h2>
         <span id="usageBadge" style="font-size:0.75rem;color:var(--text-secondary);display:none;"></span>
     </div>
     <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
-        <input type="text" id="usernameSearchInput" placeholder="Enter username..." style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
-        <button data-click="searchUsername" class="btn-cms small" style="background:#8b5cf6;">🔍 Check</button>
+        <input type="text" id="usernameSearchInput" placeholder="{{ _('Enter username...') }}" style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
+        <button data-click="searchUsername" class="btn-cms small" style="background:#8b5cf6;">{{ _('🔍 Check') }}</button>
     </div>
     <div id="usernameResults"></div>
     <div id="usernameSaveBar" style="display:none; margin-top: 0.75rem;">
-        <button data-click="saveUsernameFindings" class="btn-cms small" style="background:#059669;" id="saveUsernameBtn">📥 Save Selected as Findings (<span id="usernameSelectedCount">0</span>)</button>
+        <button data-click="saveUsernameFindings" class="btn-cms small" style="background:#059669;" id="saveUsernameBtn">{{ _('📥 Save Selected as Findings') }} (<span id="usernameSelectedCount">0</span>)</button>
     </div>
 </div>
 
@@ -458,40 +461,40 @@
 <div id="addSocialAccountModal" class="modal">
     <div class="modal-content" style="max-width: 400px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">Add Social Account</h2>
+            <h2 style="margin: 0;">{{ _('Add Social Account') }}</h2>
             <span data-click="closeAddSocialAccountModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
         </div>
         <form id="addSocialAccountForm" data-submit="saveSocialAccount">
             <div class="form-group">
-                <label for="saPlatform">Platform</label>
+                <label for="saPlatform">{{ _('Platform') }}</label>
                 <select id="saPlatform" style="width: 100%; padding: 0.5rem;">
-                    <option value="twitter">Twitter/X</option>
-                    <option value="facebook">Facebook</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="linkedin">LinkedIn</option>
-                    <option value="tiktok">TikTok</option>
-                    <option value="reddit">Reddit</option>
-                    <option value="youtube">YouTube</option>
-                    <option value="github">GitHub</option>
-                    <option value="telegram">Telegram</option>
-                    <option value="signal">Signal</option>
-                    <option value="discord">Discord</option>
-                    <option value="snapchat">Snapchat</option>
-                    <option value="pinterest">Pinterest</option>
-                    <option value="other">Other</option>
+                    <option value="twitter">{{ _('Twitter/X') }}</option>
+                    <option value="facebook">{{ _('Facebook') }}</option>
+                    <option value="instagram">{{ _('Instagram') }}</option>
+                    <option value="linkedin">{{ _('LinkedIn') }}</option>
+                    <option value="tiktok">{{ _('TikTok') }}</option>
+                    <option value="reddit">{{ _('Reddit') }}</option>
+                    <option value="youtube">{{ _('YouTube') }}</option>
+                    <option value="github">{{ _('GitHub') }}</option>
+                    <option value="telegram">{{ _('Telegram') }}</option>
+                    <option value="signal">{{ _('Signal') }}</option>
+                    <option value="discord">{{ _('Discord') }}</option>
+                    <option value="snapchat">{{ _('Snapchat') }}</option>
+                    <option value="pinterest">{{ _('Pinterest') }}</option>
+                    <option value="other">{{ _('Other') }}</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="saUsername">Username</label>
-                <input type="text" id="saUsername" style="width: 100%; padding: 0.5rem;" placeholder="@username or profile name" required>
+                <label for="saUsername">{{ _('Username') }}</label>
+                <input type="text" id="saUsername" style="width: 100%; padding: 0.5rem;" placeholder="{{ _('@username or profile name') }}" required>
             </div>
             <div class="form-group">
-                <label for="saUrl">Profile URL (optional)</label>
+                <label for="saUrl">{{ _('Profile URL (optional)') }}</label>
                 <input type="url" id="saUrl" style="width: 100%; padding: 0.5rem;" placeholder="https://...">
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button type="submit" class="btn-sm" style="background: #059669;">Save</button>
-                <button type="button" data-click="closeAddSocialAccountModal" class="btn-sm" style="background: #666;">Cancel</button>
+                <button type="submit" class="btn-sm" style="background: #059669;">{{ _('Save') }}</button>
+                <button type="button" data-click="closeAddSocialAccountModal" class="btn-sm" style="background: #666;">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -501,34 +504,34 @@
 <div id="addSocialIdModal" class="modal">
     <div class="modal-content" style="max-width: 400px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;" id="socialIdModalTitle">Add Social Media ID</h2>
+            <h2 style="margin: 0;" id="socialIdModalTitle">{{ _('Add Social Media ID') }}</h2>
             <span data-click="closeAddSocialIdModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
         </div>
         <form id="addSocialIdForm">
             <div class="form-group">
-                <label for="socialPlatform">Platform</label>
+                <label for="socialPlatform">{{ _('Platform') }}</label>
                 <select id="socialPlatform" style="width: 100%; padding: 0.5rem;">
-                    <option value="facebook">Facebook</option>
-                    <option value="vk">VK</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="twitter">Twitter/X</option>
-                    <option value="linkedin">LinkedIn</option>
-                    <option value="tiktok">TikTok</option>
-                    <option value="reddit">Reddit</option>
-                    <option value="other">Other</option>
+                    <option value="facebook">{{ _('Facebook') }}</option>
+                    <option value="vk">{{ _('VK') }}</option>
+                    <option value="instagram">{{ _('Instagram') }}</option>
+                    <option value="twitter">{{ _('Twitter/X') }}</option>
+                    <option value="linkedin">{{ _('LinkedIn') }}</option>
+                    <option value="tiktok">{{ _('TikTok') }}</option>
+                    <option value="reddit">{{ _('Reddit') }}</option>
+                    <option value="other">{{ _('Other') }}</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="socialId">ID / Username</label>
-                <input type="text" id="socialId" style="width: 100%; padding: 0.5rem;" placeholder="Enter ID or username">
+                <label for="socialId">{{ _('ID / Username') }}</label>
+                <input type="text" id="socialId" style="width: 100%; padding: 0.5rem;" placeholder="{{ _('Enter ID or username') }}">
             </div>
             <div class="form-group">
-                <label for="socialUrl">Profile URL (optional)</label>
+                <label for="socialUrl">{{ _('Profile URL (optional)') }}</label>
                 <input type="url" id="socialUrl" style="width: 100%; padding: 0.5rem;" placeholder="https://...">
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button type="button" data-click="saveSocialId" class="btn-sm" style="background: #059669;">Save</button>
-                <button type="button" data-click="closeAddSocialIdModal" class="btn-sm" style="background: #666;">Cancel</button>
+                <button type="button" data-click="saveSocialId" class="btn-sm" style="background: #059669;">{{ _('Save') }}</button>
+                <button type="button" data-click="closeAddSocialIdModal" class="btn-sm" style="background: #666;">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -538,45 +541,45 @@
 <div id="osintModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>OSINT Person Search</h2>
+            <h2>{{ _('OSINT Person Search') }}</h2>
             <span class="close" data-click="closeOsintModal">&times;</span>
         </div>
         
         <div id="osintSearchForm">
-            <p style="margin-bottom: 1rem; color: var(--text-secondary);">Search for information about <strong>{{ subject.name }}</strong></p>
+            <p style="margin-bottom: 1rem; color: var(--text-secondary);">{{ _('Search for information about') }} <strong>{{ subject.name }}</strong></p>
             <div id="osintActions">
-                <button data-click="startOsintSearch" class="btn-cms success small">Search</button>
+                <button data-click="startOsintSearch" class="btn-cms success small">{{ _('Search') }}</button>
             </div>
         </div>
         
         <div id="osintSearching" style="display: none; text-align: center; padding: 2rem;">
             <div class="searching">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-                <p style="font-size: 1.25rem; font-weight: 600;">Searching...</p>
+                <p style="font-size: 1.25rem; font-weight: 600;">{{ _('Searching...') }}</p>
             </div>
             <div style="margin-top: 1.5rem;">
-                <button data-click="cancelOsintSearch" class="btn-cms danger small">Cancel Search</button>
+                <button data-click="cancelOsintSearch" class="btn-cms danger small">{{ _('Cancel Search') }}</button>
             </div>
         </div>
         
         <div id="osintResults" style="display: none;">
             <div class="card-header">
-                <h2 style="margin: 0; font-size: 1.1rem;">Search Results</h2>
+                <h2 style="margin: 0; font-size: 1.1rem;">{{ _('Search Results') }}</h2>
                 <span id="resultsCount"></span>
             </div>
             
             <div class="select-all-row" style="margin-bottom: 0.5rem;">
                 <label>
                     <input type="checkbox" id="selectAllResults" data-change="toggleAllResults">
-                    <strong>Select All</strong>
+                    <strong>{{ _('Select All') }}</strong>
                 </label>
             </div>
             
             <div id="resultsList" style="max-height: 400px; overflow-y: auto; margin-bottom: 0.5rem;"></div>
             <div style="display: flex; gap: 0.5rem; justify-content: flex-end; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
-                <button data-click="closeOsintModal" class="btn-cms">Close</button>
-                <button data-click="saveSelectedAsSocialAccounts" class="btn-cms primary" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
-                <button data-click="addSelectedFindings" class="btn-cms success small" id="addFindingsBtn" disabled>Add Selected to Findings (<span id="selectedCount">0</span>)</button>
+                <button data-click="closeOsintModal" class="btn-cms">{{ _('Close') }}</button>
+                <button data-click="saveSelectedAsSocialAccounts" class="btn-cms primary" id="saveSocialBtn" disabled>{{ _('🌐 Save as Social Accounts') }} (<span id="socialSelectedCount">0</span>)</button>
+                <button data-click="addSelectedFindings" class="btn-cms success small" id="addFindingsBtn" disabled>{{ _('Add Selected to Findings') }} (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
         
@@ -590,7 +593,7 @@
 <div id="networkModal" class="modal">
     <div class="modal-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">Subject Network</h2>
+            <h2 style="margin: 0;">{{ _('Subject Network') }}</h2>
             <span data-click="closeNetworkModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
         </div>
         
@@ -601,30 +604,30 @@
         <div id="networkSvg" class="network-container"></div>
         
         <div class="relation-list">
-            <h4>Direct Relationships</h4>
-            <div id="relationshipsList">Loading...</div>
+            <h4>{{ _('Direct Relationships') }}</h4>
+            <div id="relationshipsList">{{ _('Loading...') }}</div>
         </div>
         
         <div style="margin-top: 1rem;">
-            <button data-click="openAddRelationForm" class="btn-sm" style="background: #059669;">+ Add Relationship</button>
+            <button data-click="openAddRelationForm" class="btn-sm" style="background: #059669;">{{ _('+ Add Relationship') }}</button>
         </div>
         
         <div id="addRelationForm" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
             <select id="relationSubject" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
-                <option value="">Select a subject...</option>
+                <option value="">{{ _('Select a subject...') }}</option>
             </select>
             <select id="relationType" style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;">
-                <option value="family">Family Member</option>
-                <option value="business">Business Partner</option>
-                <option value="colleague">Colleague</option>
-                <option value="associate">Associate</option>
-                <option value="neighbor">Neighbor</option>
-                <option value="related">Related</option>
+                <option value="family">{{ _('Family Member') }}</option>
+                <option value="business">{{ _('Business Partner') }}</option>
+                <option value="colleague">{{ _('Colleague') }}</option>
+                <option value="associate">{{ _('Associate') }}</option>
+                <option value="neighbor">{{ _('Neighbor') }}</option>
+                <option value="related">{{ _('Related') }}</option>
             </select>
             <div id="relationError" style="color:#dc2626;font-size:0.85rem;margin-bottom:0.5rem;word-break:break-all;"></div>
             <div style="display: flex; gap: 0.5rem;">
-                <button data-click="addRelationship" class="btn-sm" style="background: #059669;">Save</button>
-                <button data-click="closeAddRelationForm" class="btn-sm" style="background: var(--text-muted);">Cancel</button>
+                <button data-click="addRelationship" class="btn-sm" style="background: #059669;">{{ _('Save') }}</button>
+                <button data-click="closeAddRelationForm" class="btn-sm" style="background: var(--text-muted);">{{ _('Cancel') }}</button>
             </div>
         </div>
     </div>
@@ -633,7 +636,7 @@
 <!-- Findings Section -->
 <div class="card" id="findingsSection">
     <div class="card-header">
-        <h2>📋 Bevindingen (Findings)</h2>
+        <h2>{{ _('📋 Bevindingen (Findings)') }}</h2>
     </div>
     <div id="findingsList">
         {% if findings and findings|length > 0 %}
@@ -658,18 +661,18 @@
             {% if findings_pagination and findings_pagination.pages > 1 %}
             <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
                 {% if findings_pagination.has_prev %}
-                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">Previous</a>
+                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('Previous') }}</a>
                 {% endif %}
-                <span style="padding: 0.5rem 1rem;">Page {{ findings_pagination.page }} of {{ findings_pagination.pages }}</span>
+                <span style="padding: 0.5rem 1rem;">{{ _('Page') }} {{ findings_pagination.page }} {{ _('of') }} {{ findings_pagination.pages }}</span>
                 {% if findings_pagination.has_next %}
-                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">Next</a>
+                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next') }}</a>
                 {% endif %}
             </div>
             {% endif %}
         {% else %}
         <div class="empty-state">
             <div class="icon">📭</div>
-            <p>Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan.</p>
+            <p>{{ _('Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan.') }}</p>
         </div>
         {% endif %}
     </div>
@@ -734,28 +737,28 @@
             displayRelationships(data);
         })
         .catch(err => {
-            alert('Error: ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
 
     function bulkExtractSocialIds() {
-        if (!confirm('Extract social media IDs from all findings linked to this subject? This may take a while.')) return;
+        if (!confirm('{{ _("Extract social media IDs from all findings linked to this subject? This may take a while.")|replace("'", "\\'")|safe }}')) return;
         const btn = document.getElementById('bulkExtractBtn');
         btn.disabled = true;
-        btn.textContent = '⏳ Extracting...';
+        btn.textContent = '{{ _("⏳ Extracting...")|replace("'", "\\'")|safe }}';
         fetch('/cms/subjects/{{ subject.id }}/bulk-extract-social-ids', { method: 'POST' })
         .then(r => r.json())
         .then(data => {
             btn.disabled = false;
-            btn.textContent = '🔍 Bulk Extract from Findings';
-            if (data.error) { alert('Error: ' + data.error); return; }
+            btn.textContent = '{{ _("🔍 Bulk Extract from Findings")|replace("'", "\\'")|safe }}';
+            if (data.error) { alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error); return; }
             alert(data.message);
             if (data.found > 0) location.reload();
         })
         .catch(err => {
             btn.disabled = false;
-            btn.textContent = '🔍 Bulk Extract from Findings';
-            alert('Error: ' + err.message);
+            btn.textContent = '{{ _("🔍 Bulk Extract from Findings")|replace("'", "\\'")|safe }}';
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
     
@@ -809,7 +812,7 @@
         const directEdges = data.edges.filter(e => e.source === mainNode?.id || e.target === mainNode?.id);
         
         if (!directEdges.length) {
-            list.innerHTML = '<p style="color: var(--text-muted);">No relationships yet.</p>';
+            list.innerHTML = '<p style="color: var(--text-muted);">{{ _("No relationships yet.") }}</p>';
             return;
         }
         
@@ -819,8 +822,8 @@
             const other = data.nodes.find(n => n.id === otherId);
             if (other) {
                 html += `<div class="relation-item">
-                    <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || 'related'}</span></div>
-                    <button data-click="removeRelationship" data-arg0="${other.id}" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">Remove</button>
+                    <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || '{{ _("related")|replace("'", "\\'")|safe }}'}</span></div>
+                    <button data-click="removeRelationship" data-arg0="${other.id}" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">{{ _('Remove') }}</button>
                 </div>`;
             }
         });
@@ -834,17 +837,17 @@
         if (errDiv) errDiv.textContent = '';
         
         if (!form || !select) {
-            if (errDiv) errDiv.textContent = 'Form elements not found! Contact admin.';
+            if (errDiv) errDiv.textContent = '{{ _("Form elements not found! Contact admin.")|replace("'", "\\'")|safe }}';
             return;
         }
         
         form.style.display = 'block';
-        select.innerHTML = '<option value="">Loading...</option>';
+        select.innerHTML = '<option value="">{{ _("Loading...") }}</option>';
         
         fetch("{{ url_for('cms.subjects') }}?format=json")
         .then(r => r.json())
         .then(data => {
-            select.innerHTML = '<option value="">Select a subject...</option>';
+            select.innerHTML = '<option value="">{{ _("Select a subject...") }}</option>';
             const subs = data.subjects || [];
             const currentId = {{ subject.id|tojson }};
             let foundOther = false;
@@ -855,12 +858,12 @@
                 }
             });
             if (!foundOther) {
-                select.innerHTML = '<option value="">No other subjects available</option>';
+                select.innerHTML = '<option value="">{{ _("No other subjects available") }}</option>';
             }
         })
         .catch(err => {
-            select.innerHTML = '<option value="">Error loading subjects</option>';
-            if (errDiv) errDiv.textContent = 'Failed to load subjects list: ' + err.message;
+            select.innerHTML = '<option value="">{{ _("Error loading subjects") }}</option>';
+            if (errDiv) errDiv.textContent = '{{ _("Failed to load subjects list:")|replace("'", "\\'")|safe }} ' + err.message;
         });
     }
     
@@ -871,7 +874,7 @@
         const relType = document.getElementById('relationType').value;
         const errDiv = document.getElementById('relationError');
         errDiv.textContent = '';
-        if (!relatedId) { errDiv.textContent = 'Select a subject'; return; }
+        if (!relatedId) { errDiv.textContent = '{{ _("Select a subject")|replace("'", "\\'")|safe }}'; return; }
         
         fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -879,24 +882,24 @@
         })
         .then(r => r.json().then(data => ({ status: r.status, data: data })))
         .then(({ status, data }) => {
-            if (data.error) errDiv.textContent = 'Error: ' + data.error;
+            if (data.error) errDiv.textContent = '{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error;
             else { closeAddRelationForm(); loadNetwork(); }
         })
-        .catch(err => { errDiv.textContent = 'Network error: ' + err.message; });
+        .catch(err => { errDiv.textContent = '{{ _("Network error:")|replace("'", "\\'")|safe }} ' + err.message; });
     }
     
     function removeRelationship(btn, relatedId) {
-        if (!confirm('Remove this relationship?')) return;
+        if (!confirm('{{ _("Remove this relationship?")|replace("'", "\\'")|safe }}')) return;
         fetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ related_subject_id: relatedId })
         })
         .then(r => r.json().then(data => ({ status: r.status, data: data })))
         .then(({ status, data }) => {
-            if (data.error) alert('Error: ' + data.error);
+            if (data.error) alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
             else loadNetwork();
         })
-        .catch(err => alert('Network error: ' + err.message));
+        .catch(err => alert('{{ _("Network error:")|replace("'", "\\'")|safe }} ' + err.message));
     }
     
     document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });
@@ -904,14 +907,14 @@
     // RDW Vehicle Check Functions
     function checkRDWVehicle(btn, kenteken, subjectId) {
         if (!kenteken) {
-            alert('No license plate (kenteken) available for this vehicle.');
+            alert('{{ _("No license plate (kenteken) available for this vehicle.")|replace("'", "\\'")|safe }}');
             return;
         }
         
         const confirmed = confirm(
-            'Check RDW (Dutch Vehicle Authority) data for:\n' +
-            'Kenteken: ' + kenteken + '\n\n' +
-            'This will fetch official vehicle data and offer to update the subject.'
+            '{{ _("Check RDW (Dutch Vehicle Authority) data for:")|replace("'", "\\'")|safe }}\n' +
+            '{{ _("Kenteken:")|replace("'", "\\'")|safe }} ' + kenteken + '\n\n' +
+            '{{ _("This will fetch official vehicle data and offer to update the subject.")|replace("'", "\\'")|safe }}'
         );
         
         if (!confirmed) return;
@@ -924,33 +927,33 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('Error: ' + data.error);
+                alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
                 return;
             }
             
             if (!data.found) {
-                alert('No vehicle found in RDW database for: ' + kenteken);
+                alert('{{ _("No vehicle found in RDW database for:")|replace("'", "\\'")|safe }} ' + kenteken);
                 return;
             }
             
             // Show vehicle data and offer to update
-            let message = 'RDW Data Found:\n\n';
-            message += 'Kenteken: ' + data.kenteken_display + '\n';
-            message += 'Merk: ' + data.merk + '\n';
-            message += 'Model: ' + data.handelsbenaming + '\n';
-            message += 'Type: ' + data.voertuigsoort + '\n';
-            message += 'Inrichting: ' + data.inrichting + '\n';
-            message += 'Kleur: ' + data.kleur + '\n';
-            if (data.vervaldatum_apk) message += 'APK vervalt: ' + data.vervaldatum_apk + '\n';
-            message += 'Verzekerd (WAM): ' + data.wam_verzekerd + '\n';
-            message += '\n\nUpdate subject with this data?';
+            let message = '{{ _("RDW Data Found:")|replace("'", "\\'")|safe }}\n\n';
+            message += '{{ _("Kenteken:")|replace("'", "\\'")|safe }} ' + data.kenteken_display + '\n';
+            message += '{{ _("Merk:")|replace("'", "\\'")|safe }} ' + data.merk + '\n';
+            message += '{{ _("Model:")|replace("'", "\\'")|safe }} ' + data.handelsbenaming + '\n';
+            message += '{{ _("Type:")|replace("'", "\\'")|safe }} ' + data.voertuigsoort + '\n';
+            message += '{{ _("Inrichting:")|replace("'", "\\'")|safe }} ' + data.inrichting + '\n';
+            message += '{{ _("Kleur:")|replace("'", "\\'")|safe }} ' + data.kleur + '\n';
+            if (data.vervaldatum_apk) message += '{{ _("APK vervalt:")|replace("'", "\\'")|safe }} ' + data.vervaldatum_apk + '\n';
+            message += '{{ _("Verzekerd (WAM):")|replace("'", "\\'")|safe }} ' + data.wam_verzekerd + '\n';
+            message += '\n\n{{ _("Update subject with this data?")|replace("'", "\\'")|safe }}';
             
             if (confirm(message)) {
                 updateSubjectFromRDW(data.kenteken);
             }
         })
         .catch(err => {
-            alert('Failed to check RDW: ' + err.message);
+            alert('{{ _("Failed to check RDW:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
     
@@ -963,14 +966,14 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('Error updating: ' + data.error);
+                alert('{{ _("Error updating:")|replace("'", "\\'")|safe }} ' + data.error);
             } else {
-                alert('Subject updated successfully!');
+                alert('{{ _("Subject updated successfully!")|replace("'", "\\'")|safe }}');
                 location.reload();
             }
         })
         .catch(err => {
-            alert('Failed to update: ' + err.message);
+            alert('{{ _("Failed to update:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
 
@@ -989,19 +992,19 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('Error: ' + data.error);
+                alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
             } else {
                 const photoFrame = document.getElementById('photoFrame');
                 const existingImg = photoFrame.querySelector('img');
                 if (existingImg) {
                     existingImg.src = '/static' + data.photo_path + '?t=' + new Date().getTime();
                 } else {
-                    photoFrame.innerHTML = '<img src="/static' + esc(data.photo_path) + '?t=' + esc(new Date().getTime()) + '" alt="Photo">';
+                    photoFrame.innerHTML = '<img src="/static' + esc(data.photo_path) + '?t=' + esc(new Date().getTime()) + '" alt="{{ _("Photo") }}">';
                 }
-                document.querySelector('.photo-upload-btn').textContent = '📷 Change';
+                document.querySelector('.photo-upload-btn').textContent = '{{ _("📷 Change")|replace("'", "\\'")|safe }}';
             }
         })
-        .catch(err => alert('Upload failed: ' + err.message));
+        .catch(err => alert('{{ _("Upload failed:")|replace("'", "\\'")|safe }} ' + err.message));
     }
     
     // Interpol + Politie Data Check
@@ -1013,9 +1016,9 @@
         const subjectName = {{ subject.name|tojson }};
         
         btn.disabled = true;
-        btn.textContent = ' Checking INTERPOL...';
+        btn.textContent = '{{ _("Checking INTERPOL...")|replace("'", "\\'")|safe }}';
         container.style.display = 'block';
-        container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;"> Checking INTERPOL and politie.nl...</div>';
+        container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;">{{ _("Checking INTERPOL and politie.nl...") }}</div>';
         
         fetch('/cms/check-policie-data', {
             method: 'POST',
@@ -1027,7 +1030,7 @@
             _lastInterpolData = data;
             
             if (data.error) {
-                container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> ' + esc(data.error) + '</div>';
+                container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;">{{ _("Error:") }} ' + esc(data.error) + '</div>';
                 return;
             }
             
@@ -1037,50 +1040,50 @@
             const total = wanted.length + missing.length + opsporingen.length;
             
             if (total === 0) {
-                container.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:1rem;color:#166534;"> Geen matches gevonden in INTERPOL data.</div>';
+                container.innerHTML = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:1rem;color:#166534;">{{ _("Geen matches gevonden in INTERPOL data.") }}</div>';
                 return;
             }
             
-            let html = '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:1rem;color:#92400e;font-weight:600;"> ' + esc(total) + ' POTENTIELE MATCH(S) GEVONDEN!</div>';
+            let html = '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:1rem;color:#92400e;font-weight:600;">' + esc(total) + ' {{ _("POTENTIELE MATCH(S) GEVONDEN!") }}</div>';
             
             if (wanted.length > 0) {
-                html += '<h4 style="margin:0 0 0.5rem 0;color:#991b1b;"> Red Notices (Wanted)</h4>';
+                html += '<h4 style="margin:0 0 0.5rem 0;color:#991b1b;">{{ _("Red Notices (Wanted)") }}</h4>';
                 wanted.forEach((p, i) => {
                     html += '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
                     html += '<div><strong style="color:#991b1b;">' + esc(p.name) + '</strong>';
-                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + esc(p.date_of_birth) + '</span>';
-                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + esc(p.nationality) + '</span>';
-                    if (p.charge) html += '<br><span style="color:#666;font-size:0.85rem;">Charge: ' + esc(p.charge) + '</span>';
-                    if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">Issued by: ' + esc(p.issuing_country) + '</span>';
-                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> INTERPOL link</a>';
+                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("DOB:") }} ' + esc(p.date_of_birth) + '</span>';
+                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Nationality:") }} ' + esc(p.nationality) + '</span>';
+                    if (p.charge) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Charge:") }} ' + esc(p.charge) + '</span>';
+                    if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Issued by:") }} ' + esc(p.issuing_country) + '</span>';
+                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("INTERPOL link") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
             
             if (missing.length > 0) {
-                html += '<h4 style="margin:0 0 0.5rem 0;color:#92400e;"> Yellow Notices / Vermist (Missing)</h4>';
+                html += '<h4 style="margin:0 0 0.5rem 0;color:#92400e;">{{ _("Yellow Notices / Vermist (Missing)") }}</h4>';
                 missing.forEach((p, i) => {
                     html += '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
                     html += '<div><strong style="color:#92400e;">' + esc(p.name) + '</strong>';
-                    if (p.source) html += '<br><span style="color:#666;font-size:0.85rem;">Source: ' + esc(p.source) + '</span>';
-                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">DOB: ' + esc(p.date_of_birth) + '</span>';
-                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">Nationality: ' + esc(p.nationality) + '</span>';
-                    if (p.date_missing) html += '<br><span style="color:#666;font-size:0.85rem;">Missing since: ' + esc(p.date_missing) + '</span>';
-                    if (p.place) html += '<br><span style="color:#666;font-size:0.85rem;">Place: ' + esc(p.place) + '</span>';
-                    if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">Info: ' + esc(p.description) + '</span>';
-                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Link</a>';
+                    if (p.source) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Source:") }} ' + esc(p.source) + '</span>';
+                    if (p.date_of_birth) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("DOB:") }} ' + esc(p.date_of_birth) + '</span>';
+                    if (p.nationality) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Nationality:") }} ' + esc(p.nationality) + '</span>';
+                    if (p.date_missing) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Missing since:") }} ' + esc(p.date_missing) + '</span>';
+                    if (p.place) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Place:") }} ' + esc(p.place) + '</span>';
+                    if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Info:") }} ' + esc(p.description) + '</span>';
+                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("Link") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
             
             if (opsporingen.length > 0) {
-                html += '<h4 style="margin:1rem 0 0.5rem 0;color:#1e40af;"> Opsporingsberichten (Politie.nl)</h4>';
+                html += '<h4 style="margin:1rem 0 0.5rem 0;color:#1e40af;">{{ _("Opsporingsberichten (Politie.nl)") }}</h4>';
                 opsporingen.forEach((p, i) => {
                     html += '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
                     html += '<div style="display:flex;gap:0.75rem;">';
@@ -1091,27 +1094,27 @@
                     }
                     html += '<div style="flex:1;min-width:0;">';
                     html += '<strong style="color:#1e40af;">' + esc(p.title) + '</strong>';
-                    if (p.location) html += '<br><span style="color:#666;font-size:0.85rem;"> Locatie: ' + esc(p.location) + '</span>';
-                    if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;"> Datum: ' + esc(p.date) + '</span>';
-                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;"> Bekijk op politie.nl</a>';
+                    if (p.location) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Locatie:") }} ' + esc(p.location) + '</span>';
+                    if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Datum:") }} ' + esc(p.date) + '</span>';
+                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("Bekijk op politie.nl") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;"> Bewaar als bevinding</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
 
             if (data.source === 'politie.nl (fallback)') {
-                html += '<div style="margin-top:0.5rem;font-size:0.8rem;color:#6b7280;font-style:italic;"> INTERPOL API was blocked (Akamai). Results from politie.nl fallback.</div>';
+                html += '<div style="margin-top:0.5rem;font-size:0.8rem;color:#6b7280;font-style:italic;">{{ _("INTERPOL API was blocked (Akamai). Results from politie.nl fallback.") }}</div>';
             }
             
             container.innerHTML = html;
         })
         .catch(err => {
-            container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;"> Failed to check data: ' + esc(err.message) + '</div>';
+            container.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1rem;color:#991b1b;">{{ _("Failed to check data:") }} ' + esc(err.message) + '</div>';
         })
         .finally(() => {
             btn.disabled = false;
-            btn.textContent = ' Check Interpol';
+            btn.textContent = '{{ _("Check Interpol")|replace("'", "\\'")|safe }}';
         });
     }
 
@@ -1123,7 +1126,7 @@
         const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
         
         if (!firstCaseId) {
-            alert('Dit subject is niet gekoppeld aan een zaak. Koppel eerst aan een zaak om bevindingen op te slaan.');
+            alert('{{ _("Dit subject is niet gekoppeld aan een zaak. Koppel eerst aan een zaak om bevindingen op te slaan.")|replace("'", "\\'")|safe }}');
             return;
         }
 
@@ -1134,7 +1137,7 @@
         if (!person) return;
 
         btn.disabled = true;
-        btn.textContent = ' Bezig met opslaan...';
+        btn.textContent = '{{ _("Bezig met opslaan...")|replace("'", "\\'")|safe }}';
 
         fetch('/cms/api/findings/from-interpol', {
             method: 'POST',
@@ -1149,19 +1152,19 @@
         })
         .then(r => {
             if (!r.ok) {
-                return r.json().then(err => { throw new Error(err.error || 'Onbekende fout'); });
+                return r.json().then(err => { throw new Error(err.error || '{{ _("Onbekende fout")|replace("'", "\\'")|safe }}'); });
             }
             return r.json();
         })
         .then(result => {
-            btn.textContent = ' Opgeslagen!';
+            btn.textContent = '{{ _("Opgeslagen!")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
             setTimeout(() => location.reload(), 800);
         })
         .catch(err => {
-            alert('Fout: ' + err.message);
+            alert('{{ _("Fout:")|replace("'", "\\'")|safe }} ' + err.message);
             btn.disabled = false;
-            btn.textContent = ' Bewaar als bevinding';
+            btn.textContent = '{{ _("Bewaar als bevinding")|replace("'", "\\'")|safe }}';
         });
     }
 
@@ -1174,9 +1177,9 @@
         const origText = btn.textContent;
 
         btn.disabled = true;
-        btn.textContent = '🔍 Checking vessel...';
+        btn.textContent = '{{ _("🔍 Checking vessel...")|replace("'", "\\'")|safe }}';
         container.style.display = 'block';
-        container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;">🔍 Looking up vessel data...</div>';
+        container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;">{{ _("🔍 Looking up vessel data...") }}</div>';
 
         fetch('/cms/api/vessel-lookup', {
             method: 'POST',
@@ -1194,14 +1197,14 @@
             _lastVesselData = data;
 
             if (data.error) {
-                container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + esc(data.error) + '</div>';
+                container.innerHTML = '<div style="padding:1rem;color:#dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</div>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                container.innerHTML = '<div style="padding:1rem;color:#f59e0b;">⚠ No vessel data found</div>';
+                container.innerHTML = '<div style="padding:1rem;color:#f59e0b;">{{ _("⚠ No vessel data found") }}</div>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -1211,22 +1214,22 @@
 
             // Unified summary section (shown when ANY source found data)
             html += '<div style="background:linear-gradient(135deg,#0e7490,#0891b2);color:white;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-            html += '<h4 style="margin:0 0 0.75rem 0;">🚢 ' + esc(data.name || 'Unknown') + '</h4>';
+            html += '<h4 style="margin:0 0 0.75rem 0;">🚢 ' + esc(data.name || '{{ _("Unknown")|replace("'", "\\'")|safe }}') + '</h4>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-            html += '<div><strong>Type:</strong> ' + esc(data.ship_type || '-') + '</div>';
-            html += '<div><strong>MMSI:</strong> ' + esc(data.mmsi || '-') + '</div>';
+            html += '<div><strong>{{ _("Type:") }}</strong> ' + esc(data.ship_type || '-') + '</div>';
+            html += '<div><strong>{{ _("MMSI:") }}</strong> ' + esc(data.mmsi || '-') + '</div>';
             if (data.imo) {
-                html += '<div><strong>IMO:</strong> ' + esc(data.imo) + '</div>';
+                html += '<div><strong>{{ _("IMO:") }}</strong> ' + esc(data.imo) + '</div>';
             }
             if (data.flag) {
-                html += '<div><strong>Flag:</strong> ' + esc(data.flag) + '</div>';
+                html += '<div><strong>{{ _("Flag:") }}</strong> ' + esc(data.flag) + '</div>';
             }
             if (data.position) {
-                html += '<div><strong>Positie:</strong> ' + esc(data.position.lat) + ', ' + esc(data.position.lon) +
-                    ' <a href="https://www.openstreetmap.org/?mlat=' + esc(data.position.lat) + '&mlon=' + esc(data.position.lon) + '&zoom=12" target="_blank" style="color:#bae6fd;">📍 Map</a></div>';
+                html += '<div><strong>{{ _("Positie:") }}</strong> ' + esc(data.position.lat) + ', ' + esc(data.position.lon) +
+                    ' <a href="https://www.openstreetmap.org/?mlat=' + esc(data.position.lat) + '&mlon=' + esc(data.position.lon) + '&zoom=12" target="_blank" style="color:#bae6fd;">{{ _("📍 Map") }}</a></div>';
             }
             let srcListSummary = (data.sources || []).join(', ');
-            html += '<div style="grid-column:1/-1;font-size:0.8rem;opacity:0.8;margin-top:0.25rem;">Bronnen: ' + esc(srcListSummary) + '</div>';
+            html += '<div style="grid-column:1/-1;font-size:0.8rem;opacity:0.8;margin-top:0.25rem;">{{ _("Bronnen:") }} ' + esc(srcListSummary) + '</div>';
             html += '</div></div>';
 
             // Per-source detail cards
@@ -1234,16 +1237,16 @@
             if (data.source_data && data.source_data.vesselfinder) {
                 const vf = data.source_data.vesselfinder;
                 html += '<div style="background:#f0f9ff;border:1px solid #3b82f6;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#3b82f6;">🔍 VesselFinder</h4>';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#3b82f6;">{{ _("🔍 VesselFinder") }}</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + esc(vf.name || '-') + '</div>';
-                html += '<div><strong>MMSI:</strong> ' + esc(vf.mmsi || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + esc(vf.imo || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + esc(vf.ship_type || '-') + '</div>';
+                html += '<div><strong>{{ _("Name:") }}</strong> ' + esc(vf.name || '-') + '</div>';
+                html += '<div><strong>{{ _("MMSI:") }}</strong> ' + esc(vf.mmsi || '-') + '</div>';
+                html += '<div><strong>{{ _("IMO:") }}</strong> ' + esc(vf.imo || '-') + '</div>';
+                html += '<div><strong>{{ _("Type:") }}</strong> ' + esc(vf.ship_type || '-') + '</div>';
                 if (vf.position) {
-                    html += '<div style="grid-column:1/-1;"><strong>Position:</strong> ' +
+                    html += '<div style="grid-column:1/-1;"><strong>{{ _("Position:") }}</strong> ' +
                         esc(vf.position.lat) + ', ' + esc(vf.position.lon) +
-                        ' <a href="https://www.openstreetmap.org/?mlat=' + esc(vf.position.lat) + '&mlon=' + esc(vf.position.lon) + '&zoom=12" target="_blank">📍 Map</a></div>';
+                        ' <a href="https://www.openstreetmap.org/?mlat=' + esc(vf.position.lat) + '&mlon=' + esc(vf.position.lon) + '&zoom=12" target="_blank">{{ _("📍 Map") }}</a></div>';
                 }
                 html += '</div></div>';
             }
@@ -1252,20 +1255,20 @@
             if (data.source_data && data.source_data.marineplan) {
                 const mp = data.source_data.marineplan;
                 html += '<div style="background:#ecfeff;border:1px solid #0e7490;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#0e7490;">🛰️ MarinePlan (AIS)</h4>';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#0e7490;">{{ _("🛰️ MarinePlan (AIS)") }}</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + esc(mp.name || '-') + '</div>';
-                html += '<div><strong>MMSI:</strong> ' + esc(mp.mmsi || '-') + '</div>';
-                html += '<div><strong>Callsign:</strong> ' + esc(mp.callsign || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + esc(mp.ship_type || '-') + '</div>';
-                html += '<div><strong>Length:</strong> ' + esc(mp.length || '-') + ' m</div>';
-                html += '<div><strong>Beam:</strong> ' + esc(mp.beam || '-') + ' m</div>';
-                html += '<div><strong>Speed:</strong> ' + esc(mp.speed || '-') + ' km/h</div>';
-                html += '<div><strong>Destination:</strong> ' + esc(mp.destination || '-') + '</div>';
+                html += '<div><strong>{{ _("Name:") }}</strong> ' + esc(mp.name || '-') + '</div>';
+                html += '<div><strong>{{ _("MMSI:") }}</strong> ' + esc(mp.mmsi || '-') + '</div>';
+                html += '<div><strong>{{ _("Callsign:") }}</strong> ' + esc(mp.callsign || '-') + '</div>';
+                html += '<div><strong>{{ _("Type:") }}</strong> ' + esc(mp.ship_type || '-') + '</div>';
+                html += '<div><strong>{{ _("Length:") }}</strong> ' + esc(mp.length || '-') + ' m</div>';
+                html += '<div><strong>{{ _("Beam:") }}</strong> ' + esc(mp.beam || '-') + ' m</div>';
+                html += '<div><strong>{{ _("Speed:") }}</strong> ' + esc(mp.speed || '-') + ' km/h</div>';
+                html += '<div><strong>{{ _("Destination:") }}</strong> ' + esc(mp.destination || '-') + '</div>';
                 if (mp.position) {
-                    html += '<div style="grid-column:1/-1;"><strong>Position:</strong> ' +
+                    html += '<div style="grid-column:1/-1;"><strong>{{ _("Position:") }}</strong> ' +
                         esc(mp.position.lat) + ', ' + esc(mp.position.lon) +
-                        ' <a href="https://www.openstreetmap.org/?mlat=' + esc(mp.position.lat) + '&mlon=' + esc(mp.position.lon) + '&zoom=12" target="_blank">📍 Map</a></div>';
+                        ' <a href="https://www.openstreetmap.org/?mlat=' + esc(mp.position.lat) + '&mlon=' + esc(mp.position.lon) + '&zoom=12" target="_blank">{{ _("📍 Map") }}</a></div>';
                 }
                 html += '</div></div>';
             }
@@ -1274,11 +1277,11 @@
             if (data.source_data && data.source_data.kvnr) {
                 const kv = data.source_data.kvnr;
                 html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">🇳🇱 KVNR Schepenzoeker</h4>';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">{{ _("🇳🇱 KVNR Schepenzoeker") }}</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + esc(kv.name || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + esc(kv.imo || '-') + '</div>';
-                html += '<div><strong>Flag:</strong> ' + esc(kv.flag || '-') + '</div>';
+                html += '<div><strong>{{ _("Name:") }}</strong> ' + esc(kv.name || '-') + '</div>';
+                html += '<div><strong>{{ _("IMO:") }}</strong> ' + esc(kv.imo || '-') + '</div>';
+                html += '<div><strong>{{ _("Flag:") }}</strong> ' + esc(kv.flag || '-') + '</div>';
                 html += '</div></div>';
             }
 
@@ -1286,12 +1289,12 @@
             if (data.source_data && data.source_data.binnenvaart) {
                 const bv = data.source_data.binnenvaart;
                 html += '<div style="background:#fefce8;border:1px solid #ca8a04;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#ca8a04;">🌊 Binnenvaart.eu</h4>';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#ca8a04;">{{ _("🌊 Binnenvaart.eu") }}</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + esc(bv.name || '-') + '</div>';
-                html += '<div><strong>ENI:</strong> ' + esc(bv.eni || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + esc(bv.ship_type || '-') + '</div>';
-                html += '<div><strong>Year Built:</strong> ' + esc(bv.year_built || '-') + '</div>';
+                html += '<div><strong>{{ _("Name:") }}</strong> ' + esc(bv.name || '-') + '</div>';
+                html += '<div><strong>{{ _("ENI:") }}</strong> ' + esc(bv.eni || '-') + '</div>';
+                html += '<div><strong>{{ _("Type:") }}</strong> ' + esc(bv.ship_type || '-') + '</div>';
+                html += '<div><strong>{{ _("Year Built:") }}</strong> ' + esc(bv.year_built || '-') + '</div>';
                 html += '</div></div>';
             }
 
@@ -1299,12 +1302,12 @@
             if (data.source_data && data.source_data.debinnenvaart) {
                 const dbv = data.source_data.debinnenvaart;
                 html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">🚢 DeBinnenvaart.nl</h4>';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">{{ _("🚢 DeBinnenvaart.nl") }}</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + esc(dbv.name || '-') + '</div>';
-                html += '<div><strong>ENI:</strong> ' + esc(dbv.eni || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + esc(dbv.ship_type || '-') + '</div>';
-                html += '<div><strong>Year Built:</strong> ' + esc(dbv.year_built || '-') + '</div>';
+                html += '<div><strong>{{ _("Name:") }}</strong> ' + esc(dbv.name || '-') + '</div>';
+                html += '<div><strong>{{ _("ENI:") }}</strong> ' + esc(dbv.eni || '-') + '</div>';
+                html += '<div><strong>{{ _("Type:") }}</strong> ' + esc(dbv.ship_type || '-') + '</div>';
+                html += '<div><strong>{{ _("Year Built:") }}</strong> ' + esc(dbv.year_built || '-') + '</div>';
                 html += '</div></div>';
             }
 
@@ -1312,40 +1315,40 @@
             if (data.source_data && data.source_data.equasis) {
                 const eq = data.source_data.equasis;
                 html += '<div style="background:#f3e8ff;border:1px solid #9333ea;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#9333ea;">📋 Equasis</h4>';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#9333ea;">{{ _("📋 Equasis") }}</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
-                html += '<div><strong>Name:</strong> ' + esc(eq.name || '-') + '</div>';
-                html += '<div><strong>IMO:</strong> ' + esc(eq.imo || '-') + '</div>';
-                html += '<div><strong>Flag:</strong> ' + esc(eq.flag || '-') + '</div>';
-                html += '<div><strong>GT:</strong> ' + esc(eq.gt || '-') + '</div>';
-                html += '<div><strong>DWT:</strong> ' + esc(eq.dwt || '-') + '</div>';
-                html += '<div><strong>Year:</strong> ' + esc(eq.year_built || '-') + '</div>';
-                html += '<div><strong>Type:</strong> ' + esc(eq.ship_type || '-') + '</div>';
-                html += '<div><strong>Owner:</strong> ' + esc(eq.owner || '-') + '</div>';
-                html += '<div><strong>Manager:</strong> ' + esc(eq.manager || '-') + '</div>';
+                html += '<div><strong>{{ _("Name:") }}</strong> ' + esc(eq.name || '-') + '</div>';
+                html += '<div><strong>{{ _("IMO:") }}</strong> ' + esc(eq.imo || '-') + '</div>';
+                html += '<div><strong>{{ _("Flag:") }}</strong> ' + esc(eq.flag || '-') + '</div>';
+                html += '<div><strong>{{ _("GT:") }}</strong> ' + esc(eq.gt || '-') + '</div>';
+                html += '<div><strong>{{ _("DWT:") }}</strong> ' + esc(eq.dwt || '-') + '</div>';
+                html += '<div><strong>{{ _("Year:") }}</strong> ' + esc(eq.year_built || '-') + '</div>';
+                html += '<div><strong>{{ _("Type:") }}</strong> ' + esc(eq.ship_type || '-') + '</div>';
+                html += '<div><strong>{{ _("Owner:") }}</strong> ' + esc(eq.owner || '-') + '</div>';
+                html += '<div><strong>{{ _("Manager:") }}</strong> ' + esc(eq.manager || '-') + '</div>';
                 html += '</div></div>';
             }
 
             // Sources list + suggested update
             let srcList = (data.sources || []).join(', ');
-            html += '<div style="font-size:0.8rem;color:#666;margin-bottom:1rem;">Sources: ' + esc(srcList) + '</div>';
+            html += '<div style="font-size:0.8rem;color:#666;margin-bottom:1rem;">{{ _("Sources:") }} ' + esc(srcList) + '</div>';
 
             // Save as finding button
             const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
             if (firstCaseId) {
-html += '<button data-click="saveVesselFinding" class="btn-cms small" style="background:#0e7490;">📥 Bewaar als bevinding</button>';
+html += '<button data-click="saveVesselFinding" class="btn-cms small" style="background:#0e7490;">{{ _("📥 Bewaar als bevinding") }}</button>';
 
-                html += ' <button data-click="updateVesselFromCheck" class="btn-cms small" style="background:#0891b2;">💾 Update vessel fields</button>';
+                html += ' <button data-click="updateVesselFromCheck" class="btn-cms small" style="background:#0891b2;">{{ _("💾 Update vessel fields") }}</button>';
             } else {
-                html += '<div style="font-size:0.8rem;color:#888;">Link subject to a case to save findings.</div>';
+                html += '<div style="font-size:0.8rem;color:#888;">{{ _("Link subject to a case to save findings.") }}</div>';
             }
 
             html += '</div>';
             container.innerHTML = html;
-            btn.textContent = '✅ Checked (' + esc(srcList) + ')';
+            btn.textContent = '{{ _("✅ Checked")|replace("'", "\\'")|safe }} (' + esc(srcList) + ')';
         })
         .catch(err => {
-            container.innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + esc(err.message) + '</div>';
+            container.innerHTML = '<div style="padding:1rem;color:#dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</div>';
             btn.disabled = false;
             btn.textContent = origText;
         });
@@ -1359,12 +1362,12 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
 
         if (!firstCaseId) {
-            alert('This subject is not linked to a case.');
+            alert('{{ _("This subject is not linked to a case.")|replace("'", "\\'")|safe }}');
             return;
         }
 
         btn.disabled = true;
-        btn.textContent = '⏳ Bezig met opslaan...';
+        btn.textContent = '{{ _("⏳ Bezig met opslaan...")|replace("'", "\\'")|safe }}';
 
         fetch('/cms/api/findings/from-vessel', {
             method: 'POST',
@@ -1378,18 +1381,18 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             })
         })
         .then(r => {
-            if (!r.ok) return r.json().then(err => { throw new Error(err.error || 'Unknown error'); });
+            if (!r.ok) return r.json().then(err => { throw new Error(err.error || '{{ _("Unknown error")|replace("'", "\\'")|safe }}'); });
             return r.json();
         })
         .then(result => {
-            btn.textContent = '✅ Opgeslagen!';
+            btn.textContent = '{{ _("✅ Opgeslagen!")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
             setTimeout(() => location.reload(), 800);
         })
         .catch(err => {
-            alert('Fout: ' + err.message);
+            alert('{{ _("Fout:")|replace("'", "\\'")|safe }} ' + err.message);
             btn.disabled = false;
-            btn.textContent = '📥 Bewaar als bevinding';
+            btn.textContent = '{{ _("📥 Bewaar als bevinding")|replace("'", "\\'")|safe }}';
         });
     }
 
@@ -1414,14 +1417,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         .then(r => r.json())
         .then(result => {
             if (result.error) {
-                alert('Error: ' + result.error);
+                alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + result.error);
             } else {
-                alert('✅ Vessel fields updated!');
+                alert('{{ _("✅ Vessel fields updated!")|replace("'", "\\'")|safe }}');
                 location.reload();
             }
         })
         .catch(err => {
-            alert('Error: ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
 
@@ -1436,7 +1439,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     }
     
     function openOsintModalNoCase() {
-        alert('This subject is not linked to any case yet.\n\nPlease link this subject to a case first before using OSINT search.\nYou can do this from the Case view.');
+        alert('{{ _("This subject is not linked to any case yet.\\n\\nPlease link this subject to a case first before using OSINT search.\\nYou can do this from the Case view.")|replace("'", "\\'")|safe }}');
     }
     
     function closeOsintModal() {
@@ -1482,10 +1485,10 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             pollSearchStatus();
         })
         .catch(err => {
-            showOsintError('Failed to start search: ' + err.message);
+            showOsintError('{{ _("Failed to start search:")|replace("'", "\\'")|safe }} ' + err.message);
         });
         {% else %}
-        showOsintError('This subject is not linked to any case. Link the subject to a case first.');
+        showOsintError('{{ _("This subject is not linked to any case. Link the subject to a case first.")|replace("'", "\\'")|safe }}');
         {% endif %}
     }
     
@@ -1513,7 +1516,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 } else if (data.status === 'cancelled' || data.status === 'failed') {
                     clearInterval(pollInterval);
                     pollInterval = null;
-                    showOsintError(data.status === 'cancelled' ? 'Search was cancelled' : data.message || 'Search failed');
+                    showOsintError(data.status === 'cancelled' ? '{{ _("Search was cancelled")|replace("'", "\\'")|safe }}' : data.message || '{{ _("Search failed")|replace("'", "\\'")|safe }}');
                 }
             })
             .catch(() => {});
@@ -1550,7 +1553,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             displayOsintResults(data.results);
         })
         .catch(err => {
-            showOsintError('Failed to load results: ' + err.message);
+            showOsintError('{{ _("Failed to load results:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
     
@@ -1572,23 +1575,23 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         }
         
         const totalCount = dorksResults.length + searchLinks.length;
-        document.getElementById('resultsCount').innerHTML = esc(totalCount) + ' results found' + sourceInfo;
+        document.getElementById('resultsCount').innerHTML = esc(totalCount) + ' {{ _("results found") }}' + sourceInfo;
         
         const resultsList = document.getElementById('resultsList');
         resultsList.innerHTML = '';
         
         if (totalCount === 0) {
-            resultsList.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">No results found.</p>';
+            resultsList.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">{{ _("No results found.") }}</p>';
             return;
         }
         
         const categoryLabels = {
-            'social_media': 'Social Media',
-            'files': 'Documents',
-            'public_records': 'Public Records',
-            'news': 'News',
-            'people_search': 'People Search',
-            'general': 'Other'
+            'social_media': '{{ _("Social Media")|replace("'", "\\'")|safe }}',
+            'files': '{{ _("Documents")|replace("'", "\\'")|safe }}',
+            'public_records': '{{ _("Public Records")|replace("'", "\\'")|safe }}',
+            'news': '{{ _("News")|replace("'", "\\'")|safe }}',
+            'people_search': '{{ _("People Search")|replace("'", "\\'")|safe }}',
+            'general': '{{ _("Other")|replace("'", "\\'")|safe }}'
         };
         
         const grouped = {};
@@ -1611,7 +1614,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 div.innerHTML =
                     '<input type="checkbox" class="result-checkbox" data-url="' + esc(item.url) + '" data-domain="' + esc(item.domain || '') + '" data-query="' + esc(item.query || '') + '" data-source="' + esc(item.source || '') + '" data-category="' + esc(item.category || 'general') + '" data-change="updateSelectedCount">' +
                     '<div class="result-content">' +
-                        '<div class="result-engine">' + esc(item.domain || 'Unknown') + sourceBadge + '</div>' +
+                        '<div class="result-engine">' + esc(item.domain || '{{ _("Unknown")|replace("'", "\\'")|safe }}') + sourceBadge + '</div>' +
                         (item.query ? '<div class="result-query">' + esc(item.query) + '</div>' : '') +
                     '</div>' +
                     '<div class="result-url"><a href="' + esc(item.url) + '" target="_blank">' + esc(item.url) + '</a></div>';
@@ -1623,7 +1626,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         if (searchLinks.length > 0) {
             const searchDiv = document.createElement('div');
             searchDiv.style.marginBottom = '1rem';
-            searchDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Search Links (' + esc(searchLinks.length) + ')</h4>';
+            searchDiv.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">{{ _("Search Links") }} (' + esc(searchLinks.length) + ')</h4>';
 
             searchLinks.forEach(link => {
                 const div = document.createElement('div');
@@ -1656,7 +1659,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 document.querySelectorAll('.result-checkbox').forEach(cb => {
                     if (existingSet.has(cb.dataset.url)) {
                         const badge = document.createElement('span');
-                        badge.textContent = '📌 Already saved';
+                        badge.textContent = '{{ _("📌 Already saved")|replace("'", "\\'")|safe }}';
                         badge.style.cssText = 'font-size:0.65rem;padding:0.1rem 0.4rem;border-radius:4px;background:var(--success-bg,#dcfce7);color:var(--success-text,#16a34a);margin-left:0.5rem;white-space:nowrap;';
                         cb.parentElement.querySelector('.result-content')?.appendChild(badge);
                     }
@@ -1695,7 +1698,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     function addSelectedFindings() {
         const btn = document.getElementById('addFindingsBtn');
         if (btn && btn.disabled) return;
-        if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+        if (btn) { btn.disabled = true; btn.textContent = '{{ _("Saving...")|replace("'", "\\'")|safe }}'; }
         const checkboxes = document.querySelectorAll('.result-checkbox:checked');
         if (checkboxes.length === 0) return;
         const selectedResults = [];
@@ -1719,21 +1722,21 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) { showOsintError(data.error); if (btn) { btn.disabled = false; btn.textContent = 'Add Selected to Findings (<span id=\"selectedCount\">0</span>)'; } return; }
+            if (data.error) { showOsintError(data.error); if (btn) { btn.disabled = false; btn.textContent = '{{ _("Add Selected to Findings")|replace("'", "\\'")|safe }} (<span id=\"selectedCount\">0</span>)'; } return; }
             alert(data.message);
             closeOsintModal();
             location.reload();
         })
-        .catch(err => { showOsintError('Failed to add findings: ' + err.message); if (btn) { btn.disabled = false; btn.textContent = 'Add Selected to Findings (<span id=\"selectedCount\">0</span>)'; } });
+        .catch(err => { showOsintError('{{ _("Failed to add findings:")|replace("'", "\\'")|safe }} ' + err.message); if (btn) { btn.disabled = false; btn.textContent = '{{ _("Add Selected to Findings")|replace("'", "\\'")|safe }} (<span id=\"selectedCount\">0</span>)'; } });
         {% else %}
-        showOsintError('This subject is not linked to any case. Link the subject to a case first.');
+        showOsintError('{{ _("This subject is not linked to any case. Link the subject to a case first.")|replace("'", "\\'")|safe }}');
         {% endif %}
     }
 
     function saveSelectedAsSocialAccounts() {
         const checkboxes = document.querySelectorAll('.result-checkbox:checked');
         if (checkboxes.length === 0) return;
-        if (!confirm('Save ' + checkboxes.length + ' selected result(s) as social accounts?')) return;
+        if (!confirm('{{ _("Save")|replace("'", "\\'")|safe }} ' + checkboxes.length + ' {{ _("selected result(s) as social accounts?")|replace("'", "\\'")|safe }}')) return;
         let saved = 0, errors = 0, completed = 0;
         const total = checkboxes.length;
         checkboxes.forEach(cb => {
@@ -1757,14 +1760,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 completed++;
                 if (data.error) errors++; else saved++;
                 if (completed === total) {
-                    alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+                    alert('{{ _("Saved")|replace("'", "\\'")|safe }} ' + saved + ' {{ _("social account(s).")|replace("'", "\\'")|safe }}' + (errors ? ' ' + errors + ' {{ _("error(s).")|replace("'", "\\'")|safe }}' : ''));
                     if (saved > 0) location.reload();
                 }
             })
             .catch(() => {
                 completed++;
                 errors++;
-                if (completed === total) alert('Saved ' + saved + ' social account(s).' + (errors ? ' ' + errors + ' error(s).' : ''));
+                if (completed === total) alert('{{ _("Saved")|replace("'", "\\'")|safe }} ' + saved + ' {{ _("social account(s).")|replace("'", "\\'")|safe }}' + (errors ? ' ' + errors + ' {{ _("error(s).")|replace("'", "\\'")|safe }}' : ''));
             });
         });
     }
@@ -1778,7 +1781,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     
     function openAddSocialIdModal(platform = null, data = null) {
         editingPlatform = platform;
-        document.getElementById('socialIdModalTitle').textContent = platform ? 'Edit Social Media ID' : 'Add Social Media ID';
+        document.getElementById('socialIdModalTitle').textContent = platform ? '{{ _("Edit Social Media ID")|replace("'", "\\'")|safe }}' : '{{ _("Add Social Media ID")|replace("'", "\\'")|safe }}';
         document.getElementById('socialPlatform').value = platform || 'facebook';
         document.getElementById('socialPlatform').disabled = !!platform;
         
@@ -1809,7 +1812,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const url = document.getElementById('socialUrl').value.trim();
         
         if (!id && !url) {
-            alert('Please enter an ID or URL');
+            alert('{{ _("Please enter an ID or URL")|replace("'", "\\'")|safe }}');
             return;
         }
         
@@ -1827,11 +1830,11 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         })
         .then(r => r.json())
         .then(data => {
-            alert('Social media ID saved!');
+            alert('{{ _("Social media ID saved!")|replace("'", "\\'")|safe }}');
             location.reload();
         })
         .catch(err => {
-            alert('Error: ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
     
@@ -1841,7 +1844,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     }
     
     function deleteSocialId(btn, platform) {
-        if (!confirm('Delete ' + platform + ' ID?')) return;
+        if (!confirm('{{ _("Delete")|replace("'", "\\'")|safe }} ' + platform + ' {{ _("ID?")|replace("'", "\\'")|safe }}')) return;
         
         const socialIds = {{ subject.social_media_ids|tojson }} || {};
         delete socialIds[platform];
@@ -1856,7 +1859,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             location.reload();
         })
         .catch(err => {
-            alert('Error: ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
     
@@ -1876,7 +1879,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const platform = document.getElementById('saPlatform').value;
         const username = document.getElementById('saUsername').value.trim();
         const url = document.getElementById('saUrl').value.trim();
-        if (!username) { alert('Username is required'); return; }
+        if (!username) { alert('{{ _("Username is required")|replace("'", "\\'")|safe }}'); return; }
         fetch('/cms/api/subjects/{{ subject.id }}/social-accounts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1884,19 +1887,19 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) { alert('Error: ' + data.error); return; }
+            if (data.error) { alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error); return; }
             location.reload();
         })
-        .catch(err => alert('Error: ' + err.message));
+        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
     }
     function deleteSocialAccount(btn, accountId) {
-        if (!confirm('Delete this social account?')) return;
+        if (!confirm('{{ _("Delete this social account?")|replace("'", "\\'")|safe }}')) return;
         fetch('/cms/api/subjects/{{ subject.id }}/social-accounts/' + accountId, {
             method: 'DELETE'
         })
         .then(r => r.json())
         .then(data => location.reload())
-        .catch(err => alert('Error: ' + err.message));
+        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
     }
     document.getElementById('addSocialAccountModal').addEventListener('click', function(e) {
         if (e.target === this) closeAddSocialAccountModal();
@@ -1911,7 +1914,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         
         const statusEl = document.getElementById('faceStatus');
         try {
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">Loading face recognition models...</span>';
+            statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _("Loading face recognition models...") }}</span>';
             
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
             
@@ -1920,10 +1923,10 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
             
             faceApiLoaded = true;
-            statusEl.innerHTML = '<span style="color: #059669;">Face recognition ready</span>';
+            statusEl.innerHTML = '<span style="color: #059669;">{{ _("Face recognition ready") }}</span>';
             return true;
         } catch (err) {
-            statusEl.innerHTML = '<span style="color: #dc2626;">Failed to load face recognition</span>';
+            statusEl.innerHTML = '<span style="color: #dc2626;">{{ _("Failed to load face recognition") }}</span>';
             console.error('Face API error:', err);
             return false;
         }
@@ -1935,17 +1938,17 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const photoImg = document.getElementById('subjectPhoto');
         
         btn.disabled = true;
-        btn.textContent = 'Processing...';
+        btn.textContent = '{{ _("Processing...")|replace("'", "\\'")|safe }}';
         
         const loaded = await loadFaceApi();
         if (!loaded) {
             btn.disabled = false;
-            btn.textContent = '👤 Encode Face';
+            btn.textContent = '{{ _("👤 Encode Face")|replace("'", "\\'")|safe }}';
             return;
         }
         
         try {
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">Detecting face...</span>';
+            statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _("Detecting face...") }}</span>';
             
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -1962,13 +1965,13 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 .withFaceDescriptor();
             
             if (!detection) {
-                statusEl.innerHTML = '<span style="color: #f59e0b;">No face detected. Try a clearer photo.</span>';
+                statusEl.innerHTML = '<span style="color: #f59e0b;">{{ _("No face detected. Try a clearer photo.") }}</span>';
                 btn.disabled = false;
-                btn.textContent = '👤 Encode Face';
+            btn.textContent = '{{ _("👤 Encode Face")|replace("'", "\\'")|safe }}';
                 return;
             }
             
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">Saving face encoding...</span>';
+            statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _("Saving face encoding...") }}</span>';
             
             const encoding = Array.from(detection.descriptor);
             
@@ -1981,22 +1984,22 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await response.json();
             
             if (data.error) {
-                statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                statusEl.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
             } else {
-                statusEl.innerHTML = '<span style="color: #059669;">✅ Face encoding saved!</span>';
+                statusEl.innerHTML = '<span style="color: #059669;">{{ _("✅ Face encoding saved!") }}</span>';
             }
         } catch (err) {
-            statusEl.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            statusEl.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             console.error('Face encoding error:', err);
         }
         
         btn.disabled = false;
-        btn.textContent = '👤 Encode Face';
+        btn.textContent = '{{ _("👤 Encode Face")|replace("'", "\\'")|safe }}';
     }
     
     async function deleteFaceEncoding() {
-        if (!confirm('Remove face encoding for this subject?')) return;
+        if (!confirm('{{ _("Remove face encoding for this subject?")|replace("'", "\\'")|safe }}')) return;
         
         try {
             const response = await fetch('/cms/subjects/{{ subject.id }}/face-encoding', {
@@ -2008,14 +2011,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 location.reload();
             }
         } catch (err) {
-            alert('Error: ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
         }
     }
     
     function searchTinEye() {
         const photoPath = {{ subject.photo_path|tojson }};
         if (!photoPath) {
-            alert('No photo available for this subject');
+            alert('{{ _("No photo available for this subject")|replace("'", "\\'")|safe }}');
             return;
         }
         
@@ -2036,35 +2039,35 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             html += '</div>';
         }
 
-        html += '<div><strong>Valid:</strong> ' + (data.valid ? '✅ Yes' : '❌ No') + '</div>';
-        html += '<div><strong>Number:</strong> ' + esc(data.formatted || '-') + '</div>';
-        html += '<div><strong>Country:</strong> ' + esc(data.country || '-') + '</div>';
-        html += '<div><strong>Region:</strong> ' + esc(data.region || '-') + '</div>';
-        html += '<div><strong>Carrier:</strong> ' + esc(data.carrier || '-') + '</div>';
-        html += '<div><strong>Line Type:</strong> ' + esc(data.line_type || '-') + '</div>';
+        html += '<div><strong>{{ _("Valid:") }}</strong> ' + (data.valid ? '{{ _("✅ Yes") }}' : '{{ _("❌ No") }}') + '</div>';
+        html += '<div><strong>{{ _("Number:") }}</strong> ' + esc(data.formatted || '-') + '</div>';
+        html += '<div><strong>{{ _("Country:") }}</strong> ' + esc(data.country || '-') + '</div>';
+        html += '<div><strong>{{ _("Region:") }}</strong> ' + esc(data.region || '-') + '</div>';
+        html += '<div><strong>{{ _("Carrier:") }}</strong> ' + esc(data.carrier || '-') + '</div>';
+        html += '<div><strong>{{ _("Line Type:") }}</strong> ' + esc(data.line_type || '-') + '</div>';
 
         if (data.services && data.services.whatsapp) {
             const wa = data.services.whatsapp;
             const exists = wa.exists;
-            html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>📱 WhatsApp</strong></div>';
-            html += '<div><strong>Registered:</strong> ' + (exists ? '✅ Yes' : (exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
-            if (exists) html += '<div><strong>Chat:</strong> <a href="' + esc(wa.url) + '" target="_blank">Open</a></div>';
-            if (wa.about !== undefined && wa.about !== null) html += '<div style="grid-column:1/-1;"><strong>About:</strong> ' + esc(wa.about || '-') + '</div>';
-            if (wa.business !== undefined) html += '<div><strong>Business:</strong> ' + (wa.business ? '✅ Yes' : 'No') + '</div>';
-            if (wa.enterprise !== undefined) html += '<div><strong>Enterprise:</strong> ' + (wa.enterprise ? '✅ Yes' : 'No') + '</div>';
-            if (wa.verified !== undefined) html += '<div><strong>Verified:</strong> ' + (wa.verified ? '✅ Yes' : 'No') + '</div>';
-            if (wa.banned !== undefined) html += '<div><strong>Banned:</strong> ' + (wa.banned ? '⚠ Yes' : 'No') + '</div>';
-            if (wa.line_type) html += '<div><strong>API Type:</strong> ' + esc(wa.line_type) + '</div>';
-            if (wa.cached) html += '<div><strong>Cached:</strong> ' + (wa.cached ? 'Yes' : 'Fresh') + '</div>';
-            if (wa.check_date) html += '<div><strong>Checked:</strong> ' + esc(new Date(wa.check_date).toLocaleString()) + '</div>';
+            html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>{{ _("📱 WhatsApp") }}</strong></div>';
+            html += '<div><strong>{{ _("Registered:") }}</strong> ' + (exists ? '{{ _("✅ Yes") }}' : (exists === false ? '{{ _("❌ No") }}' : '{{ _("⚠ Unknown") }}')) + '</div>';
+            if (exists) html += '<div><strong>{{ _("Chat:") }}</strong> <a href="' + esc(wa.url) + '" target="_blank">{{ _("Open") }}</a></div>';
+            if (wa.about !== undefined && wa.about !== null) html += '<div style="grid-column:1/-1;"><strong>{{ _("About:") }}</strong> ' + esc(wa.about || '-') + '</div>';
+            if (wa.business !== undefined) html += '<div><strong>{{ _("Business:") }}</strong> ' + (wa.business ? '{{ _("✅ Yes") }}' : '{{ _("No") }}') + '</div>';
+            if (wa.enterprise !== undefined) html += '<div><strong>{{ _("Enterprise:") }}</strong> ' + (wa.enterprise ? '{{ _("✅ Yes") }}' : '{{ _("No") }}') + '</div>';
+            if (wa.verified !== undefined) html += '<div><strong>{{ _("Verified:") }}</strong> ' + (wa.verified ? '{{ _("✅ Yes") }}' : '{{ _("No") }}') + '</div>';
+            if (wa.banned !== undefined) html += '<div><strong>{{ _("Banned:") }}</strong> ' + (wa.banned ? '{{ _("⚠ Yes") }}' : '{{ _("No") }}') + '</div>';
+            if (wa.line_type) html += '<div><strong>{{ _("API Type:") }}</strong> ' + esc(wa.line_type) + '</div>';
+            if (wa.cached) html += '<div><strong>{{ _("Cached:") }}</strong> ' + (wa.cached ? '{{ _("Yes") }}' : '{{ _("Fresh") }}') + '</div>';
+            if (wa.check_date) html += '<div><strong>{{ _("Checked:") }}</strong> ' + esc(new Date(wa.check_date).toLocaleString()) + '</div>';
         }
 
         if (data.services && data.services.telegram) {
             const tg = data.services.telegram;
-            html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>✈️ Telegram</strong></div>';
-            html += '<div><strong>Registered:</strong> ' + (tg.exists ? '✅ Yes' : (tg.exists === false ? '❌ No' : '⚠ Unknown')) + '</div>';
-            if (tg.exists) html += '<div><strong>Chat:</strong> <a href="' + esc(tg.url) + '" target="_blank">Open</a></div>';
-            if (tg.error) html += '<div style="grid-column:1/-1;"><strong>Detail:</strong> ' + esc(tg.error) + '</div>';
+            html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;"><strong>{{ _("✈️ Telegram") }}</strong></div>';
+            html += '<div><strong>{{ _("Registered:") }}</strong> ' + (tg.exists ? '{{ _("✅ Yes") }}' : (tg.exists === false ? '{{ _("❌ No") }}' : '{{ _("⚠ Unknown") }}')) + '</div>';
+            if (tg.exists) html += '<div><strong>{{ _("Chat:") }}</strong> <a href="' + esc(tg.url) + '" target="_blank">{{ _("Open") }}</a></div>';
+            if (tg.error) html += '<div style="grid-column:1/-1;"><strong>{{ _("Detail:") }}</strong> ' + esc(tg.error) + '</div>';
         }
 
         if (data.api_usage) {
@@ -2072,8 +2075,8 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const pct = Math.round(u.used / u.limit * 100);
             const color = pct >= 80 ? '#dc2626' : pct >= 50 ? '#d97706' : '#16a34a';
             html += '<div style="grid-column:1/-1;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #ddd6fe;font-size:0.75rem;color:#666;">';
-            html += 'API: ' + esc(u.used) + '/' + esc(u.limit) + ' deze maand';
-            html += ' <span style="color:' + color + ';">(' + esc(u.remaining) + ' over)</span>';
+            html += '{{ _("API:") }} ' + esc(u.used) + '/' + esc(u.limit) + ' {{ _("deze maand") }}';
+            html += ' <span style="color:' + color + ';">(' + esc(u.remaining) + ' {{ _("over") }})</span>';
             if (u.note) html += ' — <em style="color:#dc2626;">' + esc(u.note) + '</em>';
             html += '</div>';
         }
@@ -2087,9 +2090,9 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const origText = btn.textContent;
 
         btn.disabled = true;
-        btn.textContent = '🔍 Checking...';
+        btn.textContent = '{{ _("🔍 Checking...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Looking up phone number...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">{{ _("Looking up phone number...") }}</span>';
 
         // Eerst checken of er opgeslagen data is
         try {
@@ -2097,15 +2100,15 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const storedData = await storedResp.json();
             if (storedData.found && storedData.raw_response) {
                 const raw = storedData.raw_response;
-                const ts = storedData.created_at ? new Date(storedData.created_at).toLocaleString() : 'onbekend';
+                const ts = storedData.created_at ? new Date(storedData.created_at).toLocaleString() : '{{ _("onbekend")|replace("'", "\\'")|safe }}';
                 let html = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.5rem;margin-bottom:0.5rem;font-size:0.8rem;text-align:center;color:#15803d;">';
-                html += '📦 Previously checked on ' + esc(ts);
-                if (storedData.created_by_name) html += ' by ' + esc(storedData.created_by_name);
-                html += ' <button data-click="phoneLookupRefresh" data-arg0="' + esc(phone) + '" style="background:#7c3aed;color:white;border:none;border-radius:4px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">🔄 Refresh</button>';
+                html += '{{ _("📦 Previously checked on") }} ' + esc(ts);
+                if (storedData.created_by_name) html += ' {{ _("by") }} ' + esc(storedData.created_by_name);
+                html += ' <button data-click="phoneLookupRefresh" data-arg0="' + esc(phone) + '" style="background:#7c3aed;color:white;border:none;border-radius:4px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">{{ _("🔄 Refresh") }}</button>';
                 html += '</div>';
                 html += renderPhoneResult(raw);
                 resultDiv.innerHTML = html;
-                btn.textContent = '✅ Cached';
+                btn.textContent = '{{ _("✅ Cached")|replace("'", "\\'")|safe }}';
                 btn.style.background = '#16a34a';
                 btn.disabled = false;
                 return;
@@ -2123,17 +2126,17 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             resultDiv.innerHTML = renderPhoneResult(data);
-            btn.textContent = '✅ Done';
+            btn.textContent = '{{ _("✅ Done")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2144,7 +2147,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const phoneBtn = btn.closest('.phone-result') ? null : null;
         btn.disabled = true;
         btn.textContent = '⏳';
-        if (resultDiv) resultDiv.innerHTML = '<span style="color: #666;">Refreshing...</span>';
+        if (resultDiv) resultDiv.innerHTML = '<span style="color: #666;">{{ _("Refreshing...") }}</span>';
         // Find the original button
         const parent = btn.closest('.contact-row') || btn.parentElement;
         const origBtn = parent.querySelector('[onclick*="phoneLookup"]');
@@ -2163,7 +2166,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                     resultDiv.innerHTML = renderPhoneResult(data);
                 }
             } catch (err) {
-                if (resultDiv) resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+                if (resultDiv) resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             }
         }
     }
@@ -2173,9 +2176,9 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const origText = btn.textContent;
 
         btn.disabled = true;
-        btn.textContent = '🔍 Checking...';
+        btn.textContent = '{{ _("🔍 Checking...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Checking email...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">{{ _("Checking email...") }}</span>';
 
         try {
             const resp = await fetch('/cms/api/email-check', {
@@ -2186,7 +2189,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2194,13 +2197,13 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
 
             let html = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Valid Format:</strong> ' + (data.valid_format ? '✅ Yes' : '❌ No') + '</div>';
-            html += '<div><strong>Domain:</strong> ' + esc(data.domain || '-') + '</div>';
-            html += '<div><strong>MX Records:</strong> ' + (data.has_mx ? '✅ Found' : '❌ None') + '</div>';
-            html += '<div><strong>Disposable:</strong> ' + (data.disposable ? '⚠️ Yes' : '✅ No') + '</div>';
+            html += '<div><strong>{{ _("Valid Format:") }}</strong> ' + (data.valid_format ? '{{ _("✅ Yes") }}' : '{{ _("❌ No") }}') + '</div>';
+            html += '<div><strong>{{ _("Domain:") }}</strong> ' + esc(data.domain || '-') + '</div>';
+            html += '<div><strong>{{ _("MX Records:") }}</strong> ' + (data.has_mx ? '{{ _("✅ Found") }}' : '{{ _("❌ None") }}') + '</div>';
+            html += '<div><strong>{{ _("Disposable:") }}</strong> ' + (data.disposable ? '{{ _("⚠️ Yes") }}' : '{{ _("✅ No") }}') + '</div>';
 
             if (data.hibp_breaches && data.hibp_breaches.length > 0) {
-                html += '<div style="grid-column:1/-1;"><strong>🔴 Breaches (' + data.hibp_breaches.length + '):</strong></div>';
+                html += '<div style="grid-column:1/-1;"><strong>{{ _("🔴 Breaches") }} (' + data.hibp_breaches.length + '):</strong></div>';
                 data.hibp_breaches.forEach(b => {
                     html += '<div style="grid-column:1/-1;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:0.4rem;margin-bottom:0.2rem;">';
                     html += '<strong>' + esc(b.name) + '</strong> (' + esc(b.date || 'unknown') + ')';
@@ -2210,21 +2213,21 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                     html += '</div>';
                 });
             } else {
-                html += '<div style="grid-column:1/-1;"><strong>Breaches:</strong> ' + (data.hibp_found === false ? '✅ None found' : '⚠️ Not checked') + '</div>';
+                html += '<div style="grid-column:1/-1;"><strong>{{ _("Breaches:") }}</strong> ' + (data.hibp_found === false ? '{{ _("✅ None found") }}' : '{{ _("⚠️ Not checked") }}') + '</div>';
             }
 
             if (data.emailrep) {
                 const rep = data.emailrep;
                 html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
-                html += '<strong>EmailRep:</strong> ' + esc(rep.reputation || 'unknown') + ' | ';
-                html += 'Suspicious: ' + (rep.suspicious ? '⚠️ Yes' : '✅ No') + ' | ';
-                html += 'Details: ' + (rep.details ? esc(rep.details.join(', ')) : '-');
+                html += '<strong>{{ _("EmailRep:") }}</strong> ' + esc(rep.reputation || '{{ _("unknown")|replace("'", "\\'")|safe }}') + ' | ';
+                html += '{{ _("Suspicious:") }} ' + (rep.suspicious ? '{{ _("⚠️ Yes") }}' : '{{ _("✅ No") }}') + ' | ';
+                html += '{{ _("Details:") }} ' + (rep.details ? esc(rep.details.join(', ')) : '-');
                 html += '</div>';
             }
 
             if (data.search_links && data.search_links.length > 0) {
                 html += '<div style="grid-column:1/-1;margin-top:0.25rem;padding-top:0.5rem;border-top:1px dashed #d1d5db;">';
-                html += '<strong>🔍 Investigate further:</strong> ';
+                html += '<strong>{{ _("🔍 Investigate further:") }}</strong> ';
                 data.search_links.forEach(function(link, i) {
                     if (i > 0) html += ' | ';
                     html += '<a href="' + esc(link.url) + '" target="_blank" style="color:#2563eb;">' + esc(link.label) + '</a>';
@@ -2234,10 +2237,10 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
 
             html += '</div></div>';
             resultDiv.innerHTML = html;
-            btn.textContent = '✅ Done';
+            btn.textContent = '{{ _("✅ Done")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2249,9 +2252,9 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const origText = btn.textContent;
         
         btn.disabled = true;
-        btn.textContent = '🔍 Looking up...';
+        btn.textContent = '{{ _("🔍 Looking up...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Contacting PDOK BAG...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">{{ _("Contacting PDOK BAG...") }}</span>';
         
         try {
             const resp = await fetch('/cms/api/kadaster-lookup', {
@@ -2262,14 +2265,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await resp.json();
             
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
             
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'Address not found in BAG') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || '{{ _("Address not found in BAG")|replace("'", "\\'")|safe }}') + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2278,28 +2281,28 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const b = data.bag_data;
             let html = '<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + esc(b.street || '') + ' ' + esc(b.number || '') + (b.number_addition ? '-' + esc(b.number_addition) : '') + '</div>';
-            html += '<div><strong>Zipcode:</strong> ' + esc(b.zipcode || '-') + '</div>';
-            html += '<div><strong>Town:</strong> ' + esc(b.town || '-') + '</div>';
-            html += '<div><strong>Municipality:</strong> ' + esc(b.municipality || '-') + '</div>';
-            html += '<div><strong>Province:</strong> ' + esc(b.province || '-') + '</div>';
-            html += '<div><strong>Building year:</strong> ' + esc(b.building_year || '-') + '</div>';
-            html += '<div><strong>Surface:</strong> ' + esc(b.surface ? b.surface + ' m²' : '-') + '</div>';
-            html += '<div><strong>Purpose:</strong> ' + esc(b.purpose || '-') + '</div>';
-            html += '<div><strong>Status:</strong> ' + esc(b.status || '-') + '</div>';
-            html += '<div><strong>Type:</strong> ' + esc(b.type || '-') + '</div>';
-            html += '<div><strong>BAG ID:</strong> ' + esc(b.bag_id || '-') + '</div>';
+            html += '<div><strong>{{ _("Address:") }}</strong> ' + esc(b.street || '') + ' ' + esc(b.number || '') + (b.number_addition ? '-' + esc(b.number_addition) : '') + '</div>';
+            html += '<div><strong>{{ _("Zipcode:") }}</strong> ' + esc(b.zipcode || '-') + '</div>';
+            html += '<div><strong>{{ _("Town:") }}</strong> ' + esc(b.town || '-') + '</div>';
+            html += '<div><strong>{{ _("Municipality:") }}</strong> ' + esc(b.municipality || '-') + '</div>';
+            html += '<div><strong>{{ _("Province:") }}</strong> ' + esc(b.province || '-') + '</div>';
+            html += '<div><strong>{{ _("Building year:") }}</strong> ' + esc(b.building_year || '-') + '</div>';
+            html += '<div><strong>{{ _("Surface:") }}</strong> ' + esc(b.surface ? b.surface + ' m²' : '-') + '</div>';
+            html += '<div><strong>{{ _("Purpose:") }}</strong> ' + esc(b.purpose || '-') + '</div>';
+            html += '<div><strong>{{ _("Status:") }}</strong> ' + esc(b.status || '-') + '</div>';
+            html += '<div><strong>{{ _("Type:") }}</strong> ' + esc(b.type || '-') + '</div>';
+            html += '<div><strong>{{ _("BAG ID:") }}</strong> ' + esc(b.bag_id || '-') + '</div>';
             if (b.coordinates) {
                 const coords = b.coordinates.replace('POINT(', '').replace(')', '');
                 const [lng, lat] = coords.split(' ');
-                html += '<div style="grid-column:1/-1;"><strong>Coordinates:</strong> ' + esc(lat) + ', ' + esc(lng) + ' (<a href="https://www.openstreetmap.org/?mlat=' + esc(lat) + '&mlon=' + esc(lng) + '&zoom=16" target="_blank">View on map</a>)</div>';
+                html += '<div style="grid-column:1/-1;"><strong>{{ _("Coordinates:") }}</strong> ' + esc(lat) + ', ' + esc(lng) + ' (<a href="https://www.openstreetmap.org/?mlat=' + esc(lat) + '&mlon=' + esc(lng) + '&zoom=16" target="_blank">{{ _("View on map") }}</a>)</div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
-            btn.textContent = '✅ Verified';
+            btn.textContent = '{{ _("✅ Verified")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2311,9 +2314,9 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const origText = btn.textContent;
 
         btn.disabled = true;
-        btn.textContent = '🔍 Looking up...';
+        btn.textContent = '{{ _("🔍 Looking up...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">Contacting politie.nl...</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">{{ _("Contacting politie.nl...") }}</span>';
 
         try {
             const resp = await fetch('/cms/api/politiebureau-lookup', {
@@ -2324,14 +2327,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || 'No police station found') + '</span>';
+                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || '{{ _("No police station found")|replace("'", "\\'")|safe }}') + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2339,25 +2342,25 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || 'Politiebureau') + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || '{{ _("Politiebureau")|replace("'", "\\'")|safe }}') + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
-            html += '<div><strong>Address:</strong> ' + esc(s.address || '-') + '</div>';
-            html += '<div><strong>Phone:</strong> ' + esc(s.phone || '-') + '</div>';
+            html += '<div><strong>{{ _("Address:") }}</strong> ' + esc(s.address || '-') + '</div>';
+            html += '<div><strong>{{ _("Phone:") }}</strong> ' + esc(s.phone || '-') + '</div>';
             if (s.opening_hours) {
-                html += '<div style="grid-column:1/-1;"><strong>Opening hours:</strong><br>' + esc(s.opening_hours) + '</div>';
+                html += '<div style="grid-column:1/-1;"><strong>{{ _("Opening hours:") }}</strong><br>' + esc(s.opening_hours) + '</div>';
             }
             if (s.location && s.location.latitude && s.location.longitude) {
-                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">📍 View on map</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">{{ _("📍 View on map") }}</a></div>';
             }
             if (s.url) {
-                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">🔗 Politie.nl page</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">{{ _("🔗 Politie.nl page") }}</a></div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
-            btn.textContent = '✅ Station found';
+            btn.textContent = '{{ _("✅ Station found")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">Error: ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2373,13 +2376,13 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 if (el) el.textContent = `(${data.count})`;
             })
             .catch(() => {
-                document.getElementById('subjectCommentsList').innerHTML = '<p style="color: var(--danger-text); text-align: center; padding: 1rem;">Failed to load comments.</p>';
+                document.getElementById('subjectCommentsList').innerHTML = '<p style="color: var(--danger-text); text-align: center; padding: 1rem;">{{ _("Failed to load comments.") }}</p>';
             });
     }
     function displaySubjectComments(comments) {
         const container = document.getElementById('subjectCommentsList');
         if (!comments || comments.length === 0) {
-            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem;">No notes yet. Add one above.</p>';
+            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem;">{{ _("No notes yet. Add one above.") }}</p>';
             return;
         }
         let html = '';
@@ -2392,11 +2395,11 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             if (c.edit_count > 0) {
                 const editDate = c.last_edited_at ? new Date(c.last_edited_at) : null;
                 const editDateStr = editDate ? editDate.toLocaleDateString()+' '+editDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
-                editInfo = '<div class="comment-edited">Edited ' + esc(c.edit_count) + ' time' + (c.edit_count>1?'s':'') + (c.last_edited_by_name?' by '+esc(c.last_edited_by_name):'') + (editDateStr?' on '+esc(editDateStr):'') + '</div>';
+                editInfo = '<div class="comment-edited">{{ _("Edited") }} ' + esc(c.edit_count) + ' {{ _("time") }}' + (c.edit_count>1?'s':'') + (c.last_edited_by_name?' {{ _("by") }} '+esc(c.last_edited_by_name):'') + (editDateStr?' {{ _("on") }} '+esc(editDateStr):'') + '</div>';
             }
             let editHistory = '';
             if (c.edit_history && c.edit_history.length > 0) {
-                editHistory = '<details class="comment-edit-history"><summary>View edit history (' + esc(c.edit_history.length) + ')</summary>' + c.edit_history.map(h => {
+                editHistory = '<details class="comment-edit-history"><summary>{{ _("View edit history") }} (' + esc(c.edit_history.length) + ')</summary>' + c.edit_history.map(h => {
                     const hDate = new Date(h.edited_at);
                     const hDateStr = hDate.toLocaleDateString()+' '+hDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
                     return '<div class="comment-edit-entry"><div><span class="edit-by">' + esc(h.edited_by_name) + '</span> <span class="edit-date">' + esc(hDateStr) + '</span></div><div class="edit-diff"><div class="edit-old">- ' + escapeHtml(h.previous_content.substring(0,100)) + (h.previous_content.length>100?'...':'') + '</div><div class="edit-new">+ ' + escapeHtml(h.new_content.substring(0,100)) + (h.new_content.length>100?'...':'') + '</div></div></div>';
@@ -2417,20 +2420,20 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '" style="display:none;">' +
                     '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
                     '<div class="comment-edit-actions">' +
-                        '<button data-click="saveSubjectComment" data-arg0="' + esc(c.id) + '" class="btn btn-sm" style="background:#059669;">Save</button>' +
-                        '<button data-click="cancelSubjectCommentEdit" data-arg0="' + esc(c.id) + '" class="btn btn-sm" style="background:#666;">Cancel</button>' +
+                        '<button data-click="saveSubjectComment" data-arg0="' + esc(c.id) + '" class="btn btn-sm" style="background:#059669;">{{ _("Save") }}</button>' +
+                        '<button data-click="cancelSubjectCommentEdit" data-arg0="' + esc(c.id) + '" class="btn btn-sm" style="background:#666;">{{ _("Cancel") }}</button>' +
                     '</div>' +
                 '</div>' +
                 '<div class="comment-actions">' +
-                    (canEdit ? '<button data-click="showSubjectCommentEditForm" data-arg0="' + esc(c.id) + '">Edit</button>' : '') +
-                    '<button data-click="deleteSubjectComment" data-arg0="' + esc(c.id) + '">Delete</button>' +
+                    (canEdit ? '<button data-click="showSubjectCommentEditForm" data-arg0="' + esc(c.id) + '">{{ _("Edit") }}</button>' : '') +
+                    '<button data-click="deleteSubjectComment" data-arg0="' + esc(c.id) + '">{{ _("Delete") }}</button>' +
                 '</div></div>';
         });
         container.innerHTML = html;
     }
     function addSubjectComment() {
         const content = document.getElementById('newSubjectComment').value.trim();
-        if (!content) { alert('Please enter a note.'); return; }
+        if (!content) { alert('{{ _("Please enter a note.")|replace("'", "\\'")|safe }}'); return; }
         const commentType = document.getElementById('subjectCommentType').value;
         const isPinned = document.getElementById('subjectCommentPinned').checked;
         fetch('/cms/api/comments', {
@@ -2449,7 +2452,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             document.getElementById('subjectCommentPinned').checked = false;
             loadSubjectComments();
         })
-        .catch(err => alert('Error: ' + err.message));
+        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
     }
     function showSubjectCommentEditForm(btn, commentId) {
         document.getElementById('edit-form-'+commentId).style.display = 'block';
@@ -2461,7 +2464,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     }
     function saveSubjectComment(btn, commentId) {
         const newContent = document.getElementById('edit-content-'+commentId).value.trim();
-        if (!newContent) { alert('Comment cannot be empty.'); return; }
+        if (!newContent) { alert('{{ _("Comment cannot be empty.")|replace("'", "\\'")|safe }}'); return; }
         fetch('/cms/api/comments/'+commentId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -2469,16 +2472,16 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) alert('Error: ' + data.error);
+            if (data.error) alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
             else loadSubjectComments();
         })
-        .catch(err => alert('Error: ' + err.message));
+        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
     }
     function deleteSubjectComment(btn, commentId) {
-        if (!confirm('Delete this comment?')) return;
+        if (!confirm('{{ _("Delete this comment?")|replace("'", "\\'")|safe }}')) return;
         fetch('/cms/api/comments/'+commentId, { method: 'DELETE' })
         .then(() => loadSubjectComments())
-        .catch(err => alert('Error: ' + err.message));
+        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
     }
     document.addEventListener('DOMContentLoaded', function() {
         // Only load if the subject comments section exists on this page
@@ -2486,7 +2489,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     });
 
     function confirmDeleteSubject() {
-        if (!confirm('Weet je zeker dat je dit subject wilt verwijderen?')) return;
+        if (!confirm('{{ _("Weet je zeker dat je dit subject wilt verwijderen?")|replace("'", "\\'")|safe }}')) return;
         const btn = event.target;
         btn.disabled = true;
         btn.textContent = '...';
@@ -2499,15 +2502,15 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             if (data.error) {
                 alert(data.error);
                 btn.disabled = false;
-                btn.textContent = '🗑️ Delete';
+                btn.textContent = '{{ _("🗑️ Delete")|replace("'", "\\'")|safe }}';
             } else {
                 window.location.href = "{{ url_for('cms.subjects') }}";
             }
         })
         .catch(err => {
-            alert('Error: ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
             btn.disabled = false;
-            btn.textContent = '🗑️ Delete';
+            btn.textContent = '{{ _("🗑️ Delete")|replace("'", "\\'")|safe }}';
         });
     }
 
@@ -2521,7 +2524,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const username = input.value.trim();
         if (!username) return;
 
-        resultsDiv.innerHTML = '<div style="padding:1rem;color:var(--text-secondary);">Searching <span class="loading-dots">...</span></div>';
+        resultsDiv.innerHTML = '<div style="padding:1rem;color:var(--text-secondary);">{{ _("Searching") }} <span class="loading-dots">...</span></div>';
         saveBar.style.display = 'none';
 
         try {
@@ -2534,10 +2537,10 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
 
             if (data.fallback_to_sherlock) {
                 resultsDiv.innerHTML = '<div class="card" style="padding:1rem;border-left:4px solid #f59e0b;">' +
-                    '<strong>RapidAPI limit reached</strong><br>' +
+                    '<strong>{{ _("RapidAPI limit reached") }}</strong><br>' +
                     '<span style="font-size:0.85rem;color:var(--text-secondary);">' +
-                    esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) + ' used this month. ' +
-                    'Use the Sherlock button on the main dashboard.' +
+                    esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) + ' {{ _("used this month.") }} ' +
+                    '{{ _("Use the Sherlock button on the main dashboard.") }}' +
                     '</span></div>';
                 return;
             }
@@ -2553,14 +2556,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 const pct = Math.min(100, Math.round((data.api_usage.used / data.api_usage.limit) * 100));
                 const color = pct >= 80 ? '#f44336' : pct >= 50 ? '#f59e0b' : '#4caf50';
                 html += '<div style="margin-bottom:1rem;padding:0.75rem;background:var(--bg-card);border-radius:8px;font-size:0.85rem;">' +
-                    '<strong>API Usage:</strong> ' + esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) +
+                    '<strong>{{ _("API Usage:") }}</strong> ' + esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) +
                     '<div style="height:6px;background:var(--border-color);border-radius:3px;margin-top:4px;max-width:200px;">' +
                     '<div style="height:100%;width:' + esc(pct) + '%;background:' + color + ';border-radius:3px;"></div>' +
                     '</div></div>';
             }
 
             if (platforms.length === 0) {
-                resultsDiv.innerHTML = html + '<div class="empty">No results</div>';
+                resultsDiv.innerHTML = html + '<div class="empty">{{ _("No results") }}</div>';
                 return;
             }
 
@@ -2570,16 +2573,16 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const fpCount = platforms.filter(p => p.available === false && p.verification_note === 'likely_false_positive').length;
             const notFound = platforms.filter(p => p.available === false && !p.verification_note).length;
             html += '<div style="display:flex;gap:1.5rem;margin-bottom:0.75rem;padding:0.75rem;background:var(--bg-card);border-radius:8px;">' +
-                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(taken.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Found</div></div>' +
-                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;">' + esc(platforms.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Checked</div></div>' +
-                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(verifiedCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Verified</div></div>' +
-                (fpCount ? '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#f59e0b;">' + esc(fpCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">False Pos.</div></div>' : '') +
+                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(taken.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Found") }}</div></div>' +
+                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;">' + esc(platforms.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Checked") }}</div></div>' +
+                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(verifiedCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Verified") }}</div></div>' +
+                (fpCount ? '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#f59e0b;">' + esc(fpCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("False Pos.") }}</div></div>' : '') +
                 '</div>';
 
             // Group by category
             const categories = {};
             platforms.forEach(p => {
-                const cat = p.category || 'Other';
+                const cat = p.category || '{{ _("Other")|replace("'", "\\'")|safe }}';
                 if (!categories[cat]) categories[cat] = [];
                 categories[cat].push(p);
             });
@@ -2594,9 +2597,9 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 takenInCat.forEach(p => {
                     const isVerified = p.verified === true;
                     const isUnconfirmed = p.verified === null || p.verified === undefined;
-                    const badgeHtml = '<span class="source-badge rapidapi">RapidAPI</span>'
-                        + (isVerified ? ' <span class="source-badge verified">Verified</span>' : '')
-                        + (isUnconfirmed ? ' <span class="source-badge unconfirmed">Unconfirmed</span>' : '');
+                    const badgeHtml = '<span class="source-badge rapidapi">{{ _("RapidAPI") }}</span>'
+                        + (isVerified ? ' <span class="source-badge verified">{{ _("Verified") }}</span>' : '')
+                        + (isUnconfirmed ? ' <span class="source-badge unconfirmed">{{ _("Unconfirmed") }}</span>' : '');
                     html += '<div class="result-item">' +
                         '<input type="checkbox" class="username-result-cb" data-platform="' + esc(p.platform) + '" data-url="' + esc(p.url || '') + '" data-username="' + esc(username) + '" checked>' +
                         '<div class="result-content">' +
@@ -2612,14 +2615,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                     const fpInCat = otherInCat.filter(p => p.verification_note === 'likely_false_positive').length;
                     html += '<details style="font-size:0.85rem;margin:0.25rem 0;">' +
                         '<summary style="cursor:pointer;color:var(--text-secondary);padding:0.3rem 0;">' +
-                        esc(availCount) + ' available' + (fpInCat ? ', ' + esc(fpInCat) + ' false positive' : '') +
-                        '<span style="font-size:0.75rem;">(click to expand)</span></summary>';
+                        esc(availCount) + ' {{ _("available") }}' + (fpInCat ? ', ' + esc(fpInCat) + ' {{ _("false positive") }}' : '') +
+                        '<span style="font-size:0.75rem;">{{ _("(click to expand)") }}</span></summary>';
                     otherInCat.forEach(p => {
                         const isFp = p.verification_note === 'likely_false_positive';
                         html += '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.5rem;font-size:0.8rem;color:var(--text-muted);">' +
                             '<span>' + (isFp ? '🟠' : '🔴') + '</span>' +
                             '<span style="flex:1;">' + esc(p.platform) + '</span>' +
-                            '<span style="font-size:0.7rem;">' + (isFp ? 'False Positive' : 'Available') + '</span></div>';
+                            '<span style="font-size:0.7rem;">' + (isFp ? '{{ _("False Positive") }}' : '{{ _("Available") }}') + '</span></div>';
                     });
                     html += '</details>';
                 }
@@ -2636,7 +2639,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 });
             }
         } catch (e) {
-            resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">Error: ' + esc(e.message) + '</div>';
+            resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">{{ _("Error:") }} ' + esc(e.message) + '</div>';
         }
     }
 
@@ -2651,9 +2654,9 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const btn = document.getElementById('saveUsernameBtn');
         const checkboxes = document.querySelectorAll('.username-result-cb:checked');
         if (checkboxes.length === 0) return;
-        if (!confirm(`Save ${checkboxes.length} selected account(s) as findings?`)) return;
+        if (!confirm('{{ _("Save")|replace("'", "\\'")|safe }} ' + checkboxes.length + ' {{ _("selected account(s) as findings?")|replace("'", "\\'")|safe }}')) return;
         btn.disabled = true;
-        btn.textContent = 'Saving...';
+        btn.textContent = '{{ _("Saving...")|replace("'", "\\'")|safe }}';
 
         const results = [];
         checkboxes.forEach(cb => {
@@ -2675,18 +2678,18 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('Error: ' + data.error);
+                alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
             } else {
-                alert(data.message || 'Saved!');
+                alert(data.message || '{{ _("Saved!")|replace("'", "\\'")|safe }}');
                 if (data.findings_count > 0) location.reload();
             }
         })
         .catch(err => {
-            alert('Error: ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
         })
         .finally(() => {
             btn.disabled = false;
-            btn.textContent = 'Save Selected as Findings';
+            btn.textContent = '{{ _("Save Selected as Findings")|replace("'", "\\'")|safe }}';
         });
     }
 
@@ -2696,7 +2699,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         if (status.configured) {
             badge.style.display = 'inline';
             const pct = Math.round((status.used / status.limit) * 100);
-            badge.textContent = `${status.remaining}/${status.limit} remaining`;
+            badge.textContent = status.remaining + '/' + status.limit + ' {{ _("remaining")|replace("'", "\\'")|safe }}';
             badge.style.color = pct >= 80 ? '#f44336' : pct >= 50 ? '#f59e0b' : '#4caf50';
         }
     }).catch(() => {});

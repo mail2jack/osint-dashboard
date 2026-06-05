@@ -1,13 +1,15 @@
 from unittest.mock import patch
 
 
-class MockHttpxResponse:
-    """Helper to create mock httpx responses."""
+class MockCurlResponse:
+    """Helper to create mock curl_cffi responses."""
 
-    def __init__(self, status_code=200, json_data=None, text=""):
+    def __init__(self, status_code=200, json_data=None, text="", content=b""):
         self.status_code = status_code
         self._json_data = json_data or {}
         self.text = text
+        self.content = content
+        self.headers = {"content-type": "text/html"}
 
     def json(self):
         return self._json_data
@@ -31,14 +33,10 @@ class TestPhoneLookup:
         assert resp.status_code == 400
         assert "error" in data
 
-    @patch("httpx.Client")
-    @patch("httpx.get")
-    def test_valid_nl_number(self, mock_get, mock_client, auth_client):
+    @patch("cms.routes.phone.curl_requests.get")
+    def test_valid_nl_number(self, mock_get, auth_client):
         """Valid NL number returns validation data (no external calls needed for validation)."""
-        mock_get.return_value = MockHttpxResponse(status_code=503)
-        mock_client.return_value.__enter__.return_value.get.return_value = (
-            MockHttpxResponse(status_code=200, text="phone number is not on whatsapp")
-        )
+        mock_get.return_value = MockCurlResponse(status_code=503)
 
         resp = auth_client.post("/cms/api/phone-lookup", json={"phone": "+31634407404"})
         data = resp.get_json()
@@ -48,13 +46,9 @@ class TestPhoneLookup:
         assert data.get("formatted") == "+31634407404"
         assert data.get("line_type") is not None
 
-    @patch("httpx.Client")
-    @patch("httpx.get")
-    def test_international_number(self, mock_get, mock_client, auth_client):
-        mock_get.return_value = MockHttpxResponse(status_code=503)
-        mock_client.return_value.__enter__.return_value.get.return_value = (
-            MockHttpxResponse(status_code=200, text="phone number is not on whatsapp")
-        )
+    @patch("cms.routes.phone.curl_requests.get")
+    def test_international_number(self, mock_get, auth_client):
+        mock_get.return_value = MockCurlResponse(status_code=503)
 
         resp = auth_client.post("/cms/api/phone-lookup", json={"phone": "+14155552671"})
         data = resp.get_json()
@@ -63,26 +57,18 @@ class TestPhoneLookup:
         assert data.get("country_code") == "+1"
         assert data.get("formatted") == "+14155552671"
 
-    @patch("httpx.Client")
-    @patch("httpx.get")
-    def test_invalid_number(self, mock_get, mock_client, auth_client):
-        mock_get.return_value = MockHttpxResponse(status_code=503)
-        mock_client.return_value.__enter__.return_value.get.return_value = (
-            MockHttpxResponse(status_code=200, text="phone number is not on whatsapp")
-        )
+    @patch("cms.routes.phone.curl_requests.get")
+    def test_invalid_number(self, mock_get, auth_client):
+        mock_get.return_value = MockCurlResponse(status_code=503)
 
         resp = auth_client.post("/cms/api/phone-lookup", json={"phone": "123"})
         data = resp.get_json()
         assert data.get("valid") is False
 
-    @patch("httpx.Client")
-    @patch("httpx.get")
-    def test_normalizes_phone(self, mock_get, mock_client, auth_client):
+    @patch("cms.routes.phone.curl_requests.get")
+    def test_normalizes_phone(self, mock_get, auth_client):
         """Test that Dutch numbers with various formats are normalized to E164."""
-        mock_get.return_value = MockHttpxResponse(status_code=503)
-        mock_client.return_value.__enter__.return_value.get.return_value = (
-            MockHttpxResponse(status_code=200, text="phone number is not on whatsapp")
-        )
+        mock_get.return_value = MockCurlResponse(status_code=503)
 
         resp = auth_client.post("/cms/api/phone-lookup", json={"phone": "06 12345678"})
         data = resp.get_json()
@@ -90,13 +76,9 @@ class TestPhoneLookup:
         assert data.get("valid") is True
         assert data.get("formatted", "").startswith("+31")
 
-    @patch("httpx.Client")
-    @patch("httpx.get")
-    def test_normalize_leading_zero(self, mock_get, mock_client, auth_client):
-        mock_get.return_value = MockHttpxResponse(status_code=503)
-        mock_client.return_value.__enter__.return_value.get.return_value = (
-            MockHttpxResponse(status_code=200, text="phone number is not on whatsapp")
-        )
+    @patch("cms.routes.phone.curl_requests.get")
+    def test_normalize_leading_zero(self, mock_get, auth_client):
+        mock_get.return_value = MockCurlResponse(status_code=503)
 
         resp = auth_client.post("/cms/api/phone-lookup", json={"phone": "0612345678"})
         data = resp.get_json()

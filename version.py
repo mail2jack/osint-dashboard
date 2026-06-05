@@ -48,6 +48,16 @@ CHANGELOG = {
         1,
         0,
     ): "Webcams tool, Platform selectors, Time estimates, Cancel functionality, Improved detection, 24 dork queries",
+    (
+        3,
+        4,
+        2,
+    ): "Bug fixes and performance improvements",
+    (
+        3,
+        5,
+        0,
+    ): "WhatsApp/Telegram presence check, E164 phone normalization, Comments refactor, OSINT URL dedup, dark mode fixes",
 }
 
 

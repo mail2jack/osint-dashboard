@@ -10,6 +10,8 @@ from flask_login import login_required
 from . import cms_bp
 from ..models import Setting
 from ..auth import admin_required
+from curl_cffi import requests as curl_requests
+from cms.services.http_utils import jitter_sleep
 
 logger = logging.getLogger(__name__)
 
@@ -165,11 +167,10 @@ def check_update() -> flask.Response:
         return jsonify(cache["data"])
 
     try:
-        import httpx
-
         # Fetch remote VERSION file
         ver_url = f"https://raw.githubusercontent.com/{repo}/master/VERSION"
-        r = httpx.get(ver_url, timeout=10)
+        jitter_sleep(domain_hint=ver_url)
+        r = curl_requests.get(ver_url, timeout=10, impersonate="chrome124")
         r.raise_for_status()
         latest_ver = r.text.strip()
 
@@ -178,8 +179,12 @@ def check_update() -> flask.Response:
         remote_sha = local_sha
         try:
             api_url = f"https://api.github.com/repos/{repo}/commits/master"
-            api_r = httpx.get(
-                api_url, timeout=10, headers={"Accept": "application/vnd.github.v3.sha"}
+            jitter_sleep(domain_hint=api_url)
+            api_r = curl_requests.get(
+                api_url,
+                timeout=10,
+                impersonate="chrome124",
+                headers={"Accept": "application/vnd.github.v3.sha"},
             )
             if api_r.status_code == 200:
                 remote_sha = api_r.text.strip()
@@ -227,7 +232,8 @@ def check_update() -> flask.Response:
         if update_available:
             try:
                 cl_url = f"https://raw.githubusercontent.com/{repo}/master/CHANGELOG.md"
-                cl_r = httpx.get(cl_url, timeout=10)
+                jitter_sleep(domain_hint=cl_url)
+                cl_r = curl_requests.get(cl_url, timeout=10, impersonate="chrome124")
                 if cl_r.status_code == 200:
                     cl_text = cl_r.text
                     m = re.search(

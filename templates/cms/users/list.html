@@ -10,7 +10,7 @@
 
 <div class="card">
     <form method="GET" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-        <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}" 
+        <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}" data-immediate-search
                style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
         <button type="submit" class="btn-cms primary">Search</button>
         {% if search %}
