@@ -18,7 +18,15 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _has_table(table: str) -> bool:
+    bind = op.get_context().bind
+    inspector = inspect(bind)
+    return table in inspector.get_table_names()
+
+
 def _has_index(table: str, index_name: str) -> bool:
+    if not _has_table(table):
+        return False
     bind = op.get_context().bind
     inspector = inspect(bind)
     indexes = [i["name"] for i in inspector.get_indexes(table)]
@@ -27,7 +35,9 @@ def _has_index(table: str, index_name: str) -> bool:
 
 def upgrade() -> None:
     # Composite index for unread notification count queries
-    if not _has_index("notifications", "ix_notifications_user_id_is_read"):
+    if _has_table("notifications") and not _has_index(
+        "notifications", "ix_notifications_user_id_is_read"
+    ):
         with op.batch_alter_table("notifications", schema=None) as batch_op:
             batch_op.create_index(
                 "ix_notifications_user_id_is_read", ["user_id", "is_read"], unique=False
@@ -53,7 +63,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    if _has_index("notifications", "ix_notifications_user_id_is_read"):
+    if _has_table("notifications") and _has_index(
+        "notifications", "ix_notifications_user_id_is_read"
+    ):
         with op.batch_alter_table("notifications", schema=None) as batch_op:
             batch_op.drop_index("ix_notifications_user_id_is_read")
 
