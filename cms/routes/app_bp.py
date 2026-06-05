@@ -2,7 +2,6 @@ import logging
 import os
 import asyncio
 import re
-import concurrent.futures
 from curl_cffi import requests as curl_requests
 from cms.services.http_utils import jitter_sleep
 from datetime import datetime, timezone
@@ -302,12 +301,7 @@ def person_search_json() -> FlaskResponse:
     name = request.validated_data.get("name", "")
     if not name:
         return jsonify({"error": "Name required"}), 400
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        fut = pool.submit(search_person, name)
-        try:
-            result = fut.result(timeout=45)
-        except concurrent.futures.TimeoutError:
-            return jsonify({"error": "Search timed out after 45 seconds"}), 504
+    result = search_person(name)
     return jsonify(result)
 
 

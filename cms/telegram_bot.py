@@ -463,7 +463,7 @@ async def cmd_person(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text(
         f"🔍 Searching for `{name}`...", parse_mode="Markdown"
     )
-    status, data = await _api_post("/api/person", {"name": name}, timeout=60.0)
+    status, data = await _api_post("/api/person", {"name": name}, timeout=120.0)
     if status == 200:
         await msg.edit_text(_fmt_person(data), parse_mode="Markdown")
     else:
