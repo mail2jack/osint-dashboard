@@ -269,9 +269,11 @@ def _fmt_person(data: dict) -> str:
         lines.append(f"\n❌ {data['error']}")
         return "\n".join(lines)
     lines.append(f"\n*Name*: {data.get('name', '?')}")
-    lines.append(f"*Sources*: {', '.join(data.get('sources_used', ['none']))}")
+    sources = data.get("sources_used", [])
     count = data.get("total_results", 0)
     lines.append(f"*Results*: {count}")
+    if sources:
+        lines.append(f"*Sources*: {', '.join(sources)}")
     if count:
         categories = {}
         for r in data.get("dorks_results", []):
