@@ -20,7 +20,7 @@
     </div>
     <div>
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
-            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="margin-left: 0.5rem; text-decoration: none;">{{ _('✏️ Edit') }}</a>
+            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary" style="margin-left: 0.5rem; text-decoration: none;">{{ _('✏️ Edit') }}</a>
             <button data-click="confirmDeleteSubject" class="btn-cms small" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">{{ _('🗑️ Delete') }}</button>
         </h1>
         <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -44,10 +44,10 @@
             </button>
             {% endif %}
             {% if subject.photo_path and subject.subject_type == 'person' %}
-            <button data-click="encodeFace" id="encodeFaceBtn" class="btn-cms primary small"  class="bg-purple">
+            <button data-click="encodeFace" id="encodeFaceBtn" class="btn-cms primary small bg-purple">
                 {{ _('👤 Encode Face') }}
             </button>
-            <button data-click="searchTinEye" class="btn-cms primary small"  class="bg-green">
+            <button data-click="searchTinEye" class="btn-cms primary small bg-green">
                 {{ _('🔍 TinEye Search') }}
             </button>
             {% endif %}
@@ -61,17 +61,17 @@
 </div>
 
 <!-- Interpol check results container -->
-<div id="interpolResults" class="card"  class="hidden"></div>
+<div id="interpolResults" class="card hidden"></div>
 
 <!-- Vessel check results container -->
-<div id="vesselResults" class="card"  class="hidden"></div>
+<div id="vesselResults" class="card hidden"></div>
 
 <div class="card">
     <div class="card-header">
         <h2>
             {% if subject.subject_type == 'vehicle' %}{{ _('🚗 Vehicle Details') }}{% elif subject.subject_type == 'vessel' %}{{ _('🚢 Vessel Details') }}{% else %}{{ _('Subject Details') }}{% endif %}
         </h2>
-        <button data-click="openNetworkModal" class="btn-cms small"  class="bg-purple">{{ _('🔗 View Relationships') }}</button>
+        <button data-click="openNetworkModal" class="btn-cms small bg-purple">{{ _('🔗 View Relationships') }}</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
         <div>
@@ -303,7 +303,7 @@
                                         {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
                                     </div>
                                 </div>
-                                <div class="btn-group"  class="m-0">
+                                <div class="btn-group m-0">
                                     <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;">{{ _('🏛 Kadaster') }}</button>
                                     <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#b91c1c;">{{ _('🚔 Politiebureau') }}</button>
                                 </div>
@@ -316,6 +316,10 @@
                         <span>{{ subject.address if subject.address else '-' }}</span>
                     {% endif %}
                 </div>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ _('💳 Bank / IBAN') }}</span>
+                <span class="info-value">{{ subject.bank_account|redact_for_viewer if subject.bank_account else '-' }}</span>
             </div>
             <!-- Subject.notes is deprecated. Comments now use Comment model with timestamps -->
         </div>
@@ -337,7 +341,7 @@
     <div class="card-header">
         <h2>{{ _('📝 Notities & Comments') }} <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h2>
         <div class="flex-gap">
-            <button data-click="addSubjectComment" class="btn-cms small"  class="bg-green">{{ _('Add Note') }}</button>
+            <button data-click="addSubjectComment" class="btn-cms small bg-green">{{ _('Add Note') }}</button>
             <button data-click="loadSubjectComments" class="btn-cms small">{{ _('🔄 Refresh') }}</button>
         </div>
     </div>
@@ -366,8 +370,8 @@
     <div class="card-header">
         <h2>{{ _('Social Media IDs') }}</h2>
         <div class="btn-group">
-            <button data-click="bulkExtractSocialIds" class="btn-cms small"  class="bg-green" id="bulkExtractBtn">{{ _('🔍 Bulk Extract from Findings') }}</button>
-            <button data-click="openAddSocialIdModal" class="btn-cms small"  class="text-purple">{{ _('+ Add ID') }}</button>
+            <button data-click="bulkExtractSocialIds" class="btn-cms small bg-green" id="bulkExtractBtn">{{ _('🔍 Bulk Extract from Findings') }}</button>
+            <button data-click="openAddSocialIdModal" class="btn-cms small text-purple">{{ _('+ Add ID') }}</button>
         </div>
     </div>
     <div id="socialIdsList">
@@ -410,7 +414,7 @@
 <div class="card">
     <div class="card-header">
         <h2>{{ _('🌐 Social Accounts (Usernames)') }}</h2>
-        <button data-click="openAddSocialAccountModal" class="btn-cms small"  class="text-purple">{{ _('+ Add Username') }}</button>
+        <button data-click="openAddSocialAccountModal" class="btn-cms small text-purple">{{ _('+ Add Username') }}</button>
     </div>
     <div id="socialAccountsList">
         {% if subject.social_accounts and subject.social_accounts.count() > 0 %}
@@ -449,17 +453,17 @@
     </div>
     <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
         <input type="text" id="usernameSearchInput" placeholder="{{ _('Enter username...') }}" style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
-        <button data-click="searchUsername" class="btn-cms small"  class="text-purple">{{ _('🔍 Check') }}</button>
+        <button data-click="searchUsername" class="btn-cms small text-purple">{{ _('🔍 Check') }}</button>
     </div>
     <div id="usernameResults"></div>
     <div id="usernameSaveBar" style="display:none; margin-top: 0.75rem;">
-        <button data-click="saveUsernameFindings" class="btn-cms small"  class="bg-green" id="saveUsernameBtn">{{ _('📥 Save Selected as Findings') }} (<span id="usernameSelectedCount">0</span>)</button>
+        <button data-click="saveUsernameFindings" class="btn-cms small bg-green" id="saveUsernameBtn">{{ _('📥 Save Selected as Findings') }} (<span id="usernameSelectedCount">0</span>)</button>
     </div>
 </div>
 
 <!-- Add Social Account Modal -->
 <div id="addSocialAccountModal" class="modal">
-    <div class="modal-content"  class="max-w-400">
+    <div class="modal-content max-w-400">
         <div class="flex-between mb-1">
             <h2 class="m-0">{{ _('Add Social Account') }}</h2>
             <span data-click="closeAddSocialAccountModal" class="text-lg cursor-pointer text-secondary">&times;</span>
@@ -493,8 +497,8 @@
                 <input type="url" id="saUrl" class="w100-p5" placeholder="https://...">
             </div>
             <div class="flex-gap mt-1">
-                <button type="submit" class="btn-sm"  class="bg-green">{{ _('Save') }}</button>
-                <button type="button" data-click="closeAddSocialAccountModal" class="btn-sm"  class="bg-gray">{{ _('Cancel') }}</button>
+                <button type="submit" class="btn-sm bg-green">{{ _('Save') }}</button>
+                <button type="button" data-click="closeAddSocialAccountModal" class="btn-sm bg-gray">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -502,7 +506,7 @@
 
 <!-- Add Social ID Modal -->
 <div id="addSocialIdModal" class="modal">
-    <div class="modal-content"  class="max-w-400">
+    <div class="modal-content max-w-400">
         <div class="flex-between mb-1">
             <h2 class="m-0" id="socialIdModalTitle">{{ _('Add Social Media ID') }}</h2>
             <span data-click="closeAddSocialIdModal" class="text-lg cursor-pointer text-secondary">&times;</span>
@@ -530,8 +534,8 @@
                 <input type="url" id="socialUrl" class="w100-p5" placeholder="https://...">
             </div>
             <div class="flex-gap mt-1">
-                <button type="button" data-click="saveSocialId" class="btn-sm"  class="bg-green">{{ _('Save') }}</button>
-                <button type="button" data-click="closeAddSocialIdModal" class="btn-sm"  class="bg-gray">{{ _('Cancel') }}</button>
+                <button type="button" data-click="saveSocialId" class="btn-sm bg-green">{{ _('Save') }}</button>
+                <button type="button" data-click="closeAddSocialIdModal" class="btn-sm bg-gray">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -568,7 +572,7 @@
                 <span id="resultsCount"></span>
             </div>
             
-            <div class="select-all-row"  class="mb-05">
+            <div class="select-all-row mb-05">
                 <label>
                     <input type="checkbox" id="selectAllResults" data-change="toggleAllResults">
                     <strong>{{ _('Select All') }}</strong>
@@ -609,7 +613,7 @@
         </div>
         
         <div class="mt-1">
-            <button data-click="openAddRelationForm" class="btn-sm"  class="bg-green">{{ _('+ Add Relationship') }}</button>
+            <button data-click="openAddRelationForm" class="btn-sm bg-green">{{ _('+ Add Relationship') }}</button>
         </div>
         
         <div id="addRelationForm" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
@@ -626,7 +630,7 @@
             </select>
             <div id="relationError" style="color:#dc2626;font-size:0.85rem;margin-bottom:0.5rem;word-break:break-all;"></div>
             <div class="flex-gap">
-                <button data-click="addRelationship" class="btn-sm"  class="bg-green">{{ _('Save') }}</button>
+                <button data-click="addRelationship" class="btn-sm bg-green">{{ _('Save') }}</button>
                 <button data-click="closeAddRelationForm" class="btn-sm" style="background: var(--text-muted);">{{ _('Cancel') }}</button>
             </div>
         </div>
@@ -1058,7 +1062,7 @@
                     if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Issued by:") }} ' + esc(p.issuing_country) + '</span>';
                     if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("INTERPOL link") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small"  class="bg-green">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
@@ -1077,7 +1081,7 @@
                     if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Info:") }} ' + esc(p.description) + '</span>';
                     if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("Link") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small"  class="bg-green">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
@@ -1098,7 +1102,7 @@
                     if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Datum:") }} ' + esc(p.date) + '</span>';
                     if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("Bekijk op politie.nl") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small"  class="bg-green">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
@@ -2420,8 +2424,8 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '"  class="hidden">' +
                     '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
                     '<div class="comment-edit-actions">' +
-                        '<button data-click="saveSubjectComment" data-arg0="' + esc(c.id) + '" class="btn btn-sm"  class="bg-green">{{ _("Save") }}</button>' +
-                        '<button data-click="cancelSubjectCommentEdit" data-arg0="' + esc(c.id) + '" class="btn btn-sm"  class="bg-gray">{{ _("Cancel") }}</button>' +
+                        '<button data-click="saveSubjectComment" data-arg0="' + esc(c.id) + '" class="btn btn-sm bg-green">{{ _("Save") }}</button>' +
+                        '<button data-click="cancelSubjectCommentEdit" data-arg0="' + esc(c.id) + '" class="btn btn-sm bg-gray">{{ _("Cancel") }}</button>' +
                     '</div>' +
                 '</div>' +
                 '<div class="comment-actions">' +

@@ -198,7 +198,7 @@
                 <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a> {{ case.title[:40] }}{% if case.title|length > 40 %}...{% endif %}</td>
                 <td><span class="badge badge-{{ case.status }}">{{ case.status }}</span></td>
                 <td><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></td>
-                <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ case.updated_at.strftime('%m/%d') if case.updated_at else '-' }}</td>
+                <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ case.updated_at.strftime('%d-%m-%Y') if case.updated_at else '-' }}</td>
             </tr>
             {% endfor %}
         </tbody>

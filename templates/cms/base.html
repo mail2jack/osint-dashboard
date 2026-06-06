@@ -59,7 +59,7 @@
                         🔔
                         <span id="notificationBadge" style="display:none;position:absolute;top:-6px;right:-8px;background:#dc2626;color:white;font-size:0.6rem;border-radius:50%;width:16px;height:16px;text-align:center;line-height:16px;font-weight:bold;">0</span>
                     </span>
-                    <div id="notificationPanel" style="display:none;position:absolute;top:100%;right:0;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;box-shadow:0 4px 12px var(--shadow);min-width:320px;max-height:400px;overflow-y:auto;z-index:1000;"></div>
+                    <div id="notificationPanel" style="display:none;position:absolute;top:100%;right:0;"></div>
                     <a href="{{ url_for('set_lang', lang='nl') }}" style="color:white;text-decoration:none;font-size:0.85rem;{% if current_locale == 'nl' %}font-weight:bold;text-decoration:underline;{% endif %}">NL</a>
                     <a href="{{ url_for('set_lang', lang='en') }}" style="color:white;text-decoration:none;font-size:0.85rem;{% if current_locale == 'en' %}font-weight:bold;text-decoration:underline;{% endif %}">EN</a>
                     <button class="theme-toggle" data-click="toggleTheme" title="{{ _('Toggle dark mode') }}">

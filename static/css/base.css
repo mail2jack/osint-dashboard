@@ -355,6 +355,40 @@ tbody tr:hover { background: var(--table-hover); }
 }
 option { background: var(--bg-card); color: var(--text-primary); }
 
+#notificationPanel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--shadow);
+    min-width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+#notificationPanel .notif-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+#notificationPanel .notif-item:hover {
+    background: var(--table-hover);
+}
+#notificationPanel .notif-item.unread {
+    background: var(--table-hover);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+#notificationPanel .notif-item.unread:hover {
+    background: var(--accent-primary);
+    color: #fff;
+}
+#notificationPanel .notif-time {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
 #toast-container {
     position: fixed;
     top: 1rem;

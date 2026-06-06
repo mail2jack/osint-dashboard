@@ -18,7 +18,7 @@
 
 <div style="max-width: 700px; margin: 0 auto;">
     <div style="margin-bottom: 1rem;">
-        <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray small">← Back to Reminders</a>
+        <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray small">{{ _('← Back to Reminders') }}</a>
     </div>
     
     <div class="card">
@@ -27,10 +27,10 @@
                 <h2 style="margin: 0;">{{ reminder.title }}</h2>
                 <span class="badge badge-priority-{{ reminder.priority }}">{{ reminder.priority }}</span>
                 {% if reminder.is_overdue and not reminder.is_completed %}
-                <span class="badge" style="background: #dc2626; color: white;">OVERDUE</span>
+                <span class="badge" style="background: #dc2626; color: white;">{{ _('OVERDUE') }}</span>
                 {% endif %}
                 {% if reminder.is_completed %}
-                <span class="badge badge-closed">COMPLETED</span>
+                <span class="badge badge-closed">{{ _('COMPLETED') }}</span>
                 {% endif %}
             </div>
         </div>
@@ -40,44 +40,44 @@
         {% endif %}
         
         <div class="detail-row">
-            <span class="detail-label">Reminder Date</span>
-            <span class="detail-value">{{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else 'Not set' }}</span>
+            <span class="detail-label">{{ _('Reminder Date') }}</span>
+            <span class="detail-value">{{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else _('Not set') }}</span>
         </div>
         
         {% if reminder.due_date %}
         <div class="detail-row">
-            <span class="detail-label">Due Date</span>
+            <span class="detail-label">{{ _('Due Date') }}</span>
             <span class="detail-value">{{ reminder.due_date.strftime('%Y-%m-%d') }}</span>
         </div>
         {% endif %}
         
         {% if reminder.completed_at %}
         <div class="detail-row">
-            <span class="detail-label">Completed At</span>
+            <span class="detail-label">{{ _('Completed At') }}</span>
             <span class="detail-value">{{ reminder.completed_at.strftime('%Y-%m-%d %H:%M') }}</span>
         </div>
         {% endif %}
         
         <div class="detail-row">
-            <span class="detail-label">Type</span>
+            <span class="detail-label">{{ _('Type') }}</span>
             <span class="detail-value">{{ reminder.reminder_type|title }}</span>
         </div>
         
         <div class="detail-row">
-            <span class="detail-label">Recurrence</span>
-            <span class="detail-value">{{ reminder.recurrence|title if reminder.recurrence != 'none' else 'None' }}</span>
+            <span class="detail-label">{{ _('Recurrence') }}</span>
+            <span class="detail-value">{{ reminder.recurrence|title if reminder.recurrence != 'none' else _('None') }}</span>
         </div>
         
         {% if reminder.assigned_user %}
         <div class="detail-row">
-            <span class="detail-label">Assigned To</span>
+            <span class="detail-label">{{ _('Assigned To') }}</span>
             <span class="detail-value">{{ reminder.assigned_user.full_name }}</span>
         </div>
         {% endif %}
         
         {% if reminder.case_id and case %}
         <div class="detail-row">
-            <span class="detail-label">Case</span>
+            <span class="detail-label">{{ _('Case') }}</span>
             <span class="detail-value">
                 <a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a>
                 - {{ case.title }}
@@ -86,30 +86,30 @@
         {% endif %}
         
         <div class="detail-row">
-            <span class="detail-label">Created By</span>
-            <span class="detail-value">{{ reminder.creator.full_name if reminder.creator else 'Unknown' }}</span>
+            <span class="detail-label">{{ _('Created By') }}</span>
+            <span class="detail-value">{{ reminder.creator.full_name if reminder.creator else _('Unknown') }}</span>
         </div>
         
         <div class="detail-row">
-            <span class="detail-label">Created At</span>
-            <span class="detail-value">{{ reminder.created_at.strftime('%Y-%m-%d %H:%M') if reminder.created_at else 'Unknown' }}</span>
+            <span class="detail-label">{{ _('Created At') }}</span>
+            <span class="detail-value">{{ reminder.created_at.strftime('%Y-%m-%d %H:%M') if reminder.created_at else _('Unknown') }}</span>
         </div>
         
         <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap;">
             {% if not reminder.is_completed %}
 <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-cms small" style="background:#22c55e;color:white;border-color:#22c55e;">✓ Mark Complete</button>
+    <button type="submit" class="btn-cms small" style="background:#22c55e;color:white;border-color:#22c55e;">{{ _('✓ Mark Complete') }}</button>
 </form>
 
 <form method="POST" action="{{ url_for('cms.snooze_reminder', reminder_id=reminder.id, minutes=30) }}" style="display: inline;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-cms small" style="background:#f59e0b;color:white;border-color:#f59e0b;">⏰ Snooze 30 min</button>
+    <button type="submit" class="btn-cms small" style="background:#f59e0b;color:white;border-color:#f59e0b;">{{ _('⏰ Snooze 30 min') }}</button>
 </form>
 
-<form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="Delete this reminder?">
+<form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" style="display: inline;" data-confirm="{{ _('Delete this reminder?') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-cms danger small">🗑️ Delete</button>
+    <button type="submit" class="btn-cms danger small">{{ _('🗑️ Delete') }}</button>
             </form>
             {% endif %}
         </div>

@@ -124,11 +124,9 @@
           data.notifications.forEach(function(n) {
             var safeId = String(n.id).replace(/"/g, '&quot;');
             var safeLink = String(n.link || '').replace(/"/g, '&quot;');
-            h += '<div class="' + (n.is_read ? '' : 'unread') + '" style="padding:0.75rem 1rem;border-bottom:1px solid var(--border-color);cursor:pointer;font-size:0.875rem;';
-            if (!n.is_read) h += 'background:var(--table-hover);font-weight:600;';
-            h += '" data-click="clickNotificationBtn" data-arg0="' + safeId + '" data-arg1="' + safeLink + '">';
+            h += '<div class="notif-item' + (n.is_read ? '' : ' unread') + '" data-click="clickNotificationBtn" data-arg0="' + safeId + '" data-arg1="' + safeLink + '">';
             h += '<div>' + n.message + '</div>';
-            h += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;">' + new Date(n.created_at).toLocaleString() + '</div></div>';
+            h += '<div class="notif-time">' + new Date(n.created_at).toLocaleString() + '</div></div>';
           });
         }
         panel.innerHTML = h;
@@ -170,9 +168,9 @@ setInterval(function() {
     .then(function(d) {
       var banner = document.getElementById('sfHealthBanner');
       if (!banner) return;
-      if (d.spiderfoot && d.spiderfoot === 'connected') {
+      if (d.spiderfoot === 'ok') {
         banner.style.display = 'none';
-      } else if (d.spiderfoot && d.spiderfoot !== 'connected') {
+      } else if (d.spiderfoot && d.spiderfoot !== 'ok' && d.spiderfoot !== 'not configured') {
         banner.style.display = 'block';
         document.getElementById('sfHealthText').textContent = 'unreachable';
       }

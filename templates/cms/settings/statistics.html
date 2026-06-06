@@ -288,7 +288,7 @@
                 <tr>
                     <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a> {{ case.title[:25] }}{% if case.title|length > 25 %}...{% endif %}</td>
                     <td><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></td>
-                    <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ case.updated_at.strftime('%m/%d') if case.updated_at else '-' }}</td>
+                    <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ case.updated_at.strftime('%d-%m-%Y') if case.updated_at else '-' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -328,7 +328,7 @@
             <div>
                 <strong style="color: var(--danger-text, #dc2626);">{{ reminder.title[:40] }}{% if reminder.title|length > 40 %}...{% endif %}</strong>
                 <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                    Overdue: {{ reminder.reminder_date.strftime('%m/%d %H:%M') if reminder.reminder_date else '' }}
+                    Overdue: {{ reminder.reminder_date.strftime('%d-%m-%Y %H:%M') if reminder.reminder_date else '' }}
                 </div>
             </div>
             <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">

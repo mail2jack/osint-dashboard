@@ -748,6 +748,8 @@ def verify_2fa() -> flask.Response:
     """Verify TOTP code as second factor during login."""
     user_id = session.get("_2fa_user_id")
     if not user_id:
+        if current_user.is_authenticated:
+            return redirect(url_for("cms.dashboard"))
         flash("No pending 2FA verification. Please log in first.", "warning")
         return redirect(url_for("auth.login"))
 

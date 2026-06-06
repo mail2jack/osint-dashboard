@@ -143,6 +143,11 @@
             <input type="number" name="risk_score" id="risk_score" value="0" min="0" max="100">
         </div>
         <div class="form-group">
+            <label for="bank_account">{{ _('💳 Bank / IBAN') }}</label>
+            <input type="text" name="bank_account" id="bank_account" placeholder="{{ _('e.g. NL39INGB0001234567') }}">
+            <small style="color:var(--text-muted);">{{ _('Encrypted at rest') }}</small>
+        </div>
+        <div class="form-group">
             <label for="notes">{{ _('Notes') }}</label>
             <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">{{ _('📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)') }}</p>
         </div>

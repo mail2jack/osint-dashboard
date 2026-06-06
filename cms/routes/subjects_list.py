@@ -120,10 +120,11 @@ def subjects() -> str:
                     restricted_count=restricted,
                     searching_username=current_user.username,
                 )
-                owners_str = ", ".join(sorted(owner_names))
+                owners_str = ", ".join(sorted(owner_names)) if owner_names else ""
+                owners_part = f" ({owners_str})" if owners_str else ""
                 flask.flash(
                     f'🔍 "{search}" is gevonden maar heeft toegangsrestricties. '
-                    f"Case-eigenaar ({owners_str}) is op de hoogte gesteld "
+                    f"Case-eigenaar{owners_part} is op de hoogte gesteld "
                     f"en zal indien nodig contact met je opnemen.",
                     "warning",
                 )

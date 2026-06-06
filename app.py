@@ -97,6 +97,11 @@ app.config["SESSION_CACHELIB"] = FileSystemCache(
 )
 Session(app)
 
+# Clean up expired session files at startup
+_session_cache = app.config["SESSION_CACHELIB"]
+with contextlib.suppress(Exception):
+    _session_cache._prune()
+
 # =============================================================================
 # Case Management System (CMS) Integration
 # =============================================================================

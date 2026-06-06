@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-06-05 09:21+0200\n"
+"POT-Creation-Date: 2026-06-06 15:05+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: cms/routes/exports.py:39
+#: cms/routes/exports.py:40
 msgid "Case Report"
 msgstr ""
 
@@ -34,7 +34,7 @@ msgid "The page you are looking for does not exist."
 msgstr ""
 
 #: templates/cms/404.html:23 templates/cms/500.html:23
-#: templates/cms/settings/index.html:173
+#: templates/cms/settings/index.html:297
 msgid "Back to Dashboard"
 msgstr ""
 
@@ -55,79 +55,79 @@ msgstr ""
 msgid "CMS"
 msgstr ""
 
-#: templates/cms/base.html:530 templates/cms/dashboard.html:2
+#: templates/cms/base.html:37 templates/cms/dashboard.html:2
 msgid "Dashboard"
 msgstr ""
 
-#: templates/cms/base.html:531 templates/cms/cases/list.html:3
+#: templates/cms/base.html:38 templates/cms/cases/list.html:3
 #: templates/cms/cases/list.html:8 templates/cms/clients/view.html:179
 #: templates/cms/search.html:172 templates/cms/search.html:213
 #: templates/cms/search.html:256
 msgid "Cases"
 msgstr ""
 
-#: templates/cms/base.html:532 templates/cms/clients/list.html:3
+#: templates/cms/base.html:39 templates/cms/clients/list.html:3
 #: templates/cms/clients/list.html:7 templates/cms/dashboard.html:167
 #: templates/cms/search.html:173 templates/cms/search.html:219
 #: templates/cms/search.html:274
 msgid "Clients"
 msgstr ""
 
-#: templates/cms/base.html:533 templates/cms/dashboard.html:171
+#: templates/cms/base.html:40 templates/cms/dashboard.html:171
 #: templates/cms/search.html:174 templates/cms/search.html:225
 #: templates/cms/search.html:292 templates/cms/subjects/list.html:3
 #: templates/cms/subjects/list.html:7
 msgid "Subjects"
 msgstr ""
 
-#: templates/cms/base.html:534 templates/cms/search.html:3
+#: templates/cms/base.html:41 templates/cms/search.html:3
 #: templates/cms/search.html:167 templates/cms/subjects/view.html:551
 msgid "Search"
 msgstr ""
 
-#: templates/cms/base.html:535 templates/cms/dashboard.html:140
+#: templates/cms/base.html:42 templates/cms/dashboard.html:140
 #: templates/cms/reminders/list.html:117
 msgid "Reminders"
 msgstr ""
 
-#: templates/cms/base.html:540 templates/cms/dashboard.html:143
+#: templates/cms/base.html:47 templates/cms/dashboard.html:143
 #: templates/cms/settings/index.html:3
 msgid "Settings"
 msgstr ""
 
-#: templates/cms/base.html:550
+#: templates/cms/base.html:57
 msgid "Logout"
 msgstr ""
 
-#: templates/cms/base.html:551
+#: templates/cms/base.html:58
 msgid "Notifications"
 msgstr ""
 
-#: templates/cms/base.html:558
+#: templates/cms/base.html:65
 msgid "Toggle dark mode"
 msgstr ""
 
-#: templates/cms/base.html:561
+#: templates/cms/base.html:68
 msgid "Help"
 msgstr ""
 
-#: templates/cms/base.html:567
+#: templates/cms/base.html:74
 msgid "Update available"
 msgstr ""
 
-#: templates/cms/base.html:571
+#: templates/cms/base.html:78
 msgid "SpiderFoot is unreachable. Some OSINT features may not work."
 msgstr ""
 
-#: templates/cms/base.html:575
+#: templates/cms/base.html:82
 msgid "login anomaly/anomalies detected in the last 24 hours."
 msgstr ""
 
-#: templates/cms/base.html:576
+#: templates/cms/base.html:83
 msgid "Review"
 msgstr ""
 
-#: templates/cms/base.html:800
+#: templates/cms/base.html:182
 msgid "No notifications"
 msgstr ""
 
@@ -171,7 +171,7 @@ msgid "Open"
 msgstr ""
 
 #: templates/cms/cases/list.html:21 templates/cms/dashboard.html:155
-#: templates/cms/search.html:281 templates/cms/settings/index.html:451
+#: templates/cms/search.html:281 templates/cms/settings/index.html:588
 msgid "Active"
 msgstr ""
 
@@ -196,19 +196,21 @@ msgstr ""
 msgid "View All"
 msgstr ""
 
-#: templates/cms/dashboard.html:189 templates/cms/search.html:266
+#: templates/cms/dashboard.html:189 templates/cms/reminders/create.html:14
+#: templates/cms/reminders/view.html:80 templates/cms/search.html:266
 msgid "Case"
 msgstr ""
 
 #: templates/cms/cases/list.html:126 templates/cms/cases/view.html:66
 #: templates/cms/clients/view.html:184 templates/cms/clients/view.html:289
-#: templates/cms/dashboard.html:190 templates/cms/settings/index.html:310
+#: templates/cms/dashboard.html:190 templates/cms/settings/index.html:447
 msgid "Status"
 msgstr ""
 
 #: templates/cms/cases/create.html:123 templates/cms/cases/edit.html:92
 #: templates/cms/cases/list.html:121 templates/cms/cases/view.html:62
-#: templates/cms/dashboard.html:191
+#: templates/cms/dashboard.html:191 templates/cms/reminders/create.html:46
+#: templates/cms/reminders/edit.html:39
 msgid "Priority"
 msgstr ""
 
@@ -390,26 +392,31 @@ msgstr ""
 
 #: templates/cms/cases/create.html:119 templates/cms/cases/edit.html:87
 #: templates/cms/cases/view.html:89 templates/cms/cases/view.html:476
+#: templates/cms/reminders/create.html:28 templates/cms/reminders/edit.html:20
 msgid "Description"
 msgstr ""
 
 #: templates/cms/cases/create.html:125 templates/cms/cases/edit.html:94
-#: templates/cms/cases/list.html:31
+#: templates/cms/cases/list.html:31 templates/cms/reminders/create.html:48
+#: templates/cms/reminders/edit.html:41
 msgid "Low"
 msgstr ""
 
 #: templates/cms/cases/create.html:126 templates/cms/cases/edit.html:95
-#: templates/cms/cases/list.html:30
+#: templates/cms/cases/list.html:30 templates/cms/reminders/create.html:49
+#: templates/cms/reminders/edit.html:42
 msgid "Medium"
 msgstr ""
 
 #: templates/cms/cases/create.html:127 templates/cms/cases/edit.html:96
-#: templates/cms/cases/list.html:29
+#: templates/cms/cases/list.html:29 templates/cms/reminders/create.html:50
+#: templates/cms/reminders/edit.html:43
 msgid "High"
 msgstr ""
 
 #: templates/cms/cases/create.html:128 templates/cms/cases/edit.html:97
-#: templates/cms/cases/list.html:28
+#: templates/cms/cases/list.html:28 templates/cms/reminders/create.html:51
+#: templates/cms/reminders/edit.html:44
 msgid "Critical"
 msgstr ""
 
@@ -430,6 +437,7 @@ msgstr ""
 #: templates/cms/cases/view.html:481 templates/cms/cases/view.html:658
 #: templates/cms/cases/view.html:1965 templates/cms/clients/create.html:35
 #: templates/cms/clients/create.html:161 templates/cms/clients/edit.html:191
+#: templates/cms/reminders/create.html:105 templates/cms/reminders/edit.html:89
 #: templates/cms/subjects/edit.html:327 templates/cms/subjects/list.html:137
 #: templates/cms/subjects/view.html:497 templates/cms/subjects/view.html:534
 #: templates/cms/subjects/view.html:630 templates/cms/subjects/view.html:2424
@@ -469,7 +477,8 @@ msgid "Target End Date"
 msgstr ""
 
 #: templates/cms/cases/edit.html:135 templates/cms/clients/edit.html:190
-#: templates/cms/settings/index.html:281 templates/cms/subjects/edit.html:326
+#: templates/cms/reminders/edit.html:88 templates/cms/settings/index.html:418
+#: templates/cms/subjects/edit.html:326
 msgid "Save Changes"
 msgstr ""
 
@@ -514,13 +523,16 @@ msgstr ""
 
 #: templates/cms/cases/list.html:111 templates/cms/cases/view.html:240
 #: templates/cms/cases/view.html:256 templates/cms/clients/view.html:184
+#: templates/cms/reminders/create.html:23 templates/cms/reminders/edit.html:15
 msgid "Title"
 msgstr ""
 
 #: templates/cms/cases/list.html:131 templates/cms/cases/view.html:185
 #: templates/cms/cases/view.html:327 templates/cms/clients/create.html:80
 #: templates/cms/clients/edit.html:50 templates/cms/clients/edit.html:73
-#: templates/cms/clients/view.html:290 templates/cms/subjects/create.html:120
+#: templates/cms/clients/view.html:290 templates/cms/reminders/create.html:69
+#: templates/cms/reminders/edit.html:62 templates/cms/reminders/view.html:62
+#: templates/cms/settings/index.html:754 templates/cms/subjects/create.html:120
 #: templates/cms/subjects/edit.html:274 templates/cms/subjects/edit.html:297
 #: templates/cms/subjects/list.html:65 templates/cms/subjects/view.html:79
 msgid "Type"
@@ -528,7 +540,7 @@ msgstr ""
 
 #: templates/cms/cases/list.html:135 templates/cms/cases/view.html:185
 #: templates/cms/cases/view.html:327 templates/cms/clients/list.html:48
-#: templates/cms/settings/index.html:314 templates/cms/subjects/list.html:73
+#: templates/cms/settings/index.html:451 templates/cms/subjects/list.html:73
 #: templates/cms/subjects/view.html:377 templates/cms/subjects/view.html:419
 msgid "Actions"
 msgstr ""
@@ -717,7 +729,7 @@ msgid "This case is closed/archived. Reopen to make changes."
 msgstr ""
 
 #: templates/cms/cases/view.html:185 templates/cms/clients/list.html:34
-#: templates/cms/settings/index.html:308 templates/cms/subjects/list.html:60
+#: templates/cms/settings/index.html:445 templates/cms/subjects/list.html:60
 msgid "Name"
 msgstr ""
 
@@ -778,7 +790,8 @@ msgstr ""
 msgid "OSINT"
 msgstr ""
 
-#: templates/cms/cases/view.html:245
+#: templates/cms/cases/view.html:245 templates/cms/reminders/create.html:71
+#: templates/cms/reminders/edit.html:64
 msgid "Manual"
 msgstr ""
 
@@ -802,6 +815,7 @@ msgstr ""
 #: templates/cms/cases/view.html:1009 templates/cms/cases/view.html:1028
 #: templates/cms/cases/view.html:1324 templates/cms/cases/view.html:1459
 #: templates/cms/clients/view.html:400 templates/cms/clients/view.html:404
+#: templates/cms/reminders/view.html:90 templates/cms/reminders/view.html:95
 #: templates/cms/subjects/view.html:1217 templates/cms/subjects/view.html:1617
 msgid "Unknown"
 msgstr ""
@@ -847,7 +861,7 @@ msgid "Download"
 msgstr ""
 
 #: templates/cms/cases/view.html:339 templates/cms/cases/view.html:1970
-#: templates/cms/reminders/list.html:186 templates/cms/settings/index.html:453
+#: templates/cms/reminders/list.html:186 templates/cms/settings/index.html:590
 #: templates/cms/subjects/view.html:393 templates/cms/subjects/view.html:428
 #: templates/cms/subjects/view.html:1847 templates/cms/subjects/view.html:2429
 msgid "Delete"
@@ -996,7 +1010,7 @@ msgstr ""
 msgid "Financial Analysis"
 msgstr ""
 
-#: templates/cms/cases/view.html:523 templates/cms/settings/index.html:318
+#: templates/cms/cases/view.html:523 templates/cms/settings/index.html:455
 #: templates/cms/subjects/create.html:354
 #: templates/cms/subjects/create.html:425 templates/cms/subjects/edit.html:348
 #: templates/cms/subjects/edit.html:523 templates/cms/subjects/view.html:608
@@ -1044,11 +1058,11 @@ msgstr ""
 msgid "Completed"
 msgstr ""
 
-#: templates/cms/cases/view.html:570
+#: templates/cms/cases/view.html:570 templates/cms/reminders/view.html:30
 msgid "OVERDUE"
 msgstr ""
 
-#: templates/cms/cases/view.html:580
+#: templates/cms/cases/view.html:580 templates/cms/reminders/view.html:110
 msgid "Delete this reminder?"
 msgstr ""
 
@@ -1163,8 +1177,8 @@ msgstr ""
 #: templates/cms/clients/view.html:360 templates/cms/clients/view.html:384
 #: templates/cms/clients/view.html:411 templates/cms/clients/view.html:435
 #: templates/cms/clients/view.html:486 templates/cms/clients/view.html:522
-#: templates/cms/clients/view.html:555 templates/cms/settings/index.html:396
-#: templates/cms/settings/index.html:400 templates/cms/subjects/list.html:250
+#: templates/cms/clients/view.html:555 templates/cms/settings/index.html:533
+#: templates/cms/settings/index.html:537 templates/cms/subjects/list.html:250
 #: templates/cms/subjects/list.html:271
 msgid "Error"
 msgstr ""
@@ -1189,7 +1203,8 @@ msgstr ""
 msgid "Search was cancelled"
 msgstr ""
 
-#: templates/cms/cases/view.html:907 templates/cms/subjects/view.html:1519
+#: templates/cms/cases/view.html:907 templates/cms/settings/index.html:766
+#: templates/cms/subjects/view.html:1519
 msgid "Search failed"
 msgstr ""
 
@@ -1241,7 +1256,7 @@ msgstr ""
 msgid "📌 Already saved"
 msgstr ""
 
-#: templates/cms/cases/view.html:1081 templates/cms/settings/index.html:372
+#: templates/cms/cases/view.html:1081 templates/cms/settings/index.html:509
 #: templates/cms/subjects/view.html:1701 templates/cms/subjects/view.html:2659
 msgid "Saving..."
 msgstr ""
@@ -1265,7 +1280,7 @@ msgid "Save selected result(s) as social accounts on the selected subject?"
 msgstr ""
 
 #: templates/cms/cases/view.html:1155 templates/cms/cases/view.html:1162
-#: templates/cms/settings/index.html:387 templates/cms/subjects/view.html:1763
+#: templates/cms/settings/index.html:524 templates/cms/subjects/view.html:1763
 #: templates/cms/subjects/view.html:1770
 msgid "Saved"
 msgstr ""
@@ -1367,9 +1382,9 @@ msgstr ""
 msgid "Upload timed out. Please try again."
 msgstr ""
 
-#: templates/cms/cases/view.html:1584 templates/cms/settings/index.html:505
-#: templates/cms/settings/index.html:508 templates/cms/settings/index.html:521
-#: templates/cms/settings/index.html:524
+#: templates/cms/cases/view.html:1584 templates/cms/settings/index.html:642
+#: templates/cms/settings/index.html:645 templates/cms/settings/index.html:658
+#: templates/cms/settings/index.html:661
 msgid "Failed"
 msgstr ""
 
@@ -2027,11 +2042,13 @@ msgstr ""
 msgid "MX Records"
 msgstr ""
 
-#: templates/cms/clients/view.html:445 templates/cms/subjects/view.html:2576
+#: templates/cms/clients/view.html:445 templates/cms/settings/index.html:736
+#: templates/cms/subjects/view.html:2576
 msgid "Found"
 msgstr ""
 
-#: templates/cms/clients/view.html:445
+#: templates/cms/clients/view.html:445 templates/cms/reminders/create.html:79
+#: templates/cms/reminders/edit.html:72 templates/cms/reminders/view.html:68
 msgid "None"
 msgstr ""
 
@@ -2080,8 +2097,87 @@ msgstr ""
 msgid "No address available for this client."
 msgstr ""
 
-#: templates/cms/reminders/list.html:118
+#: templates/cms/reminders/create.html:5 templates/cms/reminders/edit.html:5
+#: templates/cms/reminders/view.html:21
+msgid "← Back to Reminders"
+msgstr ""
+
+#: templates/cms/reminders/create.html:9 templates/cms/reminders/list.html:118
 msgid "New Reminder"
+msgstr ""
+
+#: templates/cms/reminders/create.html:13
+msgid "Linked to:"
+msgstr ""
+
+#: templates/cms/reminders/create.html:24
+msgid "What needs to be done?"
+msgstr ""
+
+#: templates/cms/reminders/create.html:29
+msgid "Additional details..."
+msgstr ""
+
+#: templates/cms/reminders/create.html:34 templates/cms/reminders/edit.html:26
+msgid "Reminder Date & Time"
+msgstr ""
+
+#: templates/cms/reminders/create.html:39 templates/cms/reminders/edit.html:31
+#: templates/cms/reminders/view.html:49
+msgid "Due Date"
+msgstr ""
+
+#: templates/cms/reminders/create.html:55 templates/cms/reminders/edit.html:48
+msgid "Assign To"
+msgstr ""
+
+#: templates/cms/reminders/create.html:57 templates/cms/reminders/edit.html:50
+msgid "-- Unassigned --"
+msgstr ""
+
+#: templates/cms/reminders/create.html:72 templates/cms/reminders/edit.html:65
+msgid "Recurring"
+msgstr ""
+
+#: templates/cms/reminders/create.html:73 templates/cms/reminders/edit.html:66
+msgid "System"
+msgstr ""
+
+#: templates/cms/reminders/create.html:77 templates/cms/reminders/edit.html:70
+#: templates/cms/reminders/view.html:67
+msgid "Recurrence"
+msgstr ""
+
+#: templates/cms/reminders/create.html:80 templates/cms/reminders/edit.html:73
+msgid "Daily"
+msgstr ""
+
+#: templates/cms/reminders/create.html:81 templates/cms/reminders/edit.html:74
+msgid "Weekly"
+msgstr ""
+
+#: templates/cms/reminders/create.html:82 templates/cms/reminders/edit.html:75
+msgid "Monthly"
+msgstr ""
+
+#: templates/cms/reminders/create.html:83 templates/cms/reminders/edit.html:76
+msgid "Quarterly"
+msgstr ""
+
+#: templates/cms/reminders/create.html:100 templates/cms/reminders/edit.html:84
+msgid "Show on dashboard"
+msgstr ""
+
+#: templates/cms/reminders/create.html:104
+msgid "Create Reminder"
+msgstr ""
+
+#: templates/cms/reminders/edit.html:6
+msgid "View Reminder"
+msgstr ""
+
+#: templates/cms/reminders/edit.html:10
+msgid "Edit Reminder"
 msgstr ""
 
 #: templates/cms/reminders/list.html:124
@@ -2129,161 +2225,214 @@ msgstr ""
 msgid "Create your first reminder"
 msgstr ""
 
-#: templates/cms/settings/index.html:190
+#: templates/cms/reminders/view.html:33
+msgid "COMPLETED"
+msgstr ""
+
+#: templates/cms/reminders/view.html:43
+msgid "Reminder Date"
+msgstr ""
+
+#: templates/cms/reminders/view.html:44
+msgid "Not set"
+msgstr ""
+
+#: templates/cms/reminders/view.html:56
+msgid "Completed At"
+msgstr ""
+
+#: templates/cms/reminders/view.html:73
+msgid "Assigned To"
+msgstr ""
+
+#: templates/cms/reminders/view.html:89 templates/cms/settings/index.html:450
+msgid "Created By"
+msgstr ""
+
+#: templates/cms/reminders/view.html:94
+msgid "Created At"
+msgstr ""
+
+#: templates/cms/reminders/view.html:102
+msgid "✓ Mark Complete"
+msgstr ""
+
+#: templates/cms/reminders/view.html:107
+msgid "⏰ Snooze 30 min"
+msgstr ""
+
+#: templates/cms/reminders/view.html:112 templates/cms/subjects/view.html:24
+#: templates/cms/subjects/view.html:2505 templates/cms/subjects/view.html:2513
+msgid "🗑️ Delete"
+msgstr ""
+
+#: templates/cms/settings/index.html:306
+msgid "Search settings by name, description or category..."
+msgstr ""
+
+#: templates/cms/settings/index.html:327
 msgid "Security"
 msgstr ""
 
-#: templates/cms/settings/index.html:194
+#: templates/cms/settings/index.html:331
 msgid "Sessions"
 msgstr ""
 
-#: templates/cms/settings/index.html:198
+#: templates/cms/settings/index.html:335
 msgid "Login History"
 msgstr ""
 
-#: templates/cms/settings/index.html:202
+#: templates/cms/settings/index.html:339
 msgid "Read Audit"
 msgstr ""
 
-#: templates/cms/settings/index.html:206
+#: templates/cms/settings/index.html:343
 msgid "API Keys"
 msgstr ""
 
-#: templates/cms/settings/index.html:216
+#: templates/cms/settings/index.html:353
 #, python-format
 msgid "Configure %(category)s settings for the application."
 msgstr ""
 
-#: templates/cms/settings/index.html:224
+#: templates/cms/settings/index.html:361 templates/cms/settings/index.html:749
 msgid "(sensitive)"
 msgstr ""
 
-#: templates/cms/settings/index.html:232
+#: templates/cms/settings/index.html:369
 msgid "Enabled"
 msgstr ""
 
-#: templates/cms/settings/index.html:233
+#: templates/cms/settings/index.html:370
 msgid "Disabled"
 msgstr ""
 
-#: templates/cms/settings/index.html:251
+#: templates/cms/settings/index.html:388
 msgid "Enter value"
 msgstr ""
 
-#: templates/cms/settings/index.html:259
+#: templates/cms/settings/index.html:396
 msgid "Current"
 msgstr ""
 
-#: templates/cms/settings/index.html:279
+#: templates/cms/settings/index.html:416
 msgid "Reset All"
 msgstr ""
 
-#: templates/cms/settings/index.html:286
+#: templates/cms/settings/index.html:423
 msgid "No settings in this category."
 msgstr ""
 
-#: templates/cms/settings/index.html:294
+#: templates/cms/settings/index.html:431
 msgid "API Keys for Programmatic Access"
 msgstr ""
 
-#: templates/cms/settings/index.html:296
+#: templates/cms/settings/index.html:433
 msgid ""
 "Generate API keys for external tools and scripts to access the CMS REST "
 "API. Keys are shown once after creation and use X-API-Key header "
 "authentication."
 msgstr ""
 
-#: templates/cms/settings/index.html:300
+#: templates/cms/settings/index.html:437
 msgid "Key name (e.g. automation-script)"
 msgstr ""
 
-#: templates/cms/settings/index.html:302
+#: templates/cms/settings/index.html:439
 msgid "Generate Key"
 msgstr ""
 
-#: templates/cms/settings/index.html:309
+#: templates/cms/settings/index.html:446
 msgid "Key Prefix"
 msgstr ""
 
-#: templates/cms/settings/index.html:311
+#: templates/cms/settings/index.html:448
 msgid "Created"
 msgstr ""
 
-#: templates/cms/settings/index.html:312
+#: templates/cms/settings/index.html:449
 msgid "Last Used"
 msgstr ""
 
-#: templates/cms/settings/index.html:313
-msgid "Created By"
-msgstr ""
-
-#: templates/cms/settings/index.html:323
+#: templates/cms/settings/index.html:460
 msgid "Copy this key now — it will not be shown again!"
 msgstr ""
 
-#: templates/cms/settings/index.html:388
+#: templates/cms/settings/index.html:525
 msgid "Settings saved successfully!"
 msgstr ""
 
-#: templates/cms/settings/index.html:397 templates/cms/settings/index.html:401
+#: templates/cms/settings/index.html:534 templates/cms/settings/index.html:538
 msgid "Failed to save settings"
 msgstr ""
 
-#: templates/cms/settings/index.html:397 templates/cms/settings/index.html:505
-#: templates/cms/settings/index.html:521 templates/cms/subjects/view.html:1384
+#: templates/cms/settings/index.html:534 templates/cms/settings/index.html:642
+#: templates/cms/settings/index.html:658 templates/cms/subjects/view.html:1384
 msgid "Unknown error"
 msgstr ""
 
-#: templates/cms/settings/index.html:406
+#: templates/cms/settings/index.html:543
 msgid "Reset all settings in this category to defaults?"
 msgstr ""
 
-#: templates/cms/settings/index.html:424
+#: templates/cms/settings/index.html:561
 msgid "Settings reset to defaults"
 msgstr ""
 
-#: templates/cms/settings/index.html:444
+#: templates/cms/settings/index.html:581
 msgid "No API keys created yet."
 msgstr ""
 
-#: templates/cms/settings/index.html:449
+#: templates/cms/settings/index.html:586
 msgid "Never"
 msgstr ""
 
-#: templates/cms/settings/index.html:451
+#: templates/cms/settings/index.html:588
 msgid "Revoked"
 msgstr ""
 
-#: templates/cms/settings/index.html:452
+#: templates/cms/settings/index.html:589
 msgid "Revoke"
 msgstr ""
 
-#: templates/cms/settings/index.html:472
+#: templates/cms/settings/index.html:609
 msgid "Please enter a name for the API key."
 msgstr ""
 
-#: templates/cms/settings/index.html:486
+#: templates/cms/settings/index.html:623
 msgid "API key generated successfully!"
 msgstr ""
 
-#: templates/cms/settings/index.html:497
+#: templates/cms/settings/index.html:634
 msgid "Revoke this API key? Existing integrations using it will stop working."
 msgstr ""
 
-#: templates/cms/settings/index.html:502
+#: templates/cms/settings/index.html:639
 msgid "Key revoked"
 msgstr ""
 
-#: templates/cms/settings/index.html:513
+#: templates/cms/settings/index.html:650
 msgid "Permanently delete this API key record?"
 msgstr ""
 
-#: templates/cms/settings/index.html:518
+#: templates/cms/settings/index.html:655
 msgid "Key deleted"
 msgstr ""
 
-#: templates/cms/settings/index.html:538
+#: templates/cms/settings/index.html:675
 msgid "You have unsaved changes. Are you sure you want to leave?"
+msgstr ""
+
+#: templates/cms/settings/index.html:724 templates/cms/subjects/view.html:558
+msgid "Searching..."
+msgstr ""
+
+#: templates/cms/settings/index.html:733
+msgid "No settings found for"
+msgstr ""
+
+#: templates/cms/settings/index.html:736
+msgid "result(s)"
 msgstr ""
 
 #: templates/cms/subjects/create.html:3
@@ -2799,11 +2948,6 @@ msgstr ""
 msgid "📷 Upload"
 msgstr ""
 
-#: templates/cms/subjects/view.html:24 templates/cms/subjects/view.html:2505
-#: templates/cms/subjects/view.html:2513
-msgid "🗑️ Delete"
-msgstr ""
-
 #: templates/cms/subjects/view.html:30 templates/cms/subjects/view.html:34
 msgid "🔍 OSINT Search"
 msgstr ""
@@ -3084,10 +3228,6 @@ msgstr ""
 
 #: templates/cms/subjects/view.html:549
 msgid "Search for information about"
-msgstr ""
-
-#: templates/cms/subjects/view.html:558
-msgid "Searching..."
 msgstr ""
 
 #: templates/cms/subjects/view.html:561

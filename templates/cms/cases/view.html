@@ -26,25 +26,25 @@
     <div style="display: flex; gap: 0.5rem; align-items: center;">
         <div style="display: flex; gap: 0.3rem; align-items: center; padding-right: 0.5rem; border-right: 1px solid var(--border, #ddd);">
             {% if case.status == 'open' %}
-            <button data-click="changeStatus" data-arg0="active" class="btn-cms small"  class="bg-green">{{ _('▶ Start Investigation') }}</button>
+            <button data-click="changeStatus" data-arg0="active" class="btn-cms small bg-green">{{ _('▶ Start Investigation') }}</button>
             {% elif case.status == 'active' %}
             <button data-click="changeStatus" data-arg0="suspended" class="btn-cms small" style="background: #f59e0b;">{{ _('⏸ Suspend') }}</button>
-            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small"  class="bg-green">{{ _('✓ Close Case') }}</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small bg-green">{{ _('✓ Close Case') }}</button>
             {% elif case.status == 'suspended' %}
-            <button data-click="changeStatus" data-arg0="active" class="btn-cms small"  class="bg-green">{{ _('▶ Resume') }}</button>
-            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small"  class="bg-green">{{ _('✓ Close Case') }}</button>
+            <button data-click="changeStatus" data-arg0="active" class="btn-cms small bg-green">{{ _('▶ Resume') }}</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small bg-green">{{ _('✓ Close Case') }}</button>
             {% elif case.status == 'closed' %}
             <button data-click="changeStatus" data-arg0="archived" class="btn-cms small" style="background: #6b7280;">{{ _('📁 Archive') }}</button>
             {% elif case.status == 'archived' %}
             <button class="btn-cms small" style="background: #6b7280; opacity: 0.6;" disabled>{{ _('📁 Archived') }}</button>
             {% endif %}
             {% if case.status in ['closed', 'archived'] %}
-            <button data-click="reopenCase" class="btn-cms small"  class="bg-green">{{ _('↩ Reopen') }}</button>
+            <button data-click="reopenCase" class="btn-cms small bg-green">{{ _('↩ Reopen') }}</button>
             {% endif %}
         </div>
-        <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small"  class="bg-green">{{ _('📥 Export CSV') }}</a>
-        <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small"  class="bg-purple">{{ _('📄 Report') }}</a>
-        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small">{{ _('✏️ Edit') }}</a>
+        <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small bg-green">{{ _('📥 Export CSV') }}</a>
+        <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small bg-purple">{{ _('📄 Report') }}</a>
+        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small primary">{{ _('✏️ Edit') }}</a>
     </div>
 </div>
 
@@ -118,7 +118,7 @@
 <div class="card">
     <div class="card-header">
         <h2>{{ _('Case Hierarchy') }}</h2>
-        <button data-click="openHierarchyModal" class="btn-cms small"  class="bg-purple">{{ _('Manage Hierarchy') }}</button>
+        <button data-click="openHierarchyModal" class="btn-cms small bg-purple">{{ _('Manage Hierarchy') }}</button>
     </div>
     
     {% if case.parent_case %}
@@ -152,9 +152,9 @@
     {% if case.status not in ['closed', 'archived'] %}
     <div class="mb-1">
         <button data-click="showAddSubjectForm" class="btn-cms small">{{ _('+ Add Subject') }}</button>
-        <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small"  class="bg-green">{{ _('+ Create New Subject') }}</a>
-        <button data-click="openCreateFromUsernameModal" class="btn-cms small"  class="text-purple">{{ _('@ Create from Username') }}</button>
-        <button data-click="openOsintModal" class="btn-cms small"  class="bg-purple">{{ _('OSINT Search') }}</button>
+        <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small bg-green">{{ _('+ Create New Subject') }}</a>
+        <button data-click="openCreateFromUsernameModal" class="btn-cms small text-purple">{{ _('@ Create from Username') }}</button>
+        <button data-click="openOsintModal" class="btn-cms small bg-purple">{{ _('OSINT Search') }}</button>
     </div>
     
     <div id="addSubjectForm" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
@@ -170,7 +170,7 @@
                 </select>
             </div>
             <button type="submit" class="btn-cms small">{{ _('Add to Case') }}</button>
-            <button type="button" data-click="hideAddSubjectForm" class="btn-cms small"  class="bg-gray">{{ _('Cancel') }}</button>
+            <button type="button" data-click="hideAddSubjectForm" class="btn-cms small bg-gray">{{ _('Cancel') }}</button>
         </form>
     </div>
     {% else %}
@@ -202,14 +202,14 @@
                         <span style="color:#9ca3af;">{{ _('-') }}</span>
                     {% endif %}
                 </td>
+                <td>{{ subject.risk_score }}/100</td>
                 <td>
+                    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms small" style="background:#7c3aed;color:white;text-decoration:none;">{{ _('View') }}</a>
                     {% if case.status not in ['closed', 'archived'] %}
-<form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" class="inline">
+<form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" class="inline" style="display:inline;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-text" data-confirm="{{ _('Remove %(name)s from this case?', name=subject.name) }}" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0;">{{ _('Remove') }}</button>
+    <button type="submit" class="btn-cms small danger" data-confirm="{{ _('Remove %(name)s from this case?', name=subject.name) }}" style="background:#dc2626;color:white;">{{ _('Remove') }}</button>
                     </form>
-                    {% else %}
-                    -
                     {% endif %}
                 </td>
             </tr>
@@ -228,7 +228,7 @@
     <div class="card-header">
         <h2>{{ _('Findings (%(count)s)', count=findings|length) }}</h2>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button data-click="openTimeline" class="btn-cms small"  class="bg-purple">{{ _('Timeline') }}</button>
+            <button data-click="openTimeline" class="btn-cms small bg-purple">{{ _('Timeline') }}</button>
             <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">{{ _('📋 Report') }}</a>
         </div>
     </div>
@@ -316,7 +316,7 @@
     <div class="card-header">
         <h2>{{ _('Documents (%(count)s)', count=documents_pagination.total if documents_pagination else documents|length) }}</h2>
         {% if case.status not in ['closed', 'archived'] %}
-        <button data-click="openUploadModal" class="btn-cms small"  class="bg-green">{{ _('+ Upload Document') }}</button>
+        <button data-click="openUploadModal" class="btn-cms small bg-green">{{ _('+ Upload Document') }}</button>
         {% endif %}
     </div>
     
@@ -367,7 +367,7 @@
 <div class="card">
     <div class="card-header">
         <h2>{{ _('Screenshots') }} (<span id="screenshotCount">0</span>)</h2>
-        <button data-click="openAddScreenshotModal" class="btn-cms small"  class="bg-purple">{{ _('+ Add Screenshot') }}</button>
+        <button data-click="openAddScreenshotModal" class="btn-cms small bg-purple">{{ _('+ Add Screenshot') }}</button>
     </div>
     
     <div id="screenshotsGallery">
@@ -409,8 +409,8 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button data-click="closeAddScreenshotModal" class="btn-cms small"  class="bg-gray">{{ _('Cancel') }}</button>
-            <button data-click="uploadScreenshot" id="uploadBtn" class="btn-cms small"  class="bg-green">{{ _('Save Screenshot') }}</button>
+            <button data-click="closeAddScreenshotModal" class="btn-cms small bg-gray">{{ _('Cancel') }}</button>
+            <button data-click="uploadScreenshot" id="uploadBtn" class="btn-cms small bg-green">{{ _('Save Screenshot') }}</button>
         </div>
         
         <div id="screenshotStatus" style="margin-top: 0.5rem; text-align: center;"></div>
@@ -433,7 +433,7 @@
         
         <div style="margin-top: 1rem; text-align: center;">
             <a id="viewScreenshotLink" href="#" target="_blank" class="btn-cms small" style="background: #3b82f6;">{{ _('Open Original URL') }}</a>
-            <button data-click="closeViewScreenshotModal" class="btn-cms small"  class="bg-gray">{{ _('Close') }}</button>
+            <button data-click="closeViewScreenshotModal" class="btn-cms small bg-gray">{{ _('Close') }}</button>
         </div>
     </div>
 </div>
@@ -477,8 +477,8 @@
                 <textarea id="docDescription" name="description" rows="2" class="w100-p5"></textarea>
             </div>
             <div class="flex-gap mt-1">
-                <button type="submit" class="btn-cms small"  class="bg-green">{{ _('Upload') }}</button>
-                <button type="button" data-click="closeUploadModal" class="btn-cms small"  class="bg-gray">{{ _('Cancel') }}</button>
+                <button type="submit" class="btn-cms small bg-green">{{ _('Upload') }}</button>
+                <button type="button" data-click="closeUploadModal" class="btn-cms small bg-gray">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -488,7 +488,7 @@
 <div class="card">
     <div class="card-header">
         <h2>{{ _('Financial Summary') }}</h2>
-        <button data-click="openFinancialSummary" class="btn-cms small"  class="bg-purple">{{ _('📊 View Charts') }}</button>
+        <button data-click="openFinancialSummary" class="btn-cms small bg-purple">{{ _('📊 View Charts') }}</button>
     </div>
     
     <div id="financialSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
@@ -556,7 +556,7 @@
 <div class="card">
     <div class="card-header">
         <h2>{{ _('⏰ Reminders (%(count)s)', count=case_reminders|length) }}</h2>
-        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn-cms small"  class="bg-green">{{ _('+ Add Reminder') }}</a>
+        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn-cms small bg-green">{{ _('+ Add Reminder') }}</a>
     </div>
     
     {% if case_reminders %}
@@ -612,7 +612,7 @@
             <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: #666;">
                 <input type="checkbox" id="commentPinned"> {{ _('Pin comment') }}
             </label>
-            <button data-click="addComment" class="btn-cms small"  class="bg-green">{{ _('Add Comment') }}</button>
+            <button data-click="addComment" class="btn-cms small bg-green">{{ _('Add Comment') }}</button>
         </div>
     </div>
     
@@ -623,7 +623,7 @@
 
 <!-- Create from Username Modal -->
 <div id="createFromUsernameModal" class="modal">
-    <div class="modal-content"  class="max-w-400">
+    <div class="modal-content max-w-400">
         <div class="modal-header">
             <h2>{{ _('@ Create Subject from Username') }}</h2>
             <span class="close" data-click="closeCreateFromUsernameModal">&times;</span>
@@ -1844,7 +1844,7 @@ function searchParentCases() {
                             '<a href="/cms/cases/' + esc(c.id) + '" target="_blank">' + esc(c.case_number) + '</a>: ' + esc(c.title) +
                             '<span class="badge badge-' + esc(c.status) + '" style="margin-left: 0.5rem;">' + esc(c.status) + '</span>' +
                         '</div>' +
-                        '<button data-click="setParent" data-arg0="' + esc(c.id) + '" class="btn-cms small"  class="bg-green">' + {{ _('Set as Parent')|tojson }} + '</button>' +
+                        '<button data-click="setParent" data-arg0="' + esc(c.id) + '" class="btn-cms small bg-green">' + {{ _('Set as Parent')|tojson }} + '</button>' +
                     '</div>';
                 });
                 document.getElementById('parentSearchResults').innerHTML = html;
@@ -1961,8 +1961,8 @@ function displayComments(comments) {
             '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '"  class="hidden">' +
                 '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
                 '<div class="comment-edit-actions">' +
-                    '<button data-click="saveEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small"  class="bg-green">' + {{ _('Save')|tojson }} + '</button>' +
-                    '<button data-click="cancelEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small"  class="bg-gray">' + {{ _('Cancel')|tojson }} + '</button>' +
+                    '<button data-click="saveEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small bg-green">' + {{ _('Save')|tojson }} + '</button>' +
+                    '<button data-click="cancelEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small bg-gray">' + {{ _('Cancel')|tojson }} + '</button>' +
                 '</div>' +
             '</div>' +
             '<div class="comment-actions">' +

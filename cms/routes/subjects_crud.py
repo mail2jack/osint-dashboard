@@ -110,6 +110,7 @@ def create_subject() -> flask.Response:
             date_of_birth=data.get("date_of_birth"),
             place_of_birth=data.get("place_of_birth"),
             identification_number=data.get("identification_number"),
+            bank_account=data.get("bank_account"),
         )
 
         if data["subject_type"] == "vehicle":
@@ -327,6 +328,7 @@ def edit_subject(subject_id: str) -> flask.Response:
             "address",
             "phone",
             "email",
+            "bank_account",
         ]
         for field in encrypted_fields:
             if field in data:

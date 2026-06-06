@@ -681,6 +681,7 @@ class Subject(db.Model):
     address = db.Column(db.String(500))  # Encrypted
     phone = db.Column(db.String(500))  # Encrypted
     email = db.Column(db.String(500))  # Encrypted
+    bank_account = db.Column(db.String(500))  # Encrypted
 
     # Additional metadata
     risk_score = db.Column(db.Integer, default=0)  # 0-100 risk assessment
@@ -780,6 +781,7 @@ class Subject(db.Model):
         "address",
         "phone",
         "email",
+        "bank_account",
         "license_plate",
         "vin",
         "insurance_company",
@@ -830,6 +832,7 @@ class Subject(db.Model):
             "address": self.address,
             "phone": self.phone,
             "email": self.email,
+            "bank_account": self.bank_account,
             "risk_score": self.risk_score,
             "risk_factors": self.risk_factors,
             "notes": self.notes,

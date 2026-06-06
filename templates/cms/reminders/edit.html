@@ -2,33 +2,33 @@
 {% block content %}
 <div style="max-width: 600px; margin: 0 auto;">
     <div style="margin-bottom: 1rem; display:flex; gap:0.5rem;">
-        <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray small">← Back to Reminders</a>
-        <a href="{{ url_for('cms.view_reminder', reminder_id=reminder.id) }}" class="btn-cms gray small">View Reminder</a>
+        <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray small">{{ _('← Back to Reminders') }}</a>
+        <a href="{{ url_for('cms.view_reminder', reminder_id=reminder.id) }}" class="btn-cms gray small">{{ _('View Reminder') }}</a>
     </div>
     
     <div class="card">
-        <h2 style="margin-top: 0;">Edit Reminder</h2>
+        <h2 style="margin-top: 0;">{{ _('Edit Reminder') }}</h2>
         
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="title">Title *</label>
+        <label for="title">{{ _('Title') }} *</label>
                 <input type="text" id="title" name="title" required value="{{ reminder.title }}">
             </div>
             
             <div class="form-group">
-                <label for="description">Description</label>
+                <label for="description">{{ _('Description') }}</label>
                 <textarea id="description" name="description">{{ reminder.description or '' }}</textarea>
             </div>
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="reminder_date">Reminder Date & Time *</label>
+                    <label for="reminder_date">{{ _('Reminder Date & Time') }} *</label>
                     <input type="datetime-local" id="reminder_date" name="reminder_date" required 
                            value="{{ reminder.reminder_date.strftime('%Y-%m-%dT%H:%M') if reminder.reminder_date else '' }}">
                 </div>
                 <div class="form-group">
-                    <label for="due_date">Due Date</label>
+                    <label for="due_date">{{ _('Due Date') }}</label>
                     <input type="date" id="due_date" name="due_date" 
                            value="{{ reminder.due_date.strftime('%Y-%m-%d') if reminder.due_date else '' }}">
                 </div>
@@ -36,18 +36,18 @@
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="priority">Priority</label>
+                    <label for="priority">{{ _('Priority') }}</label>
                     <select id="priority" name="priority">
-                        <option value="low" {% if reminder.priority == 'low' %}selected{% endif %}>Low</option>
-                        <option value="medium" {% if reminder.priority == 'medium' %}selected{% endif %}>Medium</option>
-                        <option value="high" {% if reminder.priority == 'high' %}selected{% endif %}>High</option>
-                        <option value="critical" {% if reminder.priority == 'critical' %}selected{% endif %}>Critical</option>
+                        <option value="low" {% if reminder.priority == 'low' %}selected{% endif %}>{{ _('Low') }}</option>
+                        <option value="medium" {% if reminder.priority == 'medium' %}selected{% endif %}>{{ _('Medium') }}</option>
+                        <option value="high" {% if reminder.priority == 'high' %}selected{% endif %}>{{ _('High') }}</option>
+                        <option value="critical" {% if reminder.priority == 'critical' %}selected{% endif %}>{{ _('Critical') }}</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="assigned_to">Assign To</label>
+                    <label for="assigned_to">{{ _('Assign To') }}</label>
                     <select id="assigned_to" name="assigned_to">
-                        <option value="">-- Unassigned --</option>
+                        <option value="">{{ _('-- Unassigned --') }}</option>
                         {% for user in users %}
                         <option value="{{ user.id }}" {% if reminder.assigned_to == user.id %}selected{% endif %}>
                             {{ user.full_name }}
@@ -59,21 +59,21 @@
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="reminder_type">Type</label>
+                    <label for="reminder_type">{{ _('Type') }}</label>
                     <select id="reminder_type" name="reminder_type">
-                        <option value="manual" {% if reminder.reminder_type == 'manual' %}selected{% endif %}>Manual</option>
-                        <option value="recurring" {% if reminder.reminder_type == 'recurring' %}selected{% endif %}>Recurring</option>
-                        <option value="system" {% if reminder.reminder_type == 'system' %}selected{% endif %}>System</option>
+                        <option value="manual" {% if reminder.reminder_type == 'manual' %}selected{% endif %}>{{ _('Manual') }}</option>
+                        <option value="recurring" {% if reminder.reminder_type == 'recurring' %}selected{% endif %}>{{ _('Recurring') }}</option>
+                        <option value="system" {% if reminder.reminder_type == 'system' %}selected{% endif %}>{{ _('System') }}</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="recurrence">Recurrence</label>
+                    <label for="recurrence">{{ _('Recurrence') }}</label>
                     <select id="recurrence" name="recurrence">
-                        <option value="none" {% if reminder.recurrence == 'none' %}selected{% endif %}>None</option>
-                        <option value="daily" {% if reminder.recurrence == 'daily' %}selected{% endif %}>Daily</option>
-                        <option value="weekly" {% if reminder.recurrence == 'weekly' %}selected{% endif %}>Weekly</option>
-                        <option value="monthly" {% if reminder.recurrence == 'monthly' %}selected{% endif %}>Monthly</option>
-                        <option value="quarterly" {% if reminder.recurrence == 'quarterly' %}selected{% endif %}>Quarterly</option>
+                        <option value="none" {% if reminder.recurrence == 'none' %}selected{% endif %}>{{ _('None') }}</option>
+                        <option value="daily" {% if reminder.recurrence == 'daily' %}selected{% endif %}>{{ _('Daily') }}</option>
+                        <option value="weekly" {% if reminder.recurrence == 'weekly' %}selected{% endif %}>{{ _('Weekly') }}</option>
+                        <option value="monthly" {% if reminder.recurrence == 'monthly' %}selected{% endif %}>{{ _('Monthly') }}</option>
+                        <option value="quarterly" {% if reminder.recurrence == 'quarterly' %}selected{% endif %}>{{ _('Quarterly') }}</option>
                     </select>
                 </div>
             </div>
@@ -81,12 +81,12 @@
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
                 <input type="checkbox" id="notify_dashboard" name="notify_dashboard" 
                        {% if reminder.notify_dashboard %}checked{% endif %}>
-                <label for="notify_dashboard" style="margin: 0;">Show on dashboard</label>
+                <label for="notify_dashboard" style="margin: 0;">{{ _('Show on dashboard') }}</label>
             </div>
             
             <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
-                <button type="submit" class="btn-cms primary">Save Changes</button>
-                <a href="{{ url_for('cms.view_reminder', reminder_id=reminder.id) }}" class="btn-cms gray">Cancel</a>
+                <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
+                <a href="{{ url_for('cms.view_reminder', reminder_id=reminder.id) }}" class="btn-cms gray">{{ _('Cancel') }}</a>
             </div>
         </form>
     </div>

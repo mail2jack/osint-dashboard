@@ -2,16 +2,16 @@
 {% block content %}
 <div style="max-width: 600px; margin: 0 auto;">
     <div style="margin-bottom: 1rem;">
-        <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray small">← Back to Reminders</a>
+        <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray small">{{ _('← Back to Reminders') }}</a>
     </div>
     
     <div class="card">
-        <h2 style="margin-top: 0;">New Reminder</h2>
+        <h2 style="margin-top: 0;">{{ _('New Reminder') }}</h2>
         
         {% if case or subject or client %}
         <div style="background:var(--bg-secondary);padding:0.75rem;border-radius:8px;margin-bottom:1rem;font-size:0.85rem;">
-            <strong>Linked to:</strong>
-            {% if case %}Case {{ case.case_number }}{% endif %}
+            <strong>{{ _('Linked to:') }}</strong>
+            {% if case %}{{ _('Case') }} {{ case.case_number }}{% endif %}
             {% if subject %}{{ subject.name }}{% endif %}
             {% if client %}{{ client.name }}{% endif %}
         </div>
@@ -20,41 +20,41 @@
 <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label for="title">Title *</label>
-                <input type="text" id="title" name="title" required placeholder="What needs to be done?">
+        <label for="title">{{ _('Title') }} *</label>
+                <input type="text" id="title" name="title" required placeholder="{{ _('What needs to be done?') }}">
             </div>
             
             <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" placeholder="Additional details..."></textarea>
+                <label for="description">{{ _('Description') }}</label>
+                <textarea id="description" name="description" placeholder="{{ _('Additional details...') }}"></textarea>
             </div>
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="reminder_date">Reminder Date & Time *</label>
+                    <label for="reminder_date">{{ _('Reminder Date & Time') }} *</label>
                     <input type="datetime-local" id="reminder_date" name="reminder_date" required 
                            value="{{ default_reminder_date }}">
                 </div>
                 <div class="form-group">
-                    <label for="due_date">Due Date</label>
+                    <label for="due_date">{{ _('Due Date') }}</label>
                     <input type="date" id="due_date" name="due_date">
                 </div>
             </div>
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="priority">Priority</label>
+                    <label for="priority">{{ _('Priority') }}</label>
                     <select id="priority" name="priority">
-                        <option value="low">Low</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
+                        <option value="low">{{ _('Low') }}</option>
+                        <option value="medium" selected>{{ _('Medium') }}</option>
+                        <option value="high">{{ _('High') }}</option>
+                        <option value="critical">{{ _('Critical') }}</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="assigned_to">Assign To</label>
+                    <label for="assigned_to">{{ _('Assign To') }}</label>
                     <select id="assigned_to" name="assigned_to">
-                        <option value="">-- Unassigned --</option>
+                        <option value="">{{ _('-- Unassigned --') }}</option>
                         {% for user in users %}
                         <option value="{{ user.id }}" {% if user.id == current_user.id %}selected{% endif %}>
                             {{ user.full_name }}
@@ -66,21 +66,21 @@
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="reminder_type">Type</label>
+                    <label for="reminder_type">{{ _('Type') }}</label>
                     <select id="reminder_type" name="reminder_type">
-                        <option value="manual">Manual</option>
-                        <option value="recurring">Recurring</option>
-                        <option value="system">System</option>
+                        <option value="manual">{{ _('Manual') }}</option>
+                        <option value="recurring">{{ _('Recurring') }}</option>
+                        <option value="system">{{ _('System') }}</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="recurrence">Recurrence</label>
+                    <label for="recurrence">{{ _('Recurrence') }}</label>
                     <select id="recurrence" name="recurrence">
-                        <option value="none">None</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
+                        <option value="none">{{ _('None') }}</option>
+                        <option value="daily">{{ _('Daily') }}</option>
+                        <option value="weekly">{{ _('Weekly') }}</option>
+                        <option value="monthly">{{ _('Monthly') }}</option>
+                        <option value="quarterly">{{ _('Quarterly') }}</option>
                     </select>
                 </div>
             </div>
@@ -97,12 +97,12 @@
             
             <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
                 <input type="checkbox" id="notify_dashboard" name="notify_dashboard" checked>
-                <label for="notify_dashboard" style="margin:0;">Show on dashboard</label>
+                <label for="notify_dashboard" style="margin:0;">{{ _('Show on dashboard') }}</label>
             </div>
             
             <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
-                <button type="submit" class="btn-cms primary">Create Reminder</button>
-                <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray">Cancel</a>
+                <button type="submit" class="btn-cms primary">{{ _('Create Reminder') }}</button>
+                <a href="{{ url_for('cms.reminders') }}" class="btn-cms gray">{{ _('Cancel') }}</a>
             </div>
         </form>
     </div>

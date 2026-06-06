@@ -52,10 +52,11 @@ def _record_restricted(
         restricted_count=restricted,
         searching_username=current_user.username,
     )
-    owners_str = ", ".join(sorted(owner_names))
+    owners_str = ", ".join(sorted(owner_names)) if owner_names else ""
+    owners_part = f" ({owners_str})" if owners_str else ""
     flask.flash(
         f'🔍 "{query}" is gevonden maar heeft toegangsrestricties. '
-        f"Case-eigenaar ({owners_str}) is op de hoogte gesteld "
+        f"Case-eigenaar{owners_part} is op de hoogte gesteld "
         f"en zal indien nodig contact met je opnemen.",
         "warning",
     )
@@ -110,7 +111,7 @@ def search() -> str:
                 }
                 for c in cases
             ]
-            if len(cases) < total_count:
+            if len(cases) < total_count and not current_user.is_admin:
                 restricted = base_q.filter(~Case.id.in_(accessible_ids)).limit(20).all()
                 restricted_case_numbers = [
                     c.case_number for c in restricted if c.case_number
@@ -153,12 +154,12 @@ def search() -> str:
             )
             if not current_user.is_admin:
                 subjects_q = subjects_q.filter(
-                    db.exists(
-                        db.session.query(case_subjects.c.case_id).filter(
-                            case_subjects.c.subject_id == Subject.id,
-                            case_subjects.c.case_id.in_(accessible_ids),
-                        )
+                    db.select(case_subjects.c.case_id)
+                    .where(
+                        case_subjects.c.subject_id == Subject.id,
+                        case_subjects.c.case_id.in_(accessible_ids),
                     )
+                    .exists()
                 )
             results["subjects"] = [
                 {
@@ -201,7 +202,7 @@ def search() -> str:
                 }
                 for f in findings
             ]
-            if len(findings) < total_count:
+            if len(findings) < total_count and not current_user.is_admin:
                 restricted = (
                     Finding.query.join(Case)
                     .filter(
@@ -291,12 +292,12 @@ def search() -> str:
             )
             if not current_user.is_admin:
                 subject_notes_q = subject_notes_q.filter(
-                    db.exists(
-                        db.session.query(case_subjects.c.case_id).filter(
-                            case_subjects.c.subject_id == Subject.id,
-                            case_subjects.c.case_id.in_(accessible_ids),
-                        )
+                    db.select(case_subjects.c.case_id)
+                    .where(
+                        case_subjects.c.subject_id == Subject.id,
+                        case_subjects.c.case_id.in_(accessible_ids),
                     )
+                    .exists()
                 )
             results["notes"] = [
                 {
@@ -415,12 +416,12 @@ def api_search() -> flask.Response:
         )
         if not current_user.is_admin:
             subjects_q = subjects_q.filter(
-                db.exists(
-                    db.session.query(case_subjects.c.case_id).filter(
-                        case_subjects.c.subject_id == Subject.id,
-                        case_subjects.c.case_id.in_(accessible_ids),
-                    )
+                db.select(case_subjects.c.case_id)
+                .where(
+                    case_subjects.c.subject_id == Subject.id,
+                    case_subjects.c.case_id.in_(accessible_ids),
                 )
+                .exists()
             )
         results["subjects"] = [
             {

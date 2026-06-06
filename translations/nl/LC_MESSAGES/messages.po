@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Iveras OSINT Dashboard 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-05 09:21+0200\n"
+"POT-Creation-Date: 2026-06-06 15:05+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: \n"
 "Language: nl\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: cms/routes/exports.py:39
+#: cms/routes/exports.py:40
 msgid "Case Report"
 msgstr "Dossier rapport"
 
@@ -34,7 +34,7 @@ msgid "The page you are looking for does not exist."
 msgstr "De pagina die u zoekt bestaat niet."
 
 #: templates/cms/404.html:23 templates/cms/500.html:23
-#: templates/cms/settings/index.html:173
+#: templates/cms/settings/index.html:297
 msgid "Back to Dashboard"
 msgstr "Terug naar dashboard"
 
@@ -55,79 +55,79 @@ msgstr "Er is iets misgegaan. Probeer het later opnieuw."
 msgid "CMS"
 msgstr "CMS"
 
-#: templates/cms/base.html:530 templates/cms/dashboard.html:2
+#: templates/cms/base.html:37 templates/cms/dashboard.html:2
 msgid "Dashboard"
 msgstr "Dashboard"
 
-#: templates/cms/base.html:531 templates/cms/cases/list.html:3
+#: templates/cms/base.html:38 templates/cms/cases/list.html:3
 #: templates/cms/cases/list.html:8 templates/cms/clients/view.html:179
 #: templates/cms/search.html:172 templates/cms/search.html:213
 #: templates/cms/search.html:256
 msgid "Cases"
 msgstr "Zaken"
 
-#: templates/cms/base.html:532 templates/cms/clients/list.html:3
+#: templates/cms/base.html:39 templates/cms/clients/list.html:3
 #: templates/cms/clients/list.html:7 templates/cms/dashboard.html:167
 #: templates/cms/search.html:173 templates/cms/search.html:219
 #: templates/cms/search.html:274
 msgid "Clients"
 msgstr "Cliënten"
 
-#: templates/cms/base.html:533 templates/cms/dashboard.html:171
+#: templates/cms/base.html:40 templates/cms/dashboard.html:171
 #: templates/cms/search.html:174 templates/cms/search.html:225
 #: templates/cms/search.html:292 templates/cms/subjects/list.html:3
 #: templates/cms/subjects/list.html:7
 msgid "Subjects"
 msgstr "Subjecten"
 
-#: templates/cms/base.html:534 templates/cms/search.html:3
+#: templates/cms/base.html:41 templates/cms/search.html:3
 #: templates/cms/search.html:167 templates/cms/subjects/view.html:551
 msgid "Search"
 msgstr "Zoeken"
 
-#: templates/cms/base.html:535 templates/cms/dashboard.html:140
+#: templates/cms/base.html:42 templates/cms/dashboard.html:140
 #: templates/cms/reminders/list.html:117
 msgid "Reminders"
 msgstr "Herinneringen"
 
-#: templates/cms/base.html:540 templates/cms/dashboard.html:143
+#: templates/cms/base.html:47 templates/cms/dashboard.html:143
 #: templates/cms/settings/index.html:3
 msgid "Settings"
 msgstr "Instellingen"
 
-#: templates/cms/base.html:550
+#: templates/cms/base.html:57
 msgid "Logout"
 msgstr "Uitloggen"
 
-#: templates/cms/base.html:551
+#: templates/cms/base.html:58
 msgid "Notifications"
 msgstr "Meldingen"
 
-#: templates/cms/base.html:558
+#: templates/cms/base.html:65
 msgid "Toggle dark mode"
 msgstr "Donker modus"
 
-#: templates/cms/base.html:561
+#: templates/cms/base.html:68
 msgid "Help"
 msgstr "Help"
 
-#: templates/cms/base.html:567
+#: templates/cms/base.html:74
 msgid "Update available"
 msgstr "Update beschikbaar"
 
-#: templates/cms/base.html:571
+#: templates/cms/base.html:78
 msgid "SpiderFoot is unreachable. Some OSINT features may not work."
 msgstr "SpiderFoot is onbereikbaar. Sommige OSINT-functies werken mogelijk niet."
 
-#: templates/cms/base.html:575
+#: templates/cms/base.html:82
 msgid "login anomaly/anomalies detected in the last 24 hours."
 msgstr "login-afwijking(en) gedetecteerd in de laatste 24 uur."
 
-#: templates/cms/base.html:576
+#: templates/cms/base.html:83
 msgid "Review"
 msgstr "Bekijken"
 
-#: templates/cms/base.html:800
+#: templates/cms/base.html:182
 msgid "No notifications"
 msgstr "Geen meldingen"
 
@@ -162,7 +162,7 @@ msgstr "Cliënten"
 #: templates/cms/clients/list.html:9 templates/cms/dashboard.html:141
 #: templates/cms/subjects/list.html:9
 msgid "Export"
-msgstr "Volgende"
+msgstr "Exporteren"
 
 #: templates/cms/cases/list.html:20 templates/cms/clients/view.html:404
 #: templates/cms/dashboard.html:151 templates/cms/subjects/view.html:2054
@@ -171,7 +171,7 @@ msgid "Open"
 msgstr "Open"
 
 #: templates/cms/cases/list.html:21 templates/cms/dashboard.html:155
-#: templates/cms/search.html:281 templates/cms/settings/index.html:451
+#: templates/cms/search.html:281 templates/cms/settings/index.html:588
 msgid "Active"
 msgstr "Actief"
 
@@ -196,19 +196,21 @@ msgstr "Mijn open / actieve dossiers"
 msgid "View All"
 msgstr "Alles bekijken"
 
-#: templates/cms/dashboard.html:189 templates/cms/search.html:266
+#: templates/cms/dashboard.html:189 templates/cms/reminders/create.html:14
+#: templates/cms/reminders/view.html:80 templates/cms/search.html:266
 msgid "Case"
-msgstr "Zaken"
+msgstr "Zaak"
 
 #: templates/cms/cases/list.html:126 templates/cms/cases/view.html:66
 #: templates/cms/clients/view.html:184 templates/cms/clients/view.html:289
-#: templates/cms/dashboard.html:190 templates/cms/settings/index.html:310
+#: templates/cms/dashboard.html:190 templates/cms/settings/index.html:447
 msgid "Status"
 msgstr "Status"
 
 #: templates/cms/cases/create.html:123 templates/cms/cases/edit.html:92
 #: templates/cms/cases/list.html:121 templates/cms/cases/view.html:62
-#: templates/cms/dashboard.html:191
+#: templates/cms/dashboard.html:191 templates/cms/reminders/create.html:46
+#: templates/cms/reminders/edit.html:39
 msgid "Priority"
 msgstr "Prioriteit"
 
@@ -259,12 +261,7 @@ msgstr "Globaal zoeken"
 
 #: templates/cms/search.html:161
 msgid "Search across cases, clients, subjects, findings, comments, and notes"
-msgstr ""
-"Zoeken in dossiers, cliënten, subjecten, bevindingen, opmerkingen en "
-"notitiesZoeken in zaken, cliënten, subjecten, bevindingen, opmerkingen en"
-" notitiesZoek door dossiers, cliënten, subjecten, bevindingen, "
-"opmerkingen en notitiesZoek door dossiers, cliënten, subjecten, "
-"bevindingen, opmerkingen en notities"
+msgstr "Zoek in dossiers, cliënten, subjecten, bevindingen, opmerkingen en notities"
 
 #: templates/cms/search.html:166
 msgid "Search for anything..."
@@ -400,26 +397,31 @@ msgstr "Hoofdonderzoeker"
 
 #: templates/cms/cases/create.html:119 templates/cms/cases/edit.html:87
 #: templates/cms/cases/view.html:89 templates/cms/cases/view.html:476
+#: templates/cms/reminders/create.html:28 templates/cms/reminders/edit.html:20
 msgid "Description"
 msgstr "Beschrijving"
 
 #: templates/cms/cases/create.html:125 templates/cms/cases/edit.html:94
-#: templates/cms/cases/list.html:31
+#: templates/cms/cases/list.html:31 templates/cms/reminders/create.html:48
+#: templates/cms/reminders/edit.html:41
 msgid "Low"
 msgstr "Laag"
 
 #: templates/cms/cases/create.html:126 templates/cms/cases/edit.html:95
-#: templates/cms/cases/list.html:30
+#: templates/cms/cases/list.html:30 templates/cms/reminders/create.html:49
+#: templates/cms/reminders/edit.html:42
 msgid "Medium"
-msgstr "Bewerken"
+msgstr "Gemiddeld"
 
 #: templates/cms/cases/create.html:127 templates/cms/cases/edit.html:96
-#: templates/cms/cases/list.html:29
+#: templates/cms/cases/list.html:29 templates/cms/reminders/create.html:50
+#: templates/cms/reminders/edit.html:43
 msgid "High"
 msgstr "Hoog"
 
 #: templates/cms/cases/create.html:128 templates/cms/cases/edit.html:97
-#: templates/cms/cases/list.html:28
+#: templates/cms/cases/list.html:28 templates/cms/reminders/create.html:51
+#: templates/cms/reminders/edit.html:44
 msgid "Critical"
 msgstr "Kritiek"
 
@@ -440,6 +442,7 @@ msgstr "Aanmaken"
 #: templates/cms/cases/view.html:481 templates/cms/cases/view.html:658
 #: templates/cms/cases/view.html:1965 templates/cms/clients/create.html:35
 #: templates/cms/clients/create.html:161 templates/cms/clients/edit.html:191
+#: templates/cms/reminders/create.html:105 templates/cms/reminders/edit.html:89
 #: templates/cms/subjects/edit.html:327 templates/cms/subjects/list.html:137
 #: templates/cms/subjects/view.html:497 templates/cms/subjects/view.html:534
 #: templates/cms/subjects/view.html:630 templates/cms/subjects/view.html:2424
@@ -479,7 +482,8 @@ msgid "Target End Date"
 msgstr "Streefdatum"
 
 #: templates/cms/cases/edit.html:135 templates/cms/clients/edit.html:190
-#: templates/cms/settings/index.html:281 templates/cms/subjects/edit.html:326
+#: templates/cms/reminders/edit.html:88 templates/cms/settings/index.html:418
+#: templates/cms/subjects/edit.html:326
 msgid "Save Changes"
 msgstr "Wijzigingen opslaan"
 
@@ -524,13 +528,16 @@ msgstr "Dossiersnummer"
 
 #: templates/cms/cases/list.html:111 templates/cms/cases/view.html:240
 #: templates/cms/cases/view.html:256 templates/cms/clients/view.html:184
+#: templates/cms/reminders/create.html:23 templates/cms/reminders/edit.html:15
 msgid "Title"
 msgstr "Titel"
 
 #: templates/cms/cases/list.html:131 templates/cms/cases/view.html:185
 #: templates/cms/cases/view.html:327 templates/cms/clients/create.html:80
 #: templates/cms/clients/edit.html:50 templates/cms/clients/edit.html:73
-#: templates/cms/clients/view.html:290 templates/cms/subjects/create.html:120
+#: templates/cms/clients/view.html:290 templates/cms/reminders/create.html:69
+#: templates/cms/reminders/edit.html:62 templates/cms/reminders/view.html:62
+#: templates/cms/settings/index.html:754 templates/cms/subjects/create.html:120
 #: templates/cms/subjects/edit.html:274 templates/cms/subjects/edit.html:297
 #: templates/cms/subjects/list.html:65 templates/cms/subjects/view.html:79
 msgid "Type"
@@ -538,7 +545,7 @@ msgstr "Type"
 
 #: templates/cms/cases/list.html:135 templates/cms/cases/view.html:185
 #: templates/cms/cases/view.html:327 templates/cms/clients/list.html:48
-#: templates/cms/settings/index.html:314 templates/cms/subjects/list.html:73
+#: templates/cms/settings/index.html:451 templates/cms/subjects/list.html:73
 #: templates/cms/subjects/view.html:377 templates/cms/subjects/view.html:419
 msgid "Actions"
 msgstr "Acties"
@@ -618,7 +625,7 @@ msgstr "Geschorst"
 
 #: templates/cms/cases/view.html:32 templates/cms/cases/view.html:35
 msgid "✓ Close Case"
-msgstr "Zaken"
+msgstr "✓ Sluit zaak"
 
 #: templates/cms/cases/view.html:34
 msgid "▶ Resume"
@@ -634,15 +641,15 @@ msgstr "Gearchiveerd"
 
 #: templates/cms/cases/view.html:42
 msgid "↩ Reopen"
-msgstr "Open"
+msgstr "Heropenen"
 
 #: templates/cms/cases/view.html:45
 msgid "📥 Export CSV"
-msgstr "Volgende"
+msgstr "📥 Exporteren CSV"
 
 #: templates/cms/cases/view.html:46
 msgid "📄 Report"
-msgstr "Volgende"
+msgstr "📄 Rapport"
 
 #: templates/cms/cases/view.html:47 templates/cms/subjects/view.html:23
 msgid "✏️ Edit"
@@ -678,7 +685,7 @@ msgstr "Beheer hiërarchie"
 
 #: templates/cms/cases/view.html:126
 msgid "Parent Case"
-msgstr "Zaken"
+msgstr "Hoofdzaak"
 
 #: templates/cms/cases/view.html:135
 #, python-format
@@ -727,7 +734,7 @@ msgid "This case is closed/archived. Reopen to make changes."
 msgstr "Dit dossier is gesloten/gearchiveerd. Heropen om wijzigingen te maken."
 
 #: templates/cms/cases/view.html:185 templates/cms/clients/list.html:34
-#: templates/cms/settings/index.html:308 templates/cms/subjects/list.html:60
+#: templates/cms/settings/index.html:445 templates/cms/subjects/list.html:60
 msgid "Name"
 msgstr "Naam"
 
@@ -757,7 +764,7 @@ msgstr "%(name)s verwijderen uit dit dossier?"
 #: templates/cms/cases/view.html:209 templates/cms/cases/view.html:1812
 #: templates/cms/subjects/view.html:56 templates/cms/subjects/view.html:826
 msgid "Remove"
-msgstr "Bekijken"
+msgstr "Verwijderen"
 
 #: templates/cms/cases/view.html:222
 msgid "No subjects linked."
@@ -774,7 +781,7 @@ msgstr "Titel"
 
 #: templates/cms/cases/view.html:232
 msgid "📋 Report"
-msgstr "Volgende"
+msgstr "📋 Rapport"
 
 #: templates/cms/cases/view.html:239
 msgid "Filter:"
@@ -788,7 +795,8 @@ msgstr "Bron"
 msgid "OSINT"
 msgstr "Inloggen"
 
-#: templates/cms/cases/view.html:245
+#: templates/cms/cases/view.html:245 templates/cms/reminders/create.html:71
+#: templates/cms/reminders/edit.html:64
 msgid "Manual"
 msgstr "Handmatig"
 
@@ -812,6 +820,7 @@ msgstr "🔍 ID extraheren"
 #: templates/cms/cases/view.html:1009 templates/cms/cases/view.html:1028
 #: templates/cms/cases/view.html:1324 templates/cms/cases/view.html:1459
 #: templates/cms/clients/view.html:400 templates/cms/clients/view.html:404
+#: templates/cms/reminders/view.html:90 templates/cms/reminders/view.html:95
 #: templates/cms/subjects/view.html:1217 templates/cms/subjects/view.html:1617
 msgid "Unknown"
 msgstr "Onbekende fout"
@@ -857,7 +866,7 @@ msgid "Download"
 msgstr "Downloaden"
 
 #: templates/cms/cases/view.html:339 templates/cms/cases/view.html:1970
-#: templates/cms/reminders/list.html:186 templates/cms/settings/index.html:453
+#: templates/cms/reminders/list.html:186 templates/cms/settings/index.html:590
 #: templates/cms/subjects/view.html:393 templates/cms/subjects/view.html:428
 #: templates/cms/subjects/view.html:1847 templates/cms/subjects/view.html:2429
 msgid "Delete"
@@ -934,7 +943,7 @@ msgstr "Bewijsstuk"
 
 #: templates/cms/cases/view.html:459
 msgid "Report"
-msgstr "Volgende"
+msgstr "Rapport"
 
 #: templates/cms/cases/view.html:460 templates/cms/clients/create.html:136
 #: templates/cms/clients/edit.html:161 templates/cms/clients/list.html:45
@@ -1008,7 +1017,7 @@ msgstr "In afwachting van beoordeling"
 msgid "Financial Analysis"
 msgstr "Financiële gegevens"
 
-#: templates/cms/cases/view.html:523 templates/cms/settings/index.html:318
+#: templates/cms/cases/view.html:523 templates/cms/settings/index.html:455
 #: templates/cms/subjects/create.html:354
 #: templates/cms/subjects/create.html:425 templates/cms/subjects/edit.html:348
 #: templates/cms/subjects/edit.html:523 templates/cms/subjects/view.html:608
@@ -1058,13 +1067,13 @@ msgstr "Geen datum"
 msgid "Completed"
 msgstr "Voltooid"
 
-#: templates/cms/cases/view.html:570
+#: templates/cms/cases/view.html:570 templates/cms/reminders/view.html:30
 msgid "OVERDUE"
-msgstr "Overzicht"
+msgstr "OVERDATED"
 
-#: templates/cms/cases/view.html:580
+#: templates/cms/cases/view.html:580 templates/cms/reminders/view.html:110
 msgid "Delete this reminder?"
-msgstr "Maak uw eerste herinnering"
+msgstr "Deze herinnering verwijderen?"
 
 #: templates/cms/cases/view.html:592
 msgid "No reminders for this case."
@@ -1177,8 +1186,8 @@ msgstr "Heropeningsreden is vereist"
 #: templates/cms/clients/view.html:360 templates/cms/clients/view.html:384
 #: templates/cms/clients/view.html:411 templates/cms/clients/view.html:435
 #: templates/cms/clients/view.html:486 templates/cms/clients/view.html:522
-#: templates/cms/clients/view.html:555 templates/cms/settings/index.html:396
-#: templates/cms/settings/index.html:400 templates/cms/subjects/list.html:250
+#: templates/cms/clients/view.html:555 templates/cms/settings/index.html:533
+#: templates/cms/settings/index.html:537 templates/cms/subjects/list.html:250
 #: templates/cms/subjects/list.html:271
 msgid "Error"
 msgstr "Fout"
@@ -1203,7 +1212,8 @@ msgstr "HTTP"
 msgid "Search was cancelled"
 msgstr "Zoekopdracht is geannuleerd"
 
-#: templates/cms/cases/view.html:907 templates/cms/subjects/view.html:1519
+#: templates/cms/cases/view.html:907 templates/cms/settings/index.html:766
+#: templates/cms/subjects/view.html:1519
 msgid "Search failed"
 msgstr "Gearchiveerd"
 
@@ -1255,7 +1265,7 @@ msgstr "Zoeken"
 msgid "📌 Already saved"
 msgstr "📌 Alleen opgeslagen"
 
-#: templates/cms/cases/view.html:1081 templates/cms/settings/index.html:372
+#: templates/cms/cases/view.html:1081 templates/cms/settings/index.html:509
 #: templates/cms/subjects/view.html:1701 templates/cms/subjects/view.html:2659
 msgid "Saving..."
 msgstr "Laden..."
@@ -1283,7 +1293,7 @@ msgstr ""
 "als sociale accounts op het geselecteerde subject?"
 
 #: templates/cms/cases/view.html:1155 templates/cms/cases/view.html:1162
-#: templates/cms/settings/index.html:387 templates/cms/subjects/view.html:1763
+#: templates/cms/settings/index.html:524 templates/cms/subjects/view.html:1763
 #: templates/cms/subjects/view.html:1770
 msgid "Saved"
 msgstr "Opslaan"
@@ -1385,9 +1395,9 @@ msgstr "Instellingen succesvol opgeslagen!"
 msgid "Upload timed out. Please try again."
 msgstr "Upload timeout. Probeer het opnieuw."
 
-#: templates/cms/cases/view.html:1584 templates/cms/settings/index.html:505
-#: templates/cms/settings/index.html:508 templates/cms/settings/index.html:521
-#: templates/cms/settings/index.html:524
+#: templates/cms/cases/view.html:1584 templates/cms/settings/index.html:642
+#: templates/cms/settings/index.html:645 templates/cms/settings/index.html:658
+#: templates/cms/settings/index.html:661
 msgid "Failed"
 msgstr "Mislukt"
 
@@ -1469,7 +1479,7 @@ msgstr "Top tegenpartijen"
 
 #: templates/cms/cases/view.html:1772
 msgid "Counterparty"
-msgstr "Contract"
+msgstr "Tegenpartij"
 
 #: templates/cms/cases/view.html:1816
 msgid "No parent case assigned."
@@ -1522,7 +1532,7 @@ msgstr "door"
 
 #: templates/cms/cases/view.html:1929 templates/cms/subjects/view.html:2398
 msgid "on"
-msgstr "Open"
+msgstr "op"
 
 #: templates/cms/cases/view.html:1935 templates/cms/subjects/view.html:2402
 msgid "View edit history"
@@ -1673,19 +1683,19 @@ msgstr "Adres"
 #: templates/cms/subjects/create.html:86 templates/cms/subjects/edit.html:207
 #: templates/cms/subjects/edit.html:237
 msgid "Street"
-msgstr "Schermafbeelding"
+msgstr "Straat"
 
 #: templates/cms/clients/create.html:109 templates/cms/clients/edit.html:104
 #: templates/cms/clients/edit.html:134 templates/cms/subjects/create.html:87
 #: templates/cms/subjects/edit.html:208 templates/cms/subjects/edit.html:238
 msgid "Street name"
-msgstr "Startdatum"
+msgstr "Straatnaam"
 
 #: templates/cms/clients/create.html:112 templates/cms/clients/edit.html:107
 #: templates/cms/clients/edit.html:137 templates/cms/subjects/create.html:90
 #: templates/cms/subjects/edit.html:211 templates/cms/subjects/edit.html:241
 msgid "Number"
-msgstr "Dossiersnummer"
+msgstr "Nummer"
 
 #: templates/cms/clients/create.html:113 templates/cms/clients/edit.html:108
 #: templates/cms/clients/edit.html:138 templates/cms/subjects/create.html:91
@@ -1711,7 +1721,7 @@ msgstr "1234 AB"
 #: templates/cms/subjects/create.html:98 templates/cms/subjects/edit.html:219
 #: templates/cms/subjects/edit.html:249
 msgid "Town"
-msgstr "Open"
+msgstr "Plaats"
 
 #: templates/cms/clients/create.html:121 templates/cms/clients/edit.html:116
 #: templates/cms/clients/edit.html:146 templates/cms/subjects/create.html:99
@@ -1741,22 +1751,22 @@ msgstr "Financiële gegevens"
 #: templates/cms/clients/create.html:144 templates/cms/clients/edit.html:173
 #: templates/cms/clients/view.html:155
 msgid "Social Security Number"
-msgstr "Dossiersnummer"
+msgstr "Burgerservicenummer (BSN)"
 
 #: templates/cms/clients/create.html:148 templates/cms/clients/edit.html:177
 #: templates/cms/clients/view.html:160
 msgid "VAT Number"
-msgstr "Dossiersnummer"
+msgstr "BTW-nummer"
 
 #: templates/cms/clients/create.html:152 templates/cms/clients/edit.html:181
 #: templates/cms/clients/view.html:165
 msgid "Bank Account"
-msgstr "Sociale accounts"
+msgstr "Bankrekening / IBAN"
 
 #: templates/cms/clients/create.html:156 templates/cms/clients/edit.html:185
 #: templates/cms/clients/view.html:170
 msgid "Financial Notes"
-msgstr "Financiële gegevens"
+msgstr "Financiële notities"
 
 #: templates/cms/clients/create.html:160
 msgid "Create Client"
@@ -1781,7 +1791,7 @@ msgstr "Terug naar Cliënt"
 
 #: templates/cms/clients/edit.html:163 templates/cms/clients/view.html:145
 msgid "Contract Number"
-msgstr "Contract"
+msgstr "Contractnummer"
 
 #: templates/cms/clients/edit.html:163
 msgid "read-only"
@@ -1872,7 +1882,7 @@ msgstr "Plaats"
 
 #: templates/cms/clients/view.html:134 templates/cms/clients/view.html:394
 msgid "Country"
-msgstr "Contract"
+msgstr "Land"
 
 #: templates/cms/clients/view.html:135
 msgid "Netherlands"
@@ -2047,11 +2057,13 @@ msgstr "Domein"
 msgid "MX Records"
 msgstr "MX Records"
 
-#: templates/cms/clients/view.html:445 templates/cms/subjects/view.html:2576
+#: templates/cms/clients/view.html:445 templates/cms/settings/index.html:736
+#: templates/cms/subjects/view.html:2576
 msgid "Found"
 msgstr "Niet gevonden"
 
-#: templates/cms/clients/view.html:445
+#: templates/cms/clients/view.html:445 templates/cms/reminders/create.html:79
+#: templates/cms/reminders/edit.html:72 templates/cms/reminders/view.html:68
 msgid "None"
 msgstr "Geen"
 
@@ -2100,9 +2112,88 @@ msgstr "Verder onderzoeken"
 msgid "No address available for this client."
 msgstr "Herinneringen"
 
-#: templates/cms/reminders/list.html:118
+#: templates/cms/reminders/create.html:5 templates/cms/reminders/edit.html:5
+#: templates/cms/reminders/view.html:21
+msgid "← Back to Reminders"
+msgstr "← Terug naar herinneringen"
+
+#: templates/cms/reminders/create.html:9 templates/cms/reminders/list.html:118
 msgid "New Reminder"
-msgstr "Herinneringen"
+msgstr "Nieuwe herinnering"
+
+#: templates/cms/reminders/create.html:13
+msgid "Linked to:"
+msgstr "Gekoppeld aan:"
+
+#: templates/cms/reminders/create.html:24
+msgid "What needs to be done?"
+msgstr "Wat moet er gebeuren?"
+
+#: templates/cms/reminders/create.html:29
+msgid "Additional details..."
+msgstr "Extra details..."
+
+#: templates/cms/reminders/create.html:34 templates/cms/reminders/edit.html:26
+msgid "Reminder Date & Time"
+msgstr "Herinneringsdatum & -tijd"
+
+#: templates/cms/reminders/create.html:39 templates/cms/reminders/edit.html:31
+#: templates/cms/reminders/view.html:49
+msgid "Due Date"
+msgstr "Uiterlijke datum"
+
+#: templates/cms/reminders/create.html:55 templates/cms/reminders/edit.html:48
+msgid "Assign To"
+msgstr "Toewijzen aan"
+
+#: templates/cms/reminders/create.html:57 templates/cms/reminders/edit.html:50
+msgid "-- Unassigned --"
+msgstr "-- Niet toegewezen --"
+
+#: templates/cms/reminders/create.html:72 templates/cms/reminders/edit.html:65
+msgid "Recurring"
+msgstr "Herhalend"
+
+#: templates/cms/reminders/create.html:73 templates/cms/reminders/edit.html:66
+msgid "System"
+msgstr "Systeem"
+
+#: templates/cms/reminders/create.html:77 templates/cms/reminders/edit.html:70
+#: templates/cms/reminders/view.html:67
+msgid "Recurrence"
+msgstr "Herhaling"
+
+#: templates/cms/reminders/create.html:80 templates/cms/reminders/edit.html:73
+msgid "Daily"
+msgstr "Dagelijks"
+
+#: templates/cms/reminders/create.html:81 templates/cms/reminders/edit.html:74
+msgid "Weekly"
+msgstr "Wekelijks"
+
+#: templates/cms/reminders/create.html:82 templates/cms/reminders/edit.html:75
+msgid "Monthly"
+msgstr "Maandelijks"
+
+#: templates/cms/reminders/create.html:83 templates/cms/reminders/edit.html:76
+msgid "Quarterly"
+msgstr "Per kwartaal"
+
+#: templates/cms/reminders/create.html:100 templates/cms/reminders/edit.html:84
+msgid "Show on dashboard"
+msgstr "Toon op dashboard"
+
+#: templates/cms/reminders/create.html:104
+msgid "Create Reminder"
+msgstr "Herinnering aanmaken"
+
+#: templates/cms/reminders/edit.html:6
+msgid "View Reminder"
+msgstr "Herinnering bekijken"
+
+#: templates/cms/reminders/edit.html:10
+msgid "Edit Reminder"
+msgstr "Herinnering bewerken"
 
 #: templates/cms/reminders/list.html:124
 msgid "Pending"
@@ -2111,7 +2202,7 @@ msgstr "Openstaand"
 #: templates/cms/reminders/list.html:128 templates/cms/reminders/list.html:138
 #: templates/cms/reminders/list.html:152
 msgid "Overdue"
-msgstr "Overzicht"
+msgstr "Over tijd"
 
 #: templates/cms/reminders/list.html:132
 msgid "Due Today"
@@ -2143,70 +2234,115 @@ msgstr "Uitstellen 30 min"
 
 #: templates/cms/reminders/list.html:207
 msgid "No reminders found."
-msgstr "Herinneringen"
+msgstr "Geen herinneringen gevonden."
 
 #: templates/cms/reminders/list.html:208
 msgid "Create your first reminder"
-msgstr "Maak uw eerste herinnering"
+msgstr "Maak je eerste herinnering"
 
-#: templates/cms/settings/index.html:190
+#: templates/cms/reminders/view.html:33
+msgid "COMPLETED"
+msgstr "Voltooid"
+
+#: templates/cms/reminders/view.html:43
+msgid "Reminder Date"
+msgstr "Herinneringsdatum"
+
+#: templates/cms/reminders/view.html:44
+msgid "Not set"
+msgstr "Niet ingesteld"
+
+#: templates/cms/reminders/view.html:56
+msgid "Completed At"
+msgstr "Voltooid op"
+
+#: templates/cms/reminders/view.html:73
+msgid "Assigned To"
+msgstr "Toegewezen aan"
+
+#: templates/cms/reminders/view.html:89 templates/cms/settings/index.html:450
+msgid "Created By"
+msgstr "Aangemaakt door"
+
+#: templates/cms/reminders/view.html:94
+msgid "Created At"
+msgstr "Aangemaakt op"
+
+#: templates/cms/reminders/view.html:102
+msgid "✓ Mark Complete"
+msgstr "Als voltooid markeren"
+
+#: templates/cms/reminders/view.html:107
+msgid "⏰ Snooze 30 min"
+msgstr "Uitstellen 30 min"
+
+#: templates/cms/reminders/view.html:112 templates/cms/subjects/view.html:24
+#: templates/cms/subjects/view.html:2505 templates/cms/subjects/view.html:2513
+msgid "🗑️ Delete"
+msgstr "🗑️ Verwijderen"
+
+#: templates/cms/settings/index.html:306
+msgid "Search settings by name, description or category..."
+msgstr "Zoek instellingen op naam, beschrijving of categorie..."
+
+#: templates/cms/settings/index.html:327
 msgid "Security"
 msgstr "Beveiliging"
 
-#: templates/cms/settings/index.html:194
+#: templates/cms/settings/index.html:331
 msgid "Sessions"
-msgstr "Instellingen"
+msgstr "Sessies"
 
-#: templates/cms/settings/index.html:198
+#: templates/cms/settings/index.html:335
 msgid "Login History"
 msgstr "Login geschiedenis"
 
-#: templates/cms/settings/index.html:202
+#: templates/cms/settings/index.html:339
 msgid "Read Audit"
 msgstr "Lees audit"
 
-#: templates/cms/settings/index.html:206
+#: templates/cms/settings/index.html:343
 msgid "API Keys"
 msgstr "API sleutels"
 
-#: templates/cms/settings/index.html:216
+#: templates/cms/settings/index.html:353
 #, python-format
 msgid "Configure %(category)s settings for the application."
 msgstr "Configureer %(category)s instellingen voor de applicatie."
 
-#: templates/cms/settings/index.html:224
+#: templates/cms/settings/index.html:361 templates/cms/settings/index.html:749
 msgid "(sensitive)"
 msgstr "(gevoelig)"
 
-#: templates/cms/settings/index.html:232
+#: templates/cms/settings/index.html:369
 msgid "Enabled"
 msgstr "Ingeschakeld"
 
-#: templates/cms/settings/index.html:233
+#: templates/cms/settings/index.html:370
 msgid "Disabled"
 msgstr "Uitgeschakeld"
 
-#: templates/cms/settings/index.html:251
+#: templates/cms/settings/index.html:388
 msgid "Enter value"
 msgstr "Voer waarde in"
 
-#: templates/cms/settings/index.html:259
+#: templates/cms/settings/index.html:396
 msgid "Current"
 msgstr "Aanmaken"
 
-#: templates/cms/settings/index.html:279
+#: templates/cms/settings/index.html:416
 msgid "Reset All"
 msgstr "Alles resetten"
 
-#: templates/cms/settings/index.html:286
+#: templates/cms/settings/index.html:423
 msgid "No settings in this category."
 msgstr "Geen instellingen in deze categorie."
 
-#: templates/cms/settings/index.html:294
+#: templates/cms/settings/index.html:431
 msgid "API Keys for Programmatic Access"
 msgstr "API sleutels voor programmatische toegang"
 
-#: templates/cms/settings/index.html:296
+#: templates/cms/settings/index.html:433
 msgid ""
 "Generate API keys for external tools and scripts to access the CMS REST "
 "API. Keys are shown once after creation and use X-API-Key header "
@@ -2216,98 +2352,106 @@ msgstr ""
 " tot de CMS REST API. Sleutels worden eenmalig getoond na aanmaak en "
 "gebruiken X-API-Key header authenticatie."
 
-#: templates/cms/settings/index.html:300
+#: templates/cms/settings/index.html:437
 msgid "Key name (e.g. automation-script)"
 msgstr "Sleutelnaam (bijv. automation-script)"
 
-#: templates/cms/settings/index.html:302
+#: templates/cms/settings/index.html:439
 msgid "Generate Key"
 msgstr "Sleutel genereren"
 
-#: templates/cms/settings/index.html:309
+#: templates/cms/settings/index.html:446
 msgid "Key Prefix"
 msgstr "Sleutel voorvoegsel"
 
-#: templates/cms/settings/index.html:311
+#: templates/cms/settings/index.html:448
 msgid "Created"
 msgstr "Aanmaken"
 
-#: templates/cms/settings/index.html:312
+#: templates/cms/settings/index.html:449
 msgid "Last Used"
 msgstr "Laatst gebruikt"
 
-#: templates/cms/settings/index.html:313
-msgid "Created By"
-msgstr "Aanmaken"
-
-#: templates/cms/settings/index.html:323
+#: templates/cms/settings/index.html:460
 msgid "Copy this key now — it will not be shown again!"
 msgstr "Kopieer deze sleutel nu — deze wordt niet meer getoond!"
 
-#: templates/cms/settings/index.html:388
+#: templates/cms/settings/index.html:525
 msgid "Settings saved successfully!"
 msgstr "Instellingen succesvol opgeslagen!"
 
-#: templates/cms/settings/index.html:397 templates/cms/settings/index.html:401
+#: templates/cms/settings/index.html:534 templates/cms/settings/index.html:538
 msgid "Failed to save settings"
 msgstr "Instellingen opslaan mislukt"
 
-#: templates/cms/settings/index.html:397 templates/cms/settings/index.html:505
-#: templates/cms/settings/index.html:521 templates/cms/subjects/view.html:1384
+#: templates/cms/settings/index.html:534 templates/cms/settings/index.html:642
+#: templates/cms/settings/index.html:658 templates/cms/subjects/view.html:1384
 msgid "Unknown error"
 msgstr "Onbekende fout"
 
-#: templates/cms/settings/index.html:406
+#: templates/cms/settings/index.html:543
 msgid "Reset all settings in this category to defaults?"
 msgstr "Alle instellingen in deze categorie terugzetten naar standaard?"
 
-#: templates/cms/settings/index.html:424
+#: templates/cms/settings/index.html:561
 msgid "Settings reset to defaults"
 msgstr "Instellingen teruggezet naar standaard"
 
-#: templates/cms/settings/index.html:444
+#: templates/cms/settings/index.html:581
 msgid "No API keys created yet."
 msgstr "Nog geen API sleutels aangemaakt."
 
-#: templates/cms/settings/index.html:449
+#: templates/cms/settings/index.html:586
 msgid "Never"
 msgstr "Nooit"
 
-#: templates/cms/settings/index.html:451
+#: templates/cms/settings/index.html:588
 msgid "Revoked"
 msgstr "Bekijken"
 
-#: templates/cms/settings/index.html:452
+#: templates/cms/settings/index.html:589
 msgid "Revoke"
 msgstr "Bekijken"
 
-#: templates/cms/settings/index.html:472
+#: templates/cms/settings/index.html:609
 msgid "Please enter a name for the API key."
 msgstr "Voer een naam in voor de API sleutel."
 
-#: templates/cms/settings/index.html:486
+#: templates/cms/settings/index.html:623
 msgid "API key generated successfully!"
 msgstr "API sleutel succesvol gegenereerd!"
 
-#: templates/cms/settings/index.html:497
+#: templates/cms/settings/index.html:634
 msgid "Revoke this API key? Existing integrations using it will stop working."
 msgstr "Deze API sleutel intrekken? Bestaande integraties stoppen met werken."
 
-#: templates/cms/settings/index.html:502
+#: templates/cms/settings/index.html:639
 msgid "Key revoked"
 msgstr "Sleutel ingetrokken"
 
-#: templates/cms/settings/index.html:513
+#: templates/cms/settings/index.html:650
 msgid "Permanently delete this API key record?"
 msgstr "API sleutel permanent verwijderen?"
 
-#: templates/cms/settings/index.html:518
+#: templates/cms/settings/index.html:655
 msgid "Key deleted"
 msgstr "Verwijderen"
 
-#: templates/cms/settings/index.html:538
+#: templates/cms/settings/index.html:675
 msgid "You have unsaved changes. Are you sure you want to leave?"
 msgstr "U heeft niet-opgeslagen wijzigingen. Weet u zeker dat u wilt vertrekken?"
+
+#: templates/cms/settings/index.html:724 templates/cms/subjects/view.html:558
+msgid "Searching..."
+msgstr "Laden..."
+
+#: templates/cms/settings/index.html:733
+msgid "No settings found for"
+msgstr "Geen instellingen gevonden voor"
+
+#: templates/cms/settings/index.html:736
+msgid "result(s)"
+msgstr "resultaat/resultaten"
 
 #: templates/cms/subjects/create.html:3
 msgid "Create New Subject"
@@ -2374,7 +2518,7 @@ msgstr ""
 #: templates/cms/subjects/create.html:163 templates/cms/subjects/edit.html:34
 #: templates/cms/subjects/view.html:152
 msgid "ID/Passport Number"
-msgstr "Dossiersnummer"
+msgstr "ID/Paspoortnummer"
 
 #: templates/cms/subjects/create.html:172
 msgid "🚗 Vehicle Information"
@@ -2752,11 +2896,11 @@ msgstr "Selectie wissen"
 
 #: templates/cms/subjects/list.html:41
 msgid "Has Case"
-msgstr "Zaken"
+msgstr "Heeft zaak"
 
 #: templates/cms/subjects/list.html:42
 msgid "No Case"
-msgstr "Zaken"
+msgstr "Geen zaak"
 
 #: templates/cms/subjects/list.html:82
 msgid "Select all"
@@ -2825,11 +2969,6 @@ msgstr "Terug naar Subjecten"
 #: templates/cms/subjects/view.html:18
 msgid "📷 Upload"
 msgstr "📷 Uploaden"
-
-#: templates/cms/subjects/view.html:24 templates/cms/subjects/view.html:2505
-#: templates/cms/subjects/view.html:2513
-msgid "🗑️ Delete"
-msgstr "🗑️ Verwijderen"
 
 #: templates/cms/subjects/view.html:30 templates/cms/subjects/view.html:34
 msgid "🔍 OSINT Search"
@@ -3116,10 +3255,6 @@ msgstr "Voer ID of gebruikersnaam in"
 #: templates/cms/subjects/view.html:549
 msgid "Search for information about"
 msgstr "Zoek naar informatie over"
-
-#: templates/cms/subjects/view.html:558
-msgid "Searching..."
-msgstr "Laden..."
 
 #: templates/cms/subjects/view.html:561
 msgid "Cancel Search"

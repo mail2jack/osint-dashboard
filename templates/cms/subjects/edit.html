@@ -316,6 +316,11 @@
         <input type="hidden" name="contacts_data" id="contacts-data" value="">
     </div>
     <div class="form-group">
+        <label for="bank_account">{{ _('💳 Bank / IBAN') }}</label>
+        <input type="text" name="bank_account" id="bank_account" value="{{ subject.bank_account or '' }}" placeholder="{{ _('e.g. NL39INGB0001234567') }}">
+        <small style="color:var(--text-muted);">{{ _('Encrypted at rest') }}</small>
+    </div>
+    <div class="form-group">
         <label for="risk_score">{{ _('Risk Score (0-100)') }}</label>
         <input type="number" name="risk_score" id="risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100">
     </div>
@@ -573,6 +578,8 @@ document.addEventListener('DOMContentLoaded', toggleTypeFields);
 function handleEditSubmit(event) {
     var form = document.getElementById('subjectForm');
     if (form.checkValidity()) {
+        serializeAddresses();
+        serializeContacts();
         form.submit();
     } else {
         form.reportValidity();

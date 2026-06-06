@@ -496,6 +496,7 @@ class CreateSubjectSchema(BaseModel):
     date_of_birth: str | None = None
     place_of_birth: str | None = None
     identification_number: str | None = None
+    bank_account: str | None = None
     case_id: str | None = None
     addresses_data: Any = None
     contacts_data: Any = None
@@ -549,6 +550,7 @@ class EditSubjectSchema(BaseModel):
     date_of_birth: str | None = None
     place_of_birth: str | None = None
     identification_number: str | None = None
+    bank_account: str | None = None
     addresses_data: Any = None
     contacts_data: Any = None
     # RDW fields
