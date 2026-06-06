@@ -71,11 +71,11 @@ def search_person(full_name):
     return person_dorks_search(full_name)
 
 
-def brave_search(query, api_key) -> list:
+def brave_search(query, api_key, results_meta: dict | None = None) -> list:
     """Search using Brave Search API.
 
     Returns list of results or empty list if failed.
-    Requires BRAVE_API_KEY environment variable.
+    Populates results_meta with 'brave_status' on non-200.
     Brave API uses direct HTTPS (no Tor) since it uses an API key for auth.
     """
     if not api_key:
@@ -94,6 +94,8 @@ def brave_search(query, api_key) -> list:
             response = client.get(url, params=params)
 
         if response.status_code != 200:
+            if results_meta is not None:
+                results_meta["brave_status"] = response.status_code
             return []
 
         data = response.json()
@@ -348,6 +350,7 @@ def person_dorks_search(full_name) -> dict:
             logger.warning("Failed to flush search log")
 
     brave_api_key = _get_brave_key()
+    brave_meta: dict = {}
     if brave_api_key:
         logger.info("Using Brave Search API")
         results["sources_used"].append("brave")
@@ -357,7 +360,7 @@ def person_dorks_search(full_name) -> dict:
         for query in dork_queries[:6]:
             results["queries_run"].append(query)
             try:
-                brave_results = brave_search(query, brave_api_key)
+                brave_results = brave_search(query, brave_api_key, brave_meta)
                 log_ddg(f"Brave Query: {query}")
                 log_ddg(f"  Brave found {len(brave_results)} results")
                 if brave_results:
@@ -368,6 +371,12 @@ def person_dorks_search(full_name) -> dict:
             except Exception as e:
                 log_ddg(f"  Brave error: {str(e)}")
                 logger.warning(f"Brave search error: {e}")
+
+        bs = brave_meta.get("brave_status", 0)
+        if bs == 402:
+            results["brave_error"] = "Brave API quota exhausted (402)"
+        elif bs:
+            results["brave_error"] = f"Brave API returned HTTP {bs}"
     else:
         log_ddg("Brave API key not configured - skipping Brave search")
 

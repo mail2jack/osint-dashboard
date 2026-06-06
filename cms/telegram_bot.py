@@ -272,6 +272,9 @@ def _fmt_person(data: dict) -> str:
     sources = data.get("sources_used", [])
     count = data.get("total_results", 0)
     lines.append(f"*Results*: {count}")
+    brave_err = data.get("brave_error", "")
+    if brave_err:
+        lines.append(f"⚠️ *Brave*: {brave_err}")
     if sources:
         lines.append(f"*Sources*: {', '.join(sources)}")
     if count:
