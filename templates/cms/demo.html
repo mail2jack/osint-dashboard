@@ -11,6 +11,24 @@
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
 }
+
+body::before {
+    content: "Iveras OSINT";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 8rem;
+    font-weight: 900;
+    color: var(--text-muted);
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+    white-space: nowrap;
+    letter-spacing: 0.15em;
+    user-select: none;
+    text-transform: uppercase;
+}
 </style>
 
 <h1>🎨 Design System Demo</h1>
