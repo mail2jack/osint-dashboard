@@ -21,19 +21,17 @@ def dashboard() -> str:
     if q:
         return redirect(url_for("cms.search", q=q))
 
+    case_counts = dict(
+        db.session.query(Case.status, db.func.count(Case.id))
+        .filter(Case.is_deleted == False)
+        .group_by(Case.status)
+        .all()
+    )
     stats = {
-        "open_cases": Case.query.filter_by(
-            status=CaseStatus.OPEN.value, is_deleted=False
-        ).count(),
-        "active_cases": Case.query.filter_by(
-            status=CaseStatus.ACTIVE.value, is_deleted=False
-        ).count(),
-        "suspended_cases": Case.query.filter_by(
-            status=CaseStatus.SUSPENDED.value, is_deleted=False
-        ).count(),
-        "closed_cases": Case.query.filter_by(
-            status=CaseStatus.CLOSED.value, is_deleted=False
-        ).count(),
+        "open_cases": case_counts.get(CaseStatus.OPEN.value, 0),
+        "active_cases": case_counts.get(CaseStatus.ACTIVE.value, 0),
+        "suspended_cases": case_counts.get(CaseStatus.SUSPENDED.value, 0),
+        "closed_cases": case_counts.get(CaseStatus.CLOSED.value, 0),
         "total_clients": Client.query.filter_by(
             is_deleted=False, is_active=True
         ).count(),

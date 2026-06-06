@@ -19,18 +19,18 @@ OLLAMA_MODEL = "llama3.2"
 def get_openrouter_config() -> dict:
     """Get OpenRouter config from Settings with env var / hardcoded fallback."""
     try:
-        from ..models import Setting
+        from ..setting_cache import cached_setting_get
 
-        api_key = Setting.get("openrouter_api_key", "") or os.environ.get(
+        api_key = cached_setting_get("openrouter_api_key", "") or os.environ.get(
             "OPENROUTER_API_KEY", ""
         )
         model = (
-            Setting.get("openrouter_model", "")
+            cached_setting_get("openrouter_model", "")
             or os.environ.get("OPENROUTER_MODEL", "")
             or OPENROUTER_MODEL
         )
         base_url = (
-            Setting.get("openrouter_base_url", "")
+            cached_setting_get("openrouter_base_url", "")
             or os.environ.get("OPENROUTER_BASE_URL", "")
             or OPENROUTER_BASE_URL
         )
@@ -111,15 +111,15 @@ def openrouter_generate(prompt, system_prompt=None, timeout=60) -> str | None:
 def get_ollama_config() -> tuple[str, str]:
     """Get Ollama config from Setting with env var / hardcoded fallback."""
     try:
-        from ..models import Setting
+        from ..setting_cache import cached_setting_get
 
         url = (
-            Setting.get("ollama_url", "")
+            cached_setting_get("ollama_url", "")
             or os.environ.get("OLLAMA_URL", "")
             or OLLAMA_URL
         )
         model = (
-            Setting.get("ollama_model", "")
+            cached_setting_get("ollama_model", "")
             or os.environ.get("OLLAMA_MODEL", "")
             or OLLAMA_MODEL
         )

@@ -66,17 +66,20 @@ def full_text_search() -> flask.Response:
         )
         if current_user.is_admin:
             filtered_subjects = subjects
-        else:
-            filtered_subjects = [
-                s
-                for s in subjects
-                if any(
-                    row[0] in accessible_ids
-                    for row in db.session.query(case_subjects.c.case_id)
-                    .filter(case_subjects.c.subject_id == s.id)
-                    .all()
+        elif subjects:
+            subject_ids = [s.id for s in subjects]
+            subj_case_rows = (
+                db.session.query(case_subjects.c.subject_id, case_subjects.c.case_id)
+                .filter(
+                    case_subjects.c.subject_id.in_(subject_ids),
+                    case_subjects.c.case_id.in_(accessible_ids),
                 )
-            ]
+                .all()
+            )
+            allowed_subject_ids = set(row[0] for row in subj_case_rows)
+            filtered_subjects = [s for s in subjects if s.id in allowed_subject_ids]
+        else:
+            filtered_subjects = []
         results["subjects"] = [s.to_dict() for s in filtered_subjects]
 
     if scope in ("all", "cases"):

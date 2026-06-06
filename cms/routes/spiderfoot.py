@@ -38,13 +38,14 @@ logger = logging.getLogger(__name__)
 def get_spiderfoot_config() -> dict:
     """Get SpiderFoot configuration from settings."""
     from ..spiderfoot_service import SpiderFootConfig
+    from ..setting_cache import cached_setting_get
 
     base_url = (
-        Setting.get("spiderfoot_url", "http://localhost:5001")
+        cached_setting_get("spiderfoot_url", "http://localhost:5001")
         or "http://localhost:5001"
     )
-    username = Setting.get("spiderfoot_username", "admin") or "admin"
-    password = Setting.get("spiderfoot_password", "") or ""
+    username = cached_setting_get("spiderfoot_username", "admin") or "admin"
+    password = cached_setting_get("spiderfoot_password", "") or ""
 
     return SpiderFootConfig(base_url=base_url, username=username, password=password)
 
@@ -746,10 +747,12 @@ def spiderfoot_settings() -> str:
         return redirect(url_for("cms.spiderfoot_settings"))
 
     # GET - Show settings form
+    from ..setting_cache import cached_setting_get
+
     settings = {
-        "url": Setting.get("spiderfoot_url", "http://localhost:5001"),
-        "username": Setting.get("spiderfoot_username", "admin"),
-        "password": Setting.get("spiderfoot_password", ""),
+        "url": cached_setting_get("spiderfoot_url", "http://localhost:5001"),
+        "username": cached_setting_get("spiderfoot_username", "admin"),
+        "password": cached_setting_get("spiderfoot_password", ""),
     }
 
     # Test connection

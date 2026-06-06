@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.6.0] — 2026-06-06
+
+### Added
+- Extern JavaScript bestand (`static/js/base.js`) — 541 regels inline JS uit base.html geëxtraheerd met cache-busting
+- Cache-busting voor `cms-professional.css` en `help.css` via `?v={{ g.css_version }}`
+- `cached_setting_get()` toegepast in `spiderfoot.py` en `ai_service.py` — Settings-cache met 60s TTL
+
+### Changed
+- **Dashboard**: 6 aparte COUNT queries → 1 GROUP BY query
+- **Statistics**: 9 aparte COUNT queries → 2 GROUP BY queries
+- **Reminders**: 3 aparte COUNT queries → 1 aggregated query met FILTER (WHERE ...)
+- **FTS search**: N+1 per-subject `case_subjects` queries → 1 bulk query
+- Inline `window.CMS` config-script voor Jinja2-variabelen (CSRF, locale, counts, etc.)
+
+### Fixed
+- 500 error na `git pull` door verouderde `.pyc` cache — restart of `__pycache__` wissen nodig
+
 ## [3.5.0] — 2026-05-20
 
 ### Added

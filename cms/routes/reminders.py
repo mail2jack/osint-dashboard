@@ -6,6 +6,7 @@ from flask import request, jsonify, render_template, redirect, url_for, flash, a
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from ..validation import validate, CreateReminderSchema, EditReminderSchema
 from ..models import (
@@ -55,20 +56,31 @@ def reminders() -> str:
         page=page, per_page=per_page, error_out=False
     )
 
-    # Stats
+    # Stats — single aggregated query
     now = datetime.now(timezone.utc)
-    stats = {
-        "total": Reminder.query.filter_by(is_deleted=False, is_completed=False).count(),
-        "overdue": Reminder.query.filter(
+    row = db.session.query(
+        func.count(Reminder.id)
+        .filter(Reminder.is_deleted == False, Reminder.is_completed == False)
+        .label("total"),
+        func.count(Reminder.id)
+        .filter(
             Reminder.is_deleted == False,
             Reminder.is_completed == False,
             Reminder.reminder_date < now,
-        ).count(),
-        "today": Reminder.query.filter(
+        )
+        .label("overdue"),
+        func.count(Reminder.id)
+        .filter(
             Reminder.is_deleted == False,
             Reminder.is_completed == False,
             db.func.date(Reminder.reminder_date) == now.date(),
-        ).count(),
+        )
+        .label("today"),
+    ).first()
+    stats = {
+        "total": row.total if row else 0,
+        "overdue": row.overdue if row else 0,
+        "today": row.today if row else 0,
     }
 
     return render_template(
