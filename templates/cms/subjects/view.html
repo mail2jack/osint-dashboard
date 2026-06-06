@@ -83,6 +83,16 @@
                 <span class="info-label">{{ _('Risk Score') }}</span>
                 <span class="info-value">{{ subject.risk_score }}/100</span>
             </div>
+            {% if subject.subject_type == 'company' %}
+            <div class="info-row">
+                <span class="info-label">{{ _('KVK-nummer') }}</span>
+                <span class="info-value">{{ subject.registration_number if subject.registration_number else '-' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ _('Rechtsvorm') }}</span>
+                <span class="info-value">{{ subject.legal_form if subject.legal_form else '-' }}</span>
+            </div>
+            {% endif %}
             {% if subject.subject_type != 'vehicle' %}
             <div class="info-row" style="flex-direction:column;align-items:stretch;">
                 <span class="info-label">{{ _('Email(s)') }}</span>

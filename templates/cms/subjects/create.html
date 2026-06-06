@@ -170,6 +170,38 @@
         </div>
     </div>
     
+    <div id="company-fields" style="display: none;">
+        <div style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 style="margin: 0 0 0.25rem 0;">{{ _('🏢 Company Information') }}</h3>
+                    <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">{{ _('Look up company data from KVK / Overheid.io') }}</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="kvk_lookup_query" placeholder="{{ _('Bedrijfsnaam of KVK-nummer') }}"
+                           style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 220px;">
+                    <button type="button" data-click="kvkLookupCreate" id="fetchKvkBtn"
+                            style="padding: 0.75rem 1.5rem; background: white; color: #7c3aed; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                        🔍 {{ _('KVK Zoeken') }}
+                    </button>
+                </div>
+            </div>
+            <div id="kvkLookupStatus" style="margin-top: 0.75rem; font-size: 0.875rem;"></div>
+            <div id="kvkResults" style="margin-top: 0.5rem; display: none;"></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="form-group">
+                <label for="registration_number">{{ _('KVK-nummer') }}</label>
+                <input type="text" name="registration_number" id="registration_number" placeholder="{{ _('e.g. 30128191') }}">
+            </div>
+            <div class="form-group">
+                <label for="legal_form">{{ _('Rechtsvorm') }}</label>
+                <input type="text" name="legal_form" id="legal_form" placeholder="{{ _('e.g. BV, NV, Stichting') }}">
+            </div>
+        </div>
+    </div>
+
     <div id="vehicle-fields" style="display: none;">
         <div style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -317,6 +349,7 @@ function selectType(btn, type) {
     
     document.getElementById('general-fields').style.display = 'block';
     document.getElementById('person-fields').style.display = type === 'person' ? 'block' : 'none';
+    document.getElementById('company-fields').style.display = type === 'company' ? 'block' : 'none';
     document.getElementById('vehicle-fields').style.display = type === 'vehicle' ? 'block' : 'none';
     document.getElementById('vessel-fields').style.display = type === 'vessel' ? 'block' : 'none';
     
@@ -330,12 +363,108 @@ function selectType(btn, type) {
         document.getElementById('vessel_lookup_imo').focus();
         document.getElementById('name').required = false;
         document.getElementById('name').placeholder = '{{ _("Ship name or leave empty to fill from lookup")|replace("'", "\\\\'")|safe }}';
+    } else if (type === 'company') {
+        document.getElementById('kvk_lookup_query').focus();
+        document.getElementById('name').required = false;
+        document.getElementById('name').placeholder = '{{ _("Company name or leave empty to fill from KVK lookup")|replace("'", "\\\\'")|safe }}';
     } else {
         document.getElementById('name').required = true;
         document.getElementById('name').placeholder = '';
         document.getElementById('name').focus();
         document.getElementById('license_plate').required = false;
     }
+}
+
+function kvkLookupCreate() {
+    const query = document.getElementById('kvk_lookup_query').value.trim();
+    const statusDiv = document.getElementById('kvkLookupStatus');
+    const resultsDiv = document.getElementById('kvkResults');
+    const btn = document.getElementById('fetchKvkBtn');
+
+    if (!query) {
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">{{ _("Voer een bedrijfsnaam of KVK-nummer in")|replace("'", "\\\\'")|safe }}</span>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '{{ _("🔍 Zoeken...")|replace("'", "\\\\'")|safe }}';
+    statusDiv.innerHTML = '<span style="color: white;">{{ _("Opzoeken bij KVK...")|replace("'", "\\\\'")|safe }}</span>';
+    resultsDiv.style.display = 'none';
+
+    fetch('/cms/api/kvk-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            statusDiv.innerHTML = '<span style="color: #fca5a5;">⚠ ' + esc(data.error) + '</span>';
+            btn.disabled = false;
+            btn.textContent = '🔍 {{ _("KVK Zoeken")|replace("'", "\\\\'")|safe }}';
+            return;
+        }
+
+        if (!data.results || data.results.length === 0) {
+            statusDiv.innerHTML = '<span style="color: #fcd34d;">{{ _("Geen bedrijven gevonden voor:")|replace("'", "\\\\'")|safe }} ' + esc(query) + '</span>';
+            btn.disabled = false;
+            btn.textContent = '🔍 {{ _("KVK Zoeken")|replace("'", "\\\\'")|safe }}';
+            return;
+        }
+
+        statusDiv.innerHTML = '<span style="color: #86efac;">{{ _("✅ Bedrijf gevonden — velden zijn ingevuld (bron: KVK)")|replace("'", "\\\\'")|safe }}</span>';
+        const company = data.results[0];
+
+        document.getElementById('name').value = company.naam || '';
+        document.getElementById('registration_number').value = company.kvknummer || '';
+        document.getElementById('legal_form').value = company.rechtsvorm || '';
+
+        var addressStr = '';
+        if (company.straat) {
+            addressStr += company.straat;
+            if (company.huisnummer) addressStr += ' ' + company.huisnummer;
+            if (company.huisnummer_toevoeging) addressStr += '-' + company.huisnummer_toevoeging;
+        }
+        if (company.postcode) {
+            if (addressStr) addressStr += ', ';
+            addressStr += company.postcode;
+        }
+        if (company.plaats) {
+            if (addressStr) addressStr += ', ';
+            addressStr += company.plaats;
+        }
+
+        if (addressStr) {
+            var addrStreet = document.querySelector('.addr-street');
+            var addrNumber = document.querySelector('.addr-number');
+            var addrZip = document.querySelector('.addr-zipcode');
+            var addrTown = document.querySelector('.addr-town');
+            if (addrStreet) addrStreet.value = company.straat || '';
+            if (addrNumber) addrNumber.value = company.huisnummer || (company.huisnummer_toevoeging || '');
+            if (addrZip) addrZip.value = company.postcode || '';
+            if (addrTown) addrTown.value = company.plaats || '';
+        }
+
+        if (data.results.length > 1) {
+            var html = '<div style="background:rgba(255,255,255,0.15);border-radius:6px;padding:0.5rem;margin-top:0.5rem;font-size:0.8rem;">';
+            html += '<strong>{{ _("Meer resultaten:")|replace("'", "\\\\'")|safe }}</strong><ul style="margin:0.25rem 0 0 0;padding-left:1rem;">';
+            for (var i = 1; i < data.results.length && i < 5; i++) {
+                var c = data.results[i];
+                html += '<li style="margin:0.15rem 0;">' + esc(c.naam || '?') + ' — ' + esc(c.kvknummer || '') + ' (' + esc(c.plaats || '') + ')</li>';
+            }
+            html += '</ul></div>';
+            resultsDiv.innerHTML = html;
+            resultsDiv.style.display = 'block';
+        }
+
+        btn.disabled = false;
+        btn.textContent = '🔍 {{ _("KVK Zoeken")|replace("'", "\\\\'")|safe }}';
+    })
+    .catch(err => {
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">{{ _("Fout:")|replace("'", "\\\\'")|safe }} ' + esc(err.message) + '</span>';
+        btn.disabled = false;
+        btn.textContent = '🔍 {{ _("KVK Zoeken")|replace("'", "\\\\'")|safe }}';
+    });
 }
 
 function resetForm() {

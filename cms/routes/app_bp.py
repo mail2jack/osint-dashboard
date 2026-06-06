@@ -410,8 +410,7 @@ def openkvk_lookup() -> FlaskResponse:
             for company in bedrijven:
                 slug = company.get("_links", {}).get("self", {}).get("href", "")
                 if slug:
-                    slug = slug.lstrip("/")
-                    detail_url = f"https://api.overheid.io/v3/openkvk/{slug}"
+                    detail_url = f"https://api.overheid.io{slug}"
                     try:
                         jitter_sleep(domain_hint=detail_url)
                         detail_resp = curl_requests.get(
