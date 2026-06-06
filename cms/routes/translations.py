@@ -2,7 +2,7 @@ import json
 import logging
 import re
 
-from flask import request, jsonify, render_template
+from flask import current_app, request, jsonify, render_template
 from flask_login import login_required
 
 from . import cms_bp
@@ -38,8 +38,9 @@ def _parse_po(filepath):
 @cms_bp.route("/translations")
 @login_required
 def translations_page():
-    nl_path = "translations/nl/LC_MESSAGES/messages.po"
-    en_path = "translations/en/LC_MESSAGES/messages.po"
+    root = current_app.root_path
+    nl_path = f"{root}/translations/nl/LC_MESSAGES/messages.po"
+    en_path = f"{root}/translations/en/LC_MESSAGES/messages.po"
 
     nl_entries = _parse_po(nl_path)
     en_entries = _parse_po(en_path)
