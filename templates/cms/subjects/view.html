@@ -12,7 +12,7 @@
             <img src="/static{{ subject.photo_path }}" alt="Photo of {{ subject.name }}" id="subjectPhoto">
             {% else %}
             <span class="photo-placeholder">👤</span>
-            <img id="subjectPhoto" style="display:none;">
+            <img id="subjectPhoto" class="hidden">
             {% endif %}
         </div>
         <label class="photo-upload-btn" for="photoInput">{{ _('📷 Upload') }}</label>
@@ -44,10 +44,10 @@
             </button>
             {% endif %}
             {% if subject.photo_path and subject.subject_type == 'person' %}
-            <button data-click="encodeFace" id="encodeFaceBtn" class="btn-cms primary small" style="background: #7c3aed;">
+            <button data-click="encodeFace" id="encodeFaceBtn" class="btn-cms primary small"  class="bg-purple">
                 {{ _('👤 Encode Face') }}
             </button>
-            <button data-click="searchTinEye" class="btn-cms primary small" style="background: #059669;">
+            <button data-click="searchTinEye" class="btn-cms primary small"  class="bg-green">
                 {{ _('🔍 TinEye Search') }}
             </button>
             {% endif %}
@@ -61,17 +61,17 @@
 </div>
 
 <!-- Interpol check results container -->
-<div id="interpolResults" class="card" style="display: none;"></div>
+<div id="interpolResults" class="card"  class="hidden"></div>
 
 <!-- Vessel check results container -->
-<div id="vesselResults" class="card" style="display: none;"></div>
+<div id="vesselResults" class="card"  class="hidden"></div>
 
 <div class="card">
     <div class="card-header">
         <h2>
             {% if subject.subject_type == 'vehicle' %}{{ _('🚗 Vehicle Details') }}{% elif subject.subject_type == 'vessel' %}{{ _('🚢 Vessel Details') }}{% else %}{{ _('Subject Details') }}{% endif %}
         </h2>
-        <button data-click="openNetworkModal" class="btn-cms small" style="background: #7c3aed;">{{ _('🔗 View Relationships') }}</button>
+        <button data-click="openNetworkModal" class="btn-cms small"  class="bg-purple">{{ _('🔗 View Relationships') }}</button>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
         <div>
@@ -303,7 +303,7 @@
                                         {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
                                     </div>
                                 </div>
-                                <div class="btn-group" style="margin:0;">
+                                <div class="btn-group"  class="m-0">
                                     <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;">{{ _('🏛 Kadaster') }}</button>
                                     <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#b91c1c;">{{ _('🚔 Politiebureau') }}</button>
                                 </div>
@@ -336,8 +336,8 @@
 <div class="card subject-comments-section">
     <div class="card-header">
         <h2>{{ _('📝 Notities & Comments') }} <span id="commentCount" style="font-size: 0.9rem; color: var(--text-muted);"></span></h2>
-        <div style="display:flex;gap:0.5rem;">
-            <button data-click="addSubjectComment" class="btn-cms small" style="background:#059669;">{{ _('Add Note') }}</button>
+        <div class="flex-gap">
+            <button data-click="addSubjectComment" class="btn-cms small"  class="bg-green">{{ _('Add Note') }}</button>
             <button data-click="loadSubjectComments" class="btn-cms small">{{ _('🔄 Refresh') }}</button>
         </div>
     </div>
@@ -356,7 +356,7 @@
             <label style="font-size:0.875rem;display:flex;align-items:center;gap:0.25rem;"><input type="checkbox" id="subjectCommentPinned"> {{ _('Pin') }}</label>
         </div>
     </div>
-    <div id="subjectCommentsList" style="margin-top:1rem;">
+    <div id="subjectCommentsList" class="mt-1">
         <p style="color: var(--text-muted); text-align: center; padding: 1rem;">{{ _('Loading notes...') }}</p>
     </div>
 </div>
@@ -366,8 +366,8 @@
     <div class="card-header">
         <h2>{{ _('Social Media IDs') }}</h2>
         <div class="btn-group">
-            <button data-click="bulkExtractSocialIds" class="btn-cms small" style="background: #059669;" id="bulkExtractBtn">{{ _('🔍 Bulk Extract from Findings') }}</button>
-            <button data-click="openAddSocialIdModal" class="btn-cms small" style="background: #8b5cf6;">{{ _('+ Add ID') }}</button>
+            <button data-click="bulkExtractSocialIds" class="btn-cms small"  class="bg-green" id="bulkExtractBtn">{{ _('🔍 Bulk Extract from Findings') }}</button>
+            <button data-click="openAddSocialIdModal" class="btn-cms small"  class="text-purple">{{ _('+ Add ID') }}</button>
         </div>
     </div>
     <div id="socialIdsList">
@@ -410,7 +410,7 @@
 <div class="card">
     <div class="card-header">
         <h2>{{ _('🌐 Social Accounts (Usernames)') }}</h2>
-        <button data-click="openAddSocialAccountModal" class="btn-cms small" style="background: #8b5cf6;">{{ _('+ Add Username') }}</button>
+        <button data-click="openAddSocialAccountModal" class="btn-cms small"  class="text-purple">{{ _('+ Add Username') }}</button>
     </div>
     <div id="socialAccountsList">
         {% if subject.social_accounts and subject.social_accounts.count() > 0 %}
@@ -449,25 +449,25 @@
     </div>
     <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
         <input type="text" id="usernameSearchInput" placeholder="{{ _('Enter username...') }}" style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
-        <button data-click="searchUsername" class="btn-cms small" style="background:#8b5cf6;">{{ _('🔍 Check') }}</button>
+        <button data-click="searchUsername" class="btn-cms small"  class="text-purple">{{ _('🔍 Check') }}</button>
     </div>
     <div id="usernameResults"></div>
     <div id="usernameSaveBar" style="display:none; margin-top: 0.75rem;">
-        <button data-click="saveUsernameFindings" class="btn-cms small" style="background:#059669;" id="saveUsernameBtn">{{ _('📥 Save Selected as Findings') }} (<span id="usernameSelectedCount">0</span>)</button>
+        <button data-click="saveUsernameFindings" class="btn-cms small"  class="bg-green" id="saveUsernameBtn">{{ _('📥 Save Selected as Findings') }} (<span id="usernameSelectedCount">0</span>)</button>
     </div>
 </div>
 
 <!-- Add Social Account Modal -->
 <div id="addSocialAccountModal" class="modal">
-    <div class="modal-content" style="max-width: 400px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">{{ _('Add Social Account') }}</h2>
-            <span data-click="closeAddSocialAccountModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+    <div class="modal-content"  class="max-w-400">
+        <div class="flex-between mb-1">
+            <h2 class="m-0">{{ _('Add Social Account') }}</h2>
+            <span data-click="closeAddSocialAccountModal" class="text-lg cursor-pointer text-secondary">&times;</span>
         </div>
         <form id="addSocialAccountForm" data-submit="saveSocialAccount">
             <div class="form-group">
                 <label for="saPlatform">{{ _('Platform') }}</label>
-                <select id="saPlatform" style="width: 100%; padding: 0.5rem;">
+                <select id="saPlatform" class="w100-p5">
                     <option value="twitter">{{ _('Twitter/X') }}</option>
                     <option value="facebook">{{ _('Facebook') }}</option>
                     <option value="instagram">{{ _('Instagram') }}</option>
@@ -486,15 +486,15 @@
             </div>
             <div class="form-group">
                 <label for="saUsername">{{ _('Username') }}</label>
-                <input type="text" id="saUsername" style="width: 100%; padding: 0.5rem;" placeholder="{{ _('@username or profile name') }}" required>
+                <input type="text" id="saUsername" class="w100-p5" placeholder="{{ _('@username or profile name') }}" required>
             </div>
             <div class="form-group">
                 <label for="saUrl">{{ _('Profile URL (optional)') }}</label>
-                <input type="url" id="saUrl" style="width: 100%; padding: 0.5rem;" placeholder="https://...">
+                <input type="url" id="saUrl" class="w100-p5" placeholder="https://...">
             </div>
-            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button type="submit" class="btn-sm" style="background: #059669;">{{ _('Save') }}</button>
-                <button type="button" data-click="closeAddSocialAccountModal" class="btn-sm" style="background: #666;">{{ _('Cancel') }}</button>
+            <div class="flex-gap mt-1">
+                <button type="submit" class="btn-sm"  class="bg-green">{{ _('Save') }}</button>
+                <button type="button" data-click="closeAddSocialAccountModal" class="btn-sm"  class="bg-gray">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -502,15 +502,15 @@
 
 <!-- Add Social ID Modal -->
 <div id="addSocialIdModal" class="modal">
-    <div class="modal-content" style="max-width: 400px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;" id="socialIdModalTitle">{{ _('Add Social Media ID') }}</h2>
-            <span data-click="closeAddSocialIdModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+    <div class="modal-content"  class="max-w-400">
+        <div class="flex-between mb-1">
+            <h2 class="m-0" id="socialIdModalTitle">{{ _('Add Social Media ID') }}</h2>
+            <span data-click="closeAddSocialIdModal" class="text-lg cursor-pointer text-secondary">&times;</span>
         </div>
         <form id="addSocialIdForm">
             <div class="form-group">
                 <label for="socialPlatform">{{ _('Platform') }}</label>
-                <select id="socialPlatform" style="width: 100%; padding: 0.5rem;">
+                <select id="socialPlatform" class="w100-p5">
                     <option value="facebook">{{ _('Facebook') }}</option>
                     <option value="vk">{{ _('VK') }}</option>
                     <option value="instagram">{{ _('Instagram') }}</option>
@@ -523,15 +523,15 @@
             </div>
             <div class="form-group">
                 <label for="socialId">{{ _('ID / Username') }}</label>
-                <input type="text" id="socialId" style="width: 100%; padding: 0.5rem;" placeholder="{{ _('Enter ID or username') }}">
+                <input type="text" id="socialId" class="w100-p5" placeholder="{{ _('Enter ID or username') }}">
             </div>
             <div class="form-group">
                 <label for="socialUrl">{{ _('Profile URL (optional)') }}</label>
-                <input type="url" id="socialUrl" style="width: 100%; padding: 0.5rem;" placeholder="https://...">
+                <input type="url" id="socialUrl" class="w100-p5" placeholder="https://...">
             </div>
-            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button type="button" data-click="saveSocialId" class="btn-sm" style="background: #059669;">{{ _('Save') }}</button>
-                <button type="button" data-click="closeAddSocialIdModal" class="btn-sm" style="background: #666;">{{ _('Cancel') }}</button>
+            <div class="flex-gap mt-1">
+                <button type="button" data-click="saveSocialId" class="btn-sm"  class="bg-green">{{ _('Save') }}</button>
+                <button type="button" data-click="closeAddSocialIdModal" class="btn-sm"  class="bg-gray">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -562,13 +562,13 @@
             </div>
         </div>
         
-        <div id="osintResults" style="display: none;">
+        <div id="osintResults" class="hidden">
             <div class="card-header">
                 <h2 style="margin: 0; font-size: 1.1rem;">{{ _('Search Results') }}</h2>
                 <span id="resultsCount"></span>
             </div>
             
-            <div class="select-all-row" style="margin-bottom: 0.5rem;">
+            <div class="select-all-row"  class="mb-05">
                 <label>
                     <input type="checkbox" id="selectAllResults" data-change="toggleAllResults">
                     <strong>{{ _('Select All') }}</strong>
@@ -592,12 +592,12 @@
 <!-- Network Modal -->
 <div id="networkModal" class="modal">
     <div class="modal-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h2 style="margin: 0;">{{ _('Subject Network') }}</h2>
-            <span data-click="closeNetworkModal" style="font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">&times;</span>
+        <div class="flex-between mb-1">
+            <h2 class="m-0">{{ _('Subject Network') }}</h2>
+            <span data-click="closeNetworkModal" class="text-lg cursor-pointer text-secondary">&times;</span>
         </div>
         
-        <div id="networkInfo" style="margin-bottom: 0.5rem;">
+        <div id="networkInfo" class="mb-05">
             <strong>{{ subject.name }}</strong> - {{ subject.subject_type }}
         </div>
         
@@ -608,8 +608,8 @@
             <div id="relationshipsList">{{ _('Loading...') }}</div>
         </div>
         
-        <div style="margin-top: 1rem;">
-            <button data-click="openAddRelationForm" class="btn-sm" style="background: #059669;">{{ _('+ Add Relationship') }}</button>
+        <div class="mt-1">
+            <button data-click="openAddRelationForm" class="btn-sm"  class="bg-green">{{ _('+ Add Relationship') }}</button>
         </div>
         
         <div id="addRelationForm" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
@@ -625,8 +625,8 @@
                 <option value="related">{{ _('Related') }}</option>
             </select>
             <div id="relationError" style="color:#dc2626;font-size:0.85rem;margin-bottom:0.5rem;word-break:break-all;"></div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button data-click="addRelationship" class="btn-sm" style="background: #059669;">{{ _('Save') }}</button>
+            <div class="flex-gap">
+                <button data-click="addRelationship" class="btn-sm"  class="bg-green">{{ _('Save') }}</button>
                 <button data-click="closeAddRelationForm" class="btn-sm" style="background: var(--text-muted);">{{ _('Cancel') }}</button>
             </div>
         </div>
@@ -659,11 +659,11 @@
             </div>
             {% endfor %}
             {% if findings_pagination and findings_pagination.pages > 1 %}
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+            <div class="mt-1 flex-gap justify-center">
                 {% if findings_pagination.has_prev %}
                 <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('Previous') }}</a>
                 {% endif %}
-                <span style="padding: 0.5rem 1rem;">{{ _('Page') }} {{ findings_pagination.page }} {{ _('of') }} {{ findings_pagination.pages }}</span>
+                <span class="p-05-1">{{ _('Page') }} {{ findings_pagination.page }} {{ _('of') }} {{ findings_pagination.pages }}</span>
                 {% if findings_pagination.has_next %}
                 <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next') }}</a>
                 {% endif %}
@@ -1058,7 +1058,7 @@
                     if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Issued by:") }} ' + esc(p.issuing_country) + '</span>';
                     if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("INTERPOL link") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small"  class="bg-green">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
@@ -1077,7 +1077,7 @@
                     if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Info:") }} ' + esc(p.description) + '</span>';
                     if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("Link") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small"  class="bg-green">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
@@ -1098,7 +1098,7 @@
                     if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Datum:") }} ' + esc(p.date) + '</span>';
                     if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("Bekijk op politie.nl") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small" style="background:#059669;">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small"  class="bg-green">{{ _("Bewaar als bevinding") }}</button>';
                     html += '</div></div>';
                 });
             }
@@ -1210,7 +1210,7 @@
                 return;
             }
 
-            let html = '<div style="padding:1rem;">';
+            let html = '<div class="p-1">';
 
             // Unified summary section (shown when ANY source found data)
             html += '<div style="background:linear-gradient(135deg,#0e7490,#0891b2);color:white;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
@@ -1914,7 +1914,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         
         const statusEl = document.getElementById('faceStatus');
         try {
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _("Loading face recognition models...") }}</span>';
+            statusEl.innerHTML = '<span class="text-blue">{{ _("Loading face recognition models...") }}</span>';
             
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
             
@@ -1926,7 +1926,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             statusEl.innerHTML = '<span style="color: #059669;">{{ _("Face recognition ready") }}</span>';
             return true;
         } catch (err) {
-            statusEl.innerHTML = '<span style="color: #dc2626;">{{ _("Failed to load face recognition") }}</span>';
+            statusEl.innerHTML = '<span class="text-red">{{ _("Failed to load face recognition") }}</span>';
             console.error('Face API error:', err);
             return false;
         }
@@ -1948,7 +1948,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         }
         
         try {
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _("Detecting face...") }}</span>';
+            statusEl.innerHTML = '<span class="text-blue">{{ _("Detecting face...") }}</span>';
             
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -1965,13 +1965,13 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 .withFaceDescriptor();
             
             if (!detection) {
-                statusEl.innerHTML = '<span style="color: #f59e0b;">{{ _("No face detected. Try a clearer photo.") }}</span>';
+                statusEl.innerHTML = '<span class="text-amber">{{ _("No face detected. Try a clearer photo.") }}</span>';
                 btn.disabled = false;
             btn.textContent = '{{ _("👤 Encode Face")|replace("'", "\\'")|safe }}';
                 return;
             }
             
-            statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _("Saving face encoding...") }}</span>';
+            statusEl.innerHTML = '<span class="text-blue">{{ _("Saving face encoding...") }}</span>';
             
             const encoding = Array.from(detection.descriptor);
             
@@ -1984,13 +1984,13 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await response.json();
             
             if (data.error) {
-                statusEl.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
+                statusEl.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
             } else {
                 statusEl.innerHTML = '<span style="color: #059669;">{{ _("✅ Face encoding saved!") }}</span>';
             }
         } catch (err) {
-            statusEl.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
+            statusEl.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             console.error('Face encoding error:', err);
         }
         
@@ -2077,7 +2077,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             html += '<div style="grid-column:1/-1;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #ddd6fe;font-size:0.75rem;color:#666;">';
             html += '{{ _("API:") }} ' + esc(u.used) + '/' + esc(u.limit) + ' {{ _("deze maand") }}';
             html += ' <span style="color:' + color + ';">(' + esc(u.remaining) + ' {{ _("over") }})</span>';
-            if (u.note) html += ' — <em style="color:#dc2626;">' + esc(u.note) + '</em>';
+            if (u.note) html += ' — <em class="text-red">' + esc(u.note) + '</em>';
             html += '</div>';
         }
 
@@ -2092,7 +2092,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         btn.disabled = true;
         btn.textContent = '{{ _("🔍 Checking...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">{{ _("Looking up phone number...") }}</span>';
+        resultDiv.innerHTML = '<span class="text-muted">{{ _("Looking up phone number...") }}</span>';
 
         // Eerst checken of er opgeslagen data is
         try {
@@ -2126,7 +2126,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2136,7 +2136,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             btn.textContent = '{{ _("✅ Done")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2147,7 +2147,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const phoneBtn = btn.closest('.phone-result') ? null : null;
         btn.disabled = true;
         btn.textContent = '⏳';
-        if (resultDiv) resultDiv.innerHTML = '<span style="color: #666;">{{ _("Refreshing...") }}</span>';
+        if (resultDiv) resultDiv.innerHTML = '<span class="text-muted">{{ _("Refreshing...") }}</span>';
         // Find the original button
         const parent = btn.closest('.contact-row') || btn.parentElement;
         const origBtn = parent.querySelector('[onclick*="phoneLookup"]');
@@ -2166,7 +2166,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                     resultDiv.innerHTML = renderPhoneResult(data);
                 }
             } catch (err) {
-                if (resultDiv) resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
+                if (resultDiv) resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             }
         }
     }
@@ -2178,7 +2178,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         btn.disabled = true;
         btn.textContent = '{{ _("🔍 Checking...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">{{ _("Checking email...") }}</span>';
+        resultDiv.innerHTML = '<span class="text-muted">{{ _("Checking email...") }}</span>';
 
         try {
             const resp = await fetch('/cms/api/email-check', {
@@ -2189,7 +2189,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2240,7 +2240,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             btn.textContent = '{{ _("✅ Done")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2254,7 +2254,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         btn.disabled = true;
         btn.textContent = '{{ _("🔍 Looking up...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">{{ _("Contacting PDOK BAG...") }}</span>';
+        resultDiv.innerHTML = '<span class="text-muted">{{ _("Contacting PDOK BAG...") }}</span>';
         
         try {
             const resp = await fetch('/cms/api/kadaster-lookup', {
@@ -2265,14 +2265,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await resp.json();
             
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
             
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || '{{ _("Address not found in BAG")|replace("'", "\\'")|safe }}') + '</span>';
+                resultDiv.innerHTML = '<span class="text-amber">⚠ ' + esc(data.message || '{{ _("Address not found in BAG")|replace("'", "\\'")|safe }}') + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2302,7 +2302,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             btn.textContent = '{{ _("✅ Verified")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2316,7 +2316,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         btn.disabled = true;
         btn.textContent = '{{ _("🔍 Looking up...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">{{ _("Contacting politie.nl...") }}</span>';
+        resultDiv.innerHTML = '<span class="text-muted">{{ _("Contacting politie.nl...") }}</span>';
 
         try {
             const resp = await fetch('/cms/api/politiebureau-lookup', {
@@ -2327,14 +2327,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const data = await resp.json();
 
             if (data.error) {
-                resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(data.error) + '</span>';
+                resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(data.error) + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
             }
 
             if (!data.found) {
-                resultDiv.innerHTML = '<span style="color: #f59e0b;">⚠ ' + esc(data.message || '{{ _("No police station found")|replace("'", "\\'")|safe }}') + '</span>';
+                resultDiv.innerHTML = '<span class="text-amber">⚠ ' + esc(data.message || '{{ _("No police station found")|replace("'", "\\'")|safe }}') + '</span>';
                 btn.disabled = false;
                 btn.textContent = origText;
                 return;
@@ -2360,7 +2360,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             btn.textContent = '{{ _("✅ Station found")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
         } catch (err) {
-            resultDiv.innerHTML = '<span style="color: #dc2626;">{{ _("Error:") }} ' + esc(err.message) + '</span>';
+            resultDiv.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(err.message) + '</span>';
             btn.disabled = false;
             btn.textContent = origText;
         }
@@ -2417,11 +2417,11 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 editInfo +
                 '<div class="comment-content" id="content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</div>' +
                 editHistory +
-                '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '" style="display:none;">' +
+                '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '"  class="hidden">' +
                     '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
                     '<div class="comment-edit-actions">' +
-                        '<button data-click="saveSubjectComment" data-arg0="' + esc(c.id) + '" class="btn btn-sm" style="background:#059669;">{{ _("Save") }}</button>' +
-                        '<button data-click="cancelSubjectCommentEdit" data-arg0="' + esc(c.id) + '" class="btn btn-sm" style="background:#666;">{{ _("Cancel") }}</button>' +
+                        '<button data-click="saveSubjectComment" data-arg0="' + esc(c.id) + '" class="btn btn-sm"  class="bg-green">{{ _("Save") }}</button>' +
+                        '<button data-click="cancelSubjectCommentEdit" data-arg0="' + esc(c.id) + '" class="btn btn-sm"  class="bg-gray">{{ _("Cancel") }}</button>' +
                     '</div>' +
                 '</div>' +
                 '<div class="comment-actions">' +
@@ -2573,10 +2573,10 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const fpCount = platforms.filter(p => p.available === false && p.verification_note === 'likely_false_positive').length;
             const notFound = platforms.filter(p => p.available === false && !p.verification_note).length;
             html += '<div style="display:flex;gap:1.5rem;margin-bottom:0.75rem;padding:0.75rem;background:var(--bg-card);border-radius:8px;">' +
-                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(taken.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Found") }}</div></div>' +
-                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;">' + esc(platforms.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Checked") }}</div></div>' +
-                '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(verifiedCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Verified") }}</div></div>' +
-                (fpCount ? '<div style="text-align:center;"><div style="font-size:1.3rem;font-weight:600;color:#f59e0b;">' + esc(fpCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("False Pos.") }}</div></div>' : '') +
+                '<div class="text-center"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(taken.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Found") }}</div></div>' +
+                '<div class="text-center"><div style="font-size:1.3rem;font-weight:600;">' + esc(platforms.length) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Checked") }}</div></div>' +
+                '<div class="text-center"><div style="font-size:1.3rem;font-weight:600;color:#22c55e;">' + esc(verifiedCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("Verified") }}</div></div>' +
+                (fpCount ? '<div class="text-center"><div style="font-size:1.3rem;font-weight:600;color:#f59e0b;">' + esc(fpCount) + '</div><div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">{{ _("False Pos.") }}</div></div>' : '') +
                 '</div>';
 
             // Group by category
