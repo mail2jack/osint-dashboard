@@ -188,15 +188,17 @@ def _get_accessible_case_ids():
     from ..models import Case
 
     case_ids = [
-        c.id
-        for c in Case.query.filter(
+        row.id
+        for row in Case.query.with_entities(Case.id)
+        .filter(
             Case.is_deleted == False,
             db.or_(
                 Case.created_by == user.id,
                 Case.lead_investigator_id == user.id,
                 Case.assigned_to == user.id,
             ),
-        ).all()
+        )
+        .all()
     ]
     assigned_ids = [c.id for c in user.assigned_cases]
     return list(set(case_ids + assigned_ids))

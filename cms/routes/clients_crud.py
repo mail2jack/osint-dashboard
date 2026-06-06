@@ -73,9 +73,11 @@ def view_client(client_id: str) -> str:
     """View client details with all associated cases."""
     client = db.session.get(Client, client_id) or abort(404)
     client.decrypt_naw()
-    for c in client.contacts:
+    contacts = list(client.contacts)
+    for c in contacts:
         c.decrypt_fields()
-    for addr in client.addresses:
+    addresses = list(client.addresses)
+    for addr in addresses:
         addr.decrypt_fields()
 
     cases = (

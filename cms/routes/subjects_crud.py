@@ -13,7 +13,7 @@ from ..validation import (
     EditSubjectSchema,
     BulkDeleteSchema,
 )
-from ..models import db, Subject, Case, Address, Contact, AuditLog
+from ..models import db, Subject, Case, Address, Contact, AuditLog, case_subjects
 from ..auth import roles_required, subject_access_required
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
@@ -591,11 +591,18 @@ def edit_subject(subject_id: str) -> flask.Response:
         return redirect(url_for("cms.view_subject", subject_id=subject.id))
 
     subject.decrypt_identifiers()
-    for addr in subject.addresses:
+    addresses = list(subject.addresses)
+    for addr in addresses:
         addr.decrypt_fields()
-    for c in subject.contacts:
+    contacts = list(subject.contacts)
+    for c in contacts:
         c.decrypt_fields()
-    return render_template("cms/subjects/edit.html", subject=subject)
+    return render_template(
+        "cms/subjects/edit.html",
+        subject=subject,
+        addresses=addresses,
+        contacts=contacts,
+    )
 
 
 @cms_bp.route("/api/subjects/bulk-delete", methods=["POST"])
@@ -632,11 +639,17 @@ def delete_subject(subject_id: str) -> flask.Response:
     subject = db.session.get(Subject, subject_id) or abort(404)
 
     # Check if subject is linked to any active case
-    linked_cases = [
-        c
-        for c in Case.query.filter_by(is_deleted=False).all()
-        if subject in c.subjects.all()
+    linked_case_ids = [
+        row.case_id
+        for row in db.session.query(case_subjects.c.case_id)
+        .filter(case_subjects.c.subject_id == subject_id)
+        .all()
     ]
+    linked_cases = (
+        Case.query.filter(Case.id.in_(linked_case_ids), Case.is_deleted == False).all()
+        if linked_case_ids
+        else []
+    )
     if linked_cases:
         case_list = ", ".join(
             [f"{c.case_number} ({c.title})" for c in linked_cases[:5]]

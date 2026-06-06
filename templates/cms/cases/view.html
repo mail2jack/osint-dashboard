@@ -114,7 +114,7 @@
     {% endif %}
 </div>
 
-{% if case.parent_case or case.child_cases.count() > 0 %}
+{% if case.parent_case or child_cases %}
 <div class="card">
     <div class="card-header">
         <h2>{{ _('Case Hierarchy') }}</h2>
@@ -130,10 +130,10 @@
     </div>
     {% endif %}
     
-    {% if case.child_cases.count() > 0 %}
+    {% if child_cases %}
     <div style="margin-top: 1rem;">
-        <label style="display: block; color: #666; font-size: 0.875rem;">{{ _('Child Cases (%(count)s)', count=case.child_cases.count()) }}</label>
-        {% for child in case.child_cases.filter_by(is_deleted=False) %}
+        <label style="display: block; color: #666; font-size: 0.875rem;">{{ _('Child Cases (%(count)s)', count=child_cases|length) }}</label>
+        {% for child in child_cases %}
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-top: 0.5rem;">
             <a href="{{ url_for('cms.view_case', case_id=child.id) }}">
                 {{ child.case_number }}: {{ child.title }}

@@ -61,6 +61,7 @@ def view_case(case_id: str) -> str:
     """View case details with subjects, findings, and financials."""
     case = db.session.get(Case, case_id) or abort(404)
     subjects = case.subjects.all()
+    child_cases = case.child_cases.filter_by(is_deleted=False).all()
 
     findings_page = request.args.get("findings_page", 1, type=int)
     findings_per_page = 20
@@ -112,6 +113,7 @@ def view_case(case_id: str) -> str:
         documents_pagination=documents_pagination,
         all_subjects=available_subjects,
         case_reminders=case_reminders,
+        child_cases=child_cases,
     )
 
 
