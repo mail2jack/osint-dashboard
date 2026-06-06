@@ -29,14 +29,14 @@
 </p>
 
 <div class="search-bar">
-    <input type="text" id="searchInput" placeholder="{{ _('Zoek in bron- of doeltekst...') }}" oninput="filterRows()">
+    <input type="text" id="searchInput" placeholder="{{ _('Zoek in bron- of doeltekst...') }}" data-input="filterTranslations">
 </div>
 
 <div class="tab-bar" id="tabBar">
-    <div class="tab active" data-tab="nl-en" onclick="switchTab('nl-en')">
+    <div class="tab active" data-click="switchTab" data-arg0="nl-en">
         🇳🇱 NL → 🇬🇧 EN <span class="count">({{ nl_to_en|length }})</span>
     </div>
-    <div class="tab" data-tab="en-nl" onclick="switchTab('en-nl')">
+    <div class="tab" data-click="switchTab" data-arg0="en-nl">
         🇬🇧 EN → 🇳🇱 NL <span class="count">({{ en_to_nl|length }})</span>
     </div>
 </div>
@@ -47,7 +47,7 @@
     <div class="card">
         {% for item in nl_to_en %}
         <div class="translation-row{% if item.source in flagged %} flagged{% endif %}" data-msgid="{{ item.source }}">
-            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.source }}"{% if item.source in flagged %} checked{% endif %} onchange="toggleFlag(this)">
+            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.source }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag">
             <span class="source nl" title="{{ item.source }}">{{ item.source }}</span>
             <span class="arrow">→</span>
             <span class="target" title="{{ item.translation }}">{{ item.translation }}</span>
@@ -60,7 +60,7 @@
     <div class="card">
         {% for item in en_to_nl %}
         <div class="translation-row{% if item.source in flagged %} flagged{% endif %}" data-msgid="{{ item.source }}">
-            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.source }}"{% if item.source in flagged %} checked{% endif %} onchange="toggleFlag(this)">
+            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.source }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag">
             <span class="source en" title="{{ item.source }}">{{ item.source }}</span>
             <span class="arrow">→</span>
             <span class="target" title="{{ item.translation }}">{{ item.translation }}</span>
@@ -69,11 +69,11 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 let flagQueue = new Set();
 let flagTimer = null;
 
-function toggleFlag(cb) {
+window.toggleFlag = function(cb) {
     const msgid = cb.dataset.msgid;
     const row = cb.closest('.translation-row');
     if (cb.checked) {
@@ -86,37 +86,37 @@ function toggleFlag(cb) {
     updateFlaggedCount();
     clearTimeout(flagTimer);
     flagTimer = setTimeout(flushFlags, 500);
-}
+};
 
 function flushFlags() {
     if (flagQueue.size === 0) return;
     const items = Array.from(flagQueue);
     flagQueue.clear();
+    const checked = document.querySelector(`[data-msgid="${CSS.escape(items[0])}"]`)?.checked;
     fetch('/cms/api/translations/flag', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ msgid: items[0], flagged: document.querySelector(`[data-msgid="${items[0]}"]`)?.checked || false })
+        body: JSON.stringify({ msgid: items[0], flagged: !!checked })
     });
 }
 
-function switchTab(tab) {
+window.switchTab = function(el, tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    document.querySelector(`[data-arg0="${tab}"]`).classList.add('active');
     document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
     document.getElementById(tab + '-panel').style.display = 'block';
-}
+};
 
-function filterRows() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
+window.filterTranslations = function(input) {
+    const q = input.value.toLowerCase();
     document.querySelectorAll('.translation-row').forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(q) ? '' : 'none';
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
-}
+};
 
 function updateFlaggedCount() {
     const n = document.querySelectorAll('.flag-checkbox:checked').length;
-    document.getElementById('flaggedCount').textContent = n > 0 ? '🏳️ ' + n + ' vertaling(en) gemarkeerd' : '';
+    document.getElementById('flaggedCount').textContent = n ? '🏳️ ' + n + ' vertaling(en) gemarkeerd' : '';
 }
 updateFlaggedCount();
 </script>
