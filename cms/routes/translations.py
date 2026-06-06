@@ -56,9 +56,18 @@ def translations_page():
         nl = nl_index.get(msgid, {}).get("msgstr", "")
         en = en_index.get(msgid, {}).get("msgstr", "")
         if nl:
-            nl_to_en.append({"source": msgid, "translation": nl})
-        if en:
-            en_to_nl.append({"source": msgid, "translation": en})
+            nl_to_en.append(
+                {
+                    "source": nl,
+                    "translation": en if en else msgid,
+                }
+            )
+        en_to_nl.append(
+            {
+                "source": msgid,
+                "translation": nl if nl else msgid,
+            }
+        )
 
     flagged_raw = Setting.get("translation_flags")
     flagged = set()
