@@ -3,17 +3,19 @@
 {% block content %}
 <style>
 .flag-checkbox { transform: scale(1.3); cursor: pointer; }
-.flagged { background: #fef2f2 !important; }
+.flagged td { background: #fef2f2 !important; }
 .flagged .flag-checkbox { accent-color: #dc2626; }
-.translation-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--border-color); font-size: 0.875rem; }
-.translation-row:nth-child(even) { background: rgba(128,128,128,0.04); }
-.translation-row:hover { background: var(--bg-secondary); }
-.translation-row .source { font-weight: 600; color: var(--text-primary); min-width: 0; }
-.translation-row .arrow { color: var(--text-muted); font-size: 0.7rem; flex-shrink: 0; }
-.translation-row .target { color: var(--text-secondary); min-width: 0; }
-.translation-row .source::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 0.5rem; vertical-align: middle; }
-.translation-row .source.nl::before { background: #f59e0b; }
-.translation-row .source.en::before { background: #3b82f6; }
+.translation-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.translation-table td { padding: 0.4rem 0.5rem; vertical-align: middle; border-bottom: 1px solid var(--border-color); }
+.translation-table tr:nth-child(even) td { background: rgba(128,128,128,0.04); }
+.translation-table tr:hover td { background: var(--bg-secondary); }
+.translation-table td.src { font-weight: 600; color: var(--text-primary); }
+.translation-table td.arr { color: var(--text-muted); font-size: 0.7rem; text-align: center; width: 1.5rem; }
+.translation-table td.tgt { color: var(--text-secondary); }
+.translation-table td.chk { width: 2rem; text-align: center; }
+.translation-table td.src::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 0.5rem; vertical-align: middle; }
+.translation-table td.src.nl::before { background: #f59e0b; }
+.translation-table td.src.en::before { background: #3b82f6; }
 .search-bar { margin-bottom: 1rem; }
 .search-bar input { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--border-input); border-radius: 8px; font-size: 0.9rem; background: var(--input-bg); color: var(--text-primary); }
 .tab-bar { display: flex; gap: 0; margin-bottom: 1rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); }
@@ -49,29 +51,29 @@
 </div>
 
 <div id="nl-en-panel" class="panel">
-    <div class="card">
+    <table class="card translation-table">
         {% for item in nl_to_en %}
-        <div class="translation-row{% if item.source in flagged %} flagged{% endif %}" data-msgid="{{ item.msgid }}">
-            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.msgid }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag">
-            <span class="source nl" title="{{ item.source }}">{{ item.source }}</span>
-            <span class="arrow">→</span>
-            <span class="target" title="{{ item.translation }}">{{ item.translation }}</span>
-        </div>
+        <tr class="{% if item.source in flagged %}flagged{% endif %}" data-msgid="{{ item.msgid }}">
+            <td class="chk"><input type="checkbox" class="flag-checkbox" data-msgid="{{ item.msgid }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag"></td>
+            <td class="src nl" title="{{ item.source }}">{{ item.source }}</td>
+            <td class="arr">→</td>
+            <td class="tgt" title="{{ item.translation }}">{{ item.translation }}</td>
+        </tr>
         {% endfor %}
-    </div>
+    </table>
 </div>
 
 <div id="en-nl-panel" class="panel" style="display:none;">
-    <div class="card">
+    <table class="card translation-table">
         {% for item in en_to_nl %}
-        <div class="translation-row{% if item.source in flagged %} flagged{% endif %}" data-msgid="{{ item.msgid }}">
-            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.msgid }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag">
-            <span class="source en" title="{{ item.source }}">{{ item.source }}</span>
-            <span class="arrow">→</span>
-            <span class="target" title="{{ item.translation }}">{{ item.translation }}</span>
-        </div>
+        <tr class="{% if item.source in flagged %}flagged{% endif %}" data-msgid="{{ item.msgid }}">
+            <td class="chk"><input type="checkbox" class="flag-checkbox" data-msgid="{{ item.msgid }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag"></td>
+            <td class="src en" title="{{ item.source }}">{{ item.source }}</td>
+            <td class="arr">→</td>
+            <td class="tgt" title="{{ item.translation }}">{{ item.translation }}</td>
+        </tr>
         {% endfor %}
-    </div>
+    </table>
 </div>
 
 <script nonce="{{ csp_nonce }}">
@@ -80,7 +82,7 @@ let flagTimer = null;
 
 window.toggleFlag = function(cb) {
     const msgid = cb.dataset.msgid;
-    const row = cb.closest('.translation-row');
+    const row = cb.closest('tr');
     if (cb.checked) {
         row.classList.add('flagged');
         flagQueue.add(msgid);
@@ -114,7 +116,7 @@ window.switchTab = function(el, tab) {
 
 window.filterTranslations = function(input) {
     const q = input.value.toLowerCase();
-    document.querySelectorAll('.translation-row').forEach(row => {
+    document.querySelectorAll('.translation-table tr').forEach(row => {
         row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
 };
