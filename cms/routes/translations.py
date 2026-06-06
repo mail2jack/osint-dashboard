@@ -14,24 +14,55 @@ logger = logging.getLogger(__name__)
 
 def _parse_po(filepath):
     entries = []
-    current = None
+    state = None
+    key = None
+    key_buf = []
+    str_buf = []
+
+    def flush():
+        nonlocal key, key_buf, str_buf
+        if key is not None:
+            entries.append(
+                {
+                    "msgid": key + "".join(key_buf),
+                    "msgstr": "".join(str_buf),
+                }
+            )
+        key = None
+        key_buf = []
+        str_buf = []
+
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
+            if line.startswith("#"):
+                if key is not None:
+                    flush()
+                state = None
+                continue
             if line.startswith("msgid "):
-                if current:
-                    entries.append(current)
-                val = re.match(r'msgid "(.*)"', line)
-                current = {
-                    "msgid": val.group(1) if val else "",
-                    "msgstr": "",
-                    "line": None,
-                }
-            elif line.startswith("msgstr ") and current:
-                val = re.match(r'msgstr "(.*)"', line)
-                if val:
-                    current["msgstr"] = val.group(1)
-    if current:
-        entries.append(current)
+                flush()
+                m = re.match(r'msgid "(.*)"\s*$', line)
+                key = m.group(1) if m else ""
+                state = "msgid"
+            elif line.startswith("msgstr "):
+                m = re.match(r'msgstr "(.*)"\s*$', line)
+                if m:
+                    str_buf = [m.group(1)]
+                else:
+                    str_buf = []
+                state = "msgstr"
+            elif line.startswith('"') and state == "msgid":
+                m = re.match(r'"(.*)"\s*$', line)
+                if m:
+                    key_buf.append(m.group(1))
+            elif line.startswith('"') and state == "msgstr":
+                m = re.match(r'"(.*)"\s*$', line)
+                if m:
+                    str_buf.append(m.group(1))
+            elif key is not None and not line.strip():
+                flush()
+                state = None
+    flush()
     return entries
 
 
@@ -53,20 +84,22 @@ def translations_page():
     nl_to_en = []
     en_to_nl = []
 
-    for msgid in all_ids:
-        nl = nl_index.get(msgid, {}).get("msgstr", "")
-        en = en_index.get(msgid, {}).get("msgstr", "")
+    for mid in all_ids:
+        nl = nl_index.get(mid, {}).get("msgstr", "")
+        en = en_index.get(mid, {}).get("msgstr", "")
         if nl:
             nl_to_en.append(
                 {
+                    "msgid": mid,
                     "source": nl,
-                    "translation": en if en else msgid,
+                    "translation": en if en else mid,
                 }
             )
         en_to_nl.append(
             {
-                "source": msgid,
-                "translation": nl if nl else msgid,
+                "msgid": mid,
+                "source": mid,
+                "translation": nl if nl else mid,
             }
         )
 

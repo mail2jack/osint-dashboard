@@ -46,8 +46,8 @@
 <div id="nl-en-panel" class="panel">
     <div class="card">
         {% for item in nl_to_en %}
-        <div class="translation-row{% if item.source in flagged %} flagged{% endif %}" data-msgid="{{ item.source }}">
-            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.source }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag">
+        <div class="translation-row{% if item.source in flagged %} flagged{% endif %}" data-msgid="{{ item.msgid }}">
+            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.msgid }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag">
             <span class="source nl" title="{{ item.source }}">{{ item.source }}</span>
             <span class="arrow">→</span>
             <span class="target" title="{{ item.translation }}">{{ item.translation }}</span>
@@ -59,8 +59,8 @@
 <div id="en-nl-panel" class="panel" style="display:none;">
     <div class="card">
         {% for item in en_to_nl %}
-        <div class="translation-row{% if item.source in flagged %} flagged{% endif %}" data-msgid="{{ item.source }}">
-            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.source }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag">
+        <div class="translation-row{% if item.source in flagged %} flagged{% endif %}" data-msgid="{{ item.msgid }}">
+            <input type="checkbox" class="flag-checkbox" data-msgid="{{ item.msgid }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag">
             <span class="source en" title="{{ item.source }}">{{ item.source }}</span>
             <span class="arrow">→</span>
             <span class="target" title="{{ item.translation }}">{{ item.translation }}</span>
