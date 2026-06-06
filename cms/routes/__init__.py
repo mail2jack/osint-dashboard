@@ -52,6 +52,7 @@ def register_modules() -> None:
     from . import imports  # noqa: F401
     from . import kvk  # noqa: F401
     from . import notifications_api  # noqa: F401
+    from . import translations  # noqa: F401
     from . import statistics  # noqa: F401
     from . import demo  # noqa: F401
 
