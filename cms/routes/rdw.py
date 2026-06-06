@@ -126,7 +126,7 @@ def check_rdw_vehicle() -> flask.Response:
             }
 
         return jsonify(vehicle_data), 200
-    except curl_requests.RequestException:
+    except curl_requests.RequestsError:
         logger.exception("RDW API connection error")
         return jsonify({"error": "Failed to connect to RDW API"}), 503
     except Exception:

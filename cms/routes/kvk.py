@@ -75,7 +75,7 @@ def kvk_lookup() -> flask.Response:
                     if detail_resp.status_code == 200:
                         detail = detail_resp.json()
                         company.update(detail)
-                except curl_requests.RequestException as e:
+                except curl_requests.RequestsError as e:
                     logger.debug(f"KVK detail fetch failed ({type(e).__name__}): {e}")
 
             address = company.get("bezoeklocatie") or {}
@@ -97,7 +97,8 @@ def kvk_lookup() -> flask.Response:
                 "activiteit": company.get("activiteitomschrijving"),
                 "handelsnamen": company.get("huidigeHandelsNamen", []),
                 "sbi_codes": [
-                    s.get("sbiCode") for s in company.get("sbi", []) if s.get("sbiCode")
+                    (s.get("sbiCode") if isinstance(s, dict) else s)
+                    for s in (company.get("sbi") or [])
                 ],
                 "slug": company.get("slug"),
             }
@@ -105,7 +106,7 @@ def kvk_lookup() -> flask.Response:
 
         return jsonify({"results": results, "count": len(results)})
 
-    except curl_requests.RequestException as e:
+    except curl_requests.RequestsError as e:
         logger.warning(f"KVK lookup network error: {type(e).__name__}: {e}")
         return jsonify({"error": f"Netwerkfout bij KVK lookup: {e}"}), 502
     except Exception as e:

@@ -419,7 +419,7 @@ def openkvk_lookup() -> FlaskResponse:
                         if detail_resp.status_code == 200:
                             detail = detail_resp.json()
                             company.update(detail)
-                    except curl_requests.RequestException as e:
+                    except curl_requests.RequestsError as e:
                         logger.debug(
                             f"OpenKVK detail fetch failed ({type(e).__name__}): {e}"
                         )
@@ -475,11 +475,12 @@ def openkvk_lookup() -> FlaskResponse:
         else:
             result["error"] = f"API error: {response.status_code}"
 
-    except curl_requests.Timeout:
-        result["error"] = "Request timed out"
-    except curl_requests.RequestException:
-        logger.exception("OpenKVK request failed")
-        result["error"] = "Request failed"
+    except curl_requests.RequestsError as e:
+        if "timeout" in str(e).lower():
+            result["error"] = "Request timed out"
+        else:
+            logger.exception("OpenKVK request failed")
+            result["error"] = "Request failed"
     except Exception:
         logger.exception("OpenKVK unexpected error")
         result["error"] = "Unexpected error"
