@@ -65,7 +65,7 @@ def check_external_services(quick: bool = False) -> dict:
                 jitter_sleep(domain_hint="https://api.overheid.io")
                 r = curl_requests.get(
                     "https://api.overheid.io/v3/openkvk?query=test&size=1",
-                    headers={"ApiKey": overheid_key},
+                    headers={"ovio-api-key": overheid_key},
                     impersonate="chrome124",
                     timeout=5,
                 )
