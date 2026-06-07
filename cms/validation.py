@@ -1,7 +1,7 @@
 import logging
 import re
 from functools import wraps
-from flask import request, jsonify
+from flask import request, jsonify, flash, redirect
 from pydantic import BaseModel, Field, field_validator
 from typing import Any
 
@@ -475,7 +475,7 @@ class EditClientSchema(BaseModel):
 class CreateSubjectSchema(BaseModel):
     name: str = ""
     subject_type: str = ""
-    risk_score: int = 0
+    risk_score: Any = 0
     risk_factors: str | None = None
     notes: str | None = None
     registration_number: str | None = None
@@ -827,15 +827,23 @@ def validate(schema_class):
                 request.validated_data = validated.model_dump(exclude_none=True)
             except Exception as e:
                 errors = []
+                messages = []
                 if hasattr(e, "errors"):
                     for err in e.errors():
                         field = " \u2192 ".join(str(loc) for loc in err.get("loc", []))
                         msg = err.get("msg", "Invalid value")
                         errors.append({"field": field, "message": msg})
+                        messages.append(f"{field}: {msg}" if field else msg)
                 else:
                     logger.exception("Unexpected validation error")
                     errors.append({"message": "Validation error"})
-                return jsonify({"error": "Validation failed", "details": errors}), 400
+                    messages.append("Validation error")
+                if request.is_json:
+                    return jsonify(
+                        {"error": "Validation failed", "details": errors}
+                    ), 400
+                flash(" | ".join(messages), "danger")
+                return redirect(request.path)
             return f(*args, **kwargs)
 
         return wrapper
