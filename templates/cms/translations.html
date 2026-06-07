@@ -115,7 +115,7 @@ function flushFlags() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ msgid: msgid, flagged: !!checked })
-        });
+        }).catch(function() {});
     }
     updateFlaggedCount();
 }
@@ -154,15 +154,23 @@ window.startAutoFix = function() {
     status.style.display = 'block';
     status.innerHTML = '⏳ AI vertaalt... (dit kan even duren)';
 
-    fetch('/cms/api/translations/auto-fix', { method: 'POST' })
+    const checked = Array.from(document.querySelectorAll('.flag-checkbox:checked'))
+        .map(cb => cb.dataset.msgid);
+
+    if (!checked.length) {
+        status.innerHTML = '❌ Geen gemarkeerde vertalingen';
+        btn.disabled = false;
+        btn.textContent = '🤖 Auto-fix gemarkeerd';
+        return;
+    }
+
+    fetch('/cms/api/translations/auto-fix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ msgids: checked })
+    })
         .then(r => r.json())
         .then(data => {
-            if (data.error) {
-                status.innerHTML = '❌ ' + data.error;
-                btn.disabled = false;
-                btn.textContent = '🤖 Auto-fix gemarkeerd';
-                return;
-            }
             let html = '<strong>✅ Gereed</strong><br>';
             html += '✓ ' + data.fixed + ' vertalingen gefixt<br>';
             if (data.errors) {

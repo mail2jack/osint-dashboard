@@ -214,21 +214,25 @@ def get_flagged():
 @csrf.exempt
 @login_required
 def auto_fix():
-    """Auto-fix all flagged translations using AI (synchronous)."""
+    """Auto-fix flagged translations using AI (synchronous)."""
     from cms.services.ai_service import _generate
 
-    raw = Setting.get("translation_flags")
-    logger.info("auto_fix: raw Setting value = %r", raw)
-    flagged = []
-    if raw:
-        try:
-            flagged = json.loads(raw)
-        except (json.JSONDecodeError, TypeError) as e:
-            logger.warning("auto_fix: json parse failed: %s", e)
-            flagged = []
-    logger.info("auto_fix: parsed flagged = %r", flagged)
+    data = request.get_json(silent=True) or {}
+    flagged = data.get("msgids", [])
 
-    if not flagged:
+    if not flagged or not isinstance(flagged, list) or not len(flagged):
+        raw = Setting.get("translation_flags")
+        logger.info("auto_fix: fallback to Setting = %r", raw)
+        if raw:
+            try:
+                flagged = json.loads(raw)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning("auto_fix: json parse failed: %s", e)
+                flagged = []
+
+    logger.info("auto_fix: final msgids = %r", flagged)
+
+    if not flagged or not isinstance(flagged, list) or not len(flagged):
         return jsonify({"error": "Geen gemarkeerde vertalingen"}), 400
 
     root_path = current_app.root_path
@@ -269,9 +273,6 @@ def auto_fix():
         pass
 
     fixed = [r["msgid"] for r in results if r["status"] == "fixed"]
-    if fixed:
-        remaining = [m for m in flagged if m not in fixed]
-        Setting.set("translation_flags", json.dumps(remaining))
 
     return jsonify(
         {"results": results, "fixed": len(fixed), "errors": len(results) - len(fixed)}
