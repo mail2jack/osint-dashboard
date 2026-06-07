@@ -138,6 +138,7 @@
             <button type="button" data-click="addContact" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another contact') }}</button>
             <input type="hidden" name="contacts_data" id="contacts-data" value="">
         </div>
+        <div id="vehicle-restricted-fields">
         <div class="form-group">
             <label for="risk_score">{{ _('Risk Score (0-100)') }}</label>
             <input type="number" name="risk_score" id="risk_score" value="0" min="0" max="100">
@@ -146,6 +147,7 @@
             <label for="bank_account">{{ _('💳 Bank / IBAN') }}</label>
             <input type="text" name="bank_account" id="bank_account" placeholder="{{ _('e.g. NL39INGB0001234567') }}">
             <small style="color:var(--text-muted);">{{ _('Encrypted at rest') }}</small>
+        </div>
         </div>
         <div class="form-group">
             <label for="notes">{{ _('Notes') }}</label>
@@ -353,13 +355,17 @@ function selectType(btn, type) {
     document.getElementById('vehicle-fields').style.display = type === 'vehicle' ? 'block' : 'none';
     document.getElementById('vessel-fields').style.display = type === 'vessel' ? 'block' : 'none';
     
+    const restrictedFields = document.getElementById('vehicle-restricted-fields');
     if (type === 'vehicle') {
         document.getElementById('kenteken_lookup').focus();
         document.getElementById('name').value = '';
         document.getElementById('name').required = false;
         document.getElementById('name').placeholder = '{{ _("Vehicle name (e.g. Toyota Aygo) or leave empty")|replace("'", "\\\\'")|safe }}';
         document.getElementById('license_plate').required = true;
-    } else if (type === 'vessel') {
+        if (restrictedFields) restrictedFields.style.display = 'none';
+    } else {
+        if (restrictedFields) restrictedFields.style.display = 'block';
+        if (type === 'vessel') {
         document.getElementById('vessel_lookup_imo').focus();
         document.getElementById('name').required = false;
         document.getElementById('name').placeholder = '{{ _("Ship name or leave empty to fill from lookup")|replace("'", "\\\\'")|safe }}';

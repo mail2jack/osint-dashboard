@@ -347,6 +347,7 @@
         <button type="button" data-click="addContact" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another contact') }}</button>
         <input type="hidden" name="contacts_data" id="contacts-data" value="">
     </div>
+    <div id="vehicle-restricted-fields">
     <div class="form-group">
         <label for="bank_account">{{ _('💳 Bank / IBAN') }}</label>
         <input type="text" name="bank_account" id="bank_account" value="{{ subject.bank_account or '' }}" placeholder="{{ _('e.g. NL39INGB0001234567') }}">
@@ -355,6 +356,7 @@
     <div class="form-group">
         <label for="risk_score">{{ _('Risk Score (0-100)') }}</label>
         <input type="number" name="risk_score" id="risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100">
+    </div>
     </div>
     <div class="form-group">
         <label for="notes">{{ _('Notes') }}</label>
@@ -370,6 +372,8 @@ function toggleTypeFields() {
     document.getElementById('company-fields').style.display = type === 'company' ? 'block' : 'none';
     document.getElementById('vehicle-fields').style.display = type === 'vehicle' ? 'block' : 'none';
     document.getElementById('vessel-fields').style.display = type === 'vessel' ? 'block' : 'none';
+    const restrictedFields = document.getElementById('vehicle-restricted-fields');
+    if (restrictedFields) restrictedFields.style.display = type === 'vehicle' ? 'none' : 'block';
 }
 
 function kvkLookupEdit() {
