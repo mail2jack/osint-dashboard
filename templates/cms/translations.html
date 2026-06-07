@@ -179,7 +179,7 @@ window.startAutoFix = function() {
                     html += '&nbsp;&nbsp;• ' + escapeHtml(e.msgid) + ': ' + escapeHtml(e.error || '') + '<br>';
                 });
             }
-            html += '<button class="btn btn-sm" style="margin-top:0.5rem;background:var(--accent-primary);color:#fff;border:none;padding:0.4rem 0.75rem;border-radius:6px;cursor:pointer;" onclick="location.reload()">🔄 Pagina herladen</button>';
+            html += '<button class="btn btn-sm" style="margin-top:0.5rem;background:var(--accent-primary);color:#fff;border:none;padding:0.4rem 0.75rem;border-radius:6px;cursor:pointer;" data-click="reloadPage">🔄 Pagina herladen</button>';
             status.innerHTML = html;
             btn.style.display = 'none';
         })
