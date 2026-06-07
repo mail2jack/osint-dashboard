@@ -1056,7 +1056,7 @@ msgstr "Herinneringen"
 
 #: templates/cms/cases/view.html:559
 msgid "+ Add Reminder"
-msgstr "Herinneringen"
+msgstr "Toevoegen van een herinnering"
 
 #: templates/cms/cases/view.html:569 templates/cms/reminders/list.html:159
 msgid "No date"
@@ -3122,7 +3122,7 @@ msgstr "🔍 Bulk Extraheren uit Bevindingen"
 
 #: templates/cms/subjects/view.html:370
 msgid "+ Add ID"
-msgstr "+ ID Toevoegen"
+msgstr "Voeg ID toe"
 
 #: templates/cms/subjects/view.html:377
 msgid "ID/Value"
@@ -3146,7 +3146,7 @@ msgstr "🌐 Sociale Accounts (Gebruikersnamen)"
 
 #: templates/cms/subjects/view.html:413
 msgid "+ Add Username"
-msgstr "+ Gebruikersnaam Toevoegen"
+msgstr "Voeg Gebruikersnaam toe"
 
 #: templates/cms/subjects/view.html:419
 msgid "URL"

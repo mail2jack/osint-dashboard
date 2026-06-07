@@ -237,30 +237,63 @@ def auto_fix():
 
     root_path = current_app.root_path
     nl_path = os.path.join(root_path, "translations/nl/LC_MESSAGES/messages.po")
+    en_path = os.path.join(root_path, "translations/en/LC_MESSAGES/messages.po")
     trans_dir = os.path.join(root_path, "translations")
+
+    nl_entries = _parse_po(nl_path)
+    nl_index = {e["msgid"]: e["msgstr"] for e in nl_entries if e["msgid"]}
 
     results = []
     for msgid in flagged:
+        errors = []
+        fixed_any = False
+
+        prompt_en_nl = (
+            "Translate the following UI text from English to Dutch. "
+            "Return ONLY the translation, no explanations or quotes:\n\n" + msgid
+        )
         try:
-            prompt = (
-                "Translate the following UI text from English to Dutch. "
-                "Return ONLY the translation, no explanations or quotes:\n\n" + msgid
-            )
             dutch = _generate(
-                prompt,
+                prompt_en_nl,
                 "You are a professional translator for an OSINT dashboard.",
                 timeout=120,
             )
-            if not dutch or not dutch.strip():
-                results.append(
-                    {"msgid": msgid, "status": "error", "error": "AI returned empty"}
-                )
-                continue
-            dutch = dutch.strip()
-            _update_po_entry(nl_path, msgid, dutch)
-            results.append({"msgid": msgid, "status": "fixed", "nl": dutch})
+            if dutch and dutch.strip():
+                _update_po_entry(nl_path, msgid, dutch.strip())
+                fixed_any = True
+            else:
+                errors.append("EN→NL leeg")
         except Exception as e:
-            results.append({"msgid": msgid, "status": "error", "error": str(e)})
+            errors.append(f"EN→NL: {e}")
+
+        nl_source = nl_index.get(msgid, "")
+        if nl_source and nl_source.strip():
+            prompt_nl_en = (
+                "Translate the following UI text from Dutch to English. "
+                "Return ONLY the translation, no explanations or quotes:\n\n"
+                + nl_source
+            )
+            try:
+                english = _generate(
+                    prompt_nl_en,
+                    "You are a professional translator for an OSINT dashboard.",
+                    timeout=120,
+                )
+                if english and english.strip():
+                    _update_po_entry(en_path, msgid, english.strip())
+                    fixed_any = True
+                else:
+                    errors.append("NL→EN leeg")
+            except Exception as e:
+                errors.append(f"NL→EN: {e}")
+
+        results.append(
+            {
+                "msgid": msgid,
+                "status": "fixed" if fixed_any else "error",
+                "error": "; ".join(errors) if errors else None,
+            }
+        )
 
     try:
         subprocess.run(
