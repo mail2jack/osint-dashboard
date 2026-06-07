@@ -81,8 +81,22 @@
   }
   setInterval(function() {
     var rem = remaining();
-    if (rem <= 0) { location.reload(); }
-    else if (rem <= WARN_BEFORE && !warned) { showWarn(); updateCountdown(); setInterval(updateCountdown, 1000); }
+    if (rem <= 0) {
+      // Session expired — try to extend silently instead of hard-reloading
+      fetch('/api/keep-alive', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.status === 'ok') {
+            sessionStorage.setItem('session_start', Date.now().toString());
+            warned = false;
+          }
+        })
+        .catch(function() {});
+    } else if (rem <= WARN_BEFORE && !warned) {
+      showWarn();
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    }
   }, CHECK_INTERVAL);
 
   window.extendSession = function() {
