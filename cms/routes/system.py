@@ -336,10 +336,12 @@ def do_update() -> flask.Response:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             step("Backup database", ["cp", db_file, f"{db_file}.backup.{timestamp}"])
 
-        # Step 2: Git pull
+        # Step 2: Git pull (via sudo — Flask runs as osint, .git/ may be root-owned)
         git_path = shutil.which("git") or "/usr/bin/git"
         step(
-            "Pull latest code", [git_path, "pull", "origin", "master"], cwd=project_root
+            "Pull latest code",
+            ["/usr/bin/sudo", git_path, "pull", "origin", "master"],
+            cwd=project_root,
         )
 
         # Step 3: Install dependencies
@@ -402,7 +404,7 @@ def do_update() -> flask.Response:
 
                 git_path = shutil.which("git") or "/usr/bin/git"
                 sha_result = sp.run(
-                    [git_path, "rev-parse", "HEAD"],
+                    ["/usr/bin/sudo", git_path, "rev-parse", "HEAD"],
                     capture_output=True,
                     text=True,
                     cwd=project_root,

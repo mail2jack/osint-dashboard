@@ -10,6 +10,12 @@ from flask_login import login_required
 from . import cms_bp
 from .. import csrf
 from ..models import Setting
+from ..services.ai_service import (
+    get_openrouter_config,
+    check_openrouter_detailed,
+    check_ollama_available,
+    get_openrouter_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +133,32 @@ def _parse_po(filepath):
                 state = None
     flush()
     return entries
+
+
+@cms_bp.route("/api/translations/ai-status")
+@login_required
+def translation_ai_status():
+    """Return AI provider status with error details for the translations page."""
+    or_config = get_openrouter_config()
+    or_detailed = check_openrouter_detailed()
+    ollama_avail = check_ollama_available()
+    last_error = get_openrouter_error()
+
+    return jsonify(
+        {
+            "openrouter": {
+                "configured": bool(or_config["api_key"]),
+                "model": or_config["model"],
+                "available": or_detailed["available"],
+                "reason": or_detailed.get("reason"),
+            },
+            "ollama": {
+                "available": ollama_avail,
+            },
+            "last_error": last_error,
+            "any_available": or_detailed["available"] or ollama_avail,
+        }
+    )
 
 
 @cms_bp.route("/translations")
@@ -294,7 +326,9 @@ def auto_fix():
             )
             if dutch and dutch.strip():
                 _update_po_entry(nl_path, msgid, dutch.strip())
-                results.append({"msgid": msgid, "status": "fixed", "direction": "en→nl"})
+                results.append(
+                    {"msgid": msgid, "status": "fixed", "direction": "en→nl"}
+                )
             else:
                 results.append(
                     {
@@ -321,8 +355,7 @@ def auto_fix():
             continue
         prompt = (
             "Translate the following UI text from Dutch to English. "
-            "Return ONLY the translation, no explanations or quotes:\n\n"
-            + nl_source
+            "Return ONLY the translation, no explanations or quotes:\n\n" + nl_source
         )
         try:
             english = _generate(
@@ -332,7 +365,9 @@ def auto_fix():
             )
             if english and english.strip():
                 _update_po_entry(en_path, msgid, english.strip())
-                results.append({"msgid": msgid, "status": "fixed", "direction": "nl→en"})
+                results.append(
+                    {"msgid": msgid, "status": "fixed", "direction": "nl→en"}
+                )
             else:
                 results.append(
                     {
@@ -361,6 +396,17 @@ def auto_fix():
         review[msgid] = "pending"
     _save_review(review)
 
+    ai_error = get_openrouter_error()
+    has_failures = len(results) - len(fixed) > 0
+    if not fixed and has_failures and ai_error:
+        # All failed due to OpenRouter — surface the real error
+        pass
+
     return jsonify(
-        {"results": results, "fixed": len(fixed), "errors": len(results) - len(fixed)}
+        {
+            "results": results,
+            "fixed": len(fixed),
+            "errors": len(results) - len(fixed),
+            "ai_error": ai_error if (not fixed and has_failures) else None,
+        }
     )

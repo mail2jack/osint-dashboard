@@ -38,13 +38,15 @@
 .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
 
-<h1>{{ _('🌐 Translation Review') }}</h1>
-<p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+<h1>🌐 Translation Review</h1>
+<p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
     <span style="color:#d1d5db;">○</span> geen status &nbsp;·&nbsp;
     <span style="color:#ef4444;">●</span> gemarkeerd voor AI &nbsp;·&nbsp;
     <span style="color:#eab308;">●</span> AI-fix wacht op beoordeling &nbsp;·&nbsp;
     <span style="color:#22c55e;">✓</span> goedgekeurd
 </p>
+
+<div id="aiWarning" style="display:none;margin-bottom:1rem;padding:0.75rem 1rem;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;font-size:0.85rem;color:#991b1b;"></div>
 
 <div class="search-bar">
     <input type="text" id="searchInput" placeholder="{{ _('Zoek in bron- of doeltekst...') }}" data-input="filterTranslations">
@@ -101,6 +103,23 @@
 <script nonce="{{ csp_nonce }}">
 const REVIEW_API = '/cms/api/translations/review';
 const REVIEW_ALL_API = '/cms/api/translations/flagged';
+
+// Check AI provider status and show warning if OpenRouter is down
+fetch('/cms/api/translations/ai-status')
+    .then(function(r) { return r.json(); })
+    .then(function(status) {
+        if (status.any_available) return;
+        var warn = document.getElementById('aiWarning');
+        var reasons = [];
+        if (status.openrouter && status.openrouter.reason) {
+            reasons.push(status.openrouter.reason);
+        }
+        warn.innerHTML = '⚠️ <strong>AI niet beschikbaar</strong><br>' +
+            reasons.join('<br>') +
+            '<br><span style="font-size:0.8rem;">Auto-fix werkt niet tot het AI-probleem is opgelost.</span>';
+        warn.style.display = 'block';
+    })
+    .catch(function() {});
 
 window.switchTab = function(el, tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -239,11 +258,22 @@ window.startAutoFix = function() {
     })
         .then(r => r.json())
         .then(data => {
-            let html = '<strong>✅ Gereed</strong><br>';
-            html += '✓ ' + data.fixed + ' vertalingen gefixt<br>';
-            if (data.errors) {
-                html += '⚠ ' + data.errors + ' fouten:<br>';
-                (data.results || []).filter(function(r) { return r.status === 'error'; }).slice(0, 5).forEach(function(e) {
+            let html;
+            if (data.ai_error) {
+                html = '❌ <strong>AI-fout</strong><br>' + escapeHtml(data.ai_error) +
+                    '<br><span style="font-size:0.8rem;">Los het AI-probleem op en probeer opnieuw.</span>';
+            } else if (data.fixed > 0) {
+                html = '<strong>✅ Gereed</strong><br>';
+                html += '✓ ' + data.fixed + ' vertalingen gefixt<br>';
+                if (data.errors) {
+                    html += '⚠ ' + data.errors + ' fouten:<br>';
+                    (data.results || []).filter(function(r) { return r.status === 'error'; }).slice(0, 5).forEach(function(e) {
+                        html += '&nbsp;&nbsp;• ' + escapeHtml(e.msgid) + ': ' + escapeHtml(e.error || '') + '<br>';
+                    });
+                }
+            } else {
+                html = '❌ Auto-fix gefaald — alle ' + data.errors + ' vertalingen mislukt.<br>';
+                (data.results || []).slice(0, 3).forEach(function(e) {
                     html += '&nbsp;&nbsp;• ' + escapeHtml(e.msgid) + ': ' + escapeHtml(e.error || '') + '<br>';
                 });
             }
