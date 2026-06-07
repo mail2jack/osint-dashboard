@@ -350,7 +350,7 @@ class CreateFindingSchema(BaseModel):
     subject_id: str | None = None
     source_url: str | None = None
     source_type: str | None = None
-    reliability_score: int = 5
+    reliability_score: Any = 5
     confidence_level: str | None = None
     finding_type: str | None = None
     tags: Any = None
