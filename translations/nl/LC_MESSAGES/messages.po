@@ -577,7 +577,7 @@ msgstr "Rapport - %(num)s"
 
 #: templates/cms/cases/report.html:4
 msgid "← Back to Case"
-msgstr "Koppelen aan dossier"
+msgstr "← Terug naar dossier"
 
 #: templates/cms/cases/report.html:9
 msgid "📋 Case Report"
@@ -613,7 +613,7 @@ msgstr "Voeg bevindingen of notities toe aan dit dossier om het rapport te vulle
 
 #: templates/cms/cases/view.html:22
 msgid "← Back to Cases"
-msgstr "Koppelen aan dossier"
+msgstr "← Terug naar dossiers"
 
 #: templates/cms/cases/view.html:29
 msgid "▶ Start Investigation"
@@ -3073,7 +3073,7 @@ msgstr "🚔 Politiebureau"
 
 #: templates/cms/subjects/view.html:324
 msgid "Linked Cases"
-msgstr "Koppelen aan dossier"
+msgstr "Gekoppelde dossiers"
 
 #: templates/cms/subjects/view.html:338
 msgid "📝 Notities & Comments"
