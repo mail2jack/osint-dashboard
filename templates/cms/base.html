@@ -45,7 +45,6 @@
                 {% endif %}
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>
-                <a href="{{ url_for('cms.translations_page') }}">🌐 {{ _('Translations') }}</a>
                 {% endif %}
             </div>
             <div style="display:flex;align-items:center;gap:0.5rem;">
