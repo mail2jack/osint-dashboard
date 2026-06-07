@@ -177,6 +177,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-cms small" style="background:#22c55e;color:white;border-color:#22c55e;" title="{{ _('Mark complete') }}">✓</button>
             </form>
+            <a href="{{ url_for('cms.edit_reminder', reminder_id=reminder.id) }}" class="btn-cms small" style="background:var(--accent-primary);color:white;border-color:var(--accent-primary);" title="{{ _('Edit') }}">✏️</a>
             <form method="POST" action="{{ url_for('cms.snooze_reminder', reminder_id=reminder.id, minutes=30) }}" style="display: inline;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-cms small" style="background:#f59e0b;color:white;border-color:#f59e0b;" title="{{ _('Snooze 30 min') }}">⏰</button>

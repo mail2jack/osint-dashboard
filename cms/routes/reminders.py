@@ -6,7 +6,7 @@ from flask import request, jsonify, render_template, redirect, url_for, flash, a
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from ..validation import validate, CreateReminderSchema, EditReminderSchema
 from ..models import (
@@ -24,6 +24,28 @@ from ..models import (
 logger = logging.getLogger(__name__)
 
 
+def _can_access(reminder):
+    """Check if current user can access this reminder (own or admin)."""
+    if current_user.is_admin:
+        return True
+    return (
+        reminder.assigned_to == current_user.id
+        or reminder.created_by == current_user.id
+    )
+
+
+def _scope_query(query):
+    """Limit query to reminders the current user can see (non-admin only)."""
+    if not current_user.is_admin:
+        return query.filter(
+            or_(
+                Reminder.assigned_to == current_user.id,
+                Reminder.created_by == current_user.id,
+            )
+        )
+    return query
+
+
 @cms_bp.route("/reminders")
 @login_required
 def reminders() -> str:
@@ -35,6 +57,7 @@ def reminders() -> str:
     query = Reminder.query.filter(Reminder.is_deleted == False).options(
         joinedload(Reminder.assigned_user)
     )
+    query = _scope_query(query)
 
     # Filter by status
     if filter_type == "overdue":
@@ -58,21 +81,22 @@ def reminders() -> str:
 
     # Stats — single aggregated query
     now = datetime.now(timezone.utc)
-    row = db.session.query(
-        func.count(Reminder.id)
-        .filter(Reminder.is_deleted == False, Reminder.is_completed == False)
-        .label("total"),
-        func.count(Reminder.id)
-        .filter(
-            Reminder.is_deleted == False,
-            Reminder.is_completed == False,
-            Reminder.reminder_date < now,
+    stats_filters = [Reminder.is_deleted == False, Reminder.is_completed == False]
+    if not current_user.is_admin:
+        stats_filters.append(
+            or_(
+                Reminder.assigned_to == current_user.id,
+                Reminder.created_by == current_user.id,
+            )
         )
+    row = db.session.query(
+        func.count(Reminder.id).filter(*stats_filters).label("total"),
+        func.count(Reminder.id)
+        .filter(*stats_filters, Reminder.reminder_date < now)
         .label("overdue"),
         func.count(Reminder.id)
         .filter(
-            Reminder.is_deleted == False,
-            Reminder.is_completed == False,
+            *stats_filters,
             db.func.date(Reminder.reminder_date) == now.date(),
         )
         .label("today"),
@@ -206,6 +230,8 @@ def create_reminder() -> flask.Response:
 def view_reminder(reminder_id: str) -> str:
     """View reminder details."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
+    if not _can_access(reminder):
+        abort(404)
 
     # Get related case if available
     case = db.session.get(Case, reminder.case_id) if reminder.case_id else None
@@ -229,6 +255,8 @@ def view_reminder(reminder_id: str) -> str:
 def edit_reminder(reminder_id: str) -> flask.Response:
     """Edit a reminder."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
+    if not _can_access(reminder):
+        abort(404)
     users = User.query.filter_by(is_active=True).all()
 
     if request.method == "POST":
@@ -309,6 +337,8 @@ def edit_reminder(reminder_id: str) -> flask.Response:
 def complete_reminder(reminder_id: str) -> flask.Response:
     """Mark a reminder as completed."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
+    if not _can_access(reminder):
+        abort(404)
 
     reminder.complete()
 
@@ -341,6 +371,8 @@ def complete_reminder(reminder_id: str) -> flask.Response:
 def snooze_reminder(reminder_id: str) -> flask.Response:
     """Snooze a reminder."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
+    if not _can_access(reminder):
+        abort(404)
 
     minutes = request.args.get("minutes", 30, type=int)
     reminder.snooze(minutes=minutes)
@@ -371,6 +403,8 @@ def snooze_reminder(reminder_id: str) -> flask.Response:
 def delete_reminder(reminder_id: str) -> flask.Response:
     """Delete a reminder."""
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
+    if not _can_access(reminder):
+        abort(404)
 
     reminder.soft_delete()
 
