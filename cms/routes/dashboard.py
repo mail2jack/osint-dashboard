@@ -1,9 +1,10 @@
 import logging
 
-from flask import render_template, request, redirect, url_for
+from flask import render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from .. import csrf
 from ..models import db, Case, Client, Subject, Finding, CaseStatus
 from ..health_utils import check_external_services
 
@@ -68,3 +69,32 @@ def dashboard() -> str:
     return render_template(
         "cms/dashboard.html", stats=stats, my_cases=my_cases, health=health
     )
+
+
+@cms_bp.route("/api/health-summary")
+@csrf.exempt
+@login_required
+def health_summary():
+    """Return service health status as JSON for the traffic light in the header."""
+    health = check_external_services()
+    green = []
+    orange = []
+    red = []
+    for name, status in health.items():
+        if status == "ok" or status == "disabled" or status == "connected":
+            green.append(name)
+        elif status == "no key configured" or status == "auth error":
+            orange.append(name)
+        elif status.startswith("no_"):
+            green.append(name)
+        else:
+            red.append(name)
+
+    if len(red) == 0 and len(orange) == 0:
+        state = "green"
+    elif len(red) == len(health):
+        state = "red"
+    else:
+        state = "orange"
+
+    return jsonify({"state": state, "services": health})

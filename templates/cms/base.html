@@ -56,6 +56,7 @@
                     {% endif %}
                     <span style="color:rgba(255,255,255,0.4);">|</span>
                     <a href="{{ url_for('auth.logout') }}" style="color:white;text-decoration:none;">{{ _('Logout') }}</a>
+                    <span id="healthTrafficLight" style="position:relative;cursor:pointer;font-size:1.3rem;line-height:1;" title="{{ _('Service status') }}" data-click="toggleHealthModal">🔴</span>
                     <span id="notificationBell" style="position:relative;cursor:pointer;font-size:1.1rem;" title="{{ _('Notifications') }}" data-click="toggleNotificationPanel">
                         🔔
                         <span id="notificationBadge" style="display:none;position:absolute;top:-6px;right:-8px;background:#dc2626;color:white;font-size:0.6rem;border-radius:50%;width:16px;height:16px;text-align:center;line-height:16px;font-weight:bold;">0</span>
@@ -149,13 +150,25 @@
     </div>
 
     <!-- Help slide-out panel -->
+    <div id="healthModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h2>🔌 {{ _('OSINT Service Status') }}</h2>
+                <button class="modal-close" data-click="closeHealthModal" style="background:none;border:none;font-size:1.2rem;cursor:pointer;">✕</button>
+            </div>
+            <div class="modal-body" id="healthModalBody">
+                <div id="healthModalLoading">{{ _('Loading...') }}</div>
+            </div>
+        </div>
+    </div>
+
     <div id="helpPanel" class="help-panel">
         <div class="help-panel-header">
-            <span id="helpPanelTitle">Help</span>
-            <button class="help-panel-close" data-click="closeHelp">&times;</button>
+            <span>📖 {{ _('Help') }}</span>
+            <button class="help-close" data-click="closeHelp">✕</button>
         </div>
-        <div id="helpPanelContent" class="help-panel-content">
-            <p style="color:var(--text-secondary);">Loading help...</p>
+        <div class="help-panel-content" id="helpPanelContent">
+            <p>{{ _('Loading...') }}</p>
         </div>
     </div>
     <div id="helpOverlay" class="help-overlay" data-click="closeHelp" style="display:none;"></div>
@@ -184,6 +197,86 @@ window.CMS = {
 };
 </script>
 <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/base.js') }}?v={{ g.css_version }}"></script>
+
+<script nonce="{{ csp_nonce }}">
+// Traffic light health indicator
+var healthModalVisible = false;
+
+function updateHealthLight() {
+    fetch('/cms/api/health-summary')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var light = document.getElementById('healthTrafficLight');
+            if (data.state === 'green') light.textContent = '🟢';
+            else if (data.state === 'orange') light.textContent = '🟠';
+            else light.textContent = '🔴';
+            light._healthData = data;
+        })
+        .catch(function() {
+            document.getElementById('healthTrafficLight').textContent = '⚪';
+        });
+}
+
+function toggleHealthModal() {
+    var modal = document.getElementById('healthModal');
+    if (healthModalVisible) {
+        modal.style.display = 'none';
+        healthModalVisible = false;
+        return;
+    }
+    modal.style.display = 'flex';
+    healthModalVisible = true;
+
+    var body = document.getElementById('healthModalBody');
+    var data = document.getElementById('healthTrafficLight')._healthData;
+    if (!data) {
+        body.innerHTML = '<div class="health-loading">Geen status beschikbaar</div>';
+        return;
+    }
+    var html = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
+    var order = ['database', 'spiderfoot', 'rdw', 'kadaster', 'hibp', 'overheid', 'brave', 'tor'];
+    var labels = {
+        database: 'Database', spiderfoot: 'SpiderFoot', rdw: 'RDW',
+        kadaster: 'Kadaster', hibp: 'HIBP', overheid: 'Overheid.io',
+        brave: 'Brave Search', tor: 'Tor'
+    };
+    for (var i = 0; i < order.length; i++) {
+        var key = order[i];
+        var status = data.services[key];
+        if (status === undefined) continue;
+        var color, label;
+        if (status === 'ok' || status === 'connected') {
+            color = '#10b981'; label = '✓ Online';
+        } else if (status === 'disabled') {
+            color = '#9ca3af'; label = '○ Uitgeschakeld';
+        } else if (status === 'no key configured') {
+            color = '#f59e0b'; label = '⚙️ Geen sleutel';
+        } else if (status === 'auth error') {
+            color = '#f97316'; label = '🔑 Auth fout';
+        } else if (status.startsWith('unavailable') || status.startsWith('error')) {
+            color = '#ef4444'; label = '⚠️ ' + status;
+        } else {
+            color = '#ef4444'; label = '⚠️ ' + status;
+        }
+        html += '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.5rem;border-radius:6px;background:var(--bg-secondary);">'
+            + '<div style="width:10px;height:10px;border-radius:50%;background:' + color + ';"></div>'
+            + '<strong>' + labels[key] + '</strong>'
+            + '<span style="color:var(--text-secondary);font-size:0.85rem;margin-left:auto;">' + label + '</span>'
+            + '</div>';
+    }
+    html += '</div>';
+    body.innerHTML = html;
+}
+
+function closeHealthModal() {
+    document.getElementById('healthModal').style.display = 'none';
+    healthModalVisible = false;
+}
+
+// Init
+updateHealthLight();
+setInterval(updateHealthLight, 60000);
+</script>
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js" nonce="{{ csp_nonce }}"></script>
 </body>
 </html>

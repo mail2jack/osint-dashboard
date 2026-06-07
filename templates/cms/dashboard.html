@@ -205,26 +205,4 @@
     </table>
 </div>
 {% endif %}
-
-<div class="card" style="margin-top: 1rem;">
-    <div class="section-header">
-        <h2>🔌 {{ _('OSINT Service Health') }}</h2>
-    </div>
-    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-        {% set svcs = {'Database': health.database, 'SpiderFoot': health.spiderfoot, 'RDW': health.rdw, 'Kadaster': health.kadaster, 'HIBP': health.hibp, 'Overheid.io': health.overheid, 'Brave Search': health.brave, 'Tor': health.tor} %}
-        {% for name, status in svcs.items() %}
-        <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 6px;">
-            <div style="width: 10px; height: 10px; border-radius: 50%; background: {% if status == 'ok' %}#10b981{% elif status == 'no key configured' %}#f59e0b{% elif status == 'auth error' %}#f97316{% else %}#ef4444{% endif %};"></div>
-            <strong>{{ name }}</strong>
-            <span style="color: var(--text-secondary); font-size: 0.85rem;">
-                {%- if status == 'ok' -%}✓ {{ _('Online') }}
-                {%- elif status == 'no key configured' -%}⚙️ {{ _('No key configured') }}
-                {%- elif status == 'auth error' -%}🔑 {{ _('Auth error (invalid key)') }}
-                {%- else -%}⚠️ {{ status }}
-                {%- endif -%}
-            </span>
-        </div>
-        {% endfor %}
-    </div>
-</div>
 {% endblock %}

@@ -420,6 +420,36 @@ option { background: var(--bg-card); color: var(--text-primary); }
     to { opacity: 1; transform: translateX(0); }
 }
 
+/* ==========================================================================
+   Health Traffic Light + Modal
+   ========================================================================== */
+#healthTrafficLight {
+    transition: opacity 0.2s;
+}
+#healthTrafficLight:hover {
+    opacity: 0.8;
+}
+#healthModal .modal-content {
+    max-width: 460px;
+}
+#healthModal .modal-body {
+    padding: 0.25rem 0;
+}
+#healthModal .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    line-height: 1;
+}
+#healthModal .modal-close:hover {
+    background: var(--table-hover);
+    color: var(--text-primary);
+}
+
 .action-loader {
     display: none;
     position: fixed;
