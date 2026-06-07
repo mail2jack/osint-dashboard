@@ -24,6 +24,8 @@
 .tab.active { background: var(--accent-primary); color: white; }
 .tab .count { font-weight: 400; opacity: 0.7; }
 .flagged-count { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+.btn-sm { padding: 0.4rem 0.75rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--accent-primary); color: #fff; cursor: pointer; }
+.btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
 
 <h1>{{ _('🌐 Translation Review') }}</h1>
@@ -46,9 +48,16 @@
 
 <div class="flagged-count" id="flaggedCount"></div>
 
-<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem" id="debugInfo">
-  NL→EN: {{ nl_to_en|length }} rijen · EN→NL: {{ en_to_nl|length }} rijen
+<div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
+  <span style="font-size:0.8rem;color:var(--text-muted);">
+    NL→EN: {{ nl_to_en|length }} · EN→NL: {{ en_to_nl|length }}
+  </span>
+  <button class="btn btn-sm" id="autoFixBtn" data-click="startAutoFix">
+    🤖 Auto-fix gemarkeerd
+  </button>
 </div>
+
+<div id="autoFixStatus" style="display:none;margin-bottom:0.75rem;padding:0.75rem;border-radius:8px;background:var(--bg-secondary);font-size:0.85rem;"></div>
 
 <div id="nl-en-panel" class="panel">
     <table class="card translation-table">
@@ -126,5 +135,72 @@ function updateFlaggedCount() {
     document.getElementById('flaggedCount').textContent = n ? '🏳️ ' + n + ' vertaling(en) gemarkeerd' : '';
 }
 updateFlaggedCount();
+
+window.startAutoFix = function() {
+    const btn = document.getElementById('autoFixBtn');
+    const status = document.getElementById('autoFixStatus');
+    btn.disabled = true;
+    btn.textContent = '⏳ Bezig...';
+    status.style.display = 'block';
+    status.innerHTML = '<div class="app-loader-spinner"></div> AI bezig met vertalen...';
+
+    fetch('/cms/api/translations/auto-fix', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                status.innerHTML = '❌ ' + data.error;
+                btn.disabled = false;
+                btn.textContent = '🤖 Auto-fix gemarkeerd';
+                return;
+            }
+            pollTask(data.task_id);
+        })
+        .catch(err => {
+            status.innerHTML = '❌ Fout: ' + err.message;
+            btn.disabled = false;
+            btn.textContent = '🤖 Auto-fix gemarkeerd';
+        });
+};
+
+function pollTask(taskId) {
+    const status = document.getElementById('autoFixStatus');
+    fetch('/cms/api/background/status/' + taskId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'pending' || data.status === 'running') {
+                status.innerHTML = '<div class="app-loader-spinner"></div> Bezig... ' + (data.status === 'running' ? 'AI vertaalt' : 'wachtrij');
+                setTimeout(() => pollTask(taskId), 2000);
+            } else if (data.status === 'completed') {
+                const results = data.result || [];
+                const fixed = results.filter(r => r.status === 'fixed');
+                const errors = results.filter(r => r.status === 'error');
+                let html = '<strong>✅ Gereed</strong><br>';
+                html += '✓ ' + fixed.length + ' vertalingen gefixt<br>';
+                if (errors.length) {
+                    html += '⚠ ' + errors.length + ' fouten:<br>';
+                    errors.slice(0, 5).forEach(e => {
+                        html += '&nbsp;&nbsp;• ' + escapeHtml(e.msgid) + ': ' + escapeHtml(e.error || '') + '<br>';
+                    });
+                }
+                html += '<button class="btn btn-sm" style="margin-top:0.5rem" onclick="location.reload()">🔄 Pagina herladen</button>';
+                status.innerHTML = html;
+                document.getElementById('autoFixBtn').style.display = 'none';
+            } else {
+                status.innerHTML = '❌ Taak mislukt: ' + (data.error || 'onbekend');
+                const btn = document.getElementById('autoFixBtn');
+                btn.disabled = false;
+                btn.textContent = '🤖 Auto-fix gemarkeerd';
+            }
+        })
+        .catch(err => {
+            status.innerHTML = '⚠ Polling error, ververs de pagina om resultaten te zien.';
+        });
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
 </script>
 {% endblock %}
