@@ -9,7 +9,9 @@
 .translation-table td.ln { color: var(--text-muted); font-size: 0.75rem; text-align: right; width: 2.5rem; }
 .translation-table td.src { font-weight: 600; color: var(--text-primary); }
 .translation-table td.arr { color: var(--text-muted); font-size: 0.7rem; text-align: center; width: 1.5rem; }
-.translation-table td.tgt { color: var(--text-secondary); }
+.translation-table td.tgt { color: var(--text-secondary); cursor: pointer; border-radius: 4px; padding: 0.3rem 0.5rem; transition: background 0.1s; }
+.translation-table td.tgt:hover { background: rgba(59,130,246,0.08); outline: 1px dashed #93c5fd; }
+.translation-table td.tgt input { width: 100%; padding: 0.2rem 0.4rem; border: 1px solid var(--accent-primary); border-radius: 4px; font-size: 0.875rem; background: var(--input-bg); color: var(--text-primary); }
 .translation-table td.rv { width: 2rem; text-align: center; cursor: pointer; font-size: 1.2rem; line-height: 1; }
 .translation-table td.src::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 0.5rem; vertical-align: middle; }
 .translation-table td.src.nl::before { background: #f59e0b; }
@@ -75,7 +77,7 @@
             <td class="rv rv-{{ s if s else 'none' }}" data-msgid="{{ item.msgid }}" data-click="cycleReview"></td>
             <td class="src nl" title="{{ item.source }}">{{ item.source }}</td>
             <td class="arr">→</td>
-            <td class="tgt" title="{{ item.translation }}">{{ item.translation }}</td>
+            <td class="tgt" title="{{ item.translation }}" data-click="editTranslation">{{ item.translation }}</td>
         </tr>
         {% endfor %}
     </table>
@@ -90,7 +92,7 @@
             <td class="rv rv-{{ s if s else 'none' }}" data-msgid="{{ item.msgid }}" data-click="cycleReview"></td>
             <td class="src en" title="{{ item.source }}">{{ item.source }}</td>
             <td class="arr">→</td>
-            <td class="tgt" title="{{ item.translation }}">{{ item.translation }}</td>
+            <td class="tgt" title="{{ item.translation }}" data-click="editTranslation">{{ item.translation }}</td>
         </tr>
         {% endfor %}
     </table>
@@ -105,6 +107,44 @@ window.switchTab = function(el, tab) {
     document.querySelector('[data-arg0="' + tab + '"]').classList.add('active');
     document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
     document.getElementById(tab + '-panel').style.display = 'block';
+};
+
+window.editTranslation = function(el) {
+    if (el.querySelector('input')) return;
+    const row = el.closest('tr');
+    const msgid = row.dataset.msgid;
+    if (!msgid) return;
+    const panel = el.closest('.panel');
+    const direction = panel && panel.id === 'nl-en-panel' ? 'nl→en' : 'en→nl';
+    const current = el.textContent.trim();
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = current;
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+
+    function save() {
+        var val = input.value.trim();
+        if (val && val !== current) {
+            el.textContent = val;
+            fetch('/cms/api/translations/manual-fix', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ msgid: msgid, direction: direction, translation: val })
+            }).catch(function(){});
+        } else {
+            el.textContent = current;
+        }
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { input.blur(); }
+        if (e.key === 'Escape') { el.textContent = current; }
+    });
 };
 
 window.filterTranslations = function(input) {

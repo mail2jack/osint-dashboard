@@ -376,7 +376,7 @@ msgstr "Nieuw dossier"
 
 #: templates/cms/cases/create.html:97 templates/cms/cases/edit.html:82
 msgid "Case Title *"
-msgstr "Dossier gekoppeld"
+msgstr "Kas Titel *"
 
 #: templates/cms/cases/create.html:101
 msgid "Client *"
@@ -677,7 +677,7 @@ msgstr "Heropeningsreden:"
 
 #: templates/cms/cases/view.html:120 templates/cms/cases/view.html:532
 msgid "Case Hierarchy"
-msgstr "Zoeken"
+msgstr "Rechtshierarchie"
 
 #: templates/cms/cases/view.html:121
 msgid "Manage Hierarchy"
@@ -1110,7 +1110,7 @@ msgstr "Opmerking"
 
 #: templates/cms/cases/view.html:615
 msgid "Add Comment"
-msgstr "Opmerking"
+msgstr "Toevoegen commentaar"
 
 #: templates/cms/cases/view.html:620
 msgid "Loading comments..."
@@ -3081,7 +3081,7 @@ msgstr "📝 Notities & Opmerkingen"
 
 #: templates/cms/subjects/view.html:340
 msgid "Add Note"
-msgstr "Notitie toevoegen"
+msgstr "Voeg opmerking toe"
 
 #: templates/cms/subjects/view.html:345
 msgid "Add a note or comment about this subject..."
@@ -3258,7 +3258,7 @@ msgstr "Zoek naar informatie over"
 
 #: templates/cms/subjects/view.html:561
 msgid "Cancel Search"
-msgstr "Zoeken"
+msgstr "Annuleren zoekopdracht"
 
 #: templates/cms/subjects/view.html:581
 msgid "🌐 Save as Social Accounts"
@@ -3899,7 +3899,7 @@ msgstr "⚠ Ja"
 
 #: templates/cms/subjects/view.html:2060
 msgid "API Type:"
-msgstr "API Type:"
+msgstr "API-type:"
 
 #: templates/cms/subjects/view.html:2061
 msgid "Cached:"

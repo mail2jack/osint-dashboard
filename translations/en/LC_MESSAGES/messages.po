@@ -182,7 +182,7 @@ msgstr ""
 #: templates/cms/search.html:281 templates/cms/settings/index.html:588
 #, fuzzy
 msgid "Active"
-msgstr "Actions"
+msgstr "Active"
 
 #: templates/cms/cases/list.html:22 templates/cms/dashboard.html:159
 msgid "Suspended"
@@ -1181,7 +1181,7 @@ msgstr "Clients"
 #: templates/cms/cases/view.html:615
 #, fuzzy
 msgid "Add Comment"
-msgstr "Clients"
+msgstr "Add Comment"
 
 #: templates/cms/cases/view.html:620
 #, fuzzy
@@ -3254,7 +3254,7 @@ msgstr "Clients"
 #: templates/cms/subjects/view.html:340
 #, fuzzy
 msgid "Add Note"
-msgstr "Address"
+msgstr "Add note"
 
 #: templates/cms/subjects/view.html:345
 msgid "Add a note or comment about this subject..."
@@ -3320,7 +3320,7 @@ msgstr ""
 #: templates/cms/subjects/view.html:413
 #, fuzzy
 msgid "+ Add Username"
-msgstr "Name"
+msgstr "Add User Name"
 
 #: templates/cms/subjects/view.html:419
 msgid "URL"

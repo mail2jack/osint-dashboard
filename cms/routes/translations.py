@@ -204,6 +204,42 @@ def get_review_all():
     return jsonify(_get_review())
 
 
+@cms_bp.route("/api/translations/manual-fix", methods=["POST"])
+@csrf.exempt
+@login_required
+def manual_fix():
+    data = request.get_json(silent=True) or {}
+    msgid = data.get("msgid", "").strip()
+    direction = data.get("direction", "")
+    translation = data.get("translation", "").strip()
+
+    if not msgid or not direction or not translation:
+        return jsonify({"error": "msgid, direction en translation verplicht"}), 400
+
+    root_path = current_app.root_path
+    if direction == "en→nl":
+        path = os.path.join(root_path, "translations/nl/LC_MESSAGES/messages.po")
+    elif direction == "nl→en":
+        path = os.path.join(root_path, "translations/en/LC_MESSAGES/messages.po")
+    else:
+        return jsonify({"error": "ongeldige richting"}), 400
+
+    _update_po_entry(path, msgid, translation)
+
+    try:
+        trans_dir = os.path.join(root_path, "translations")
+        subprocess.run(
+            ["pybabel", "compile", "-d", trans_dir],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except Exception:
+        pass
+
+    return jsonify({"ok": True})
+
+
 @cms_bp.route("/api/translations/auto-fix", methods=["POST"])
 @csrf.exempt
 @login_required
