@@ -396,22 +396,12 @@ document.addEventListener('change', function(e) {
   var fn = window[el.dataset.change];
   if (typeof fn === 'function') fn(el);
 });
-// Prevent Enter key from POSTing forms with data-submit (accidental submit during entry)
-// AJAX forms without method="POST" are unaffected
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') {
-    var input = e.target.closest('input');
-    if (!input) return;
-    var form = input.closest('form');
-    if (form && form.matches('[data-submit]') && form.method.toLowerCase() === 'post') {
-      e.preventDefault();
-    }
-  }
-});
 document.addEventListener('submit', function(e) {
   var el = e.target.closest('[data-submit]');
   if (!el) return;
   e.preventDefault();
+  // For POST forms: only trigger on explicit submit button click, not Enter key
+  if (el.method && el.method.toLowerCase() === 'post' && (!e.submitter || e.submitter.type !== 'submit')) return;
   var fn = window[el.dataset.submit];
   if (typeof fn === 'function') fn(e);
 });
