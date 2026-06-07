@@ -62,67 +62,6 @@ def _update_po_entry(filepath, msgid, new_msgstr):
         f.writelines(result)
 
 
-def _run_auto_fix(flagged, root_path, _app):
-    """Background task: AI translate → update .po → compile."""
-    with _app.app_context():
-        from cms.services.ai_service import _generate
-
-        nl_path = os.path.join(root_path, "translations/nl/LC_MESSAGES/messages.po")
-        trans_dir = os.path.join(root_path, "translations")
-
-        results = []
-        for msgid in flagged:
-            try:
-                prompt = (
-                    "Translate the following UI text from English to Dutch. "
-                    "Return ONLY the translation, no explanations or quotes:\n\n"
-                    + msgid
-                )
-                dutch = _generate(
-                    prompt,
-                    "You are a professional translator for an OSINT dashboard.",
-                    timeout=30,
-                )
-                if not dutch or not dutch.strip():
-                    results.append(
-                        {
-                            "msgid": msgid,
-                            "status": "error",
-                            "error": "AI returned empty",
-                        }
-                    )
-                    continue
-                dutch = dutch.strip()
-                _update_po_entry(nl_path, msgid, dutch)
-                results.append({"msgid": msgid, "status": "fixed", "nl": dutch})
-            except Exception as e:
-                results.append({"msgid": msgid, "status": "error", "error": str(e)})
-
-        try:
-            subprocess.run(
-                ["pybabel", "compile", "-d", trans_dir],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-        except Exception:
-            pass
-
-        fixed = [r["msgid"] for r in results if r["status"] == "fixed"]
-        if fixed:
-            raw = Setting.get("translation_flags")
-            if raw:
-                try:
-                    remaining = [m for m in json.loads(raw) if m not in fixed]
-                except (json.JSONDecodeError, TypeError):
-                    remaining = []
-            else:
-                remaining = []
-            Setting.set("translation_flags", json.dumps(remaining))
-
-        return results
-
-
 def _parse_po(filepath):
     entries = []
     state = None
@@ -275,8 +214,8 @@ def get_flagged():
 @csrf.exempt
 @login_required
 def auto_fix():
-    """Auto-fix all flagged translations using AI, in background."""
-    from ..background import generate_task_id, run_in_background
+    """Auto-fix all flagged translations using AI (synchronous)."""
+    from cms.services.ai_service import _generate
 
     raw = Setting.get("translation_flags")
     flagged = []
@@ -289,10 +228,48 @@ def auto_fix():
     if not flagged:
         return jsonify({"error": "Geen gemarkeerde vertalingen"}), 400
 
-    _app = current_app._get_current_object()
-    root_path = _app.root_path
+    root_path = current_app.root_path
+    nl_path = os.path.join(root_path, "translations/nl/LC_MESSAGES/messages.po")
+    trans_dir = os.path.join(root_path, "translations")
 
-    task_id = generate_task_id()
-    run_in_background(task_id, _run_auto_fix, flagged, root_path, _app)
+    results = []
+    for msgid in flagged:
+        try:
+            prompt = (
+                "Translate the following UI text from English to Dutch. "
+                "Return ONLY the translation, no explanations or quotes:\n\n" + msgid
+            )
+            dutch = _generate(
+                prompt,
+                "You are a professional translator for an OSINT dashboard.",
+                timeout=30,
+            )
+            if not dutch or not dutch.strip():
+                results.append(
+                    {"msgid": msgid, "status": "error", "error": "AI returned empty"}
+                )
+                continue
+            dutch = dutch.strip()
+            _update_po_entry(nl_path, msgid, dutch)
+            results.append({"msgid": msgid, "status": "fixed", "nl": dutch})
+        except Exception as e:
+            results.append({"msgid": msgid, "status": "error", "error": str(e)})
 
-    return jsonify({"task_id": task_id, "count": len(flagged)})
+    try:
+        subprocess.run(
+            ["pybabel", "compile", "-d", trans_dir],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except Exception:
+        pass
+
+    fixed = [r["msgid"] for r in results if r["status"] == "fixed"]
+    if fixed:
+        remaining = [m for m in flagged if m not in fixed]
+        Setting.set("translation_flags", json.dumps(remaining))
+
+    return jsonify(
+        {"results": results, "fixed": len(fixed), "errors": len(results) - len(fixed)}
+    )
