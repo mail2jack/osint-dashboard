@@ -325,8 +325,6 @@ def do_update() -> flask.Response:
                 logger.exception("Update step exception: %s", msg)
                 results[-1] = {"step": msg, "status": "error", "output": "Step failed"}
 
-        import shutil
-
         project_root = current_app.root_path
 
         # Step 1: Database backup (SQLite only)
@@ -337,10 +335,11 @@ def do_update() -> flask.Response:
             step("Backup database", ["cp", db_file, f"{db_file}.backup.{timestamp}"])
 
         # Step 2: Git pull (via sudo — Flask runs as osint, .git/ may be root-owned)
-        git_path = shutil.which("git") or "/usr/bin/git"
+        # sudoers allows /usr/bin/git, NOT /usr/local/bin/git (Homebrew)
+        sudo_git = "/usr/bin/git"
         step(
             "Pull latest code",
-            ["/usr/bin/sudo", git_path, "pull", "origin", "master"],
+            ["/usr/bin/sudo", sudo_git, "pull", "origin", "master"],
             cwd=project_root,
         )
 
@@ -402,9 +401,8 @@ def do_update() -> flask.Response:
             try:
                 import subprocess as sp
 
-                git_path = shutil.which("git") or "/usr/bin/git"
                 sha_result = sp.run(
-                    ["/usr/bin/sudo", git_path, "rev-parse", "HEAD"],
+                    ["/usr/bin/git", "rev-parse", "HEAD"],
                     capture_output=True,
                     text=True,
                     cwd=project_root,
