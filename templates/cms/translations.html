@@ -2,20 +2,29 @@
 {% block title %}{{ _('Translations') }} — CMS{% endblock %}
 {% block content %}
 <style>
-.flag-checkbox { transform: scale(1.3); cursor: pointer; }
-.flagged td { background: #fef2f2 !important; }
-.flagged .flag-checkbox { accent-color: #dc2626; }
 .translation-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .translation-table td { padding: 0.4rem 0.5rem; vertical-align: middle; border-bottom: 1px solid var(--border-color); }
 .translation-table tr:nth-child(even) td { background: rgba(128,128,128,0.04); }
 .translation-table tr:hover td { background: var(--bg-secondary); }
+.translation-table td.ln { color: var(--text-muted); font-size: 0.75rem; text-align: right; width: 2.5rem; }
 .translation-table td.src { font-weight: 600; color: var(--text-primary); }
 .translation-table td.arr { color: var(--text-muted); font-size: 0.7rem; text-align: center; width: 1.5rem; }
 .translation-table td.tgt { color: var(--text-secondary); }
-.translation-table td.chk { width: 2rem; text-align: center; }
+.translation-table td.rv { width: 2rem; text-align: center; cursor: pointer; font-size: 1.2rem; line-height: 1; }
 .translation-table td.src::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 0.5rem; vertical-align: middle; }
 .translation-table td.src.nl::before { background: #f59e0b; }
 .translation-table td.src.en::before { background: #3b82f6; }
+.rv-row-flagged td { background: #fef2f2 !important; }
+.rv-row-pending td { background: #fefce8 !important; }
+.rv-row-approved td { background: #f0fdf4 !important; }
+.rv-none { color: #d1d5db; }
+.rv-none::after { content: "○"; }
+.rv-flagged { color: #ef4444; }
+.rv-flagged::after { content: "●"; }
+.rv-pending { color: #eab308; }
+.rv-pending::after { content: "●"; }
+.rv-approved { color: #22c55e; }
+.rv-approved::after { content: "✓"; font-weight: bold; }
 .search-bar { margin-bottom: 1rem; }
 .search-bar input { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--border-input); border-radius: 8px; font-size: 0.9rem; background: var(--input-bg); color: var(--text-primary); }
 .tab-bar { display: flex; gap: 0; margin-bottom: 1rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); }
@@ -23,14 +32,16 @@
 .tab:last-child { border-right: none; }
 .tab.active { background: var(--accent-primary); color: white; }
 .tab .count { font-weight: 400; opacity: 0.7; }
-.flagged-count { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
 .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--accent-primary); color: #fff; cursor: pointer; }
 .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
 
 <h1>{{ _('🌐 Translation Review') }}</h1>
 <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-    Vink vertalingen aan die fout lijken. Ik kan ze later inzien via <code>/cms/api/translations/flagged</code>.
+    <span style="color:#d1d5db;">○</span> geen status &nbsp;·&nbsp;
+    <span style="color:#ef4444;">●</span> gemarkeerd voor AI &nbsp;·&nbsp;
+    <span style="color:#eab308;">●</span> AI-fix wacht op beoordeling &nbsp;·&nbsp;
+    <span style="color:#22c55e;">✓</span> goedgekeurd
 </p>
 
 <div class="search-bar">
@@ -46,12 +57,8 @@
     </div>
 </div>
 
-<div class="flagged-count" id="flaggedCount">🏳️ {{ flagged|length }} vertaling(en) gemarkeerd via server</div>
-
 <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
-  <span style="font-size:0.8rem;color:var(--text-muted);">
-    NL→EN: {{ nl_to_en|length }} · EN→NL: {{ en_to_nl|length }}
-  </span>
+  <span style="font-size:0.8rem;color:var(--text-muted);" id="reviewSummary"></span>
   <button class="btn btn-sm" id="autoFixBtn" data-click="startAutoFix">
     🤖 Auto-fix gemarkeerd
   </button>
@@ -62,8 +69,10 @@
 <div id="nl-en-panel" class="panel">
     <table class="card translation-table">
         {% for item in nl_to_en %}
-        <tr class="{% if item.source in flagged %}flagged{% endif %}" data-msgid="{{ item.msgid }}">
-            <td class="chk"><input type="checkbox" class="flag-checkbox" data-msgid="{{ item.msgid }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag"></td>
+        {% set s = review.get(item.msgid, '') %}
+        <tr class="{% if s %}rv-row-{{ s }}{% endif %}" data-msgid="{{ item.msgid }}">
+            <td class="ln">{{ loop.index }}</td>
+            <td class="rv rv-{{ s if s else 'none' }}" data-msgid="{{ item.msgid }}" data-click="cycleReview"></td>
             <td class="src nl" title="{{ item.source }}">{{ item.source }}</td>
             <td class="arr">→</td>
             <td class="tgt" title="{{ item.translation }}">{{ item.translation }}</td>
@@ -75,8 +84,10 @@
 <div id="en-nl-panel" class="panel" style="display:none;">
     <table class="card translation-table">
         {% for item in en_to_nl %}
-        <tr class="{% if item.source in flagged %}flagged{% endif %}" data-msgid="{{ item.msgid }}">
-            <td class="chk"><input type="checkbox" class="flag-checkbox" data-msgid="{{ item.msgid }}"{% if item.source in flagged %} checked{% endif %} data-change="toggleFlag"></td>
+        {% set s = review.get(item.msgid, '') %}
+        <tr class="{% if s %}rv-row-{{ s }}{% endif %}" data-msgid="{{ item.msgid }}">
+            <td class="ln">{{ loop.index }}</td>
+            <td class="rv rv-{{ s if s else 'none' }}" data-msgid="{{ item.msgid }}" data-click="cycleReview"></td>
             <td class="src en" title="{{ item.source }}">{{ item.source }}</td>
             <td class="arr">→</td>
             <td class="tgt" title="{{ item.translation }}">{{ item.translation }}</td>
@@ -86,43 +97,12 @@
 </div>
 
 <script nonce="{{ csp_nonce }}">
-let flagQueue = new Set();
-let flagTimer = null;
-
-window.toggleFlag = function(cb) {
-    const msgid = cb.dataset.msgid;
-    const row = cb.closest('tr');
-    if (cb.checked) {
-        row.classList.add('flagged');
-        flagQueue.add(msgid);
-    } else {
-        row.classList.remove('flagged');
-        flagQueue.delete(msgid);
-    }
-    updateFlaggedCount();
-    clearTimeout(flagTimer);
-    flagTimer = setTimeout(flushFlags, 500);
-};
-
-function flushFlags() {
-    if (flagQueue.size === 0) return;
-    const items = Array.from(flagQueue);
-    flagQueue.clear();
-    for (const msgid of items) {
-        const cb = document.querySelector(`[data-msgid="${CSS.escape(msgid)}"]`);
-        const checked = cb ? cb.checked : false;
-        fetch('/cms/api/translations/flag', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ msgid: msgid, flagged: !!checked })
-        }).catch(function() {});
-    }
-    updateFlaggedCount();
-}
+const REVIEW_API = '/cms/api/translations/review';
+const REVIEW_ALL_API = '/cms/api/translations/flagged';
 
 window.switchTab = function(el, tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`[data-arg0="${tab}"]`).classList.add('active');
+    document.querySelector('[data-arg0="' + tab + '"]').classList.add('active');
     document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
     document.getElementById(tab + '-panel').style.display = 'block';
 };
@@ -134,17 +114,63 @@ window.filterTranslations = function(input) {
     });
 };
 
-function updateFlaggedCount() {
-    fetch('/cms/api/translations/flagged')
+window.cycleReview = function(el) {
+    const cls = el.className;
+    const msgid = el.dataset.msgid;
+    const row = el.closest('tr');
+
+    if (cls.includes('rv-none')) {
+        // ○ → flagged (red)
+        el.className = 'rv rv-flagged';
+        row.className = 'rv-row-flagged';
+        setReview(msgid, 'flagged');
+    } else if (cls.includes('rv-flagged')) {
+        // flagged (red) → approved (green)
+        el.className = 'rv rv-approved';
+        row.className = 'rv-row-approved';
+        setReview(msgid, 'approved');
+    } else if (cls.includes('rv-pending')) {
+        // pending (yellow) → approved (green)
+        el.className = 'rv rv-approved';
+        row.className = 'rv-row-approved';
+        setReview(msgid, 'approved');
+    } else {
+        // approved (green) → none
+        el.className = 'rv rv-none';
+        row.className = '';
+        setReview(msgid, '');
+    }
+    updateSummary();
+};
+
+function setReview(msgid, status) {
+    fetch(REVIEW_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ msgid: msgid, status: status })
+    }).catch(function(){});
+}
+
+function updateSummary() {
+    fetch(REVIEW_ALL_API)
         .then(r => r.json())
         .then(d => {
-            const n = d.flagged ? d.flagged.length : 0;
-            const el = document.getElementById('flaggedCount');
-            el.textContent = n ? '🏳️ ' + n + ' vertaling(en) gemarkeerd' : '';
-            el.dataset.count = n;
+            let flagged = 0, pending = 0, approved = 0;
+            Object.values(d).forEach(function(v) {
+                if (v === 'flagged') flagged++;
+                else if (v === 'pending') pending++;
+                else if (v === 'approved') approved++;
+            });
+            const parts = [];
+            if (flagged) parts.push('<span style="color:#ef4444;">●</span> ' + flagged);
+            if (pending) parts.push('<span style="color:#eab308;">●</span> ' + pending);
+            if (approved) parts.push('<span style="color:#22c55e;">✓</span> ' + approved);
+            document.getElementById('reviewSummary').innerHTML = parts.length
+                ? parts.join(' &nbsp; ')
+                : 'NL→EN: {{ nl_to_en|length }} · EN→NL: {{ en_to_nl|length }}';
         });
 }
-updateFlaggedCount();
+updateSummary();
 
 window.startAutoFix = function() {
     const btn = document.getElementById('autoFixBtn');
@@ -154,13 +180,13 @@ window.startAutoFix = function() {
     status.style.display = 'block';
     status.innerHTML = '⏳ AI vertaalt... (dit kan even duren)';
 
-    const enToNl = Array.from(document.querySelectorAll('#en-nl-panel .flag-checkbox:checked'))
-        .map(cb => cb.dataset.msgid);
-    const nlToEn = Array.from(document.querySelectorAll('#nl-en-panel .flag-checkbox:checked'))
-        .map(cb => cb.dataset.msgid);
+    const enToNl = Array.from(document.querySelectorAll('#en-nl-panel .rv-flagged'))
+        .map(el => el.dataset.msgid);
+    const nlToEn = Array.from(document.querySelectorAll('#nl-en-panel .rv-flagged'))
+        .map(el => el.dataset.msgid);
 
     if (!enToNl.length && !nlToEn.length) {
-        status.innerHTML = '❌ Geen gemarkeerde vertalingen';
+        status.innerHTML = '❌ Geen gemarkeerde vertalingen (● rood)';
         btn.disabled = false;
         btn.textContent = '🤖 Auto-fix gemarkeerd';
         return;
@@ -177,7 +203,7 @@ window.startAutoFix = function() {
             html += '✓ ' + data.fixed + ' vertalingen gefixt<br>';
             if (data.errors) {
                 html += '⚠ ' + data.errors + ' fouten:<br>';
-                (data.results || []).filter(r => r.status === 'error').slice(0, 5).forEach(e => {
+                (data.results || []).filter(function(r) { return r.status === 'error'; }).slice(0, 5).forEach(function(e) {
                     html += '&nbsp;&nbsp;• ' + escapeHtml(e.msgid) + ': ' + escapeHtml(e.error || '') + '<br>';
                 });
             }
@@ -185,7 +211,7 @@ window.startAutoFix = function() {
             status.innerHTML = html;
             btn.style.display = 'none';
         })
-        .catch(err => {
+        .catch(function(err) {
             status.innerHTML = '❌ Fout: ' + err.message;
             btn.disabled = false;
             btn.textContent = '🤖 Auto-fix gemarkeerd';
@@ -193,7 +219,7 @@ window.startAutoFix = function() {
 };
 
 function escapeHtml(s) {
-    const d = document.createElement('div');
+    var d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
 }

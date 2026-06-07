@@ -14,8 +14,21 @@ from ..models import Setting
 logger = logging.getLogger(__name__)
 
 
+def _get_review():
+    raw = Setting.get("translation_review")
+    if raw:
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
+
+def _save_review(data):
+    Setting.set("translation_review", json.dumps(data))
+
+
 def _update_po_entry(filepath, msgid, new_msgstr):
-    """Update a single msgstr in a .po file. Handles multi-line entries."""
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
@@ -153,68 +166,48 @@ def translations_page():
             }
         )
 
-    flagged_raw = Setting.get("translation_flags")
-    flagged = set()
-    if flagged_raw:
-        try:
-            flagged = set(json.loads(flagged_raw))
-        except (json.JSONDecodeError, TypeError):
-            flagged = set()
+    review = _get_review()
 
     return render_template(
         "cms/translations.html",
         nl_to_en=nl_to_en,
         en_to_nl=en_to_nl,
-        flagged=flagged,
+        review=review,
     )
 
 
-@cms_bp.route("/api/translations/flag", methods=["POST"])
+@cms_bp.route("/api/translations/review", methods=["POST"])
 @csrf.exempt
 @login_required
-def flag_translation():
+def set_review():
     data = request.get_json(silent=True) or {}
     msgid = data.get("msgid", "").strip()
-    flagged = data.get("flagged", True)
+    status = data.get("status", "").strip()
 
     if not msgid:
         return jsonify({"error": "msgid required"}), 400
+    if status not in ("flagged", "pending", "approved", ""):
+        return jsonify({"error": "invalid status"}), 400
 
-    flagged_raw = Setting.get("translation_flags")
-    flags = set()
-    if flagged_raw:
-        try:
-            flags = set(json.loads(flagged_raw))
-        except (json.JSONDecodeError, TypeError):
-            flags = set()
-
-    if flagged:
-        flags.add(msgid)
+    review = _get_review()
+    if status:
+        review[msgid] = status
     else:
-        flags.discard(msgid)
-
-    Setting.set("translation_flags", json.dumps(list(flags)))
-    return jsonify({"ok": True, "flagged": msgid in (flags if flagged else set())})
+        review.pop(msgid, None)
+    _save_review(review)
+    return jsonify({"ok": True, "msgid": msgid, "status": status})
 
 
 @cms_bp.route("/api/translations/flagged")
 @login_required
-def get_flagged():
-    flagged_raw = Setting.get("translation_flags")
-    flags = []
-    if flagged_raw:
-        try:
-            flags = json.loads(flagged_raw)
-        except (json.JSONDecodeError, TypeError):
-            flags = []
-    return jsonify({"flagged": flags})
+def get_review_all():
+    return jsonify(_get_review())
 
 
 @cms_bp.route("/api/translations/auto-fix", methods=["POST"])
 @csrf.exempt
 @login_required
 def auto_fix():
-    """Auto-fix flagged translations using AI (synchronous)."""
     from cms.services.ai_service import _generate
 
     data = request.get_json(silent=True) or {}
@@ -326,6 +319,11 @@ def auto_fix():
         pass
 
     fixed = [r["msgid"] for r in results if r["status"] == "fixed"]
+
+    review = _get_review()
+    for msgid in fixed:
+        review[msgid] = "pending"
+    _save_review(review)
 
     return jsonify(
         {"results": results, "fixed": len(fixed), "errors": len(results) - len(fixed)}

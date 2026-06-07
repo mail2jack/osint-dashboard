@@ -3122,7 +3122,7 @@ msgstr "🔍 Bulk Extraheren uit Bevindingen"
 
 #: templates/cms/subjects/view.html:370
 msgid "+ Add ID"
-msgstr "Voeg ID toe"
+msgstr "Toevoegen ID"
 
 #: templates/cms/subjects/view.html:377
 msgid "ID/Value"

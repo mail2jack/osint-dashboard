@@ -1117,7 +1117,7 @@ msgstr "Reminders"
 #: templates/cms/cases/view.html:559
 #, fuzzy
 msgid "+ Add Reminder"
-msgstr "Reminders"
+msgstr "Adding a reminder"
 
 #: templates/cms/cases/view.html:569 templates/cms/reminders/list.html:159
 #, fuzzy
@@ -2732,17 +2732,17 @@ msgstr ""
 #: templates/cms/subjects/create.html:218 templates/cms/subjects/edit.html:89
 #: templates/cms/subjects/view.html:200
 msgid "Aantal Deuren"
-msgstr ""
+msgstr "Number of Doors"
 
 #: templates/cms/subjects/create.html:222 templates/cms/subjects/edit.html:93
 #: templates/cms/subjects/view.html:203
 msgid "Aantal Zitplaatsen"
-msgstr ""
+msgstr "Number of seats"
 
 #: templates/cms/subjects/create.html:226 templates/cms/subjects/edit.html:113
 #: templates/cms/subjects/view.html:218
 msgid "APK Vervaldatum"
-msgstr ""
+msgstr "Expiration Date of APK"
 
 #: templates/cms/subjects/create.html:227 templates/cms/subjects/edit.html:114
 #: templates/cms/subjects/edit.html:142
@@ -2968,7 +2968,7 @@ msgstr ""
 
 #: templates/cms/subjects/edit.html:101 templates/cms/subjects/view.html:209
 msgid "Aantal Cilinders"
-msgstr ""
+msgstr "Number of Cylinders"
 
 #: templates/cms/subjects/edit.html:105 templates/cms/subjects/view.html:212
 msgid "Massa Ledig (kg)"
@@ -3297,7 +3297,7 @@ msgstr ""
 #: templates/cms/subjects/view.html:370
 #, fuzzy
 msgid "+ Add ID"
-msgstr "Reminders"
+msgstr "Add ID"
 
 #: templates/cms/subjects/view.html:377
 msgid "ID/Value"
@@ -3456,7 +3456,7 @@ msgstr ""
 #: templates/cms/subjects/view.html:612
 #, fuzzy
 msgid "+ Add Relationship"
-msgstr "Reminders"
+msgstr "Add Relationship"
 
 #: templates/cms/subjects/view.html:617 templates/cms/subjects/view.html:850
 #, fuzzy
@@ -3599,7 +3599,7 @@ msgstr ""
 
 #: templates/cms/subjects/view.html:947
 msgid "APK vervalt:"
-msgstr ""
+msgstr "App falls"
 
 #: templates/cms/subjects/view.html:948
 msgid "Verzekerd (WAM):"
