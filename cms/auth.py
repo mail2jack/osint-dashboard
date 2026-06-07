@@ -1153,23 +1153,42 @@ def create_user() -> flask.Response:
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
         generated_password = "".join(secrets.choice(alphabet) for _ in range(16))
         return render_template(
-            "cms/users/create.html", generated_password=generated_password
+            "cms/users/create.html",
+            generated_password=generated_password,
+            username="",
+            email="",
+            full_name="",
+            role="",
         )
 
-    raw = request.get_json() if request.is_json else request.form
+    is_json = request.is_json
+    raw = request.get_json() if is_json else request.form
+
+    def _error(msg: str):
+        if is_json:
+            return jsonify({"error": msg}), 400
+        flash(msg, "error")
+        return render_template(
+            "cms/users/create.html",
+            generated_password=raw.get("generated_password", ""),
+            username=raw.get("username", ""),
+            email=raw.get("email", ""),
+            full_name=raw.get("full_name", ""),
+            role=raw.get("role", ""),
+        )
 
     try:
         validated = CreateUserSchema(**raw)
     except Exception:
-        return jsonify({"error": "Validation failed"}), 400
+        return _error("Validation failed")
 
     data = validated.model_dump(exclude_none=True)
 
     # Check for duplicate username/email
     if User.query.filter_by(username=data["username"]).first():
-        return jsonify({"error": "Username already exists"}), 400
+        return _error("Username already exists")
     if User.query.filter_by(email=data["email"]).first():
-        return jsonify({"error": "Email already exists"}), 400
+        return _error("Email already exists")
 
     # Validate role
     valid_roles = [
@@ -1180,11 +1199,11 @@ def create_user() -> flask.Response:
         "viewer",
     ]
     if data["role"] not in valid_roles:
-        return jsonify({"error": "Invalid role"}), 400
+        return _error("Invalid role")
 
     password = data.get("password") or data.get("generated_password")
     if not password:
-        return jsonify({"error": "Password is required"}), 400
+        return _error("Password is required")
 
     user = User(
         username=data["username"],
