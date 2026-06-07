@@ -717,16 +717,23 @@ def set_password(token) -> flask.Response:
         if limited:
             flash("Too many attempts. Please wait before trying again.", "danger")
             return redirect(url_for("auth.login"))
-        raw = request.get_json() if request.is_json else request.form
+        is_json = request.is_json
+        raw = request.get_json() if is_json else request.form
         try:
             validated = SetPasswordSchema(**raw)
         except Exception:
-            return jsonify({"error": "Invalid input"}), 400
+            if is_json:
+                return jsonify({"error": "Invalid input"}), 400
+            flash("Invalid input. Please check your password.", "danger")
+            return render_template("cms/set_password.html", token=token)
         password = validated.password
         confirm = validated.confirm_password
 
         if password != confirm:
-            return jsonify({"error": "Passwords do not match"}), 400
+            if is_json:
+                return jsonify({"error": "Passwords do not match"}), 400
+            flash("Passwords do not match.", "danger")
+            return render_template("cms/set_password.html", token=token)
 
         user.set_password(password)
         user.clear_reset_token()
@@ -1258,21 +1265,28 @@ def create_user() -> flask.Response:
 @login_required
 def edit_user(user_id: str) -> flask.Response:
     """Edit user details."""
+    is_json = request.is_json
     # Users can edit their own profile, admins can edit anyone
     if user_id != current_user.id and not current_user.is_admin:
-        return jsonify({"error": "Access denied"}), 403
+        if is_json:
+            return jsonify({"error": "Access denied"}), 403
+        flash("Access denied.", "danger")
+        return redirect(url_for("users.list_users"))
 
     user = db.session.get(User, user_id) or abort(404)
 
     if request.method == "POST":
-        raw = request.get_json() if request.is_json else request.form
+        raw = request.get_json() if is_json else request.form
         try:
             validated = EditUserSchema(**raw)
         except Exception:
             logger.exception("User edit validation failed")
-            return jsonify(
-                {"error": "Validation failed", "details": "Invalid data provided"}
-            ), 400
+            if is_json:
+                return jsonify(
+                    {"error": "Validation failed", "details": "Invalid data provided"}
+                ), 400
+            flash("Validation failed. Please check your input.", "danger")
+            return render_template("cms/users/edit.html", user=user)
         data = validated.model_dump(exclude_none=True)
         old_values = {}
         changes = {}

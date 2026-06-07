@@ -165,14 +165,19 @@ def generate_case_report(case_id: str) -> flask.Response:
         vd = request.validated_data
         template_id = vd.get("template_id")
         if not template_id:
-            return jsonify(
-                {
-                    "error": "Validation failed",
-                    "details": [
-                        {"field": "template_id", "message": "Template is required"}
-                    ],
-                }
-            ), 400
+            if request.is_json:
+                return jsonify(
+                    {
+                        "error": "Validation failed",
+                        "details": [
+                            {"field": "template_id", "message": "Template is required"}
+                        ],
+                    }
+                ), 400
+            flash("Please select a template.", "danger")
+            return render_template(
+                "cms/reports/generate.html", case=case, templates=templates
+            )
 
         custom_fields = {
             "conclusion": vd.get("conclusion", ""),

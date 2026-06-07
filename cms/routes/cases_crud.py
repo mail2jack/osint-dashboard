@@ -292,6 +292,12 @@ def create_case() -> flask.Response:
 def edit_case(case_id: str) -> flask.Response:
     """Edit case details."""
     case = db.session.get(Case, case_id) or abort(404)
+    clients = Client.query.filter_by(is_deleted=False, is_active=True).limit(500).all()
+    investigators = User.query.filter(
+        User.is_active == True,
+        User.role.in_(["admin", "senior_investigator", "junior_investigator"]),
+    ).all()
+    is_json = request.is_json
 
     if request.method == "POST":
         data = request.validated_data
@@ -313,11 +319,19 @@ def edit_case(case_id: str) -> flask.Response:
                     if field == "priority":
                         valid_priorities = {v.value for v in CasePriority}
                         if new_value not in valid_priorities:
-                            return jsonify(
-                                {
-                                    "error": f"Invalid priority. Must be one of: {', '.join(sorted(valid_priorities))}"
-                                }
-                            ), 400
+                            if is_json:
+                                return jsonify(
+                                    {
+                                        "error": f"Invalid priority. Must be one of: {', '.join(sorted(valid_priorities))}"
+                                    }
+                                ), 400
+                            flash("Invalid priority value.", "danger")
+                            return render_template(
+                                "cms/cases/edit.html",
+                                case=case,
+                                clients=clients,
+                                investigators=investigators,
+                            )
                     changes[field] = {
                         "old": str(old_value) if old_value else None,
                         "new": str(new_value),
@@ -366,7 +380,15 @@ def edit_case(case_id: str) -> flask.Response:
             if case.transition_status(data["status"], current_user.id):
                 changes["status"] = {"old": case.status, "new": data["status"]}
             else:
-                return jsonify({"error": "Invalid status transition"}), 400
+                if is_json:
+                    return jsonify({"error": "Invalid status transition"}), 400
+                flash("Invalid status transition.", "danger")
+                return render_template(
+                    "cms/cases/edit.html",
+                    case=case,
+                    clients=clients,
+                    investigators=investigators,
+                )
 
         case.updated_at = datetime.now(timezone.utc)
 
@@ -382,17 +404,11 @@ def edit_case(case_id: str) -> flask.Response:
         )
         db.session.commit()
 
-        if request.is_json:
+        if is_json:
             return jsonify({"message": "Case updated", "case": case.to_dict()})
 
         flash("Case updated successfully.", "success")
         return redirect(url_for("cms.view_case", case_id=case.id))
-
-    clients = Client.query.filter_by(is_deleted=False, is_active=True).limit(500).all()
-    investigators = User.query.filter(
-        User.is_active == True,
-        User.role.in_(["admin", "senior_investigator", "junior_investigator"]),
-    ).all()
 
     return render_template(
         "cms/cases/edit.html", case=case, clients=clients, investigators=investigators

@@ -115,7 +115,10 @@ def create_client() -> flask.Response:
         required = ["name"]
         for field in required:
             if not data.get(field):
-                return jsonify({"error": f"{field} is required"}), 400
+                if request.is_json:
+                    return jsonify({"error": f"{field} is required"}), 400
+                flash(f"{field} is required.", "danger")
+                return render_template("cms/clients/create.html")
 
         name = data["name"].strip()
 
