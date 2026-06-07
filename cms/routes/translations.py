@@ -218,12 +218,15 @@ def auto_fix():
     from cms.services.ai_service import _generate
 
     raw = Setting.get("translation_flags")
+    logger.info("auto_fix: raw Setting value = %r", raw)
     flagged = []
     if raw:
         try:
             flagged = json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning("auto_fix: json parse failed: %s", e)
             flagged = []
+    logger.info("auto_fix: parsed flagged = %r", flagged)
 
     if not flagged:
         return jsonify({"error": "Geen gemarkeerde vertalingen"}), 400

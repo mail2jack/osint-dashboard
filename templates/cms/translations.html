@@ -46,7 +46,7 @@
     </div>
 </div>
 
-<div class="flagged-count" id="flaggedCount"></div>
+<div class="flagged-count" id="flaggedCount">🏳️ {{ flagged|length }} vertaling(en) gemarkeerd via server</div>
 
 <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
   <span style="font-size:0.8rem;color:var(--text-muted);">
@@ -108,12 +108,16 @@ function flushFlags() {
     if (flagQueue.size === 0) return;
     const items = Array.from(flagQueue);
     flagQueue.clear();
-    const checked = document.querySelector(`[data-msgid="${CSS.escape(items[0])}"]`)?.checked;
-    fetch('/cms/api/translations/flag', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ msgid: items[0], flagged: !!checked })
-    });
+    for (const msgid of items) {
+        const cb = document.querySelector(`[data-msgid="${CSS.escape(msgid)}"]`);
+        const checked = cb ? cb.checked : false;
+        fetch('/cms/api/translations/flag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ msgid: msgid, flagged: !!checked })
+        });
+    }
+    updateFlaggedCount();
 }
 
 window.switchTab = function(el, tab) {
@@ -131,8 +135,14 @@ window.filterTranslations = function(input) {
 };
 
 function updateFlaggedCount() {
-    const n = document.querySelectorAll('.flag-checkbox:checked').length;
-    document.getElementById('flaggedCount').textContent = n ? '🏳️ ' + n + ' vertaling(en) gemarkeerd' : '';
+    fetch('/cms/api/translations/flagged')
+        .then(r => r.json())
+        .then(d => {
+            const n = d.flagged ? d.flagged.length : 0;
+            const el = document.getElementById('flaggedCount');
+            el.textContent = n ? '🏳️ ' + n + ' vertaling(en) gemarkeerd' : '';
+            el.dataset.count = n;
+        });
 }
 updateFlaggedCount();
 
