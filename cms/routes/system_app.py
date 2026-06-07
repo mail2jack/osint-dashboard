@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 def register_system_routes(app: Flask) -> None:
     """Register system-level routes on the Flask app."""
+    from .. import csrf
 
     @app.route("/")
     def index() -> flask.Response:
@@ -140,6 +141,7 @@ def register_system_routes(app: Flask) -> None:
         return jsonify({"error": "Request too large (max 16MB)"}), 413
 
     @app.route("/api/keep-alive", methods=["POST"])
+    @csrf.exempt
     def session_keep_alive() -> flask.Response:
         """Extend the current session lifetime.
 
