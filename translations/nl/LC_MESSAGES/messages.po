@@ -847,7 +847,7 @@ msgstr "Documenten (%(count)s)"
 
 #: templates/cms/cases/view.html:319
 msgid "+ Upload Document"
-msgstr "Foto uploaden"
+msgstr "Upload document"
 
 #: templates/cms/cases/view.html:327
 msgid "Filename"
@@ -2812,7 +2812,7 @@ msgstr "Cilinderinhoud (cc)"
 
 #: templates/cms/subjects/edit.html:101 templates/cms/subjects/view.html:209
 msgid "Aantal Cilinders"
-msgstr "Aantal Cilinders"
+msgstr "Aantal cilinder(s)"
 
 #: templates/cms/subjects/edit.html:105 templates/cms/subjects/view.html:212
 msgid "Massa Ledig (kg)"

@@ -218,22 +218,27 @@ def auto_fix():
     from cms.services.ai_service import _generate
 
     data = request.get_json(silent=True) or {}
-    flagged = data.get("msgids", [])
+    en_to_nl_ids = data.get("en_to_nl", data.get("msgids", []))
+    nl_to_en_ids = data.get("nl_to_en", [])
 
-    if not flagged or not isinstance(flagged, list) or not len(flagged):
+    if not isinstance(en_to_nl_ids, list):
+        en_to_nl_ids = []
+    if not isinstance(nl_to_en_ids, list):
+        nl_to_en_ids = []
+
+    if not en_to_nl_ids and not nl_to_en_ids:
         raw = Setting.get("translation_flags")
         logger.info("auto_fix: fallback to Setting = %r", raw)
         if raw:
             try:
-                flagged = json.loads(raw)
+                en_to_nl_ids = json.loads(raw)
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning("auto_fix: json parse failed: %s", e)
-                flagged = []
 
-    logger.info("auto_fix: final msgids = %r", flagged)
-
-    if not flagged or not isinstance(flagged, list) or not len(flagged):
+    if not en_to_nl_ids and not nl_to_en_ids:
         return jsonify({"error": "Geen gemarkeerde vertalingen"}), 400
+
+    logger.info("auto_fix: en_to_nl=%r nl_to_en=%r", en_to_nl_ids, nl_to_en_ids)
 
     root_path = current_app.root_path
     nl_path = os.path.join(root_path, "translations/nl/LC_MESSAGES/messages.po")
@@ -244,56 +249,71 @@ def auto_fix():
     nl_index = {e["msgid"]: e["msgstr"] for e in nl_entries if e["msgid"]}
 
     results = []
-    for msgid in flagged:
-        errors = []
-        fixed_any = False
+    seen = set()
 
-        prompt_en_nl = (
+    for msgid in en_to_nl_ids:
+        seen.add(msgid)
+        prompt = (
             "Translate the following UI text from English to Dutch. "
             "Return ONLY the translation, no explanations or quotes:\n\n" + msgid
         )
         try:
             dutch = _generate(
-                prompt_en_nl,
+                prompt,
                 "You are a professional translator for an OSINT dashboard.",
                 timeout=120,
             )
             if dutch and dutch.strip():
                 _update_po_entry(nl_path, msgid, dutch.strip())
-                fixed_any = True
+                results.append({"msgid": msgid, "status": "fixed", "direction": "en→nl"})
             else:
-                errors.append("EN→NL leeg")
-        except Exception as e:
-            errors.append(f"EN→NL: {e}")
-
-        nl_source = nl_index.get(msgid, "")
-        if nl_source and nl_source.strip():
-            prompt_nl_en = (
-                "Translate the following UI text from Dutch to English. "
-                "Return ONLY the translation, no explanations or quotes:\n\n"
-                + nl_source
-            )
-            try:
-                english = _generate(
-                    prompt_nl_en,
-                    "You are a professional translator for an OSINT dashboard.",
-                    timeout=120,
+                results.append(
+                    {
+                        "msgid": msgid,
+                        "status": "error",
+                        "error": "EN→NL: AI returned empty",
+                    }
                 )
-                if english and english.strip():
-                    _update_po_entry(en_path, msgid, english.strip())
-                    fixed_any = True
-                else:
-                    errors.append("NL→EN leeg")
-            except Exception as e:
-                errors.append(f"NL→EN: {e}")
+        except Exception as e:
+            results.append({"msgid": msgid, "status": "error", "error": f"EN→NL: {e}"})
 
-        results.append(
-            {
-                "msgid": msgid,
-                "status": "fixed" if fixed_any else "error",
-                "error": "; ".join(errors) if errors else None,
-            }
+    for msgid in nl_to_en_ids:
+        if msgid in seen:
+            continue
+        nl_source = nl_index.get(msgid, "")
+        if not nl_source or not nl_source.strip():
+            results.append(
+                {
+                    "msgid": msgid,
+                    "status": "error",
+                    "error": "NL→EN: geen brontekst in NL .po",
+                }
+            )
+            continue
+        prompt = (
+            "Translate the following UI text from Dutch to English. "
+            "Return ONLY the translation, no explanations or quotes:\n\n"
+            + nl_source
         )
+        try:
+            english = _generate(
+                prompt,
+                "You are a professional translator for an OSINT dashboard.",
+                timeout=120,
+            )
+            if english and english.strip():
+                _update_po_entry(en_path, msgid, english.strip())
+                results.append({"msgid": msgid, "status": "fixed", "direction": "nl→en"})
+            else:
+                results.append(
+                    {
+                        "msgid": msgid,
+                        "status": "error",
+                        "error": "NL→EN: AI returned empty",
+                    }
+                )
+        except Exception as e:
+            results.append({"msgid": msgid, "status": "error", "error": f"NL→EN: {e}"})
 
     try:
         subprocess.run(

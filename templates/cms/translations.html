@@ -154,10 +154,12 @@ window.startAutoFix = function() {
     status.style.display = 'block';
     status.innerHTML = '⏳ AI vertaalt... (dit kan even duren)';
 
-    const checked = Array.from(document.querySelectorAll('.flag-checkbox:checked'))
+    const enToNl = Array.from(document.querySelectorAll('#en-nl-panel .flag-checkbox:checked'))
+        .map(cb => cb.dataset.msgid);
+    const nlToEn = Array.from(document.querySelectorAll('#nl-en-panel .flag-checkbox:checked'))
         .map(cb => cb.dataset.msgid);
 
-    if (!checked.length) {
+    if (!enToNl.length && !nlToEn.length) {
         status.innerHTML = '❌ Geen gemarkeerde vertalingen';
         btn.disabled = false;
         btn.textContent = '🤖 Auto-fix gemarkeerd';
@@ -167,7 +169,7 @@ window.startAutoFix = function() {
     fetch('/cms/api/translations/auto-fix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ msgids: checked })
+        body: JSON.stringify({ en_to_nl: enToNl, nl_to_en: nlToEn })
     })
         .then(r => r.json())
         .then(data => {
