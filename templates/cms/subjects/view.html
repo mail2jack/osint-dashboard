@@ -79,10 +79,12 @@
                 <span class="info-label">{{ _('Type') }}</span>
                 <span class="info-value">{{ subject.subject_type }}</span>
             </div>
+            {% if subject.subject_type != 'vehicle' %}
             <div class="info-row">
                 <span class="info-label">{{ _('Risk Score') }}</span>
                 <span class="info-value">{{ subject.risk_score }}/100</span>
             </div>
+            {% endif %}
             {% if subject.subject_type == 'company' %}
             <div class="info-row">
                 <span class="info-label">{{ _('KVK-nummer') }}</span>
@@ -327,10 +329,12 @@
                     {% endif %}
                 </div>
             </div>
+            {% if subject.subject_type != 'vehicle' %}
             <div class="info-row">
                 <span class="info-label">{{ _('💳 Bank / IBAN') }}</span>
                 <span class="info-value">{{ subject.bank_account|redact_for_viewer if subject.bank_account else '-' }}</span>
             </div>
+            {% endif %}
             <!-- Subject.notes is deprecated. Comments now use Comment model with timestamps -->
         </div>
         {% if linked_cases %}
@@ -375,6 +379,7 @@
     </div>
 </div>
 
+{% if subject.subject_type != 'vehicle' %}
 <!-- Social Media IDs Section -->
 <div class="card">
     <div class="card-header">
@@ -454,6 +459,7 @@
         {% endif %}
     </div>
 </div>
+{% endif %}
 
 <!-- Username Search Section -->
 <div class="card">
