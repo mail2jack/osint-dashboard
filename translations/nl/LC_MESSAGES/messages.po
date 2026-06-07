@@ -363,12 +363,7 @@ msgstr "Begin met zoeken"
 
 #: templates/cms/search.html:398
 msgid "Enter a search term to find cases, clients, subjects, findings, and more."
-msgstr ""
-"Voer een zoekterm in om dossiers, cliënten, subjecten, bevindingen en "
-"meer te vinden.Voer een zoekterm in om zaken, cliënten, subjecten, "
-"bevindingen en meer te vinden.Voer een zoekterm in om dossiers, cliënten,"
-" subjecten, bevindingen en meer te vinden.Voer een zoekterm in om "
-"dossiers, cliënten, subjecten, bevindingen en meer te vinden."
+msgstr "Voer een zoekterm in om dossiers, cliënten, subjecten, bevindingen en meer te vinden."
 
 #: templates/cms/cases/create.html:93
 msgid "Create New Case"

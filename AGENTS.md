@@ -262,7 +262,9 @@
 ## Input Validation (`cms/validation.py`)
 - Pydantic `@validate(Schema)` decorator for POST routes. Handles zowel JSON als form data.
 - Usage: `@validate(EmailCheckSchema)` after `@login_required`, then `request.validated_data`.
-- Returns 400 with `{"error": "Validation failed", "details": [...]}` on invalid input.
+- Returns 400 with `{"error": "Validation failed", "details": [...]}` on invalid input for JSON requests.
+- **Form POST failure**: `@validate` now checks `request.is_json` — form POSTs get `flash()` + `redirect(request.path)` instead of JSON (sinds June 7 fix). Dit voorkomt dat JS-less browsers/forms een kale JSON error zien.
+- Schema `int` fields met default (`risk_score: int = 0`, `reliability_score: int = 5`) zijn `Any` om lege form-submits te accepteren.
 - Alle 78 schemas in `cms/validation.py` — elke POST route in de CRM modules gebruikt `@validate`.
 - Uitzonderingen: endpoints zonder request body (archive, delete, complete, stop) hebben geen schema nodig.
 - `phone_service.py` routes: validatie toegepast op `add_url_rule` niveau in `app_bp.py` (i.p.v. decorator op functie) zodat `phone_lookup_all()` de ongedecoreerde functies intern kan aanroepen.
@@ -296,13 +298,19 @@
 - `templates/cms/base.html` has a global event delegation system (just before `</body>`):
   - `click` delegation on `[data-click]` elements — calls `window[dataset.click]` with args from `data-arg0`, `data-arg1`, etc.
   - `change` delegation on `[data-change]` elements — calls `window[dataset.change](element)`
-  - `submit` delegation on `[data-submit]` forms — calls `window[dataset.submit](event)`
+  - `submit` delegation on `[data-submit]` forms — calls `window[dataset.submit](event)`. **POST forms**: calls `e.preventDefault()` first + checks `e.submitter` — only submit button clicks trigger the handler; Enter key is silently ignored.
   - `input` delegation on `[data-input]` elements — calls `window[dataset.input](element)`
 - Helper functions in `base.html`: `removeEntry`, `navigateTo`, `reloadPage`.
 - Inline `onclick`/`onchange`/`onsubmit` handlers migrated to data attributes across ALL templates (~240 handlers).
 - 3 survivors in `spiderfoot/list.html` — `event.stopPropagation()` inline handlers on card buttons that prevent parent `<a>` navigation from firing (cannot use delegation because `stopPropagation()` must fire at the target, not after bubbling to document).
 - Flask template variables in data attributes use `|tojson` filter for safe escaping.
 - JS template literals (inside `<script>` blocks) use `data-click` attribute assignment directly.
+
+## Session Keep-Alive
+- **Problem**: 8-hour session timer would `location.reload()` the page when expired, causing data loss during form entry.
+- **Fix**: Silent `/api/keep-alive` fetch extends the session instead of reloading.
+- **`@csrf.exempt`**: Added to `/api/keep-alive` route — the fetch request carried no CSRF token, resulting in 400 errors.
+- **File**: `static/js/base.js:82-100` (interval check), `cms/routes/system_app.py:143` (route).
 
 ## Deprecations Fixed
 - `datetime.utcnow()` → `datetime.now(timezone.utc)` (Python 3.12 compat).
@@ -456,6 +464,31 @@ sudo systemctl enable --now tor
 - All bot configuration is stored in the `Setting` model (not `.env`), managed via the Settings GUI.
 - The API token from @BotFather is stored encrypted (sensitive setting).
 - Channel messages and inline queries are NOT handled (scope limited to private chat commands).
+
+## Session Summary (June 7)
+
+### @validate Form POST Fix
+- **Problem**: Pydantic `@validate` decorator returned JSON 400 on ALL validation failures, even for HTML form POSTs (not just API calls). Users got a raw JSON error instead of a re-rendered form with flash messages.
+- **Fix**: `@validate` now checks `request.is_json` — JSON requests get JSON 400; form POSTs get `flash()` + `redirect(request.path)`.
+- **Affects**: 14 routes using `@validate`.
+- **Schema fixes**: `risk_score: int = 0` → `Any` in `CreateSubjectSchema`, `reliability_score: int = 5` → `Any` in `CreateFindingSchema` — HTML form submits empty string for unfilled fields, causing Pydantic `ValidationError`.
+
+### Enter Key Accidental Form Submission
+- **Problem**: Pressing Enter in any form field (especially date picker, autofill dropdown, or text input) triggered the `data-submit` handler, submitting the form unintentionally.
+- **Fix**: `data-submit` delegation handler in `base.js:399-417` now calls `e.preventDefault()` on all POST forms. The handler checks `e.submitter` (SubmitEvent property) — only actual submit button clicks proceed; Enter key is silently ignored.
+- **Browser compat**: `e.submitter` supported in Chrome 82+ / Firefox 92+ / Safari 15+.
+
+### Session Timeout Data Loss
+- **Problem**: 60-second interval check would `location.reload()` when the 8-hour `session_start` timer expired, causing unsaved form data to be lost.
+- **Fix**: Replaced `location.reload()` with silent `fetch('/api/keep-alive')` call that extends the Flask session. No page reload.
+- **CSRF fix**: `@csrf.exempt` added to `/api/keep-alive` route — the fetch carried no CSRF token, returning 400 silently. The keep-alive had been broken since CSRF was enabled.
+
+### CSS Class Collision
+- **Problem**: Case view pages had black-on-black text because global `.header` (nav bar with dark background) matched local `.header` class used for case title wrapper.
+- **Fix**: Renamed local `.header` to `.page-header` in `cases/view.html`, `cases/list.html`, `subjects/list.html`.
+
+### Key Principle
+- **Form reliability**: Always test CRUD routes with both API calls AND browser form submissions. The `@validate` decorator and `data-submit` delegation assume API patterns; form-first users (tab-through-fields, Enter to submit) hit edge cases that API tests miss.
 
 ## Backup Verification (`scripts/verify_backup.sh`)
 - **Usage**: `./scripts/verify_backup.sh` — verifies latest backup archive.
