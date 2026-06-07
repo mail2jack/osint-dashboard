@@ -178,26 +178,43 @@ def create_case() -> flask.Response:
         User.role.in_(["admin", "senior_investigator", "junior_investigator"]),
     ).all()
 
+    is_json = request.is_json
+    raw = request.get_json() if is_json else request.form
+
+    def _error(msg):
+        if is_json:
+            return jsonify({"error": msg}), 400
+        flash(msg, "error")
+        return render_template(
+            "cms/cases/create.html",
+            clients=clients,
+            investigators=investigators,
+            title=raw.get("title", ""),
+            client_id=raw.get("client_id", ""),
+            lead_investigator_id=raw.get("lead_investigator_id", ""),
+            description=raw.get("description", ""),
+            priority=raw.get("priority", "medium"),
+            case_type=raw.get("case_type", ""),
+        )
+
     if request.method == "POST":
         data = request.validated_data
 
         required = ["title", "client_id"]
         for field in required:
             if not data.get(field):
-                return jsonify({"error": f"{field} is required"}), 400
+                return _error(f"{field} is required")
 
         client = db.session.get(Client, data["client_id"])
         if not client or client.is_deleted:
-            return jsonify({"error": "Invalid client"}), 400
+            return _error("Invalid client")
 
         priority = data.get("priority", CasePriority.MEDIUM.value)
         valid_priorities = {v.value for v in CasePriority}
         if priority not in valid_priorities:
-            return jsonify(
-                {
-                    "error": f"Invalid priority. Must be one of: {', '.join(sorted(valid_priorities))}"
-                }
-            ), 400
+            return _error(
+                f"Invalid priority. Must be one of: {', '.join(sorted(valid_priorities))}"
+            )
 
         case = Case(
             case_number=Case.generate_case_number(),
@@ -255,7 +272,15 @@ def create_case() -> flask.Response:
         return redirect(url_for("cms.view_case", case_id=case.id))
 
     return render_template(
-        "cms/cases/create.html", clients=clients, investigators=investigators
+        "cms/cases/create.html",
+        clients=clients,
+        investigators=investigators,
+        title="",
+        client_id="",
+        lead_investigator_id="",
+        description="",
+        priority="medium",
+        case_type="",
     )
 
 
