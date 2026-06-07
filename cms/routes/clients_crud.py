@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import flask
 from flask import request, jsonify, render_template, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
+from sqlalchemy.orm import joinedload
 
 from . import cms_bp
 from ..validation import validate, CreateClientSchema, EditClientSchema
@@ -82,6 +83,7 @@ def view_client(client_id: str) -> str:
 
     cases = (
         Case.query.filter_by(client_id=client_id, is_deleted=False)
+        .options(joinedload(Case.lead_investigator))
         .order_by(Case.created_at.desc())
         .all()
     )

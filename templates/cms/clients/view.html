@@ -181,12 +181,13 @@
         </div>
         {% if cases %}
         <table class="data-table">
-            <thead><tr><th>{{ _('Case Number') }}</th><th>{{ _('Title') }}</th><th>{{ _('Status') }}</th></tr></thead>
+            <thead><tr><th>{{ _('Case Number') }}</th><th>{{ _('Title') }}</th><th>{{ _('Lead Investigator') }}</th><th>{{ _('Status') }}</th></tr></thead>
             <tbody>
                 {% for case in cases %}
                 <tr>
                     <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a></td>
                     <td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.title }}</a></td>
+                    <td>{{ case.lead_investigator.full_name if case.lead_investigator else '—' }}</td>
                     <td><span class="badge badge-status-{{ case.status }}">{{ case.status }}</span></td>
                 </tr>
                 {% endfor %}
