@@ -249,7 +249,7 @@ def auto_fix():
             dutch = _generate(
                 prompt,
                 "You are a professional translator for an OSINT dashboard.",
-                timeout=30,
+                timeout=120,
             )
             if not dutch or not dutch.strip():
                 results.append(
