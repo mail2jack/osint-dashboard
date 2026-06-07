@@ -3,7 +3,7 @@
 {% block title %}{{ _('Subjects') }} - CMS{% endblock %}
 
 {% block content %}
-<div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
     <h1 style="margin: 0;">{{ _('Subjects') }}</h1>
     <div style="display: flex; gap: 0.5rem;">
         <a href="{{ url_for('cms.export_subjects', format='csv') }}" class="btn-cms teal">📥 {{ _('Export') }}</a>

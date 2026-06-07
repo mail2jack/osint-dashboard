@@ -4,8 +4,8 @@
 
 {% block content %}
 <style>
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-    .header h1 { color: var(--text-primary, #1a1a2e); }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    .page-header h1 { color: var(--text-primary); }
     .result-item { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; display: flex; align-items: flex-start; gap: 0.75rem; background: var(--bg-card); }
     .result-item input[type="checkbox"] { margin-top: 0.35rem; flex-shrink: 0; accent-color: var(--accent-primary); width: auto; }
     .result-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
@@ -22,7 +22,7 @@
 <div style="padding: 0 2rem; margin-top: 1rem;">
     <div class="back"><a href="{{ url_for('cms.cases') }}">{{ _('← Back to Cases') }}</a></div>
     
-    <div class="header">
+    <div class="page-header">
         <h1>{{ case.case_number }}: {{ case.title }}</h1>
     <div style="display: flex; gap: 0.5rem; align-items: center;">
         <div style="display: flex; gap: 0.3rem; align-items: center; padding-right: 0.5rem; border-right: 1px solid var(--border, #ddd);">

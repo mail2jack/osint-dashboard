@@ -4,7 +4,7 @@
 
 {% block content %}
 <div style="padding: 0 2rem; margin-top: 1rem;">
-    <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h1 style="margin: 0;">{{ _('Cases') }}</h1>
         <div style="display: flex; gap: 0.5rem;">
             <a href="{{ url_for('cms.export_cases', format='csv') }}" class="btn-cms teal">📥 {{ _('Export All') }}</a>
