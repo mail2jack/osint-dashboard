@@ -1,0 +1,236 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Factuur') }} {{ invoice.invoice_number }}{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h2 style="margin:0;">{{ _('Factuur') }} {{ invoice.invoice_number }}</h2>
+            <span style="display:inline-block;margin-top:0.25rem;padding:0.15rem 0.5rem;border-radius:3px;font-size:0.75rem;font-weight:600;
+            {% if invoice.status=='draft' %}background:#f3f4f6;color:#6b7280;
+            {% elif invoice.status=='sent' %}background:#dbeafe;color:#2563eb;
+            {% elif invoice.status=='paid' %}background:#d1fae5;color:#059669;
+            {% elif invoice.status=='overdue' %}background:#fee2e2;color:#dc2626;
+            {% elif invoice.status=='cancelled' %}background:#f3f4f6;color:#9ca3af;
+            {% endif %}">{{ invoice.status }}</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+            <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small">← {{ _('Overzicht') }}</a>
+            <a href="{{ url_for('cms.invoice_pdf', invoice_id=invoice.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;">{{ _('📄 PDF') }}</a>
+            {% if invoice.status == 'draft' %}
+            <a href="{{ url_for('cms.invoice_edit', invoice_id=invoice.id) }}" class="btn-cms small bg-purple">{{ _('Bewerken') }}</a>
+            <form method="POST" action="{{ url_for('cms.invoice_send', invoice_id=invoice.id) }}" style="display:inline;" data-submit="confirmSend">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-cms small" style="background:#2563eb;">{{ _('Verzenden') }}</button>
+            </form>
+            {% endif %}
+            {% if invoice.status in ('draft', 'sent', 'overdue') %}
+            <button data-click="markPaid" class="btn-cms small bg-green">{{ _('Betaald') }}</button>
+            <button data-click="cancelInvoice" class="btn-cms small" style="background:#dc2626;">{{ _('Annuleren') }}</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding:1rem;">
+        <div>
+            <h3 style="font-size:0.75rem;color:#6b7280;text-transform:uppercase;margin:0 0 0.25rem;">{{ _('Factuur aan') }}</h3>
+            <p style="margin:0;">
+                <strong>{{ client.name }}</strong><br>
+                {% if client.address_street %}{{ client.address_street }} {{ client.address_number or '' }}<br>{% endif %}
+                {% if client.address_postal %}{{ client.address_postal }} {% endif %}{% if client.address_city %}{{ client.address_city }}<br>{% endif %}
+                {% if client.vat_number %}BTW: {{ client.vat_number }}<br>{% endif %}
+            </p>
+        </div>
+        <div style="text-align:right;">
+            <table style="margin-left:auto;">
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Factuurdatum:') }}</td><td style="font-weight:600;">{{ invoice.issue_date.strftime('%d-%m-%Y') }}</td></tr>
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Vervaldatum:') }}</td><td style="font-weight:600;">{{ invoice.due_date.strftime('%d-%m-%Y') }}</td></tr>
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Valuta:') }}</td><td>{{ invoice.currency }}</td></tr>
+                {% if case %}
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Dossier:') }}</td><td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a></td></tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    {% if invoice.notes %}
+    <div style="padding:0.5rem 1rem;background:#fefce8;margin:0 1rem 0.5rem;border-radius:4px;">
+        <strong style="font-size:0.75rem;color:#a16207;">{{ _('Notitie:') }}</strong>
+        <p style="margin:0.25rem 0 0;font-size:0.85rem;">{{ invoice.notes }}</p>
+    </div>
+    {% endif %}
+
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th style="text-align:left;padding:0.5rem;border-bottom:2px solid #1a1a2e;">{{ _('Omschrijving') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Aantal') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Stuksprijs') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('BTW') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Totaal') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">{{ item.description }}</td>
+                <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">{{ item.quantity }}</td>
+                <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">€ {{ "%.2f"|format(item.unit_price) }}</td>
+                <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">{{ "%.1f"|format(item.vat_rate) }}%</td>
+                <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:600;">€ {{ "%.2f"|format(item.total) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="padding:1rem;text-align:right;">
+        <table style="margin-left:auto;width:300px;">
+            <tr><td>{{ _('Subtotaal') }}</td><td style="text-align:right;">€ {{ "%.2f"|format(invoice.subtotal) }}</td></tr>
+            <tr><td>{{ _('BTW') }}</td><td style="text-align:right;">€ {{ "%.2f"|format(invoice.vat_amount) }}</td></tr>
+            <tr><td style="font-weight:700;font-size:1.1rem;padding-top:0.5rem;border-top:2px solid #1a1a2e;">{{ _('Totaal') }}</td>
+                <td style="text-align:right;font-weight:700;font-size:1.1rem;padding-top:0.5rem;border-top:2px solid #1a1a2e;">€ {{ "%.2f"|format(invoice.total) }}</td></tr>
+        </table>
+    </div>
+
+    {% if payments %}
+    <div style="padding:0 1rem 1rem;">
+        <h3 style="font-size:0.85rem;color:#059669;margin:0 0 0.5rem;">{{ _('Betalingen') }}</h3>
+        <table style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Datum') }}</th>
+                    <th style="text-align:right;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Bedrag') }}</th>
+                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Methode') }}</th>
+                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Referentie') }}</th>
+                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Notities') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td style="padding:0.3rem;border-bottom:1px solid #d1fae5;">{{ p.payment_date.strftime('%d-%m-%Y') }}</td>
+                    <td style="text-align:right;padding:0.3rem;border-bottom:1px solid #d1fae5;font-weight:600;">€ {{ "%.2f"|format(p.amount) }}</td>
+                    <td style="padding:0.3rem;border-bottom:1px solid #d1fae5;">{{ p.payment_method or '-' }}</td>
+                    <td style="padding:0.3rem;border-bottom:1px solid #d1fae5;">{{ p.reference or '-' }}</td>
+                    <td style="padding:0.3rem;border-bottom:1px solid #d1fae5;">{{ p.notes or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if invoice.terms %}
+    <div style="padding:0.5rem 1rem 1rem;border-top:1px solid #e5e7eb;">
+        <h3 style="font-size:0.75rem;color:#6b7280;text-transform:uppercase;margin:0 0 0.25rem;">{{ _('Algemene voorwaarden') }}</h3>
+        <p style="font-size:0.8rem;color:#6b7280;white-space:pre-wrap;margin:0;">{{ invoice.terms }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Mark Paid Modal -->
+<div id="paidModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;">
+    <div style="background:white;border-radius:8px;padding:1.5rem;width:400px;max-width:90vw;">
+        <h3 style="margin:0 0 1rem;">{{ _('Betaling registreren') }}</h3>
+        <form method="POST" action="{{ url_for('cms.invoice_mark_paid', invoice_id=invoice.id) }}" data-submit="submitPaidForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-bottom:0.75rem;">
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Betaald bedrag') }}</label>
+                <input type="number" name="amount" value="{{ invoice.total }}" step="0.01" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Betaaldatum') }}</label>
+                <input type="date" name="payment_date" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Betaalmethode') }}</label>
+                <select name="payment_method" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+                    <option value="transfer">{{ _('Overschrijving') }}</option>
+                    <option value="ideal">iDEAL</option>
+                    <option value="cash">{{ _('Contant') }}</option>
+                    <option value="creditcard">Creditcard</option>
+                    <option value="other">{{ _('Anders') }}</option>
+                </select>
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Referentie') }}</label>
+                <input type="text" name="reference" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+                <button type="button" data-click="closePaidModal" class="btn-cms small">{{ _('Annuleren') }}</button>
+                <button type="submit" class="btn-cms bg-green">{{ _('Betaald registreren') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function markPaid() {
+    document.getElementById('paidModal').style.display = 'flex';
+}
+
+function closePaidModal() {
+    document.getElementById('paidModal').style.display = 'none';
+}
+
+function submitPaidForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+        },
+        body: JSON.stringify({
+            amount: form.querySelector('[name="amount"]').value,
+            payment_date: form.querySelector('[name="payment_date"]').value,
+            payment_method: form.querySelector('[name="payment_method"]').value,
+            reference: form.querySelector('[name="reference"]').value,
+        })
+    }).then(r => {
+        if (r.redirected) window.location.href = r.url;
+        else location.reload();
+    });
+}
+
+function cancelInvoice() {
+    if (!confirm('{{ _("Weet je zeker dat je deze factuur wilt annuleren?") }}')) return;
+    const reason = prompt('{{ _("Reden voor annuleren (optioneel):") }}') || '';
+    fetch('{{ url_for("cms.invoice_cancel", invoice_id=invoice.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+        },
+        body: JSON.stringify({ reason })
+    }).then(r => {
+        if (r.redirected) window.location.href = r.url;
+        else location.reload();
+    });
+}
+
+function confirmSend(e) {
+    e.preventDefault();
+    if (!confirm('{{ _("Weet je zeker dat je deze factuur wilt verzenden?") }}')) return;
+    const form = e.target;
+    const csrf = form.querySelector('input[name="csrf_token"]').value;
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrf
+        }
+    }).then(r => {
+        if (r.redirected) window.location.href = r.url;
+        else location.reload();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.querySelector('#paidModal input[name="payment_date"]');
+    if (dateInput) dateInput.value = today;
+});
+</script>
+
+{% endblock %}

@@ -45,6 +45,7 @@
         </div>
         <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small bg-green">{{ _('📥 Export CSV') }}</a>
         <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small bg-purple">{{ _('📄 Report') }}</a>
+        <a href="{{ url_for('cms.invoice_create') }}?case_id={{ case.id }}&client_id={{ case.client_id }}" class="btn-cms small" style="background:#2563eb;text-decoration:none;">{{ _('+ Factuur') }}</a>
         <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small primary">{{ _('✏️ Edit') }}</a>
     </div>
 </div>
@@ -231,6 +232,7 @@
         <div style="display: flex; gap: 0.5rem; align-items: center;">
             <button data-click="openTimeline" class="btn-cms small bg-purple">{{ _('Timeline') }}</button>
             <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">{{ _('📋 Report') }}</a>
+            <a href="{{ url_for('cms.case_report_pdf', case_id=case.id) }}" class="btn-cms small" style="background: #dc2626; text-decoration: none;">{{ _('📄 PDF') }}</a>
         </div>
     </div>
     

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Factuur {{ invoice.invoice_number }}</title>
+<style>
+@page {
+    size: A4;
+    margin: 2cm 1.5cm 2.5cm 1.5cm;
+    @bottom-center {
+        content: "Factuur {{ invoice.invoice_number }} — Pagina " counter(page);
+        font-size: 8pt;
+        color: #9ca3af;
+        font-family: 'Helvetica', 'Arial', sans-serif;
+    }
+}
+body {
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    font-size: 9pt;
+    line-height: 1.5;
+    color: #1f2937;
+    margin: 0;
+    padding: 0;
+}
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #1a1a2e;
+    padding-bottom: 0.5cm;
+    margin-bottom: 0.5cm;
+}
+.header .company {
+    font-size: 18pt;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+.header .company-details {
+    font-size: 8pt;
+    color: #6b7280;
+    margin-top: 0.2cm;
+}
+.header .invoice-title {
+    text-align: right;
+}
+.header .invoice-title h1 {
+    font-size: 16pt;
+    color: #1a1a2e;
+    margin: 0;
+}
+.header .invoice-title .status-badge {
+    display: inline-block;
+    padding: 0.1cm 0.4cm;
+    border-radius: 3px;
+    font-size: 8pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-top: 0.2cm;
+}
+.status-draft { background: #f3f4f6; color: #6b7280; }
+.status-sent { background: #dbeafe; color: #2563eb; }
+.status-paid { background: #d1fae5; color: #059669; }
+.status-overdue { background: #fee2e2; color: #dc2626; }
+.status-cancelled { background: #f3f4f6; color: #9ca3af; }
+.parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5cm;
+    margin-bottom: 0.5cm;
+}
+.parties h3 {
+    font-size: 8pt;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 0.2cm 0;
+}
+.parties .value {
+    font-size: 9pt;
+    color: #1f2937;
+}
+.details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2cm;
+    margin-bottom: 0.5cm;
+    padding: 0.3cm;
+    background: #f9fafb;
+    border-radius: 4px;
+}
+.details .item .label {
+    font-size: 7pt;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+.details .item .value {
+    font-size: 9pt;
+    font-weight: 600;
+}
+table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.5cm;
+}
+table.items th {
+    background: #1a1a2e;
+    color: white;
+    padding: 0.2cm 0.3cm;
+    text-align: left;
+    font-size: 8pt;
+    font-weight: 600;
+}
+table.items th.right { text-align: right; }
+table.items td {
+    padding: 0.2cm 0.3cm;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 9pt;
+}
+table.items td.right { text-align: right; }
+table.items tr:nth-child(even) td { background: #f9fafb; }
+table.items tr:last-child td { border-bottom: 2px solid #1a1a2e; }
+.totals {
+    margin-left: auto;
+    width: 8cm;
+}
+.totals table { width: 100%; }
+.totals td {
+    padding: 0.15cm 0.3cm;
+    font-size: 9pt;
+}
+.totals td.right { text-align: right; }
+.totals .grand-total td {
+    font-weight: 700;
+    font-size: 11pt;
+    border-top: 2px solid #1a1a2e;
+    padding-top: 0.2cm;
+}
+.notes {
+    margin-top: 0.5cm;
+    padding: 0.3cm;
+    border-top: 1px solid #e5e7eb;
+}
+.notes h3 {
+    font-size: 8pt;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 0.2cm 0;
+}
+.notes p {
+    font-size: 8pt;
+    color: #6b7280;
+    white-space: pre-wrap;
+    margin: 0;
+}
+.payments-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.3cm 0;
+}
+.payments-table th {
+    background: #059669;
+    color: white;
+    padding: 0.15cm 0.3cm;
+    font-size: 8pt;
+    text-align: left;
+}
+.payments-table td {
+    padding: 0.15cm 0.3cm;
+    font-size: 8pt;
+    border-bottom: 1px solid #d1fae5;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="company">Iveras</div>
+        <div class="company-details">
+            Iveras OSINT Dashboard<br>
+            {{ _('BTW:') }}/KVK: n.t.b.
+        </div>
+    </div>
+    <div class="invoice-title">
+        <h1>{{ _('FACTUUR') }}</h1>
+        <div class="status-badge status-{{ invoice.status }}">{{ invoice.status }}</div>
+    </div>
+</div>
+
+<div class="parties">
+    <div>
+        <h3>{{ _('Factuur aan') }}</h3>
+        <div class="value">
+            {{ client.name }}<br>
+            {% if client.address_street %}{{ client.address_street }} {{ client.address_number or '' }}<br>{% endif %}
+            {% if client.address_postal %}{{ client.address_postal }} {% endif %}{% if client.address_city %}{{ client.address_city }}<br>{% endif %}
+            {% if client.address_country %}{{ client.address_country }}{% endif %}
+        </div>
+    </div>
+    <div>
+        <h3>{{ _('Factuurgegevens') }}</h3>
+        <div class="value">
+            <strong>{{ _('Factuurnummer:') }}</strong> {{ invoice.invoice_number }}<br>
+            <strong>{{ _('Factuurdatum:') }}</strong> {{ invoice.issue_date.strftime('%d-%m-%Y') }}<br>
+            <strong>{{ _('Vervaldatum:') }}</strong> {{ invoice.due_date.strftime('%d-%m-%Y') }}<br>
+            {% if invoice.case %}<strong>{{ _('Dossier:') }}</strong> {{ invoice.case.case_number }}{% endif %}
+        </div>
+    </div>
+</div>
+
+{% if invoice.notes %}
+<div class="details">
+    <div class="item">
+        <div class="label">{{ _('Notitie') }}</div>
+        <div class="value">{{ invoice.notes }}</div>
+    </div>
+</div>
+{% endif %}
+
+<table class="items">
+    <thead>
+        <tr>
+            <th style="width:50%;">{{ _('Omschrijving') }}</th>
+            <th class="right" style="width:10%;">{{ _('Aantal') }}</th>
+            <th class="right" style="width:15%;">{{ _('Stuksprijs') }}</th>
+            <th class="right" style="width:10%;">{{ _('BTW') }}</th>
+            <th class="right" style="width:15%;">{{ _('Totaal') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.description }}</td>
+            <td class="right">{{ item.quantity }}</td>
+            <td class="right">{{ "%.2f"|format(item.unit_price) }}</td>
+            <td class="right">{{ "%.1f"|format(item.vat_rate) }}%</td>
+            <td class="right">{{ "%.2f"|format(item.total) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="totals">
+    <table>
+        <tr>
+            <td>{{ _('Subtotaal') }}</td>
+            <td class="right">{{ "%.2f"|format(invoice.subtotal) }}</td>
+        </tr>
+        <tr>
+            <td>{{ _('BTW') }}</td>
+            <td class="right">{{ "%.2f"|format(invoice.vat_amount) }}</td>
+        </tr>
+        <tr class="grand-total">
+            <td>{{ _('Totaal') }}</td>
+            <td class="right">{{ "%.2f"|format(invoice.total) }} {{ invoice.currency }}</td>
+        </tr>
+    </table>
+</div>
+
+{% if payments %}
+<h3 style="font-size:8pt;color:#059669;text-transform:uppercase;margin-top:0.5cm;">{{ _('Betalingen') }}</h3>
+<table class="payments-table">
+    <thead>
+        <tr>
+            <th>{{ _('Datum') }}</th>
+            <th>{{ _('Bedrag') }}</th>
+            <th>{{ _('Methode') }}</th>
+            <th>{{ _('Referentie') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in payments %}
+        <tr>
+            <td>{{ p.payment_date.strftime('%d-%m-%Y') }}</td>
+            <td>{{ "%.2f"|format(p.amount) }} {{ invoice.currency }}</td>
+            <td>{{ p.payment_method or '-' }}</td>
+            <td>{{ p.reference or '-' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<div class="notes">
+    <h3>{{ _('Algemene voorwaarden') }}</h3>
+    <p>{{ invoice.terms or _('Betaling dient binnen 30 dagen na factuurdatum te zijn voldaan.') }}</p>
+    {% if invoice.footer %}
+    <p style="margin-top:0.2cm;">{{ invoice.footer }}</p>
+    {% endif %}
+</div>
+
+</body>
+</html>

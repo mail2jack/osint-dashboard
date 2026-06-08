@@ -410,3 +410,113 @@ def case_report(case_id: str) -> str:
         to_date=to_date,
         subject_filter=subject_filter,
     )
+
+
+@cms_bp.route("/cases/<case_id>/report-pdf")
+@login_required
+@case_access_required
+def case_report_pdf(case_id: str) -> flask.Response:
+    """Generate a server-side PDF report for a case using WeasyPrint."""
+    from datetime import datetime as dt_mod
+
+    case = db.session.get(Case, case_id) or abort(404)
+
+    findings_q = Finding.query.filter_by(case_id=case_id, is_deleted=False)
+    comments_q = Comment.query.filter_by(case_id=case_id, is_deleted=False)
+
+    findings = (
+        findings_q.options(db.joinedload(Finding.author))
+        .order_by(Finding.created_at.asc())
+        .all()
+    )
+    comments = (
+        comments_q.options(db.joinedload(Comment.author))
+        .order_by(Comment.created_at.asc())
+        .all()
+    )
+
+    all_subject_ids = set()
+    for f in findings:
+        if f.subject_id:
+            all_subject_ids.add(f.subject_id)
+    for c in comments:
+        if c.subject_id:
+            all_subject_ids.add(c.subject_id)
+    subjects_map = {}
+    if all_subject_ids:
+        for s in Subject.query.filter(Subject.id.in_(all_subject_ids)).all():
+            subjects_map[s.id] = s
+
+    entries = []
+    for f in findings:
+        subject = subjects_map.get(f.subject_id)
+        entries.append(
+            {
+                "type": "finding",
+                "icon": "🔍",
+                "timestamp": f.created_at,
+                "title": f.title,
+                "content": f.content,
+                "source_type": f.source_type,
+                "source_url": f.source_url,
+                "author": f.author.full_name if f.author else "-",
+                "subject_name": subject.name if subject else "-",
+            }
+        )
+    for c in comments:
+        subject = subjects_map.get(c.subject_id)
+        entries.append(
+            {
+                "type": "note",
+                "icon": "📝" if c.comment_type == "note" else "💬",
+                "timestamp": c.created_at,
+                "title": c.comment_type.capitalize(),
+                "content": c.content,
+                "source_type": c.comment_type,
+                "source_url": None,
+                "author": c.author.full_name if c.author else "-",
+                "subject_name": subject.name if subject else "-",
+            }
+        )
+
+    entries.sort(key=lambda e: e["timestamp"] or dt_mod.min)
+
+    grouped = {}
+    for e in entries:
+        date_key = e["timestamp"].strftime("%Y-%m-%d") if e["timestamp"] else "Onbekend"
+        if date_key not in grouped:
+            grouped[date_key] = []
+        grouped[date_key].append(e)
+
+    subjects = Subject.query.filter(
+        Subject.cases.any(id=case_id), Subject.is_deleted == False
+    ).all()
+
+    now_func = dt_mod.now
+
+    html = flask.render_template(
+        "cms/cases/report_pdf.html",
+        case=case,
+        grouped_entries=grouped,
+        subjects=subjects,
+        now=now_func,
+    )
+
+    try:
+        from weasyprint import HTML as WPHTML
+
+        pdf_data = WPHTML(string=html).write_pdf()
+    except Exception as e:
+        logger.error("WeasyPrint PDF generation failed: %s", e)
+        flask.flash(
+            "PDF generatie mislukt. Probeer de browser Print/PDF functie.", "error"
+        )
+        return flask.redirect(flask.url_for("cms.case_report", case_id=case_id))
+
+    # Sanitize filename
+    safe_num = case.case_number.replace("/", "-").replace("\\", "-") or case.id[:8]
+    return flask.Response(
+        pdf_data,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=rapport_{safe_num}.pdf"},
+    )

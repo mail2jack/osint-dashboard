@@ -55,6 +55,7 @@ def register_modules() -> None:
     from . import translations  # noqa: F401
     from . import statistics  # noqa: F401
     from . import demo  # noqa: F401
+    from . import invoicing  # noqa: F401
 
     # Background task status API
     from ..background import register_background_routes

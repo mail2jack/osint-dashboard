@@ -1,0 +1,90 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Facturen') }}{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">
+        <h2>{{ _('Facturen') }}</h2>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+            <a href="{{ url_for('cms.invoice_create') }}" class="btn-cms small bg-green">{{ _('+ Nieuwe factuur') }}</a>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem;padding:0.75rem 1rem;background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+        <div><span style="color:#6b7280;font-size:0.75rem;">{{ _('Totaal betaald') }}</span><br><strong style="color:#059669;">€ {{ "%.2f"|format(total_paid) }}</strong></div>
+        <div><span style="color:#6b7280;font-size:0.75rem;">{{ _('Totaal openstaand') }}</span><br><strong style="color:#dc2626;">€ {{ "%.2f"|format(total_outstanding) }}</strong></div>
+    </div>
+
+    <div style="padding:0.75rem 1rem;display:flex;flex-wrap:wrap;gap:0.5rem;border-bottom:1px solid #e5e7eb;">
+        <form method="GET" action="{{ url_for('cms.invoice_list') }}" style="display:flex;flex-wrap:wrap;gap:0.5rem;width:100%;">
+            <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Zoeken op nummer...') }}" style="padding:0.3rem 0.5rem;border:1px solid #ddd;border-radius:4px;flex:1;min-width:150px;">
+            <select name="status" data-change="this.form.submit()" style="padding:0.3rem 0.5rem;border:1px solid #ddd;border-radius:4px;">
+                <option value="">{{ _('Alle statussen') }}</option>
+                <option value="draft" {{ 'selected' if status_filter=='draft' }}>{{ _('Concept') }}</option>
+                <option value="sent" {{ 'selected' if status_filter=='sent' }}>{{ _('Verzonden') }}</option>
+                <option value="paid" {{ 'selected' if status_filter=='paid' }}>{{ _('Betaald') }}</option>
+                <option value="overdue" {{ 'selected' if status_filter=='overdue' }}>{{ _('Overdue') }}</option>
+                <option value="cancelled" {{ 'selected' if status_filter=='cancelled' }}>{{ _('Geannuleerd') }}</option>
+            </select>
+            <select name="client_id" data-change="this.form.submit()" style="padding:0.3rem 0.5rem;border:1px solid #ddd;border-radius:4px;">
+                <option value="">{{ _('Alle cliënten') }}</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}" {{ 'selected' if client_filter==c.id }}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-cms small">{{ _('Filter') }}</button>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>{{ _('Nummer') }}</th>
+                <th>{{ _('Cliënt') }}</th>
+                <th>{{ _('Datum') }}</th>
+                <th>{{ _('Vervaldatum') }}</th>
+                <th>{{ _('Totaal') }}</th>
+                <th>{{ _('Status') }}</th>
+                <th>{{ _('Gemaakt door') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td><a href="{{ url_for('cms.invoice_view', invoice_id=inv.id) }}" style="font-weight:600;">{{ inv.invoice_number }}</a></td>
+                <td>{{ inv.client_name }}</td>
+                <td>{{ inv.issue_date }}</td>
+                <td>{{ inv.due_date }}</td>
+                <td><strong>€ {{ "%.2f"|format(inv.total) }}</strong></td>
+                <td>
+                    <span style="display:inline-block;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.75rem;font-weight:600;
+                    {% if inv.status=='draft' %}background:#f3f4f6;color:#6b7280;
+                    {% elif inv.status=='sent' %}background:#dbeafe;color:#2563eb;
+                    {% elif inv.status=='paid' %}background:#d1fae5;color:#059669;
+                    {% elif inv.status=='overdue' %}background:#fee2e2;color:#dc2626;
+                    {% elif inv.status=='cancelled' %}background:#f3f4f6;color:#9ca3af;
+                    {% endif %}">{{ inv.status }}</span>
+                </td>
+                <td>{{ inv.created_by or '-' }}</td>
+                <td>
+                    <a href="{{ url_for('cms.invoice_pdf', invoice_id=inv.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;padding:0.15rem 0.4rem;font-size:0.75rem;">PDF</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:2rem;">{{ _('Geen facturen gevonden.') }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if pagination.pages > 1 %}
+    <div style="padding:0.75rem 1rem;display:flex;justify-content:center;gap:0.5rem;">
+        {% for p in range(1, pagination.pages + 1) %}
+        <a href="?page={{ p }}&status={{ status_filter }}&client_id={{ client_filter }}&q={{ search }}"
+           style="padding:0.2rem 0.5rem;border:1px solid #ddd;border-radius:4px;text-decoration:none;{% if p==pagination.page %}background:#1a1a2e;color:white;{% endif %}">{{ p }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

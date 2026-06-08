@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Rapport {{ case.case_number }} — {{ case.title }}</title>
+<style>
+@page {
+    size: A4;
+    margin: 2.5cm 2cm 2.5cm 2cm;
+    @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-size: 9pt;
+        color: #6b7280;
+        font-family: 'Helvetica', 'Arial', sans-serif;
+    }
+}
+@page cover {
+    margin: 0;
+    @bottom-center { content: none; }
+}
+body {
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    color: #1f2937;
+    margin: 0;
+    padding: 0;
+}
+.cover-page {
+    page: cover;
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    text-align: center;
+    padding: 2cm;
+}
+.cover-page h1 {
+    font-size: 24pt;
+    margin: 0 0 0.5cm 0;
+    font-weight: 700;
+}
+.cover-page .case-number {
+    font-size: 14pt;
+    color: #94a3b8;
+    margin: 0 0 1cm 0;
+}
+.cover-page .meta {
+    font-size: 10pt;
+    color: #94a3b8;
+    margin-top: 1cm;
+}
+.cover-page .meta span {
+    display: block;
+    margin-bottom: 0.2cm;
+}
+.cover-page .classification {
+    margin-top: 1.5cm;
+    padding: 0.3cm 1cm;
+    border: 2px solid #f59e0b;
+    border-radius: 4px;
+    font-size: 11pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #f59e0b;
+}
+h2 {
+    font-size: 14pt;
+    color: #1a1a2e;
+    border-bottom: 2px solid #1a1a2e;
+    padding-bottom: 0.2cm;
+    margin-top: 0.8cm;
+    page-break-before: avoid;
+}
+h3 {
+    font-size: 11pt;
+    color: #374151;
+    margin-top: 0.5cm;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.3cm 0;
+    font-size: 9pt;
+}
+table th {
+    background: #1a1a2e;
+    color: white;
+    padding: 0.2cm 0.3cm;
+    text-align: left;
+    font-weight: 600;
+}
+table td {
+    padding: 0.2cm 0.3cm;
+    border-bottom: 1px solid #e5e7eb;
+}
+table tr:nth-child(even) td {
+    background: #f9fafb;
+}
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3cm;
+    margin: 0.3cm 0;
+}
+.info-item {
+    padding: 0.2cm 0;
+}
+.info-item .label {
+    font-size: 8pt;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.info-item .value {
+    font-size: 10pt;
+    color: #1f2937;
+}
+.finding-entry {
+    border-left: 3px solid #f59e0b;
+    padding: 0.3cm 0.3cm 0.3cm 0.5cm;
+    margin: 0.3cm 0;
+    background: #fefce8;
+    page-break-inside: avoid;
+}
+.finding-entry.note {
+    border-left-color: #3b82f6;
+    background: #eff6ff;
+}
+.finding-entry .meta {
+    font-size: 8pt;
+    color: #6b7280;
+    margin-bottom: 0.1cm;
+}
+.finding-entry .title {
+    font-weight: 600;
+    font-size: 10pt;
+    margin-bottom: 0.1cm;
+}
+.finding-entry .content {
+    font-size: 9pt;
+    color: #374151;
+    white-space: pre-wrap;
+}
+.empty-state {
+    padding: 1cm;
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+}
+.page-break {
+    page-break-before: always;
+}
+</style>
+</head>
+<body>
+
+<!-- Cover Page -->
+<section class="cover-page">
+    <h1>{{ case.title }}</h1>
+    <p class="case-number">{{ case.case_number }}</p>
+    {% if case.client %}
+    <p style="font-size:11pt;margin:0.5cm 0;">{{ _('Client:') }} {{ case.client.name }}</p>
+    {% endif %}
+    <div class="meta">
+        <span>{{ _('Status:') }} {{ case.status }}</span>
+        {% if case.priority %}<span>{{ _('Priority:') }} {{ case.priority }}</span>{% endif %}
+        <span>{{ _('Aangemaakt:') }} {{ case.created_at.strftime('%d-%m-%Y') }}</span>
+        <span>{{ _('Rapport datum:') }} {{ now().strftime('%d-%m-%Y %H:%M') }}</span>
+    </div>
+    <div class="classification">{{ _('VERTROUWELIJK') }}</div>
+</section>
+
+<!-- Case Info -->
+<h2>{{ _('Dossiergegevens') }}</h2>
+<div class="info-grid">
+    <div class="info-item">
+        <div class="label">{{ _('Dossiernummer') }}</div>
+        <div class="value">{{ case.case_number }}</div>
+    </div>
+    <div class="info-item">
+        <div class="label">{{ _('Status') }}</div>
+        <div class="value">{{ case.status }}</div>
+    </div>
+    {% if case.case_type %}
+    <div class="info-item">
+        <div class="label">{{ _('Type') }}</div>
+        <div class="value">{{ case.case_type }}</div>
+    </div>
+    {% endif %}
+    {% if case.priority %}
+    <div class="info-item">
+        <div class="label">{{ _('Prioriteit') }}</div>
+        <div class="value">{{ case.priority }}</div>
+    </div>
+    {% endif %}
+    {% if case.client %}
+    <div class="info-item">
+        <div class="label">{{ _('Cliënt') }}</div>
+        <div class="value">{{ case.client.name }}</div>
+    </div>
+    {% endif %}
+    {% if case.lead_investigator %}
+    <div class="info-item">
+        <div class="label">{{ _('Lead Investigator') }}</div>
+        <div class="value">{{ case.lead_investigator.full_name }}</div>
+    </div>
+    {% endif %}
+    <div class="info-item">
+        <div class="label">{{ _('Aangemaakt') }}</div>
+        <div class="value">{{ case.created_at.strftime('%d-%m-%Y %H:%M') }}</div>
+    </div>
+    {% if case.actual_end_date %}
+    <div class="info-item">
+        <div class="label">{{ _('Afgesloten') }}</div>
+        <div class="value">{{ case.actual_end_date.strftime('%d-%m-%Y') }}</div>
+    </div>
+    {% endif %}
+</div>
+
+{% if case.description %}
+<h3>{{ _('Omschrijving') }}</h3>
+<p style="font-size:10pt;color:#374151;">{{ case.description }}</p>
+{% endif %}
+
+<!-- Subjects -->
+<h2>{{ _('Subjecten') }}</h2>
+{% if subjects %}
+<table>
+    <thead>
+        <tr>
+            <th>{{ _('Naam') }}</th>
+            <th>{{ _('Type') }}</th>
+            <th>{{ _('Risico') }}</th>
+            <th>{{ _('Contact') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in subjects %}
+        <tr>
+            <td><strong>{{ s.name }}</strong></td>
+            <td>{{ s.subject_type }}</td>
+            <td>{{ s.risk_score }}/100</td>
+            <td style="font-size:8pt;">
+                {%- if s.email %}{{ s.email }}{% endif -%}
+                {%- if s.email and s.phone %}<br>{% endif -%}
+                {%- if s.phone %}{{ s.phone }}{% endif -%}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">{{ _('Geen subjecten aan dit dossier gekoppeld.') }}</p>
+{% endif %}
+
+<!-- Findings Timeline -->
+<h2 class="page-break">{{ _('Tijdlijn — Bevindingen & Notities') }}</h2>
+{% if grouped_entries %}
+    {% for date_key, entries in grouped_entries|dictsort(false) %}
+    <h3>{{ date_key }} <span style="font-weight:normal;color:#9ca3af;font-size:9pt;">({{ entries|length }})</span></h3>
+    {% for entry in entries %}
+    <div class="finding-entry{% if entry.type == 'note' %} note{% endif %}">
+        <div class="meta">
+            {{ entry.timestamp.strftime('%H:%M') if entry.timestamp else '' }}
+            — {{ entry.author }}
+            {% if entry.subject_name != '-' %} — {{ entry.subject_name }}{% endif %}
+            {% if entry.source_type %} — {{ entry.source_type }}{% endif %}
+        </div>
+        <div class="title">{{ entry.icon }} {{ entry.title }}</div>
+        {% if entry.content %}
+        <div class="content">{{ entry.content }}</div>
+        {% endif %}
+        {% if entry.source_url %}
+        <div style="font-size:8pt;margin-top:0.1cm;"><a href="{{ entry.source_url }}">{{ entry.source_url }}</a></div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endfor %}
+{% else %}
+<p class="empty-state">{{ _('Geen bevindingen of notities in dit dossier.') }}</p>
+{% endif %}
+
+</body>
+</html>

@@ -1,0 +1,193 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Nieuwe factuur') }}{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">
+        <h2>{{ _('Nieuwe factuur') }}</h2>
+        <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small">← {{ _('Terug') }}</a>
+    </div>
+    <form method="POST" action="{{ url_for('cms.invoice_create') }}" data-submit="submitForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="items" id="itemsInput" value="[]">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding:1rem;">
+            <div>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Cliënt *') }}</label>
+                <select name="client_id" required style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+                    <option value="">{{ _('Selecteer cliënt...') }}</option>
+                    {% for c in clients %}
+                    <option value="{{ c.id }}" {{ 'selected' if preselected==c.id }}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Gekoppeld dossier (optioneel)') }}</label>
+                <select name="case_id" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+                    <option value="">{{ _('Geen dossier') }}</option>
+                    {% for c in cases %}
+                    <option value="{{ c.id }}" {{ 'selected' if preselected_case==c.id }}>{{ c.case_number }} — {{ c.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Factuurdatum *') }}</label>
+                <input type="date" name="issue_date" required style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Vervaldatum *') }}</label>
+                <input type="date" name="due_date" required style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Valuta') }}</label>
+                <select name="currency" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
+                    <option value="EUR">EUR (€)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="GBP">GBP (£)</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="padding:0 1rem 1rem;">
+            <h3 style="margin:0 0 0.5rem;">{{ _('Factuurregels') }}</h3>
+            <table id="itemsTable" style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding:0.3rem;border-bottom:2px solid #1a1a2e;">{{ _('Omschrijving') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Aantal') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Stuksprijs') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('BTW %') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Totaal') }}</th>
+                        <th style="width:40px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="itemsBody">
+                    <tr class="item-row">
+                        <td><input type="text" class="item-desc" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;"></td>
+                        <td><input type="number" class="item-qty" value="1" min="0" step="0.01" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
+                        <td><input type="number" class="item-price" value="0" min="0" step="0.01" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
+                        <td><input type="number" class="item-vat" value="21" min="0" max="100" step="0.1" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
+                        <td class="item-total" style="text-align:right;padding:0.3rem;font-weight:600;">€ 0,00</td>
+                        <td><button type="button" data-click="removeItem" class="btn-cms small" style="background:#dc2626;padding:0.15rem 0.4rem;">×</button></td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="button" data-click="addItem" class="btn-cms small" style="margin-top:0.5rem;">+ {{ _('Regel toevoegen') }}</button>
+        </div>
+
+        <div style="padding:0 1rem 1rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Notitie (wordt getoond boven factuurregels)') }}</label>
+                <textarea name="notes" rows="3" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;"></textarea>
+            </div>
+            <div>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Algemene voorwaarden') }}</label>
+                <textarea name="terms" rows="3" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">{{ _('Betaling dient binnen 30 dagen na factuurdatum te zijn voldaan.') }}</textarea>
+            </div>
+        </div>
+
+        <div style="padding:0 1rem 1rem;">
+            <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Footer') }}</label>
+            <textarea name="footer" rows="2" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;"></textarea>
+        </div>
+
+        <div style="padding:1rem;border-top:1px solid #e5e7eb;">
+            <button type="submit" class="btn-cms bg-green">{{ _('Factuur aanmaken') }}</button>
+            <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small" style="margin-left:0.5rem;">{{ _('Annuleren') }}</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function serializeItems() {
+    const rows = document.querySelectorAll('#itemsBody .item-row');
+    const items = [];
+    rows.forEach(row => {
+        const desc = row.querySelector('.item-desc').value.trim();
+        if (!desc) return;
+        items.push({
+            description: desc,
+            quantity: parseFloat(row.querySelector('.item-qty').value) || 0,
+            unit_price: parseFloat(row.querySelector('.item-price').value) || 0,
+            vat_rate: parseFloat(row.querySelector('.item-vat').value) || 0,
+        });
+    });
+    document.getElementById('itemsInput').value = JSON.stringify(items);
+}
+
+function recalcRow(row) {
+    const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+    const price = parseFloat(row.querySelector('.item-price').value) || 0;
+    const vat = parseFloat(row.querySelector('.item-vat').value) || 0;
+    const total = qty * price;
+    const vatTotal = total * (vat / 100);
+    row.querySelector('.item-total').textContent = '€ ' + (total + vatTotal).toFixed(2);
+    serializeItems();
+}
+
+function addItem() {
+    const tbody = document.getElementById('itemsBody');
+    const row = document.createElement('tr');
+    row.className = 'item-row';
+    row.innerHTML = `
+        <td><input type="text" class="item-desc" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;"></td>
+        <td><input type="number" class="item-qty" value="1" min="0" step="0.01" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
+        <td><input type="number" class="item-price" value="0" min="0" step="0.01" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
+        <td><input type="number" class="item-vat" value="21" min="0" max="100" step="0.1" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
+        <td class="item-total" style="text-align:right;padding:0.3rem;font-weight:600;">€ 0,00</td>
+        <td><button type="button" data-click="removeItem" class="btn-cms small" style="background:#dc2626;padding:0.15rem 0.4rem;">×</button></td>
+    `;
+    row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => recalcRow(row)));
+    tbody.appendChild(row);
+    serializeItems();
+}
+
+function removeItem(btn) {
+    const row = btn.closest('.item-row');
+    if (document.querySelectorAll('#itemsBody .item-row').length > 1) {
+        row.remove();
+        serializeItems();
+    }
+}
+
+function submitForm(e) {
+    e.preventDefault();
+    serializeItems();
+    e.target.submit();
+}
+
+// Case lookup by client ID (embedded server-side)
+const _allCases = {{ cases_data_json|safe }};
+
+function filterCases() {
+    const clientId = document.querySelector('select[name="client_id"]').value;
+    const sel = document.querySelector('select[name="case_id"]');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">{{ _('Geen dossier') }}</option>';
+    if (clientId && _allCases[clientId]) {
+        _allCases[clientId].forEach(function(c) {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.case_number + ' — ' + c.title;
+            if (c.id === current) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+}
+
+document.querySelector('select[name="client_id"]').addEventListener('change', filterCases);
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#itemsBody .item-row input').forEach(inp =>
+        inp.addEventListener('input', () => recalcRow(inp.closest('.item-row')))
+    );
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelector('input[name="issue_date"]').value = today;
+    const due = new Date(Date.now() + 30*86400000).toISOString().split('T')[0];
+    document.querySelector('input[name="due_date"]').value = due;
+    filterCases();
+});
+</script>
+
+{% endblock %}

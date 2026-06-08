@@ -371,7 +371,7 @@ msgstr "Nieuw dossier"
 
 #: templates/cms/cases/create.html:97 templates/cms/cases/edit.html:82
 msgid "Case Title *"
-msgstr "Kas Titel *"
+msgstr "Zaaknaam*"
 
 #: templates/cms/cases/create.html:101
 msgid "Client *"
