@@ -82,7 +82,7 @@
     </form>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function serializeItems() {
     const rows = document.querySelectorAll('#itemsBody .item-row');
     const items = [];
