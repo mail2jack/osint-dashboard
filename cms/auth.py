@@ -45,7 +45,7 @@ from flask_login import (
     current_user,
 )
 
-from .models import db, User, ApiKey, AuditLog, Case, Subject
+from .models import db, User, ApiKey, AuditLog, Case, Subject, Tenant
 from .validation import validate
 from .rate_limiting import is_rate_limited, rate_limit, rate_limit_after_n
 from .notifications import (
@@ -114,6 +114,27 @@ def unauthorized() -> flask.Response:
 # =============================================================================
 # RBAC Decorators
 # =============================================================================
+
+
+def tenant_owner_required(f: Callable) -> Callable:
+    """
+    Decorator to restrict access to tenant owners (or super admins).
+
+    Usage:
+        @tenant_owner_required
+        def tenant_settings():
+            ...
+    """
+
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(401)
+        if not current_user.is_super_admin and not current_user.is_tenant_owner:
+            abort(403)
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 
 def roles_required(*allowed_roles: str) -> Callable:
@@ -621,6 +642,14 @@ def login() -> flask.Response:
             if not user.is_active:
                 flash(
                     "Your account has been disabled. Contact an administrator.",
+                    "danger",
+                )
+                return render_template("cms/login.html")
+
+            tenant = db.session.get(Tenant, user.tenant_id)
+            if not tenant or not tenant.is_active:
+                flash(
+                    "Your organization's account has been disabled. Contact support.",
                     "danger",
                 )
                 return render_template("cms/login.html")

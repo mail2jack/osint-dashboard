@@ -239,6 +239,12 @@ class User(UserMixin, db.Model):
     password_reset_token = db.Column(db.String(128), nullable=True)
     password_reset_expires = db.Column(db.DateTime, nullable=True)
 
+    # Multi-tenant
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    is_super_admin = db.Column(db.Boolean, default=False, nullable=False)
+
     # Account lockout
     failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime, nullable=True)
@@ -299,6 +305,10 @@ class User(UserMixin, db.Model):
         """Only senior investigators and admins can export data."""
         return self.is_senior
 
+    @property
+    def is_tenant_owner(self) -> bool:
+        return bool(self.owned_tenant)
+
     def to_dict(self, include_sensitive: bool = False) -> dict:
         """Serialize user without password."""
         return {
@@ -308,6 +318,8 @@ class User(UserMixin, db.Model):
             "full_name": self.full_name,
             "role": self.role,
             "is_active": self.is_active,
+            "is_super_admin": self.is_super_admin,
+            "tenant_id": self.tenant_id,
             "last_login": self.last_login.isoformat() if self.last_login else None,
         }
 
@@ -349,6 +361,9 @@ class Client(db.Model):
     __tablename__ = "clients"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     name = db.Column(db.String(200), nullable=False, index=True)
     is_company = db.Column(db.Boolean, default=False)
     date_of_birth = db.Column(db.String(500))  # Encrypted (for persons)
@@ -480,6 +495,9 @@ class Case(db.Model):
     __tablename__ = "cases"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     case_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     client_id = db.Column(
         db.String(36), db.ForeignKey("clients.id"), nullable=False, index=True
@@ -672,6 +690,9 @@ class Subject(db.Model):
     __tablename__ = "subjects"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     name = db.Column(db.String(300), nullable=False, index=True)
     subject_type = db.Column(db.String(20), nullable=False, index=True)
 
@@ -889,6 +910,9 @@ class Address(db.Model):
     __tablename__ = "addresses"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     subject_id = db.Column(
         db.String(36), db.ForeignKey("subjects.id"), nullable=True, index=True
     )
@@ -992,6 +1016,9 @@ class Contact(db.Model):
     __tablename__ = "contacts"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     subject_id = db.Column(
         db.String(36), db.ForeignKey("subjects.id"), nullable=True, index=True
     )
@@ -1061,6 +1088,9 @@ class FinancialRecord(db.Model):
     __tablename__ = "financial_records"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     case_id = db.Column(
         db.String(36), db.ForeignKey("cases.id"), nullable=False, index=True
     )
@@ -1196,6 +1226,9 @@ class Finding(db.Model):
     __tablename__ = "findings"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     case_id = db.Column(
         db.String(36), db.ForeignKey("cases.id"), nullable=False, index=True
     )
@@ -1267,6 +1300,9 @@ class Screenshot(db.Model):
     __tablename__ = "screenshots"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     case_id = db.Column(
         db.String(36), db.ForeignKey("cases.id"), nullable=False, index=True
     )
@@ -1331,6 +1367,9 @@ class AuditLog(db.Model):
     __tablename__ = "audit_logs"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     user_id = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     action = db.Column(db.String(20), nullable=False, index=True)
 
@@ -1441,6 +1480,9 @@ class Document(db.Model):
     __tablename__ = "documents"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
 
     # Linked entity
     case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), index=True)
@@ -1513,6 +1555,9 @@ class Comment(db.Model):
     __tablename__ = "comments"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
 
     # Entity references (at least one must be set)
     case_id = db.Column(db.String(36), db.ForeignKey("cases.id"), index=True)
@@ -1616,6 +1661,9 @@ class CommentEditHistory(db.Model):
     __tablename__ = "comment_edit_history"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
 
     comment_id = db.Column(
         db.String(36), db.ForeignKey("comments.id"), nullable=False, index=True
@@ -1659,6 +1707,9 @@ class DocumentTemplate(db.Model):
     __tablename__ = "document_templates"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
 
     # Template info
     name = db.Column(db.String(200), nullable=False)
@@ -1770,6 +1821,9 @@ class Reminder(db.Model):
     __tablename__ = "reminders"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
 
     # Content
     title = db.Column(db.String(300), nullable=False)
@@ -2001,6 +2055,9 @@ class SocialAccount(db.Model):
     __tablename__ = "social_accounts"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     subject_id = db.Column(
         db.String(36), db.ForeignKey("subjects.id"), nullable=True, index=True
     )
@@ -2511,6 +2568,9 @@ class SpiderFootScan(db.Model):
     __tablename__ = "spiderfoot_scans"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     scan_id = db.Column(db.String(100), nullable=False, index=True)
     scan_name = db.Column(db.String(300))
     target_value = db.Column(db.String(500), nullable=False)
@@ -2590,6 +2650,9 @@ class OsintSearch(db.Model):
     __tablename__ = "osint_searches"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     search_id = db.Column(db.String(36), unique=True, nullable=False, index=True)
     case_id = db.Column(
         db.String(36),
@@ -2671,6 +2734,9 @@ class ApiKey(db.Model):
     __tablename__ = "api_keys"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     name = db.Column(db.String(100), nullable=False)
     key_hash = db.Column(db.String(255), nullable=False)
     key_prefix = db.Column(db.String(8), nullable=False)
@@ -2733,6 +2799,9 @@ class Notification(db.Model):
     __tablename__ = "notifications"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     user_id = db.Column(
         db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
     )
@@ -2752,6 +2821,9 @@ class LoginLog(db.Model):
     __tablename__ = "login_logs"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     user_id = db.Column(
         db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
     )
@@ -2800,6 +2872,9 @@ class PhoneLookup(db.Model):
     ENCRYPTED_FIELDS = ["raw_response", "profile_picture"]
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     phone = db.Column(
         db.String(50), nullable=False, index=True
     )  # plaintext for queryability
@@ -2891,6 +2966,9 @@ class Invoice(db.Model):
     __tablename__ = "invoices"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     invoice_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     client_id = db.Column(
         db.String(36), db.ForeignKey("clients.id"), nullable=False, index=True
@@ -3016,6 +3094,9 @@ class InvoiceItem(db.Model):
     __tablename__ = "invoice_items"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     invoice_id = db.Column(
         db.String(36), db.ForeignKey("invoices.id"), nullable=False, index=True
     )
@@ -3052,6 +3133,9 @@ class Payment(db.Model):
     __tablename__ = "payments"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
     invoice_id = db.Column(
         db.String(36), db.ForeignKey("invoices.id"), nullable=False, index=True
     )
@@ -3081,3 +3165,246 @@ class Payment(db.Model):
             "created_by": self.created_by,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+# =============================================================================
+# Tenant Model
+# =============================================================================
+
+
+class Tenant(db.Model):
+    """
+    Multi-tenant organization.
+    Each tenant is an isolated workspace with its own users and data.
+    """
+
+    __tablename__ = "tenants"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    domain = db.Column(db.String(255), nullable=True, unique=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    tier = db.Column(db.String(20), default="free", nullable=False)
+    owner_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    owner = db.relationship(
+        "User",
+        foreign_keys=[owner_id],
+        backref=db.backref("owned_tenant", uselist=False),
+        primaryjoin="Tenant.owner_id==User.id",
+    )
+    users = db.relationship(
+        "User", foreign_keys="User.tenant_id", backref="tenant", lazy="dynamic"
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "slug": self.slug,
+            "domain": self.domain,
+            "is_active": self.is_active,
+            "tier": self.tier,
+            "owner_id": self.owner_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# =============================================================================
+# Tenant Setting Model (per-tenant configuration)
+# =============================================================================
+
+
+class TenantSetting(db.Model):
+    """Per-tenant configuration settings (SF URL, API keys, etc.)."""
+
+    __tablename__ = "tenant_settings"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(db.String(36), db.ForeignKey("tenants.id"), nullable=False)
+    key = db.Column(db.String(100), nullable=False, index=True)
+    value = db.Column(db.Text, nullable=True)
+    category = db.Column(db.String(50), default="general")
+    description = db.Column(db.String(500))
+    is_encrypted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint("tenant_id", "key", name="uq_tenant_settings_key"),
+    )
+
+    tenant = db.relationship("Tenant", backref=db.backref("settings", lazy="dynamic"))
+
+    @classmethod
+    def get(
+        cls, key: str, default: str | None = None, tenant_id: str | None = None
+    ) -> str | None:
+        """Get a setting value for a tenant."""
+        from flask import g
+
+        tid = tenant_id or getattr(g, "tenant_id", None)
+        if not tid:
+            return default
+        row = cls.query.filter_by(tenant_id=tid, key=key).first()
+        if not row:
+            return default
+        if row.is_encrypted and row.value:
+            from .config import fernet
+
+            try:
+                return fernet.decrypt(row.value.encode()).decode()
+            except Exception:
+                return default
+        return row.value
+
+    @classmethod
+    def set(
+        cls,
+        key: str,
+        value: str,
+        tenant_id: str | None = None,
+        category: str = "general",
+        description: str = "",
+        encrypt: bool = False,
+    ) -> "TenantSetting":
+        """Set a setting value for a tenant."""
+        from flask import g
+
+        tid = tenant_id or getattr(g, "tenant_id", None)
+        if not tid:
+            raise ValueError("No tenant_id provided or available in context")
+        from .config import fernet
+
+        row = cls.query.filter_by(tenant_id=tid, key=key).first()
+        if not row:
+            row = cls(tenant_id=tid, key=key)
+        row.value = fernet.encrypt(value.encode()).decode() if encrypt else value
+        row.category = category
+        row.description = description
+        row.is_encrypted = encrypt
+        db.session.add(row)
+        db.session.commit()
+        return row
+
+
+# =============================================================================
+# Platform Setting Model (global configuration)
+# =============================================================================
+
+
+class PlatformSetting(db.Model):
+    """Global platform settings (SMTP, S3, Stripe keys, encryption keys)."""
+
+    __tablename__ = "platform_settings"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    key = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    value = db.Column(db.Text, nullable=True)
+    category = db.Column(db.String(50), default="general")
+    description = db.Column(db.String(500))
+    is_encrypted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    @classmethod
+    def get(cls, key: str, default: str | None = None) -> str | None:
+        row = cls.query.filter_by(key=key).first()
+        if not row:
+            return default
+        if row.is_encrypted and row.value:
+            from .config import fernet
+
+            try:
+                return fernet.decrypt(row.value.encode()).decode()
+            except Exception:
+                return default
+        return row.value
+
+    @classmethod
+    def set(
+        cls,
+        key: str,
+        value: str,
+        category: str = "general",
+        description: str = "",
+        encrypt: bool = False,
+    ) -> "PlatformSetting":
+        from .config import fernet
+
+        row = cls.query.filter_by(key=key).first()
+        if not row:
+            row = cls(key=key)
+        row.value = fernet.encrypt(value.encode()).decode() if encrypt else value
+        row.category = category
+        row.description = description
+        row.is_encrypted = encrypt
+        db.session.add(row)
+        db.session.commit()
+        return row
+
+
+# =============================================================================
+# Auto-fill tenant_id on insert
+# =============================================================================
+
+_TENANT_MODELS = [
+    Client,
+    Case,
+    Subject,
+    Address,
+    Contact,
+    FinancialRecord,
+    Finding,
+    Screenshot,
+    AuditLog,
+    Document,
+    Comment,
+    CommentEditHistory,
+    DocumentTemplate,
+    Reminder,
+    SocialAccount,
+    OsintSearch,
+    ApiKey,
+    Notification,
+    LoginLog,
+    PhoneLookup,
+    Invoice,
+    InvoiceItem,
+    Payment,
+    TenantSetting,
+    SpiderFootScan,
+    User,
+]
+
+
+def _fill_tenant_id(mapper, connection, target):
+    """Auto-fill tenant_id from flask.g when a new row is inserted."""
+    if hasattr(target, "tenant_id") and target.tenant_id is None:
+        from flask import g as _g
+
+        tid = getattr(_g, "tenant_id", None)
+        if tid:
+            target.tenant_id = tid
+
+
+for _model in _TENANT_MODELS:
+    from sqlalchemy import event as _event
+
+    if hasattr(_model, "tenant_id"):
+        _event.listen(_model, "before_insert", _fill_tenant_id)

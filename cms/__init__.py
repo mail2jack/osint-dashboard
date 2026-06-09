@@ -217,6 +217,26 @@ def create_cms_module(app: Flask):
             app.logger.debug(f"Login log purge note: {e}")
             db.session.rollback()
 
+        # Seed first tenant if none exists
+        from .models import Tenant
+
+        first_tenant = Tenant.query.first()
+        if not first_tenant:
+            import uuid as _uuid
+
+            first_tenant = Tenant(
+                id=str(_uuid.uuid4()),
+                name="Default Organization",
+                slug="default",
+                is_active=True,
+                tier="enterprise",
+            )
+            db.session.add(first_tenant)
+            db.session.commit()
+            app.logger.info(
+                "Seeded default tenant: %s (%s)", first_tenant.name, first_tenant.id
+            )
+
         # Create default admin user if none exists
         if not User.query.filter_by(role="admin").first():
             import secrets
@@ -229,9 +249,13 @@ def create_cms_module(app: Flask):
                 email="admin@localhost",
                 full_name="System Administrator",
                 role="admin",
+                tenant_id=first_tenant.id,
+                is_super_admin=True,
             )
             admin.set_password(default_password)
             db.session.add(admin)
+            db.session.commit()
+            first_tenant.owner_id = admin.id
             db.session.commit()
             app.logger.warning(
                 "Default admin user created. Set a password immediately via Settings > Users or the password reset flow."
@@ -239,6 +263,17 @@ def create_cms_module(app: Flask):
             app.logger.warning(
                 "Default admin created — change password immediately. Username: admin."
             )
+        else:
+            # Ensure existing admin is super admin + linked to first tenant
+            for admin_user in User.query.filter_by(role="admin").all():
+                if not admin_user.is_super_admin:
+                    admin_user.is_super_admin = True
+                if not admin_user.tenant_id:
+                    admin_user.tenant_id = first_tenant.id
+                db.session.commit()
+                if not first_tenant.owner_id:
+                    first_tenant.owner_id = admin_user.id
+                    db.session.commit()
 
         # Start Telegram bot in background thread
         try:

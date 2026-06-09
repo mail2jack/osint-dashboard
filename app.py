@@ -87,6 +87,28 @@ def add_request_id():
         db.session.rollback()
 
 
+@app.before_request
+def set_tenant_context():
+    """Set RLS tenant context for PostgreSQL Row-Level Security."""
+    from flask_login import current_user
+    from sqlalchemy import text
+    from cms.models import db as _db
+
+    if current_user.is_authenticated:
+        g.tenant_id = current_user.tenant_id
+        try:
+            _db.session.execute(
+                text("SET app.tenant_id = :tid"),
+                {"tid": current_user.tenant_id},
+            )
+            if current_user.is_super_admin:
+                _db.session.execute(text("SET app.bypass_rls = 'true'"))
+        except Exception:
+            pass
+    else:
+        g.tenant_id = None
+
+
 # Load security and application configuration based on FLASK_ENV
 from cms.config import get_config
 
