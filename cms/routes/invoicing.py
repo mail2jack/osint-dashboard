@@ -12,7 +12,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Invoice, InvoiceItem, Payment, Client, Case, AuditLog
-from ..auth import roles_required, admin_required
+from ..auth import roles_required, admin_required, apply_tenant_filter
 from ..validation_invoicing import (
     CreateInvoiceSchema,
     EditInvoiceSchema,
@@ -55,7 +55,7 @@ def invoice_list():
     client_filter = request.args.get("client_id", "")
     search = request.args.get("q", "").strip()
 
-    q = Invoice.query.filter(Invoice.is_deleted == False)
+    q = apply_tenant_filter(Invoice.query.filter(Invoice.is_deleted == False), Invoice)
 
     if status_filter:
         q = q.filter(Invoice.status == status_filter)
@@ -74,25 +74,28 @@ def invoice_list():
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
 
     clients = (
-        Client.query.filter(Client.is_deleted == False, Client.is_active == True)
+        apply_tenant_filter(
+            Client.query.filter(Client.is_deleted == False, Client.is_active == True),
+            Client,
+        )
         .order_by(Client.name)
         .all()
     )
 
     invoices_data = [_invoice_to_dict(inv) for inv in pagination.items]
-    total_paid = sum(
-        float(inv.total)
-        for inv in Invoice.query.filter(
-            Invoice.is_deleted == False, Invoice.status == "paid"
-        ).all()
+    paid_q = apply_tenant_filter(
+        Invoice.query.filter(Invoice.is_deleted == False, Invoice.status == "paid"),
+        Invoice,
     )
-    total_outstanding = sum(
-        float(inv.total)
-        for inv in Invoice.query.filter(
+    outstanding_q = apply_tenant_filter(
+        Invoice.query.filter(
             Invoice.is_deleted == False,
             Invoice.status.in_(["sent", "overdue"]),
-        ).all()
+        ),
+        Invoice,
     )
+    total_paid = sum(float(inv.total) for inv in paid_q.all())
+    total_outstanding = sum(float(inv.total) for inv in outstanding_q.all())
 
     return render_template(
         "cms/invoicing/list.html",
@@ -113,7 +116,10 @@ def invoice_list():
 @roles_required("admin", "senior")
 def invoice_create():
     clients = (
-        Client.query.filter(Client.is_deleted == False, Client.is_active == True)
+        apply_tenant_filter(
+            Client.query.filter(Client.is_deleted == False, Client.is_active == True),
+            Client,
+        )
         .order_by(Client.name)
         .all()
     )
@@ -124,17 +130,15 @@ def invoice_create():
 
         # Fetch cases for dropdown, filtered by client if preselected
         cases_q = Case.query.filter(Case.is_deleted == False)
+        cases_q = apply_tenant_filter(cases_q, Case)
         if preselected:
             cases_q = cases_q.filter(Case.client_id == preselected)
         cases = cases_q.order_by(Case.case_number.desc()).limit(100).all()
 
         # Build client → cases lookup for JS filter
-        all_cases = (
-            Case.query.filter(Case.is_deleted == False)
-            .order_by(Case.case_number.desc())
-            .limit(200)
-            .all()
-        )
+        all_cases = Case.query.filter(Case.is_deleted == False)
+        all_cases = apply_tenant_filter(all_cases, Case)
+        all_cases = all_cases.order_by(Case.case_number.desc()).limit(200).all()
         cases_by_client: dict[str, list[dict]] = {}
         for c in all_cases:
             cid = c.client_id
@@ -257,7 +261,10 @@ def invoice_edit(invoice_id: str):
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
     clients = (
-        Client.query.filter(Client.is_deleted == False, Client.is_active == True)
+        apply_tenant_filter(
+            Client.query.filter(Client.is_deleted == False, Client.is_active == True),
+            Client,
+        )
         .order_by(Client.name)
         .all()
     )
@@ -474,7 +481,9 @@ def invoice_delete(invoice_id: str):
 @cms_bp.route("/api/invoices/stats")
 @login_required
 def invoice_stats():
-    base = Invoice.query.filter(Invoice.is_deleted == False)
+    base = apply_tenant_filter(
+        Invoice.query.filter(Invoice.is_deleted == False), Invoice
+    )
     return jsonify(
         {
             "draft": base.filter(Invoice.status == "draft").count(),

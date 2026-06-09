@@ -14,6 +14,7 @@ from ..auth import (
     admin_required,
     case_access_required,
     case_edit_required,
+    apply_tenant_filter,
 )
 from ..notifications import notify_case_created
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
@@ -65,6 +66,9 @@ def cases() -> str:
         .join(Client)
         .options(joinedload(Case.client), joinedload(Case.lead_investigator))
     )
+
+    # Tenant isolation (SQLite compat, RLS only works on Postgres)
+    query = apply_tenant_filter(query, Case)
 
     # Non-admin users only see cases they can access
     if not current_user.is_admin:
@@ -145,7 +149,13 @@ def cases() -> str:
         page=page, per_page=per_page, error_out=False
     )
 
-    clients = Client.query.filter_by(is_deleted=False, is_active=True).limit(500).all()
+    clients = (
+        apply_tenant_filter(
+            Client.query.filter_by(is_deleted=False, is_active=True), Client
+        )
+        .limit(500)
+        .all()
+    )
 
     return render_template(
         "cms/cases/list.html",
@@ -292,7 +302,13 @@ def create_case() -> flask.Response:
 def edit_case(case_id: str) -> flask.Response:
     """Edit case details."""
     case = db.session.get(Case, case_id) or abort(404)
-    clients = Client.query.filter_by(is_deleted=False, is_active=True).limit(500).all()
+    clients = (
+        apply_tenant_filter(
+            Client.query.filter_by(is_deleted=False, is_active=True), Client
+        )
+        .limit(500)
+        .all()
+    )
     investigators = User.query.filter(
         User.is_active == True,
         User.role.in_(["admin", "senior_investigator", "junior_investigator"]),

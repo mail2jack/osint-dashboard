@@ -104,7 +104,7 @@ def set_tenant_context():
             if current_user.is_super_admin:
                 _db.session.execute(text("SET app.bypass_rls = 'true'"))
         except Exception:
-            pass
+            _db.session.rollback()
     else:
         g.tenant_id = None
 

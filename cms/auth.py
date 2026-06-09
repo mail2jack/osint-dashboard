@@ -1044,6 +1044,10 @@ def list_users() -> str:
 
     query = User.query.filter_by(is_active=True)
 
+    # Tenant isolation: non-super-admin sees only their tenant's users
+    if not current_user.is_super_admin:
+        query = query.filter(User.tenant_id == current_user.tenant_id)
+
     if search:
         query = query.filter(
             db.or_(
@@ -1188,6 +1192,11 @@ def create_user() -> flask.Response:
 
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
         generated_password = "".join(secrets.choice(alphabet) for _ in range(16))
+        tenants = (
+            Tenant.query.order_by(Tenant.name).all()
+            if current_user.is_super_admin
+            else []
+        )
         return render_template(
             "cms/users/create.html",
             generated_password=generated_password,
@@ -1195,6 +1204,7 @@ def create_user() -> flask.Response:
             email="",
             full_name="",
             role="",
+            tenants=tenants,
         )
 
     is_json = request.is_json
@@ -1204,6 +1214,11 @@ def create_user() -> flask.Response:
         if is_json:
             return jsonify({"error": msg}), 400
         flash(msg, "error")
+        tenants = (
+            Tenant.query.order_by(Tenant.name).all()
+            if current_user.is_super_admin
+            else []
+        )
         return render_template(
             "cms/users/create.html",
             generated_password=raw.get("generated_password", ""),
@@ -1211,6 +1226,7 @@ def create_user() -> flask.Response:
             email=raw.get("email", ""),
             full_name=raw.get("full_name", ""),
             role=raw.get("role", ""),
+            tenants=tenants,
         )
 
     try:
@@ -1241,11 +1257,17 @@ def create_user() -> flask.Response:
     if not password:
         return _error("Password is required")
 
+    if current_user.is_super_admin and data.get("tenant_id"):
+        tenant_id = data["tenant_id"]
+    else:
+        tenant_id = current_user.tenant_id
+
     user = User(
         username=data["username"],
         email=data["email"],
         full_name=data["full_name"],
         role=data["role"],
+        tenant_id=tenant_id,
     )
     user.set_password(password)
 
@@ -1304,6 +1326,16 @@ def edit_user(user_id: str) -> flask.Response:
 
     user = db.session.get(User, user_id) or abort(404)
 
+    def _edit_render(**extra):
+        tenants = (
+            Tenant.query.order_by(Tenant.name).all()
+            if current_user.is_super_admin
+            else []
+        )
+        ctx = {"user": user, "tenants": tenants}
+        ctx.update(extra)
+        return render_template("cms/users/edit.html", **ctx)
+
     if request.method == "POST":
         raw = request.get_json() if is_json else request.form
         try:
@@ -1315,7 +1347,7 @@ def edit_user(user_id: str) -> flask.Response:
                     {"error": "Validation failed", "details": "Invalid data provided"}
                 ), 400
             flash("Validation failed. Please check your input.", "danger")
-            return render_template("cms/users/edit.html", user=user)
+            return _edit_render()
         data = validated.model_dump(exclude_none=True)
         old_values = {}
         changes = {}
@@ -1342,6 +1374,26 @@ def edit_user(user_id: str) -> flask.Response:
                     changes[field] = {"old": old_values[field], "new": value}
                     setattr(user, field, value)
 
+            # Super admin can change tenant membership
+            if (
+                current_user.is_super_admin
+                and data.get("tenant_id")
+                and data["tenant_id"] != user.tenant_id
+            ):
+                new_tenant = db.session.get(Tenant, data["tenant_id"])
+                if not new_tenant:
+                    flash("Target tenant not found.", "danger")
+                    return _edit_render()
+                old_count = User.query.filter_by(tenant_id=user.tenant_id).count()
+                if old_count <= 1:
+                    flash(
+                        "Cannot remove the last user from the current tenant.", "danger"
+                    )
+                    return _edit_render()
+                old_values["tenant_id"] = user.tenant_id
+                changes["tenant_id"] = {"old": user.tenant_id, "new": data["tenant_id"]}
+                user.tenant_id = data["tenant_id"]
+
             # Password change (admin can set without old password)
             if data.get("password"):
                 user.set_password(data["password"])
@@ -1364,7 +1416,7 @@ def edit_user(user_id: str) -> flask.Response:
         flash("User updated successfully.", "success")
         return redirect(url_for("users.view_user", user_id=user.id))
 
-    return render_template("cms/users/edit.html", user=user)
+    return _edit_render()
 
 
 @users_bp.route("/<user_id>/deactivate", methods=["POST"])
@@ -1434,6 +1486,20 @@ def change_password() -> flask.Response:
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
+
+def apply_tenant_filter(query, model):
+    """Apply tenant isolation filter to a SQLAlchemy query.
+
+    For non-super-admin users, adds ``model.tenant_id == current_user.tenant_id``
+    to the WHERE clause.  Super admins see all tenants (no filter).
+
+    This is the SQLite-compatible counterpart of PostgreSQL RLS — always add this
+    to every ``Model.query`` in list/index routes.
+    """
+    if not current_user.is_super_admin and g.get("tenant_id"):
+        return query.filter(model.tenant_id == g.tenant_id)
+    return query
 
 
 def get_client_ip() -> str:

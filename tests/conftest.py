@@ -59,9 +59,9 @@ def app():
 @pytest.fixture(autouse=True)
 def _clean_db_between_tests(app):
     """Clean all data between tests — runs before each test function."""
-    # Delete all tables EXCEPT users (keep the admin from app fixture)
+    # Delete all tables EXCEPT seed/config tables (keep admin + tenant from app fixture)
     for t in inspect(db.engine).get_table_names():
-        if t in ("alembic_version", "users"):
+        if t in ("alembic_version", "users", "tenants"):
             continue
         db.session.execute(text(f'DELETE FROM "{t}"'))
     db.session.commit()
@@ -107,4 +107,9 @@ def auth_client(app, client):
 
 @pytest.fixture
 def db_session():
+    from flask import g
+
+    if "tenant_id" not in g:
+        admin = User.query.filter_by(username="admin").first()
+        g.tenant_id = admin.tenant_id if admin else None
     return db.session

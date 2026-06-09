@@ -58,6 +58,19 @@
                 </select>
             </div>
 
+            {% if current_user.is_super_admin %}
+            <div class="form-group">
+                <label for="tenant_id">Tenant</label>
+                <select id="tenant_id" name="tenant_id">
+                    <option value="">-- Select tenant (optional) --</option>
+                    {% for t in tenants %}
+                    <option value="{{ t.id }}"{% if t.id == current_user.tenant_id %} selected{% endif %}>{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+                <small style="color:var(--text-muted);">Defaults to your tenant if left blank.</small>
+            </div>
+            {% endif %}
+
             <input type="hidden" name="generated_password" value="{{ generated_password }}">
             
             <div class="btn-group" style="margin:1.5rem 0 0;">

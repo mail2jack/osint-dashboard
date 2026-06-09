@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..models import db, Subject, Case, Finding, SocialAccount, case_subjects
 from .utils import find_similar_subjects, find_similar_clients, check_for_exact_match
-from ..auth import subject_access_required, audit_read
+from ..auth import subject_access_required, audit_read, apply_tenant_filter
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,9 @@ def subjects() -> str:
     fmt = request.args.get("format", "")
 
     query = Subject.query.filter_by(is_deleted=False)
+
+    # Tenant isolation (SQLite compat)
+    query = apply_tenant_filter(query, Subject)
 
     # Non-admin users only see subjects linked to cases they can access
     linked_subject_ids = None

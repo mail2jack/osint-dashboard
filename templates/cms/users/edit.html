@@ -31,6 +31,18 @@
                     <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>Viewer</option>
                 </select>
             </div>
+
+            {% if current_user.is_super_admin %}
+            <div class="form-group">
+                <label for="tenant_id">Tenant</label>
+                <select id="tenant_id" name="tenant_id">
+                    {% for t in tenants %}
+                    <option value="{{ t.id }}"{% if t.id == user.tenant_id %} selected{% endif %}>{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+                <small style="color:var(--text-muted);">Changing tenant moves the user to a different organization.</small>
+            </div>
+            {% endif %}
             
             <div class="form-group">
                 <label for="is_active">Status</label>

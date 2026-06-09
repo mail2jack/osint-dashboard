@@ -275,6 +275,22 @@ def create_cms_module(app: Flask):
                     first_tenant.owner_id = admin_user.id
                     db.session.commit()
 
+        # Seed existing non-admin users without tenant_id → default tenant
+        orphan_users = User.query.filter(
+            User.tenant_id.is_(None), User.role != "admin"
+        ).all()
+        if orphan_users:
+            linked = 0
+            for u in orphan_users:
+                u.tenant_id = first_tenant.id
+                linked += 1
+            if linked:
+                db.session.commit()
+                app.logger.info(
+                    "Seed: linked %d existing non-admin users to default tenant",
+                    linked,
+                )
+
         # Start Telegram bot in background thread
         try:
             from .telegram_bot import start_bot

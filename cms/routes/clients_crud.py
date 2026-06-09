@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 from . import cms_bp
 from ..validation import validate, CreateClientSchema, EditClientSchema
 from ..models import db, Client, Case, AuditLog, Contact, Address
-from ..auth import roles_required, admin_required, audit_read
+from ..auth import roles_required, admin_required, audit_read, apply_tenant_filter
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_clients, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
@@ -35,6 +35,10 @@ def clients() -> str:
     order = request.args.get("order", "asc")
 
     query = Client.query.filter_by(is_deleted=False)
+
+    # Tenant isolation (SQLite compat)
+    query = apply_tenant_filter(query, Client)
+
     if not show_archived:
         query = query.filter_by(is_active=True)
 

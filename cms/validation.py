@@ -247,6 +247,7 @@ class CreateUserSchema(BaseModel):
     generated_password: str | None = None
     send_email: Any = None
     send_sms: Any = None
+    tenant_id: str | None = None
 
     @field_validator("password")
     @classmethod
@@ -262,6 +263,7 @@ class EditUserSchema(BaseModel):
     role: str | None = None
     is_active: Any = None
     password: str | None = None
+    tenant_id: str | None = None
 
     @field_validator("password")
     @classmethod
