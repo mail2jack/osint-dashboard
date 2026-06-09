@@ -401,7 +401,6 @@
                 {% endif %}
             </div>
             {% else %}
-            {% for setting in settings_list %}
             <div class="setting-item" data-setting-id="{{ setting.id }}" data-value-type="{{ setting.value_type }}" data-key="{{ setting.key }}">
                 <label for="setting-{{ setting.id }}">
                     {{ setting.key.replace('_', ' ').title() }}
