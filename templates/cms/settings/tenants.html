@@ -108,7 +108,7 @@
                 <span class="badge-inactive">Inactive</span>
                 {% endif %}
             </td>
-            <td>{{ tenant.user_count or '—' }}</td>
+            <td>{{ user_counts.get(tenant.id, 0) }}</td>
             <td><span class="tier-badge tier-{{ tenant.tier }}">{{ tenant.tier }}</span></td>
             <td style="font-size:0.8125rem;color:var(--text-secondary)">
                 {{ tenant.created_at.strftime('%Y-%m-%d') if tenant.created_at else '—' }}
@@ -172,7 +172,7 @@ function createTenant(btn) {
     if (!name) { alert('Please enter a tenant name.'); return; }
     if (!slug) { alert('Please enter a slug.'); return; }
 
-    fetch('{{ url_for("cms.api_create_tenant") }}', {
+    fetch('{{ url_for("cms.create_tenant") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -191,7 +191,7 @@ function createTenant(btn) {
 function toggleTenant(btn, id) {
     const action = btn.textContent.trim() === 'Deactivate' ? 'deactivate' : 'activate';
     if (!confirm(action === 'deactivate' ? 'Deactivate this tenant?' : 'Activate this tenant?')) return;
-    fetch('{{ url_for("cms.api_toggle_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
+    fetch('{{ url_for("cms.toggle_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}
     })
@@ -201,7 +201,7 @@ function toggleTenant(btn, id) {
 
 function deleteTenant(btn, id) {
     if (!confirm('Delete this tenant? This cannot be undone.')) return;
-    fetch('{{ url_for("cms.api_delete_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
+    fetch('{{ url_for("cms.delete_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
         method: 'DELETE',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}
     })

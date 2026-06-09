@@ -591,7 +591,17 @@ def list_tenants() -> str:
     if not current_user.is_super_admin:
         abort(403)
     tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
-    return render_template("cms/settings/tenants.html", tenants=tenants)
+    from collections import Counter
+
+    user_counts = Counter(
+        r[0]
+        for r in db.session.query(User.tenant_id)
+        .filter(User.tenant_id.isnot(None))
+        .all()
+    )
+    return render_template(
+        "cms/settings/tenants.html", tenants=tenants, user_counts=user_counts
+    )
 
 
 @cms_bp.route("/api/tenants")
