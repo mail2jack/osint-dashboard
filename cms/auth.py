@@ -1167,16 +1167,30 @@ def user_activity(user_id: str) -> str:
     )
 
 
+def _generate_password(length: int = 16) -> str:
+    """Generate a random password guaranteed to pass complexity checks."""
+    import random as _random
+    import string as _string
+
+    guaranteed = [
+        secrets.choice(_string.ascii_uppercase),
+        secrets.choice(_string.ascii_lowercase),
+        secrets.choice(_string.digits),
+        secrets.choice("!@#$%^&*"),
+    ]
+    alphabet = _string.ascii_letters + _string.digits + "!@#$%^&*"
+    remaining = [secrets.choice(alphabet) for _ in range(length - 4)]
+    all_chars = guaranteed + remaining
+    _random.SystemRandom().shuffle(all_chars)
+    return "".join(all_chars)
+
+
 @users_bp.route("/api/generate-password")
 @login_required
 @admin_required
 def generate_password_api() -> flask.Response:
     """Generate a random password for the create user form."""
-    import string
-
-    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-    password = "".join(secrets.choice(alphabet) for _ in range(16))
-    return jsonify({"password": password})
+    return jsonify({"password": _generate_password()})
 
 
 @users_bp.route("/create", methods=["GET", "POST"])
@@ -1188,10 +1202,7 @@ def create_user() -> flask.Response:
     generated_password = None
 
     if request.method == "GET":
-        import string
-
-        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-        generated_password = "".join(secrets.choice(alphabet) for _ in range(16))
+        generated_password = _generate_password()
         tenants = (
             Tenant.query.order_by(Tenant.name).all()
             if current_user.is_super_admin
@@ -1231,10 +1242,16 @@ def create_user() -> flask.Response:
 
     try:
         validated = CreateUserSchema(**raw)
-    except Exception:
+    except Exception as e:
         import traceback
 
         logger.warning("CreateUser validation error:\n%s", traceback.format_exc())
+        if hasattr(e, "errors"):
+            msgs = [
+                f"{' → '.join(str(seg) for seg in err.get('loc', []))}: {err.get('msg', '?')}"
+                for err in e.errors()
+            ]
+            return _error(" | ".join(msgs))
         return _error("Validation failed")
 
     data = validated.model_dump(exclude_none=True)
@@ -1343,13 +1360,25 @@ def edit_user(user_id: str) -> flask.Response:
         raw = request.get_json() if is_json else request.form
         try:
             validated = EditUserSchema(**raw)
-        except Exception:
+        except Exception as e:
             logger.exception("User edit validation failed")
             if is_json:
-                return jsonify(
-                    {"error": "Validation failed", "details": "Invalid data provided"}
-                ), 400
-            flash("Validation failed. Please check your input.", "danger")
+                details = (
+                    [
+                        f"{' → '.join(str(seg) for seg in err.get('loc', []))}: {err.get('msg', '?')}"
+                        for err in e.errors()
+                    ]
+                    if hasattr(e, "errors")
+                    else "Invalid data provided"
+                )
+                return jsonify({"error": "Validation failed", "details": details}), 400
+            msg = "Validation failed"
+            if hasattr(e, "errors"):
+                msg = " | ".join(
+                    f"{' → '.join(str(seg) for seg in err.get('loc', []))}: {err.get('msg', '?')}"
+                    for err in e.errors()
+                )
+            flash(msg, "danger")
             return _edit_render()
         data = validated.model_dump(exclude_none=True)
         old_values = {}
