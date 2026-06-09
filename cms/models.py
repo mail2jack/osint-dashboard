@@ -3399,6 +3399,13 @@ def _fill_tenant_id(mapper, connection, target):
         from flask import g as _g
 
         tid = getattr(_g, "tenant_id", None)
+        if not tid and hasattr(target, "user_id") and target.user_id:
+            try:
+                _user = db.session.get(User, target.user_id)
+                if _user:
+                    tid = _user.tenant_id
+            except Exception:
+                pass
         if tid:
             target.tenant_id = tid
 
