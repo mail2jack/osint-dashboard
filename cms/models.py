@@ -2609,6 +2609,10 @@ class OsintSearch(db.Model):
     )  # running, completed, cancelled, failed
     results = db.Column(SafeJSON, nullable=True)
     error = db.Column(db.Text, nullable=True)
+    spiderfoot_scan_id = db.Column(db.String(36), nullable=True, index=True)
+    sf_status = db.Column(
+        db.String(20), nullable=True
+    )  # pending, running, completed, failed
     started_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime, nullable=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)
@@ -2632,6 +2636,8 @@ class OsintSearch(db.Model):
             "status": self.status,
             "results": self.results,
             "error": self.error,
+            "spiderfoot_scan_id": self.spiderfoot_scan_id,
+            "sf_status": self.sf_status,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat()
             if self.completed_at
@@ -2647,6 +2653,8 @@ class OsintSearch(db.Model):
             "status": self.status,
             "results": self.results,
             "error": self.error,
+            "spiderfoot_scan_id": self.spiderfoot_scan_id,
+            "sf_status": self.sf_status,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat()
             if self.completed_at

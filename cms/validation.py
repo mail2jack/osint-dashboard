@@ -661,6 +661,7 @@ class FTSSearchSchema(BaseModel):
 
 class StartOSINTSearchSchema(BaseModel):
     name: str = ""
+    subject_id: str | None = None
 
 
 class AddOSINTFindingsSchema(BaseModel):

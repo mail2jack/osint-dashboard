@@ -68,6 +68,23 @@ class SearchManager:
         row.completed_at = datetime.now(timezone.utc)
         db.session.commit()
 
+    def set_sf_scan(self, search_id: str, sf_scan_id: str) -> None:
+        """Store the SpiderFoot scan ID on an OsintSearch record."""
+        row = OsintSearch.query.filter_by(search_id=search_id).first()
+        if not row:
+            return
+        row.spiderfoot_scan_id = sf_scan_id
+        row.sf_status = "running"
+        db.session.commit()
+
+    def set_sf_status(self, search_id: str, status: str) -> None:
+        """Update the SpiderFoot scan status on an OsintSearch record."""
+        row = OsintSearch.query.filter_by(search_id=search_id).first()
+        if not row:
+            return
+        row.sf_status = status
+        db.session.commit()
+
     def set_error(self, search_id: str, error: str) -> None:
         row = OsintSearch.query.filter_by(search_id=search_id).first()
         if not row:

@@ -573,9 +573,21 @@
         </div>
         
         <div id="osintSearching" style="display: none; text-align: center; padding: 2rem;">
-            <div class="searching">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-                <p style="font-size: 1.25rem; font-weight: 600;">{{ _('Searching...') }}</p>
+            <div class="osint-detective">
+                <div class="osint-detective-icon">
+                    <div class="detective-hat"></div>
+                    <div class="detective-face"></div>
+                    <div class="detective-pipe"></div>
+                    <div class="smoke-ring"></div>
+                    <div class="smoke-ring"></div>
+                    <div class="smoke-ring"></div>
+                    <div class="magnifying-glass"></div>
+                    <div class="scan-ring"></div>
+                    <div class="scan-ring"></div>
+                    <div class="scan-ring"></div>
+                </div>
+                <p style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary);">{{ _('Searching...') }}</p>
+                <div class="osint-timer" id="osintTimer">searching for <span id="osintElapsed">0</span>s</div>
             </div>
             <div style="margin-top: 1.5rem;">
                 <button data-click="cancelOsintSearch" class="btn-cms danger small">{{ _('Cancel Search') }}</button>
@@ -731,6 +743,30 @@
     .source-badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.65rem; font-weight: 500; margin-left: 0.5rem; vertical-align: middle; }
     .source-badge.brave { background: #f97316; color: #fff; }
     .source-badge.ddg { background: #25D366; color: #fff; }
+    .osint-detective { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .osint-detective-icon { position: relative; width: 100px; height: 100px; animation: detectiveFloat 2s ease-in-out infinite; }
+    .detective-hat { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 56px; height: 16px; background: #2d1b0e; border-radius: 4px 4px 0 0; }
+    .detective-hat::before { content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 32px; height: 14px; background: #2d1b0e; border-radius: 50% 50% 0 0; }
+    .detective-hat::after { content: ''; position: absolute; bottom: -2px; left: -8px; width: 72px; height: 4px; background: #2d1b0e; border-radius: 2px; }
+    .detective-face { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 40px; height: 28px; background: #f5d6b8; border-radius: 50%; }
+    .detective-face::before { content: ''; position: absolute; top: 12px; left: 6px; width: 4px; height: 4px; background: #2d1b0e; border-radius: 50%; box-shadow: 24px 0 0 #2d1b0e; }
+    .detective-pipe { position: absolute; top: 26px; left: 58px; width: 20px; height: 3px; background: #8b4513; border-radius: 0 2px 2px 0; transform: rotate(-15deg); }
+    .detective-pipe::before { content: ''; position: absolute; top: -3px; left: -2px; width: 6px; height: 6px; background: #8b4513; border-radius: 50%; }
+    .smoke-ring { position: absolute; width: 8px; height: 8px; border: 2px solid rgba(150,150,150,0.5); border-radius: 50%; animation: smoke 2s ease-out infinite; }
+    .smoke-ring:nth-child(1) { top: 20px; left: 62px; animation-delay: 0s; }
+    .smoke-ring:nth-child(2) { top: 14px; left: 58px; animation-delay: 0.6s; }
+    .smoke-ring:nth-child(3) { top: 8px; left: 64px; animation-delay: 1.2s; }
+    .magnifying-glass { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); animation: scan 1.6s ease-in-out infinite; }
+    .magnifying-glass::before { content: ''; display: block; width: 28px; height: 28px; border: 3px solid #555; border-radius: 50%; background: rgba(100,150,255,0.1); }
+    .magnifying-glass::after { content: ''; display: block; position: absolute; bottom: -8px; left: 18px; width: 12px; height: 3px; background: #555; border-radius: 0 0 2px 2px; transform: rotate(45deg); }
+    .scan-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border: 2px solid var(--accent-primary, #3b82f6); border-radius: 50%; opacity: 0; animation: scanRing 2s ease-out infinite; }
+    .scan-ring:nth-child(2) { animation-delay: 0.7s; }
+    .scan-ring:nth-child(3) { animation-delay: 1.4s; }
+    @keyframes detectiveFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    @keyframes smoke { 0% { opacity: 0.6; transform: translate(0,0) scale(1); } 100% { opacity: 0; transform: translate(6px,-20px) scale(2); } }
+    @keyframes scan { 0%, 100% { transform: translateX(-50%) rotate(-8deg); } 50% { transform: translateX(-50%) rotate(8deg); } }
+    @keyframes scanRing { 0% { opacity: 0.8; width: 40px; height: 40px; } 100% { opacity: 0; width: 100px; height: 100px; } }
+    .osint-timer { font-size: 0.9rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
 </style>
 
 <script nonce="{{ csp_nonce }}">
@@ -1451,6 +1487,8 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     // OSINT Search Functions
     let currentSearchId = null;
     let pollInterval = null;
+    let sfPollInterval = null;
+    let osintTimerInterval = null;
     const osintBase = "/cms/osint-search/";
     
     function openOsintModal() {
@@ -1480,6 +1518,11 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             clearInterval(pollInterval);
             pollInterval = null;
         }
+        if (sfPollInterval) {
+            clearInterval(sfPollInterval);
+            sfPollInterval = null;
+        }
+        stopOsintTimer();
     }
     
     function startOsintSearch() {
@@ -1488,12 +1531,13 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         document.getElementById('osintSearchForm').style.display = 'none';
         document.getElementById('osintSearching').style.display = 'block';
         document.getElementById('osintError').style.display = 'none';
+        startOsintTimer();
         
         {% if first_case_id %}
         fetch("{{ url_for('cms.start_osint_search', case_id=first_case_id) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name })
+            body: JSON.stringify({ name: name, subject_id: '{{ subject.id }}' })
         })
         .then(r => r.json())
         .then(data => {
@@ -1510,6 +1554,23 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         {% else %}
         showOsintError('{{ _("This subject is not linked to any case. Link the subject to a case first.")|replace("'", "\\'")|safe }}');
         {% endif %}
+    }
+    
+    function startOsintTimer() {
+        let seconds = 0;
+        document.getElementById('osintElapsed').textContent = '0';
+        if (osintTimerInterval) clearInterval(osintTimerInterval);
+        osintTimerInterval = setInterval(() => {
+            seconds++;
+            document.getElementById('osintElapsed').textContent = seconds;
+        }, 1000);
+    }
+    
+    function stopOsintTimer() {
+        if (osintTimerInterval) {
+            clearInterval(osintTimerInterval);
+            osintTimerInterval = null;
+        }
     }
     
     function pollSearchStatus() {
@@ -1532,10 +1593,12 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 } else if (data.status === 'completed') {
                     clearInterval(pollInterval);
                     pollInterval = null;
+                    stopOsintTimer();
                     loadSearchResults();
                 } else if (data.status === 'cancelled' || data.status === 'failed') {
                     clearInterval(pollInterval);
                     pollInterval = null;
+                    stopOsintTimer();
                     showOsintError(data.status === 'cancelled' ? '{{ _("Search was cancelled")|replace("'", "\\'")|safe }}' : data.message || '{{ _("Search failed")|replace("'", "\\'")|safe }}');
                 }
             })
@@ -1551,14 +1614,12 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         })
         .then(r => r.json())
         .then(() => {
-            if (pollInterval) {
-                clearInterval(pollInterval);
-                pollInterval = null;
-            }
-            currentSearchId = null;
+            stopOsintTimer();
+            resetOsintModal();
         })
         .catch(() => {
-            currentSearchId = null;
+            stopOsintTimer();
+            resetOsintModal();
         });
     }
     
@@ -1571,12 +1632,97 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 return;
             }
             displayOsintResults(data.results);
+            // Start SF polling if a SpiderFoot scan was started
+            if (data.spiderfoot_scan_id && data.sf_status !== 'completed' && data.sf_status !== 'failed') {
+                pollSfStatus();
+            } else if (data.sf_status === 'failed') {
+                const note = document.createElement('div');
+                note.style.cssText = 'padding: 0.75rem; margin-top: 0.5rem; background: var(--warning-bg, #fef3c7); border-radius: 6px; font-size: 0.85rem; color: var(--warning-text, #92400e);';
+                note.textContent = '{{ _("SpiderFoot scan could not be started.")|replace("'", "\\'")|safe }}';
+                document.getElementById('resultsList').appendChild(note);
+            }
         })
         .catch(err => {
             showOsintError('{{ _("Failed to load results:")|replace("'", "\\'")|safe }} ' + err.message);
         });
     }
     
+    function pollSfStatus() {
+        if (sfPollInterval) return;
+        let sfElapsed = 0;
+        sfPollInterval = setInterval(() => {
+            sfElapsed += 3;
+            if (sfElapsed > 300) {
+                clearInterval(sfPollInterval);
+                sfPollInterval = null;
+                const note = document.createElement('div');
+                note.style.cssText = 'padding: 0.75rem; margin-top: 0.5rem; background: var(--warning-bg, #fef3c7); border-radius: 6px; font-size: 0.85rem; color: var(--warning-text, #92400e);';
+                note.textContent = '{{ _("SpiderFoot scan timed out after 5 minutes.")|replace("'", "\\'")|safe }}';
+                document.getElementById('resultsList').appendChild(note);
+                return;
+            }
+            fetch(osintBase + currentSearchId + '/sf-results')
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'completed' && data.results && data.results.length > 0) {
+                    clearInterval(sfPollInterval);
+                    sfPollInterval = null;
+                    displaySfResults(data.results);
+                } else if (data.status === 'failed' || data.status === 'unavailable') {
+                    clearInterval(sfPollInterval);
+                    sfPollInterval = null;
+                    const note = document.createElement('div');
+                    note.style.cssText = 'padding: 0.75rem; margin-top: 0.5rem; background: var(--warning-bg, #fef3c7); border-radius: 6px; font-size: 0.85rem; color: var(--warning-text, #92400e);';
+                    note.textContent = '{{ _("SpiderFoot scan could not be completed.")|replace("'", "\\'")|safe }}';
+                    document.getElementById('resultsList').appendChild(note);
+                }
+            })
+            .catch(() => {});
+        }, 3000);
+    }
+
+    function displaySfResults(results) {
+        const resultsList = document.getElementById('resultsList');
+        
+        const sep = document.createElement('hr');
+        sep.style.cssText = 'margin: 1rem 0; border: 0; border-top: 1px solid var(--border-color, #e5e7eb);';
+        resultsList.appendChild(sep);
+        
+        const sfSection = document.createElement('div');
+        sfSection.style.marginBottom = '1rem';
+        sfSection.innerHTML = '<h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">🕷️ {{ _("SpiderFoot Results")|replace("'", "\\'")|safe }} (' + esc(results.length) + ')</h4>';
+        
+        const typeColors = {
+            'EMAILADDR': '#3b82f6', 'PHONE_NUMBER': '#f97316', 'SOCIAL_MEDIA': '#8b5cf6',
+            'ACCOUNT': '#06b6d4', 'USERNAME': '#8b5cf6', 'BREACH': '#ef4444',
+            'DOMAIN_NAME': '#10b981', 'IP_ADDRESS': '#6366f1', 'NAME': '#6b7280'
+        };
+        
+        results.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            const sfType = item.sf_type || 'UNKNOWN';
+            const sfModule = item.sf_module || '';
+            const typeColor = typeColors[sfType] || '#6b7280';
+            
+            div.innerHTML =
+                '<input type="checkbox" class="result-checkbox" data-url="' + esc(item.url || '') + '" data-domain="' + esc(item.domain || '') + '" data-query="' + esc(item.query || '') + '" data-source="spiderfoot" data-category="' + esc(item.category || 'general') + '" data-sf-type="' + esc(sfType) + '" data-sf-module="' + esc(sfModule) + '" data-change="updateSelectedCount">' +
+                '<div class="result-content">' +
+                    '<div class="result-engine">' +
+                        '<span style="display:inline-block;background:' + typeColor + ';color:white;padding:1px 6px;border-radius:3px;font-size:0.65rem;font-weight:600;margin-right:0.4rem;text-transform:uppercase;">' + esc(sfType) + '</span>' +
+                        esc(item.domain || 'SpiderFoot') +
+                        '<span class="source-badge" style="background:#7c3aed;color:white;padding:1px 6px;border-radius:3px;font-size:0.65rem;margin-left:0.4rem;">SF</span>' +
+                    '</div>' +
+                    '<div class="result-query">' + esc(item.query || '') + '</div>' +
+                '</div>' +
+                (item.url ? '<div class="result-url"><a href="' + esc(item.url) + '" target="_blank">' + esc(item.url) + '</a></div>' : '<div class="result-url" style="color:#999;font-size:0.75rem;">' + esc(sfModule) + '</div>');
+            sfSection.appendChild(div);
+        });
+        
+        resultsList.appendChild(sfSection);
+        updateSelectedCount();
+    }
+
     function displayOsintResults(results) {
         document.getElementById('osintSearching').style.display = 'none';
         document.getElementById('osintResults').style.display = 'block';
@@ -1723,13 +1869,16 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         if (checkboxes.length === 0) return;
         const selectedResults = [];
         checkboxes.forEach(cb => {
-            selectedResults.push({
+            const result = {
                 url: cb.dataset.url,
                 domain: cb.dataset.domain,
                 query: cb.dataset.query,
                 source: cb.dataset.source,
                 category: cb.dataset.category
-            });
+            };
+            if (cb.dataset.sfType) result.sf_type = cb.dataset.sfType;
+            if (cb.dataset.sfModule) result.sf_module = cb.dataset.sfModule;
+            selectedResults.push(result);
         });
         {% if first_case_id %}
         fetch("{{ url_for('cms.add_osint_findings', case_id=first_case_id) }}", {

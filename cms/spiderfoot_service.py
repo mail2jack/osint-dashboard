@@ -46,33 +46,33 @@ class ScanTarget:
         name = subject_data.get("name", "")
 
         # Map Iveras subject types to SpiderFoot target types
-        type_mapping = {
-            "person": "NAME",  # Could also try EMAILADDR if available
+        # Note: SpiderFoot has NO human name target type — only
+        # EMAILADDR, PHONE_NUMBER, DOMAIN_NAME, IP_ADDRESS, etc.
+        type_mapping: dict[str, str | None] = {
             "company": "DOMAIN_NAME",
             "organization": "DOMAIN_NAME",
-            "vehicle": None,  # No direct mapping - use VIN or license plate
-            "vessel": None,
             "property": "INTERNET_NAME",
         }
 
-        sf_type = type_mapping.get(subject_type)
-
-        # For persons, try to extract email from identifiers
+        # For persons, try email first, then phone, then name with quotes
         if subject_type == "person":
             email = subject_data.get("email")
             if email:
                 return cls(value=email, target_type="EMAILADDR")
-            # Could try phone number if available
             phone = subject_data.get("phone")
             if phone:
                 return cls(
                     value=phone.replace(" ", "").replace("-", ""),
                     target_type="PHONE_NUMBER",
                 )
+            # Use quoted name — SF modules like sfp_accounts auto-generate
+            # username variations from a HUMAN_NAME target
+            return cls(value=f'"{name}"', target_type="HUMAN_NAME")
+
+        sf_type = type_mapping.get(subject_type)
 
         # For companies/organizations, use name as domain guess
         if sf_type == "DOMAIN_NAME" and "@" not in name and not name.startswith("http"):
-            # Assume .com if no domain provided
             if "." not in name:
                 name = f"{name.lower().replace(' ', '')}.com"
             return cls(value=name, target_type="DOMAIN_NAME")
@@ -653,6 +653,94 @@ class SpiderFootService:
         Normalize all results to dictionary format.
         """
         return [self.normalize_result(r) for r in results]
+
+    # Mapping from SF types to OSINT search result categories
+    SF_TYPE_TO_OSINT_CATEGORY: dict[str, str] = {
+        "EMAILADDR": "social_media",
+        "PHONE_NUMBER": "social_media",
+        "SOCIAL_MEDIA": "social_media",
+        "ACCOUNT": "social_media",
+        "USERNAME": "social_media",
+        "HUMAN_NAME": "social_media",
+        "NAME": "social_media",
+        "BREACH": "public_records",
+        "LEAKS": "public_records",
+        "DOMAIN_NAME": "network",
+        "INTERNET_NAME": "network",
+        "IP_ADDRESS": "network",
+        "DNS_RECORD": "network",
+        "TCP_PORT_OPEN": "network",
+        "SSL_CERTIFICATE": "network",
+        "CO_HOSTED_SITE": "network",
+        "GEOIP": "location",
+        "COMPANY": "general",
+        "COMPANY_NAME": "general",
+        "AFFILIATE": "general",
+        "AFFILIATE_DOMAINNAME": "general",
+        "BITCOIN_ADDRESS": "financial",
+        "WALLET_ADDRESS": "financial",
+        "VULNERABILITY": "threat",
+        "MALWARE": "threat",
+    }
+
+    def normalize_sf_result_for_osint(
+        self, sf_result: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Normalize a SpiderFoot result into the OSINT search result format
+        used by the frontend displayResults() function.
+
+        Args:
+            sf_result: A normalized SpiderFoot result dict (from normalize_result)
+
+        Returns:
+            Dict with keys: url, domain, query, source, category, sf_type, sf_module, sf_data
+        """
+        import html as html_mod
+        import re as re_mod
+
+        sf_type = sf_result.get("type", "UNKNOWN")
+        data = sf_result.get("data", "")
+        value = sf_result.get("value", "")
+        source_module = sf_result.get("sourceModule", "unknown")
+        source_url = sf_result.get("sourceUrl", "")
+
+        # Use sourceUrl as url, or fall back to data as display
+        url = source_url or ""
+        domain = ""
+        if url:
+            try:
+                from urllib.parse import urlparse
+
+                parsed = urlparse(url)
+                domain = parsed.netloc or parsed.hostname or ""
+            except Exception:
+                domain = ""
+
+        # Clean data: unescape HTML entities and strip SFURL tags
+        clean_data = data or value or ""
+        if isinstance(clean_data, str):
+            clean_data = html_mod.unescape(clean_data)
+            clean_data = re_mod.sub(r"<SFURL>.*?</SFURL>", "", clean_data)
+            clean_data = re_mod.sub(r"\s+", " ", clean_data).strip()
+
+        # Build a meaningful query/description
+        query = clean_data or value or sf_type
+
+        # Map SF type to OSINT category
+        category = self.SF_TYPE_TO_OSINT_CATEGORY.get(sf_type, "general")
+
+        return {
+            "url": url,
+            "domain": domain,
+            "query": f"[{sf_type}] {query[:200]}" if query else sf_type,
+            "source": "spiderfoot",
+            "category": category,
+            "sf_type": sf_type,
+            "sf_module": source_module,
+            "sf_data": clean_data or data,
+            "sf_value": value,
+        }
 
 
 # Global service instance
