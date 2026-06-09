@@ -1232,6 +1232,9 @@ def create_user() -> flask.Response:
     try:
         validated = CreateUserSchema(**raw)
     except Exception:
+        import traceback
+
+        logger.warning("CreateUser validation error:\n%s", traceback.format_exc())
         return _error("Validation failed")
 
     data = validated.model_dump(exclude_none=True)
