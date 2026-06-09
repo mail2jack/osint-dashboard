@@ -346,6 +346,19 @@
             <span class="icon">📊</span>
             <span>Statistieken</span>
         </a>
+        {% if current_user.is_super_admin %}
+        <a href="{{ url_for('cms.settings') }}?category=platform" 
+           class="category-item {% if active_category == 'platform' %}active{% endif %}">
+            <span class="icon">⚙️</span>
+            <span>{{ _('Platform') }}</span>
+        </a>
+        {% endif %}
+        {% if current_user.is_super_admin %}
+        <a href="{{ url_for('cms.list_tenants') }}" class="category-item">
+            <span class="icon">🏢</span>
+            <span>{{ _('Tenants') }}</span>
+        </a>
+        {% endif %}
         <a href="{{ url_for('cms.translations_page') }}" class="category-item">
             <span class="icon">🌐</span>
             <span>{{ _('Translations') }}</span>
@@ -353,10 +366,41 @@
     </div>
     
     <div class="settings-content">
+        {% if is_platform_cat %}
+        <h2>⚙️ Platform Settings</h2>
+        <p>{{ _('Configure global platform settings. These apply to all tenants.') }}</p>
+        {% else %}
         <h2>{{ categories[active_category].icon }} {{ categories[active_category].name.replace(categories[active_category].icon + ' ', '') }}</h2>
         <p>{{ _('Configure %(category)s settings for the application.', category=active_category.replace('_', ' ')) }}</p>
-        
-        <form id="settingsForm">
+        {% endif %}
+        <form id="settingsForm"{% if is_platform_cat %} data-platform-settings="true"{% endif %}>
+            {% for setting in settings_list %}
+            {% if is_platform_cat %}
+            <div class="setting-item" data-setting-id="{{ setting.id }}" data-value-type="{% if setting.is_encrypted %}password{% else %}text{% endif %}" data-key="{{ setting.key }}">
+                <label for="setting-{{ setting.id }}">
+                    {{ setting.key.replace('_', ' ').title() }}
+                    {% if setting.is_encrypted %}
+                    <span style="color: #f59e0b; font-size: 0.75rem; font-weight: normal;">{{ _('(sensitive)') }}</span>
+                    {% endif %}
+                </label>
+                <p class="description">{{ setting.description or '' }}</p>
+                {% if setting.is_encrypted %}
+                <div style="position: relative;">
+                    <input type="password" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
+                           value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
+                           class="setting-input" autocomplete="new-password">
+                    <button type="button" data-click="togglePassword" data-arg0="{{ setting.id }}" 
+                            style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.5rem;">
+                        👁️
+                    </button>
+                </div>
+                {% else %}
+                <input type="text" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
+                       value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
+                       class="setting-input">
+                {% endif %}
+            </div>
+            {% else %}
             {% for setting in settings_list %}
             <div class="setting-item" data-setting-id="{{ setting.id }}" data-value-type="{{ setting.value_type }}" data-key="{{ setting.key }}">
                 <label for="setting-{{ setting.id }}">
@@ -412,6 +456,7 @@
                        class="setting-input">
                 {% endif %}
             </div>
+            {% endif %}
             {% endfor %}
             
             {% if settings_list %}
@@ -513,7 +558,10 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _('Saving...') }}</span>';
     
     try {
-        const response = await fetch('/cms/api/settings', {
+        const isPlatform = document.getElementById('settingsForm').dataset.platformSettings === 'true';
+        const apiUrl = isPlatform ? '/cms/api/platform-settings' : '/cms/api/settings';
+        const response = await fetch(apiUrl, {
+            method: 'POST',
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -551,9 +599,11 @@ async function resetAllSettings() {
         settingIds.push(item.dataset.settingId);
     });
     
+    const isPlatform = document.getElementById('settingsForm').dataset.platformSettings === 'true';
     for (const id of settingIds) {
         try {
-            await fetch(`/cms/api/settings/${id}/reset`, {
+            const resetUrl = isPlatform ? `/cms/api/platform-settings/${id}/reset` : `/cms/api/settings/${id}/reset`;
+            await fetch(resetUrl, {
                 method: 'POST',
                 headers: {'X-CSRFToken': '{{ csrf_token() }}'}
             });

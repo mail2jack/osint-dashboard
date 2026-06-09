@@ -6,7 +6,17 @@ from flask import request, jsonify, render_template, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, Setting, AuditLog, LoginLog, User, init_default_settings
+from ..models import (
+    db,
+    Setting,
+    AuditLog,
+    LoginLog,
+    User,
+    Tenant,
+    PlatformSetting,
+    TenantSetting,
+    init_default_settings,
+)
 from ..auth import admin_required
 from ..validation import validate, SaveSettingsSchema
 
@@ -15,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/settings")
 @login_required
-@admin_required
 def settings() -> str:
     """Settings management page."""
     category = request.args.get("category", "api_keys")
@@ -33,11 +42,21 @@ def settings() -> str:
         "telegram": {"name": "📱 Telegram Bot", "icon": "📱"},
     }
 
-    settings_list = (
-        Setting.query.filter_by(category=category, is_active=True)
-        .order_by(Setting.display_order)
-        .all()
-    )
+    is_platform_cat = False
+    settings_list = []
+    if category == "platform":
+        if not current_user.is_super_admin:
+            abort(403)
+        is_platform_cat = True
+        settings_list = PlatformSetting.query.order_by(PlatformSetting.key).all()
+    else:
+        if not current_user.is_admin:
+            abort(403)
+        settings_list = (
+            Setting.query.filter_by(category=category, is_active=True)
+            .order_by(Setting.display_order)
+            .all()
+        )
 
     return render_template(
         "cms/settings/index.html",
@@ -45,6 +64,7 @@ def settings() -> str:
         categories=categories,
         active_category=category,
         search_query=search_q,
+        is_platform_cat=is_platform_cat,
     )
 
 
@@ -177,6 +197,144 @@ def save_settings_api() -> flask.Response:
             "errors": errors,
         }
     )
+
+
+# =============================================================================
+# Platform Settings (super admin only)
+# =============================================================================
+
+
+@cms_bp.route("/api/platform-settings")
+@login_required
+@admin_required
+def get_platform_settings() -> flask.Response:
+    """Get all platform settings."""
+    if not current_user.is_super_admin:
+        abort(403)
+    settings_list = PlatformSetting.query.order_by(PlatformSetting.key).all()
+    return jsonify(
+        {
+            "settings": [
+                {
+                    "id": s.id,
+                    "key": s.key,
+                    "value": "***MASKED***" if s.is_encrypted else s.value,
+                    "category": s.category,
+                    "description": s.description,
+                    "is_encrypted": s.is_encrypted,
+                    "created_at": s.created_at.isoformat() if s.created_at else None,
+                }
+                for s in settings_list
+            ]
+        }
+    )
+
+
+@cms_bp.route("/api/platform-settings", methods=["POST"])
+@login_required
+@admin_required
+def save_platform_settings() -> flask.Response:
+    """Save platform settings."""
+    if not current_user.is_super_admin:
+        abort(403)
+    data = request.get_json() or {}
+    saved_count = 0
+    for item in data.get("settings", []):
+        setting_id = item.get("id")
+        new_value = item.get("value")
+        if setting_id:
+            setting = db.session.get(PlatformSetting, setting_id)
+            if setting:
+                setting.value = new_value
+                setting.updated_at = datetime.now(timezone.utc)
+                saved_count += 1
+    db.session.commit()
+    return jsonify(
+        {"message": f"Saved {saved_count} platform setting(s)", "saved": saved_count}
+    )
+
+
+# =============================================================================
+# Tenant Settings (tenant owner only)
+# =============================================================================
+
+
+@cms_bp.route("/api/tenant-settings")
+@login_required
+def get_tenant_settings() -> flask.Response:
+    """Get settings for the current tenant."""
+    if not current_user.is_tenant_owner and not current_user.is_super_admin:
+        abort(403)
+    tid = current_user.tenant_id
+    settings_list = (
+        TenantSetting.query.filter_by(tenant_id=tid).order_by(TenantSetting.key).all()
+    )
+    return jsonify(
+        {
+            "settings": [
+                {
+                    "id": s.id,
+                    "key": s.key,
+                    "value": "***MASKED***" if s.is_encrypted else s.value,
+                    "category": s.category,
+                    "description": s.description,
+                    "is_encrypted": s.is_encrypted,
+                    "created_at": s.created_at.isoformat() if s.created_at else None,
+                }
+                for s in settings_list
+            ]
+        }
+    )
+
+
+@cms_bp.route("/api/tenant-settings", methods=["POST"])
+@login_required
+def save_tenant_settings() -> flask.Response:
+    """Save settings for the current tenant."""
+    if not current_user.is_tenant_owner and not current_user.is_super_admin:
+        abort(403)
+    data = request.get_json() or {}
+    tid = current_user.tenant_id
+    saved_count = 0
+    for item in data.get("settings", []):
+        setting_id = item.get("id")
+        new_value = item.get("value")
+        if setting_id:
+            setting = db.session.get(TenantSetting, setting_id)
+            if setting and setting.tenant_id == tid:
+                setting.value = new_value
+                setting.updated_at = datetime.now(timezone.utc)
+                saved_count += 1
+    db.session.commit()
+    return jsonify(
+        {"message": f"Saved {saved_count} tenant setting(s)", "saved": saved_count}
+    )
+
+
+# =============================================================================
+# Platform Settings Reset
+# =============================================================================
+
+
+@cms_bp.route("/api/platform-settings/<setting_id>/reset", methods=["POST"])
+@login_required
+@admin_required
+def reset_platform_setting(setting_id: str) -> flask.Response:
+    """Delete a platform setting (reset to default)."""
+    if not current_user.is_super_admin:
+        abort(403)
+    setting = db.session.get(PlatformSetting, setting_id) or abort(404)
+    db.session.delete(setting)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="platform_setting_reset",
+        entity_type="platform_setting",
+        entity_id=setting_id,
+        ip_address=request.remote_addr,
+        description=f"Reset platform setting: {setting.key}",
+    )
+    db.session.commit()
+    return jsonify({"message": "Platform setting reset to default"})
 
 
 @cms_bp.route("/api/settings/<setting_id>/reset", methods=["POST"])
@@ -418,3 +576,103 @@ def api_delete_api_key(key_id: str) -> flask.Response:
     db.session.delete(key)
     db.session.commit()
     return jsonify({"message": "API key deleted"})
+
+
+# =============================================================================
+# Tenant Management (super admin only)
+# =============================================================================
+
+
+@cms_bp.route("/tenants")
+@login_required
+@admin_required
+def list_tenants() -> str:
+    """List all tenants (super admin only)."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
+    return render_template("cms/settings/tenants.html", tenants=tenants)
+
+
+@cms_bp.route("/api/tenants")
+@login_required
+@admin_required
+def get_tenants_api() -> flask.Response:
+    """Get all tenants with user counts."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
+    return jsonify(
+        {
+            "tenants": [
+                {
+                    **t.to_dict(),
+                    "user_count": User.query.filter_by(tenant_id=t.id).count(),
+                }
+                for t in tenants
+            ]
+        }
+    )
+
+
+@cms_bp.route("/api/tenants", methods=["POST"])
+@login_required
+@admin_required
+def create_tenant() -> flask.Response:
+    """Create a new tenant."""
+    if not current_user.is_super_admin:
+        abort(403)
+    data = request.get_json() or {}
+    name = data.get("name", "").strip()
+    slug = data.get("slug", "").strip()
+    if not name or not slug:
+        return jsonify({"error": "name and slug are required"}), 400
+    if Tenant.query.filter_by(slug=slug).first():
+        return jsonify({"error": "Slug already exists"}), 409
+    import uuid as _uuid
+
+    tenant = Tenant(
+        id=str(_uuid.uuid4()),
+        name=name,
+        slug=slug,
+        is_active=True,
+        tier=data.get("tier", "free"),
+    )
+    db.session.add(tenant)
+    db.session.commit()
+    return jsonify(
+        {"message": f"Tenant '{name}' created", "tenant": tenant.to_dict()}
+    ), 201
+
+
+@cms_bp.route("/api/tenants/<tenant_id>", methods=["DELETE"])
+@login_required
+@admin_required
+def delete_tenant(tenant_id: str) -> flask.Response:
+    """Delete a tenant (super admin only)."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    if not tenant:
+        return jsonify({"error": "Tenant not found"}), 404
+    db.session.delete(tenant)
+    db.session.commit()
+    return jsonify({"message": f"Tenant '{tenant.name}' deleted"})
+
+
+@cms_bp.route("/api/tenants/<tenant_id>/toggle", methods=["POST"])
+@login_required
+@admin_required
+def toggle_tenant(tenant_id: str) -> flask.Response:
+    """Toggle tenant active status."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    tenant.is_active = not tenant.is_active
+    db.session.commit()
+    return jsonify(
+        {
+            "message": f"Tenant {'activated' if tenant.is_active else 'deactivated'}",
+            "is_active": tenant.is_active,
+        }
+    )

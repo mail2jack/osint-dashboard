@@ -1,0 +1,212 @@
+{% extends "cms/base.html" %}
+
+{% block title %}Tenants - CMS{% endblock %}
+
+{% block content %}
+<style>
+.tenants-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+.tenants-header h1 { margin: 0; }
+.tier-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.tier-free { background: var(--bg-secondary); color: var(--text-secondary); }
+.tier-starter { background: var(--info-bg, #dbeafe); color: var(--info-text, #1e40af); }
+.tier-professional { background: var(--warning-bg, #fef3c7); color: var(--warning-text, #92400e); }
+.tier-enterprise { background: var(--danger-bg, #fee2e2); color: var(--danger-text, #991b1b); }
+.badge-active {
+    display: inline-block;
+    background: #059669;
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.badge-inactive {
+    display: inline-block;
+    background: #9ca3af;
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.modal-box h2 { margin-top: 0; }
+.modal-box label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+.modal-box input, .modal-box select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+</style>
+
+<div class="back">
+    <a href="{{ url_for('cms.settings') }}">← Back to Settings</a>
+</div>
+
+<div class="tenants-header">
+    <h1>🏢 Tenants</h1>
+    <button class="btn-cms primary" data-click="showCreateModal">+ Create Tenant</button>
+</div>
+
+{% if tenants %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Status</th>
+            <th>Users</th>
+            <th>Tier</th>
+            <th>Created</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for tenant in tenants %}
+        <tr>
+            <td>{{ tenant.name }}</td>
+            <td><code>{{ tenant.slug }}</code></td>
+            <td>
+                {% if tenant.is_active %}
+                <span class="badge-active">Active</span>
+                {% else %}
+                <span class="badge-inactive">Inactive</span>
+                {% endif %}
+            </td>
+            <td>{{ tenant.user_count or '—' }}</td>
+            <td><span class="tier-badge tier-{{ tenant.tier }}">{{ tenant.tier }}</span></td>
+            <td style="font-size:0.8125rem;color:var(--text-secondary)">
+                {{ tenant.created_at.strftime('%Y-%m-%d') if tenant.created_at else '—' }}
+            </td>
+            <td>
+                {% if tenant.is_active %}
+                <button class="btn-cms small" data-click="toggleTenant" data-arg0="{{ tenant.id }}">Deactivate</button>
+                {% else %}
+                <button class="btn-cms small" data-click="toggleTenant" data-arg0="{{ tenant.id }}">Activate</button>
+                {% endif %}
+                <button class="btn-cms danger small" data-click="deleteTenant" data-arg0="{{ tenant.id }}">Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div style="text-align:center;padding:3rem;color:var(--text-secondary)">
+    <p>No tenants configured yet.</p>
+</div>
+{% endif %}
+
+<!-- Create Tenant Modal -->
+<div id="createModal" class="modal-overlay">
+    <div class="modal-box">
+        <h2>Create Tenant</h2>
+        <label for="tenantName">Tenant Name</label>
+        <input type="text" id="tenantName" placeholder="e.g. Acme Corp">
+
+        <label for="tenantSlug">Slug</label>
+        <input type="text" id="tenantSlug" placeholder="e.g. acme-corp">
+
+        <label for="tenantTier">Tier</label>
+        <select id="tenantTier">
+            <option value="free">Free</option>
+            <option value="starter">Starter</option>
+            <option value="professional">Professional</option>
+            <option value="enterprise">Enterprise</option>
+        </select>
+
+        <div style="display:flex;gap:0.5rem;margin-top:1rem">
+            <button class="btn-cms primary" data-click="createTenant">Create</button>
+            <button class="btn-cms" data-click="closeCreateModal">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function showCreateModal(btn) {
+    document.getElementById('createModal').classList.add('show');
+}
+function closeCreateModal(btn) {
+    document.getElementById('createModal').classList.remove('show');
+}
+
+function createTenant(btn) {
+    const name = document.getElementById('tenantName').value.trim();
+    const slug = document.getElementById('tenantSlug').value.trim();
+    const tier = document.getElementById('tenantTier').value;
+
+    if (!name) { alert('Please enter a tenant name.'); return; }
+    if (!slug) { alert('Please enter a slug.'); return; }
+
+    fetch('{{ url_for("cms.api_create_tenant") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ name: name, slug: slug, tier: tier })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        location.reload();
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
+
+function toggleTenant(btn, id) {
+    const action = btn.textContent.trim() === 'Deactivate' ? 'deactivate' : 'activate';
+    if (!confirm(action === 'deactivate' ? 'Deactivate this tenant?' : 'Activate this tenant?')) return;
+    fetch('{{ url_for("cms.api_toggle_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+    })
+    .then(r => r.json())
+    .then(() => location.reload());
+}
+
+function deleteTenant(btn, id) {
+    if (!confirm('Delete this tenant? This cannot be undone.')) return;
+    fetch('{{ url_for("cms.api_delete_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
+        method: 'DELETE',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'}
+    })
+    .then(r => r.json())
+    .then(() => location.reload());
+}
+</script>
+{% endblock %}
