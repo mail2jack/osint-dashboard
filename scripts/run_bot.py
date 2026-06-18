@@ -20,7 +20,8 @@ from cms.telegram_bot import run_bot_polling
 def main():
     with app.app_context():
         from cms.models import Setting
-        from cms.telegram_bot import _check_enabled
+        from cms.telegram_bot import _check_enabled, _ensure_api_key
+        import cms.telegram_bot as tb_mod
 
         if not _check_enabled():
             print("[run_bot] telegram_enabled != true, exiting")
@@ -30,6 +31,9 @@ def main():
         if not token:
             print("[run_bot] no telegram_bot_token set, exiting")
             return
+
+        tb_mod._cached_allowed_users = Setting.get("telegram_allowed_users", "") or ""
+        _ensure_api_key(app)
 
     run_bot_polling(token)
 

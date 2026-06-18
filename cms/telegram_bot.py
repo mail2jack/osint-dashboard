@@ -1,6 +1,5 @@
 import logging
 import os
-import threading
 from typing import Optional
 
 import httpx
@@ -10,7 +9,6 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 logger = logging.getLogger(__name__)
 
 _bot_app: Optional[Application] = None
-_bot_thread: Optional[threading.Thread] = None
 _internal_api_key: Optional[str] = None
 # cached config – read once at startup (inside app context), then used from bot thread
 _cached_allowed_users: str = ""
@@ -572,31 +570,3 @@ def run_bot_polling(token: str):
     )
     _bot_app = None
     logger.info("Telegram bot: polling stopped")
-
-
-def start_bot(app):
-    global _bot_thread, _internal_api_key, _cached_allowed_users
-    if _bot_thread and _bot_thread.is_alive():
-        logger.info("Telegram bot already running")
-        return
-    if not _check_enabled():
-        logger.info("Telegram bot not enabled (telegram_enabled != true)")
-        return
-    from .models import Setting
-
-    token = Setting.get("telegram_bot_token", "")
-    if not token:
-        logger.warning(
-            "Telegram bot not started: no token (set telegram_bot_token Setting)"
-        )
-        return
-    _cached_allowed_users = Setting.get("telegram_allowed_users", "") or ""
-    _internal_api_key = _ensure_api_key(app)
-    _bot_thread = threading.Thread(
-        target=run_bot_polling,
-        args=(token,),
-        name="telegram-bot",
-        daemon=True,
-    )
-    _bot_thread.start()
-    logger.info("Telegram bot thread started")
