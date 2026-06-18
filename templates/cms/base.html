@@ -149,7 +149,9 @@
     <div class="keyboard-hint">
         <span class="kh-left">
             {% if current_user.is_authenticated and current_user.tenant %}
-            <span class="tenant-badge">{{ current_user.tenant.name }}</span>
+            <span class="tenant-badge">{{ current_user.tenant.name }}
+                <span style="font-size:0.65rem;opacity:0.7;margin-left:0.25rem;">({{ current_user.tenant.tier|title }})</span>
+            </span>
             {% endif %}
         </span>
         <span class="kh-center">

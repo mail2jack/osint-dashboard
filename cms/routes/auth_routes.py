@@ -849,6 +849,22 @@ def create_user() -> flask.Response:
     if data["role"] not in valid_roles:
         return _error("Invalid role")
 
+    target_tenant_id = data.get("tenant_id") or current_user.tenant_id
+    target_tenant = db.session.get(Tenant, target_tenant_id)
+    if target_tenant and not current_user.is_super_admin:
+        from ..tier_limits import check_resource_limit
+
+        ok, cur, maximum = check_resource_limit(
+            User,
+            "tenant_id",
+            "max_users",
+            tenant=target_tenant,
+        )
+        if not ok:
+            return _error(
+                f"User limit reached ({cur}/{maximum}). Upgrade the plan to add more users."
+            )
+
     user = User(
         username=data["username"],
         email=data.get("email", ""),

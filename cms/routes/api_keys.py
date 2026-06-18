@@ -38,6 +38,13 @@ def list_api_keys() -> flask.Response:
 @login_required
 @admin_required
 def generate_api_key() -> flask.Response:
+    from ..tier_limits import check_feature
+
+    if not check_feature("api_keys"):
+        return api_error(
+            "API keys are not available on your current plan. Upgrade to access this feature.",
+            403,
+        )
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
     if not name:

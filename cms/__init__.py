@@ -239,6 +239,10 @@ def create_cms_module(app: Flask):
             app.logger.info(
                 "Seeded default tenant: %s (%s)", first_tenant.name, first_tenant.id
             )
+        elif first_tenant.tier == "free":
+            first_tenant.tier = "enterprise"
+            db.session.commit()
+            app.logger.info("Upgraded default tenant tier: free → enterprise")
 
         # Create default admin user if none exists
         if not User.query.filter_by(role="admin").first():

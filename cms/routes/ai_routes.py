@@ -46,6 +46,14 @@ def ai_status() -> FlaskResponse:
 @rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="ai_summarize")
 @validate(AISummarizeSchema)
 def ai_summarize() -> FlaskResponse:
+    from ..tier_limits import check_feature
+
+    if not check_feature("ai"):
+        return jsonify(
+            {
+                "error": "AI features are not available on your current plan. Upgrade to access AI."
+            }
+        ), 403
     query = request.validated_data.get("query", "")
     tool = request.validated_data.get("tool", "unknown")
     findings = request.validated_data.get("findings", [])
@@ -64,6 +72,14 @@ def ai_summarize() -> FlaskResponse:
 @rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="ai_analyze")
 @validate(AIAnalyzeQuerySchema)
 def ai_analyze_query() -> FlaskResponse:
+    from ..tier_limits import check_feature
+
+    if not check_feature("ai"):
+        return jsonify(
+            {
+                "error": "AI features are not available on your current plan. Upgrade to access AI."
+            }
+        ), 403
     user_query = request.validated_data.get("query", "")
 
     if not check_ollama_available():
@@ -90,6 +106,14 @@ def ai_analyze_query() -> FlaskResponse:
 @rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="ai_enrich")
 @validate(AIEnrichProfileSchema)
 def ai_enrich_profile() -> FlaskResponse:
+    from ..tier_limits import check_feature
+
+    if not check_feature("ai"):
+        return jsonify(
+            {
+                "error": "AI features are not available on your current plan. Upgrade to access AI."
+            }
+        ), 403
     platform = request.validated_data.get("platform", "Unknown")
     username = request.validated_data.get("username", "")
     info = request.validated_data.get("info", {})

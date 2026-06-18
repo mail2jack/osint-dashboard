@@ -268,6 +268,17 @@ def spiderfoot_scan() -> str:
     # POST - Start scan
     data = request.validated_data
 
+    from ..tier_limits import check_feature
+
+    if not check_feature("spiderfoot"):
+        if request.is_json:
+            return api_error(
+                "SpiderFoot is not available on your current plan. Upgrade to access this feature.",
+                403,
+            )
+        flash("SpiderFoot is not available on your current plan.", "warning")
+        return redirect(url_for("cms.settings", category="plan"))
+
     target = data.get("target")
     target_type = data.get("target_type", "DOMAIN_NAME")
     scan_name = data.get("scan_name")
@@ -708,6 +719,11 @@ def spiderfoot_scans() -> str:
 @validate(SpiderFootSettingsSchema)
 def spiderfoot_settings() -> str:
     """Manage SpiderFoot settings."""
+    from ..tier_limits import check_feature
+
+    if not check_feature("spiderfoot"):
+        flash("SpiderFoot is not available on your current plan.", "warning")
+        return redirect(url_for("cms.settings", category="plan"))
     if request.method == "POST":
         data = request.validated_data
 
@@ -835,6 +851,17 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
 
     if request.method == "POST":
         data = request.validated_data
+
+        from ..tier_limits import check_feature
+
+        if not check_feature("spiderfoot"):
+            if request.is_json:
+                return api_error(
+                    "SpiderFoot is not available on your current plan. Upgrade to access this feature.",
+                    403,
+                )
+            flash("SpiderFoot is not available on your current plan.", "warning")
+            return redirect(url_for("cms.settings", category="plan"))
 
         profile = data.get("profile", "basic")
         use_case = data.get("use_case", "passive")

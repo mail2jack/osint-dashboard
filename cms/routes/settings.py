@@ -43,11 +43,33 @@ def settings() -> str:
         "security": {"name": "🔒 Security", "icon": "🔒", "group": "system"},
         "appearance": {"name": "🎨 Appearance", "icon": "🎨", "group": "system"},
         "feature_flags": {"name": "🚩 Feature Flags", "icon": "🚩", "group": "system"},
+        "plan": {"name": "📋 Plan & Limits", "icon": "📋", "group": "system"},
     }
 
     is_platform_cat = False
+    plan_info = None
     settings_list = []
-    if category == "platform":
+    if category == "plan":
+        if not current_user.is_admin:
+            abort(403)
+        from ..tier_limits import TIERS, TIER_DISPLAY
+
+        tier = current_user.tenant.tier if current_user.tenant else "free"
+        limits = TIERS.get(tier, TIERS["free"])
+        from ..models import User, Case
+
+        user_count = User.query.filter_by(tenant_id=current_user.tenant_id).count()
+        case_count = Case.query.filter_by(
+            tenant_id=current_user.tenant_id, is_deleted=False
+        ).count()
+        plan_info = {
+            "tier": tier,
+            "tier_display": TIER_DISPLAY.get(tier, tier.title()),
+            "limits": limits,
+            "user_count": user_count,
+            "case_count": case_count,
+        }
+    elif category == "platform":
         if not current_user.is_super_admin:
             abort(403)
         is_platform_cat = True
@@ -68,6 +90,7 @@ def settings() -> str:
         active_category=category,
         search_query=search_q,
         is_platform_cat=is_platform_cat,
+        plan_info=plan_info,
     )
 
 
@@ -493,7 +516,13 @@ def manage_api_keys() -> str:
 def api_create_api_key() -> flask.Response:
     """Create a new API key for a user."""
     from ..models import ApiKey
+    from ..tier_limits import check_feature
 
+    if not check_feature("api_keys"):
+        return api_error(
+            "API keys are not available on your current plan. Upgrade to access this feature.",
+            403,
+        )
     data = request.get_json() or {}
     user_id = data.get("user_id")
     name = data.get("name", "").strip()

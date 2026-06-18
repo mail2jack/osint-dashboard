@@ -115,7 +115,7 @@ def upgrade() -> None:
     conn.execute(
         sa.text(
             "INSERT INTO tenants (id, name, slug, is_active, tier, created_at, updated_at) "
-            "VALUES (:id, :name, :slug, true, 'free', :now, :now)"
+            "VALUES (:id, :name, :slug, true, 'enterprise', :now, :now)"
         ),
         {
             "id": seed_tenant_id,

@@ -577,7 +577,64 @@
             {% endif %}
             {% endfor %}
             
-            {% if settings_list %}
+            {% if plan_info %}
+            <div class="plan-info">
+                <div class="plan-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border-color);">
+                    <div>
+                        <h2 style="margin:0 0 0.25rem 0;">{{ plan_info.tier_display }} Plan</h2>
+                        <p style="margin:0;color:var(--text-secondary);font-size:0.875rem;">
+                            {{ _('You are currently on the') }} <strong>{{ plan_info.tier_display }}</strong> {{ _('plan') }}
+                        </p>
+                    </div>
+                    <span class="status-badge" style="font-size:0.875rem;padding:0.25rem 0.75rem;background:var(--accent-primary);color:white;border-radius:999px;">
+                        {{ plan_info.tier_display }}
+                    </span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+                    <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">{{ _('Users') }}</div>
+                        <div style="font-size:1.5rem;font-weight:600;">
+                            {{ plan_info.user_count }}<span style="font-size:0.9rem;color:var(--text-secondary);">{% if plan_info.limits.max_users %} / {{ plan_info.limits.max_users }}{% else %} / ∞{% endif %}</span>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;padding:1rem;">
+                        <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">{{ _('Cases') }}</div>
+                        <div style="font-size:1.5rem;font-weight:600;">
+                            {{ plan_info.case_count }}<span style="font-size:0.9rem;color:var(--text-secondary);">{% if plan_info.limits.max_cases %} / {{ plan_info.limits.max_cases }}{% else %} / ∞{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+                <h3 style="margin:0 0 0.75rem 0;font-size:0.9rem;">{{ _('Features') }}</h3>
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:1px solid var(--border-color);">
+                            <th style="text-align:left;padding:0.5rem 0;font-size:0.85rem;color:var(--text-secondary);">{{ _('Feature') }}</th>
+                            <th style="text-align:left;padding:0.5rem 0;font-size:0.85rem;color:var(--text-secondary);">{{ _('Status') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for feature, enabled in plan_info.limits.features.items() %}
+                        <tr style="border-bottom:1px solid var(--border-color);">
+                            <td style="padding:0.6rem 0;font-size:0.9rem;">{{ feature.replace('_', ' ').title() }}</td>
+                            <td style="padding:0.6rem 0;">
+                                {% if enabled %}
+                                <span style="color:#16a34a;">✓ {{ _('Available') }}</span>
+                                {% else %}
+                                <span style="color:#dc2626;">✗ {{ _('Not available') }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if plan_info.tier in ('free', 'starter') %}
+                <div style="margin-top:1.5rem;padding:1rem;background:var(--table-hover);border-radius:8px;text-align:center;">
+                    <p style="margin:0 0 0.5rem 0;font-size:0.9rem;">{{ _('Upgrade to unlock more features and higher limits.') }}</p>
+                    <a href="#" class="btn" style="display:inline-block;padding:0.5rem 1.5rem;background:var(--accent-primary);color:white;text-decoration:none;border-radius:6px;">{{ _('Contact Sales') }}</a>
+                </div>
+                {% endif %}
+            </div>
+            {% elif settings_list %}
             <div class="action-buttons">
                 <button type="button" data-click="resetAllSettings" class="btn" style="background: #6b7280;">
                     {{ _('Reset All') }}

@@ -228,6 +228,18 @@ def create_case() -> flask.Response:
                 f"Invalid priority. Must be one of: {', '.join(sorted(valid_priorities))}"
             )
 
+        from ..tier_limits import check_resource_limit
+
+        ok, cur, maximum = check_resource_limit(
+            Case,
+            "tenant_id",
+            "max_cases",
+        )
+        if not ok:
+            return _error(
+                f"Case limit reached ({cur}/{maximum}). Upgrade the plan to create more cases."
+            )
+
         case = Case(
             case_number=Case.generate_case_number(),
             client_id=data["client_id"],

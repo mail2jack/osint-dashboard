@@ -24,6 +24,13 @@ logger = logging.getLogger(__name__)
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="export_case")
 def export_case(case_id: str) -> str:
     """Export case data as CSV."""
+    from ..tier_limits import check_feature
+
+    if not check_feature("export"):
+        return api_error(
+            "Export is not available on your current plan. Upgrade to access this feature.",
+            403,
+        )
     case = db.session.get(Case, case_id) or abort(404)
     format_type = request.args.get("format", "csv")
 
@@ -115,6 +122,13 @@ def export_case_csv(case: Case) -> Response:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="export_subjects")
 def export_subjects() -> str:
     """Export all subjects as CSV."""
+    from ..tier_limits import check_feature
+
+    if not check_feature("export"):
+        return api_error(
+            "Export is not available on your current plan. Upgrade to access this feature.",
+            403,
+        )
     format_type = request.args.get("format", "csv")
 
     if format_type == "csv":
@@ -198,6 +212,13 @@ def export_subjects_csv() -> Response:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="export_clients")
 def export_clients() -> str:
     """Export all clients as CSV."""
+    from ..tier_limits import check_feature
+
+    if not check_feature("export"):
+        return api_error(
+            "Export is not available on your current plan. Upgrade to access this feature.",
+            403,
+        )
     format_type = request.args.get("format", "csv")
 
     if format_type == "csv":
@@ -264,6 +285,13 @@ def export_clients_csv() -> Response:
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="export_cases")
 def export_cases() -> str:
     """Export all cases as CSV."""
+    from ..tier_limits import check_feature
+
+    if not check_feature("export"):
+        return api_error(
+            "Export is not available on your current plan. Upgrade to access this feature.",
+            403,
+        )
     format_type = request.args.get("format", "csv")
 
     if format_type == "csv":
