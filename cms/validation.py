@@ -284,6 +284,34 @@ class ChangePasswordSchema(BaseModel):
         return validate_password_complexity(v)
 
 
+class SignupSchema(BaseModel):
+    full_name: str = Field(min_length=1, description="Full name")
+    email: str = Field(min_length=1, description="Email address")
+    organization_name: str = Field(min_length=1, description="Organization name")
+    password: str = Field(min_length=8, description="Password")
+    confirm_password: str = ""
+
+    @field_validator("email")
+    @classmethod
+    def check_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
+            raise ValueError("Invalid email address")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def check_password_complexity(cls, v: str) -> str:
+        return validate_password_complexity(v)
+
+    @field_validator("confirm_password")
+    @classmethod
+    def check_confirm(cls, v: str, info) -> str:
+        if v and info.data.get("password") != v:
+            raise ValueError("Passwords do not match")
+        return v
+
+
 class LoginSchema(BaseModel):
     username: str = ""
     password: str = ""

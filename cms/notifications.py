@@ -52,6 +52,13 @@ def notify_login_success(username: str, ip_address: str):
     send_webhook("login.success", {"username": username, "ip": ip_address})
 
 
+def notify_signup(username: str, email: str, org_name: str):
+    send_webhook(
+        "user.signup",
+        {"username": username, "email": email, "organization": org_name},
+    )
+
+
 def notify_user_created(username: str, email: str, created_by: str):
     send_webhook(
         "user.created", {"username": username, "email": email, "created_by": created_by}

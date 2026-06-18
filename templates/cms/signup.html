@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ _('Create Account') }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+        .signup-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 440px;
+        }
+        h1 { color: #1a1a2e; margin-bottom: 0.25rem; text-align: center; font-size: 1.5rem; }
+        .subtitle { color: #666; text-align: center; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem; }
+        input { width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; }
+        input:focus { outline: none; border-color: #16213e; }
+        .btn { width: 100%; padding: 0.75rem; background: #16213e; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 500; }
+        .btn:hover { background: #1a1a2e; }
+        .alert { padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; }
+        .alert-danger { background: #fee2e2; color: #dc2626; }
+        .alert-success { background: #dcfce7; color: #16a34a; }
+        .alert-info { background: #dbeafe; color: #2563eb; }
+        .login-link { text-align: center; margin-top: 1.25rem; font-size: 0.9rem; color: #666; }
+        .login-link a { color: #16213e; text-decoration: none; font-weight: 500; }
+        .login-link a:hover { text-decoration: underline; }
+        .field-note { font-size: 0.8rem; color: #999; margin-top: 0.2rem; }
+        .hp { display: none; }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        {% if app_logo %}
+        <div style="text-align:center;margin-bottom:1rem;">
+            <img src="{{ url_for('static', filename='uploads/logo/' + app_logo) }}" alt="Logo" style="max-height:3.5rem;width:auto;">
+        </div>
+        {% else %}
+        <h1>{{ _('Create Your Account') }}</h1>
+        <p class="subtitle">{{ _('Start your free trial — no credit card required') }}</p>
+        {% endif %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="_hp" class="hp" tabindex="-1" autocomplete="off">
+            <div class="form-group">
+                <label for="full_name">{{ _('Full Name') }}</label>
+                <input type="text" name="full_name" id="full_name" required autocomplete="name" value="{{ full_name or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="email">{{ _('Email Address') }}</label>
+                <input type="email" name="email" id="email" required autocomplete="email" value="{{ email or '' }}">
+                <div class="field-note">{{ _('Your email will be used as your login ID') }}</div>
+            </div>
+            <div class="form-group">
+                <label for="organization_name">{{ _('Organization Name') }}</label>
+                <input type="text" name="organization_name" id="organization_name" required value="{{ organization_name or '' }}">
+                <div class="field-note">{{ _('Your team\'s workspace name') }}</div>
+            </div>
+            <div class="form-group">
+                <label for="password">{{ _('Password') }}</label>
+                <input type="password" name="password" id="password" required autocomplete="new-password" minlength="8">
+                <div class="field-note">{{ _('At least 8 characters with uppercase, lowercase, number, and special character') }}</div>
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">{{ _('Confirm Password') }}</label>
+                <input type="password" name="confirm_password" id="confirm_password" required autocomplete="new-password" minlength="8">
+            </div>
+            <button type="submit" class="btn">{{ _('Create Account') }}</button>
+        </form>
+        <div class="login-link">
+            {{ _('Already have an account?') }} <a href="{{ url_for('auth.login') }}">{{ _('Log in') }}</a>
+        </div>
+    </div>
+</body>
+</html>

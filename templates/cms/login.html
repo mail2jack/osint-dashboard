@@ -58,6 +58,9 @@
             </div>
             <button type="submit" class="btn">{{ _('Login') }}</button>
         </form>
+        <div style="text-align:center;margin-top:1.25rem;font-size:0.9rem;color:#666;">
+            {{ _('Don\'t have an account?') }} <a href="{{ url_for('auth.signup') }}" style="color:#16213e;text-decoration:none;font-weight:500;">{{ _('Sign up') }}</a>
+        </div>
     </div>
 </body>
 </html>

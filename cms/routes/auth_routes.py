@@ -7,7 +7,9 @@ import hashlib
 import io
 import json
 import base64
+import re
 import secrets
+import uuid as _uuid
 import logging
 from datetime import datetime, timezone
 
@@ -47,10 +49,12 @@ from ..notifications import (
     notify_login_failed,
     notify_login_success,
     notify_account_locked,
+    notify_signup,
     notify_user_created,
 )
 from ..validation import (
     LoginSchema,
+    SignupSchema,
     SetPasswordSchema,
     CreateUserSchema,
     EditUserSchema,
@@ -64,6 +68,121 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Authentication Routes
 # =============================================================================
+
+
+def _slugify(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return slug or "organization"
+
+
+@auth_bp.route("/signup", methods=["GET", "POST"])
+@rate_limit(limit=(5, 300), key_prefix="signup_ip")
+def signup() -> flask.Response:
+    """Self-service signup with auto-provisioned tenant."""
+    if current_user.is_authenticated:
+        return redirect(url_for("cms.dashboard"))
+
+    if request.method == "POST":
+        d = request.form.to_dict() if request.form else {}
+        honeypot = d.pop("_hp", "")
+        if honeypot:
+            flash("Signup rejected.", "danger")
+            return render_template("cms/signup.html")
+
+        try:
+            validated = SignupSchema(**d)
+        except Exception as e:
+            if hasattr(e, "errors"):
+                msgs = [
+                    f"{' → '.join(str(seg) for seg in err.get('loc', []))}: {err.get('msg', '?')}"
+                    for err in e.errors()
+                ]
+                flash(" | ".join(msgs), "danger")
+            else:
+                flash("Validation failed. Please check your input.", "danger")
+            return render_template(
+                "cms/signup.html",
+                full_name=d.get("full_name", ""),
+                email=d.get("email", ""),
+                organization_name=d.get("organization_name", ""),
+            )
+
+        email = validated.email.strip().lower()
+        if User.query.filter(db.func.lower(User.email) == email).first():
+            flash("An account with this email already exists.", "danger")
+            return render_template(
+                "cms/signup.html",
+                full_name=validated.full_name,
+                organization_name=validated.organization_name,
+            )
+
+        if validated.password != validated.confirm_password:
+            flash("Passwords do not match.", "danger")
+            return render_template(
+                "cms/signup.html",
+                full_name=validated.full_name,
+                email=email,
+                organization_name=validated.organization_name,
+            )
+
+        org_name = validated.organization_name.strip()
+        slug = _slugify(org_name)
+        existing = Tenant.query.filter_by(slug=slug).first()
+        if existing:
+            counter = 1
+            while Tenant.query.filter_by(slug=f"{slug}-{counter}").first():
+                counter += 1
+            slug = f"{slug}-{counter}"
+
+        tenant = Tenant(
+            id=str(_uuid.uuid4()),
+            name=org_name,
+            slug=slug,
+            is_active=True,
+            tier="free",
+        )
+        db.session.add(tenant)
+
+        # Use email as username, or derive from email prefix
+        username = email.split("@")[0]
+        if User.query.filter_by(username=username).first():
+            username = f"{username}_{secrets.token_hex(2)}"
+
+        user = User(
+            username=username,
+            email=email,
+            full_name=validated.full_name.strip(),
+            role="admin",
+            tenant_id=tenant.id,
+            is_super_admin=False,
+            is_active=True,
+        )
+        user.set_password(validated.password)
+        db.session.add(user)
+        db.session.flush()
+
+        tenant.owner_id = user.id
+        db.session.commit()
+
+        notify_signup(username=username, email=email, org_name=org_name)
+
+        AuditLog.log(
+            user_id=user.id,
+            action="signup",
+            entity_type="user",
+            entity_id=user.id,
+            ip_address=request.remote_addr,
+            description=f"User {username} signed up and created organization {org_name}",
+        )
+        db.session.commit()
+
+        # Auto-login and redirect to 2FA setup (same flow as password verification)
+        session["_2fa_user_id"] = user.id
+        session["_2fa_remember"] = False
+        flash("Account created! Please set up two-factor authentication.", "info")
+        return redirect(url_for("auth.setup_2fa"))
+
+    return render_template("cms/signup.html")
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
