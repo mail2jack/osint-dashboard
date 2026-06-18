@@ -271,8 +271,10 @@ def create_cms_module(app: Flask):
                 "Default admin created — change password immediately. Username: admin."
             )
         else:
-            # Ensure existing admin is super admin + linked to first tenant
-            for admin_user in User.query.filter_by(role="admin").all():
+            # Ensure existing admin of the default tenant is super admin + linked
+            for admin_user in User.query.filter_by(
+                role="admin", tenant_id=first_tenant.id
+            ).all():
                 if not admin_user.is_super_admin:
                     admin_user.is_super_admin = True
                 if not admin_user.tenant_id:
