@@ -501,6 +501,55 @@ async def cmd_status(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 # ---------------------------------------------------------------------------
 
 
+_POLLING_RETRIES = 6
+_POLLING_RETRY_DELAY = 20  # seconds
+
+
+def _run_polling_with_retry(app, loop):
+    """Start polling with retry on ``telegram.error.Conflict``.
+
+    A stale ``getUpdates`` long-poll session on Telegram's side can
+    persist up to ~60 s after the previous bot process is killed.
+
+    Returns the (possibly re-created) Application.
+    """
+    from telegram.error import Conflict as _Conflict
+
+    for attempt in range(_POLLING_RETRIES):
+        try:
+            loop.run_until_complete(
+                app.updater.start_polling(
+                    allowed_updates=Update.ALL_TYPES,
+                    drop_pending_updates=True,
+                )
+            )
+            return app
+        except _Conflict:
+            if attempt == _POLLING_RETRIES - 1:
+                raise
+            logger.warning(
+                "Telegram Conflict (attempt %d/%d), retrying in %ds …",
+                attempt + 1,
+                _POLLING_RETRIES,
+                _POLLING_RETRY_DELAY,
+            )
+            import time as _time
+
+            _time.sleep(_POLLING_RETRY_DELAY)
+            _app_new = Application.builder().token(app.bot.token).build()
+            for h in app.handlers.get(0, []):
+                _app_new.add_handler(h)
+            if getattr(app, "_error_handlers", None):
+                for eh in app._error_handlers:
+                    _app_new.add_error_handler(eh)
+            app = _app_new
+            global _bot_app
+            _bot_app = app
+            loop.run_until_complete(app.initialize())
+            loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
+    return app  # unreachable, but satisfies the return type
+
+
 def run_bot_polling(token: str):
     """Run the bot's event loop in the calling thread (blocking).
 
@@ -528,14 +577,9 @@ def run_bot_polling(token: str):
     logger.info("Telegram bot: starting polling ...")
     try:
         loop.run_until_complete(app.initialize())
-        # Clear any stale webhook/session so Telegram releases the old session
         loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
-        loop.run_until_complete(
-            app.updater.start_polling(
-                allowed_updates=Update.ALL_TYPES,
-                drop_pending_updates=True,
-            )
-        )
+        app = _run_polling_with_retry(app, loop)
+        _bot_app = app
         loop.run_until_complete(app.start())
         loop.run_forever()
     except asyncio.CancelledError:
