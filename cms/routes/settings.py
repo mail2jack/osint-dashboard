@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 import flask
-from flask import request, jsonify, render_template, abort
+from flask import request, jsonify, render_template, abort, flash, redirect, url_for
 from flask_login import login_required, current_user
 
 from . import cms_bp
@@ -718,3 +718,46 @@ def toggle_tenant(tenant_id: str) -> flask.Response:
             "is_active": tenant.is_active,
         }
     )
+
+
+@cms_bp.route("/settings/update-tier", methods=["POST"])
+@login_required
+def update_tier():
+    """Change the current tenant's tier.
+
+    Tenant owners can select free/starter/professional.
+    Super admins can set any tier including enterprise.
+    """
+    if not current_user.is_admin:
+        abort(403)
+
+    from ..tier_limits import TIERS, TIER_DISPLAY
+
+    new_tier = (request.form.get("tier") or "").strip().lower()
+    if not new_tier:
+        flash("No tier specified.", "danger")
+        return redirect(url_for("cms.settings", category="plan"))
+    if new_tier not in TIERS:
+        flash(f"Unknown tier: {new_tier}", "danger")
+        return redirect(url_for("cms.settings", category="plan"))
+
+    if new_tier == "enterprise" and not current_user.is_super_admin:
+        flash("Only super admins can set the Enterprise tier.", "danger")
+        return redirect(url_for("cms.settings", category="plan"))
+
+    if not current_user.is_super_admin and not current_user.is_tenant_owner:
+        flash("Only the tenant owner can change the plan.", "danger")
+        return redirect(url_for("cms.settings", category="plan"))
+
+    tenant = current_user.tenant
+    if not tenant:
+        abort(400)
+
+    tenant.tier = new_tier
+    db.session.commit()
+
+    flash(
+        f"Plan updated to {TIER_DISPLAY.get(new_tier, new_tier.title())}.",
+        "success",
+    )
+    return redirect(url_for("cms.settings", category="plan"))

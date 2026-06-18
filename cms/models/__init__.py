@@ -53,6 +53,7 @@ from .comments import Comment, CommentEditHistory
 from .billing import InvoiceStatus, Invoice, InvoiceItem, Payment
 from .background_task import BackgroundTask
 from .platform_setting import PlatformSetting
+from .invitation import Invitation
 
 # Explicit re-exports — used by other modules importing from cms.models
 __all__ = [
@@ -65,6 +66,7 @@ __all__ = [
     "Payment",
     "BackgroundTask",
     "PlatformSetting",
+    "Invitation",
 ]
 
 

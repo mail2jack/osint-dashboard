@@ -42,7 +42,7 @@ from ..auth import (
     admin_required,
     roles_required,
 )
-from ..models import db, User, AuditLog, Case, Tenant
+from ..models import db, User, AuditLog, Case, Tenant, Invitation
 from ..validation import validate
 from ..rate_limiting import is_rate_limited, rate_limit, rate_limit_after_n
 from ..notifications import (
@@ -1066,3 +1066,174 @@ def change_password() -> flask.Response:
 
     flash("Password changed successfully.", "success")
     return redirect(url_for("users.view_user", user_id=current_user.id))
+
+
+# ---------------------------------------------------------------------------
+# Invite flow
+# ---------------------------------------------------------------------------
+
+
+@auth_bp.route("/settings/invite", methods=["POST"])
+@login_required
+def invite_user():
+    """Send an invitation email to join the tenant."""
+    if not current_user.is_admin:
+        abort(403)
+
+    email = (request.form.get("email") or "").strip().lower()
+    role = request.form.get("role", "investigator").strip()
+    if not email or "@" not in email:
+        flash("Please provide a valid email address.", "danger")
+        return redirect(url_for("cms.settings", category="plan"))
+
+    if User.query.filter(db.func.lower(User.email) == email).first():
+        flash("A user with this email already exists.", "danger")
+        return redirect(url_for("cms.settings", category="plan"))
+
+    from ..tier_limits import check_resource_limit
+
+    ok, current, maximum = check_resource_limit(
+        User, "tenant_id", "max_users", tenant=current_user.tenant
+    )
+    if not ok:
+        flash(
+            f"User limit reached ({current}/{maximum}). Upgrade your plan to add more users.",
+            "danger",
+        )
+        return redirect(url_for("cms.settings", category="plan"))
+
+    inv = Invitation.create_invitation(
+        tenant_id=current_user.tenant_id,
+        email=email,
+        role=role,
+        invited_by_id=current_user.id,
+    )
+    db.session.commit()
+
+    accept_url = url_for("auth.accept_invite", token=inv.token, _external=True)
+
+    from ..email_utils import is_smtp_configured, send_email
+
+    if is_smtp_configured():
+        subject = f"You've been invited to {current_user.tenant.name}"
+        body_html = f"""
+        <html><body style="font-family:sans-serif;padding:2rem;">
+            <h2>You're invited!</h2>
+            <p>{current_user.full_name} has invited you to join
+            <strong>{current_user.tenant.name}</strong> on Iveras OSINT Dashboard.</p>
+            <p style="text-align:center;margin:2rem 0;">
+                <a href="{accept_url}"
+                   style="background:#1a73e8;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:1.1rem;">
+                    Accept Invitation
+                </a>
+            </p>
+            <p>Or copy this link: <code>{accept_url}</code></p>
+            <p><strong>Note:</strong> This invitation expires in 48 hours.</p>
+        </body></html>
+        """
+        body_text = f"""
+You're invited to {current_user.tenant.name} on Iveras OSINT Dashboard.
+
+Accept here: {accept_url}
+
+This invitation expires in 48 hours.
+"""
+        send_email(email, subject, body_html, body_text)
+        flash(f"Invitation sent to {email}.", "success")
+    else:
+        flash(
+            f"Invitation link (SMTP not configured): {accept_url}",
+            "info",
+        )
+
+    return redirect(url_for("cms.settings", category="plan"))
+
+
+@auth_bp.route("/accept-invite/<token>", methods=["GET", "POST"])
+def accept_invite(token: str):
+    """Accept an invitation and create the user account."""
+    inv = Invitation.find_valid(token)
+    if not inv:
+        flash("This invitation link is invalid or has expired.", "danger")
+        return render_template("cms/accept_invite.html", valid=False)
+
+    if request.method == "POST":
+        full_name = (request.form.get("full_name") or "").strip()
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm_password", "")
+
+        if not full_name:
+            flash("Please enter your full name.", "danger")
+            return render_template(
+                "cms/accept_invite.html", valid=True, inv=inv, email=inv.email
+            )
+        if len(password) < 8:
+            flash("Password must be at least 8 characters.", "danger")
+            return render_template(
+                "cms/accept_invite.html",
+                valid=True,
+                inv=inv,
+                email=inv.email,
+                full_name=full_name,
+            )
+        if password != confirm:
+            flash("Passwords do not match.", "danger")
+            return render_template(
+                "cms/accept_invite.html",
+                valid=True,
+                inv=inv,
+                email=inv.email,
+                full_name=full_name,
+            )
+
+        username = inv.email.split("@")[0]
+        if User.query.filter_by(username=username).first():
+            username = f"{username}_{secrets.token_hex(2)}"
+
+        from ..tier_limits import check_resource_limit
+
+        ok, _current, _maximum = check_resource_limit(
+            User, "tenant_id", "max_users", tenant=inv.tenant
+        )
+        if not ok:
+            flash(
+                "The organization has reached its user limit. Contact your administrator.",
+                "danger",
+            )
+            return render_template("cms/accept_invite.html", valid=False)
+
+        user = User(
+            username=username,
+            email=inv.email,
+            full_name=full_name,
+            role=inv.role,
+            tenant_id=inv.tenant_id,
+            is_super_admin=False,
+            is_active=True,
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
+
+        inv.accept()
+        db.session.commit()
+
+        AuditLog.log(
+            user_id=user.id,
+            action="accept_invite",
+            entity_type="user",
+            entity_id=user.id,
+            ip_address=request.remote_addr,
+            description=f"User {username} accepted invitation from {inv.invited_by.username}",
+        )
+        db.session.commit()
+
+        flash(
+            "Account created! You can now log in. Please set up two-factor authentication.",
+            "success",
+        )
+        return redirect(url_for("auth.login"))
+
+    return render_template(
+        "cms/accept_invite.html", valid=True, inv=inv, email=inv.email
+    )

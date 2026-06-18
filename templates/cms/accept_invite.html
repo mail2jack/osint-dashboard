@@ -1,0 +1,54 @@
+{% extends "cms/base.html" %}
+{% block content %}
+<div class="auth-wrapper" style="max-width:480px;margin:4rem auto;padding:2rem;">
+  <h2>Accept Invitation</h2>
+
+  {% if not valid %}
+    <div style="background:#fff3cd;border:1px solid #ffc107;padding:1.5rem;border-radius:8px;margin-top:1rem;">
+      <p>This invitation link is invalid or has expired.</p>
+      <p style="margin-top:1rem;">
+        <a href="{{ url_for('auth.login') }}" style="color:#1a73e8;">Return to login</a>
+      </p>
+    </div>
+  {% else %}
+    <p style="color:#666;margin-top:0.5rem;">
+      You've been invited to join <strong>{{ inv.tenant.name }}</strong>.
+    </p>
+
+    <form method="POST" style="margin-top:1.5rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div style="margin-bottom:1rem;">
+        <label style="display:block;margin-bottom:0.3rem;font-weight:600;">Email</label>
+        <input type="email" value="{{ email }}" readonly
+               style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;">
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <label for="full_name" style="display:block;margin-bottom:0.3rem;font-weight:600;">Full Name</label>
+        <input type="text" id="full_name" name="full_name" value="{{ full_name|default('') }}"
+               required autofocus
+               style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:6px;">
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <label for="password" style="display:block;margin-bottom:0.3rem;font-weight:600;">Password</label>
+        <input type="password" id="password" name="password" required minlength="8"
+               style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:6px;">
+        <small style="color:#999;">At least 8 characters</small>
+      </div>
+
+      <div style="margin-bottom:1.5rem;">
+        <label for="confirm_password" style="display:block;margin-bottom:0.3rem;font-weight:600;">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required minlength="8"
+               style="width:100%;padding:0.6rem;border:1px solid #ccc;border-radius:6px;">
+      </div>
+
+      <button type="submit"
+              style="width:100%;padding:0.75rem;background:#1a73e8;color:white;border:none;border-radius:6px;font-size:1rem;cursor:pointer;">
+        Create Account &amp; Accept
+      </button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

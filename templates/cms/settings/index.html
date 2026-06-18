@@ -633,6 +633,45 @@
                     <a href="#" class="btn" style="display:inline-block;padding:0.5rem 1.5rem;background:var(--accent-primary);color:white;text-decoration:none;border-radius:6px;">{{ _('Contact Sales') }}</a>
                 </div>
                 {% endif %}
+
+                {% if current_user.is_super_admin or current_user.is_tenant_owner %}
+                <div style="margin-top:1.5rem;padding:1rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;">
+                    <h3 style="margin:0 0 0.75rem 0;font-size:0.9rem;">{{ _('Change Plan') }}</h3>
+                    <form method="POST" action="{{ url_for('cms.update_tier') }}" style="display:flex;gap:0.5rem;align-items:center;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="tier" style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+                            <option value="free" {% if plan_info.tier == 'free' %}selected{% endif %}>Free</option>
+                            <option value="starter" {% if plan_info.tier == 'starter' %}selected{% endif %}>Starter</option>
+                            <option value="professional" {% if plan_info.tier == 'professional' %}selected{% endif %}>Professional</option>
+                            {% if current_user.is_super_admin %}
+                            <option value="enterprise" {% if plan_info.tier == 'enterprise' %}selected{% endif %}>Enterprise</option>
+                            {% endif %}
+                        </select>
+                        <button type="submit" class="btn" style="padding:0.5rem 1rem;">{{ _('Update') }}</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if current_user.is_admin %}
+                <div style="margin-top:1.5rem;padding:1rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;">
+                    <h3 style="margin:0 0 0.75rem 0;font-size:0.9rem;">{{ _('Invite User') }}</h3>
+                    <form method="POST" action="{{ url_for('auth.invite_user') }}" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="email" name="email" placeholder="email@example.com" required
+                               style="flex:2;min-width:180px;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+                        <select name="role" style="flex:1;min-width:120px;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+                            <option value="investigator">{{ _('Investigator') }}</option>
+                            <option value="senior_investigator">{{ _('Senior Investigator') }}</option>
+                            <option value="admin">{{ _('Admin') }}</option>
+                            <option value="viewer">{{ _('Viewer') }}</option>
+                        </select>
+                        <button type="submit" class="btn" style="padding:0.5rem 1rem;">{{ _('Invite') }}</button>
+                    </form>
+                    <p style="margin:0.5rem 0 0 0;font-size:0.8rem;color:var(--text-secondary);">
+                        {{ _('An email with an invitation link will be sent. The link expires in 48 hours.') }}
+                    </p>
+                </div>
+                {% endif %}
             </div>
             {% elif settings_list %}
             <div class="action-buttons">
