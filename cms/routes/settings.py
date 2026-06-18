@@ -1,3 +1,4 @@
+import os
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -774,3 +775,75 @@ def update_tier():
         "success",
     )
     return redirect(url_for("cms.settings", category="plan"))
+
+
+@cms_bp.route("/api/settings/upload-logo", methods=["POST"])
+@login_required
+@admin_required
+def upload_logo():
+    if "logo" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["logo"]
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    from ..image_validation import validate_image_file
+
+    is_valid, ext = validate_image_file(file)
+    if not is_valid:
+        return jsonify(
+            {"error": "Invalid image file. Allowed: PNG, JPEG, GIF, WebP"}
+        ), 400
+
+    logo_dir = os.path.join(current_app.root_path, "static", "uploads", "logo")
+    os.makedirs(logo_dir, exist_ok=True)
+
+    import uuid
+
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    filepath = os.path.join(logo_dir, filename)
+    file.seek(0)
+    file.save(filepath)
+
+    setting = Setting.query.filter_by(key="app_logo").first()
+    if setting and setting.value:
+        old_file = os.path.join(logo_dir, setting.value)
+        if os.path.isfile(old_file):
+            try:
+                os.remove(old_file)
+            except OSError as e:
+                logger.warning("Could not remove old logo: %s", e)
+
+    if setting:
+        setting.value = filename
+        setting.updated_at = datetime.now(timezone.utc)
+    else:
+        setting = Setting(key="app_logo", value=filename, category="appearance")
+        db.session.add(setting)
+    db.session.commit()
+
+    return jsonify({"filename": filename})
+
+
+@cms_bp.route("/api/settings/delete-logo", methods=["POST"])
+@login_required
+@admin_required
+def delete_logo():
+    setting = Setting.query.filter_by(key="app_logo").first()
+    if not setting or not setting.value:
+        return jsonify({"error": "No logo set"}), 404
+
+    logo_dir = os.path.join(current_app.root_path, "static", "uploads", "logo")
+    filepath = os.path.join(logo_dir, setting.value)
+    if os.path.isfile(filepath):
+        try:
+            os.remove(filepath)
+        except OSError as e:
+            logger.warning("Could not remove logo file: %s", e)
+
+    setting.value = ""
+    setting.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+
+    return jsonify({"status": "ok"})
