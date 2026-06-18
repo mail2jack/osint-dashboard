@@ -528,6 +528,8 @@ def run_bot_polling(token: str):
     logger.info("Telegram bot: starting polling ...")
     try:
         loop.run_until_complete(app.initialize())
+        # Clear any stale webhook/session so Telegram releases the old session
+        loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
         loop.run_until_complete(
             app.updater.start_polling(
                 allowed_updates=Update.ALL_TYPES,
