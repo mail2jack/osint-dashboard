@@ -17,6 +17,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ENV_FILE="$SCRIPT_DIR/.env"
+
+# Source .env if it exists and DATABASE_URL is not already set
+if [ -f "$ENV_FILE" ] && [ -z "${DATABASE_URL:-}" ]; then
+    set -a; source "$ENV_FILE"; set +a
+fi
+
 BACKUP_DIR="${1:-$SCRIPT_DIR/backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_PATH="$BACKUP_DIR/iveras_backup_$TIMESTAMP"
