@@ -172,18 +172,18 @@ def roles_required(*allowed_roles: str) -> Callable:
 
 def admin_required(f: Callable) -> Callable:
     """Decorator for admin-only routes."""
-    return roles_required("admin")(f)
+    return roles_required("admin", "owner")(f)
 
 
 def senior_required(f: Callable) -> Callable:
     """Decorator for routes requiring senior investigator or higher."""
-    return roles_required("admin", "senior_investigator")(f)
+    return roles_required("admin", "owner", "senior_investigator")(f)
 
 
 def investigator_required(f: Callable) -> Callable:
     """Decorator for routes requiring any investigator role."""
     return roles_required(
-        "admin", "senior_investigator", "investigator", "junior_investigator"
+        "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
     )(f)
 
 

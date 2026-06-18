@@ -73,6 +73,7 @@ __all__ = [
 class UserRole(PyEnum):
     """User roles with hierarchical permissions."""
 
+    OWNER = "owner"  # Tenant owner — full access within tenant
     ADMIN = "admin"  # Full system access
     SENIOR_INVESTIGATOR = "senior_investigator"  # Can manage cases, export data
     INVESTIGATOR = "investigator"  # Can view and update assigned cases
@@ -318,11 +319,15 @@ class User(UserMixin, db.Model):
 
     @property
     def is_admin(self) -> bool:
-        return self.role == UserRole.ADMIN.value
+        return self.role in (UserRole.ADMIN.value, UserRole.OWNER.value)
 
     @property
     def is_senior(self) -> bool:
-        return self.role in [UserRole.ADMIN.value, UserRole.SENIOR_INVESTIGATOR.value]
+        return self.role in (
+            UserRole.ADMIN.value,
+            UserRole.OWNER.value,
+            UserRole.SENIOR_INVESTIGATOR.value,
+        )
 
     @property
     def can_export(self) -> bool:

@@ -152,7 +152,7 @@ def signup() -> flask.Response:
             username=username,
             email=email,
             full_name=validated.full_name.strip(),
-            role="admin",
+            role="owner",
             tenant_id=tenant.id,
             is_super_admin=False,
             is_active=True,
