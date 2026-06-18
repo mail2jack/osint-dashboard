@@ -12,6 +12,8 @@ from ..validation import validate, FTSSearchSchema
 from ..api_key_auth import api_key_required
 from ..auth import get_accessible_case_ids
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,7 +47,7 @@ def full_text_search() -> flask.Response:
     limit = min(int(data.get("limit", 20)), 100)
 
     if not query or len(query) < 2:
-        return jsonify({"error": "Query must be at least 2 characters"}), 400
+        return api_error("Query must be at least 2 characters", 400)
 
     accessible_ids = set(get_accessible_case_ids(current_user))
     results = {}

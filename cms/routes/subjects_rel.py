@@ -5,10 +5,11 @@ from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Subject, subject_relations, AuditLog
 from ..auth import roles_required, subject_access_required
 from ..validation import validate, AddRelationSchema, RemoveRelationSchema
+
+from .response import api_success, api_error
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,6 @@ def get_subject_relationships(subject_id: str) -> flask.Response:
 
 
 @cms_bp.route("/subjects/<subject_id>/add-relationship", methods=["POST"])
-@csrf.exempt
 @login_required
 @subject_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
@@ -191,14 +191,14 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
         relationship_type = request.validated_data.get("relationship_type", "related")
 
         if not related_id:
-            return jsonify({"error": "Related subject ID required"}), 400
+            return api_error("Related subject ID required", 400)
 
         if related_id == subject_id:
-            return jsonify({"error": "Cannot create relationship with self"}), 400
+            return api_error("Cannot create relationship with self", 400)
 
         related = db.session.get(Subject, related_id)
         if not related:
-            return jsonify({"error": "Related subject not found"}), 404
+            return api_error("Related subject not found", 404)
 
         existing_a = db.session.execute(
             subject_relations.select().where(
@@ -215,7 +215,7 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
         ).first()
 
         if existing_a or existing_b:
-            return jsonify({"error": "Relationship already exists"}), 400
+            return api_error("Relationship already exists", 400)
 
         db.session.execute(
             subject_relations.insert().values(
@@ -260,7 +260,6 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
 
 
 @cms_bp.route("/subjects/<subject_id>/remove-relationship", methods=["POST"])
-@csrf.exempt
 @login_required
 @subject_access_required
 @roles_required("admin", "senior_investigator")
@@ -272,7 +271,7 @@ def remove_subject_relationship(subject_id: str) -> flask.Response:
         related_id = request.validated_data.get("related_subject_id")
 
         if not related_id:
-            return jsonify({"error": "Related subject ID required"}), 400
+            return api_error("Related subject ID required", 400)
 
         db.session.execute(
             subject_relations.delete().where(
@@ -297,7 +296,7 @@ def remove_subject_relationship(subject_id: str) -> flask.Response:
         )
         db.session.commit()
 
-        return jsonify({"message": "Relationship removed"})
+        return api_success({}, "Relationship removed")
     except Exception:
         db.session.rollback()
         logger.exception("Error removing relationship")

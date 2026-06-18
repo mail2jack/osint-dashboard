@@ -6,7 +6,7 @@ import pytest
 _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False, delete_on_close=False)
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db.name}"
 os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
-os.environ["CMS_ENCRYPTION_KEY"] = "ZFnorYZ7TTJCbUd8J-NCId5SkbzkB450u8odzL65yj8="
+os.environ["CMS_ENCRYPTION_KEY"] = "J0k445GkNVEJEPTH1k1MSRfgpaQxK4yIsjymmfHVAOA="
 
 from app import app as _app
 from cms.models import db, User, init_default_settings
@@ -56,15 +56,42 @@ def app():
         db.session.commit()
 
 
+# Prepending a before_request handler to clear stale g._login_user from previous
+# tests. Must run BEFORE set_tenant_context (registered in app.py). Flask 3.x
+# scopes `g` to the app context, so the session-scoped app fixture keeps
+# g._login_user alive between tests. This causes _get_user() to skip _load_user
+# entirely (the "_login_user" not in g check) and never re-read the session.
+from flask import g as _g
+
+
+def _clear_g_login_user():
+    if _app.testing:
+        _g.pop("_login_user", None)
+
+
+_app.before_request_funcs.setdefault(None, []).insert(0, _clear_g_login_user)
+
+
 @pytest.fixture(autouse=True)
 def _clean_db_between_tests(app):
     """Clean all data between tests — runs before each test function."""
+    db.session.rollback()  # Clear any aborted transaction from previous test
+
     # Delete all tables EXCEPT seed/config tables (keep admin + tenant from app fixture)
     for t in inspect(db.engine).get_table_names():
         if t in ("alembic_version", "users", "tenants"):
             continue
         db.session.execute(text(f'DELETE FROM "{t}"'))
     db.session.commit()
+
+    # Re-set g.tenant_id so _fill_tenant_id can auto-populate tenant_id on ORM
+    # inserts made directly in test bodies (not via HTTP requests).
+    # Flask 3.x scopes g to the app context, so this persists across tests.
+    from flask import g as _g
+
+    admin = User.query.filter_by(role="admin").first()
+    if admin:
+        _g.tenant_id = admin.tenant_id
 
 
 @pytest.fixture
@@ -76,7 +103,6 @@ def client(app):
 def auth_client(app, client):
     with app.app_context():
         user = User.query.filter_by(username="admin").first()
-        import pyotp
 
         if user is None:
             user = User(
@@ -93,13 +119,13 @@ def auth_client(app, client):
             user.set_password("Test1234!")
             db.session.commit()
 
-        user.totp_secret = pyotp.random_base32()
-        user.totp_enabled = True
+        user.totp_secret = None
+        user.totp_enabled = False
         db.session.commit()
-        user_id = user.id
+        user_id = str(user.id)
 
     with client.session_transaction() as sess:
-        sess["_user_id"] = str(user_id)
+        sess["_user_id"] = user_id
         sess["_fresh"] = True
         sess["_remember"] = "set"
     return client

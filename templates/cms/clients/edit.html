@@ -277,7 +277,7 @@
         }
         btn.disabled = true;
         btn.textContent = '⏳';
-        fetch('/cms/api/kadaster-lookup', {
+        apiFetch('/cms/api/kadaster-lookup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ zipcode: zipcode, number: number })

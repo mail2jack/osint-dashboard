@@ -358,10 +358,6 @@
         <input type="number" name="risk_score" id="risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100">
     </div>
     </div>
-    <div class="form-group">
-        <label for="notes">{{ _('Notes') }}</label>
-        <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">{{ _('📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)') }}</p>
-    </div>
     <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
     <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Cancel') }}</a>
 </form>
@@ -392,7 +388,7 @@ function kvkLookupEdit() {
     statusDiv.innerHTML = '<span style="color: #0369a1;">{{ _("Opzoeken bij KVK...")|replace("'", "\\\\'")|safe }}</span>';
     resultsDiv.style.display = 'none';
 
-    fetch('/cms/api/kvk-lookup', {
+    apiFetch('/cms/api/kvk-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: query })
@@ -467,7 +463,7 @@ function fetchRDWData() {
     btn.textContent = '{{ _("Loading...")|replace("'", "\\\\'")|safe }}';
     statusDiv.innerHTML = '<span style="color: #0369a1;">{{ _("Fetching RDW data...")|replace("'", "\\\\'")|safe }}</span>';
     
-    fetch('/cms/check-rdw-vehicle', {
+    apiFetch('/cms/check-rdw-vehicle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kenteken: kenteken, subject_id: '{{ subject.id }}' })
@@ -563,7 +559,7 @@ function postcodeCheck(btn) {
     btn.disabled = true;
     btn.textContent = '⏳';
 
-    fetch('/cms/api/kadaster-lookup', {
+    apiFetch('/cms/api/kadaster-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ zipcode: zipcode, number: number })
@@ -642,7 +638,7 @@ function lookupVesselEdit() {
     btn.textContent = '{{ _("Loading...")|replace("'", "\\\\'")|safe }}';
     statusDiv.innerHTML = '<span style="color: #0891b2;">{{ _("Looking up vessel...")|replace("'", "\\\\'")|safe }}</span>';
 
-    fetch('/cms/api/vessel-lookup', {
+    apiFetch('/cms/api/vessel-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imo: imo, mmsi: mmsi, name: name })

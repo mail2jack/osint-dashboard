@@ -15,6 +15,8 @@ from ..models import db, Case, Subject, AuditLog, Finding
 from ..auth import case_access_required
 from ..search_manager import search_manager
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -169,7 +171,6 @@ def run_osint_search(
 
 
 @cms_bp.route("/cases/<case_id>/osint-search", methods=["POST"])
-@csrf.exempt
 @login_required
 @case_access_required
 @validate(StartOSINTSearchSchema)
@@ -180,10 +181,10 @@ def start_osint_search(case_id: str) -> flask.Response:
 
     name = data.get("name", "").strip()
     if not name:
-        return jsonify({"error": "Name is required"}), 400
+        return api_error("Name is required", 400)
 
     if len(name.split()) < 2:
-        return jsonify({"error": "Please enter a full name (first and last name)"}), 400
+        return api_error("Please enter a full name (first and last name)", 400)
 
     subject_id = data.get("subject_id")
 
@@ -230,20 +231,19 @@ def get_search_status(search_id: str) -> flask.Response:
     status = search_manager.get_status(search_id)
 
     if not status:
-        return jsonify({"error": "Search not found"}), 404
+        return api_error("Search not found", 404)
 
     return jsonify({"search_id": search_id, **status})
 
 
 @cms_bp.route("/osint-search/<search_id>/cancel", methods=["POST"])
-@csrf.exempt
 @login_required
 def cancel_search(search_id: str) -> flask.Response:
     """Cancel a running search."""
     search_info = search_manager.get_search(search_id)
 
     if not search_info:
-        return jsonify({"error": "Search not found"}), 404
+        return api_error("Search not found", 404)
 
     if search_info["status"] == "completed":
         return jsonify(
@@ -290,7 +290,7 @@ def get_search_results(search_id: str) -> flask.Response:
     status = search_manager.get_status(search_id)
 
     if not status:
-        return jsonify({"error": "Search not found"}), 404
+        return api_error("Search not found", 404)
 
     if status["status"] == "running":
         return jsonify({"search_id": search_id, "status": "running", "results": None})
@@ -317,7 +317,7 @@ def get_osint_sf_results(search_id: str) -> flask.Response:
     """
     status = search_manager.get_status(search_id)
     if not status:
-        return jsonify({"error": "Search not found"}), 404
+        return api_error("Search not found", 404)
 
     sf_scan_id = status.get("spiderfoot_scan_id")
     if not sf_scan_id:
@@ -422,11 +422,11 @@ def add_osint_findings(case_id: str) -> flask.Response:
     data = request.validated_data
 
     if not data:
-        return jsonify({"error": "No data provided"}), 400
+        return api_error("No data provided", 400)
 
     selected_results = data.get("results", [])
     if not selected_results:
-        return jsonify({"error": "No results selected"}), 400
+        return api_error("No results selected", 400)
 
     subject_id = data.get("subject_id")
     created_findings = []

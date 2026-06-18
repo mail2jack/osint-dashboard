@@ -13,6 +13,8 @@ from ..auth import admin_required
 from curl_cffi import requests as curl_requests
 from cms.services.http_utils import jitter_sleep
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,14 +23,98 @@ _SESSION_DIR = os.path.join(
 )
 
 
-def _read_session_data(session_id: str) -> dict:
-    """Read and deserialize a session file."""
-    import json
-    import os
-
-    session_file = os.path.join(_SESSION_DIR, f"session_{session_id}")
+def _get_session_backend() -> str:
+    """Detect session backend: 'redis' or 'filesystem'."""
     try:
-        if os.path.exists(session_file):
+        from flask import current_app
+
+        return current_app.config.get("SESSION_TYPE", "cachelib")
+    except Exception:
+        return "cachelib"
+
+
+def _get_redis_client():
+    """Get Redis client from app config if available."""
+    try:
+        from flask import current_app
+
+        return current_app.config.get("SESSION_REDIS")
+    except Exception:
+        return None
+
+
+def _all_session_ids() -> list[str]:
+    """Return all active session IDs from the current backend."""
+    backend = _get_session_backend()
+    if backend == "redis":
+        client = _get_redis_client()
+        if client:
+            try:
+                keys = client.keys("session:*")
+                return [k.split(":", 1)[1] for k in keys]
+            except Exception:
+                logger.exception("Failed to list Redis sessions")
+                return []
+    # Filesystem fallback
+    import os as _os
+
+    if not _os.path.exists(_SESSION_DIR):
+        return []
+    return [
+        f.replace("session_", "")
+        for f in sorted(_os.listdir(_SESSION_DIR), reverse=True)
+        if f.startswith("session_")
+    ]
+
+
+def _delete_session(session_id: str) -> bool:
+    """Delete a session by ID from the current backend."""
+    backend = _get_session_backend()
+    if backend == "redis":
+        client = _get_redis_client()
+        if client:
+            try:
+                deleted = client.delete(f"session:{session_id}")
+                return deleted > 0
+            except Exception:
+                logger.exception("Failed to delete Redis session")
+                return False
+    # Filesystem fallback
+    import os as _os
+
+    session_file = _os.path.join(_SESSION_DIR, f"session_{session_id}")
+    if _os.path.exists(session_file):
+        _os.remove(session_file)
+        return True
+    return False
+
+
+def _read_session_data(session_id: str) -> dict:
+    """Read and deserialize a session from the current backend."""
+    import json
+
+    backend = _get_session_backend()
+    if backend == "redis":
+        client = _get_redis_client()
+        if client:
+            try:
+                raw = client.get(f"session:{session_id}")
+                if raw:
+                    data = json.loads(raw)
+                    return {
+                        "user_id": data.get("_user_id"),
+                        "created_at": data.get("_created_at"),
+                        "ip": data.get("_ip", data.get("ip", "")),
+                    }
+            except Exception:
+                logger.exception("Failed to read Redis session")
+            return {}
+    # Filesystem fallback
+    import os as _os
+
+    session_file = _os.path.join(_SESSION_DIR, f"session_{session_id}")
+    try:
+        if _os.path.exists(session_file):
             with open(session_file) as f:
                 raw = f.read()
             data = json.loads(raw)
@@ -52,23 +138,18 @@ def list_sessions() -> dict:
         return render_template("cms/sessions.html")
 
     sessions = []
-    if os.path.exists(_SESSION_DIR):
-        for fname in sorted(os.listdir(_SESSION_DIR), reverse=True):
-            if not fname.startswith("session_"):
-                continue
-            sid = fname.replace("session_", "")
-            data = _read_session_data(sid)
-            sessions.append(
-                {
-                    "session_id": sid,
-                    "file": fname,
-                    "user_id": data.get("user_id"),
-                    "ip": data.get("ip"),
-                    "is_current": sid == flask.session.sid
-                    if hasattr(flask.session, "sid")
-                    else False,
-                }
-            )
+    for sid in _all_session_ids():
+        data = _read_session_data(sid)
+        sessions.append(
+            {
+                "session_id": sid,
+                "user_id": data.get("user_id"),
+                "ip": data.get("ip"),
+                "is_current": sid == flask.session.sid
+                if hasattr(flask.session, "sid")
+                else False,
+            }
+        )
     return jsonify({"sessions": sessions, "count": len(sessions)})
 
 
@@ -77,13 +158,9 @@ def list_sessions() -> dict:
 @admin_required
 def delete_session(session_id: str) -> flask.Response:
     """Delete a specific session."""
-    import os
-
-    session_file = os.path.join(_SESSION_DIR, f"session_{session_id}")
-    if os.path.exists(session_file):
-        os.remove(session_file)
-        return jsonify({"message": "Session deleted"})
-    return jsonify({"error": "Session not found"}), 404
+    if _delete_session(session_id):
+        return api_success({}, "Session deleted")
+    return api_error("Session not found", 404)
 
 
 @cms_bp.route("/admin/sessions/delete-all", methods=["POST"])
@@ -91,18 +168,12 @@ def delete_session(session_id: str) -> flask.Response:
 @admin_required
 def delete_all_sessions() -> flask.Response:
     """Delete all sessions except the current one."""
-    import os
-
     count = 0
     current_sid = getattr(flask.session, "sid", None)
-    if os.path.exists(_SESSION_DIR):
-        for fname in os.listdir(_SESSION_DIR):
-            if not fname.startswith("session_"):
-                continue
-            sid = fname.replace("session_", "")
-            if sid == current_sid:
-                continue
-            os.remove(os.path.join(_SESSION_DIR, fname))
+    for sid in _all_session_ids():
+        if sid == current_sid:
+            continue
+        if _delete_session(sid):
             count += 1
     return jsonify({"message": f"Deleted {count} sessions", "deleted": count})
 
@@ -327,12 +398,26 @@ def do_update() -> flask.Response:
 
         project_root = current_app.root_path
 
-        # Step 1: Database backup (SQLite only)
+        # Step 1: Full backup via scripts/backup.sh
+        import os as _os
+
         db_path = current_app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db")
-        if db_path.startswith("sqlite"):
-            db_file = db_path.replace("sqlite:///", "")
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            step("Backup database", ["cp", db_file, f"{db_file}.backup.{timestamp}"])
+        backup_script = _os.path.join(project_root, "scripts", "backup.sh")
+        if _os.path.isfile(backup_script):
+            _os.chmod(backup_script, 0o755)
+            step(
+                "Full backup",
+                [backup_script, _os.path.join(project_root, "backups")],
+                cwd=project_root,
+            )
+        else:
+            # Fallback: SQLite-only cp
+            if db_path.startswith("sqlite"):
+                db_file = db_path.replace("sqlite:///", "")
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                step(
+                    "Backup database", ["cp", db_file, f"{db_file}.backup.{timestamp}"]
+                )
 
         # Step 2: Git pull (via sudo — Flask runs as osint, .git/ may be root-owned)
         # sudoers allows /usr/bin/git, NOT /usr/local/bin/git (Homebrew)
@@ -359,8 +444,6 @@ def do_update() -> flask.Response:
         )
 
         # Step 4: Apply Alembic migrations
-        import os as _os
-
         alembic_env = {**_os.environ}
         alembic_env["DATABASE_URL"] = db_path
         if "CMS_ENCRYPTION_KEY" not in alembic_env:
@@ -419,6 +502,98 @@ def do_update() -> flask.Response:
                     logger.info(f"Stored last update commit: {head_sha[:12]}")
             except Exception as e:
                 logger.warning(f"Failed to store commit SHA ({type(e).__name__}): {e}")
+
+        # Send notification email to all superadmins
+        try:
+            from ..email_utils import send_email, is_smtp_configured
+            from ..models import User
+
+            superadmins = User.query.filter_by(is_super_admin=True).all()
+            if superadmins and is_smtp_configured():
+                backup_dir = _os.path.join(project_root, "backups")
+                latest = None
+                if _os.path.isdir(backup_dir):
+                    files = sorted(
+                        _os.path.join(backup_dir, f)
+                        for f in _os.listdir(backup_dir)
+                        if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
+                    )
+                    if files:
+                        latest = files[-1]
+
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                status_icon = "✅" if success else "❌"
+                status_text = "geslaagd" if success else "mislukt"
+                subject = f"{status_icon} Iveras update {status_text} — {now_str}"
+
+                steps_html = ""
+                for r in results:
+                    s = r["status"]
+                    icon = "✅" if s == "ok" else "❌" if s == "error" else "⏳"
+                    out = (r.get("output") or "")[:200]
+                    steps_html += f"<tr><td style='padding:6px 12px;border-bottom:1px solid #eee;'>{icon}</td><td style='padding:6px 12px;border-bottom:1px solid #eee;'>{r['step']}</td><td style='padding:6px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:0.85rem;'>{out}</td></tr>"
+
+                backup_info = ""
+                if latest:
+                    backup_info = f"""
+                    <tr><td style='padding:6px 12px;font-weight:600;'>Backup bestand</td><td style='padding:6px 12px;font-family:monospace;font-size:0.85rem;'>{latest}</td></tr>
+                    <tr><td style='padding:6px 12px;font-weight:600;'>Backup key</td><td style='padding:6px 12px;font-family:monospace;font-size:0.85rem;'>{_os.path.join(backup_dir, "backup-key.gpg")}</td></tr>
+                    """
+                else:
+                    backup_info = "<tr><td style='padding:6px 12px;' colspan='2'>⚠️ Geen backup gevonden (backup script mogelijk niet uitgevoerd)</td></tr>"
+
+                body_html = f"""<html><body style="font-family:sans-serif;padding:2rem;max-width:700px;">
+<h2>{status_icon} Iveras update {status_text}</h2>
+<p>Er is een update uitgevoerd via de web interface.</p>
+<table style="width:100%;border-collapse:collapse;margin:1rem 0;">
+<tr><td style="padding:6px 12px;font-weight:600;">Datum/tijd</td><td style="padding:6px 12px;">{now_str}</td></tr>
+<tr><td style="padding:6px 12px;font-weight:600;">Status</td><td style="padding:6px 12px;">{status_text}</td></tr>
+<tr><td style="padding:6px 12px;font-weight:600;">Versie</td><td style="padding:6px 12px;">{current_ver}</td></tr>
+{backup_info}
+</table>
+
+<h3>Stappen</h3>
+<table style="width:100%;border-collapse:collapse;">{steps_html}</table>
+
+<h3>Herstel bij problemen</h3>
+<p style="background:#fff3cd;border:1px solid #ffc107;padding:1rem;border-radius:6px;">
+SSH naar de server en gebruik:
+</p>
+<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.85rem;">
+# Bekijk beschikbare backups
+./scripts/restore.sh --list
+
+# Herstel de laatste backup (vraagt bevestiging)
+./scripts/restore.sh
+
+# Na herstel de service herstarten
+sudo systemctl restart osint-dashboard
+</pre>
+<p style="color:#666;font-size:0.85rem;">Dit bericht is automatisch gegenereerd door Iveras CMS.</p>
+</body></html>"""
+
+                body_text = f"Iveras update {status_text} — {now_str}\n\n"
+                body_text += f"Versie: {current_ver}\n"
+                if latest:
+                    body_text += f"Backup: {latest}\n"
+                body_text += "\nStappen:\n"
+                for r in results:
+                    body_text += (
+                        f"  {'OK' if r['status'] == 'ok' else 'FAIL'} {r['step']}\n"
+                    )
+                body_text += (
+                    "\nHerstel: SSH naar server en draai ./scripts/restore.sh\n"
+                )
+
+                for admin in superadmins:
+                    try:
+                        send_email(admin.email, subject, body_html, body_text)
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to email update notification to {admin.email}: {e}"
+                        )
+        except Exception as e:
+            logger.warning(f"Failed to send update notification email: {e}")
 
         return jsonify(
             {

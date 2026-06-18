@@ -148,11 +148,6 @@
             <input type="text" name="bank_account" id="bank_account" placeholder="{{ _('e.g. NL39INGB0001234567') }}">
             <small style="color:var(--text-muted);">{{ _('Encrypted at rest') }}</small>
         </div>
-        </div>
-        <div class="form-group">
-            <label for="notes">{{ _('Notes') }}</label>
-            <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">{{ _('📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)') }}</p>
-        </div>
     </div>
     
     <div id="person-fields" style="display: none;">
@@ -326,11 +321,6 @@
         </div>
     </div>
     
-    <div class="form-group">
-        <label for="notes_vehicle" id="notes_label">{{ _('Notes') }}</label>
-        <p style="color:var(--text-muted);font-size:0.875rem;margin:0;">{{ _('📝 Notes zijn verplaatst naar het subject detailscherm → Notities & Comments sectie (met timestamp & auteur)') }}</p>
-    </div>
-    
     <button type="submit" class="btn-cms primary">{{ _('Create Subject') }}</button>
     <button type="button" data-click="resetForm" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Back') }}</button>
 </form>
@@ -398,7 +388,7 @@ function kvkLookupCreate() {
     statusDiv.innerHTML = '<span style="color: white;">{{ _("Opzoeken bij KVK...")|replace("'", "\\\\'")|safe }}</span>';
     resultsDiv.style.display = 'none';
 
-    fetch('/cms/api/kvk-lookup', {
+    apiFetch('/cms/api/kvk-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: query })
@@ -495,7 +485,7 @@ function fetchRDWData() {
     btn.textContent = '{{ _("Loading...")|replace("'", "\\\\'")|safe }}';
     statusDiv.innerHTML = '<span style="color: white;">{{ _("Fetching RDW data...")|replace("'", "\\\\'")|safe }}</span>';
     
-    fetch('/cms/check-rdw-vehicle', {
+    apiFetch('/cms/check-rdw-vehicle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kenteken: kenteken })
@@ -566,7 +556,7 @@ function lookupVesselCreate() {
     btn.textContent = '{{ _("Loading...")|replace("'", "\\\\'")|safe }}';
     statusDiv.innerHTML = '<span style="color: white;">{{ _("Looking up vessel...")|replace("'", "\\\\'")|safe }}</span>';
 
-    fetch('/cms/api/vessel-lookup', {
+    apiFetch('/cms/api/vessel-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imo: imo, mmsi: mmsi, eni: eni, name: name })
@@ -640,7 +630,7 @@ function checkDuplicate() {
     
     duplicateTimeout = setTimeout(() => {
         console.log('Checking duplicate for:', name);
-        fetch(`/cms/api/check-duplicate?name=${encodeURIComponent(name)}&type=subject`)
+        apiFetch(`/cms/api/check-duplicate?name=${encodeURIComponent(name)}&type=subject`)
             .then(r => {
                 console.log('Check duplicate response status:', r.status);
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -723,7 +713,7 @@ function postcodeCheck(btn) {
     btn.disabled = true;
     btn.textContent = '⏳';
 
-    fetch('/cms/api/kadaster-lookup', {
+    apiFetch('/cms/api/kadaster-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ zipcode: zipcode, number: number })

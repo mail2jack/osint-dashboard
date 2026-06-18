@@ -10,6 +10,8 @@ Integrates with free maritime data sources:
 - Equasis (free registration, IMO lookup - optional via settings)
 """
 
+import asyncio
+import inspect
 import logging
 import re
 import threading
@@ -780,3 +782,103 @@ def _extract_after(text: str, label: str, delimiter: str = "|") -> str | None:
     if match:
         return match.group(1).strip()
     return None
+
+
+# ---------------------------------------------------------------------------
+# Async lookup — runs independent sources in parallel via asyncio.to_thread
+# ---------------------------------------------------------------------------
+
+_VESSEL_SOURCES_ASYNC = [
+    ("vesselfinder", lookup_vesselfinder),
+    ("marineplan", lookup_marineplan),
+    ("kvnr", lookup_kvnr),
+    ("binnenvaart", lookup_binnenvaart),
+    ("equasis", lookup_equasis),
+]
+
+
+async def lookup_vessel_async(
+    imo: str | None = None,
+    mmsi: str | None = None,
+    eni: str | None = None,
+    name: str | None = None,
+) -> dict:
+    """Async version of ``lookup_vessel`` — runs independent sources in parallel.
+
+    Each individual lookup runs in a thread (``asyncio.to_thread``) so multiple
+    HTTP requests proceed concurrently.  DeBinnenvaart (fallback for Binnenvaart)
+    runs after the parallel block only when Binnenvaart.eu returned nothing.
+    Merge logic is identical to the sync version.
+    """
+    result: dict[str, Any] = {
+        "found": False,
+        "name": name,
+        "imo": imo,
+        "mmsi": mmsi,
+        "eni": eni,
+        "flag": None,
+        "ship_type": None,
+        "length": None,
+        "beam": None,
+        "year_built": None,
+        "builder": None,
+        "position": None,
+        "speed": None,
+        "destination": None,
+        "callsign": None,
+        "sources": [],
+        "source_data": {},
+    }
+
+    kw: dict[str, Any] = {}
+    if name:
+        kw["name"] = name
+    if mmsi:
+        kw["mmsi"] = mmsi
+    if imo:
+        kw["imo"] = imo
+    if eni:
+        kw["eni"] = eni
+
+    async def _run(source_name: str, func):
+        sig = inspect.signature(func)
+        filtered = {k: v for k, v in kw.items() if k in sig.parameters}
+        out = await asyncio.to_thread(func, **filtered)
+        return source_name, out
+
+    tasks = [_run(sname, sfunc) for sname, sfunc in _VESSEL_SOURCES_ASYNC]
+    completed = await asyncio.gather(*tasks)
+
+    for source_name, data in completed:
+        if data:
+            result["sources"].append(source_name)
+            result["source_data"][source_name] = data
+            result["found"] = True
+            result["name"] = result["name"] or data.get("name")
+            result["imo"] = result["imo"] or data.get("imo")
+            result["mmsi"] = result["mmsi"] or data.get("mmsi")
+            result["eni"] = result["eni"] or data.get("eni")
+            result["flag"] = result["flag"] or data.get("flag")
+            result["ship_type"] = result["ship_type"] or data.get("ship_type")
+            result["length"] = result["length"] or data.get("length")
+            result["beam"] = result["beam"] or data.get("beam")
+            result["year_built"] = result["year_built"] or data.get("year_built")
+            result["builder"] = result["builder"] or data.get("builder")
+            result["position"] = result["position"] or data.get("position")
+            result["speed"] = result["speed"] or data.get("speed")
+            result["destination"] = result["destination"] or data.get("destination")
+            result["callsign"] = result["callsign"] or data.get("callsign")
+
+    # Fallback: DeBinnenvaart only when Binnenvaart.eu missed
+    if "binnenvaart" not in result["sources"]:
+        dbv = lookup_debinnenvaart(eni=eni, name=result.get("name") or name)
+        if dbv:
+            result["sources"].append("debinnenvaart")
+            result["source_data"]["debinnenvaart"] = dbv
+            result["found"] = True
+            result["name"] = result["name"] or dbv.get("name")
+            result["eni"] = result["eni"] or dbv.get("eni")
+            result["ship_type"] = result["ship_type"] or dbv.get("ship_type")
+            result["year_built"] = result["year_built"] or dbv.get("year_built")
+
+    return result

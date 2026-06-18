@@ -67,7 +67,7 @@ function previewTemplate(btn, templateId) {
     document.getElementById('previewContent').innerHTML = 'Loading...';
     document.getElementById('previewModal').classList.add('show');
     
-    fetch(`/cms/templates/${templateId}/preview`)
+    apiFetch(`/cms/templates/${templateId}/preview`)
         .then(r => r.json())
         .then(data => {
             document.getElementById('previewContent').textContent = data.rendered;

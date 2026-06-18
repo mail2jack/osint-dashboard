@@ -1,3 +1,5 @@
+from .response import api_error
+
 """
 App-level system routes: health, version, config, docs, error handlers.
 Registered directly on the Flask app (not the CMS blueprint).
@@ -15,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 def register_system_routes(app: Flask) -> None:
     """Register system-level routes on the Flask app."""
-    from .. import csrf
 
     @app.route("/")
     def index() -> flask.Response:
@@ -104,6 +105,8 @@ def register_system_routes(app: Flask) -> None:
         from cms.health_utils import check_external_services
 
         status = {"status": "ok"}
+        http_status = 200
+
         svc = check_external_services(quick=request.args.get("quick") == "1")
         relabel = {"ok": "connected"}
         database_label = relabel.get(
@@ -111,9 +114,7 @@ def register_system_routes(app: Flask) -> None:
         )
         status["database"] = database_label
         status["spiderfoot"] = svc.get("spiderfoot", "unknown")
-        # Cached SF status from last check
         status["spiderfoot_cached_ok"] = Setting.get("spiderfoot_last_ok", "never")
-        # External service checks from shared function
         for key in ("rdw", "kadaster", "hibp", "overheid", "brave", "tor"):
             if key in svc:
                 status[key] = svc[key]
@@ -121,12 +122,69 @@ def register_system_routes(app: Flask) -> None:
         from cms.cache import get_status as cache_status
 
         status["cache"] = cache_status()
-        return jsonify(status)
+
+        # Disk and memory checks (psutil optional — x86_64 binary on ARM macOS)
+        try:
+            import psutil
+
+            disk = psutil.disk_usage("/")
+            status["disk"] = {
+                "total_gb": round(disk.total / (1024**3), 1),
+                "used_gb": round(disk.used / (1024**3), 1),
+                "free_gb": round(disk.free / (1024**3), 1),
+                "percent_used": disk.percent,
+            }
+            if disk.percent > 90:
+                status["status"] = "degraded"
+                http_status = 503
+
+            memory = psutil.virtual_memory()
+            status["memory"] = {
+                "total_gb": round(memory.total / (1024**3), 1),
+                "available_gb": round(memory.available / (1024**3), 1),
+                "percent_used": memory.percent,
+            }
+        except ImportError:
+            pass
+
+        # Redis check (when configured)
+        redis_url = flask.current_app.config.get("REDIS_URL", "")
+        if redis_url:
+            try:
+                import redis as redis_lib
+
+                r = redis_lib.from_url(redis_url, socket_connect_timeout=3)
+                r.ping()
+                r.close()
+                status["redis"] = "connected"
+            except Exception:
+                status["redis"] = "disconnected"
+                status["status"] = "degraded"
+                http_status = 503
+
+        # Database health
+        if svc.get("database") != "ok":
+            status["status"] = "degraded"
+            http_status = 503
+
+        if request.args.get("quick") != "1":
+            try:
+                from cms.models import db
+                from sqlalchemy import text
+
+                db.session.execute(text("SELECT 1"))
+                status["db_ping"] = "ok"
+            except Exception:
+                status["db_ping"] = "error"
+                status["status"] = "degraded"
+                http_status = 503
+
+        return jsonify(status), http_status
 
     @app.errorhandler(404)
     def not_found_error(e) -> flask.Response:
         if request.path.startswith("/api/"):
-            return jsonify({"error": "Not found"}), 404
+            return api_error("Not found", 404)
         return render_template("cms/404.html"), 404
 
     @app.errorhandler(500)
@@ -141,7 +199,6 @@ def register_system_routes(app: Flask) -> None:
         return jsonify({"error": "Request too large (max 16MB)"}), 413
 
     @app.route("/api/keep-alive", methods=["POST"])
-    @csrf.exempt
     def session_keep_alive() -> flask.Response:
         """Extend the current session lifetime.
 
@@ -189,142 +246,62 @@ def _check_ollama_available() -> bool:
 
 
 def _build_openapi_spec() -> dict:
-    """Build OpenAPI 3.0.3 specification."""
+    """Build OpenAPI 3.0.3 specification dynamically from Flask's URL map."""
+    from flask import current_app
+
+    paths = {}
+    static_rules = {"static", "flask-compress.cache"}
+
+    for rule in sorted(current_app.url_map.iter_rules(), key=lambda r: r.rule):
+        if rule.rule.startswith("/static") or rule.endpoint in static_rules:
+            continue
+        endpoint_name = (
+            rule.endpoint.split(".")[-1] if "." in rule.endpoint else rule.endpoint
+        )
+        methods = {
+            m for m in rule.methods if m in ("GET", "POST", "PUT", "PATCH", "DELETE")
+        }
+        if not methods:
+            continue
+        path_item = paths.setdefault(rule.rule, {})
+        for method in sorted(methods):
+            method_lower = method.lower()
+            path_item[method_lower] = {
+                "summary": f"{method} {rule.rule}",
+                "operationId": f"{endpoint_name}_{method_lower}",
+                "parameters": [
+                    {
+                        "name": p,
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    }
+                    for p in _extract_path_params(rule.rule)
+                ],
+                "responses": {
+                    "200": {"description": "Success"},
+                    "400": {"description": "Bad request"},
+                    "401": {"description": "Unauthorized"},
+                    "403": {"description": "Forbidden"},
+                    "404": {"description": "Not found"},
+                    "500": {"description": "Internal server error"},
+                },
+            }
+
     return {
         "openapi": "3.0.3",
         "info": {
             "title": "OSINT Dashboard API",
             "version": "1.0.0",
-            "description": "API for OSINT lookups and automations.",
+            "description": "REST API for Iveras OSINT Dashboard — all endpoints auto-discovered from Flask routes.",
         },
         "servers": [{"url": "/", "description": "Local server"}],
-        "paths": {
-            "/api/email": {
-                "post": {
-                    "summary": "Email lookup",
-                    "requestBody": {
-                        "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/EmailQuery"}
-                            }
-                        },
-                    },
-                    "responses": {"200": {"description": "Email lookup results"}},
-                }
-            },
-            "/api/ip": {
-                "post": {
-                    "summary": "IP address lookup",
-                    "requestBody": {
-                        "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/IPQuery"}
-                            }
-                        },
-                    },
-                    "responses": {"200": {"description": "IP lookup results"}},
-                }
-            },
-            "/api/domain": {
-                "post": {
-                    "summary": "Domain WHOIS/DNS lookup",
-                    "requestBody": {
-                        "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/DomainQuery"}
-                            }
-                        },
-                    },
-                    "responses": {"200": {"description": "Domain lookup results"}},
-                }
-            },
-            "/api/openkvk": {
-                "post": {
-                    "summary": "Dutch business registry lookup",
-                    "requestBody": {
-                        "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/OpenKVKQuery"}
-                            }
-                        },
-                    },
-                    "responses": {"200": {"description": "Company info"}},
-                }
-            },
-            "/api/webcam": {
-                "post": {
-                    "summary": "Webcam search",
-                    "requestBody": {
-                        "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/WebcamQuery"}
-                            }
-                        },
-                    },
-                    "responses": {"200": {"description": "Webcam results"}},
-                }
-            },
-            "/api/hibp": {
-                "post": {
-                    "summary": "Have I Been Pwned check",
-                    "requestBody": {
-                        "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/HIBPQuery"}
-                            }
-                        },
-                    },
-                    "responses": {"200": {"description": "Breach results"}},
-                }
-            },
-            "/api/rate-limit-status": {
-                "get": {
-                    "summary": "Get rate limit status",
-                    "responses": {"200": {"description": "Rate limit info"}},
-                }
-            },
-        },
-        "components": {
-            "schemas": {
-                "EmailQuery": {
-                    "type": "object",
-                    "required": ["email"],
-                    "properties": {"email": {"type": "string", "format": "email"}},
-                },
-                "IPQuery": {
-                    "type": "object",
-                    "required": ["ip"],
-                    "properties": {"ip": {"type": "string", "format": "ipv4"}},
-                },
-                "DomainQuery": {
-                    "type": "object",
-                    "required": ["domain"],
-                    "properties": {"domain": {"type": "string"}},
-                },
-                "OpenKVKQuery": {
-                    "type": "object",
-                    "required": ["query"],
-                    "properties": {"query": {"type": "string"}},
-                },
-                "WebcamQuery": {
-                    "type": "object",
-                    "required": ["query"],
-                    "properties": {
-                        "query": {"type": "string"},
-                        "country": {"type": "string"},
-                    },
-                },
-                "HIBPQuery": {
-                    "type": "object",
-                    "required": ["email"],
-                    "properties": {"email": {"type": "string", "format": "email"}},
-                },
-            }
-        },
+        "paths": paths,
     }
+
+
+def _extract_path_params(rule: str) -> list[str]:
+    """Extract path parameter names from a Flask rule string."""
+    import re
+
+    return re.findall(r"<(?:\w+:)?(\w+)>", rule)

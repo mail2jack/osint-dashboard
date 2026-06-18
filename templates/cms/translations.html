@@ -105,7 +105,7 @@ const REVIEW_API = '/cms/api/translations/review';
 const REVIEW_ALL_API = '/cms/api/translations/flagged';
 
 // Check AI provider status and show warning if OpenRouter is down
-fetch('/cms/api/translations/ai-status')
+apiFetch('/cms/api/translations/ai-status')
     .then(function(r) { return r.json(); })
     .then(function(status) {
         if (status.any_available) return;
@@ -149,7 +149,7 @@ window.editTranslation = function(el) {
         var val = input.value.trim();
         if (val && val !== current) {
             el.textContent = val;
-            fetch('/cms/api/translations/manual-fix', {
+            apiFetch('/cms/api/translations/manual-fix', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ msgid: msgid, direction: direction, translation: val })
@@ -203,7 +203,7 @@ window.cycleReview = function(el) {
 };
 
 function setReview(msgid, status) {
-    fetch(REVIEW_API, {
+    apiFetch(REVIEW_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ msgid: msgid, status: status })
@@ -211,7 +211,7 @@ function setReview(msgid, status) {
 }
 
 function updateSummary() {
-    fetch(REVIEW_ALL_API)
+    apiFetch(REVIEW_ALL_API)
         .then(r => r.json())
         .then(d => {
             let flagged = 0, pending = 0, approved = 0;
@@ -251,7 +251,7 @@ window.startAutoFix = function() {
         return;
     }
 
-    fetch('/cms/api/translations/auto-fix', {
+    apiFetch('/cms/api/translations/auto-fix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ en_to_nl: enToNl, nl_to_en: nlToEn })

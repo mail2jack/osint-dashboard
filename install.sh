@@ -103,7 +103,14 @@ apt install -y \
     fail2ban \
     software-properties-common \
     certbot \
-    python3-certbot-nginx
+    python3-certbot-nginx \
+    nodejs \
+    npm \
+    redis-server \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libffi-dev
 print_success "System dependencies installed"
 
 # ============================================================================
@@ -162,6 +169,16 @@ chown -R osint:osint "$APP_DIR"
 deactivate
 
 print_success "Iveras virtual environment ready with all packages"
+
+# ============================================================================
+# STEP 5b: Build Frontend Assets
+# ============================================================================
+print_step "Building frontend assets (npm)..."
+cd "$APP_DIR"
+npm install --production 2>/dev/null
+node build.mjs 2>/dev/null
+chown -R osint:osint "$APP_DIR/static/dist" 2>/dev/null
+print_success "Frontend assets built"
 
 # ============================================================================
 # STEP 6: Install SpiderFoot
@@ -493,7 +510,7 @@ from app import app
 from cms.models import Setting, db
 
 with app.app_context():
-    db.create_all()
+    # Tables already exist from create_cms_module() → Alembic upgrade
     Setting.set('spiderfoot_url', 'http://127.0.0.1:5001',
                description='SpiderFoot server URL', category='spiderfoot')
     Setting.set('spiderfoot_username', 'admin',
@@ -510,6 +527,10 @@ print_success "SpiderFoot settings configured in database"
 # STEP 14: Start Services
 # ============================================================================
 print_step "Starting services..."
+
+# Enable and start Redis
+systemctl enable redis-server
+systemctl start redis-server
 
 # Start SpiderFoot first (Iveras depends on it)
 systemctl start $SF_SERVICE_NAME
@@ -558,19 +579,19 @@ else
 fi
 
 # ============================================================================
-# STEP 16: Setup Daily Backup Cron
+# STEP 16: Setup Backup Cron (00:00, 06:00, 12:00, 18:00)
 # ============================================================================
-print_step "Setting up daily backup cron..."
+print_step "Setting up backup cron (4x daily)..."
 
 BACKUP_SCRIPT="$APP_DIR/scripts/backup.sh"
 if [ -f "$BACKUP_SCRIPT" ]; then
     chmod +x "$BACKUP_SCRIPT"
     cat > /etc/cron.d/osint-dashboard-backup << CRONEOF
-# Daily backup at 3:00 AM
-0 3 * * * osint $BACKUP_SCRIPT > /dev/null 2>&1
+# Backup at 00:00, 06:00, 12:00, 18:00 daily
+0 0,6,12,18 * * * osint $BACKUP_SCRIPT $APP_DIR/backups > /dev/null 2>&1
 CRONEOF
     chmod 644 /etc/cron.d/osint-dashboard-backup
-    print_success "Daily backup cron installed (3:00 AM)"
+    print_success "Backup cron installed (00:00, 06:00, 12:00, 18:00)"
 else
     print_warning "Backup script not found at $BACKUP_SCRIPT — skipping cron"
 fi

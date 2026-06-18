@@ -207,7 +207,7 @@ function openBulkLinkModal() {
         return;
     }
     
-    fetch('/cms/api/cases/search?q=')
+    apiFetch('/cms/api/cases/search?q=')
         .then(r => r.json())
         .then(data => {
             const select = document.getElementById('caseSelect');
@@ -233,7 +233,7 @@ function submitBulkLink() {
     
     const subjectIds = Array.from(selectedSubjects);
     
-    fetch(`/cms/cases/${caseId}/add-subjects-bulk`, {
+    apiFetch(`/cms/cases/${caseId}/add-subjects-bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject_ids: subjectIds })
@@ -256,7 +256,7 @@ document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
 
     function deleteSubject(btn, id, name) {
         if (!confirm('Weet je zeker dat je "' + name + '" wilt verwijderen?')) return;
-    fetch('/cms/subjects/' + id + '/delete', {
+    apiFetch('/cms/subjects/' + id + '/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     })

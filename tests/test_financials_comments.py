@@ -278,14 +278,14 @@ class TestSystem:
         data = resp.get_json()
         assert data.get("status") == "ok"
 
-    def test_version(self, client):
-        resp = client.get("/api/version")
+    def test_version(self, auth_client):
+        resp = auth_client.get("/api/version")
         assert resp.status_code == 200
         data = resp.get_json()
         assert "version" in data
 
-    def test_config(self, client):
-        resp = client.get("/api/config")
+    def test_config(self, auth_client):
+        resp = auth_client.get("/api/config")
         assert resp.status_code == 200
         data = resp.get_json()
         assert "ai_available" in data
@@ -294,8 +294,8 @@ class TestSystem:
         resp = client.get("/")
         assert resp.status_code == 302
 
-    def test_rate_limit_status(self, client):
-        resp = client.get("/api/rate-limit-status")
+    def test_rate_limit_status(self, auth_client):
+        resp = auth_client.get("/api/rate-limit-status")
         assert resp.status_code == 200
         data = resp.get_json()
         assert "api_rate_limits" in data

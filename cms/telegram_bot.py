@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import threading
 from typing import Optional
 
@@ -14,6 +15,9 @@ _bot_thread: Optional[threading.Thread] = None
 _internal_api_key: Optional[str] = None
 # cached config – read once at startup (inside app context), then used from bot thread
 _cached_allowed_users: str = ""
+
+_INTERNAL_PORT = os.environ.get("PORT", "5000")
+_INTERNAL_BASE = f"http://127.0.0.1:{_INTERNAL_PORT}"
 
 # ---------------------------------------------------------------------------
 # helpers (called at startup, inside Flask app context)
@@ -302,9 +306,7 @@ async def _api_post(
         "X-API-Key": _internal_api_key or "",
         "Content-Type": "application/json",
     }
-    async with httpx.AsyncClient(
-        base_url="http://127.0.0.1:5000", timeout=timeout
-    ) as c:
+    async with httpx.AsyncClient(base_url=_INTERNAL_BASE, timeout=timeout) as c:
         r = await c.post(path, json=json_body, headers=headers)
         try:
             return r.status_code, r.json()
@@ -314,7 +316,7 @@ async def _api_post(
 
 async def _api_get(path: str) -> tuple[int, dict]:
     headers = {"X-API-Key": _internal_api_key or ""}
-    async with httpx.AsyncClient(base_url="http://127.0.0.1:5000", timeout=10.0) as c:
+    async with httpx.AsyncClient(base_url=_INTERNAL_BASE, timeout=10.0) as c:
         r = await c.get(path, headers=headers)
         try:
             return r.status_code, r.json()

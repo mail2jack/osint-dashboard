@@ -15,6 +15,8 @@ from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_clients, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -120,7 +122,7 @@ def create_client() -> flask.Response:
         for field in required:
             if not data.get(field):
                 if request.is_json:
-                    return jsonify({"error": f"{field} is required"}), 400
+                    return api_error(f"{field} is required", 400)
                 flash(f"{field} is required.", "danger")
                 return render_template("cms/clients/create.html")
 
@@ -468,5 +470,5 @@ def delete_client(client_id: str) -> flask.Response:
     flash(f"Client {client.name} has been archived.", "info")
 
     if request.is_json:
-        return jsonify({"message": "Client archived"})
+        return api_success({}, "Client archived")
     return redirect(url_for("cms.clients"))

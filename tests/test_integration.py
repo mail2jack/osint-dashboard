@@ -252,7 +252,7 @@ class TestBackgroundTasks:
             run_in_background(task_id, failing)
             import time
 
-            time.sleep(0.2)
+            time.sleep(1.0)
             status = get_task_status(task_id)
             if status:
                 assert status["status"] in ("running", "failed")

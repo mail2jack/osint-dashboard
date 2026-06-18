@@ -34,11 +34,13 @@ def create_cms_module(app: Flask):
     """
     # Initialize extensions
     from .auth import login_manager
+    from .background import init_background
 
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
+    init_background(app)
 
     # Configure login
     login_manager.login_view = "auth.login"
@@ -67,12 +69,13 @@ def create_cms_module(app: Flask):
             from .setting_cache import cached_setting_get
 
             style = cached_setting_get("theme_style", "classic")
-            return {"theme_style": style}
+            logo = cached_setting_get("app_logo", "")
+            return {"theme_style": style, "app_logo": logo}
         except Exception:
             from .models import db
 
             db.session.rollback()
-            return {"theme_style": "classic"}
+            return {"theme_style": "classic", "app_logo": ""}
 
     # Schema management via Alembic
     with app.app_context():

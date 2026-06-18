@@ -91,7 +91,7 @@ body {
 .header a { color: white; text-decoration: none; margin-left: 1.5rem; }
 .header .nav-active { font-weight: bold; border-bottom: 2px solid white; padding-bottom: 2px; }
 .header a:hover { opacity: 0.8; }
-.container { max-width: 1400px; margin: 1.5rem auto; padding: 0 1rem; padding-left: calc(1rem + env(safe-area-inset-left)); }
+.container { max-width: 1400px; margin: 1.5rem auto; padding: 0 1rem 5rem; padding-left: calc(1rem + env(safe-area-inset-left)); }
 
 @media (max-width: 768px) {
     .header {
@@ -165,8 +165,9 @@ tbody tr:hover { background: var(--table-hover); }
 .theme-toggle:hover { background: rgba(255,255,255,0.1); }
 
 .keyboard-hint {
-    position: fixed; bottom: 1rem; right: 1rem;
+    position: fixed; bottom: 1rem; left: 1rem; right: 1rem;
     bottom: calc(1rem + env(safe-area-inset-bottom));
+    left: calc(1rem + env(safe-area-inset-left));
     right: calc(1rem + env(safe-area-inset-right));
     background: var(--bg-card);
     color: var(--text-secondary);
@@ -174,6 +175,20 @@ tbody tr:hover { background: var(--table-hover); }
     font-size: 0.75rem;
     box-shadow: 0 2px 8px var(--shadow);
     transition: opacity 0.2s;
+    display: flex; align-items: center;
+    gap: 1rem;
+}
+.keyboard-hint .kh-left { display: flex; align-items: center; gap: 0.5rem; }
+.keyboard-hint .kh-center { flex: 1; text-align: center; }
+.keyboard-hint .kh-right { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; }
+.keyboard-hint .tenant-badge {
+    background: var(--accent-primary);
+    color: #fff;
+    padding: 0.15rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
 }
 .keyboard-hint kbd {
     background: var(--bg-secondary);

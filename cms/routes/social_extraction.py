@@ -219,7 +219,6 @@ def extract_social_id() -> flask.Response:
 
 
 @cms_bp.route("/subjects/<subject_id>/bulk-extract-social-ids", methods=["POST"])
-@csrf.exempt
 @login_required
 def bulk_extract_social_ids(subject_id: str) -> flask.Response:
     """Extract social media IDs from all findings linked to a subject."""

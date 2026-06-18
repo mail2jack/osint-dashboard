@@ -63,7 +63,7 @@
     let notified = false;
     
     function poll() {
-        fetch(refreshUrl, { method: 'POST' })
+        apiFetch(refreshUrl, { method: 'POST' })
         .then(r => r.json())
         .then(data => {
             const status = (data.status || '').toLowerCase();

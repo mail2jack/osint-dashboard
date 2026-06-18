@@ -7,7 +7,6 @@ from flask import request, jsonify, render_template, redirect, url_for, flash, a
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..validation import (
     validate,
     CreateTemplateSchema,
@@ -17,6 +16,8 @@ from ..validation import (
 )
 from ..models import db, Case, DocumentTemplate, Document, AuditLog
 from ..auth import roles_required, case_access_required
+
+from .response import api_error
 
 logger = logging.getLogger(__name__)
 
@@ -319,7 +320,6 @@ def get_all_templates() -> flask.Response:
 
 
 @cms_bp.route("/templates/api/render-preview", methods=["POST"])
-@csrf.exempt
 @login_required
 @validate(RenderPreviewSchema)
 def render_template_preview() -> flask.Response:
@@ -331,7 +331,7 @@ def render_template_preview() -> flask.Response:
 
     template = db.session.get(DocumentTemplate, template_id)
     if not template:
-        return jsonify({"error": "Template not found"}), 404
+        return api_error("Template not found", 404)
 
     case = db.session.get(Case, case_id) if case_id else None
 

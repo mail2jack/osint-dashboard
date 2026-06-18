@@ -15,6 +15,17 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
   app:
     build: .
     ports:
@@ -22,6 +33,7 @@ services:
     environment:
       FLASK_ENV: production
       DATABASE_URL: postgresql://cms:${DB_PASSWORD:-changeme}@postgres:5432/cms_db
+      REDIS_URL: redis://redis:6379/0
       CMS_ENCRYPTION_KEY: ${CMS_ENCRYPTION_KEY:?Set CMS_ENCRYPTION_KEY in .env}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5000}
@@ -30,10 +42,11 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - uploads:/app/static/uploads
-      - flask_sessions:/app/flask_session
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health?quick=1"]
       interval: 30s
@@ -42,7 +55,30 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  worker:
+    build: .
+    command: python3 worker.py default
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: postgresql://cms:${DB_PASSWORD:-changeme}@postgres:5432/cms_db
+      REDIS_URL: redis://redis:6379/0
+      CMS_ENCRYPTION_KEY: ${CMS_ENCRYPTION_KEY:?Set CMS_ENCRYPTION_KEY in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      PYTHONUNBUFFERED: 1
+      LOG_FILE: /dev/null
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    profiles:
+      - worker
+    # Uncomment to enable by default:
+    # profiles: []
+
 volumes:
   pgdata:
   uploads:
-  flask_sessions:
+  redis_data:

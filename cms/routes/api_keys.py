@@ -8,6 +8,8 @@ from . import cms_bp
 from ..models import db, ApiKey
 from ..auth import admin_required
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,9 +41,9 @@ def generate_api_key() -> flask.Response:
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
     if not name:
-        return jsonify({"error": "Name is required"}), 400
+        return api_error("Name is required", 400)
     if len(name) > 100:
-        return jsonify({"error": "Name too long (max 100 chars)"}), 400
+        return api_error("Name too long (max 100 chars)", 400)
 
     raw_key, key_hash = ApiKey.generate_key()
     prefix = raw_key[:8]
@@ -83,13 +85,13 @@ def generate_api_key() -> flask.Response:
 def revoke_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id)
     if not key:
-        return jsonify({"error": "API key not found"}), 404
+        return api_error("API key not found", 404)
 
     key.is_active = False
     db.session.commit()
 
     logger.info("API key '%s' revoked by %s", key.name, current_user.username)
-    return jsonify({"message": f"API key '{key.name}' revoked"})
+    return api_success({}, f"API key '{key.name}' revoked")
 
 
 @cms_bp.route("/api/api-keys/<key_id>/delete", methods=["POST"])
@@ -98,10 +100,10 @@ def revoke_api_key(key_id: str) -> flask.Response:
 def delete_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id)
     if not key:
-        return jsonify({"error": "API key not found"}), 404
+        return api_error("API key not found", 404)
 
     db.session.delete(key)
     db.session.commit()
 
     logger.info("API key '%s' deleted by %s", key.name, current_user.username)
-    return jsonify({"message": f"API key '{key.name}' deleted"})
+    return api_success({}, f"API key '{key.name}' deleted")

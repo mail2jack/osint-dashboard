@@ -1,3 +1,5 @@
+from .response import api_error
+
 """
 Bulk CSV import for Subjects and Clients.
 """
@@ -27,18 +29,18 @@ MAX_IMPORT_ROWS = 500
 def import_subjects_csv() -> flask.Response:
     """Bulk-import subjects from CSV upload."""
     if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        return api_error("No file provided", 400)
 
     f = request.files["file"]
     if not f.filename or not f.filename.lower().endswith(".csv"):
-        return jsonify({"error": "File must be a CSV"}), 400
+        return api_error("File must be a CSV", 400)
 
     try:
         stream = io.StringIO(f.read().decode("utf-8-sig"))
         reader = csv.DictReader(stream)
         rows = list(reader)
     except Exception:
-        return jsonify({"error": "Could not parse CSV file"}), 400
+        return api_error("Could not parse CSV file", 400)
 
     if not rows:
         return jsonify({"created": 0, "errors": ["CSV file is empty"]}), 400
@@ -88,18 +90,18 @@ def import_subjects_csv() -> flask.Response:
 def import_clients_csv() -> flask.Response:
     """Bulk-import clients from CSV upload."""
     if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        return api_error("No file provided", 400)
 
     f = request.files["file"]
     if not f.filename or not f.filename.lower().endswith(".csv"):
-        return jsonify({"error": "File must be a CSV"}), 400
+        return api_error("File must be a CSV", 400)
 
     try:
         stream = io.StringIO(f.read().decode("utf-8-sig"))
         reader = csv.DictReader(stream)
         rows = list(reader)
     except Exception:
-        return jsonify({"error": "Could not parse CSV file"}), 400
+        return api_error("Could not parse CSV file", 400)
 
     if not rows:
         return jsonify({"created": 0, "errors": ["CSV file is empty"]}), 400

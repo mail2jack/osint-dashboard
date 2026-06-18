@@ -241,7 +241,7 @@
 
 <script nonce="{{ csp_nonce }}">
 function dismissAnomaly(btn, logId) {
-    fetch('{{ url_for("cms.dismiss_anomaly", log_id="__ID__") }}'.replace('__ID__', logId), {
+    apiFetch('{{ url_for("cms.dismiss_anomaly", log_id="__ID__") }}'.replace('__ID__', logId), {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}
     }).then(r => r.json()).then(() => location.reload());
@@ -252,7 +252,7 @@ document.querySelector('.purge-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
     if (!confirm('Delete old login logs? This cannot be undone.')) return;
     const days = this.querySelector('input[name="days"]').value;
-    fetch('{{ url_for("cms.purge_login_logs") }}', {
+    apiFetch('{{ url_for("cms.purge_login_logs") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

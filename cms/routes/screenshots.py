@@ -14,6 +14,8 @@ from ..models import db, Case, Screenshot, AuditLog
 from ..auth import case_access_required, case_edit_required
 from ..image_validation import validate_image_file
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 UPLOAD_FOLDER = "uploads"
@@ -62,12 +64,12 @@ def upload_screenshot(case_id: str) -> flask.Response:
     db.session.get(Case, case_id) or abort(404)
 
     if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        return api_error("No file provided", 400)
 
     file = request.files["file"]
 
     if file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
+        return api_error("No file selected", 400)
 
     # Check file type via magic bytes
     is_img, _ = validate_image_file(file)
@@ -171,7 +173,7 @@ def capture_screenshot(case_id: str) -> flask.Response:
     data = request.validated_data
 
     if not data or not data.get("url"):
-        return jsonify({"error": "URL is required"}), 400
+        return api_error("URL is required", 400)
 
     url = data.get("url")
     title = data.get("title", "")
@@ -350,7 +352,7 @@ def get_screenshot(case_id: str, screenshot_id: str) -> flask.Response:
     screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
 
     if not screenshot:
-        return jsonify({"error": "Screenshot not found"}), 404
+        return api_error("Screenshot not found", 404)
 
     return jsonify(screenshot.to_dict())
 
@@ -364,7 +366,7 @@ def delete_screenshot(case_id: str, screenshot_id: str) -> flask.Response:
     screenshot = Screenshot.query.filter_by(id=screenshot_id, case_id=case_id).first()
 
     if not screenshot:
-        return jsonify({"error": "Screenshot not found"}), 404
+        return api_error("Screenshot not found", 404)
 
     try:
         # Delete the file
@@ -387,7 +389,7 @@ def delete_screenshot(case_id: str, screenshot_id: str) -> flask.Response:
         db.session.delete(screenshot)
         db.session.commit()
 
-        return jsonify({"message": "Screenshot deleted"}), 200
+        return api_success({}, "Screenshot deleted")
 
     except Exception:
         logger.exception("Screenshot delete error")

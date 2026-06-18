@@ -1,24 +1,40 @@
 import logging
+import threading
+import time
 
 from flask import render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Case, Client, Subject, Finding, CaseStatus
 from ..auth import apply_tenant_filter
 from ..health_utils import check_external_services
 
 logger = logging.getLogger(__name__)
 
+_health_cache: dict[str, tuple[float, dict]] = {}
+_health_cache_lock = threading.Lock()
+_HEALTH_CACHE_TTL = 60
+
+
+def _get_cached_health() -> dict:
+    now = time.time()
+    with _health_cache_lock:
+        cached = _health_cache.get("health")
+        if cached and (now - cached[0]) < _HEALTH_CACHE_TTL:
+            return cached[1]
+    fresh = check_external_services()
+    with _health_cache_lock:
+        _health_cache["health"] = (time.time(), fresh)
+    return fresh
+
 
 @cms_bp.route("/")
 @cms_bp.route("/dashboard")
 @login_required
 def dashboard() -> str:
-    """Search-first dashboard with quick stats, case overview, and service health."""
+    """Search-first dashboard with quick stats and case overview."""
 
-    # Search redirect
     q = request.args.get("q", "").strip()
     if q:
         return redirect(url_for("cms.search", q=q))
@@ -77,19 +93,14 @@ def dashboard() -> str:
         .all()
     )
 
-    health = check_external_services()
-
-    return render_template(
-        "cms/dashboard.html", stats=stats, my_cases=my_cases, health=health
-    )
+    return render_template("cms/dashboard.html", stats=stats, my_cases=my_cases)
 
 
 @cms_bp.route("/api/health-summary")
-@csrf.exempt
 @login_required
 def health_summary():
     """Return service health status as JSON for the traffic light in the header."""
-    health = check_external_services()
+    health = _get_cached_health()
     green = []
     orange = []
     red = []

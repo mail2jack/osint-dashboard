@@ -15,6 +15,8 @@ from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
 from ..feature_flags import tool_enabled
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 RDW_API_BASE = "https://opendata.rdw.nl/resource/m9d7-ebf2.json"
@@ -47,7 +49,7 @@ def check_rdw_vehicle() -> flask.Response:
     subject_id = data.get("subject_id")
 
     if not kenteken:
-        return jsonify({"error": "Kenteken (license plate) is required"}), 400
+        return api_error("Kenteken (license plate) is required", 400)
 
     kenteken_normalized = _normalize_kenteken(kenteken)
 
@@ -144,9 +146,9 @@ def update_subject_from_rdw(subject_id: str) -> flask.Response:
     """Update vehicle subject fields with data from RDW."""
     subject = db.session.get(Subject, subject_id)
     if not subject:
-        return jsonify({"error": "Subject not found"}), 404
+        return api_error("Subject not found", 404)
     if subject.subject_type != "vehicle":
-        return jsonify({"error": "Subject is not a vehicle"}), 400
+        return api_error("Subject is not a vehicle", 400)
 
     data = request.validated_data
 
@@ -162,7 +164,7 @@ def update_subject_from_rdw(subject_id: str) -> flask.Response:
         r = curl_requests.get(url, headers=headers, timeout=15)
 
         if r.status_code != 200 or not r.json():
-            return jsonify({"error": "Vehicle not found in RDW database"}), 404
+            return api_error("Vehicle not found in RDW database", 404)
 
         vehicle = r.json()[0]
 

@@ -304,20 +304,8 @@ class TestAdmin2FAReset:
 
 
 class TestPasswordChange:
-    def _login(self, client, db_session):
-        admin = User.query.filter_by(username="admin").first()
-        admin.totp_secret = None
-        admin.totp_enabled = False
-        db.session.commit()
-        resp = client.post(
-            "/auth/login", data={"username": "admin", "password": "Test1234!"}
-        )
-        if resp.status_code == 302:
-            client.get(resp.headers["Location"])
-
-    def test_change_password_success(self, client, db_session):
-        self._login(client, db_session)
-        resp = client.post(
+    def test_change_password_success(self, auth_client):
+        resp = auth_client.post(
             "/users/change-password",
             data={
                 "current_password": "Test1234!",
@@ -327,9 +315,8 @@ class TestPasswordChange:
         )
         assert resp.status_code in (200, 302)
 
-    def test_change_password_wrong_current(self, client, db_session):
-        self._login(client, db_session)
-        resp = client.post(
+    def test_change_password_wrong_current(self, auth_client):
+        resp = auth_client.post(
             "/users/change-password",
             data={
                 "current_password": "wrongpass1A!",
@@ -339,9 +326,8 @@ class TestPasswordChange:
         )
         assert resp.status_code in (400, 200)
 
-    def test_change_password_mismatch(self, client, db_session):
-        self._login(client, db_session)
-        resp = client.post(
+    def test_change_password_mismatch(self, auth_client):
+        resp = auth_client.post(
             "/users/change-password",
             data={
                 "current_password": "Test1234!",

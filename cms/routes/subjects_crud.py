@@ -19,6 +19,8 @@ from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +40,7 @@ def create_subject() -> flask.Response:
         for field in required:
             if not data.get(field):
                 if request.is_json:
-                    return jsonify({"error": f"{field} is required"}), 400
+                    return api_error(f"{field} is required", 400)
                 flash(f"{field} is required.", "danger")
                 return render_template("cms/subjects/create.html")
 
@@ -619,7 +621,7 @@ def bulk_delete_subjects() -> flask.Response:
     data = request.validated_data
     ids = data.get("ids", [])
     if not ids or len(ids) > 100:
-        return jsonify({"error": "Provide a list of up to 100 subject IDs"}), 400
+        return api_error("Provide a list of up to 100 subject IDs", 400)
     now = datetime.now(timezone.utc)
     count = Subject.query.filter(
         Subject.id.in_(ids), Subject.is_deleted == False
@@ -679,6 +681,6 @@ def delete_subject(subject_id: str) -> flask.Response:
     db.session.commit()
 
     if request.is_json:
-        return jsonify({"message": "Subject verwijderd"})
+        return api_success({}, "Subject verwijderd")
     flash(f"Subject {subject.name} is verwijderd.", "info")
     return redirect(url_for("cms.subjects"))

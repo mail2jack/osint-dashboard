@@ -17,10 +17,12 @@ from ..validation import (
     VesselUpdateSubjectSchema,
     VesselFindingSchema,
 )
-from ..vessel_service import lookup_vessel
+from ..vessel_service import lookup_vessel_async
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
 from ..feature_flags import tool_enabled
+
+from .response import api_error
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +50,14 @@ def vessel_lookup() -> flask.Response:
         eni = (data.get("eni") or "").strip()
 
         if not name and not imo and not mmsi and not eni:
-            return jsonify({"error": "Provide at least name, IMO, MMSI, or ENI"}), 400
+            return api_error("Provide at least name, IMO, MMSI, or ENI", 400)
 
-        result = lookup_vessel(
-            imo=imo or None, mmsi=mmsi or None, eni=eni or None, name=name or None
+        import asyncio
+
+        result = asyncio.run(
+            lookup_vessel_async(
+                imo=imo or None, mmsi=mmsi or None, eni=eni or None, name=name or None
+            )
         )
 
         subject_id = data.get("subject_id")
@@ -85,9 +91,9 @@ def update_subject_from_vessel() -> flask.Response:
 
     subject = db.session.get(Subject, data["subject_id"])
     if not subject:
-        return jsonify({"error": "Subject not found"}), 404
+        return api_error("Subject not found", 404)
     if subject.subject_type != "vessel":
-        return jsonify({"error": "Subject is not a vessel"}), 400
+        return api_error("Subject is not a vessel", 400)
 
     changes = {}
     vessel_fields = ["imo_number", "mmsi", "eni_number", "vessel_nationality"]
@@ -139,13 +145,13 @@ def create_finding_from_vessel() -> flask.Response:
     subject_id = data.get("subject_id")
 
     if not case_id:
-        return jsonify({"error": "case_id is required"}), 400
+        return api_error("case_id is required", 400)
 
     vessel_info = data.get("vessel_data", {})
     source = data.get("source", "vessel_lookup")
 
     if not vessel_info or not isinstance(vessel_info, dict):
-        return jsonify({"error": "vessel_data is required"}), 400
+        return api_error("vessel_data is required", 400)
 
     content_parts = ["Vessel Lookup Results", "=" * 30]
     name = vessel_info.get("name") or "Unknown"

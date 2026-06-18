@@ -380,12 +380,18 @@ def check_ssl_renewal(dry: bool) -> bool:
 
 
 def check_backup_cron(dry: bool) -> bool:
-    log("Checking daily backup cron...", end=" ")
+    log("Checking backup cron (4x daily)...", end=" ")
     cron_file = Path("/etc/cron.d/osint-dashboard-backup")
     if cron_file.exists():
-        log(OK)
-        return True
-    log(FAIL + " (not installed)")
+        content = cron_file.read_text()
+        if "0,6,12,18" in content or all(
+            f"0 {h}" in content for h in ("0", "6", "12", "18")
+        ):
+            log(OK)
+            return True
+        log(FAIL + " (wrong schedule)")
+    else:
+        log(FAIL + " (not installed)")
     backup_script = APP_DIR / "scripts" / "backup.sh"
     if not backup_script.exists():
         log("  backup.sh not found — skipping")
@@ -393,11 +399,43 @@ def check_backup_cron(dry: bool) -> bool:
     if dry:
         log(f"  {DRY} (install /etc/cron.d/osint-dashboard-backup)")
         return False
-    cron_content = f"0 3 * * * osint {backup_script} > /dev/null 2>&1\n"
+    cron_content = (
+        f"0 0,6,12,18 * * * osint {backup_script} {APP_DIR}/backups > /dev/null 2>&1\n"
+    )
     cron_file.write_text(cron_content)
     cron_file.chmod(0o644)
     log(f"  {FIXED}")
     return True
+
+
+def check_weasyprint_deps(dry: bool) -> bool:
+    log("Checking weasyprint system deps (libpango)...", end=" ")
+    r = run(["ldconfig", "-p"], timeout=10)
+    if "libpango" in r.stdout:
+        log(OK)
+        return True
+    log(FAIL + " (install: libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0)")
+    return False
+
+
+def check_playwright(dry: bool) -> bool:
+    log("Checking Playwright Chromium...", end=" ")
+    try:
+        log(OK)
+        return True
+    except Exception:
+        log(FAIL + " (run: playwright install chromium)")
+        return False
+
+
+def check_redis(dry: bool) -> bool:
+    log("Checking Redis...", end=" ")
+    r = run(["redis-cli", "ping"], timeout=5)
+    if r.returncode == 0 and "PONG" in r.stdout:
+        log(OK)
+        return True
+    log(FAIL + " (redis-server not running)")
+    return False
 
 
 def check_gunicorn_logging(dry: bool) -> bool:
@@ -467,6 +505,9 @@ def main():
         ("SSL cert renewal", check_ssl_renewal),
         ("Backup cron", check_backup_cron),
         ("Gunicorn error log", check_gunicorn_logging),
+        ("weasyprint deps", check_weasyprint_deps),
+        ("Playwright", check_playwright),
+        ("Redis", check_redis),
     ]
 
     good = bad = 0

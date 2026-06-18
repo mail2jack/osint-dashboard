@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="OSINT">
     <meta name="description" content="Iveras OSINT Case Management System">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="/static/favicon.ico" sizes="32x32">
     <link rel="manifest" href="/static/pwa/manifest.json">
     <link rel="apple-touch-icon" href="/static/pwa/icon-180.png">
@@ -19,12 +20,21 @@
             const theme = localStorage.getItem('cms-theme') || 'light';
             document.documentElement.setAttribute('data-theme', theme);
         })();
+        function esc(str) {
+            var d = document.createElement('div');
+            d.appendChild(document.createTextNode(str));
+            return d.innerHTML;
+        }
     </script>
+    {% if g.use_bundle %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/bundle.min.css') }}?v={{ g.css_version }}">
+    {% else %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ g.css_version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}?v={{ g.css_version }}">
+    {% endif %}
     {% if theme_style == 'professional' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cms-professional.css') }}?v={{ g.css_version }}">
     {% endif %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/help.css') }}?v={{ g.css_version }}">
 </head>
 <body data-help-topic="{{ help_topic|default('general') }}">
     <div class="app-loader" id="appLoader">
@@ -34,7 +44,11 @@
     </div>
     <div class="header">
         <div>
+            {% if app_logo %}
+            <img src="{{ url_for('static', filename='uploads/logo/' + app_logo) }}" alt="Logo" style="height:2rem;width:auto;vertical-align:middle;margin-right:0.5rem;">
+            {% else %}
             <strong>CMS</strong>
+            {% endif %}
             <a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a>
             <a href="{{ url_for('cms.cases') }}">{{ _('Cases') }}</a>
             <a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a>
@@ -133,10 +147,19 @@
     </div>
     
     <div class="keyboard-hint">
-        <kbd>s</kbd> Search &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigate &nbsp; <kbd>Enter</kbd> View &nbsp; <kbd>?</kbd> Help
-        <span style="float:right;font-size:0.75rem;">
+        <span class="kh-left">
+            {% if current_user.is_authenticated and current_user.tenant %}
+            <span class="tenant-badge">{{ current_user.tenant.name }}</span>
+            {% endif %}
+        </span>
+        <span class="kh-center">
+            <kbd>s</kbd> Search &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigate &nbsp; <kbd>Enter</kbd> View &nbsp; <kbd>?</kbd> Help
+        </span>
+        <span class="kh-right">
             v<span id="footerVersion">-</span>
             <a href="#" data-click="openChangelog" style="color:var(--text-secondary);text-decoration:none;">changelog</a>
+            <span style="opacity:0.4;">|</span>
+            <a href="{{ url_for('static', filename='ALGEMENE_VOORWAARDEN_TEMPLATE.md') }}" target="_blank" style="color:var(--text-secondary);text-decoration:none;" title="Algemene Voorwaarden (niet-juridisch sjabloon)">📄 voorwaarden</a>
         </span>
     </div>
 
@@ -197,14 +220,14 @@ window.CMS = {
     noNotificationsText: '{{ _("No notifications") }}',
 };
 </script>
-<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/base.js') }}?v={{ g.css_version }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='dist/base.min.js' if g.use_bundle else 'js/base.js') }}?v={{ g.css_version }}"></script>
 
 <script nonce="{{ csp_nonce }}">
 // Traffic light health indicator
 var healthModalVisible = false;
 
 function updateHealthLight() {
-    fetch('/cms/api/health-summary')
+    apiFetch('/cms/api/health-summary')
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var light = document.getElementById('healthTrafficLight');
@@ -281,3 +304,5 @@ setInterval(updateHealthLight, 60000);
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js" nonce="{{ csp_nonce }}"></script>
 </body>
 </html>
+
+

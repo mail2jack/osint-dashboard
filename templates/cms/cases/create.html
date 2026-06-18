@@ -153,7 +153,7 @@ const input = document.getElementById('case_type');
 const hiddenInput = document.getElementById('case_type_value');
 const list = document.getElementById('case_type_list');
 
-fetch('/static/data/cbs-crime-codes.json')
+apiFetch('/static/data/cbs-crime-codes.json')
     .then(response => response.json())
     .then(data => {
         beleidData = data;

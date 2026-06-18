@@ -1,16 +1,17 @@
 #!/bin/bash
 #
-# Iveras OSINT Dashboard — Backup Script
-# ========================================
-# Backs up PostgreSQL database + Docker volumes to a timestamped archive.
+# Iveras OSINT Dashboard — Full Backup Script
+# ============================================
+# Creates an encrypted, verified archive of the entire installation.
+# Supports both Docker and native (systemd) deployments.
 #
 # Usage:
-#   ./scripts/backup.sh                    # Default backup to ./backups/
-#   ./scripts/backup.sh /path/to/backups   # Custom output directory
+#   ./scripts/backup.sh                    # Default: backup to ./backups/
+#   ./scripts/backup.sh /path/to/dir       # Custom output directory
+#   ./scripts/backup.sh --key-file /path   # Custom GPG key (default: ./backups/backup-key.gpg)
 #
-# Restore:
-#   cat backup_20260526.sql | docker exec -i $(docker ps -q -f name=postgres) psql -U cms -d cms_db
-#   docker run --rm -v uploads_restored:/target -v $(pwd)/uploads_backup:/source alpine cp -a /source/. /target/
+# Restore:  ./scripts/restore.sh --list
+#           ./scripts/restore.sh --backup <archive.tar.gz.gpg>
 #
 
 set -euo pipefail
@@ -19,66 +20,250 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUP_DIR="${1:-$SCRIPT_DIR/backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_PATH="$BACKUP_DIR/iveras_backup_$TIMESTAMP"
+ARCHIVE_FILE="$BACKUP_DIR/iveras_backup_$TIMESTAMP.tar.gz"
+ENCRYPTED_FILE="$ARCHIVE_FILE.gpg"
+
+KEY_FILE="${KEY_FILE:-$BACKUP_DIR/backup-key.gpg}"
+ERRORS=0
+WARNINGS=0
 
 mkdir -p "$BACKUP_PATH"
 
-echo "=== Iveras Backup: $TIMESTAMP ==="
-echo "Output: $BACKUP_PATH"
-
-# --- 1. Database dump ---
+echo "╔══════════════════════════════════════════════╗"
+echo "║   Iveras Full Backup                        ║"
+echo "║   $TIMESTAMP"
+echo "╚══════════════════════════════════════════════╝"
 echo ""
-echo "--- Database ---"
+
+# ------------------------------------------------------------------
+# Helper: generate GPG key once, reuse for all backups
+# ------------------------------------------------------------------
+_ensure_gpg_key() {
+    mkdir -p "$BACKUP_DIR"
+    if [ ! -f "$KEY_FILE" ]; then
+        echo "🔑 Generating new backup encryption key..."
+        openssl rand -base64 32 > "$KEY_FILE"
+        chmod 600 "$KEY_FILE"
+        echo "    Key: $KEY_FILE"
+        echo "    ⚠️  KEEP THIS FILE SAFE — without it backups cannot be restored!"
+    fi
+}
+
+_encrypt() {
+    local src="$1"
+    local dst="$2"
+    gpg --symmetric --batch --passphrase-file "$KEY_FILE" \
+        --cipher-algo AES256 --output "$dst" "$src" 2>/dev/null
+    rm -f "$src"
+}
+
+_log_error() { echo -e "  ❌ $1"; ERRORS=$((ERRORS + 1)); }
+_log_warn()  { echo -e "  ⚠️  $1"; WARNINGS=$((WARNINGS + 1)); }
+_log_ok()    { echo -e "  ✅ $1"; }
+
+# ------------------------------------------------------------------
+# 1. Database dump
+# ------------------------------------------------------------------
+echo "--- 1. Database ---"
+
 if docker compose ps -q postgres 2>/dev/null | grep -q .; then
-    echo "Dumping PostgreSQL (Docker)..."
-    docker compose exec -T postgres pg_dump -U cms -d cms_db --clean --if-exists > "$BACKUP_PATH/database.sql"
-    gzip "$BACKUP_PATH/database.sql"
-    echo "  -> database.sql.gz"
+    echo "  Dumping PostgreSQL (Docker)..."
+    docker compose exec -T postgres pg_dump -U cms -d cms_db --clean --if-exists \
+        > "$BACKUP_PATH/database.sql" 2>/dev/null && _log_ok "database.sql" || _log_error "pg_dump failed"
+
 elif command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ]; then
-    echo "Dumping PostgreSQL (local)..."
-    pg_dump "${DATABASE_URL#postgresql://}" --clean --if-exists > "$BACKUP_PATH/database.sql" 2>/dev/null || \
-    pg_dump "$DATABASE_URL" --clean --if-exists > "$BACKUP_PATH/database.sql"
-    gzip "$BACKUP_PATH/database.sql"
-    echo "  -> database.sql.gz"
+    echo "  Dumping PostgreSQL (local)..."
+    pg_dump "$DATABASE_URL" --clean --if-exists > "$BACKUP_PATH/database.sql" 2>/dev/null \
+        && _log_ok "database.sql" || _log_error "pg_dump failed"
+
 elif [ -f "$SCRIPT_DIR/cms.db" ]; then
-    echo "Copying SQLite..."
-    cp "$SCRIPT_DIR/cms.db" "$BACKUP_PATH/cms.db"
-    echo "  -> cms.db"
+    echo "  Copying SQLite..."
+    cp "$SCRIPT_DIR/cms.db" "$BACKUP_PATH/cms.db" && _log_ok "cms.db" || _log_error "SQLite copy failed"
+
 else
-    echo "  WARNING: No database found to back up."
+    _log_warn "No database found to back up"
 fi
 
-# --- 2. Docker volumes ---
+# Compress database dump
+if [ -f "$BACKUP_PATH/database.sql" ]; then
+    gzip "$BACKUP_PATH/database.sql" && _log_ok "  Compressed: database.sql.gz"
+fi
+
+# ------------------------------------------------------------------
+# 2. Uploaded files (static/uploads, subject faces, screenshots)
+# ------------------------------------------------------------------
 echo ""
-echo "--- Docker Volumes ---"
-for vol in uploads flask_sessions; do
-    if docker volume ls -q -f name="$vol" 2>/dev/null | grep -q .; then
-        echo "Backing up volume: $vol"
-        docker run --rm \
-            -v "${vol}:/source:ro" \
-            -v "${BACKUP_PATH}:/target" \
-            alpine tar czf "/target/${vol}.tar.gz" -C /source . 2>/dev/null
-        echo "  -> ${vol}.tar.gz"
+echo "--- 2. Uploaded Files ---"
+
+UPLOAD_DIR="$SCRIPT_DIR/static/uploads"
+if [ -d "$UPLOAD_DIR" ] && [ -n "$(ls -A "$UPLOAD_DIR" 2>/dev/null)" ]; then
+    tar czf "$BACKUP_PATH/uploads.tar.gz" -C "$SCRIPT_DIR/static" uploads/ 2>/dev/null \
+        && _log_ok "uploads.tar.gz ($(du -sh "$BACKUP_PATH/uploads.tar.gz" | cut -f1))" \
+        || _log_warn "uploads directory empty or tar failed"
+else
+    _log_warn "No uploaded files found at $UPLOAD_DIR"
+fi
+
+# ------------------------------------------------------------------
+# 3. Flask session files
+# ------------------------------------------------------------------
+echo ""
+echo "--- 3. Sessions ---"
+
+SESSION_DIR="$SCRIPT_DIR/flask_session"
+if [ -d "$SESSION_DIR" ] && [ -n "$(ls -A "$SESSION_DIR" 2>/dev/null)" ]; then
+    tar czf "$BACKUP_PATH/sessions.tar.gz" -C "$SCRIPT_DIR" flask_session/ 2>/dev/null \
+        && _log_ok "sessions.tar.gz" || _log_warn "session tar failed"
+else
+    _log_warn "flask_session directory empty or missing"
+fi
+
+# ------------------------------------------------------------------
+# 4. Configuration files
+# ------------------------------------------------------------------
+echo ""
+echo "--- 4. Configuration ---"
+
+# .env (contains secrets — encrypted below)
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    cp "$SCRIPT_DIR/.env" "$BACKUP_PATH/env.txt"
+    _log_ok "env.txt (will be encrypted in final archive)"
+else
+    _log_warn ".env not found"
+fi
+
+# Nginx config (if on native install)
+if [ -f /etc/nginx/sites-available/default ]; then
+    cp /etc/nginx/sites-available/default "$BACKUP_PATH/nginx-default.conf"
+    _log_ok "nginx-default.conf"
+fi
+# Also try nginx/sites-enabled
+if [ -f /etc/nginx/sites-enabled/default ]; then
+    cp /etc/nginx/sites-enabled/default "$BACKUP_PATH/nginx-enabled.conf"
+    _log_ok "nginx-enabled.conf"
+fi
+
+# Systemd service files (if on native install)
+for svc in osint-dashboard spiderfoot; do
+    if [ -f "/etc/systemd/system/$svc.service" ]; then
+        cp "/etc/systemd/system/$svc.service" "$BACKUP_PATH/${svc}.service"
+        _log_ok "${svc}.service"
     fi
 done
 
-# --- 3. .env (obfuscated) ---
-echo ""
-echo "--- Configuration ---"
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    cp "$SCRIPT_DIR/.env" "$BACKUP_PATH/env_backup.txt"
-    echo "  -> env_backup.txt"
+# SpiderFoot passwd
+SF_PASSWD="/home/osint/.spiderfoot/passwd"
+if [ -f "$SF_PASSWD" ]; then
+    cp "$SF_PASSWD" "$BACKUP_PATH/spiderfoot-passwd.txt"
+    _log_ok "spiderfoot-passwd.txt (will be encrypted)"
 fi
 
-# --- 4. Summary ---
-echo ""
-echo "=== Backup Complete ==="
-echo "Size: $(du -sh "$BACKUP_PATH" | cut -f1)"
-echo "Path: $BACKUP_PATH"
+# Alembic migrations (for schema version compatibility)
+ALEMBIC_DIR="$SCRIPT_DIR/migrations/versions"
+if [ -d "$ALEMBIC_DIR" ]; then
+    tar czf "$BACKUP_PATH/migrations.tar.gz" -C "$SCRIPT_DIR" migrations/versions/ 2>/dev/null
+    _log_ok "migrations.tar.gz"
+fi
 
-# Archive everything
-(cd "$BACKUP_DIR" && tar czf "iveras_backup_$TIMESTAMP.tar.gz" "iveras_backup_$TIMESTAMP" && rm -rf "iveras_backup_$TIMESTAMP")
-echo "Archive: $BACKUP_DIR/iveras_backup_$TIMESTAMP.tar.gz"
+# ------------------------------------------------------------------
+# 5. Backup metadata
+# ------------------------------------------------------------------
 echo ""
-echo "Restore commands:"
-echo "  # Database: gunzip -c $BACKUP_DIR/iveras_backup_$TIMESTAMP.tar.gz/database.sql.gz | docker compose exec -T postgres psql -U cms -d cms_db"
-echo "  # Volumes:  tar xzf $BACKUP_DIR/iveras_backup_$TIMESTAMP.tar.gz && for vol in uploads flask_sessions; do docker run --rm -v \${vol}:/target -v $BACKUP_DIR/iveras_backup_$TIMESTAMP:/source alpine tar xzf /source/\${vol}.tar.gz -C /target; done"
+echo "--- 5. Metadata ---"
+
+cat > "$BACKUP_PATH/BACKUP_INFO.txt" << EOF
+Iveras OSINT Dashboard Backup
+=============================
+Date:       $(date)
+Hostname:   $(hostname)
+Python:     $(python3 --version 2>/dev/null || echo "N/A")
+Node:       $(node --version 2>/dev/null || echo "N/A")
+DB Engine:  $( { docker compose ps -q postgres 2>/dev/null && echo "PostgreSQL (Docker)"; } || \
+              { command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ] && echo "PostgreSQL (local)"; } || \
+              { [ -f "$SCRIPT_DIR/cms.db" ] && echo "SQLite"; } || echo "Unknown")
+
+Contents:
+EOF
+
+for f in "$BACKUP_PATH"/*; do
+    name=$(basename "$f")
+    size=$(du -h "$f" 2>/dev/null | cut -f1)
+    echo "  - $name ($size)" >> "$BACKUP_PATH/BACKUP_INFO.txt"
+done
+
+_log_ok "BACKUP_INFO.txt"
+
+# ------------------------------------------------------------------
+# 6. Create archive + encrypt
+# ------------------------------------------------------------------
+echo ""
+echo "--- 6. Archive & Encrypt ---"
+
+_ensure_gpg_key
+
+echo -n "  Creating tar archive... "
+(cd "$BACKUP_DIR" && tar czf "$ARCHIVE_FILE" "iveras_backup_$TIMESTAMP" 2>/dev/null && rm -rf "$BACKUP_PATH") \
+    && echo "✅ ($(du -h "$ARCHIVE_FILE" | cut -f1))" || { _log_error "tar failed"; exit 1; }
+
+echo -n "  Encrypting (AES-256)... "
+_encrypt "$ARCHIVE_FILE" "$ENCRYPTED_FILE" \
+    && echo "✅" || { _log_error "encryption failed"; exit 1; }
+
+chmod 600 "$ENCRYPTED_FILE"
+echo "  🔒 Encrypted archive: $ENCRYPTED_FILE"
+
+# ------------------------------------------------------------------
+# 7. Verify integrity
+# ------------------------------------------------------------------
+echo ""
+echo "--- 7. Verification ---"
+
+echo -n "  Decrypt & check integrity... "
+DECRYPTED="/tmp/iveras_backup_verify_$TIMESTAMP.tar.gz"
+gpg --decrypt --batch --passphrase-file "$KEY_FILE" \
+    --output "$DECRYPTED" "$ENCRYPTED_FILE" 2>/dev/null && echo "✅" || { _log_error "decryption failed"; exit 1; }
+
+echo -n "  Check tar integrity... "
+tar tzf "$DECRYPTED" > /dev/null 2>&1 && echo "✅" || { _log_error "tar corrupt"; exit 1; }
+rm -f "$DECRYPTED"
+
+# ------------------------------------------------------------------
+# 8. Cleanup old backups (keep last 30 days)
+# ------------------------------------------------------------------
+echo ""
+echo "--- 8. Cleanup ---"
+
+OLD_BACKUPS=$(find "$BACKUP_DIR" -name "iveras_backup_*.tar.gz.gpg" -type f -mtime +30 2>/dev/null | sort)
+if [ -n "$OLD_BACKUPS" ]; then
+    echo "  Removing backups older than 30 days:"
+    echo "$OLD_BACKUPS" | while read -r old; do
+        rm -f "$old"
+        echo "    🗑️  $(basename "$old")"
+    done
+    _log_ok "Old backups cleaned"
+else
+    _log_ok "No backups older than 30 days"
+fi
+
+# ------------------------------------------------------------------
+# Summary
+# ------------------------------------------------------------------
+echo ""
+echo "╔══════════════════════════════════════════════╗"
+if [ "$ERRORS" -gt 0 ]; then
+    echo "║  ❌ BACKUP COMPLETED WITH ERRORS            ║"
+else
+    echo "║  ✅ BACKUP COMPLETED SUCCESSFULLY           ║"
+fi
+echo "╚══════════════════════════════════════════════╝"
+echo ""
+echo "  Archive: $ENCRYPTED_FILE ($(du -h "$ENCRYPTED_FILE" | cut -f1))"
+echo "  Key:     $KEY_FILE"
+echo "  Errors:  $ERRORS"
+echo "  Warnings: $WARNINGS"
+echo ""
+echo "  ⚠️  Store backup-key.gpg separately from backups!"
+echo "     Without it, ALL backups are unrecoverable."
+echo ""
+
+exit $ERRORS

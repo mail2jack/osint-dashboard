@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 
 from flask_babel import gettext
-from flask import Response, request, jsonify, abort
+from flask import Response, request, abort
 from flask_login import login_required, current_user
 from sqlalchemy import func
 
@@ -12,6 +12,8 @@ from . import cms_bp
 from ..models import db, Case, Subject, Client, Finding, Address, case_subjects
 from ..auth import can_export, case_access_required
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
+
+from .response import api_error
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ def export_case(case_id: str) -> str:
     if format_type == "csv":
         return export_case_csv(case)
     else:
-        return jsonify({"error": "Unsupported format. Use csv."}), 400
+        return api_error("Unsupported format. Use csv.", 400)
 
 
 def export_case_csv(case: Case) -> Response:
@@ -118,7 +120,7 @@ def export_subjects() -> str:
     if format_type == "csv":
         return export_subjects_csv()
     else:
-        return jsonify({"error": "Unsupported format. Use csv."}), 400
+        return api_error("Unsupported format. Use csv.", 400)
 
 
 def export_subjects_csv() -> Response:
@@ -201,7 +203,7 @@ def export_clients() -> str:
     if format_type == "csv":
         return export_clients_csv()
     else:
-        return jsonify({"error": "Unsupported format. Use csv."}), 400
+        return api_error("Unsupported format. Use csv.", 400)
 
 
 def export_clients_csv() -> Response:
@@ -267,7 +269,7 @@ def export_cases() -> str:
     if format_type == "csv":
         return export_cases_csv()
     else:
-        return jsonify({"error": "Unsupported format. Use csv."}), 400
+        return api_error("Unsupported format. Use csv.", 400)
 
 
 def export_cases_csv() -> Response:

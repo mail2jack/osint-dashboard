@@ -11,6 +11,13 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+try:
+    import certifi
+
+    _CA_BUNDLE = certifi.where()
+except ImportError:
+    _CA_BUNDLE = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +61,11 @@ def send_email(to_email, subject, body_html, body_text=None) -> bool:
     msg.attach(MIMEText(body_html, "html"))
 
     try:
-        ctx = ssl.create_default_context()
+        ctx = (
+            ssl.create_default_context(cafile=_CA_BUNDLE)
+            if _CA_BUNDLE
+            else ssl.create_default_context()
+        )
         if cfg["port"] == 465:
             server = smtplib.SMTP_SSL(cfg["server"], cfg["port"], context=ctx)
         else:

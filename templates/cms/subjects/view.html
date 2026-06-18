@@ -3,6 +3,79 @@
 {% block title %}{{ subject.name }} - {{ _('CMS') }}{% endblock %}
 
 {% block content %}
+<style>
+    .comment-item {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color, #e2e5ed);
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        background: var(--bg-card, #fff);
+    }
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+    }
+    .comment-author { font-weight: 600; color: var(--text-primary, #1e2235); font-size: 0.9rem; }
+    .comment-type-badge {
+        display: inline-block;
+        padding: 1px 7px;
+        border-radius: 3px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        background: var(--bg-secondary, #eef0f6);
+        color: var(--text-secondary, #5b637a);
+        margin-left: 0.4rem;
+        text-transform: uppercase;
+    }
+    .comment-time { font-size: 0.78rem; color: var(--text-muted, #9198ac); }
+    .comment-content {
+        padding: 0.3rem 0;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--text-primary, #1e2235);
+    }
+    .comment-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.35rem;
+    }
+    .comment-actions button {
+        font-size: 0.78rem;
+        padding: 0.2rem 0.6rem;
+        border: 1px solid var(--border-color, #e2e5ed);
+        border-radius: 4px;
+        background: transparent;
+        color: var(--text-secondary, #5b637a);
+        cursor: pointer;
+    }
+    .comment-actions button:hover {
+        background: var(--bg-secondary, #eef0f6);
+        color: var(--text-primary, #1e2235);
+    }
+    .comment-edit-form { margin-top: 0.5rem; }
+    .comment-edit-form textarea { min-height: 80px; font-size: 0.875rem; }
+    .comment-edit-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+    .comment-edited { font-size: 0.72rem; color: var(--text-muted, #9198ac); font-style: italic; }
+    .comment-pinned { border-left: 3px solid var(--accent-primary, #2a3b8f); }
+    .comment-edit-history { margin-top: 0.3rem; font-size: 0.75rem; }
+    .comment-edit-history summary { color: var(--text-muted, #9198ac); cursor: pointer; }
+    .comment-edit-entry { padding: 0.25rem 0; border-bottom: 1px solid var(--border-color, #e2e5ed); }
+    .comment-edit-entry:last-child { border-bottom: none; }
+    .edit-by { font-weight: 500; color: var(--text-primary, #1e2235); }
+    .edit-date { color: var(--text-muted, #9198ac); font-size: 0.7rem; }
+    .edit-old { color: #dc2626; }
+    .edit-new { color: #16a34a; }
+    /* Type badge colors */
+    .comment-type-badge.note { background: #eef0f6; color: #5b637a; }
+    .comment-type-badge.discussion { background: #dbeafe; color: #1d4ed8; }
+    .comment-type-badge.phone { background: #d1fae5; color: #059669; }
+    .comment-type-badge.email { background: #fef3c7; color: #d97706; }
+    .comment-type-badge.meeting { background: #ede9fe; color: #7c3aed; }
+    .comment-type-badge.report { background: #fce7f3; color: #db2777; }
+</style>
 <div class="back"><a href="{{ url_for('cms.subjects') }}">← {{ _('Back to Subjects') }}</a></div>
 
 <div class="subject-photo-container">
@@ -379,71 +452,40 @@
     </div>
 </div>
 
-{% if subject.subject_type != 'vehicle' %}
-<!-- Social Media IDs Section -->
+<!-- Combined Social Accounts Card -->
 <div class="card">
     <div class="card-header">
-        <h2>{{ _('Social Media IDs') }}</h2>
+        <h2>{{ _('🌐 Social Accounts') }}</h2>
         <div class="btn-group">
             <button data-click="bulkExtractSocialIds" class="btn-cms small bg-green" id="bulkExtractBtn">{{ _('🔍 Bulk Extract from Findings') }}</button>
-            <button data-click="openAddSocialIdModal" class="btn-cms small text-purple">{{ _('+ Add ID') }}</button>
+            <button data-click="openAddSocialAccountModal" class="btn-cms small text-purple">{{ _('+ Add Account') }}</button>
         </div>
     </div>
-    <div id="socialIdsList">
-        {% if subject.social_media_ids and subject.social_media_ids|length > 0 %}
-        <table style="width: 100%;">
-            <thead>
-                <tr><th>{{ _('Platform') }}</th><th>{{ _('ID/Value') }}</th><th>{{ _('Actions') }}</th></tr>
-            </thead>
-            <tbody>
-                {% for platform, data in subject.social_media_ids.items() %}
-                <tr>
-                    <td style="text-transform: capitalize;">{{ platform }}</td>
-                    <td>
-                        {% if data is mapping %}
-                            {% if data.id %}{{ data.id }}{% endif %}
-                            {% if data.username %} ({{ data.username }}){% endif %}
-                        {% else %}
-                            {{ data }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        <button data-click="editSocialId" data-arg0="{{ platform }}" class="btn-cms small" style="background: #f59e0b; padding: 2px 8px; font-size: 0.75rem;">{{ _('Edit') }}</button>
-                        <button data-click="deleteSocialId" data-arg0="{{ platform }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px; font-size: 0.75rem;">{{ _('Delete') }}</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="empty-state">
-            <div class="icon">📭</div>
-            <p>{{ _('No social media IDs recorded yet.') }}</p>
-        </div>
-        <p style="color: #888; font-size: 0.875rem;">{{ _('Tip: Click "Extract ID" on any URL in findings to automatically extract and save social media IDs.') }}</p>
-        {% endif %}
-    </div>
-</div>
 
-<!-- Social Accounts (Usernames) Section -->
-<div class="card">
-    <div class="card-header">
-        <h2>{{ _('🌐 Social Accounts (Usernames)') }}</h2>
-        <button data-click="openAddSocialAccountModal" class="btn-cms small text-purple">{{ _('+ Add Username') }}</button>
+    <!-- Inline username search -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+        <input type="text" id="usernameSearchInput" placeholder="{{ _('Search username...') }}" style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
+        <button data-click="searchUsername" class="btn-cms small text-purple">{{ _('🔍 Check') }}</button>
+        <span id="usageBadge" style="font-size:0.75rem;color:var(--text-secondary);display:none;align-self:center;"></span>
     </div>
+
+    <!-- Accounts table -->
     <div id="socialAccountsList">
-        {% if subject.social_accounts and subject.social_accounts.count() > 0 %}
+        {% set accounts = subject.social_accounts %}
+        {% if accounts and accounts.count() > 0 %}
         <table style="width: 100%;">
             <thead>
-                <tr><th>{{ _('Platform') }}</th><th>{{ _('Username') }}</th><th>{{ _('URL') }}</th><th>{{ _('Actions') }}</th></tr>
+                <tr><th>{{ _('Platform') }}</th><th>{{ _('Username') }}</th><th>{{ _('Account ID') }}</th><th>{{ _('URL') }}</th><th>{{ _('Actions') }}</th></tr>
             </thead>
             <tbody>
-                {% for acct in subject.social_accounts %}
+                {% for acct in accounts %}
                 <tr>
                     <td style="text-transform: capitalize;">{{ acct.platform }}</td>
                     <td><strong>{{ acct.username }}</strong></td>
+                    <td>{% if acct.account_id %}<code style="font-size:0.8rem;background:var(--bg-secondary);padding:1px 4px;border-radius:3px;">{{ acct.account_id }}</code>{% else %}<span style="color:var(--text-muted);font-size:0.75rem;">—</span>{% endif %}</td>
                     <td>{% if acct.url %}<a href="{{ acct.url }}" target="_blank" style="font-size:0.8rem;">{{ _('🔗 link') }}</a>{% else %}-{% endif %}</td>
-                    <td>
+                    <td style="white-space: nowrap;">
+                        <button data-click="openEditSocialAccountModal" data-arg0="{{ acct.id }}" data-arg1='{{ acct.to_dict() | tojson }}' class="btn-cms small" style="padding: 2px 8px;">{{ _('Edit') }}</button>
                         <button data-click="deleteSocialAccount" data-arg0="{{ acct.id }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px;">{{ _('Delete') }}</button>
                     </td>
                 </tr>
@@ -455,23 +497,14 @@
             <div class="icon">📭</div>
             <p>{{ _('No social accounts recorded yet.') }}</p>
         </div>
-        <p style="color: #888; font-size: 0.875rem;">{{ _('Tip: Found a username during OSINT search? Save it here so you can search by it later.') }}</p>
+        <p style="color: #888; font-size: 0.875rem;">{{ _('Tip: Use the search above to find usernames, then save them here.') }}</p>
         {% endif %}
     </div>
-</div>
-{% endif %}
 
-<!-- Username Search Section -->
-<div class="card">
-    <div class="card-header">
-        <h2>{{ _('🔍 Username Search') }}</h2>
-        <span id="usageBadge" style="font-size:0.75rem;color:var(--text-secondary);display:none;"></span>
-    </div>
-    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
-        <input type="text" id="usernameSearchInput" placeholder="{{ _('Enter username...') }}" style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
-        <button data-click="searchUsername" class="btn-cms small text-purple">{{ _('🔍 Check') }}</button>
-    </div>
-    <div id="usernameResults"></div>
+    <!-- Search results -->
+    <div id="usernameResults" style="margin-top: 0.75rem;"></div>
+
+    <!-- Save bar -->
     <div id="usernameSaveBar" style="display:none; margin-top: 0.75rem;">
         <button data-click="saveUsernameFindings" class="btn-cms small bg-green" id="saveUsernameBtn">{{ _('📥 Save Selected as Findings') }} (<span id="usernameSelectedCount">0</span>)</button>
     </div>
@@ -509,6 +542,11 @@
                 <input type="text" id="saUsername" class="w100-p5" placeholder="{{ _('@username or profile name') }}" required>
             </div>
             <div class="form-group">
+                <label for="saAccountId">{{ _('Account ID (numeric, extracted from page)') }}</label>
+                <input type="text" id="saAccountId" class="w100-p5" placeholder="{{ _('e.g. Facebook user ID, Instagram PK...') }}">
+                <small style="color:var(--text-muted);font-size:0.75rem;">{{ _('IDs are permanent; usernames can change. Extracted automatically from profile pages.') }}</small>
+            </div>
+            <div class="form-group">
                 <label for="saUrl">{{ _('Profile URL (optional)') }}</label>
                 <input type="url" id="saUrl" class="w100-p5" placeholder="https://...">
             </div>
@@ -520,38 +558,50 @@
     </div>
 </div>
 
-<!-- Add Social ID Modal -->
-<div id="addSocialIdModal" class="modal">
+<!-- Edit Social Account Modal -->
+<div id="editSocialAccountModal" class="modal">
     <div class="modal-content max-w-400">
         <div class="flex-between mb-1">
-            <h2 class="m-0" id="socialIdModalTitle">{{ _('Add Social Media ID') }}</h2>
-            <span data-click="closeAddSocialIdModal" class="text-lg cursor-pointer text-secondary">&times;</span>
+            <h2 class="m-0">{{ _('Edit Social Account') }}</h2>
+            <span data-click="closeEditSocialAccountModal" class="text-lg cursor-pointer text-secondary">&times;</span>
         </div>
-        <form id="addSocialIdForm">
+        <form id="editSocialAccountForm" data-submit="updateSocialAccount">
+            <input type="hidden" id="editSaId" value="">
             <div class="form-group">
-                <label for="socialPlatform">{{ _('Platform') }}</label>
-                <select id="socialPlatform" class="w100-p5">
-                    <option value="facebook">{{ _('Facebook') }}</option>
-                    <option value="vk">{{ _('VK') }}</option>
-                    <option value="instagram">{{ _('Instagram') }}</option>
+                <label for="editSaPlatform">{{ _('Platform') }}</label>
+                <select id="editSaPlatform" class="w100-p5">
                     <option value="twitter">{{ _('Twitter/X') }}</option>
+                    <option value="facebook">{{ _('Facebook') }}</option>
+                    <option value="instagram">{{ _('Instagram') }}</option>
                     <option value="linkedin">{{ _('LinkedIn') }}</option>
                     <option value="tiktok">{{ _('TikTok') }}</option>
                     <option value="reddit">{{ _('Reddit') }}</option>
+                    <option value="youtube">{{ _('YouTube') }}</option>
+                    <option value="github">{{ _('GitHub') }}</option>
+                    <option value="telegram">{{ _('Telegram') }}</option>
+                    <option value="signal">{{ _('Signal') }}</option>
+                    <option value="discord">{{ _('Discord') }}</option>
+                    <option value="snapchat">{{ _('Snapchat') }}</option>
+                    <option value="pinterest">{{ _('Pinterest') }}</option>
                     <option value="other">{{ _('Other') }}</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="socialId">{{ _('ID / Username') }}</label>
-                <input type="text" id="socialId" class="w100-p5" placeholder="{{ _('Enter ID or username') }}">
+                <label for="editSaUsername">{{ _('Username') }}</label>
+                <input type="text" id="editSaUsername" class="w100-p5" required>
             </div>
             <div class="form-group">
-                <label for="socialUrl">{{ _('Profile URL (optional)') }}</label>
-                <input type="url" id="socialUrl" class="w100-p5" placeholder="https://...">
+                <label for="editSaAccountId">{{ _('Account ID') }}</label>
+                <input type="text" id="editSaAccountId" class="w100-p5" placeholder="{{ _('Numeric user ID, permanent') }}">
+                <small style="color:var(--text-muted);font-size:0.75rem;">{{ _('Extracted automatically from profile pages. Fill manually if extraction failed.') }}</small>
+            </div>
+            <div class="form-group">
+                <label for="editSaUrl">{{ _('Profile URL (optional)') }}</label>
+                <input type="url" id="editSaUrl" class="w100-p5" placeholder="https://...">
             </div>
             <div class="flex-gap mt-1">
-                <button type="button" data-click="saveSocialId" class="btn-sm bg-green">{{ _('Save') }}</button>
-                <button type="button" data-click="closeAddSocialIdModal" class="btn-sm bg-gray">{{ _('Cancel') }}</button>
+                <button type="submit" class="btn-sm bg-green">{{ _('Update') }}</button>
+                <button type="button" data-click="closeEditSocialAccountModal" class="btn-sm bg-gray">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -682,7 +732,7 @@
                         <span class="badge {% if finding.confidence_level == 'high' or finding.confidence_level == 'verified' %}badge-status-success{% elif finding.confidence_level == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;">{{ finding.confidence_level }}</span>
                         {% endif %}
                     </div>
-                    <span style="color:var(--text-muted);font-size:0.75rem;">{{ finding.created_at.strftime('%d-%m-%Y') if finding.created_at else '' }}</span>
+                    <span style="color:var(--text-muted);font-size:0.75rem;">{{ finding.created_at.strftime('%d-%m-%Y %H:%M') if finding.created_at else '' }}</span>
                 </div>
                 <div style="margin-top:0.5rem;color:var(--text-primary);font-size:0.875rem;white-space:pre-wrap;">{{ finding.content }}</div>
                 {% if finding.source_url %}
@@ -743,6 +793,10 @@
     .source-badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.65rem; font-weight: 500; margin-left: 0.5rem; vertical-align: middle; }
     .source-badge.brave { background: #f97316; color: #fff; }
     .source-badge.ddg { background: #25D366; color: #fff; }
+    .source-badge.rapidapi { background: #7c3aed; color: #fff; }
+    .source-badge.sherlock { background: #0ea5e9; color: #fff; }
+    .source-badge.verified { background: #22c55e; color: #fff; }
+    .source-badge.unconfirmed { background: #f59e0b; color: #fff; }
     .osint-detective { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
     .osint-detective-icon { position: relative; width: 100px; height: 100px; animation: detectiveFloat 2s ease-in-out infinite; }
     .detective-hat { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 56px; height: 16px; background: #2d1b0e; border-radius: 4px 4px 0 0; }
@@ -782,7 +836,7 @@
     }
     
     function loadNetwork() {
-        fetch("{{ url_for('cms.get_subject_relationships', subject_id=subject.id) }}")
+        apiFetch("{{ url_for('cms.get_subject_relationships', subject_id=subject.id) }}")
         .then(r => {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
@@ -802,7 +856,7 @@
         const btn = document.getElementById('bulkExtractBtn');
         btn.disabled = true;
         btn.textContent = '{{ _("⏳ Extracting...")|replace("'", "\\'")|safe }}';
-        fetch('/cms/subjects/{{ subject.id }}/bulk-extract-social-ids', { method: 'POST' })
+        apiFetch('/cms/subjects/{{ subject.id }}/bulk-extract-social-ids', { method: 'POST' })
         .then(r => r.json())
         .then(data => {
             btn.disabled = false;
@@ -853,7 +907,7 @@
             svg += `
                 <a href="/cms/subjects/${node.id}">
                     <circle cx="${node.x}" cy="${node.y}" r="${r}" fill="${color}" stroke="${node.isMain ? (isDark ? '#fff' : '#1a1a2e') : '#fff'}" stroke-width="${node.isMain ? 3 : 2}"/>
-                    <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${node.name.substring(0, 10)}</text>
+                    <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="white" font-size="10" font-weight="bold">${esc(node.name).substring(0, 10)}</text>
                     <text x="${node.x}" y="${node.y + r + 12}" text-anchor="middle" fill="${isDark ? '#9ca3af' : '#6b7280'}" font-size="9">${node.type}</text>
                 </a>`;
         });
@@ -878,7 +932,7 @@
             const other = data.nodes.find(n => n.id === otherId);
             if (other) {
                 html += `<div class="relation-item">
-                    <div><a href="/cms/subjects/${other.id}">${other.name}</a> <span class="relation-badge">${edge.type || '{{ _("related")|replace("'", "\\'")|safe }}'}</span></div>
+                    <div><a href="/cms/subjects/${other.id}">${esc(other.name)}</a> <span class="relation-badge">${esc(edge.type || '{{ _("related")|replace("'", "\\'")|safe }}')}</span></div>
                     <button data-click="removeRelationship" data-arg0="${other.id}" style="background: var(--danger-text); color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">{{ _('Remove') }}</button>
                 </div>`;
             }
@@ -900,7 +954,7 @@
         form.style.display = 'block';
         select.innerHTML = '<option value="">{{ _("Loading...") }}</option>';
         
-        fetch("{{ url_for('cms.subjects') }}?format=json")
+        apiFetch("{{ url_for('cms.subjects') }}?format=json")
         .then(r => r.json())
         .then(data => {
             select.innerHTML = '<option value="">{{ _("Select a subject...") }}</option>';
@@ -932,7 +986,7 @@
         errDiv.textContent = '';
         if (!relatedId) { errDiv.textContent = '{{ _("Select a subject")|replace("'", "\\'")|safe }}'; return; }
         
-        fetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
+        apiFetch("{{ url_for('cms.add_subject_relationship', subject_id=subject.id) }}", {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ related_subject_id: relatedId, relationship_type: relType })
         })
@@ -946,7 +1000,7 @@
     
     function removeRelationship(btn, relatedId) {
         if (!confirm('{{ _("Remove this relationship?")|replace("'", "\\'")|safe }}')) return;
-        fetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
+        apiFetch("{{ url_for('cms.remove_subject_relationship', subject_id=subject.id) }}", {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ related_subject_id: relatedId })
         })
@@ -975,7 +1029,7 @@
         
         if (!confirmed) return;
         
-        fetch('/cms/check-rdw-vehicle', {
+        apiFetch('/cms/check-rdw-vehicle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ kenteken: kenteken, subject_id: subjectId })
@@ -1014,7 +1068,7 @@
     }
     
     function updateSubjectFromRDW(kenteken) {
-        fetch('/cms/subjects/{{ subject.id }}/update-from-rdw', {
+        apiFetch('/cms/subjects/{{ subject.id }}/update-from-rdw', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ kenteken: kenteken })
@@ -1041,7 +1095,7 @@
         formData.append('photo', file);
         formData.append('csrf_token', '{{ csrf_token() }}');
         
-        fetch("{{ url_for('cms.upload_subject_photo', subject_id=subject.id) }}", {
+        apiFetch("{{ url_for('cms.upload_subject_photo', subject_id=subject.id) }}", {
             method: 'POST',
             body: formData
         })
@@ -1076,7 +1130,7 @@
         container.style.display = 'block';
         container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;">{{ _("Checking INTERPOL and politie.nl...") }}</div>';
         
-        fetch('/cms/check-policie-data', {
+        apiFetch('/cms/check-policie-data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: subjectName, subject_id: {{ subject.id|tojson }} })
@@ -1195,7 +1249,7 @@
         btn.disabled = true;
         btn.textContent = '{{ _("Bezig met opslaan...")|replace("'", "\\'")|safe }}';
 
-        fetch('/cms/api/findings/from-interpol', {
+        apiFetch('/cms/api/findings/from-interpol', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1237,7 +1291,7 @@
         container.style.display = 'block';
         container.innerHTML = '<div style="text-align:center;padding:1rem;color:#666;">{{ _("🔍 Looking up vessel data...") }}</div>';
 
-        fetch('/cms/api/vessel-lookup', {
+        apiFetch('/cms/api/vessel-lookup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1425,7 +1479,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         btn.disabled = true;
         btn.textContent = '{{ _("⏳ Bezig met opslaan...")|replace("'", "\\'")|safe }}';
 
-        fetch('/cms/api/findings/from-vessel', {
+        apiFetch('/cms/api/findings/from-vessel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1458,7 +1512,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
 
         const subjectId = {{ subject.id|tojson }};
 
-        fetch('/cms/api/vessel/update-subject', {
+        apiFetch('/cms/api/vessel/update-subject', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1534,7 +1588,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         startOsintTimer();
         
         {% if first_case_id %}
-        fetch("{{ url_for('cms.start_osint_search', case_id=first_case_id) }}", {
+        apiFetch("{{ url_for('cms.start_osint_search', case_id=first_case_id) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name, subject_id: '{{ subject.id }}' })
@@ -1575,7 +1629,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     
     function pollSearchStatus() {
         pollInterval = setInterval(() => {
-            fetch(osintBase + currentSearchId + '/status')
+            apiFetch(osintBase + currentSearchId + '/status')
         .then(r => {
             if (!r.ok) {
                 return r.text().then(text => {
@@ -1609,7 +1663,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     function cancelOsintSearch() {
         if (!currentSearchId) return;
         
-        fetch(osintBase + currentSearchId + '/cancel', {
+        apiFetch(osintBase + currentSearchId + '/cancel', {
             method: 'POST'
         })
         .then(r => r.json())
@@ -1624,7 +1678,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     }
     
     function loadSearchResults() {
-        fetch(osintBase + currentSearchId + '/results')
+        apiFetch(osintBase + currentSearchId + '/results')
         .then(r => r.json())
         .then(data => {
             if (data.error) {
@@ -1661,7 +1715,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 document.getElementById('resultsList').appendChild(note);
                 return;
             }
-            fetch(osintBase + currentSearchId + '/sf-results')
+            apiFetch(osintBase + currentSearchId + '/sf-results')
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'completed' && data.results && data.results.length > 0) {
@@ -1813,7 +1867,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         (function() {
             const urls = Array.from(document.querySelectorAll('.result-checkbox')).map(cb => cb.dataset.url);
             if (urls.length === 0) return;
-            fetch('/cms/api/findings/check-existing-urls', {
+            apiFetch('/cms/api/findings/check-existing-urls', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ case_id: '{{ first_case_id }}', urls: urls })
@@ -1881,7 +1935,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             selectedResults.push(result);
         });
         {% if first_case_id %}
-        fetch("{{ url_for('cms.add_osint_findings', case_id=first_case_id) }}", {
+        apiFetch("{{ url_for('cms.add_osint_findings', case_id=first_case_id) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1914,7 +1968,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             const query = cb.dataset.query || '';
             const platform = domain.replace('www.', '').split('.')[0] || 'unknown';
             const username = query || url.split('/').filter(s => s).pop() || domain;
-            fetch('/cms/api/findings/save-as-social-account', {
+            apiFetch('/cms/api/findings/save-as-social-account', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1945,97 +1999,6 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         if (e.target === this) closeOsintModal();
     });
     
-    // Social Media ID Functions
-    let editingPlatform = null;
-    
-    function openAddSocialIdModal(platform = null, data = null) {
-        editingPlatform = platform;
-        document.getElementById('socialIdModalTitle').textContent = platform ? '{{ _("Edit Social Media ID")|replace("'", "\\'")|safe }}' : '{{ _("Add Social Media ID")|replace("'", "\\'")|safe }}';
-        document.getElementById('socialPlatform').value = platform || 'facebook';
-        document.getElementById('socialPlatform').disabled = !!platform;
-        
-        if (data) {
-            if (typeof data === 'object') {
-                document.getElementById('socialId').value = data.id || data.username || '';
-                document.getElementById('socialUrl').value = data.url || '';
-            } else {
-                document.getElementById('socialId').value = data;
-                document.getElementById('socialUrl').value = '';
-            }
-        } else {
-            document.getElementById('socialId').value = '';
-            document.getElementById('socialUrl').value = '';
-        }
-        
-        document.getElementById('addSocialIdModal').classList.add('show');
-    }
-    
-    function closeAddSocialIdModal() {
-        document.getElementById('addSocialIdModal').classList.remove('show');
-        editingPlatform = null;
-    }
-    
-    function saveSocialId() {
-        const platform = document.getElementById('socialPlatform').value;
-        const id = document.getElementById('socialId').value.trim();
-        const url = document.getElementById('socialUrl').value.trim();
-        
-        if (!id && !url) {
-            alert('{{ _("Please enter an ID or URL")|replace("'", "\\'")|safe }}');
-            return;
-        }
-        
-        const data = {};
-        if (id) data.id = id;
-        if (url) data.url = url;
-        
-        const socialIds = {{ subject.social_media_ids|tojson }} || {};
-        socialIds[platform] = data;
-        
-        fetch('/cms/subjects/{{ subject.id }}/social-ids', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ social_media_ids: socialIds })
-        })
-        .then(r => r.json())
-        .then(data => {
-            alert('{{ _("Social media ID saved!")|replace("'", "\\'")|safe }}');
-            location.reload();
-        })
-        .catch(err => {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
-        });
-    }
-    
-    function editSocialId(btn, platform) {
-        const socialIds = {{ subject.social_media_ids|tojson }} || {};
-        openAddSocialIdModal(platform, socialIds[platform]);
-    }
-    
-    function deleteSocialId(btn, platform) {
-        if (!confirm('{{ _("Delete")|replace("'", "\\'")|safe }} ' + platform + ' {{ _("ID?")|replace("'", "\\'")|safe }}')) return;
-        
-        const socialIds = {{ subject.social_media_ids|tojson }} || {};
-        delete socialIds[platform];
-        
-        fetch('/cms/subjects/{{ subject.id }}/social-ids', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ social_media_ids: socialIds })
-        })
-        .then(r => r.json())
-        .then(data => {
-            location.reload();
-        })
-        .catch(err => {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
-        });
-    }
-    
-    document.getElementById('addSocialIdModal').addEventListener('click', function(e) {
-        if (e.target === this) closeAddSocialIdModal();
-    });
-    
     // Social Account Functions
     function openAddSocialAccountModal() {
         document.getElementById('addSocialAccountModal').classList.add('show');
@@ -2047,12 +2010,13 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         event.preventDefault();
         const platform = document.getElementById('saPlatform').value;
         const username = document.getElementById('saUsername').value.trim();
+        const accountId = document.getElementById('saAccountId').value.trim();
         const url = document.getElementById('saUrl').value.trim();
         if (!username) { alert('{{ _("Username is required")|replace("'", "\\'")|safe }}'); return; }
-        fetch('/cms/api/subjects/{{ subject.id }}/social-accounts', {
+        apiFetch('/cms/api/subjects/{{ subject.id }}/social-accounts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ platform: platform, username: username, url: url })
+            body: JSON.stringify({ platform: platform, username: username, account_id: accountId, url: url })
         })
         .then(r => r.json())
         .then(data => {
@@ -2063,15 +2027,60 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     }
     function deleteSocialAccount(btn, accountId) {
         if (!confirm('{{ _("Delete this social account?")|replace("'", "\\'")|safe }}')) return;
-        fetch('/cms/api/subjects/{{ subject.id }}/social-accounts/' + accountId, {
+        apiFetch('/cms/api/subjects/{{ subject.id }}/social-accounts/' + accountId, {
             method: 'DELETE'
         })
         .then(r => r.json())
         .then(data => location.reload())
         .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
     }
+
+    function openEditSocialAccountModal(btn, accountId, accountJson) {
+        var acct = typeof accountJson === 'string' ? JSON.parse(accountJson) : accountJson;
+        document.getElementById('editSaId').value = accountId;
+        var platformEl = document.getElementById('editSaPlatform');
+        if (platformEl.querySelector('option[value="' + acct.platform + '"]')) {
+            platformEl.value = acct.platform;
+        } else {
+            platformEl.value = 'other';
+            // Clear the other label / add a data attribute
+        }
+        document.getElementById('editSaUsername').value = acct.username || '';
+        document.getElementById('editSaAccountId').value = acct.account_id || '';
+        document.getElementById('editSaUrl').value = acct.url || '';
+        document.getElementById('editSocialAccountModal').classList.add('active');
+    }
+
+    function closeEditSocialAccountModal() {
+        document.getElementById('editSocialAccountModal').classList.remove('active');
+    }
+
+    function updateSocialAccount(event) {
+        event.preventDefault();
+        var accountId = document.getElementById('editSaId').value;
+        var platform = document.getElementById('editSaPlatform').value;
+        var username = document.getElementById('editSaUsername').value.trim();
+        var accountIdVal = document.getElementById('editSaAccountId').value.trim();
+        var url = document.getElementById('editSaUrl').value.trim();
+        if (!username) { alert('{{ _("Username is required")|replace("'", "\\'")|safe }}'); return; }
+        apiFetch('/cms/api/subjects/{{ subject.id }}/social-accounts/' + accountId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform: platform, username: username, account_id: accountIdVal, url: url })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error); return; }
+            location.reload();
+        })
+        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
+    }
+
     document.getElementById('addSocialAccountModal').addEventListener('click', function(e) {
         if (e.target === this) closeAddSocialAccountModal();
+    });
+    document.getElementById('editSocialAccountModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditSocialAccountModal();
     });
     
     // Face Recognition Functions
@@ -2144,7 +2153,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             
             const encoding = Array.from(detection.descriptor);
             
-            const response = await fetch('/cms/subjects/{{ subject.id }}/face-encoding', {
+            const response = await apiFetch('/cms/subjects/{{ subject.id }}/face-encoding', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ encoding: encoding })
@@ -2171,7 +2180,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         if (!confirm('{{ _("Remove face encoding for this subject?")|replace("'", "\\'")|safe }}')) return;
         
         try {
-            const response = await fetch('/cms/subjects/{{ subject.id }}/face-encoding', {
+            const response = await apiFetch('/cms/subjects/{{ subject.id }}/face-encoding', {
                 method: 'DELETE'
             });
             
@@ -2265,7 +2274,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
 
         // Eerst checken of er opgeslagen data is
         try {
-            const storedResp = await fetch('/cms/api/phone-lookup-stored?phone=' + encodeURIComponent(phone));
+            const storedResp = await apiFetch('/cms/api/phone-lookup-stored?phone=' + encodeURIComponent(phone));
             const storedData = await storedResp.json();
             if (storedData.found && storedData.raw_response) {
                 const raw = storedData.raw_response;
@@ -2287,7 +2296,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         }
 
         try {
-            const resp = await fetch('/cms/api/phone-lookup', {
+            const resp = await apiFetch('/cms/api/phone-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone: phone })
@@ -2325,7 +2334,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         } else {
             // Fallback: direct API call
             try {
-                const resp = await fetch('/cms/api/phone-lookup', {
+                const resp = await apiFetch('/cms/api/phone-lookup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone: phone })
@@ -2350,7 +2359,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         resultDiv.innerHTML = '<span class="text-muted">{{ _("Checking email...") }}</span>';
 
         try {
-            const resp = await fetch('/cms/api/email-check', {
+            const resp = await apiFetch('/cms/api/email-check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email })
@@ -2426,7 +2435,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         resultDiv.innerHTML = '<span class="text-muted">{{ _("Contacting PDOK BAG...") }}</span>';
         
         try {
-            const resp = await fetch('/cms/api/kadaster-lookup', {
+            const resp = await apiFetch('/cms/api/kadaster-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ address_id: addressId })
@@ -2488,7 +2497,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         resultDiv.innerHTML = '<span class="text-muted">{{ _("Contacting politie.nl...") }}</span>';
 
         try {
-            const resp = await fetch('/cms/api/politiebureau-lookup', {
+            const resp = await apiFetch('/cms/api/politiebureau-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ address_id: addressId })
@@ -2537,14 +2546,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
 
     // ★ Phase 1 — Subject Comments (uses Comment model with timestamps)
     function loadSubjectComments() {
-        fetch(`/cms/api/comments/for-entity?type=subject&id={{ subject.id }}`)
+        apiFetch(`/cms/api/comments/for-entity?type=subject&id={{ subject.id }}`)
             .then(r => r.json())
             .then(data => {
                 displaySubjectComments(data.comments);
                 const el = document.getElementById('commentCount');
                 if (el) el.textContent = `(${data.count})`;
             })
-            .catch(() => {
+            .catch((err) => {
                 document.getElementById('subjectCommentsList').innerHTML = '<p style="color: var(--danger-text); text-align: center; padding: 1rem;">{{ _("Failed to load comments.") }}</p>';
             });
     }
@@ -2571,23 +2580,23 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 editHistory = '<details class="comment-edit-history"><summary>{{ _("View edit history") }} (' + esc(c.edit_history.length) + ')</summary>' + c.edit_history.map(h => {
                     const hDate = new Date(h.edited_at);
                     const hDateStr = hDate.toLocaleDateString()+' '+hDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-                    return '<div class="comment-edit-entry"><div><span class="edit-by">' + esc(h.edited_by_name) + '</span> <span class="edit-date">' + esc(hDateStr) + '</span></div><div class="edit-diff"><div class="edit-old">- ' + escapeHtml(h.previous_content.substring(0,100)) + (h.previous_content.length>100?'...':'') + '</div><div class="edit-new">+ ' + escapeHtml(h.new_content.substring(0,100)) + (h.new_content.length>100?'...':'') + '</div></div></div>';
+                    return '<div class="comment-edit-entry"><div><span class="edit-by">' + esc(h.edited_by_name) + '</span> <span class="edit-date">' + esc(hDateStr) + '</span></div><div class="edit-diff"><div class="edit-old">- ' + esc(h.previous_content.substring(0,100)) + (h.previous_content.length>100?'...':'') + '</div><div class="edit-new">+ ' + esc(h.new_content.substring(0,100)) + (h.new_content.length>100?'...':'') + '</div></div></div>';
                 }).join('') + '</details>';
             }
             html += '<div class="comment-item ' + esc(pinnedClass) + '" id="comment-' + esc(c.id) + '">' +
                 '<div class="comment-header">' +
                     '<div>' +
                         '<span class="comment-author">' + esc(c.author_name) + '</span>' +
-                        '<span class="comment-type-badge">' + esc(c.comment_type) + '</span>' +
+                        '<span class="comment-type-badge ' + esc(c.comment_type) + '">' + esc(c.comment_type) + '</span>' +
                         (c.is_pinned ? '📌' : '') +
                     '</div>' +
                     '<div class="comment-time">' + esc(timeStr) + '</div>' +
                 '</div>' +
                 editInfo +
-                '<div class="comment-content" id="content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</div>' +
+                '<div class="comment-content" id="content-' + esc(c.id) + '">' + esc(c.content) + '</div>' +
                 editHistory +
-                '<div class="comment-edit-form" id="edit-form-' + esc(c.id) + '"  class="hidden">' +
-                    '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
+                '<div class="comment-edit-form hidden" id="edit-form-' + esc(c.id) + '">' +
+                    '<textarea id="edit-content-' + esc(c.id) + '">' + esc(c.content) + '</textarea>' +
                     '<div class="comment-edit-actions">' +
                         '<button data-click="saveSubjectComment" data-arg0="' + esc(c.id) + '" class="btn btn-sm bg-green">{{ _("Save") }}</button>' +
                         '<button data-click="cancelSubjectCommentEdit" data-arg0="' + esc(c.id) + '" class="btn btn-sm bg-gray">{{ _("Cancel") }}</button>' +
@@ -2605,7 +2614,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         if (!content) { alert('{{ _("Please enter a note.")|replace("'", "\\'")|safe }}'); return; }
         const commentType = document.getElementById('subjectCommentType').value;
         const isPinned = document.getElementById('subjectCommentPinned').checked;
-        fetch('/cms/api/comments', {
+        apiFetch('/cms/api/comments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2634,7 +2643,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     function saveSubjectComment(btn, commentId) {
         const newContent = document.getElementById('edit-content-'+commentId).value.trim();
         if (!newContent) { alert('{{ _("Comment cannot be empty.")|replace("'", "\\'")|safe }}'); return; }
-        fetch('/cms/api/comments/'+commentId, {
+        apiFetch('/cms/api/comments/'+commentId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: newContent })
@@ -2648,7 +2657,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     }
     function deleteSubjectComment(btn, commentId) {
         if (!confirm('{{ _("Delete this comment?")|replace("'", "\\'")|safe }}')) return;
-        fetch('/cms/api/comments/'+commentId, { method: 'DELETE' })
+        apiFetch('/cms/api/comments/'+commentId, { method: 'DELETE' })
         .then(() => loadSubjectComments())
         .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
     }
@@ -2662,7 +2671,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         const btn = event.target;
         btn.disabled = true;
         btn.textContent = '...';
-        fetch("{{ url_for('cms.delete_subject', subject_id=subject.id) }}", {
+        apiFetch("{{ url_for('cms.delete_subject', subject_id=subject.id) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         })
@@ -2697,24 +2706,62 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
         saveBar.style.display = 'none';
 
         try {
-            const res = await fetch('/api/username/rapidapi', {
+            const res = await apiFetch('/api/username/rapidapi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
             });
             const data = await res.json();
 
+            if (!res.ok) {
+                resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">{{ _("Fout:") }} ' + esc(data.error || res.statusText) + '</div>';
+                return;
+            }
+
             if (data.fallback_to_sherlock) {
+                const note = data.api_usage?.note || '{{ _("RapidAPI niet geconfigureerd of maandlimiet bereikt.") }}';
                 resultsDiv.innerHTML = '<div class="card" style="padding:1rem;border-left:4px solid #f59e0b;">' +
                     '<strong>{{ _("RapidAPI limit reached") }}</strong><br>' +
                     '<span style="font-size:0.85rem;color:var(--text-secondary);">' +
-                    esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) + ' {{ _("used this month.") }} ' +
-                    '{{ _("Use the Sherlock button on the main dashboard.") }}' +
-                    '</span></div>';
+                    esc(note) + ' ' +
+                    esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) + ' {{ _("used this month.") }}' +
+                    '</span>' +
+                    '<div style="margin-top:0.5rem;font-size:0.85rem;">{{ _("🔍 Searching Sherlock...") }} <span class="loading-dots">...</span></div>' +
+                    '</div>';
+                // Call actual Sherlock endpoint
+                try {
+                    const sherlockRes = await apiFetch('/api/username', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username })
+                    });
+                    const sherlockData = await sherlockRes.json();
+                    if (sherlockRes.ok && sherlockData.findings) {
+                        renderSherlockResults(resultsDiv, username, sherlockData);
+                    } else {
+                        resultsDiv.innerHTML = '<div style="padding:1rem;border-left:4px solid #f59e0b;">' +
+                            '<strong>{{ _("RapidAPI limit reached") }}</strong><br>' +
+                            '<span style="font-size:0.85rem;color:var(--text-secondary);">' +
+                            esc(note) + ' ' +
+                            esc(data.api_usage.used) + '/' + esc(data.api_usage.limit) + ' {{ _("used this month.") }}' +
+                            '</span></div>';
+                    }
+                } catch (err) {
+                    resultsDiv.innerHTML = '<div style="padding:1rem;border-left:4px solid #dc2626;">' +
+                        '<strong>{{ _("Van Sherlock ook fout:") }}</strong> ' + esc(err.message) + '</div>';
+                }
                 return;
             }
 
             const apiResults = data.results || {};
+
+            // Check for RapidAPI error response
+            if (apiResults.error) {
+                resultsDiv.innerHTML = '<div style="padding:1rem;border-left:4px solid #f59e0b;color:var(--text-secondary);font-size:0.85rem;">' +
+                    '<strong>{{ _("⚠️ RapidAPI fout:") }}</strong> ' + esc(apiResults.error) + '</div>';
+                return;
+            }
+
             const platforms = apiResults.results || [];
             _lastUsernameResults = platforms.filter(p => p.available === true && p.url);
 
@@ -2808,7 +2855,48 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
                 });
             }
         } catch (e) {
-            resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">{{ _("Error:") }} ' + esc(e.message) + '</div>';
+            try {
+                resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">{{ _("Error:") }} ' + esc(e.message) + '</div>';
+            } catch (_) {
+                resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">{{ _("Error:") }} ' + (e.message || '{{ _("Unknown")|replace("'", "\\'")|safe }}') + '</div>';
+            }
+        }
+    }
+
+    function renderSherlockResults(container, username, data) {
+        const findings = data.findings || [];
+        const found = findings.filter(f => f.exists === true);
+        const checked = data.platforms_checked || 0;
+        let html = '<div style="border-top:1px solid var(--border-color);margin-top:1rem;padding-top:1rem;">';
+        html += '<h4 style="margin:0 0 0.5rem 0;">🔍 {{ _("Sherlock Results")|replace("'", "\\'")|safe }} (' + esc(found.length) + ' {{ _("found")|replace("'", "\\'")|safe }} / ' + esc(checked) + ' {{ _("checked")|replace("'", "\\'")|safe }})</h4>';
+        if (found.length === 0) {
+            html += '<div class="empty">{{ _("Geen profielen gevonden")|replace("'", "\\'")|safe }}</div>';
+        } else {
+            found.forEach(f => {
+                const siteName = f.site || f.platform || '{{ _("Unknown")|replace("'", "\\'")|safe }}';
+                const url = f.url || '';
+                html += '<div class="result-item">' +
+                    '<input type="checkbox" class="username-result-cb" data-platform="' + esc(siteName) + '" data-url="' + esc(url) + '" data-username="' + esc(username) + '" checked>' +
+                    '<div class="result-content">' +
+                    '<div class="result-engine">' + esc(siteName) + ' <span class="source-badge sherlock">Sherlock</span></div>' +
+                    '<div class="result-query">' + esc(username) + '</div>' +
+                    (url ? '<div class="result-url"><a href="' + esc(url) + '" target="_blank">' + esc(url) + '</a></div>' : '') +
+                    '</div></div>';
+            });
+        }
+        html += '</div>';
+        container.innerHTML = html;
+
+        // Show save bar if findings exist
+        if (found.length > 0) {
+            const saveBar = document.getElementById('usernameSaveBar');
+            if (saveBar) {
+                saveBar.style.display = 'block';
+                updateUsernameSelectedCount();
+                document.querySelectorAll('.username-result-cb').forEach(cb => {
+                    cb.addEventListener('change', updateUsernameSelectedCount);
+                });
+            }
         }
     }
 
@@ -2836,7 +2924,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
             });
         });
 
-        fetch('/cms/api/subjects/{{ subject.id }}/save-username-findings', {
+        apiFetch('/cms/api/subjects/{{ subject.id }}/save-username-findings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2863,7 +2951,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small" style="bac
     }
 
     // Load usage badge
-    fetch('/api/username/rapidapi-status').then(r => r.json()).then(status => {
+    apiFetch('/api/username/rapidapi-status').then(r => r.json()).then(status => {
         const badge = document.getElementById('usageBadge');
         if (status.configured) {
             badge.style.display = 'inline';

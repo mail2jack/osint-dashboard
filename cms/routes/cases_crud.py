@@ -19,6 +19,8 @@ from ..auth import (
 from ..notifications import notify_case_created
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +33,7 @@ def bulk_delete_cases() -> flask.Response:
     data = request.validated_data
     ids = data.get("ids", [])
     if not ids or len(ids) > 100:
-        return jsonify({"error": "Provide a list of up to 100 case IDs"}), 400
+        return api_error("Provide a list of up to 100 case IDs", 400)
     now = datetime.now(timezone.utc)
     count = Case.query.filter(Case.id.in_(ids), Case.is_deleted == False).update(
         {"is_deleted": True, "deleted_at": now}, synchronize_session=False
@@ -193,7 +195,7 @@ def create_case() -> flask.Response:
 
     def _error(msg):
         if is_json:
-            return jsonify({"error": msg}), 400
+            return api_error(str(msg), 400)
         flash(msg, "error")
         return render_template(
             "cms/cases/create.html",
@@ -397,7 +399,7 @@ def edit_case(case_id: str) -> flask.Response:
                 changes["status"] = {"old": case.status, "new": data["status"]}
             else:
                 if is_json:
-                    return jsonify({"error": "Invalid status transition"}), 400
+                    return api_error("Invalid status transition", 400)
                 flash("Invalid status transition.", "danger")
                 return render_template(
                     "cms/cases/edit.html",
@@ -439,7 +441,7 @@ def archive_case(case_id: str) -> flask.Response:
     case = db.session.get(Case, case_id) or abort(404)
 
     if case.status != CaseStatus.CLOSED.value:
-        return jsonify({"error": "Only closed cases can be archived"}), 400
+        return api_error("Only closed cases can be archived", 400)
 
     case.soft_delete()
 

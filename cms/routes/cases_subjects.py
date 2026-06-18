@@ -9,6 +9,8 @@ from ..validation import validate, AddSubjectToCaseSchema, BulkAddSubjectsSchema
 from ..models import db, Case, Subject, AuditLog
 from ..auth import roles_required, case_edit_required
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,12 +26,12 @@ def add_subject_to_case(case_id: str) -> flask.Response:
 
     subject_id = data.get("subject_id")
     if not subject_id:
-        return jsonify({"error": "subject_id is required"}), 400
+        return api_error("subject_id is required", 400)
 
     subject = db.session.get(Subject, subject_id) or abort(404)
 
     if subject in case.subjects.all():
-        return jsonify({"error": "Subject already linked to this case"}), 400
+        return api_error("Subject already linked to this case", 400)
 
     case.subjects.append(subject)
 
@@ -63,7 +65,7 @@ def bulk_add_subjects_to_case(case_id: str) -> flask.Response:
 
     subject_ids = data.get("subject_ids", [])
     if not subject_ids:
-        return jsonify({"error": "subject_ids required"}), 400
+        return api_error("subject_ids required", 400)
 
     if isinstance(subject_ids, str):
         subject_ids = [s.strip() for s in subject_ids.split(",")]
@@ -128,7 +130,7 @@ def remove_subject_from_case(case_id: str, subject_id: str) -> flask.Response:
     subject = db.session.get(Subject, subject_id) or abort(404)
 
     if subject not in case.subjects.all():
-        return jsonify({"error": "Subject not linked to this case"}), 400
+        return api_error("Subject not linked to this case", 400)
 
     case.subjects.remove(subject)
 
@@ -142,7 +144,7 @@ def remove_subject_from_case(case_id: str, subject_id: str) -> flask.Response:
     db.session.commit()
 
     if request.is_json:
-        return jsonify({"message": "Subject removed from case"})
+        return api_success({}, "Subject removed from case")
 
     flash(f"Subject {subject.name} removed from case.", "info")
     return redirect(url_for("cms.view_case", case_id=case_id))

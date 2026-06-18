@@ -1,3 +1,5 @@
+from .response import api_error
+
 """
 Help & Documentation Routes
 ============================
@@ -85,7 +87,7 @@ def help_api(topic: str) -> flask.Response:
     """API endpoint — returns HTML for the slide-out panel (AJAX)."""
     html, error = _load_help(topic)
     if error:
-        return jsonify({"error": error}), 404
+        return api_error(str(error), 404)
     return jsonify({"html": html, "topic": topic})
 
 

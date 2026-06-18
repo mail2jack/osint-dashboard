@@ -33,11 +33,37 @@ from cms.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# CSS cache busting — use file modification time as version
-_CSS_PATH = os.path.join(os.path.dirname(__file__), "static", "css", "base.css")
-CSS_VERSION = (
-    str(int(os.path.getmtime(_CSS_PATH))) if os.path.exists(_CSS_PATH) else "1"
+# CSS/JS cache busting — use build version when available, fallback to mtime
+_USE_BUNDLE = os.path.exists(
+    os.path.join(os.path.dirname(__file__), "static", "dist", "bundle.min.css")
 )
+if _USE_BUNDLE:
+    _CSS_VERSION_FILE = os.path.join(
+        os.path.dirname(__file__), "static", "dist", ".css_version"
+    )
+    CSS_VERSION = (
+        open(_CSS_VERSION_FILE).read().strip()
+        if os.path.exists(_CSS_VERSION_FILE)
+        else str(
+            int(
+                os.path.getmtime(
+                    os.path.join(
+                        os.path.dirname(__file__), "static", "dist", "bundle.min.css"
+                    )
+                )
+            )
+        )
+    )
+else:
+    _CSS_PATHS = [
+        os.path.join(os.path.dirname(__file__), d)
+        for d in ("static/css/base.css", "static/css/cms-professional.css")
+    ]
+    CSS_VERSION = (
+        str(int(max(os.path.getmtime(p) for p in _CSS_PATHS if os.path.exists(p))))
+        if any(os.path.exists(p) for p in _CSS_PATHS)
+        else "1"
+    )
 
 
 def _init_sentry(dsn: str) -> None:
@@ -80,6 +106,7 @@ def add_request_id():
     g.request_id = request.request_id
     g.csp_nonce = secrets.token_hex(16)
     g.css_version = CSS_VERSION
+    g.use_bundle = _USE_BUNDLE
     # Clear any stale aborted transaction from the connection pool
     from cms.models import db
 
@@ -109,6 +136,16 @@ def set_tenant_context():
         g.tenant_id = None
 
 
+# Warn if SQLite is in use — RLS tenant isolation only works with PostgreSQL
+if "sqlite" in str(app.config.get("SQLALCHEMY_DATABASE_URI", "")):
+    import logging as _log
+
+    _log.warning(
+        "SQLite detected — multi-tenant RLS isolation is NOT active. "
+        "Use PostgreSQL for production multi-tenant deployments."
+    )
+
+
 # Load security and application configuration based on FLASK_ENV
 from cms.config import get_config
 
@@ -117,28 +154,44 @@ app.config.from_object(get_config())
 # CORS — allow same-origin by default, configurable via env var
 from flask_cors import CORS
 
-_cors_origins = os.environ.get("CORS_ORIGINS", "*")
-if _cors_origins != "*":
-    _cors_origins = [o.strip() for o in _cors_origins.split(",")]
+_cors_origins = os.environ.get(
+    "CORS_ORIGINS",
+    "http://localhost:5000,http://127.0.0.1:5000,http://localhost:5001,http://localhost:5002",
+)
+_cors_origins = [o.strip() for o in _cors_origins.split(",")]
 CORS(app, origins=_cors_origins, supports_credentials=True)
 
-# Server-side sessions (CacheLib filesystem backend)
+# Server-side sessions — Redis when available, fallback to filesystem
 from flask_session import Session
-from cachelib.file import FileSystemCache
 
-_session_dir = os.path.join(os.path.dirname(__file__), "flask_session")
-app.config.setdefault("SESSION_TYPE", "cachelib")
-app.config.setdefault("SESSION_PERMANENT", True)
-app.config.setdefault("SESSION_SERIALIZATION_FORMAT", "json")
-app.config["SESSION_CACHELIB"] = FileSystemCache(
-    cache_dir=_session_dir, threshold=5000, default_timeout=28800
-)
+_redis_url = os.environ.get("REDIS_URL")
+if _redis_url:
+    try:
+        import redis as _redis_mod
+
+        _redis_client = _redis_mod.from_url(_redis_url)
+        _redis_client.ping()
+        app.config["SESSION_TYPE"] = "redis"
+        app.config["SESSION_REDIS"] = _redis_client
+        app.config["SESSION_PERMANENT"] = True
+        app.config["SESSION_SERIALIZATION_FORMAT"] = "json"
+        logger.info("Session backend: Redis (%s)", _redis_url)
+    except Exception:
+        logger.warning("Redis unavailable, falling back to filesystem sessions")
+        _redis_url = None
+
+if not _redis_url:
+    from cachelib.file import FileSystemCache
+
+    _session_dir = os.path.join(os.path.dirname(__file__), "flask_session")
+    app.config.setdefault("SESSION_TYPE", "cachelib")
+    app.config.setdefault("SESSION_PERMANENT", True)
+    app.config.setdefault("SESSION_SERIALIZATION_FORMAT", "json")
+    app.config["SESSION_CACHELIB"] = FileSystemCache(
+        cache_dir=_session_dir, threshold=5000, default_timeout=28800
+    )
+
 Session(app)
-
-# Clean up expired session files at startup
-_session_cache = app.config["SESSION_CACHELIB"]
-with contextlib.suppress(Exception):
-    _session_cache._prune()
 
 # =============================================================================
 # Case Management System (CMS) Integration
@@ -167,22 +220,33 @@ if not os.environ.get("CMS_ENCRYPTION_KEY"):
         except Exception as e:
             logger.error(f"Failed to persist encryption key to .cms_key: {e}")
 
-# Set secret key for sessions (required for CMS)
+# Set secret key for sessions (required for CMS) — persisted across restarts
 if not app.config.get("SECRET_KEY"):
     secret = os.environ.get("SECRET_KEY")
     if not secret:
-        if os.environ.get("FLASK_ENV") == "production":
-            raise RuntimeError(
-                "SECRET_KEY environment variable is REQUIRED in production."
-            )
-        import secrets
+        key_file = os.path.join(os.path.dirname(__file__), ".secret_key")
+        if os.path.exists(key_file):
+            with open(key_file) as f:
+                secret = f.read().strip()
+            logger.info("Loaded SECRET_KEY from .secret_key file")
+        else:
+            if os.environ.get("FLASK_ENV") == "production":
+                raise RuntimeError(
+                    "SECRET_KEY environment variable is REQUIRED in production."
+                )
+            import secrets
 
-        secret = secrets.token_hex(32)
-        import warnings
-
-        warnings.warn(
-            "Using randomly generated SECRET_KEY (not persisted). Set SECRET_KEY env var for production!"
-        )
+            secret = secrets.token_hex(32)
+            try:
+                with open(key_file, "w") as f:
+                    f.write(secret)
+                os.chmod(key_file, 0o600)
+                logger.warning(
+                    "Generated new SECRET_KEY — saved to .secret_key (chmod 600). "
+                    "Set SECRET_KEY env var or keep .secret_key for persistence."
+                )
+            except Exception as e:
+                logger.error(f"Failed to persist SECRET_KEY to .secret_key: {e}")
     app.config["SECRET_KEY"] = secret
 
 # Database: PostgreSQL if DATABASE_URL is set, fallback to SQLite
@@ -205,6 +269,22 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # SQLite cannot use connection pooling — override config defaults
 if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
     app.config.pop("SQLALCHEMY_ENGINE_OPTIONS", None)
+
+# Graceful PostgreSQL fallback: if Postgres is unreachable, use SQLite
+if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql"):
+    try:
+        from sqlalchemy import create_engine
+
+        engine = create_engine(
+            app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"connect_timeout": 2}
+        )
+        engine.connect().close()
+        engine.dispose()
+    except Exception as e:
+        logger.warning("PostgreSQL unreachable (%s), falling back to SQLite", e)
+        CMS_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "cms.db"))
+        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{CMS_DB_PATH}"
+        app.config.pop("SQLALCHEMY_ENGINE_OPTIONS", None)
 
 # Initialize CMS using create_cms_module
 from cms import create_cms_module
@@ -532,6 +612,7 @@ def inject_globals():
 
     ctx["_"] = _t
     ctx["current_locale"] = _get_locale()
+    ctx["now"] = lambda: datetime.now(timezone.utc)
     return ctx
 
 
@@ -577,9 +658,15 @@ def add_security_headers(response):
         f"img-src 'self' data: https:; "
         f"connect-src 'self' https:; "
         f"frame-src 'none'; "
-        f"object-src 'none'"
+        f"object-src 'none'; "
+        f"report-uri /csp-report"
     )
     response.headers["Content-Security-Policy"] = csp
+    # Long-lived cache for static assets
+    if response.content_type and response.content_type.startswith(
+        ("text/css", "application/javascript", "image/")
+    ):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     # Only set HSTS for non-localhost
     host = request.host.split(":")[0] if request.host else ""
     if host and host != "localhost" and host != "127.0.0.1":
@@ -605,4 +692,5 @@ Compress(app)
 # =============================================================================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=False)

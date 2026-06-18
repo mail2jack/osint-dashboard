@@ -478,7 +478,7 @@ async function searchByFace(input) {
         
         const encoding = Array.from(detection.descriptor);
         
-        const response = await fetch('/cms/subjects/compare-faces', {
+        const response = await apiFetch('/cms/subjects/compare-faces', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ encoding: encoding, threshold: 0.6, limit: 20 })

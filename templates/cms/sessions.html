@@ -32,7 +32,7 @@
 <script nonce="{{ csp_nonce }}">
 async function loadSessions() {
     try {
-        const r = await fetch('/cms/admin/sessions');
+        const r = await apiFetch('/cms/admin/sessions');
         const d = await r.json();
         const tbody = document.getElementById('sessionsBody');
         document.getElementById('sessionCount').textContent = d.count + ' active session(s)';
@@ -61,7 +61,7 @@ async function loadSessions() {
 window.deleteSession = async function(btn, id) {
     if (!confirm('Revoke this session? The user will be logged out.')) return;
     try {
-        const r = await fetch('/cms/admin/sessions/' + id + '/delete', { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token() }}'} });
+        const r = await apiFetch('/cms/admin/sessions/' + id + '/delete', { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token() }}'} });
         if (r.ok) {
             loadSessions();
         } else {
@@ -76,7 +76,7 @@ window.deleteSession = async function(btn, id) {
 window.deleteAllSessions = async function() {
     if (!confirm('Revoke ALL sessions except your current one? All other users will be logged out.')) return;
     try {
-        const r = await fetch('/cms/admin/sessions/delete-all', { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token() }}'} });
+        const r = await apiFetch('/cms/admin/sessions/delete-all', { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token() }}'} });
         const d = await r.json();
         if (r.ok) {
             showToast('Deleted ' + d.deleted + ' sessions', 'success');

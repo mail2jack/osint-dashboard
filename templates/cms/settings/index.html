@@ -54,6 +54,52 @@
     font-size: 1.25rem;
 }
 
+.sidebar-divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 0.75rem 0;
+}
+
+.settings-sidebar h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    padding: 0 0.25rem;
+}
+
+.settings-sidebar h3:first-child {
+    margin-top: 0;
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.status-badge.configured {
+    background: #d1fae5;
+    color: #065f46;
+}
+.status-badge.not-configured {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.sensitive-badge {
+    font-size: 0.7rem;
+    font-weight: normal;
+    color: #f59e0b;
+    background: #fef3c7;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+}
+
 .settings-content {
     background: var(--bg-card);
     border-radius: 12px;
@@ -314,18 +360,29 @@
 
 <div class="settings-container">
     <div class="settings-sidebar">
+        <h3>{{ _('Integrations') }}</h3>
         {% for cat_key, cat_info in categories.items() %}
+        {% if cat_info.group == 'integrations' %}
         <a href="{{ url_for('cms.settings') }}?category={{ cat_key }}" 
            class="category-item {% if active_category == cat_key %}active{% endif %}">
             <span class="icon">{{ cat_info.icon }}</span>
-            <span>{{ cat_info.name.replace(cat_info.icon + ' ', '') }}</span>
+            <span>{{ cat_info.name }}</span>
         </a>
+        {% endif %}
         {% endfor %}
-        <a href="{{ url_for('cms.settings') }}?category=security" 
-           class="category-item {% if active_category == 'security' %}active{% endif %}">
-            <span class="icon">🔒</span>
-            <span>{{ _('Security') }}</span>
+        <hr class="sidebar-divider">
+        <h3>{{ _('System') }}</h3>
+        {% for cat_key, cat_info in categories.items() %}
+        {% if cat_info.group == 'system' %}
+        <a href="{{ url_for('cms.settings') }}?category={{ cat_key }}" 
+           class="category-item {% if active_category == cat_key %}active{% endif %}">
+            <span class="icon">{{ cat_info.icon }}</span>
+            <span>{{ cat_info.name }}</span>
         </a>
+        {% endif %}
+        {% endfor %}
+        <hr class="sidebar-divider">
+        <h3>{{ _('Management') }}</h3>
         <a href="{{ url_for('cms.list_sessions') }}" class="category-item">
             <span class="icon">🔐</span>
             <span>{{ _('Sessions') }}</span>
@@ -340,29 +397,29 @@
         </a>
         <a href="{{ url_for('cms.manage_api_keys') }}" class="category-item">
             <span class="icon">🔑</span>
-            <span>{{ _('API Keys') }}</span>
+            <span>{{ _('API Keys (REST API)') }}</span>
         </a>
         <a href="{{ url_for('cms.statistics') }}" class="category-item">
             <span class="icon">📊</span>
-            <span>Statistieken</span>
+            <span>{{ _('Statistics') }}</span>
         </a>
         {% if current_user.is_super_admin %}
+        <hr class="sidebar-divider">
+        <h3>{{ _('Admin') }}</h3>
         <a href="{{ url_for('cms.settings') }}?category=platform" 
            class="category-item {% if active_category == 'platform' %}active{% endif %}">
             <span class="icon">⚙️</span>
             <span>{{ _('Platform') }}</span>
         </a>
-        {% endif %}
-        {% if current_user.is_super_admin %}
         <a href="{{ url_for('cms.list_tenants') }}" class="category-item">
             <span class="icon">🏢</span>
             <span>{{ _('Tenants') }}</span>
         </a>
-        {% endif %}
         <a href="{{ url_for('cms.translations_page') }}" class="category-item">
             <span class="icon">🌐</span>
             <span>{{ _('Translations') }}</span>
         </a>
+        {% endif %}
     </div>
     
     <div class="settings-content">
@@ -370,8 +427,8 @@
         <h2>⚙️ Platform Settings</h2>
         <p>{{ _('Configure global platform settings. These apply to all tenants.') }}</p>
         {% else %}
-        <h2>{{ categories[active_category].icon }} {{ categories[active_category].name.replace(categories[active_category].icon + ' ', '') }}</h2>
-        <p>{{ _('Configure %(category)s settings for the application.', category=active_category.replace('_', ' ')) }}</p>
+        <h2>{{ categories[active_category].name }}</h2>
+        <p>{{ _('Configure %(category)s settings.', category=categories[active_category].name) }}</p>
         {% endif %}
         <form id="settingsForm"{% if is_platform_cat %} data-platform-settings="true"{% endif %}>
             {% for setting in settings_list %}
@@ -403,9 +460,68 @@
             {% else %}
             <div class="setting-item" data-setting-id="{{ setting.id }}" data-value-type="{{ setting.value_type }}" data-key="{{ setting.key }}">
                 <label for="setting-{{ setting.id }}">
-                    {{ setting.key.replace('_', ' ').title() }}
+                    {% set display_name = {
+                        'brave_api_key': '🔍 Brave Search API',
+                        'pimeyes_api_key': '👤 PimEyes API',
+                        'tineye_api_key': '🖼️ TinEye API',
+                        'marineplan_api_key': '🚢 MarinePlan API',
+                        'equasis_email': '🚢 Equasis email',
+                        'equasis_password': '🚢 Equasis wachtwoord',
+                        'overheid_api_key': '🇳🇱 Overheid.io API',
+                        'twochat_api_key': '💬 2Chat API',
+                        'twochat_whatsapp_number': '💬 2Chat WhatsApp nummer',
+                        'rapidapi_username_key': '⚡ RapidAPI Key',
+                        'telegram_rapidapi_key': '📱 Telegram155 API',
+                        'telegram_rapidapi_limit': '📱 Telegram155 maandlimiet',
+                        'openrouter_api_key': '🤖 OpenRouter API',
+                        'spiderfoot_url': '🕷️ SpiderFoot URL',
+                        'spiderfoot_username': '🕷️ SpiderFoot gebruiker',
+                        'spiderfoot_password': '🕷️ SpiderFoot wachtwoord',
+                        'telegram_bot_token': '📱 Telegram bot token',
+                        'telegram_allowed_users': '📱 Telegram toegestane users',
+                        'telegram_enabled': '📱 Telegram bot inschakelen',
+                        'smtp_server': '📧 SMTP server',
+                        'smtp_port': '📧 SMTP poort',
+                        'smtp_username': '📧 SMTP gebruiker',
+                        'smtp_password': '📧 SMTP wachtwoord',
+                        'smtp_from_email': '📧 Afzender email',
+                        'smtp_from_name': '📧 Afzender naam',
+                        'session_timeout_minutes': '⏱️ Sessie timeout (minuten)',
+                        'audit_log_retention_days': '📜 Audit log bewaardagen',
+                        'phone_lookup_retention_days': '📞 Telefoon lookup bewaardagen',
+                        'require_password_change': '🔐 Wachtwoord vervaldagen',
+                        'default_search_engine': '🔍 Standaard zoekmachine',
+                        'search_result_limit': '🔍 Max zoekresultaten',
+                        'enable_osint_dorks': '🔍 OSINT dorks inschakelen',
+                        'update_check_repo': '🔄 Update check repo',
+                        'webhook_url': '🔗 Webhook URL',
+                        'organization_name': '🏢 Organisatienaam',
+                        'case_number_prefix': '📁 Case prefix',
+                        'default_risk_score': '⚠️ Standaard risicoscore',
+                        'theme_style': '🎨 Theme stijl',
+'app_logo': '🖼️ Logo',
+                        'openrouter_model': '🤖 OpenRouter model',
+                        'openrouter_base_url': '🤖 OpenRouter base URL',
+                        'ollama_url': '🤖 Ollama server URL',
+                        'ollama_model': '🤖 Ollama model',
+                        'feature_email': '📧 Email search',
+                        'feature_email_holehe': '📧 Email breach check',
+                        'feature_ip': '🌐 IP lookup',
+                        'feature_domain': '🌐 Domain lookup',
+                        'feature_username': '👤 Username search',
+                        'feature_phone': '📞 Phone lookup',
+                        'feature_hibp': '🔐 HIBP check',
+                        'feature_openkvk': '🇳🇱 OpenKVK',
+                        'feature_ai': '🤖 AI samenvatting',
+                        'feature_kadaster': '🏠 Kadaster',
+                        'feature_rdw': '🚗 RDW',
+                        'feature_vessel': '🚢 Vessel lookup',
+                        'feature_interpol': '🌍 Interpol check',
+                        'feature_webcam': '📷 Webcam search',
+                    }.get(setting.key, setting.key.replace('_', ' ').title()) %}
+                    {{ display_name }}
                     {% if setting.is_sensitive %}
-                    <span style="color: #f59e0b; font-size: 0.75rem; font-weight: normal;">{{ _('(sensitive)') }}</span>
+                    <span class="sensitive-badge">{{ _('(sleutel)') }}</span>
                     {% endif %}
                 </label>
                 <p class="description">{{ setting.description or '' }}</p>
@@ -438,11 +554,14 @@
                         👁️
                     </button>
                 </div>
-                {% if setting.value %}
-                <p class="masked-value" style="margin-top: 0.5rem;">
-                    {{ _('Current') }}: {{ setting.get_masked_value() }}
-                </p>
-                {% endif %}
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                    {% if setting.value %}
+                    <span class="status-badge configured">{{ _('🟢 Geconfigureerd') }}</span>
+                    <span class="masked-value">{{ setting.get_masked_value() }}</span>
+                    {% else %}
+                    <span class="status-badge not-configured">{{ _('🔴 Niet geconfigureerd') }}</span>
+                    {% endif %}
+                </div>
                 
                 {% elif setting.value_type == 'number' %}
                 <input type="number" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
@@ -473,6 +592,44 @@
             {% endif %}
         </form>
     </div>
+
+    {% if active_category == 'email' %}
+    <div class="settings-section" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+        <h3>📧 {{ _('Test Email Configuration') }}</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            {{ _('Send a test email to verify your SMTP settings are working correctly.') }}
+        </p>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <input type="email" id="testEmailInput" placeholder="{{ _('test@example.com') }}"
+                   style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; min-width: 250px; background: var(--input-bg); color: var(--text);">
+            <button type="button" data-click="sendTestEmail" class="btn bg-green">{{ _('Send Test') }}</button>
+            <span id="testEmailStatus" style="font-size: 0.875rem;"></span>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if active_category == 'appearance' %}
+    <div class="settings-section" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+        <h3>🖼️ {{ _('Logo') }}</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            {{ _('Upload een logo dat in de header wordt weergegeven in plaats van de CMS tekst.') }}
+        </p>
+        <div id="logoPreview" style="margin-bottom: 1rem;{% if not app_logo %}display:none;{% endif %}">
+            <strong>{{ _('Huidig logo:') }}</strong><br>
+            <img id="logoPreviewImg" src="{% if app_logo %}{{ url_for('static', filename='uploads/logo/' + app_logo) }}{% endif %}"
+                 alt="Logo" style="max-height:3rem;width:auto;margin-top:0.5rem;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem;">
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/gif,image/webp"
+                   style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; min-width: 200px; background: var(--input-bg); color: var(--text);">
+            <button type="button" data-click="uploadLogo" class="btn bg-green">{{ _('Upload') }}</button>
+            {% if app_logo %}
+            <button type="button" data-click="deleteLogo" class="btn" style="background:#dc2626;color:white;">{{ _('Verwijder') }}</button>
+            {% endif %}
+            <span id="logoStatus" style="font-size: 0.875rem;"></span>
+        </div>
+    </div>
+    {% endif %}
 
     {% if active_category == 'api_keys' %}
     <div class="settings-section" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
@@ -559,7 +716,7 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     try {
         const isPlatform = document.getElementById('settingsForm').dataset.platformSettings === 'true';
         const apiUrl = isPlatform ? '/cms/api/platform-settings' : '/cms/api/settings';
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
             method: 'POST',
             method: 'POST',
             headers: {
@@ -602,7 +759,7 @@ async function resetAllSettings() {
     for (const id of settingIds) {
         try {
             const resetUrl = isPlatform ? `/cms/api/platform-settings/${id}/reset` : `/cms/api/settings/${id}/reset`;
-            await fetch(resetUrl, {
+            await apiFetch(resetUrl, {
                 method: 'POST',
                 headers: {'X-CSRFToken': '{{ csrf_token() }}'}
             });
@@ -614,6 +771,31 @@ async function resetAllSettings() {
     showToast('{{ _('Settings reset to defaults')|e }}', 'success');
     setTimeout(() => window.location.reload(), 1000);
 }
+
+window.sendTestEmail = async function() {
+    var email = document.getElementById('testEmailInput').value.trim();
+    var statusEl = document.getElementById('testEmailStatus');
+    if (!email) {
+        statusEl.innerHTML = '<span style="color: #dc2626;">{{ _('Enter an email address') }}</span>';
+        return;
+    }
+    statusEl.innerHTML = '<span style="color: #0ea5e9;">{{ _('Sending...') }}</span>';
+    try {
+        var r = await apiFetch('/cms/api/settings/test-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: JSON.stringify({ email: email })
+        });
+        var data = await r.json();
+        if (r.ok) {
+            statusEl.innerHTML = '<span style="color: #059669;">✅ ' + esc(data.message || '{{ _('Sent!') }}') + '</span>';
+        } else {
+            statusEl.innerHTML = '<span style="color: #dc2626;">❌ ' + esc(data.error || '{{ _('Failed') }}') + '</span>';
+        }
+    } catch (err) {
+        statusEl.innerHTML = '<span style="color: #dc2626;">❌ ' + esc(err.message) + '</span>';
+    }
+};
 
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
@@ -627,7 +809,7 @@ function showToast(message, type = 'success') {
 
 async function loadApiKeys() {
     try {
-        const r = await fetch('/cms/api/api-keys');
+        const r = await apiFetch('/cms/api/api-keys');
         const keys = await r.json();
         const tbody = document.getElementById('apiKeysBody');
         if (!keys.length) {
@@ -663,7 +845,7 @@ window.generateApiKey = async function() {
         return;
     }
     try {
-        const r = await fetch('/cms/api/api-keys/generate', {
+        const r = await apiFetch('/cms/api/api-keys/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name })
@@ -686,7 +868,7 @@ window.generateApiKey = async function() {
 window.revokeApiKey = async function(btn, id) {
     if (!confirm('{{ _('Revoke this API key? Existing integrations using it will stop working.')|e }}')) return;
     try {
-        const r = await fetch('/cms/api/api-keys/' + id + '/revoke', { method: 'POST' });
+        const r = await apiFetch('/cms/api/api-keys/' + id + '/revoke', { method: 'POST' });
         const data = await r.json();
         if (r.ok) {
             showToast(data.message || '{{ _('Key revoked')|e }}', 'success');
@@ -702,7 +884,7 @@ window.revokeApiKey = async function(btn, id) {
 window.deleteApiKey = async function(btn, id) {
     if (!confirm('{{ _('Permanently delete this API key record?')|e }}')) return;
     try {
-        const r = await fetch('/cms/api/api-keys/' + id + '/delete', { method: 'POST' });
+        const r = await apiFetch('/cms/api/api-keys/' + id + '/delete', { method: 'POST' });
         const data = await r.json();
         if (r.ok) {
             showToast(data.message || '{{ _('Key deleted')|e }}', 'success');
@@ -777,7 +959,7 @@ async function searchSettings(query) {
     statusEl.textContent = '{{ _('Searching...')|e }}';
 
     try {
-        var resp = await fetch('/cms/api/settings/search?q=' + encodeURIComponent(query));
+        var resp = await apiFetch('/cms/api/settings/search?q=' + encodeURIComponent(query));
         var data = await resp.json();
 
         if (data.total === 0) {
@@ -867,6 +1049,57 @@ document.addEventListener('keydown', function(e) {
         document.getElementById('settingsSearchInput').focus();
     }
 });
+
+// ── Logo Upload ───────────────────────────────────────────────────────────
+window.uploadLogo = async function() {
+    var fileInput = document.getElementById('logoFileInput');
+    var statusEl = document.getElementById('logoStatus');
+    var file = fileInput.files[0];
+    if (!file) {
+        statusEl.innerHTML = '<span style="color:#dc2626;">{{ _('Selecteer een bestand')|e }}</span>';
+        return;
+    }
+    var formData = new FormData();
+    formData.append('logo', file);
+    statusEl.innerHTML = '<span style="color:#0ea5e9;">{{ _('Uploaden...')|e }}</span>';
+    try {
+        var r = await apiFetch('/cms/api/settings/upload-logo', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: formData
+        });
+        var data = await r.json();
+        if (r.ok) {
+            statusEl.innerHTML = '<span style="color:#059669;">✅ {{ _('Logo geüpload') }}</span>';
+            window.location.reload();
+        } else {
+            statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(data.error || '{{ _('Fout')|e }}') + '</span>';
+        }
+    } catch (e) {
+        statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(e.message) + '</span>';
+    }
+};
+
+window.deleteLogo = async function() {
+    if (!confirm('{{ _('Logo verwijderen?')|e }}')) return;
+    var statusEl = document.getElementById('logoStatus');
+    statusEl.innerHTML = '<span style="color:#0ea5e9;">{{ _('Verwijderen...')|e }}</span>';
+    try {
+        var r = await apiFetch('/cms/api/settings/delete-logo', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+        });
+        var data = await r.json();
+        if (r.ok) {
+            statusEl.innerHTML = '<span style="color:#059669;">✅ {{ _('Verwijderd') }}</span>';
+            window.location.reload();
+        } else {
+            statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(data.error || '{{ _('Fout')|e }}') + '</span>';
+        }
+    } catch (e) {
+        statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(e.message) + '</span>';
+    }
+};
 
 // Pre-populate search from ?q= param on page load
 document.addEventListener('DOMContentLoaded', function() {

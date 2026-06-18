@@ -6,21 +6,21 @@ from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Comment, CommentEditHistory, AuditLog
 from ..validation import validate, CreateCommentSchema, UpdateCommentSchema
+
+from .response import api_success, api_error
 
 logger = logging.getLogger(__name__)
 
 
 @cms_bp.route("/api/comments", methods=["POST"])
-@csrf.exempt
 @login_required
 @validate(CreateCommentSchema)
 def create_comment() -> flask.Response:
     """Create a new comment on any entity."""
     if not request.validated_data.get("content"):
-        return jsonify({"error": "Content is required"}), 400
+        return api_error("Content is required", 400)
 
     # At least one entity must be specified
     entity_ids = {
@@ -31,7 +31,7 @@ def create_comment() -> flask.Response:
     }
 
     if not any(entity_ids.values()):
-        return jsonify({"error": "At least one entity ID is required"}), 400
+        return api_error("At least one entity ID is required", 400)
 
     comment = Comment(
         content=request.validated_data["content"],
@@ -66,7 +66,7 @@ def update_comment(comment_id: str) -> flask.Response:
 
     # Only author or admin can edit
     if comment.author_id != current_user.id and not current_user.is_admin:
-        return jsonify({"error": "Not authorized to edit this comment"}), 403
+        return api_error("Not authorized to edit this comment", 403)
 
     data = request.validated_data
     content_changed = False
@@ -117,7 +117,7 @@ def delete_comment(comment_id: str) -> flask.Response:
 
     # Only author or admin can delete
     if comment.author_id != current_user.id and not current_user.is_admin:
-        return jsonify({"error": "Not authorized to delete this comment"}), 403
+        return api_error("Not authorized to delete this comment", 403)
 
     comment.soft_delete()
 
@@ -131,7 +131,7 @@ def delete_comment(comment_id: str) -> flask.Response:
     )
     db.session.commit()
 
-    return jsonify({"message": "Comment deleted"})
+    return api_success({}, "Comment deleted")
 
 
 @cms_bp.route("/api/comments/for-entity")
@@ -152,7 +152,7 @@ def get_comments_for_entity() -> flask.Response:
     elif entity_type == "financial_record" and entity_id:
         query = query.filter_by(financial_record_id=entity_id)
     else:
-        return jsonify({"error": "Invalid entity type or missing ID"}), 400
+        return api_error("Invalid entity type or missing ID", 400)
 
     comments = query.order_by(Comment.is_pinned.desc(), Comment.created_at.desc()).all()
 

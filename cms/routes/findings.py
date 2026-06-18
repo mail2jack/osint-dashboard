@@ -10,6 +10,8 @@ from ..models import db, Finding, AuditLog
 from ..auth import roles_required
 from ..validation import validate, CreateFindingSchema
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ def create_finding() -> flask.Response:
     required = ["case_id", "title", "content"]
     for field in required:
         if not request.validated_data.get(field):
-            return jsonify({"error": f"{field} is required"}), 400
+            return api_error(f"{field} is required", 400)
 
     finding = Finding(
         case_id=request.validated_data["case_id"],

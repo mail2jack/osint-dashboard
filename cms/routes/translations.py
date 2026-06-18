@@ -8,7 +8,6 @@ from flask import current_app, request, jsonify, render_template
 from flask_login import login_required
 
 from . import cms_bp
-from .. import csrf
 from ..models import Setting
 from ..services.ai_service import (
     get_openrouter_config,
@@ -16,6 +15,8 @@ from ..services.ai_service import (
     check_ollama_available,
     get_openrouter_error,
 )
+
+from .response import api_error
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +210,6 @@ def translations_page():
 
 
 @cms_bp.route("/api/translations/review", methods=["POST"])
-@csrf.exempt
 @login_required
 def set_review():
     data = request.get_json(silent=True) or {}
@@ -217,9 +217,9 @@ def set_review():
     status = data.get("status", "").strip()
 
     if not msgid:
-        return jsonify({"error": "msgid required"}), 400
+        return api_error("msgid required", 400)
     if status not in ("flagged", "pending", "approved", ""):
-        return jsonify({"error": "invalid status"}), 400
+        return api_error("invalid status", 400)
 
     review = _get_review()
     if status:
@@ -237,7 +237,6 @@ def get_review_all():
 
 
 @cms_bp.route("/api/translations/manual-fix", methods=["POST"])
-@csrf.exempt
 @login_required
 def manual_fix():
     data = request.get_json(silent=True) or {}
@@ -246,7 +245,7 @@ def manual_fix():
     translation = data.get("translation", "").strip()
 
     if not msgid or not direction or not translation:
-        return jsonify({"error": "msgid, direction en translation verplicht"}), 400
+        return api_error("msgid, direction en translation verplicht", 400)
 
     root_path = current_app.root_path
     if direction == "en→nl":
@@ -254,7 +253,7 @@ def manual_fix():
     elif direction == "nl→en":
         path = os.path.join(root_path, "translations/en/LC_MESSAGES/messages.po")
     else:
-        return jsonify({"error": "ongeldige richting"}), 400
+        return api_error("ongeldige richting", 400)
 
     _update_po_entry(path, msgid, translation)
 
@@ -273,7 +272,6 @@ def manual_fix():
 
 
 @cms_bp.route("/api/translations/auto-fix", methods=["POST"])
-@csrf.exempt
 @login_required
 def auto_fix():
     from cms.services.ai_service import _generate
@@ -297,7 +295,7 @@ def auto_fix():
                 logger.warning("auto_fix: json parse failed: %s", e)
 
     if not en_to_nl_ids and not nl_to_en_ids:
-        return jsonify({"error": "Geen gemarkeerde vertalingen"}), 400
+        return api_error("Geen gemarkeerde vertalingen", 400)
 
     logger.info("auto_fix: en_to_nl=%r nl_to_en=%r", en_to_nl_ids, nl_to_en_ids)
 

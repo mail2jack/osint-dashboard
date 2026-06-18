@@ -8,6 +8,8 @@ from . import cms_bp
 from ..models import db, Client, Case, AuditLog
 from ..auth import roles_required
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +21,7 @@ def archive_client(client_id: str) -> flask.Response:
     client = db.session.get(Client, client_id) or abort(404)
 
     if not client.is_active:
-        return jsonify({"error": "Client is already archived"}), 400
+        return api_error("Client is already archived", 400)
 
     # Check if client has any non-closed/non-archived cases
     active_cases = Case.query.filter(
@@ -61,7 +63,7 @@ def restore_client(client_id: str) -> flask.Response:
     client = db.session.get(Client, client_id) or abort(404)
 
     if client.is_active:
-        return jsonify({"error": "Client is already active"}), 400
+        return api_error("Client is already active", 400)
 
     client.is_active = True
 

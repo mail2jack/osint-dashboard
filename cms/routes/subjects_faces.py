@@ -7,11 +7,12 @@ from flask import request, jsonify, abort, current_app
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Subject, AuditLog
 from ..auth import roles_required, subject_access_required
 from ..image_validation import validate_image_file
 from ..validation import validate, SaveFaceEncodingSchema, CompareFacesSchema
+
+from .response import api_error
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +26,12 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
     subject = db.session.get(Subject, subject_id) or abort(404)
 
     if "photo" not in request.files:
-        return jsonify({"error": "No photo provided"}), 400
+        return api_error("No photo provided", 400)
 
     file = request.files["photo"]
 
     if file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
+        return api_error("No file selected", 400)
 
     # Only allow images — validate by magic bytes
     is_img, detected_ext = validate_image_file(file)
@@ -78,7 +79,6 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["POST"])
 @login_required
-@csrf.exempt
 @subject_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @validate(SaveFaceEncodingSchema)
@@ -89,7 +89,7 @@ def save_face_encoding(subject_id: str) -> flask.Response:
     encoding = request.validated_data.get("encoding")
 
     if not isinstance(encoding, list) or len(encoding) != 128:
-        return jsonify({"error": "Invalid encoding format"}), 400
+        return api_error("Invalid encoding format", 400)
 
     subject.face_encoding = encoding
 
@@ -108,7 +108,6 @@ def save_face_encoding(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["DELETE"])
 @login_required
-@csrf.exempt
 @subject_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 def delete_face_encoding(subject_id: str) -> flask.Response:
@@ -132,7 +131,6 @@ def delete_face_encoding(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/compare-faces", methods=["POST"])
 @login_required
-@csrf.exempt
 @validate(CompareFacesSchema)
 def compare_faces() -> flask.Response:
     """Compare face encodings. Returns list of matching subjects."""
@@ -143,7 +141,7 @@ def compare_faces() -> flask.Response:
         or not isinstance(target_encoding, list)
         or len(target_encoding) != 128
     ):
-        return jsonify({"error": "Invalid encoding format"}), 400
+        return api_error("Invalid encoding format", 400)
 
     threshold = request.validated_data.get("threshold", 0.6)
     limit = request.validated_data.get("limit", 20)

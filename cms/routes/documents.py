@@ -18,6 +18,8 @@ from ..auth import (
 from ..image_validation import validate_upload
 from ..validation import validate, DocumentUploadSchema
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {
@@ -49,18 +51,19 @@ def upload_case_document(case_id: str) -> flask.Response:
     db.session.get(Case, case_id) or abort(404)
 
     if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        return api_error("No file provided", 400)
 
     file = request.files["file"]
+    filename = file.filename or ""
 
-    if file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
+    if filename == "":
+        return api_error("No file selected", 400)
 
-    if not allowed_file(file.filename):
-        return jsonify({"error": "File type not allowed"}), 400
+    if not allowed_file(filename):
+        return api_error("File type not allowed", 400)
 
     # Validate file content by magic bytes
-    file_ext = file.filename.rsplit(".", 1)[1].lower()
+    file_ext = filename.rsplit(".", 1)[1].lower()
     is_valid, detected = validate_upload(file, file_ext)
     if not is_valid:
         logger.warning(
@@ -79,7 +82,7 @@ def upload_case_document(case_id: str) -> flask.Response:
     os.makedirs(upload_dir, exist_ok=True)
 
     # Generate unique filename
-    original_filename = secure_filename(file.filename)
+    original_filename = secure_filename(filename)
     unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
     file_path = os.path.join(upload_dir, unique_filename)
 
@@ -134,18 +137,19 @@ def upload_subject_document(subject_id: str) -> flask.Response:
     subject = db.session.get(Subject, subject_id) or abort(404)
 
     if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        return api_error("No file provided", 400)
 
     file = request.files["file"]
+    filename = file.filename or ""
 
-    if file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
+    if filename == "":
+        return api_error("No file selected", 400)
 
-    if not allowed_file(file.filename):
-        return jsonify({"error": "File type not allowed"}), 400
+    if not allowed_file(filename):
+        return api_error("File type not allowed", 400)
 
     # Validate file content by magic bytes
-    file_ext = file.filename.rsplit(".", 1)[1].lower()
+    file_ext = filename.rsplit(".", 1)[1].lower()
     is_valid, detected = validate_upload(file, file_ext)
     if not is_valid:
         logger.warning(
@@ -164,7 +168,7 @@ def upload_subject_document(subject_id: str) -> flask.Response:
     os.makedirs(upload_dir, exist_ok=True)
 
     # Generate unique filename
-    original_filename = secure_filename(file.filename)
+    original_filename = secure_filename(filename)
     file_ext = original_filename.rsplit(".", 1)[1].lower()
     unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
     file_path = os.path.join(upload_dir, unique_filename)
@@ -215,7 +219,7 @@ def get_document(document_id: str) -> flask.Response:
     if document.case_id:
         case = db.session.get(Case, document.case_id)
         if case and not current_user.can_access_case(case):
-            return jsonify({"error": "Access denied"}), 403
+            return api_error("Access denied", 403)
 
     return jsonify(document.to_dict())
 
@@ -230,10 +234,10 @@ def download_document(document_id: str) -> flask.Response:
     if document.case_id:
         case = db.session.get(Case, document.case_id)
         if case and not current_user.can_access_case(case):
-            return jsonify({"error": "Access denied"}), 403
+            return api_error("Access denied", 403)
 
     if not document.storage_path:
-        return jsonify({"error": "Document file not found on server"}), 404
+        return api_error("Document file not found on server", 404)
 
     file_path = os.path.join(current_app.root_path, "static", document.storage_path)
 
@@ -272,7 +276,7 @@ def delete_document(document_id: str) -> flask.Response:
     db.session.delete(document)
     db.session.commit()
 
-    return jsonify({"message": "Document deleted"})
+    return api_success({}, "Document deleted")
 
 
 @cms_bp.route("/cases/<case_id>/documents")

@@ -83,6 +83,15 @@
     <button class="btn-cms primary" data-click="showCreateModal">+ Create Tenant</button>
 </div>
 
+<form method="GET" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+    <input type="text" name="search" placeholder="{{ _('Search by name, slug or domain...') }}" value="{{ search or '' }}"
+           style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; max-width: 400px;">
+    <button type="submit" class="btn-cms primary">{{ _('Search') }}</button>
+    {% if search %}
+    <a href="{{ url_for('cms.list_tenants') }}" class="btn-cms gray">{{ _('Clear') }}</a>
+    {% endif %}
+</form>
+
 {% if tenants %}
 <table class="data-table">
     <thead>
@@ -172,7 +181,7 @@ function createTenant(btn) {
     if (!name) { alert('Please enter a tenant name.'); return; }
     if (!slug) { alert('Please enter a slug.'); return; }
 
-    fetch('{{ url_for("cms.create_tenant") }}', {
+    apiFetch('{{ url_for("cms.create_tenant") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -191,7 +200,7 @@ function createTenant(btn) {
 function toggleTenant(btn, id) {
     const action = btn.textContent.trim() === 'Deactivate' ? 'deactivate' : 'activate';
     if (!confirm(action === 'deactivate' ? 'Deactivate this tenant?' : 'Activate this tenant?')) return;
-    fetch('{{ url_for("cms.toggle_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
+    apiFetch('{{ url_for("cms.toggle_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}
     })
@@ -201,7 +210,7 @@ function toggleTenant(btn, id) {
 
 function deleteTenant(btn, id) {
     if (!confirm('Delete this tenant? This cannot be undone.')) return;
-    fetch('{{ url_for("cms.delete_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
+    apiFetch('{{ url_for("cms.delete_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
         method: 'DELETE',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}
     })

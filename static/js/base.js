@@ -1,3 +1,14 @@
+// CSRF-safe fetch wrapper — auto-adds X-CSRFToken header
+window.apiFetch = function(url, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  var token = window.csrfToken || (document.querySelector('meta[name="csrf-token"]') || {}).content;
+  if (token) {
+    options.headers['X-CSRFToken'] = token;
+  }
+  return fetch(url, options);
+};
+
 (function() {
   var C = window.CMS || {};
   if (!C.isAdmin) return;
@@ -83,7 +94,7 @@
     var rem = remaining();
     if (rem <= 0) {
       // Session expired — try to extend silently instead of hard-reloading
-      fetch('/api/keep-alive', { method: 'POST' })
+      apiFetch('/api/keep-alive', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function(d) {
           if (d.status === 'ok') {
@@ -100,7 +111,7 @@
   }, CHECK_INTERVAL);
 
   window.extendSession = function() {
-    fetch('/api/keep-alive', { method: 'POST' })
+    apiFetch('/api/keep-alive', { method: 'POST' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (d.status === 'ok') {
@@ -150,7 +161,7 @@
 
   window.clickNotification = function(id, link) {
     var url = C.notificationReadUrl.replace('__ID__', id);
-    fetch(url, { method: 'POST', headers: { 'X-CSRFToken': C.csrfToken } })
+    apiFetch(url, { method: 'POST' })
       .then(function() {
         if (panel) panel.style.display = 'none';
         if (link) window.location.href = link;
@@ -161,7 +172,7 @@
   };
 
   window.markAllRead = function() {
-    fetch(C.notificationReadAllUrl, { method: 'POST', headers: { 'X-CSRFToken': C.csrfToken } })
+    apiFetch(C.notificationReadAllUrl, { method: 'POST' })
       .then(function() {
         if (badge) badge.style.display = 'none';
         if (panel) panel.style.display = 'none';
@@ -454,7 +465,7 @@ function runUpdate() {
   progress.style.display = 'block';
   steps.innerHTML = '<div style="color:#666;">Starting update...</div>';
 
-  fetch(C.doUpdateUrl || '/cms/admin/do-update', { method: 'POST', headers: { 'X-CSRFToken': C.csrfToken } })
+  apiFetch(C.doUpdateUrl || '/cms/admin/do-update', { method: 'POST' })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       progress.style.display = 'none';

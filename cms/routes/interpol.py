@@ -17,6 +17,8 @@ from ..feature_flags import tool_enabled
 from curl_cffi import requests as curl_requests
 from cms.services.http_utils import jitter_sleep
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 _last_interpol_call = 0
@@ -55,7 +57,7 @@ def check_policie_data() -> flask.Response:
     subject_id = data.get("subject_id")
 
     if not subject_name:
-        return jsonify({"error": "Subject name is required"}), 400
+        return api_error("Subject name is required", 400)
 
     name_parts = subject_name.lower().split()
     forename = name_parts[0] if len(name_parts) > 0 else ""
@@ -337,13 +339,13 @@ def create_findings_from_interpol() -> flask.Response:
     opsporingen = data.get("opsporingsberichten", [])
 
     if not case_id:
-        return jsonify({"error": "case_id is required"}), 400
+        return api_error("case_id is required", 400)
     if not wanted and not missing and not opsporingen:
-        return jsonify({"error": "No results to save"}), 400
+        return api_error("No results to save", 400)
 
     case = db.session.get(Case, case_id)
     if not case:
-        return jsonify({"error": "Case not found"}), 404
+        return api_error("Case not found", 404)
 
     created = []
     for p in wanted:

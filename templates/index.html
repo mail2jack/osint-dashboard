@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iveras OSINT</title>
     <link rel="stylesheet" href="/static/style.css">
+    {% if g.use_bundle %}
+    <link rel="stylesheet" href="/static/dist/bundle.min.css?v={{ g.css_version }}">
+    {% endif %}
+    <script>
+    function esc(str) {
+        if (!str) return '';
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(String(str)));
+        return d.innerHTML;
+    }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -843,7 +854,7 @@
             resultsContent.innerHTML = `
                 ${usageHtml}
                 <div class="card">
-                    <h3>Username: ${data.username || ''} <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:normal;">(${totalPlatforms} platforms checked)</span></h3>
+                    <h3>Username: ${esc(data.username || '')} <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:normal;">(${totalPlatforms} platforms checked)</span></h3>
                     <div style="margin-bottom:0.75rem;font-size:0.85rem;color:var(--text-secondary);">
                         Source: ${data.source === 'rapidapi' ? 'RapidAPI' : 'Sherlock (fallback)'}
                     </div>
@@ -887,28 +898,32 @@
                 const score = categoryScore[dork.category] || 50;
                 const scoreClass = score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low';
                 const scoreLabel = score >= 70 ? 'High' : score >= 50 ? 'Med' : 'Low';
+                const dorkUrl = esc(dork.url || '');
                 return `
                     <div class="result-item found">
                         <div class="result-info">
-                            <div class="result-name">${dork.domain}</div>
-                            ${dork.url ? `<div class="url-row"><a href="${dork.url}" target="_blank" class="result-url">${dork.url}</a><button class="copy-btn" onclick="copyToClipboard('${dork.url}', this)" title="Copy URL">⎘</button></div>` : ''}
+                            <div class="result-name">${esc(dork.domain)}</div>
+                            ${dork.url ? `<div class="url-row"><a href="${dorkUrl}" target="_blank" class="result-url">${dorkUrl}</a><button class="copy-btn" onclick="copyToClipboard('${dorkUrl}', this)" title="Copy URL">⎘</button></div>` : ''}
                             <div class="result-meta">
-                                <span class="category">${dork.category}</span>
-                                <span class="confidence-badge ${scoreClass}">${scoreLabel} ${score}%</span>
+                                <span class="category">${esc(dork.category)}</span>
+                                <span class="confidence-badge ${esc(scoreClass)}">${scoreLabel} ${score}%</span>
                             </div>
                         </div>
                     </div>
                 `;
             };
             
-            const renderLink = (link) => `
+            const renderLink = (link) => {
+                const linkUrl = esc(link.url || '');
+                return `
                 <div class="result-item">
                     <div class="result-info">
-                        <div class="result-name">${link.name || link.engine}</div>
-                        ${link.url ? `<div class="url-row"><a href="${link.url}" target="_blank" class="result-url">${link.url}</a><button class="copy-btn" onclick="copyToClipboard('${link.url}', this)" title="Copy URL">⎘</button></div>` : ''}
+                        <div class="result-name">${esc(link.name || link.engine)}</div>
+                        ${link.url ? `<div class="url-row"><a href="${linkUrl}" target="_blank" class="result-url">${linkUrl}</a><button class="copy-btn" onclick="copyToClipboard('${linkUrl}', this)" title="Copy URL">⎘</button></div>` : ''}
                     </div>
                 </div>
             `;
+            };
             
             resultsContent.innerHTML = `
                 <div class="stats">
@@ -924,7 +939,7 @@
                                 <strong style="color: #16a34a;">✓ Found ${dorksResults.length} results</strong>
                                 <p style="margin: 0.5rem 0 0 0; color: #666;">Ready to add to case findings?</p>
                             </div>
-                            <button onclick="addDorksToFindings('${data.case_id}', '${data.subject_id || ''}', ${JSON.stringify(dorksResults).replace(/"/g, '&quot;')}, '${data.name}')" class="btn" style="background: #16a34a; padding: 0.5rem 1rem;">
+                            <button onclick="addDorksToFindings(${JSON.stringify(data.case_id)}, ${JSON.stringify(data.subject_id || '')}, ${JSON.stringify(dorksResults).replace(/"/g, '&quot;')}, ${JSON.stringify(data.name)})" class="btn" style="background: #16a34a; padding: 0.5rem 1rem;">
                                 Add to Case Findings
                             </button>
                         </div>
@@ -955,11 +970,24 @@
             resultsDiv.classList.remove('hidden');
             
             if (data.error) {
-                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
+                resultsContent.innerHTML = `<div class="empty">${esc(data.error)}</div>`;
                 return;
             }
             
             const cats = data.categories || {};
+            
+            function renderCatItem(item) {
+                const itemUrl = esc(item.url || '');
+                return `
+                    <div class="result-item found">
+                        <div class="result-info">
+                            <div class="result-name">${esc(item.domain)}</div>
+                            ${item.url ? `<a href="${itemUrl}" target="_blank" class="result-url">${itemUrl}</a>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
             const social = cats.social_media || [];
             const files = cats.files || [];
             const news = cats.news || [];
@@ -967,58 +995,30 @@
             
             resultsContent.innerHTML = `
                 <div class="stats">
-                    <div class="stat"><div class="stat-value">${data.total_results || 0}</div><div class="stat-label">Links Found</div></div>
+                    <div class="stat"><div class="stat-value">${esc(data.total_results || 0)}</div><div class="stat-label">Links Found</div></div>
                 </div>
                 ${social.length ? `
                     <div class="card">
                         <h3>Social Media</h3>
-                        ${social.map(s => `
-                            <div class="result-item found">
-                                <div class="result-info">
-                                    <div class="result-name">${s.domain}</div>
-                                    <a href="${s.url}" target="_blank" class="result-url">${s.url}</a>
-                                </div>
-                            </div>
-                        `).join('')}
+                        ${social.map(renderCatItem).join('')}
                     </div>
                 ` : ''}
                 ${files.length ? `
                     <div class="card">
                         <h3>Files (PDF, DOC, etc)</h3>
-                        ${files.map(f => `
-                            <div class="result-item found">
-                                <div class="result-info">
-                                    <div class="result-name">${f.domain}</div>
-                                    <a href="${f.url}" target="_blank" class="result-url">${f.url}</a>
-                                </div>
-                            </div>
-                        `).join('')}
+                        ${files.map(renderCatItem).join('')}
                     </div>
                 ` : ''}
                 ${news.length ? `
                     <div class="card">
                         <h3>News</h3>
-                        ${news.map(n => `
-                            <div class="result-item found">
-                                <div class="result-info">
-                                    <div class="result-name">${n.domain}</div>
-                                    <a href="${n.url}" target="_blank" class="result-url">${n.url}</a>
-                                </div>
-                            </div>
-                        `).join('')}
+                        ${news.map(renderCatItem).join('')}
                     </div>
                 ` : ''}
                 ${general.length ? `
                     <div class="card">
                         <h3>Other Results</h3>
-                        ${general.map(g => `
-                            <div class="result-item found">
-                                <div class="result-info">
-                                    <div class="result-name">${g.domain}</div>
-                                    <a href="${g.url}" target="_blank" class="result-url">${g.url}</a>
-                                </div>
-                            </div>
-                        `).join('')}
+                        ${general.map(renderCatItem).join('')}
                     </div>
                 ` : ''}
                 ${!data.total_results ? '<div class="empty">No results found</div>' : ''}
@@ -1030,7 +1030,7 @@
             resultsDiv.classList.remove('hidden');
             
             if (data.error) {
-                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
+                resultsContent.innerHTML = `<div class="empty">${esc(data.error)}</div>`;
                 return;
             }
             
@@ -1038,7 +1038,7 @@
             const ipapi = data.ipapi || {};
             
             let ipapiSection = '';
-            if (ipapi.country_name) {
+            if (Object.keys(ipapi).length) {
                 ipapiSection = `
                     <div class="card">
                         <h3>Extended Info (ipapi.co)</h3>
@@ -1094,7 +1094,7 @@
             resultsDiv.classList.remove('hidden');
             
             if (data.error) {
-                resultsContent.innerHTML = `<div class="empty">${data.error}</div>`;
+                resultsContent.innerHTML = `<div class="empty">${esc(data.error)}</div>`;
                 return;
             }
             

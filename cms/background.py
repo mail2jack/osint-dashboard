@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -7,9 +8,24 @@ from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
-_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="bg")
+_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="bg")
+_app = None
+
+# RQ integration — optional, used when REDIS_URL is set
+_REDIS_URL = os.environ.get("REDIS_URL", "")
+_use_rq = bool(_REDIS_URL)
+
+if _use_rq:
+    logger.info("RQ available — background tasks will use Redis queue")
+else:
+    logger.debug("REDIS_URL not set — background tasks use ThreadPoolExecutor")
 
 TaskID = str
+
+
+def init_background(app) -> None:
+    global _app
+    _app = app
 
 
 def _get_db():
@@ -22,6 +38,33 @@ def _get_model():
     from .models import BackgroundTask
 
     return BackgroundTask
+
+
+def _enqueue_rq(task_id: str, func: Callable, *args, **kwargs) -> bool:
+    """Enqueue a task via RQ. Returns True on success."""
+    if not _use_rq:
+        return False
+    try:
+        import redis as redis_lib
+        from rq import Queue
+
+        conn = redis_lib.from_url(_REDIS_URL, socket_connect_timeout=3)
+        queue = Queue("default", connection=conn)
+        queue.enqueue(
+            "cms.tasks.run_background_task",
+            task_id=task_id,
+            func_module=func.__module__,
+            func_name=func.__qualname__,
+            args=args,
+            kwargs=kwargs,
+        )
+        conn.close()
+        return True
+    except Exception:
+        logger.debug(
+            "RQ enqueue failed — falling back to ThreadPoolExecutor", exc_info=True
+        )
+        return False
 
 
 def run_in_background(task_id: str, func: Callable, *args, **kwargs) -> None:
@@ -38,11 +81,16 @@ def run_in_background(task_id: str, func: Callable, *args, **kwargs) -> None:
     except Exception as e:
         logger.warning("Failed to persist background task %s: %s", task_id, e)
         db.session.rollback()
-    _executor.submit(_run_task, task_id, func, *args, **kwargs)
+
+    if not _enqueue_rq(task_id, func, *args, **kwargs):
+        _executor.submit(_run_task, task_id, func, *args, **kwargs)
 
 
 def _run_task(task_id: str, func: Callable, *args, **kwargs) -> None:
     db = _get_db()
+    ctx = _app.app_context() if _app else None
+    if ctx:
+        ctx.push()
     try:
         _update_status(task_id, "running")
         result = func(*args, **kwargs)
@@ -51,6 +99,8 @@ def _run_task(task_id: str, func: Callable, *args, **kwargs) -> None:
         logger.exception("Background task %s failed: %s", task_id, e)
         _update_status(task_id, "failed", error="Internal server error")
     finally:
+        if ctx:
+            ctx.pop()
         db.session.close()
 
 

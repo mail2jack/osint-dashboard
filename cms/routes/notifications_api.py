@@ -5,8 +5,9 @@ from flask import request, jsonify
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Notification
+
+from .response import api_error
 
 logger = logging.getLogger(__name__)
 
@@ -43,20 +44,18 @@ def list_notifications() -> flask.Response:
 
 
 @cms_bp.route("/api/notifications/<notif_id>/read", methods=["POST"])
-@csrf.exempt
 @login_required
 def mark_notification_read(notif_id: str) -> flask.Response:
     """Mark a single notification as read."""
     notif = Notification.query.filter_by(id=notif_id, user_id=current_user.id).first()
     if not notif:
-        return jsonify({"error": "Notification not found"}), 404
+        return api_error("Notification not found", 404)
     notif.is_read = True
     db.session.commit()
     return jsonify({"status": "ok"})
 
 
 @cms_bp.route("/api/notifications/read-all", methods=["POST"])
-@csrf.exempt
 @login_required
 def mark_all_notifications_read() -> flask.Response:
     """Mark all notifications as read for current user."""

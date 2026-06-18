@@ -201,7 +201,7 @@ function checkDuplicate() {
     }
     
     duplicateTimeout = setTimeout(() => {
-        fetch(`/cms/api/check-duplicate?name=${encodeURIComponent(name)}&type=client`)
+        apiFetch(`/cms/api/check-duplicate?name=${encodeURIComponent(name)}&type=client`)
             .then(r => r.json())
             .then(data => {
                 if (data.exact) {
@@ -284,7 +284,7 @@ function serializeAddresses() {
         }
     btn.disabled = true;
     btn.textContent = '⏳';
-    fetch('/cms/api/kadaster-lookup', {
+    apiFetch('/cms/api/kadaster-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ zipcode: zipcode, number: number })

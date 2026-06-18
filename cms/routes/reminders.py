@@ -21,6 +21,8 @@ from ..models import (
     AuditLog,
 )
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -143,7 +145,7 @@ def create_reminder() -> flask.Response:
         title = data.get("title")
         if not title:
             if request.is_json:
-                return jsonify({"error": "Title is required"}), 400
+                return api_error("Title is required", 400)
             flash("Title is required.", "danger")
             return render_template(
                 "cms/reminders/create.html",
@@ -419,7 +421,7 @@ def delete_reminder(reminder_id: str) -> flask.Response:
     db.session.commit()
 
     if request.is_json:
-        return jsonify({"message": "Reminder deleted"})
+        return api_success({}, "Reminder deleted")
 
     flash("Reminder deleted.", "info")
     return redirect(url_for("cms.reminders"))

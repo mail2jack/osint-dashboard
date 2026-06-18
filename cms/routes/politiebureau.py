@@ -13,6 +13,8 @@ from ..api_key_auth import api_key_required
 from curl_cffi import requests as curl_requests
 from cms.services.http_utils import jitter_sleep
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +33,7 @@ def politiebureau_lookup() -> flask.Response:
     if address_id:
         addr = db.session.get(Address, address_id)
         if not addr:
-            return jsonify({"error": "Address not found"}), 404
+            return api_error("Address not found", 404)
         addr.decrypt_fields()
         address_info = {
             "street": addr.street,

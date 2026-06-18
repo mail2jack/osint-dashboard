@@ -15,6 +15,8 @@ from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..validation import validate, OpenKVKQuerySchema
 from ..services.http_utils import jitter_sleep
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,7 +31,7 @@ def kvk_lookup() -> flask.Response:
     """Look up Dutch company data via Overheid.io (KVK)."""
     query = request.validated_data.get("query", "").strip()
     if not query:
-        return jsonify({"error": "Geef een bedrijfsnaam of KVK-nummer"}), 400
+        return api_error("Geef een bedrijfsnaam of KVK-nummer", 400)
 
     api_key = _get_overheid_key()
     if not api_key:
@@ -49,7 +51,7 @@ def kvk_lookup() -> flask.Response:
         response = curl_requests.get(search_url, headers=headers, timeout=15)
 
         if response.status_code == 403 or response.status_code == 401:
-            return jsonify({"error": "🔑 Auth-fout (ongeldige sleutel)"}), 400
+            return api_error("🔑 Auth-fout (ongeldige sleutel)", 400)
 
         if response.status_code != 200:
             return jsonify(

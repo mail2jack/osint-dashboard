@@ -233,7 +233,7 @@ class TestRDWUpdateSubject:
 
         subj = Subject(name="Not a car", subject_type="person")
         db_session.add(subj)
-        db_session.flush()
+        db_session.commit()
         sid = subj.id
         resp = auth_client.post(
             f"{self.URL}{sid}/update-from-rdw", json={"kenteken": "22PBR2"}
@@ -256,24 +256,30 @@ class TestVesselLookup:
         resp = auth_client.post(self.URL, json={})
         assert resp.status_code == 400
 
-    @patch("cms.routes.vessel.lookup_vessel")
+    @patch("cms.routes.vessel.lookup_vessel_async")
     def test_happy_path(self, mock_lookup, auth_client):
-        mock_lookup.return_value = {
-            "found": True,
-            "name": "EVER GIVEN",
-            "imo": "9811000",
-            "mmsi": "353136000",
-            "flag": "Panama",
-        }
+        async def _fake(**kw):
+            return {
+                "found": True,
+                "name": "EVER GIVEN",
+                "imo": "9811000",
+                "mmsi": "353136000",
+                "flag": "Panama",
+            }
+
+        mock_lookup.side_effect = _fake
         resp = auth_client.post(self.URL, json={"imo": "9811000"})
         assert resp.status_code == 200
         data = resp.get_json()
         assert data.get("found") is True
         assert data["name"] == "EVER GIVEN"
 
-    @patch("cms.routes.vessel.lookup_vessel")
+    @patch("cms.routes.vessel.lookup_vessel_async")
     def test_not_found(self, mock_lookup, auth_client):
-        mock_lookup.return_value = {"found": False, "message": "No vessel data found"}
+        async def _fake(**kw):
+            return {"found": False, "message": "No vessel data found"}
+
+        mock_lookup.side_effect = _fake
         resp = auth_client.post(self.URL, json={"name": "NONEXISTENT"})
         data = resp.get_json()
         assert data.get("found") is False

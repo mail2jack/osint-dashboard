@@ -9,11 +9,19 @@
 </div>
 
 <div class="card">
-    <form method="GET" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+    <form method="GET" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
         <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}" data-immediate-search
-               style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+               style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;">
+        {% if current_user.is_super_admin and tenants %}
+        <select name="tenant_id" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            <option value="">{{ _('All tenants') }}</option>
+            {% for t in tenants %}
+            <option value="{{ t.id }}" {% if selected_tenant_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
         <button type="submit" class="btn-cms primary">Search</button>
-        {% if search %}
+        {% if search or selected_tenant_id %}
         <a href="{{ url_for('users.list_users') }}" class="btn-cms gray">Clear</a>
         {% endif %}
     </form>

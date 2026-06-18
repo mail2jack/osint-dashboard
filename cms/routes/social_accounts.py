@@ -7,7 +7,6 @@ from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Subject, Finding, AuditLog
 from ..validation import (
     validate,
@@ -18,11 +17,12 @@ from ..validation import (
     CreateSubjectFromUsernameSchema,
 )
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
 @cms_bp.route("/api/findings/check-existing-urls", methods=["POST"])
-@csrf.exempt
 @login_required
 @validate(CheckExistingUrlsSchema)
 def check_existing_finding_urls() -> flask.Response:
@@ -46,7 +46,6 @@ def check_existing_finding_urls() -> flask.Response:
 
 
 @cms_bp.route("/api/subjects/<subject_id>/social-accounts", methods=["POST"])
-@csrf.exempt
 @login_required
 @validate(AddSocialAccountSchema)
 def add_social_account(subject_id: str) -> flask.Response:
@@ -55,7 +54,7 @@ def add_social_account(subject_id: str) -> flask.Response:
 
     subject = db.session.get(Subject, subject_id)
     if not subject:
-        return jsonify({"error": "Subject not found"}), 404
+        return api_error("Subject not found", 404)
     data = request.validated_data
     platform = (data.get("platform") or "").strip().lower()
     username = (data.get("username") or "").strip()
@@ -83,14 +82,13 @@ def delete_social_account(subject_id: str, account_id: str) -> flask.Response:
 
     account = db.session.get(SocialAccount, account_id)
     if not account or str(account.subject_id) != subject_id:
-        return jsonify({"error": "Social account not found"}), 404
+        return api_error("Social account not found", 404)
     db.session.delete(account)
     db.session.commit()
-    return jsonify({"message": "Social account deleted"})
+    return api_success({}, "Social account deleted")
 
 
 @cms_bp.route("/api/findings/save-as-social-account", methods=["POST"])
-@csrf.exempt
 @login_required
 @validate(SaveFindingAsSocialAccountSchema)
 def save_finding_as_social_account() -> flask.Response:
@@ -103,7 +101,7 @@ def save_finding_as_social_account() -> flask.Response:
     finding_id = data.get("finding_id")
     subject_id = data.get("subject_id")
     if not finding_id and not subject_id:
-        return jsonify({"error": "finding_id or subject_id required"}), 400
+        return api_error("finding_id or subject_id required", 400)
 
     url = data.get("url") or ""
     platform = (data.get("platform") or "").strip().lower()
@@ -112,7 +110,7 @@ def save_finding_as_social_account() -> flask.Response:
     if finding_id:
         finding = db.session.get(Finding, finding_id) or abort(404)
         if not finding.subject_id:
-            return jsonify({"error": "Finding not linked to a subject"}), 400
+            return api_error("Finding not linked to a subject", 400)
         subject_id = finding.subject_id
         if not url:
             url = finding.source_url
@@ -154,7 +152,6 @@ def save_finding_as_social_account() -> flask.Response:
 
 
 @cms_bp.route("/api/subjects/<subject_id>/save-username-findings", methods=["POST"])
-@csrf.exempt
 @login_required
 @validate(SaveUsernameFindingsSchema)
 def save_username_findings(subject_id: str) -> flask.Response:
@@ -229,7 +226,6 @@ def save_username_findings(subject_id: str) -> flask.Response:
 
 
 @cms_bp.route("/api/subjects/create-from-username", methods=["POST"])
-@csrf.exempt
 @login_required
 @validate(CreateSubjectFromUsernameSchema)
 def create_subject_from_username() -> flask.Response:
@@ -246,7 +242,7 @@ def create_subject_from_username() -> flask.Response:
         if url:
             username = extract_username(url) or ""
         if not username:
-            return jsonify({"error": "username required"}), 400
+            return api_error("username required", 400)
 
     if not platform:
         if url:

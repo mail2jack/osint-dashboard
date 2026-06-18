@@ -139,7 +139,7 @@ function testConnection() {
     resultDiv.className = 'alert';
     resultDiv.textContent = 'Testing connection...';
     
-    fetch('{{ url_for("cms.spiderfoot_test_connection") }}', {
+    apiFetch('{{ url_for("cms.spiderfoot_test_connection") }}', {
         method: 'POST',
         body: formData
     })

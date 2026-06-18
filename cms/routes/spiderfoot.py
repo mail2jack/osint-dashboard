@@ -1,3 +1,5 @@
+from .response import api_success, api_error
+
 """
 SpiderFoot OSINT Integration Routes
 ====================================
@@ -276,7 +278,7 @@ def spiderfoot_scan() -> str:
 
     if not target:
         if request.is_json:
-            return jsonify({"error": "Target is required"}), 400
+            return api_error("Target is required", 400)
         flash("Target is required.", "error")
         return redirect(url_for("cms.spiderfoot_scan"))
 
@@ -538,7 +540,7 @@ def spiderfoot_delete_scan(scan_id: str) -> flask.Response:
     db.session.commit()
 
     if request.is_json:
-        return jsonify({"message": "Scan deleted"})
+        return api_success({}, "Scan deleted")
 
     flash("Scan record deleted.", "info")
     return redirect(url_for("cms.spiderfoot_index"))
@@ -741,7 +743,7 @@ def spiderfoot_settings() -> str:
         db.session.commit()
 
         if request.is_json:
-            return jsonify({"message": "Settings saved"})
+            return api_success({}, "Settings saved")
 
         flash("SpiderFoot settings saved.", "success")
         return redirect(url_for("cms.spiderfoot_settings"))
@@ -901,8 +903,7 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
             entity_id=scan_record.id,
             ip_address=request.remote_addr,
             case_id=case_id,
-            subject_id=subject_id,
-            description=f"Started SpiderFoot scan for subject: {subject.name}",
+            description=f"Started SpiderFoot scan for subject: {subject.name} (subject={subject_id})",
         )
         db.session.commit()
 

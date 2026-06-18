@@ -2,6 +2,7 @@
 osint_cache/
 rate_limits.json
 .cms_key
+.secret_key
 *.db
 __pycache__/
 .pytest_cache/
@@ -21,3 +22,5 @@ spiderfoot/
 instance/
 .obsidian/
 app.log.*
+app.log-*
+node_modules/

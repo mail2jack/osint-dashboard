@@ -41,7 +41,12 @@ APP_CONFIG="$SCRIPT_DIR/.app_port"
 SF_CONFIG="$SCRIPT_DIR/.sf_port"
 
 # Default ports
-DEFAULT_APP_PORT=5000
+if [[ "$(uname)" == "Darwin" ]]; then
+    # macOS Monterey+ reserves port 5000 for AirPlay Receiver
+    DEFAULT_APP_PORT=5002
+else
+    DEFAULT_APP_PORT=5000
+fi
 DEFAULT_SF_PORT=5001
 
 # Log files
@@ -331,7 +336,7 @@ start_iveras() {
     if [ -f "$APP_DIR/venv/bin/python3" ]; then
         PYTHON_BIN="$APP_DIR/venv/bin/python3"
     fi
-    nohup "$PYTHON_BIN" app.py > "$APP_LOG" 2>&1 &
+    PORT="$port" nohup "$PYTHON_BIN" -m gunicorn app:app --bind "0.0.0.0:$port" --workers 4 --timeout 120 > "$APP_LOG" 2>&1 &
     echo $! > "$APP_PID_FILE"
     save_app_port "$port"
     
@@ -548,18 +553,19 @@ show_help() {
     echo " Usage"
     echo "----------------------------------------"
     echo ""
-    echo "  ./start.sh              Interactive mode (asks for ports)"
-    echo "  ./start.sh start        Start both services"
-    echo "  ./start.sh stop         Stop both services"
-    echo "  ./start.sh restart      Restart both services"
-    echo "  ./start.sh status       Show status of both services"
-    echo "  ./start.sh app          Start Iveras only (asks for port)"
-    echo "  ./start.sh app <port>   Start Iveras on specific port"
-    echo "  ./start.sh sf           Start SpiderFoot only (asks for port)"
-    echo "  ./start.sh sf <port>    Start SpiderFoot on specific port"
-    echo "  ./start.sh ports        Show configured ports"
-    echo "  ./start.sh setports     Reconfigure ports"
-    echo "  ./start.sh cleanup      Kill old instances only"
+    echo "  ./start.sh (i)           Interactive mode (start + port config)"
+    echo "  ./start.sh start (s)     Start both services"
+    echo "  ./start.sh stop (k)      Stop both services"
+    echo "  ./start.sh restart (r)   Restart both services"
+    echo "  ./start.sh status (st)   Show status of both services"
+    echo "  ./start.sh app (a)       Start Iveras only (asks for port)"
+    echo "  ./start.sh app <port>    Start Iveras on specific port"
+    echo "  ./start.sh sf            Start SpiderFoot only (asks for port)"
+    echo "  ./start.sh sf <port>     Start SpiderFoot on specific port"
+    echo "  ./start.sh ports (p)     Show configured ports"
+    echo "  ./start.sh setports      Reconfigure ports"
+    echo "  ./start.sh cleanup (cl)  Kill old instances only"
+    echo "  ./start.sh help (h)      Show this help"
     echo ""
     echo " Current Ports:"
     echo "  Iveras:    $(get_app_port)"
@@ -570,6 +576,8 @@ show_help() {
 #######################################
 # Main Command Handler
 #######################################
+
+clear
 
 case "${1:-interactive}" in
     interactive|i)
@@ -620,10 +628,10 @@ case "${1:-interactive}" in
         echo "  Iveras:    $(get_app_port)"
         echo "  SpiderFoot: $(get_sf_port)"
         ;;
-    setports|c)
+    setports)
         ask_ports
         ;;
-    cleanup|c)
+    cleanup|cl)
         cleanup_old_instances
         ;;
     help|h|--help|-h)

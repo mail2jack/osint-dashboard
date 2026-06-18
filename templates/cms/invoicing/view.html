@@ -176,7 +176,7 @@ function closePaidModal() {
 function submitPaidForm(e) {
     e.preventDefault();
     const form = e.target;
-    fetch(form.action, {
+    apiFetch(form.action, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -197,7 +197,7 @@ function submitPaidForm(e) {
 function cancelInvoice() {
     if (!confirm('{{ _("Weet je zeker dat je deze factuur wilt annuleren?") }}')) return;
     const reason = prompt('{{ _("Reden voor annuleren (optioneel):") }}') || '';
-    fetch('{{ url_for("cms.invoice_cancel", invoice_id=invoice.id) }}', {
+    apiFetch('{{ url_for("cms.invoice_cancel", invoice_id=invoice.id) }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -215,7 +215,7 @@ function confirmSend(e) {
     if (!confirm('{{ _("Weet je zeker dat je deze factuur wilt verzenden?") }}')) return;
     const form = e.target;
     const csrf = form.querySelector('input[name="csrf_token"]').value;
-    fetch(form.action, {
+    apiFetch(form.action, {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrf

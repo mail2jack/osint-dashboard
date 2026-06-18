@@ -254,7 +254,7 @@ function createKey(btn) {
     if (!name) { alert('Please enter a key name.'); return; }
     if (!scopes.length) { alert('Select at least one scope.'); return; }
 
-    fetch('{{ url_for("cms.api_create_api_key") }}', {
+    apiFetch('{{ url_for("cms.api_create_api_key") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -274,14 +274,14 @@ function createKey(btn) {
 
 function deactivateKey(btn, id) {
     if (!confirm('Deactivate this API key?')) return;
-    fetch('{{ url_for("cms.api_deactivate_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
+    apiFetch('{{ url_for("cms.api_deactivate_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}
     }).then(r => r.json()).then(() => location.reload());
 }
 
 function activateKey(btn, id) {
-    fetch('{{ url_for("cms.api_activate_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
+    apiFetch('{{ url_for("cms.api_activate_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}
     }).then(r => r.json()).then(() => location.reload());
@@ -289,7 +289,7 @@ function activateKey(btn, id) {
 
 function deleteKey(btn, id) {
     if (!confirm('Delete this API key? This cannot be undone.')) return;
-    fetch('{{ url_for("cms.api_delete_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
+    apiFetch('{{ url_for("cms.api_delete_api_key", key_id="__ID__") }}'.replace('__ID__', id), {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'}
     }).then(r => r.json()).then(() => location.reload());

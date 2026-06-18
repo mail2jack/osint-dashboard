@@ -11,6 +11,8 @@ from ..validation import validate, SetCaseParentSchema, TransitionCaseSchema
 from ..models import db, Case, AuditLog, CaseStatus
 from ..auth import roles_required, case_access_required, case_edit_required
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,15 +32,15 @@ def set_case_parent(case_id: str) -> flask.Response:
     if parent_id:
         parent = db.session.get(Case, parent_id)
         if not parent or parent.is_deleted:
-            return jsonify({"error": "Parent case not found"}), 404
+            return api_error("Parent case not found", 404)
 
         if parent_id == case_id:
-            return jsonify({"error": "A case cannot be its own parent"}), 400
+            return api_error("A case cannot be its own parent", 400)
 
         current = parent
         while current and current.parent_case_id:
             if current.parent_case_id == case_id:
-                return jsonify({"error": "This would create a circular reference"}), 400
+                return api_error("This would create a circular reference", 400)
             current = current.parent_case
 
         old_parent_id = case.parent_case_id
@@ -80,7 +82,7 @@ def set_case_parent(case_id: str) -> flask.Response:
         )
         db.session.commit()
 
-        return jsonify({"message": "Parent case removed"})
+        return api_success({}, "Parent case removed")
 
 
 @cms_bp.route("/api/cases/search")
@@ -175,7 +177,6 @@ def get_case_audit_log_api(case_id: str) -> flask.Response:
 
 
 @cms_bp.route("/cases/<case_id>/transition", methods=["POST"])
-@csrf.exempt
 @login_required
 @case_access_required
 @case_edit_required
@@ -187,14 +188,14 @@ def transition_case(case_id: str) -> flask.Response:
 
     new_status = data.get("status")
     if not new_status:
-        return jsonify({"error": "Status is required"}), 400
+        return api_error("Status is required", 400)
 
     old_status = case.status
 
     if new_status == CaseStatus.CLOSED.value:
         reason = data.get("closure_reason")
         if not reason:
-            return jsonify({"error": "Closure reason is required"}), 400
+            return api_error("Closure reason is required", 400)
         case.closure_reason = reason
 
     if (
@@ -203,7 +204,7 @@ def transition_case(case_id: str) -> flask.Response:
     ):
         reason = data.get("reopened_reason")
         if not reason:
-            return jsonify({"error": "Reopening reason is required"}), 400
+            return api_error("Reopening reason is required", 400)
         case.reopened_reason = reason
         case.reopened_at = datetime.now(timezone.utc)
         case.reopened_by = current_user.id

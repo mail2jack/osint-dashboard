@@ -20,6 +20,8 @@ from ..models import (
 from ..auth import admin_required
 from ..validation import validate, SaveSettingsSchema
 
+from .response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,15 +33,16 @@ def settings() -> str:
     search_q = request.args.get("q", "").strip()
 
     categories = {
-        "api_keys": {"name": "🔑 API Keys", "icon": "🔑"},
-        "search": {"name": "🔍 Search", "icon": "🔍"},
-        "general": {"name": "⚙️ General", "icon": "⚙️"},
-        "security": {"name": "🔒 Security", "icon": "🔒"},
-        "email": {"name": "📧 Email", "icon": "📧"},
-        "appearance": {"name": "🎨 Appearance", "icon": "🎨"},
-        "feature_flags": {"name": "🚩 Feature Flags", "icon": "🚩"},
-        "ai": {"name": "🤖 AI Provider", "icon": "🤖"},
-        "telegram": {"name": "📱 Telegram Bot", "icon": "📱"},
+        "api_keys": {"name": "🔑 API Keys", "icon": "🔑", "group": "integrations"},
+        "search": {"name": "🔍 Search", "icon": "🔍", "group": "integrations"},
+        "email": {"name": "📧 Email", "icon": "📧", "group": "integrations"},
+        "telegram": {"name": "📱 Telegram Bot", "icon": "📱", "group": "integrations"},
+        "spiderfoot": {"name": "🕷️ SpiderFoot", "icon": "🕷️", "group": "integrations"},
+        "ai": {"name": "🤖 AI Provider", "icon": "🤖", "group": "integrations"},
+        "general": {"name": "⚙️ General", "icon": "⚙️", "group": "system"},
+        "security": {"name": "🔒 Security", "icon": "🔒", "group": "system"},
+        "appearance": {"name": "🎨 Appearance", "icon": "🎨", "group": "system"},
+        "feature_flags": {"name": "🚩 Feature Flags", "icon": "🚩", "group": "system"},
     }
 
     is_platform_cat = False
@@ -334,7 +337,7 @@ def reset_platform_setting(setting_id: str) -> flask.Response:
         description=f"Reset platform setting: {setting.key}",
     )
     db.session.commit()
-    return jsonify({"message": "Platform setting reset to default"})
+    return api_success({}, "Platform setting reset to default")
 
 
 @cms_bp.route("/api/settings/<setting_id>/reset", methods=["POST"])
@@ -362,7 +365,7 @@ def reset_setting_api(setting_id: str) -> flask.Response:
     # Reinitialize to get default value
     init_default_settings()
 
-    return jsonify({"message": "Setting reset to default"})
+    return api_success({}, "Setting reset to default")
 
 
 @cms_bp.route("/settings/read-audit")
@@ -448,7 +451,7 @@ def dismiss_anomaly(log_id: str) -> flask.Response:
     log.is_anomaly = False
     log.anomaly_reason = ""
     db.session.commit()
-    return jsonify({"message": "Anomaly dismissed"})
+    return api_success({}, "Anomaly dismissed")
 
 
 @cms_bp.route("/api/login-logs/purge", methods=["POST"])
@@ -461,7 +464,7 @@ def purge_login_logs() -> flask.Response:
     deleted = LoginLog.query.filter(LoginLog.created_at < cutoff).delete()
     if deleted:
         db.session.commit()
-    return jsonify({"message": f"Deleted {deleted} login log(s)"})
+    return api_success({}, f"Deleted {deleted} login log(s)")
 
 
 @cms_bp.route("/settings/api-keys")
@@ -497,10 +500,10 @@ def api_create_api_key() -> flask.Response:
     raw_scopes = data.get("scopes", ["read"])
 
     if not user_id or not name:
-        return jsonify({"error": "user_id and name are required"}), 400
+        return api_error("user_id and name are required", 400)
     user = db.session.get(User, user_id)
     if not user:
-        return jsonify({"error": "User not found"}), 404
+        return api_error("User not found", 404)
 
     valid_scopes = {"read", "write", "admin"}
     scopes = [s for s in raw_scopes if s in valid_scopes]
@@ -549,7 +552,7 @@ def api_deactivate_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id) or abort(404)
     key.is_active = False
     db.session.commit()
-    return jsonify({"message": "API key deactivated"})
+    return api_success({}, "API key deactivated")
 
 
 @cms_bp.route("/api/api-keys/<key_id>/activate", methods=["POST"])
@@ -562,7 +565,7 @@ def api_activate_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id) or abort(404)
     key.is_active = True
     db.session.commit()
-    return jsonify({"message": "API key reactivated"})
+    return api_success({}, "API key reactivated")
 
 
 @cms_bp.route("/api/api-keys/<key_id>/delete", methods=["POST"])
@@ -575,7 +578,7 @@ def api_delete_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id) or abort(404)
     db.session.delete(key)
     db.session.commit()
-    return jsonify({"message": "API key deleted"})
+    return api_success({}, "API key deleted")
 
 
 # =============================================================================
@@ -636,9 +639,9 @@ def create_tenant() -> flask.Response:
     name = data.get("name", "").strip()
     slug = data.get("slug", "").strip()
     if not name or not slug:
-        return jsonify({"error": "name and slug are required"}), 400
+        return api_error("name and slug are required", 400)
     if Tenant.query.filter_by(slug=slug).first():
-        return jsonify({"error": "Slug already exists"}), 409
+        return api_error("Slug already exists", 409)
     import uuid as _uuid
 
     tenant = Tenant(
@@ -664,10 +667,10 @@ def delete_tenant(tenant_id: str) -> flask.Response:
         abort(403)
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
     if not tenant:
-        return jsonify({"error": "Tenant not found"}), 404
+        return api_error("Tenant not found", 404)
     db.session.delete(tenant)
     db.session.commit()
-    return jsonify({"message": f"Tenant '{tenant.name}' deleted"})
+    return api_success({}, f"Tenant '{tenant.name}' deleted")
 
 
 @cms_bp.route("/api/tenants/<tenant_id>/toggle", methods=["POST"])

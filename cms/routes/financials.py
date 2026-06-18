@@ -11,6 +11,8 @@ from ..auth import senior_required, case_access_required
 from ..encryption_utils import encryptor
 from ..validation import validate, CreateFinancialSchema, VerifyFinancialSchema
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,7 +25,7 @@ def create_financial() -> flask.Response:
     required = ["case_id", "transaction_date", "amount"]
     for field in required:
         if not request.validated_data.get(field):
-            return jsonify({"error": f"{field} is required"}), 400
+            return api_error(f"{field} is required", 400)
 
     from datetime import date
 

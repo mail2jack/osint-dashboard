@@ -88,7 +88,7 @@
 
         async function generatePw() {
             try {
-                const resp = await fetch('{{ url_for("users.generate_password_api") }}');
+                const resp = await apiFetch('{{ url_for("users.generate_password_api") }}');
                 const data = await resp.json();
                 document.getElementById('password').value = data.password;
                 document.querySelector('input[name="generated_password"]').value = data.password;

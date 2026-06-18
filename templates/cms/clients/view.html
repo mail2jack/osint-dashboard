@@ -207,7 +207,7 @@
     function archiveClient(btn, clientId) {
         if (!confirm({{ _('Are you sure you want to archive this client?')|tojson }})) return;
         
-        fetch('/cms/clients/' + clientId + '/archive', {
+        apiFetch('/cms/clients/' + clientId + '/archive', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -228,7 +228,7 @@
     function restoreClient(btn, clientId) {
         if (!confirm({{ _('Weet u zeker dat u deze client wilt herstellen?')|tojson }})) return;
         
-        fetch('/cms/clients/' + clientId + '/restore', {
+        apiFetch('/cms/clients/' + clientId + '/restore', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -257,7 +257,7 @@
         resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Contacting PDOK BAG...')|tojson }} + '</span>';
 
         try {
-            const resp = await fetch('/cms/api/kadaster-lookup', {
+            const resp = await apiFetch('/cms/api/kadaster-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ address_id: addrId })
@@ -319,7 +319,7 @@
         resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Contacting politie.nl...')|tojson }} + '</span>';
 
         try {
-            const resp = await fetch('/cms/api/politiebureau-lookup', {
+            const resp = await apiFetch('/cms/api/politiebureau-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ address_id: addrId })
@@ -376,7 +376,7 @@
         resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Looking up phone number...')|tojson }} + '</span>';
 
         try {
-            const resp = await fetch('/cms/api/phone-lookup', {
+            const resp = await apiFetch('/cms/api/phone-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone: phone })
@@ -427,7 +427,7 @@
         resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Checking email...')|tojson }} + '</span>';
 
         try {
-            const resp = await fetch('/cms/api/email-check', {
+            const resp = await apiFetch('/cms/api/email-check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email })
@@ -514,7 +514,7 @@
         resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Contacting politie.nl...')|tojson }} + '</span>';
 
         try {
-            const resp = await fetch('/cms/api/politiebureau-lookup', {
+            const resp = await apiFetch('/cms/api/politiebureau-lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query: query })

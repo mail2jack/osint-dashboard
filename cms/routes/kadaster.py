@@ -14,6 +14,8 @@ from ..feature_flags import tool_enabled
 from curl_cffi import requests as curl_requests
 from cms.services.http_utils import jitter_sleep
 
+from .response import api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,7 +55,7 @@ def kadaster_lookup() -> flask.Response:
         query = " ".join(parts)
 
     if not query:
-        return jsonify({"error": "No address provided"}), 400
+        return api_error("No address provided", 400)
 
     try:
         pdok_url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free"
