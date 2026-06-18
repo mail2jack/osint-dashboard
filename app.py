@@ -292,6 +292,11 @@ from cms import create_cms_module
 create_cms_module(app)
 logger.info("CMS initialized successfully")
 
+# Stripe webhook blueprint — registered after CMS to be CSRF-exempt
+from cms.routes.stripe_billing import stripe_bp
+
+app.register_blueprint(stripe_bp)
+
 # Internationalization (i18n) via Flask-Babel
 from cms.i18n import init_i18n
 

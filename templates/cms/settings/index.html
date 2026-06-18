@@ -627,10 +627,38 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                {% if plan_info.subscription_status and plan_info.subscription_status != 'canceled' %}
+                <div style="margin-top:1rem;padding:0.5rem 1rem;background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+                    <span style="font-size:0.85rem;">
+                        <span style="color:#16a34a;font-weight:600;">●</span> {{ _('Subscription:') }}
+                        <strong>{{ plan_info.subscription_status }}</strong>
+                        {% if current_user.is_admin and plan_info.stripe_configured and plan_info.stripe_customer_id %}
+                        <a href="{{ url_for('cms.billing_portal') }}" style="margin-left:0.75rem;font-size:0.8rem;color:#1a73e8;">{{ _('Manage Billing') }}</a>
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+
                 {% if plan_info.tier in ('free', 'starter') %}
-                <div style="margin-top:1.5rem;padding:1rem;background:var(--table-hover);border-radius:8px;text-align:center;">
-                    <p style="margin:0 0 0.5rem 0;font-size:0.9rem;">{{ _('Upgrade to unlock more features and higher limits.') }}</p>
-                    <a href="#" class="btn" style="display:inline-block;padding:0.5rem 1.5rem;background:var(--accent-primary);color:white;text-decoration:none;border-radius:6px;">{{ _('Contact Sales') }}</a>
+                <div style="margin-top:1.5rem;padding:1rem;background:var(--table-hover);border-radius:8px;">
+                    <p style="margin:0 0 0.75rem 0;font-size:0.9rem;text-align:center;">{{ _('Upgrade to unlock more features and higher limits.') }}</p>
+                    <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+                        {% if plan_info.stripe_configured %}
+                        {% for upgrade_tier in ['starter', 'professional'] %}
+                        {% if upgrade_tier != plan_info.tier %}
+                        <form method="POST" action="{{ url_for('cms.create_checkout_session') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="tier" value="{{ upgrade_tier }}">
+                            <button type="submit" class="btn" style="padding:0.5rem 1.5rem;background:var(--accent-primary);color:white;border:none;border-radius:6px;cursor:pointer;">
+                                {{ _('Upgrade to %(tier)s', tier=upgrade_tier|title) }}
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% endfor %}
+                        {% else %}
+                        <a href="#" class="btn" style="display:inline-block;padding:0.5rem 1.5rem;background:var(--accent-primary);color:white;text-decoration:none;border-radius:6px;">{{ _('Contact Sales') }}</a>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endif %}
 

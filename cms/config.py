@@ -43,6 +43,11 @@ class Config:
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "/var/uploads/cms")
     ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx", "png", "jpg", "jpeg"}
 
+    # Stripe
+    STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+    STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+    STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
     # Pagination
     CMS_ITEMS_PER_PAGE = 20
     CMS_MAX_SEARCH_RESULTS = 100

@@ -2760,6 +2760,10 @@ class Tenant(db.Model):
     domain = db.Column(db.String(255), nullable=True, unique=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     tier = db.Column(db.String(20), default="free", nullable=False)
+    stripe_customer_id = db.Column(db.String(255), nullable=True, index=True)
+    stripe_subscription_id = db.Column(db.String(255), nullable=True)
+    subscription_status = db.Column(db.String(50), default="incomplete", nullable=False)
+    current_period_end = db.Column(db.DateTime, nullable=True)
     owner_id = db.Column(
         db.String(36), db.ForeignKey("users.id"), nullable=True, index=True
     )
@@ -2788,6 +2792,12 @@ class Tenant(db.Model):
             "domain": self.domain,
             "is_active": self.is_active,
             "tier": self.tier,
+            "stripe_customer_id": self.stripe_customer_id,
+            "stripe_subscription_id": self.stripe_subscription_id,
+            "subscription_status": self.subscription_status,
+            "current_period_end": self.current_period_end.isoformat()
+            if self.current_period_end
+            else None,
             "owner_id": self.owner_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

@@ -46,6 +46,8 @@ werkzeug>=2.0.0
 pyotp>=2.9.0
 qrcode[pil]>=7.4.0
 
+stripe>=10.0.0
+
 sentry-sdk>=2.0.0
 
 # SpiderFoot OSINT Integration

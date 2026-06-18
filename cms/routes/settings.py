@@ -2,7 +2,16 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 import flask
-from flask import request, jsonify, render_template, abort, flash, redirect, url_for
+from flask import (
+    request,
+    jsonify,
+    render_template,
+    abort,
+    flash,
+    redirect,
+    url_for,
+    current_app,
+)
 from flask_login import login_required, current_user
 
 from . import cms_bp
@@ -62,12 +71,16 @@ def settings() -> str:
         case_count = Case.query.filter_by(
             tenant_id=current_user.tenant_id, is_deleted=False
         ).count()
+        tenant = current_user.tenant
         plan_info = {
             "tier": tier,
             "tier_display": TIER_DISPLAY.get(tier, tier.title()),
             "limits": limits,
             "user_count": user_count,
             "case_count": case_count,
+            "subscription_status": tenant.subscription_status if tenant else None,
+            "stripe_customer_id": tenant.stripe_customer_id if tenant else None,
+            "stripe_configured": bool(current_app.config.get("STRIPE_SECRET_KEY")),
         }
     elif category == "platform":
         if not current_user.is_super_admin:
