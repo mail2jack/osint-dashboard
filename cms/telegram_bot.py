@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 import threading
@@ -501,65 +500,57 @@ async def cmd_status(update: Update, _context: ContextTypes.DEFAULT_TYPE):
 # ---------------------------------------------------------------------------
 
 
-_POLLING_RETRIES = 6
-_POLLING_RETRY_DELAY = 20  # seconds
+_BOT_START_DELAY = 5  # seconds to wait between retrying on Conflict
 
 
-def _run_polling_with_retry(app, loop):
-    """Start polling with retry on ``telegram.error.Conflict``.
+def _await_clear(token: str) -> None:
+    """Block until Telegram no longer returns Conflict for this token.
 
-    A stale ``getUpdates`` long-poll session on Telegram's side can
-    persist up to ~60 s after the previous bot process is killed.
-
-    Returns the (possibly re-created) Application.
+    ``getUpdates`` long-poll sessions can linger on Telegram's side for
+    up to ~60 s after the previous polling process stops.  This helper
+    calls ``getUpdates`` with a 1 s timeout and retries when Telegram
+    returns error code 409.
     """
-    from telegram.error import Conflict as _Conflict
+    import time as _time
 
-    for attempt in range(_POLLING_RETRIES):
+    retries = 12  # up to ~1 min with 5 s gaps
+
+    for attempt in range(retries):
         try:
-            loop.run_until_complete(
-                app.updater.start_polling(
-                    allowed_updates=Update.ALL_TYPES,
-                    drop_pending_updates=True,
-                )
+            resp = httpx.get(
+                f"https://api.telegram.org/bot{token}/getUpdates",
+                params={"timeout": 1, "limit": 1},
+                timeout=10,
             )
-            return app
-        except _Conflict:
-            if attempt == _POLLING_RETRIES - 1:
-                raise
-            logger.warning(
-                "Telegram Conflict (attempt %d/%d), retrying in %ds …",
-                attempt + 1,
-                _POLLING_RETRIES,
-                _POLLING_RETRY_DELAY,
-            )
-            import time as _time
+            data = resp.json()
+            if data.get("ok", False):
+                return
+            if data.get("error_code") != 409:
+                return  # unexpected error — let PTB handle it
+        except httpx.RequestError:
+            return  # network glitch — let PTB handle it
 
-            _time.sleep(_POLLING_RETRY_DELAY)
-            _app_new = Application.builder().token(app.bot.token).build()
-            for h in app.handlers.get(0, []):
-                _app_new.add_handler(h)
-            if getattr(app, "_error_handlers", None):
-                for eh in app._error_handlers:
-                    _app_new.add_error_handler(eh)
-            app = _app_new
-            global _bot_app
-            _bot_app = app
-            loop.run_until_complete(app.initialize())
-            loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
-    return app  # unreachable, but satisfies the return type
+        logger.warning(
+            "Telegram Conflict (await-clear attempt %d/%d), waiting %ds …",
+            attempt + 1,
+            retries,
+            _BOT_START_DELAY,
+        )
+        _time.sleep(_BOT_START_DELAY)
+
+    raise RuntimeError("Telegram session did not clear after 12 attempts")
 
 
 def run_bot_polling(token: str):
-    """Run the bot's event loop in the calling thread (blocking).
+    """Run the bot via PTB's ``Application.run_polling()`` (blocking).
 
-    Uses manual start/stop lifecycle instead of ``run_polling()`` to avoid
-    ``set_wakeup_fd`` errors when signal handlers are registered
-    in a non-main thread.
+    Since the bot is now a standalone systemd service (main thread), the
+    original workaround for ``set_wakeup_fd`` in non-main threads is no
+    longer needed.
     """
     global _bot_app
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+
+    _await_clear(token)
 
     app = Application.builder().token(token).build()
     _bot_app = app
@@ -575,24 +566,12 @@ def run_bot_polling(token: str):
     app.add_handler(CommandHandler("status", cmd_status))
 
     logger.info("Telegram bot: starting polling ...")
-    try:
-        loop.run_until_complete(app.initialize())
-        loop.run_until_complete(app.bot.delete_webhook(drop_pending_updates=True))
-        app = _run_polling_with_retry(app, loop)
-        _bot_app = app
-        loop.run_until_complete(app.start())
-        loop.run_forever()
-    except asyncio.CancelledError:
-        logger.info("Telegram bot: polling cancelled")
-    except Exception as exc:
-        logger.error("Telegram bot polling failed: %s", exc, exc_info=True)
-    finally:
-        try:
-            loop.run_until_complete(app.shutdown())
-        except Exception:
-            pass
-        _bot_app = None
-        logger.info("Telegram bot: polling stopped")
+    app.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True,
+    )
+    _bot_app = None
+    logger.info("Telegram bot: polling stopped")
 
 
 def start_bot(app):
