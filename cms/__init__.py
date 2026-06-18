@@ -298,17 +298,6 @@ def create_cms_module(app: Flask):
                     linked,
                 )
 
-        # Start Telegram bot in background thread
-        try:
-            from .telegram_bot import start_bot
-
-            start_bot(app)
-        except Exception as e:
-            app.logger.error("Failed to start Telegram bot: %s", e)
-            import traceback
-
-            app.logger.debug(traceback.format_exc())
-
     return app
 
 

@@ -1,0 +1,24 @@
+[Unit]
+Description=Iveras Telegram Bot
+Documentation=https://github.com/anomalyco/osint-dashboard
+After=network.target osint-dashboard.service
+Requires=osint-dashboard.service
+
+[Service]
+Type=simple
+User=osint
+Group=osint
+WorkingDirectory=/opt/osint-dashboard
+Environment="PATH=/opt/osint-dashboard/venv/bin"
+ExecStart=/opt/osint-dashboard/venv/bin/python3 /opt/osint-dashboard/scripts/run_bot.py
+Restart=always
+RestartSec=10s
+
+# Security hardening
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

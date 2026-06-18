@@ -61,7 +61,9 @@ _encrypt() {
     local dst="$2"
     gpg --symmetric --batch --passphrase-file "$KEY_FILE" \
         --cipher-algo AES256 --output "$dst" "$src" 2>/dev/null
+    local rc=$?
     rm -f "$src"
+    return $rc
 }
 
 _log_error() { echo -e "  ❌ $1"; ERRORS=$((ERRORS + 1)); }
