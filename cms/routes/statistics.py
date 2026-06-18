@@ -205,6 +205,7 @@ def statistics() -> str:
     now = datetime.now(timezone.utc)
     overdue_reminders = (
         Reminder.query.filter(
+            Reminder.tenant_id == current_user.tenant_id,
             Reminder.is_deleted == False,
             Reminder.is_completed == False,
             Reminder.reminder_date < now,
@@ -216,6 +217,7 @@ def statistics() -> str:
 
     upcoming_reminders = (
         Reminder.query.filter(
+            Reminder.tenant_id == current_user.tenant_id,
             Reminder.is_deleted == False,
             Reminder.is_completed == False,
             Reminder.reminder_date >= now,

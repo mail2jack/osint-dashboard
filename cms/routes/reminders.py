@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 
 
 def _can_access(reminder):
-    """Check if current user can access this reminder (own or admin)."""
+    """Check if current user can access this reminder (own tenant, own or admin)."""
+    if reminder.tenant_id != current_user.tenant_id:
+        return False
     if current_user.is_admin:
         return True
     return (
@@ -37,9 +39,10 @@ def _can_access(reminder):
 
 
 def _scope_query(query):
-    """Limit query to reminders the current user can see (non-admin only)."""
+    """Limit query to reminders in the current tenant (and user-scoped for non-admins)."""
+    query = query.filter(Reminder.tenant_id == current_user.tenant_id)
     if not current_user.is_admin:
-        return query.filter(
+        query = query.filter(
             or_(
                 Reminder.assigned_to == current_user.id,
                 Reminder.created_by == current_user.id,
@@ -132,8 +135,8 @@ def create_reminder() -> flask.Response:
     subject = db.session.get(Subject, subject_id) if subject_id else None
     client = db.session.get(Client, client_id) if client_id else None
 
-    # Get users for assignment dropdown
-    users = User.query.filter_by(is_active=True).all()
+    # Get users for assignment dropdown (same tenant only)
+    users = User.query.filter_by(tenant_id=current_user.tenant_id, is_active=True).all()
 
     # Calculate default reminder date (1 hour from now)
     default_reminder = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -259,7 +262,7 @@ def edit_reminder(reminder_id: str) -> flask.Response:
     reminder = db.session.get(Reminder, reminder_id) or abort(404)
     if not _can_access(reminder):
         abort(404)
-    users = User.query.filter_by(is_active=True).all()
+    users = User.query.filter_by(tenant_id=current_user.tenant_id, is_active=True).all()
 
     if request.method == "POST":
         data = request.validated_data
@@ -434,6 +437,7 @@ def api_check_overdue() -> flask.Response:
     now = datetime.now(timezone.utc)
 
     overdue = Reminder.query.filter(
+        Reminder.tenant_id == current_user.tenant_id,
         Reminder.is_deleted == False,
         Reminder.is_completed == False,
         Reminder.reminder_date < now,
