@@ -149,17 +149,22 @@ def signup() -> flask.Response:
         if User.query.filter_by(username=username).first():
             username = f"{username}_{secrets.token_hex(2)}"
 
+        is_first_user = tenant.owner_id is None
+        role = "owner" if is_first_user else "investigator"
         user = User(
             username=username,
             email=email,
             full_name=validated.full_name.strip(),
-            role="investigator",
+            role=role,
             tenant_id=tenant.id,
             is_super_admin=False,
             is_active=True,
         )
         user.set_password(validated.password)
         db.session.add(user)
+        db.session.flush()
+        if is_first_user:
+            tenant.owner_id = user.id
         db.session.commit()
 
         notify_signup(username=username, email=email, org_name=tenant.name)
