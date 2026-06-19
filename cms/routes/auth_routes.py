@@ -39,6 +39,7 @@ from ..auth import (
     ACCOUNT_LOCKOUT_MINUTES,
     admin_required,
     roles_required,
+    ensure_tenant_access,
 )
 from ..models import db, User, AuditLog, Case, Tenant, Invitation
 from ..validation import validate
@@ -666,6 +667,7 @@ def view_user(user_id: str) -> str:
         return jsonify({"error": "Access denied"}), 403
 
     user = db.session.get(User, user_id) or abort(404)
+    ensure_tenant_access(user)
     return render_template("cms/users/view.html", user=user)
 
 
@@ -677,6 +679,7 @@ def user_activity(user_id: str) -> str:
         return jsonify({"error": "Access denied"}), 403
 
     user = db.session.get(User, user_id) or abort(404)
+    ensure_tenant_access(user)
 
     page = request.args.get("page", 1, type=int)
     per_page = 50

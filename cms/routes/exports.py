@@ -339,10 +339,15 @@ def export_cases_csv() -> Response:
             current_user.username,
         )
 
+    tenant_case_ids = db.session.query(Case.id).filter(
+        Case.tenant_id == current_user.tenant_id,
+        Case.is_deleted == False,
+    )
     subject_counts = dict(
         db.session.query(
             case_subjects.c.case_id, func.count(case_subjects.c.subject_id)
         )
+        .filter(case_subjects.c.case_id.in_(tenant_case_ids))
         .group_by(case_subjects.c.case_id)
         .all()
     )
