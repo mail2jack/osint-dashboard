@@ -261,7 +261,7 @@ class EditUserSchema(BaseModel):
     full_name: str | None = None
     email: str | None = None
     role: str | None = None
-    is_active: Any = None
+    is_active: bool | None = None
     password: str | None = None
     tenant_id: str | None = None
 
