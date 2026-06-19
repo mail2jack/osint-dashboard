@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from .. import csrf
-from ..models import db, Finding, AuditLog
+from ..models import db, Finding, AuditLog, Case
 from ..auth import roles_required
 from ..validation import validate, CreateFindingSchema
 
@@ -27,6 +27,13 @@ def create_finding() -> flask.Response:
     for field in required:
         if not request.validated_data.get(field):
             return api_error(f"{field} is required", 400)
+
+    case = Case.query.filter_by(
+        id=request.validated_data["case_id"],
+        tenant_id=current_user.tenant_id,
+    ).first()
+    if not case:
+        return api_error("Case not found", 404)
 
     finding = Finding(
         case_id=request.validated_data["case_id"],

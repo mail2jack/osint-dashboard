@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Subject, AuditLog
-from ..auth import roles_required, subject_access_required
+from ..auth import roles_required, subject_access_required, apply_tenant_filter
 from ..image_validation import validate_image_file
 from ..validation import validate, SaveFaceEncodingSchema, CompareFacesSchema
 
@@ -146,10 +146,13 @@ def compare_faces() -> flask.Response:
     threshold = request.validated_data.get("threshold", 0.6)
     limit = request.validated_data.get("limit", 20)
 
-    subjects_with_faces = Subject.query.filter(
-        Subject.face_encoding.isnot(None),
-        Subject.is_deleted == False,
-        Subject.photo_path.isnot(None),
+    subjects_with_faces = apply_tenant_filter(
+        Subject.query.filter(
+            Subject.face_encoding.isnot(None),
+            Subject.is_deleted == False,
+            Subject.photo_path.isnot(None),
+        ),
+        Subject,
     ).all()
 
     def euclidean_distance(enc1, enc2):
@@ -186,10 +189,13 @@ def compare_faces() -> flask.Response:
 @login_required
 def get_subjects_with_faces() -> flask.Response:
     """Get list of subjects with face encodings for face-api.js matching."""
-    subjects = Subject.query.filter(
-        Subject.face_encoding.isnot(None),
-        Subject.is_deleted == False,
-        Subject.photo_path.isnot(None),
+    subjects = apply_tenant_filter(
+        Subject.query.filter(
+            Subject.face_encoding.isnot(None),
+            Subject.is_deleted == False,
+            Subject.photo_path.isnot(None),
+        ),
+        Subject,
     ).all()
 
     return jsonify(

@@ -9,7 +9,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from .. import csrf
 from ..models import db, Subject, Finding, AuditLog
-from ..auth import roles_required
+from ..auth import roles_required, ensure_tenant_access
 from ..encryption_utils import encryptor
 from ..validation import (
     validate,
@@ -64,6 +64,7 @@ def vessel_lookup() -> flask.Response:
         if subject_id and result.get("found"):
             subject = db.session.get(Subject, subject_id)
             if subject:
+                ensure_tenant_access(subject)
                 result["suggested_update"] = {
                     "imo_number": result.get("imo"),
                     "mmsi": result.get("mmsi"),
@@ -92,6 +93,7 @@ def update_subject_from_vessel() -> flask.Response:
     subject = db.session.get(Subject, data["subject_id"])
     if not subject:
         return api_error("Subject not found", 404)
+    ensure_tenant_access(subject)
     if subject.subject_type != "vessel":
         return api_error("Subject is not a vessel", 400)
 

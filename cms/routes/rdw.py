@@ -9,7 +9,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from .. import csrf
 from ..models import db, Subject, Comment, AuditLog
-from ..auth import roles_required
+from ..auth import roles_required, ensure_tenant_access
 from ..validation import validate, RDWCheckSchema, RDWUpdateSchema
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
@@ -147,6 +147,7 @@ def update_subject_from_rdw(subject_id: str) -> flask.Response:
     subject = db.session.get(Subject, subject_id)
     if not subject:
         return api_error("Subject not found", 404)
+    ensure_tenant_access(subject)
     if subject.subject_type != "vehicle":
         return api_error("Subject is not a vehicle", 400)
 

@@ -35,9 +35,11 @@ def bulk_delete_cases() -> flask.Response:
     if not ids or len(ids) > 100:
         return api_error("Provide a list of up to 100 case IDs", 400)
     now = datetime.now(timezone.utc)
-    count = Case.query.filter(Case.id.in_(ids), Case.is_deleted == False).update(
-        {"is_deleted": True, "deleted_at": now}, synchronize_session=False
-    )
+    count = Case.query.filter(
+        Case.id.in_(ids),
+        Case.is_deleted == False,
+        Case.tenant_id == current_user.tenant_id,
+    ).update({"is_deleted": True, "deleted_at": now}, synchronize_session=False)
     db.session.commit()
     AuditLog.log(
         user_id=current_user.id,
@@ -184,10 +186,16 @@ def cases() -> str:
 @validate(CreateCaseSchema)
 def create_case() -> flask.Response:
     """Create a new case."""
-    clients = Client.query.filter_by(is_deleted=False, is_active=True).limit(500).all()
+    clients = (
+        Client.query.filter_by(is_deleted=False, is_active=True)
+        .filter(Client.tenant_id == current_user.tenant_id)
+        .limit(500)
+        .all()
+    )
     investigators = User.query.filter(
         User.is_active == True,
         User.role.in_(["admin", "senior_investigator", "junior_investigator"]),
+        User.tenant_id == current_user.tenant_id,
     ).all()
 
     is_json = request.is_json
@@ -219,6 +227,8 @@ def create_case() -> flask.Response:
 
         client = db.session.get(Client, data["client_id"])
         if not client or client.is_deleted:
+            return _error("Invalid client")
+        if client.tenant_id != current_user.tenant_id:
             return _error("Invalid client")
 
         priority = data.get("priority", CasePriority.MEDIUM.value)
@@ -264,7 +274,10 @@ def create_case() -> flask.Response:
 
         if data.get("subject_ids"):
             subjects_map = {}
-            for s in Subject.query.filter(Subject.id.in_(data["subject_ids"])).all():
+            for s in Subject.query.filter(
+                Subject.id.in_(data["subject_ids"]),
+                Subject.tenant_id == current_user.tenant_id,
+            ).all():
                 subjects_map[s.id] = s
             for subject_id in data["subject_ids"]:
                 subject = subjects_map.get(subject_id)
@@ -326,6 +339,7 @@ def edit_case(case_id: str) -> flask.Response:
     investigators = User.query.filter(
         User.is_active == True,
         User.role.in_(["admin", "senior_investigator", "junior_investigator"]),
+        User.tenant_id == current_user.tenant_id,
     ).all()
     is_json = request.is_json
 
@@ -451,6 +465,8 @@ def edit_case(case_id: str) -> flask.Response:
 def archive_case(case_id: str) -> flask.Response:
     """Archive a closed case."""
     case = db.session.get(Case, case_id) or abort(404)
+    if case.tenant_id != current_user.tenant_id:
+        abort(404)
 
     if case.status != CaseStatus.CLOSED.value:
         return api_error("Only closed cases can be archived", 400)

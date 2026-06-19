@@ -10,6 +10,7 @@ from ..models import db, Address
 from ..validation import validate, PolitiebureauLookupSchema
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
+from ..auth import ensure_tenant_access
 from curl_cffi import requests as curl_requests
 from cms.services.http_utils import jitter_sleep
 
@@ -34,6 +35,7 @@ def politiebureau_lookup() -> flask.Response:
         addr = db.session.get(Address, address_id)
         if not addr:
             return api_error("Address not found", 404)
+        ensure_tenant_access(addr)
         addr.decrypt_fields()
         address_info = {
             "street": addr.street,

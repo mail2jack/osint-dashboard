@@ -11,6 +11,7 @@ from ..validation import validate, KadasterLookupSchema
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
 from ..feature_flags import tool_enabled
+from ..auth import ensure_tenant_access
 from curl_cffi import requests as curl_requests
 from cms.services.http_utils import jitter_sleep
 
@@ -35,6 +36,7 @@ def kadaster_lookup() -> flask.Response:
     if address_id and not data.get("street") and not data.get("zipcode"):
         addr = db.session.get(Address, address_id)
         if addr:
+            ensure_tenant_access(addr)
             addr.decrypt_fields()
             data["street"] = addr.street
             data["number"] = addr.number

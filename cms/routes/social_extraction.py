@@ -9,6 +9,7 @@ from flask_login import login_required
 from . import cms_bp
 from .. import csrf
 from ..models import db, Subject, Finding
+from ..auth import ensure_tenant_access
 from ..validation import validate, ExtractSocialIdSchema, UpdateSocialIdsSchema
 
 logger = logging.getLogger(__name__)
@@ -159,6 +160,8 @@ def extract_social_id() -> flask.Response:
     url = data.get("url")
     subject_id = data.get("subject_id")
     subject = db.session.get(Subject, subject_id) if subject_id else None
+    if subject:
+        ensure_tenant_access(subject)
 
     extracted = _extract_social_ids_from_url(url, subject=subject)
 
@@ -224,8 +227,10 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
     """Extract social media IDs from all findings linked to a subject."""
     from ..social_extractor import detect_platform
 
-    if not db.session.get(Subject, subject_id):
+    subject = db.session.get(Subject, subject_id)
+    if not subject:
         abort(404)
+    ensure_tenant_access(subject)
     findings = (
         Finding.query.filter_by(subject_id=subject_id)
         .filter(Finding.source_url.isnot(None))
@@ -287,6 +292,7 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
 def get_subject_social_ids(subject_id: str) -> flask.Response:
     """Get social media IDs for a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)
+    ensure_tenant_access(subject)
 
     return jsonify(
         {"subject_id": subject_id, "social_media_ids": subject.social_media_ids or {}}
@@ -299,6 +305,7 @@ def get_subject_social_ids(subject_id: str) -> flask.Response:
 def update_subject_social_ids(subject_id: str) -> flask.Response:
     """Update social media IDs for a subject (manual entry)."""
     subject = db.session.get(Subject, subject_id) or abort(404)
+    ensure_tenant_access(subject)
     data = request.validated_data
 
     # Merge with existing
