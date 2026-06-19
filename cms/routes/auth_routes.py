@@ -101,7 +101,14 @@ def signup() -> flask.Response:
             )
 
         email = validated.email.strip().lower()
-        if User.query.filter(db.func.lower(User.email) == email).first():
+
+        join_code = validated.join_code.strip().upper()
+        tenant = Tenant.query.filter_by(join_code=join_code, is_active=True).first()
+
+        existing_email_q = User.query.filter(db.func.lower(User.email) == email)
+        if tenant:
+            existing_email_q = existing_email_q.filter(User.tenant_id == tenant.id)
+        if existing_email_q.first():
             flash("An account with this email already exists.", "danger")
             return render_template(
                 "cms/signup.html",
@@ -116,8 +123,6 @@ def signup() -> flask.Response:
                 email=email,
             )
 
-        join_code = validated.join_code.strip().upper()
-        tenant = Tenant.query.filter_by(join_code=join_code, is_active=True).first()
         if not tenant:
             flash(
                 "Invalid or inactive tenant code. Please check your code and try again.",
@@ -147,7 +152,7 @@ def signup() -> flask.Response:
             )
 
         username = email.split("@")[0]
-        if User.query.filter_by(username=username).first():
+        if User.query.filter_by(username=username, tenant_id=tenant.id).first():
             username = f"{username}_{secrets.token_hex(2)}"
 
         is_first_user = tenant.owner_id is None
@@ -208,17 +213,17 @@ def login() -> flask.Response:
         try:
             validated = LoginSchema(**d)
         except Exception:
-            flash("Please enter username and password.", "warning")
+            flash("Please enter email and password.", "warning")
             return render_template("cms/login.html")
-        username = validated.username
+        email = validated.email.strip().lower()
         password = validated.password
         remember = validated.remember or False
 
-        if not username or not password:
-            flash("Please enter username and password.", "warning")
+        if not email or not password:
+            flash("Please enter email and password.", "warning")
             return render_template("cms/login.html")
 
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter_by(email=email).first()
 
         if (
             user
@@ -263,11 +268,11 @@ def login() -> flask.Response:
                 entity_id=user.id,
                 ip_address=request.remote_addr,
                 user_agent=request.user_agent.string,
-                description=f"Password verified for user {username}",
+                description=f"Password verified for {email}",
             )
             db.session.commit()
 
-            notify_login_success(username, request.remote_addr)
+            notify_login_success(email, request.remote_addr)
 
             session["_2fa_user_id"] = user.id
             session["_2fa_remember"] = remember
@@ -284,11 +289,11 @@ def login() -> flask.Response:
                     minutes=ACCOUNT_LOCKOUT_MINUTES
                 )
                 notify_account_locked(
-                    username, request.remote_addr, ACCOUNT_LOCKOUT_MINUTES
+                    email, request.remote_addr, ACCOUNT_LOCKOUT_MINUTES
                 )
         db.session.commit()
 
-        notify_login_failed(username, request.remote_addr)
+        notify_login_failed(email, request.remote_addr)
 
         if user:
             log_login_attempt(
@@ -300,7 +305,7 @@ def login() -> flask.Response:
 
         rate_limit_after_n(rate_key, max_attempts=3, retry_after=15)
 
-        flash("Invalid username or password.", "danger")
+        flash("Invalid email or password.", "danger")
 
     return render_template("cms/login.html")
 
@@ -328,7 +333,12 @@ def logout() -> flask.Response:
 @auth_bp.route("/set-password/<token>", methods=["GET", "POST"])
 def set_password(token) -> flask.Response:
     """Set/reset password using a token from email."""
-    user = User.query.filter(User.password_reset_token.isnot(None)).all()
+    user = User.query.filter(User.password_reset_token.isnot(None))
+    if current_user.is_authenticated:
+        from ..auth import apply_tenant_filter as _atf
+
+        user = _atf(user, User)
+    user = user.all()
     user = next((u for u in user if u.verify_reset_token(token)), None)
     if not user:
         flash("Invalid or expired password reset link.", "danger")
@@ -565,6 +575,7 @@ def setup_2fa() -> flask.Response:
 def reset_2fa(user_id) -> flask.Response:
     """Admin: reset 2FA for another user (forces re-setup on next login)."""
     user = db.session.get(User, user_id) or abort(404)
+    ensure_tenant_access(user)
     user.totp_secret = None
     user.totp_enabled = False
     user.backup_codes = None
@@ -681,12 +692,14 @@ def user_activity(user_id: str) -> str:
     user = db.session.get(User, user_id) or abort(404)
     ensure_tenant_access(user)
 
+    from ..auth import apply_tenant_filter as _atf
+
     page = request.args.get("page", 1, type=int)
     per_page = 50
     entity_type = request.args.get("entity_type", "")
     action = request.args.get("action", "")
 
-    query = AuditLog.query.filter_by(user_id=user_id)
+    query = _atf(AuditLog.query.filter_by(user_id=user_id), AuditLog)
 
     if entity_type:
         query = query.filter_by(entity_type=entity_type)
@@ -694,15 +707,23 @@ def user_activity(user_id: str) -> str:
         query = query.filter_by(action=action)
 
     activity_counts = (
-        db.session.query(AuditLog.action, db.func.count(AuditLog.id))
-        .filter(AuditLog.user_id == user_id)
+        _atf(
+            db.session.query(AuditLog.action, db.func.count(AuditLog.id)).filter(
+                AuditLog.user_id == user_id
+            ),
+            AuditLog,
+        )
         .group_by(AuditLog.action)
         .all()
     )
 
     entity_counts = (
-        db.session.query(AuditLog.entity_type, db.func.count(AuditLog.id))
-        .filter(AuditLog.user_id == user_id)
+        _atf(
+            db.session.query(AuditLog.entity_type, db.func.count(AuditLog.id)).filter(
+                AuditLog.user_id == user_id
+            ),
+            AuditLog,
+        )
         .group_by(AuditLog.entity_type)
         .all()
     )
@@ -712,8 +733,12 @@ def user_activity(user_id: str) -> str:
     )
 
     recent_case_ids = (
-        db.session.query(AuditLog.case_id)
-        .filter(AuditLog.user_id == user_id, AuditLog.case_id.isnot(None))
+        _atf(
+            db.session.query(AuditLog.case_id).filter(
+                AuditLog.user_id == user_id, AuditLog.case_id.isnot(None)
+            ),
+            AuditLog,
+        )
         .distinct()
         .limit(10)
         .all()
@@ -721,20 +746,28 @@ def user_activity(user_id: str) -> str:
     recent_case_ids = [c[0] for c in recent_case_ids]
 
     recent_cases = (
-        Case.query.filter(Case.id.in_(recent_case_ids)).all() if recent_case_ids else []
+        _atf(Case.query.filter(Case.id.in_(recent_case_ids)), Case).all()
+        if recent_case_ids
+        else []
     )
 
-    total_actions = AuditLog.query.filter_by(user_id=user_id).count()
+    total_actions = _atf(AuditLog.query.filter_by(user_id=user_id), AuditLog).count()
     today = datetime.now(timezone.utc).date()
-    today_actions = AuditLog.query.filter(
-        AuditLog.user_id == user_id, db.func.date(AuditLog.timestamp) == today
+    today_actions = _atf(
+        AuditLog.query.filter(
+            AuditLog.user_id == user_id, db.func.date(AuditLog.timestamp) == today
+        ),
+        AuditLog,
     ).count()
 
     from datetime import timedelta
 
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    week_actions = AuditLog.query.filter(
-        AuditLog.user_id == user_id, AuditLog.timestamp >= week_ago
+    week_actions = _atf(
+        AuditLog.query.filter(
+            AuditLog.user_id == user_id, AuditLog.timestamp >= week_ago
+        ),
+        AuditLog,
     ).count()
 
     return render_template(
@@ -839,9 +872,12 @@ def create_user() -> flask.Response:
 
     data = validated.model_dump(exclude_none=True)
 
-    if User.query.filter_by(username=data["username"]).first():
+    target_tenant_id = data.get("tenant_id") or current_user.tenant_id
+    if User.query.filter_by(
+        username=data["username"], tenant_id=target_tenant_id
+    ).first():
         return _error("Username already exists")
-    if User.query.filter_by(email=data["email"]).first():
+    if User.query.filter_by(email=data["email"], tenant_id=target_tenant_id).first():
         return _error("Email already exists")
 
     valid_roles = [
@@ -853,8 +889,6 @@ def create_user() -> flask.Response:
     ]
     if data["role"] not in valid_roles:
         return _error("Invalid role")
-
-    target_tenant_id = data.get("tenant_id") or current_user.tenant_id
     target_tenant = db.session.get(Tenant, target_tenant_id)
     if target_tenant and not current_user.is_super_admin:
         from ..tier_limits import check_resource_limit
@@ -939,6 +973,7 @@ def create_user() -> flask.Response:
 def edit_user(user_id) -> flask.Response:
     """Edit user details. Admins can edit any user; regular users can edit their own profile."""
     user = db.session.get(User, user_id) or abort(404)
+    ensure_tenant_access(user)
 
     if user_id != current_user.id and not current_user.is_admin:
         if request.is_json:
@@ -960,14 +995,18 @@ def edit_user(user_id) -> flask.Response:
         data = validated.model_dump(exclude_none=True)
 
         if "username" in data and data["username"] != user.username:
-            if User.query.filter_by(username=data["username"]).first():
+            if User.query.filter_by(
+                username=data["username"], tenant_id=current_user.tenant_id
+            ).first():
                 if is_json:
                     return jsonify({"error": "Username already exists"}), 400
                 flash("Username already exists.", "danger")
                 return render_template("cms/users/edit.html", user=user)
 
         if "email" in data and data["email"] != user.email:
-            if User.query.filter_by(email=data["email"]).first():
+            if User.query.filter_by(
+                email=data["email"], tenant_id=current_user.tenant_id
+            ).first():
                 if is_json:
                     return jsonify({"error": "Email already exists"}), 400
                 flash("Email already exists.", "danger")
@@ -1012,6 +1051,7 @@ def edit_user(user_id) -> flask.Response:
 def deactivate_user(user_id) -> flask.Response:
     """Deactivate a user account (admin only)."""
     user = db.session.get(User, user_id) or abort(404)
+    ensure_tenant_access(user)
 
     if user.id == current_user.id:
         if request.is_json:
@@ -1091,7 +1131,9 @@ def invite_user():
         flash("Please provide a valid email address.", "danger")
         return redirect(url_for("cms.settings", category="plan"))
 
-    if User.query.filter(db.func.lower(User.email) == email).first():
+    if User.query.filter(
+        db.func.lower(User.email) == email, User.tenant_id == current_user.tenant_id
+    ).first():
         flash("A user with this email already exists.", "danger")
         return redirect(url_for("cms.settings", category="plan"))
 
@@ -1192,7 +1234,7 @@ def accept_invite(token: str):
             )
 
         username = inv.email.split("@")[0]
-        if User.query.filter_by(username=username).first():
+        if User.query.filter_by(username=username, tenant_id=inv.tenant_id).first():
             username = f"{username}_{secrets.token_hex(2)}"
 
         from ..tier_limits import check_resource_limit

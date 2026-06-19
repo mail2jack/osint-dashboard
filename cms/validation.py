@@ -313,7 +313,7 @@ class SignupSchema(BaseModel):
 
 
 class LoginSchema(BaseModel):
-    username: str = ""
+    email: str = ""
     password: str = ""
     remember: Any = None
 

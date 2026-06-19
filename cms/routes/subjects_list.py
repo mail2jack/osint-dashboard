@@ -115,12 +115,11 @@ def subjects() -> str:
                 )
                 all_case_ids = list(set(m.case_id for m in case_mappings))
                 if all_case_ids:
-                    cases_map = {
-                        c.id: c
-                        for c in Case.query.filter(
-                            Case.id.in_(all_case_ids), Case.is_deleted.is_(False)
-                        ).all()
-                    }
+                    _cases_q = Case.query.filter(
+                        Case.id.in_(all_case_ids), Case.is_deleted.is_(False)
+                    )
+                    _cases_q = apply_tenant_filter(_cases_q, Case)
+                    cases_map = {c.id: c for c in _cases_q.all()}
                     for mapping in case_mappings:
                         case = cases_map.get(mapping.case_id)
                         if case:
@@ -200,19 +199,16 @@ def _get_accessible_case_ids():
         return None
     from ..models import Case
 
-    case_ids = [
-        row.id
-        for row in Case.query.with_entities(Case.id)
-        .filter(
-            Case.is_deleted == False,
-            db.or_(
-                Case.created_by == user.id,
-                Case.lead_investigator_id == user.id,
-                Case.assigned_to == user.id,
-            ),
-        )
-        .all()
-    ]
+    _accessible_q = Case.query.with_entities(Case.id).filter(
+        Case.is_deleted == False,
+        db.or_(
+            Case.created_by == user.id,
+            Case.lead_investigator_id == user.id,
+            Case.assigned_to == user.id,
+        ),
+    )
+    _accessible_q = apply_tenant_filter(_accessible_q, Case)
+    case_ids = [row.id for row in _accessible_q.all()]
     assigned_ids = [c.id for c in user.assigned_cases]
     return list(set(case_ids + assigned_ids))
 

@@ -221,6 +221,7 @@ def get_document(document_id: str) -> flask.Response:
     # Check access
     if document.case_id:
         case = db.session.get(Case, document.case_id)
+        ensure_tenant_access(case)
         if case and not current_user.can_access_case(case):
             return api_error("Access denied", 403)
 
@@ -237,6 +238,7 @@ def download_document(document_id: str) -> flask.Response:
     # Check access
     if document.case_id:
         case = db.session.get(Case, document.case_id)
+        ensure_tenant_access(case)
         if case and not current_user.can_access_case(case):
             return api_error("Access denied", 403)
 

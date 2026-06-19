@@ -94,18 +94,19 @@ def view_client(client_id: str) -> str:
     for addr in addresses:
         addr.decrypt_fields()
 
-    cases = (
-        Case.query.filter_by(client_id=client_id, is_deleted=False)
-        .options(joinedload(Case.lead_investigator))
-        .order_by(Case.created_at.desc())
-        .all()
+    cases_q = Case.query.filter_by(client_id=client_id, is_deleted=False).options(
+        joinedload(Case.lead_investigator)
     )
+    cases_q = apply_tenant_filter(cases_q, Case)
+    cases = cases_q.order_by(Case.created_at.desc()).all()
 
-    active_cases_count = Case.query.filter(
+    active_cases_count_q = Case.query.filter(
         Case.client_id == client_id,
         Case.is_deleted == False,
         Case.status.in_(["open", "active", "suspended"]),
-    ).count()
+    )
+    active_cases_count_q = apply_tenant_filter(active_cases_count_q, Case)
+    active_cases_count = active_cases_count_q.count()
 
     return render_template(
         "cms/clients/view.html",

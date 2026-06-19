@@ -205,6 +205,8 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
         related = db.session.get(Subject, related_id)
         if not related:
             return api_error("Related subject not found", 404)
+        if related.tenant_id != current_user.tenant_id:
+            return api_error("Related subject not found", 404)
 
         existing_a = db.session.execute(
             subject_relations.select().where(

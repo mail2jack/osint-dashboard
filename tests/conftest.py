@@ -39,7 +39,7 @@ def app():
         else:
             admin = User(
                 username="admin",
-                email="admin@test.nl",
+                email="admin@localhost",
                 full_name="Admin User",
                 role="admin",
                 is_active=True,
@@ -107,7 +107,7 @@ def auth_client(app, client):
         if user is None:
             user = User(
                 username="admin",
-                email="admin@test.nl",
+                email="admin@localhost",
                 full_name="Admin User",
                 role="admin",
                 is_active=True,

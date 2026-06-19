@@ -43,7 +43,7 @@ class TestLogin:
         _create_user("logintest", "Test1234!")
         resp = client.post(
             "/auth/login",
-            data={"username": "logintest", "password": "Test1234!"},
+            data={"email": "logintest@test.nl", "password": "Test1234!"},
         )
         assert resp.status_code == 302
         assert "/auth/2fa/setup" in resp.headers.get("Location", "")
@@ -58,7 +58,7 @@ class TestLogin:
 
         resp = client.post(
             "/auth/login",
-            data={"username": "logintest2fa", "password": "Test1234!"},
+            data={"email": "logintest2fa@test.nl", "password": "Test1234!"},
         )
         assert resp.status_code == 302
         assert "/auth/2fa/verify" in resp.headers.get("Location", "")
@@ -67,14 +67,14 @@ class TestLogin:
         _create_user("wrongpw", "Test1234!")
         resp = client.post(
             "/auth/login",
-            data={"username": "wrongpw", "password": "wrongpass1A!"},
+            data={"email": "wrongpw@test.nl", "password": "wrongpass1A!"},
         )
         assert resp.status_code == 200
 
     def test_login_nonexistent_user(self, client):
         resp = client.post(
             "/auth/login",
-            data={"username": "nobody", "password": "Test1234!"},
+            data={"email": "nobody@test.nl", "password": "Test1234!"},
         )
         assert resp.status_code == 200
 
@@ -258,7 +258,9 @@ class TestAdmin2FAReset:
             admin.totp_secret = None
             admin.totp_enabled = False
             db.session.commit()
-        r = c.post("/auth/login", data={"username": "admin", "password": "Test1234!"})
+        r = c.post(
+            "/auth/login", data={"email": "admin@localhost", "password": "Test1234!"}
+        )
         assert r.status_code == 302
         loc = r.headers.get("Location", "")
         if loc == "/auth/2fa/setup":
@@ -356,7 +358,9 @@ class TestUserCreate:
             admin.totp_secret = None
             admin.totp_enabled = False
             db.session.commit()
-        r = c.post("/auth/login", data={"username": "admin", "password": "Test1234!"})
+        r = c.post(
+            "/auth/login", data={"email": "admin@localhost", "password": "Test1234!"}
+        )
         assert r.status_code == 302
         if r.headers.get("Location", "") == "/auth/2fa/setup":
             c.get(r.headers["Location"])
@@ -448,7 +452,9 @@ class TestUserEdit:
             admin.totp_secret = None
             admin.totp_enabled = False
             db.session.commit()
-        r = c.post("/auth/login", data={"username": "admin", "password": "Test1234!"})
+        r = c.post(
+            "/auth/login", data={"email": "admin@localhost", "password": "Test1234!"}
+        )
         assert r.status_code == 302
         if r.headers.get("Location", "") == "/auth/2fa/setup":
             c.get(r.headers["Location"])

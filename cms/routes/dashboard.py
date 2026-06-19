@@ -78,20 +78,17 @@ def dashboard() -> str:
     )
     assigned_ids = [row[0] for row in assigned_ids]
 
-    my_cases = (
-        Case.query.filter(
-            Case.is_deleted == False,
-            Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
-            db.or_(
-                Case.assigned_to == current_user.id,
-                Case.lead_investigator_id == current_user.id,
-                Case.id.in_(assigned_ids) if assigned_ids else Case.id == None,
-            ),
-        )
-        .order_by(Case.updated_at.desc())
-        .limit(10)
-        .all()
+    my_cases_q = Case.query.filter(
+        Case.is_deleted == False,
+        Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
+        db.or_(
+            Case.assigned_to == current_user.id,
+            Case.lead_investigator_id == current_user.id,
+            Case.id.in_(assigned_ids) if assigned_ids else Case.id == None,
+        ),
     )
+    my_cases_q = apply_tenant_filter(my_cases_q, Case)
+    my_cases = my_cases_q.order_by(Case.updated_at.desc()).limit(10).all()
 
     return render_template("cms/dashboard.html", stats=stats, my_cases=my_cases)
 

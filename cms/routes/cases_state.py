@@ -14,6 +14,7 @@ from ..auth import (
     case_access_required,
     case_edit_required,
     ensure_tenant_access,
+    apply_tenant_filter,
 )
 
 from .response import api_success, api_error
@@ -39,6 +40,7 @@ def set_case_parent(case_id: str) -> flask.Response:
         parent = db.session.get(Case, parent_id)
         if not parent or parent.is_deleted:
             return api_error("Parent case not found", 404)
+        ensure_tenant_access(parent)
 
         if parent_id == case_id:
             return api_error("A case cannot be its own parent", 400)
@@ -100,8 +102,6 @@ def search_cases() -> flask.Response:
 
     query = Case.query.filter_by(is_deleted=False)
 
-    from ..auth import apply_tenant_filter
-
     query = apply_tenant_filter(query, Case)
 
     if q:
@@ -159,16 +159,14 @@ def get_case_hierarchy_api(case_id: str) -> flask.Response:
 
 @cms_bp.route("/api/cases/<case_id>/audit-log")
 @login_required
+@case_access_required
 def get_case_audit_log_api(case_id: str) -> flask.Response:
     """Get audit log for a case via API."""
     case = db.session.get(Case, case_id) or abort(404)
     ensure_tenant_access(case)
-    logs = (
-        AuditLog.query.filter_by(entity_type="case", entity_id=case_id)
-        .order_by(AuditLog.created_at.desc())
-        .limit(50)
-        .all()
-    )
+    query = AuditLog.query.filter_by(entity_type="case", entity_id=case_id)
+    query = apply_tenant_filter(query, AuditLog)
+    logs = query.order_by(AuditLog.created_at.desc()).limit(50).all()
 
     return jsonify(
         {

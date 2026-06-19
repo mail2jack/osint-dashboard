@@ -504,7 +504,9 @@ def purge_login_logs() -> flask.Response:
     """Delete login logs older than N days."""
     days = request.json.get("days", 90) if request.is_json else 90
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    deleted = LoginLog.query.filter(LoginLog.created_at < cutoff).delete()
+    query = LoginLog.query.filter(LoginLog.created_at < cutoff)
+    query = apply_tenant_filter(query, LoginLog)
+    deleted = query.delete()
     if deleted:
         db.session.commit()
     return api_success({}, f"Deleted {deleted} login log(s)")

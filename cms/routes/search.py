@@ -129,6 +129,7 @@ def search() -> str:
             clients_q = Client.query.filter(
                 Client.is_deleted == False, Client.name.ilike(f"%{query}%")
             )
+            clients_q = apply_tenant_filter(clients_q, Client)
             if not current_user.is_admin:
                 clients_q = clients_q.filter(
                     Client.cases.any(Case.id.in_(accessible_ids))
@@ -206,24 +207,21 @@ def search() -> str:
                 for f in findings
             ]
             if len(findings) < total_count and not current_user.is_admin:
-                restricted = (
-                    Finding.query.join(Case)
-                    .filter(
-                        Finding.is_deleted == False,
-                        ~Case.id.in_(accessible_ids),
-                        db.or_(
-                            Finding.title.ilike(f"%{query}%"),
-                            Finding.content.ilike(f"%{query}%"),
-                        ),
-                    )
-                    .limit(20)
-                    .all()
+                restricted_q = Finding.query.join(Case).filter(
+                    Finding.is_deleted == False,
+                    ~Case.id.in_(accessible_ids),
+                    db.or_(
+                        Finding.title.ilike(f"%{query}%"),
+                        Finding.content.ilike(f"%{query}%"),
+                    ),
                 )
+                restricted_q = apply_tenant_filter(restricted_q, Finding)
+                restricted = restricted_q.limit(20).all()
                 rcn = list(set(f.case.case_number for f in restricted if f.case))
                 _record_restricted(query, "findings", total_count, len(findings), rcn)
 
         if entity_type in ["all", "financials"]:
-            total_financials = (
+            financials_q = (
                 FinancialRecord.query.options(db.joinedload(FinancialRecord.case))
                 .join(Case)
                 .filter(
@@ -234,9 +232,9 @@ def search() -> str:
                         FinancialRecord.source_reference.ilike(f"%{query}%"),
                     ),
                 )
-                .limit(20)
-                .all()
             )
+            financials_q = apply_tenant_filter(financials_q, FinancialRecord)
+            total_financials = financials_q.limit(20).all()
             results["financials"] = [
                 {
                     "id": f.id,
@@ -258,6 +256,7 @@ def search() -> str:
                 Comment.is_deleted == False,
                 Comment.content.ilike(f"%{query}%"),
             )
+            comments_q = apply_tenant_filter(comments_q, Comment)
             if not current_user.is_admin:
                 comments_q = comments_q.filter(Comment.case_id.in_(accessible_ids))
             total_comments = comments_q.limit(20).all()
@@ -266,7 +265,9 @@ def search() -> str:
             comment_case_ids = {c.case_id for c in total_comments if c.case_id}
             comment_cases_map = {}
             if comment_case_ids:
-                for _c in Case.query.filter(Case.id.in_(comment_case_ids)).all():
+                _cases_q = Case.query.filter(Case.id.in_(comment_case_ids))
+                _cases_q = apply_tenant_filter(_cases_q, Case)
+                for _c in _cases_q.all():
                     comment_cases_map[_c.id] = _c
             results["comments"] = []
             for c in total_comments:
@@ -293,6 +294,7 @@ def search() -> str:
             subject_notes_q = Subject.query.filter(
                 Subject.is_deleted == False, Subject.notes.ilike(f"%{query}%")
             )
+            subject_notes_q = apply_tenant_filter(subject_notes_q, Subject)
             if not current_user.is_admin:
                 subject_notes_q = subject_notes_q.filter(
                     db.select(case_subjects.c.case_id)
@@ -322,6 +324,7 @@ def search() -> str:
                 Comment.subject_id.isnot(None),
                 Comment.content.ilike(f"%{query}%"),
             )
+            comment_notes_q = apply_tenant_filter(comment_notes_q, Comment)
             if not current_user.is_admin:
                 comment_notes_q = comment_notes_q.filter(
                     Comment.case_id.in_(accessible_ids)
@@ -335,7 +338,9 @@ def search() -> str:
             }
             note_subjects_map = {}
             if note_subject_ids:
-                for _s in Subject.query.filter(Subject.id.in_(note_subject_ids)).all():
+                _subjects_q = Subject.query.filter(Subject.id.in_(note_subject_ids))
+                _subjects_q = apply_tenant_filter(_subjects_q, Subject)
+                for _s in _subjects_q.all():
                     note_subjects_map[_s.id] = _s
             for c in total_comment_notes:
                 sub = note_subjects_map.get(c.subject_id)
@@ -384,17 +389,15 @@ def api_search() -> flask.Response:
     accessible_ids = _accessible_ids()
 
     if not entity_type or entity_type == "cases":
-        total_cases = (
-            Case.query.filter(
-                Case.is_deleted == False,
-                Case.id.in_(accessible_ids),
-                db.or_(
-                    Case.title.ilike(f"%{query}%"), Case.case_number.ilike(f"%{query}%")
-                ),
-            )
-            .limit(5)
-            .all()
+        cases_q = Case.query.filter(
+            Case.is_deleted == False,
+            Case.id.in_(accessible_ids),
+            db.or_(
+                Case.title.ilike(f"%{query}%"), Case.case_number.ilike(f"%{query}%")
+            ),
         )
+        cases_q = apply_tenant_filter(cases_q, Case)
+        total_cases = cases_q.limit(5).all()
         results["cases"] = [
             {"id": c.id, "title": c.title, "case_number": c.case_number, "type": "case"}
             for c in total_cases
@@ -405,6 +408,7 @@ def api_search() -> flask.Response:
             Client.is_deleted == False,
             Client.name.ilike(f"%{query}%"),
         )
+        clients_q = apply_tenant_filter(clients_q, Client)
         if not current_user.is_admin:
             clients_q = clients_q.filter(Client.cases.any(Case.id.in_(accessible_ids)))
         results["clients"] = [
@@ -417,6 +421,7 @@ def api_search() -> flask.Response:
             Subject.is_deleted == False,
             Subject.name.ilike(f"%{query}%"),
         )
+        subjects_q = apply_tenant_filter(subjects_q, Subject)
         if not current_user.is_admin:
             subjects_q = subjects_q.filter(
                 db.select(case_subjects.c.case_id)

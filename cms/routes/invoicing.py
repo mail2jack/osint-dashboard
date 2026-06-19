@@ -30,6 +30,10 @@ logger = logging.getLogger(__name__)
 def _invoice_to_dict(inv: Invoice) -> dict:
     client = db.session.get(Client, inv.client_id)
     case = db.session.get(Case, inv.case_id) if inv.case_id else None
+    if client:
+        ensure_tenant_access(client)
+    if case:
+        ensure_tenant_access(case)
     creator = inv.creator
     return {
         "id": inv.id,
