@@ -10,7 +10,13 @@ from sqlalchemy.orm import joinedload
 from . import cms_bp
 from ..validation import validate, CreateClientSchema, EditClientSchema
 from ..models import db, Client, Case, AuditLog, Contact, Address
-from ..auth import roles_required, admin_required, audit_read, apply_tenant_filter
+from ..auth import (
+    roles_required,
+    admin_required,
+    audit_read,
+    apply_tenant_filter,
+    ensure_tenant_access,
+)
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_clients, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
@@ -79,6 +85,7 @@ def clients() -> str:
 def view_client(client_id: str) -> str:
     """View client details with all associated cases."""
     client = db.session.get(Client, client_id) or abort(404)
+    ensure_tenant_access(client)
     client.decrypt_naw()
     contacts = list(client.contacts)
     for c in contacts:
@@ -294,6 +301,7 @@ def create_client() -> flask.Response:
 def edit_client(client_id: str) -> flask.Response:
     """Edit client details."""
     client = db.session.get(Client, client_id) or abort(404)
+    ensure_tenant_access(client)
 
     if request.method == "POST":
         data = request.validated_data
@@ -454,6 +462,7 @@ def edit_client(client_id: str) -> flask.Response:
 def delete_client(client_id: str) -> flask.Response:
     """Soft delete a client."""
     client = db.session.get(Client, client_id) or abort(404)
+    ensure_tenant_access(client)
 
     client.soft_delete()
 

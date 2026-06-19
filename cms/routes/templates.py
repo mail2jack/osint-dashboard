@@ -15,7 +15,12 @@ from ..validation import (
     GenerateReportSchema,
 )
 from ..models import db, Case, DocumentTemplate, Document, AuditLog
-from ..auth import roles_required, case_access_required, apply_tenant_filter
+from ..auth import (
+    roles_required,
+    case_access_required,
+    apply_tenant_filter,
+    ensure_tenant_access,
+)
 
 from .response import api_error
 
@@ -79,6 +84,7 @@ def create_template() -> flask.Response:
 def edit_template(template_id: str) -> flask.Response:
     """Edit a document template."""
     template = db.session.get(DocumentTemplate, template_id) or abort(404)
+    ensure_tenant_access(template)
 
     if request.method == "POST":
         data = request.validated_data
@@ -116,6 +122,7 @@ def edit_template(template_id: str) -> flask.Response:
 def delete_template(template_id: str) -> flask.Response:
     """Delete a document template."""
     template = db.session.get(DocumentTemplate, template_id) or abort(404)
+    ensure_tenant_access(template)
 
     AuditLog.log(
         user_id=current_user.id,
@@ -138,6 +145,7 @@ def delete_template(template_id: str) -> flask.Response:
 def preview_template(template_id: str) -> flask.Response:
     """Preview a template with sample data."""
     template = db.session.get(DocumentTemplate, template_id) or abort(404)
+    ensure_tenant_access(template)
 
     # Build sample context
     context = _build_report_context(None)
@@ -153,6 +161,7 @@ def preview_template(template_id: str) -> flask.Response:
 def generate_case_report(case_id: str) -> flask.Response:
     """Generate a report from a template for a specific case."""
     case = db.session.get(Case, case_id) or abort(404)
+    ensure_tenant_access(case)
 
     tmpl_query = DocumentTemplate.query.filter_by(is_active=True)
     tmpl_query = apply_tenant_filter(tmpl_query, DocumentTemplate)
@@ -183,6 +192,7 @@ def generate_case_report(case_id: str) -> flask.Response:
         }
 
         template = db.session.get(DocumentTemplate, template_id) or abort(404)
+        ensure_tenant_access(template)
 
         # Build context from case
         context = _build_report_context(case)
@@ -326,8 +336,11 @@ def render_template_preview() -> flask.Response:
     template = db.session.get(DocumentTemplate, template_id)
     if not template:
         return api_error("Template not found", 404)
+    ensure_tenant_access(template)
 
     case = db.session.get(Case, case_id) if case_id else None
+    if case:
+        ensure_tenant_access(case)
 
     context = _build_report_context(case)
     context.update(

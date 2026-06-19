@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, ApiKey
-from ..auth import admin_required, apply_tenant_filter
+from ..auth import admin_required, apply_tenant_filter, ensure_tenant_access
 
 from .response import api_success, api_error
 
@@ -95,6 +95,7 @@ def revoke_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id)
     if not key:
         return api_error("API key not found", 404)
+    ensure_tenant_access(key)
 
     key.is_active = False
     db.session.commit()
@@ -110,6 +111,7 @@ def delete_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id)
     if not key:
         return api_error("API key not found", 404)
+    ensure_tenant_access(key)
 
     db.session.delete(key)
     db.session.commit()

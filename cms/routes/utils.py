@@ -5,6 +5,8 @@ Utility functions for CMS routes.
 import re
 import logging
 
+from flask_login import current_user
+
 from ..models import Subject, Client
 
 logger = logging.getLogger(__name__)
@@ -68,7 +70,9 @@ def find_similar_subjects(name: str, threshold: float = 0.7) -> list:
     first_letter = normalized_input[0]
     candidates = (
         Subject.query.filter(
-            Subject.is_deleted == False, Subject.name.ilike(f"{first_letter}%")
+            Subject.is_deleted == False,
+            Subject.tenant_id == current_user.tenant_id,
+            Subject.name.ilike(f"{first_letter}%"),
         )
         .limit(500)
         .all()
@@ -105,6 +109,7 @@ def find_similar_clients(name: str, threshold: float = 0.7) -> list:
         Client.query.filter(
             Client.is_deleted == False,
             Client.is_active == True,
+            Client.tenant_id == current_user.tenant_id,
             Client.name.ilike(f"{first_letter}%"),
         )
         .limit(500)
@@ -137,7 +142,9 @@ def check_for_exact_match(name: str, entity_type: str) -> dict | None:
 
     if entity_type == "subject":
         subject = Subject.query.filter(
-            Subject.is_deleted == False, Subject.name.ilike(normalized)
+            Subject.is_deleted == False,
+            Subject.tenant_id == current_user.tenant_id,
+            Subject.name.ilike(normalized),
         ).first()
         if subject:
             return {
@@ -150,6 +157,7 @@ def check_for_exact_match(name: str, entity_type: str) -> dict | None:
         client = Client.query.filter(
             Client.is_deleted == False,
             Client.is_active == True,
+            Client.tenant_id == current_user.tenant_id,
             Client.name.ilike(normalized),
         ).first()
         if client:

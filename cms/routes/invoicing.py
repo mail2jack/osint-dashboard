@@ -12,7 +12,12 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Invoice, InvoiceItem, Payment, Client, Case, AuditLog
-from ..auth import roles_required, admin_required, apply_tenant_filter
+from ..auth import (
+    roles_required,
+    admin_required,
+    apply_tenant_filter,
+    ensure_tenant_access,
+)
 from ..validation_invoicing import (
     CreateInvoiceSchema,
     EditInvoiceSchema,
@@ -227,7 +232,9 @@ def invoice_create():
 @login_required
 def invoice_view(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
+    ensure_tenant_access(invoice)
     client = db.session.get(Client, invoice.client_id) or abort(404)
+    ensure_tenant_access(client)
     items = (
         InvoiceItem.query.filter_by(invoice_id=invoice_id)
         .order_by(InvoiceItem.sort_order)
@@ -239,6 +246,8 @@ def invoice_view(invoice_id: str):
         .all()
     )
     case = db.session.get(Case, invoice.case_id) if invoice.case_id else None
+    if case:
+        ensure_tenant_access(case)
 
     return render_template(
         "cms/invoicing/view.html",
@@ -256,6 +265,7 @@ def invoice_view(invoice_id: str):
 @roles_required("admin", "senior")
 def invoice_edit(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
+    ensure_tenant_access(invoice)
     if invoice.status in ("paid", "cancelled"):
         flash("Een betaalde of geannuleerde factuur kan niet worden bewerkt.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
@@ -339,6 +349,7 @@ def invoice_edit(invoice_id: str):
 @login_required
 def invoice_pdf(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
+    ensure_tenant_access(invoice)
     from ..services.invoice_service import generate_invoice_pdf
 
     try:
@@ -362,6 +373,7 @@ def invoice_pdf(invoice_id: str):
 @roles_required("admin", "senior")
 def invoice_send(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
+    ensure_tenant_access(invoice)
     if invoice.status != "draft":
         flash("Alleen concept-facturen kunnen worden verzonden.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
@@ -385,6 +397,7 @@ def invoice_send(invoice_id: str):
 @roles_required("admin", "senior")
 def invoice_mark_paid(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
+    ensure_tenant_access(invoice)
     if invoice.status in ("paid", "cancelled"):
         flash("Factuur is al betaald of geannuleerd.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
@@ -438,6 +451,7 @@ def invoice_mark_paid(invoice_id: str):
 @roles_required("admin", "senior")
 def invoice_cancel(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
+    ensure_tenant_access(invoice)
     if invoice.status in ("paid", "cancelled"):
         flash("Factuur is al betaald of geannuleerd.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
@@ -463,6 +477,7 @@ def invoice_cancel(invoice_id: str):
 @admin_required
 def invoice_delete(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
+    ensure_tenant_access(invoice)
     invoice.soft_delete()
     AuditLog.log(
         user_id=current_user.id,

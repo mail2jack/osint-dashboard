@@ -28,7 +28,7 @@ from ..models import (
     TenantSetting,
     init_default_settings,
 )
-from ..auth import admin_required, apply_tenant_filter
+from ..auth import admin_required, apply_tenant_filter, ensure_tenant_access
 from ..validation import validate, SaveSettingsSchema
 
 from .response import api_success, api_error
@@ -490,6 +490,7 @@ def login_history() -> str:
 def dismiss_anomaly(log_id: str) -> flask.Response:
     """Mark a login anomaly as reviewed/dismissed."""
     log = db.session.get(LoginLog, log_id) or abort(404)
+    ensure_tenant_access(log)
     log.is_anomaly = False
     log.anomaly_reason = ""
     db.session.commit()
@@ -556,6 +557,7 @@ def api_create_api_key() -> flask.Response:
     user = db.session.get(User, user_id)
     if not user:
         return api_error("User not found", 404)
+    ensure_tenant_access(user)
 
     valid_scopes = {"read", "write", "admin"}
     scopes = [s for s in raw_scopes if s in valid_scopes]
@@ -602,6 +604,7 @@ def api_deactivate_api_key(key_id: str) -> flask.Response:
     from ..models import ApiKey
 
     key = db.session.get(ApiKey, key_id) or abort(404)
+    ensure_tenant_access(key)
     key.is_active = False
     db.session.commit()
     return api_success({}, "API key deactivated")
@@ -615,6 +618,7 @@ def api_activate_api_key(key_id: str) -> flask.Response:
     from ..models import ApiKey
 
     key = db.session.get(ApiKey, key_id) or abort(404)
+    ensure_tenant_access(key)
     key.is_active = True
     db.session.commit()
     return api_success({}, "API key reactivated")
@@ -628,6 +632,7 @@ def api_delete_api_key(key_id: str) -> flask.Response:
     from ..models import ApiKey
 
     key = db.session.get(ApiKey, key_id) or abort(404)
+    ensure_tenant_access(key)
     db.session.delete(key)
     db.session.commit()
     return api_success({}, "API key deleted")

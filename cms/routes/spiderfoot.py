@@ -23,7 +23,12 @@ from ..validation import (
     SpiderFootScanSubjectSchema,
 )
 from ..models import db, SpiderFootScan, Setting, Case, Subject, Finding, AuditLog
-from ..auth import roles_required, admin_required, apply_tenant_filter
+from ..auth import (
+    roles_required,
+    admin_required,
+    apply_tenant_filter,
+    ensure_tenant_access,
+)
 
 try:
     from ..spiderfoot_service import SpiderFootService, ScanTarget
@@ -376,6 +381,7 @@ def spiderfoot_scan_status(scan_id: str) -> flask.Response:
 
     # Try Iveras DB record first, fall back to direct SpiderFoot scan ID
     scan_record = db.session.get(SpiderFootScan, scan_id)
+    ensure_tenant_access(scan_record)
 
     sf_service = get_spiderfoot_service()
     if not sf_service:
@@ -470,6 +476,7 @@ def spiderfoot_scan_status(scan_id: str) -> flask.Response:
 def spiderfoot_refresh_scan(scan_id: str) -> flask.Response:
     """Refresh SpiderFoot scan status."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
+    ensure_tenant_access(scan_record)
 
     sf_service = get_spiderfoot_service()
 
@@ -508,6 +515,7 @@ def spiderfoot_refresh_scan(scan_id: str) -> flask.Response:
 def spiderfoot_stop_scan(scan_id: str) -> flask.Response:
     """Stop a running SpiderFoot scan."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
+    ensure_tenant_access(scan_record)
 
     sf_service = get_spiderfoot_service()
 
@@ -540,6 +548,7 @@ def spiderfoot_stop_scan(scan_id: str) -> flask.Response:
 def spiderfoot_delete_scan(scan_id: str) -> flask.Response:
     """Delete a SpiderFoot scan record."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
+    ensure_tenant_access(scan_record)
 
     sf_service = get_spiderfoot_service()
 
@@ -575,6 +584,7 @@ def spiderfoot_delete_scan(scan_id: str) -> flask.Response:
 def spiderfoot_scan_results(scan_id: str) -> flask.Response:
     """Get full SpiderFoot scan results as JSON."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
+    ensure_tenant_access(scan_record)
 
     sf_service = get_spiderfoot_service()
 
@@ -607,6 +617,7 @@ def spiderfoot_scan_results(scan_id: str) -> flask.Response:
 def spiderfoot_import_results(scan_id: str) -> flask.Response:
     """Import SpiderFoot scan results as Iveras findings."""
     scan_record = db.session.get(SpiderFootScan, scan_id) or abort(404)
+    ensure_tenant_access(scan_record)
 
     if not scan_record.case_id:
         return jsonify(
@@ -865,6 +876,7 @@ def api_spiderfoot_status() -> flask.Response:
 def spiderfoot_scan_subject(subject_id: str) -> str:
     """Scan a subject with SpiderFoot."""
     subject = db.session.get(Subject, subject_id) or abort(404)
+    ensure_tenant_access(subject)
     subject.decrypt_identifiers()
 
     if request.method == "POST":

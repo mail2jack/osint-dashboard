@@ -21,6 +21,8 @@ from ..models import (
     AuditLog,
 )
 
+from ..auth import ensure_tenant_access
+
 from .response import api_success, api_error
 
 logger = logging.getLogger(__name__)
@@ -132,8 +134,14 @@ def create_reminder() -> flask.Response:
     client_id = request.args.get("client_id")
 
     case = db.session.get(Case, case_id) if case_id else None
+    if case:
+        ensure_tenant_access(case)
     subject = db.session.get(Subject, subject_id) if subject_id else None
+    if subject:
+        ensure_tenant_access(subject)
     client = db.session.get(Client, client_id) if client_id else None
+    if client:
+        ensure_tenant_access(client)
 
     # Get users for assignment dropdown (same tenant only)
     users = User.query.filter_by(tenant_id=current_user.tenant_id, is_active=True).all()
