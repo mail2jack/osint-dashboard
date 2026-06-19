@@ -7,6 +7,7 @@ from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from ..auth import apply_tenant_filter
 from ..models import db, Subject, Finding, AuditLog
 from ..validation import (
     validate,
@@ -33,10 +34,13 @@ def check_existing_finding_urls() -> flask.Response:
     if not case_id or not urls:
         return jsonify({"existing": []})
     existing = (
-        Finding.query.filter(
-            Finding.case_id == case_id,
-            Finding.source_url.in_(urls),
-            Finding.is_deleted == False,
+        apply_tenant_filter(
+            Finding.query.filter(
+                Finding.case_id == case_id,
+                Finding.source_url.in_(urls),
+                Finding.is_deleted == False,
+            ),
+            Finding,
         )
         .with_entities(Finding.source_url)
         .distinct()
@@ -167,7 +171,10 @@ def save_username_findings(subject_id: str) -> flask.Response:
     # Batch-load existing social accounts for dedup
     existing_accounts = {
         (a.platform, a.username)
-        for a in SocialAccount.query.filter_by(subject_id=subject_id).all()
+        for a in apply_tenant_filter(
+            SocialAccount.query.filter_by(subject_id=subject_id),
+            SocialAccount,
+        ).all()
     }
 
     findings_count = 0

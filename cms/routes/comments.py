@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Comment, CommentEditHistory, AuditLog
+from ..auth import apply_tenant_filter
 from ..validation import validate, CreateCommentSchema, UpdateCommentSchema
 
 from .response import api_success, api_error
@@ -142,6 +143,7 @@ def get_comments_for_entity() -> flask.Response:
     entity_id = request.args.get("id")
 
     query = Comment.query.filter_by(is_deleted=False)
+    query = apply_tenant_filter(query, Comment)
 
     if entity_type == "case" and entity_id:
         query = query.filter_by(case_id=entity_id)
@@ -169,6 +171,7 @@ def get_comment_count() -> flask.Response:
     entity_id = request.args.get("id")
 
     query = Comment.query.filter_by(is_deleted=False)
+    query = apply_tenant_filter(query, Comment)
 
     if entity_type == "case" and entity_id:
         count = query.filter_by(case_id=entity_id).count()

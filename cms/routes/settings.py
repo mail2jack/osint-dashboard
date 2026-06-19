@@ -28,7 +28,7 @@ from ..models import (
     TenantSetting,
     init_default_settings,
 )
-from ..auth import admin_required
+from ..auth import admin_required, apply_tenant_filter
 from ..validation import validate, SaveSettingsSchema
 
 from .response import api_success, api_error
@@ -417,6 +417,7 @@ def read_audit_dashboard() -> str:
     user_filter = request.args.get("user", "").strip()
 
     q = AuditLog.query.filter(AuditLog.action == "read")
+    q = apply_tenant_filter(q, AuditLog)
 
     if entity_filter:
         q = q.filter(AuditLog.entity_type == entity_filter)
@@ -427,15 +428,15 @@ def read_audit_dashboard() -> str:
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
     logs = pagination.items
 
-    entity_types = [
-        r[0]
-        for r in db.session.query(AuditLog.entity_type)
-        .filter(AuditLog.action == "read")
-        .distinct()
-        .all()
-    ]
+    type_query = db.session.query(AuditLog.entity_type).filter(
+        AuditLog.action == "read"
+    )
+    type_query = apply_tenant_filter(type_query, AuditLog)
+    entity_types = [r[0] for r in type_query.distinct().all()]
 
-    users = User.query.order_by(User.username).all()
+    user_query = User.query.order_by(User.username)
+    user_query = apply_tenant_filter(user_query, User)
+    users = user_query.all()
 
     return render_template(
         "cms/settings/read_audit.html",
@@ -459,6 +460,7 @@ def login_history() -> str:
     user_filter = request.args.get("user", "").strip()
 
     q = LoginLog.query
+    q = apply_tenant_filter(q, LoginLog)
     if show_anomalies_only:
         q = q.filter(LoginLog.is_anomaly == True)
     if user_filter:
@@ -468,7 +470,9 @@ def login_history() -> str:
     pagination = q.paginate(page=page, per_page=per_page, error_out=False)
     logs = pagination.items
 
-    users = User.query.order_by(User.username).all()
+    user_query = User.query.order_by(User.username)
+    user_query = apply_tenant_filter(user_query, User)
+    users = user_query.all()
 
     return render_template(
         "cms/settings/login_history.html",
@@ -512,8 +516,12 @@ def manage_api_keys() -> str:
     """View and manage per-user API keys."""
     from ..models import ApiKey
 
-    keys = ApiKey.query.order_by(ApiKey.created_at.desc()).all()
-    users = User.query.order_by(User.username).all()
+    key_query = ApiKey.query.order_by(ApiKey.created_at.desc())
+    key_query = apply_tenant_filter(key_query, ApiKey)
+    keys = key_query.all()
+    user_query = User.query.order_by(User.username)
+    user_query = apply_tenant_filter(user_query, User)
+    users = user_query.all()
 
     scope_options = ["read", "write", "admin"]
 

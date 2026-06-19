@@ -71,6 +71,7 @@ def send_notification_task(
                 return False
             notification = Notification(
                 user_id=user_id,
+                tenant_id=user.tenant_id,
                 type=notification_type,
                 title=title,
                 message=message,

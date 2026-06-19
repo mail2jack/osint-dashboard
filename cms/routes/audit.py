@@ -5,7 +5,7 @@ from flask_login import login_required
 
 from . import cms_bp
 from ..models import db, AuditLog, User
-from ..auth import senior_required
+from ..auth import senior_required, apply_tenant_filter
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,9 @@ def audit_log() -> str:
     case_id = request.args.get("case_id", "")
     search = request.args.get("search", "")
 
-    query = AuditLog.query.options(db.joinedload(AuditLog.user))
+    query = apply_tenant_filter(
+        AuditLog.query.options(db.joinedload(AuditLog.user)), AuditLog
+    )
 
     if entity_type:
         query = query.filter_by(entity_type=entity_type)
@@ -46,10 +48,14 @@ def audit_log() -> str:
     )
 
     # Get filter options for dropdowns
-    users = User.query.filter_by(is_active=True).all()
-    entity_types = db.session.query(AuditLog.entity_type).distinct().all()
+    users = apply_tenant_filter(User.query.filter_by(is_active=True), User).all()
+    entity_types = apply_tenant_filter(
+        db.session.query(AuditLog.entity_type).distinct(), AuditLog
+    ).all()
     entity_types = [e[0] for e in entity_types]
-    actions = db.session.query(AuditLog.action).distinct().all()
+    actions = apply_tenant_filter(
+        db.session.query(AuditLog.action).distinct(), AuditLog
+    ).all()
     actions = [a[0] for a in actions]
 
     return render_template(

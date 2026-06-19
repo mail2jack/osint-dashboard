@@ -303,6 +303,8 @@ class User(UserMixin, db.Model):
 
     def can_access_case(self, case) -> bool:
         """Check if user can access a specific case."""
+        if not case.tenant_id or case.tenant_id != self.tenant_id:
+            return False
         if self.is_admin:
             return True
         # Creator always has access
@@ -2929,7 +2931,7 @@ _TENANT_MODELS = [
 
 
 def _fill_tenant_id(mapper, connection, target):
-    """Auto-fill tenant_id from flask.g when a new row is inserted."""
+    """Auto-fill tenant_id from flask.g or the owning user when a new row is inserted."""
     if hasattr(target, "tenant_id") and target.tenant_id is None:
         from flask import g as _g
 
@@ -2942,9 +2944,6 @@ def _fill_tenant_id(mapper, connection, target):
             except Exception:
                 pass
         if not tid:
-            # Fallback: use the tenant_id of the first admin user. This handles
-            # test setups that push a new app context (with separate g) and
-            # directly create ORM entities without tenant_id.
             try:
                 _admin = User.query.filter_by(role="admin").first()
                 if _admin and _admin.tenant_id:

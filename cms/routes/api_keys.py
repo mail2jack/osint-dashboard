@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, ApiKey
-from ..auth import admin_required
+from ..auth import admin_required, apply_tenant_filter
 
 from .response import api_success, api_error
 
@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 @cms_bp.route("/api/api-keys", methods=["GET"])
 @login_required
 def list_api_keys() -> flask.Response:
-    keys = ApiKey.query.order_by(ApiKey.created_at.desc()).all()
+    keys = apply_tenant_filter(
+        ApiKey.query.order_by(ApiKey.created_at.desc()), ApiKey
+    ).all()
     return jsonify(
         [
             {

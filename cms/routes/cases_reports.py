@@ -17,7 +17,7 @@ from ..models import (
     Document,
     Reminder,
 )
-from ..auth import case_access_required, audit_read
+from ..auth import case_access_required, audit_read, apply_tenant_filter
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,12 @@ def view_case(case_id: str) -> str:
 
     linked_ids = [s.id for s in subjects]
     all_subjects = (
-        Subject.query.filter(Subject.is_deleted == False, ~Subject.id.in_(linked_ids))
+        apply_tenant_filter(
+            Subject.query.filter(
+                Subject.is_deleted == False, ~Subject.id.in_(linked_ids)
+            ),
+            Subject,
+        )
         .limit(500)
         .all()
     )
@@ -347,7 +352,9 @@ def case_report(case_id: str) -> str:
             all_subject_ids.add(c.subject_id)
     subjects_map = {}
     if all_subject_ids:
-        for s in Subject.query.filter(Subject.id.in_(all_subject_ids)).all():
+        for s in apply_tenant_filter(
+            Subject.query.filter(Subject.id.in_(all_subject_ids)), Subject
+        ).all():
             subjects_map[s.id] = s
 
     entries = []
@@ -397,8 +404,11 @@ def case_report(case_id: str) -> str:
             grouped[date_key] = []
         grouped[date_key].append(e)
 
-    subjects = Subject.query.filter(
-        Subject.cases.any(id=case_id), Subject.is_deleted == False
+    subjects = apply_tenant_filter(
+        Subject.query.filter(
+            Subject.cases.any(id=case_id), Subject.is_deleted == False
+        ),
+        Subject,
     ).all()
 
     return render_template(
@@ -444,7 +454,9 @@ def case_report_pdf(case_id: str) -> flask.Response:
             all_subject_ids.add(c.subject_id)
     subjects_map = {}
     if all_subject_ids:
-        for s in Subject.query.filter(Subject.id.in_(all_subject_ids)).all():
+        for s in apply_tenant_filter(
+            Subject.query.filter(Subject.id.in_(all_subject_ids)), Subject
+        ).all():
             subjects_map[s.id] = s
 
     entries = []
@@ -488,8 +500,11 @@ def case_report_pdf(case_id: str) -> flask.Response:
             grouped[date_key] = []
         grouped[date_key].append(e)
 
-    subjects = Subject.query.filter(
-        Subject.cases.any(id=case_id), Subject.is_deleted == False
+    subjects = apply_tenant_filter(
+        Subject.query.filter(
+            Subject.cases.any(id=case_id), Subject.is_deleted == False
+        ),
+        Subject,
     ).all()
 
     now_func = dt_mod.now

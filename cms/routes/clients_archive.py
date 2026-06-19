@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Client, Case, AuditLog
-from ..auth import roles_required
+from ..auth import roles_required, apply_tenant_filter
 
 from .response import api_error
 
@@ -24,10 +24,13 @@ def archive_client(client_id: str) -> flask.Response:
         return api_error("Client is already archived", 400)
 
     # Check if client has any non-closed/non-archived cases
-    active_cases = Case.query.filter(
-        Case.client_id == client_id,
-        Case.is_deleted == False,
-        Case.status.in_(["open", "active", "suspended"]),
+    active_cases = apply_tenant_filter(
+        Case.query.filter(
+            Case.client_id == client_id,
+            Case.is_deleted == False,
+            Case.status.in_(["open", "active", "suspended"]),
+        ),
+        Case,
     ).count()
     if active_cases > 0:
         return jsonify(

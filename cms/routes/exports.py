@@ -10,7 +10,7 @@ from sqlalchemy import func
 
 from . import cms_bp
 from ..models import db, Case, Subject, Client, Finding, Address, case_subjects
-from ..auth import can_export, case_access_required
+from ..auth import can_export, case_access_required, apply_tenant_filter
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
 from .response import api_error
@@ -163,13 +163,18 @@ def export_subjects_csv() -> Response:
 
     subject_addresses: dict = {}
     for addr in (
-        Address.query.filter(Address.subject_id.isnot(None))
+        apply_tenant_filter(
+            Address.query.filter(Address.subject_id.isnot(None)),
+            Address,
+        )
         .order_by(Address.is_primary.desc())
         .yield_per(500)
     ):
         subject_addresses.setdefault(addr.subject_id, []).append(addr)
 
-    q = Subject.query.filter_by(is_deleted=False).order_by(Subject.name)
+    q = apply_tenant_filter(
+        Subject.query.filter_by(is_deleted=False), Subject
+    ).order_by(Subject.name)
     for subject in q.yield_per(200):
         subject.decrypt_identifiers()
         addrs = subject_addresses.get(subject.id, [])
@@ -245,7 +250,9 @@ def export_clients_csv() -> Response:
         ]
     )
 
-    client_count = Client.query.filter_by(is_deleted=False).count()
+    client_count = apply_tenant_filter(
+        Client.query.filter_by(is_deleted=False), Client
+    ).count()
     if client_count > 5000:
         logger.warning(
             "Large client export (%d records) triggered by %s",
@@ -253,7 +260,9 @@ def export_clients_csv() -> Response:
             current_user.username,
         )
     for client in (
-        Client.query.filter_by(is_deleted=False).order_by(Client.name).yield_per(200)
+        apply_tenant_filter(Client.query.filter_by(is_deleted=False), Client)
+        .order_by(Client.name)
+        .yield_per(200)
     ):
         client.decrypt_naw()
         writer.writerow(
@@ -320,7 +329,9 @@ def export_cases_csv() -> Response:
         ]
     )
 
-    case_count = Case.query.filter_by(is_deleted=False).count()
+    case_count = apply_tenant_filter(
+        Case.query.filter_by(is_deleted=False), Case
+    ).count()
     if case_count > 5000:
         logger.warning(
             "Large cases export (%d records) triggered by %s",
@@ -336,14 +347,18 @@ def export_cases_csv() -> Response:
         .all()
     )
     finding_counts = dict(
-        db.session.query(Finding.case_id, func.count(Finding.id))
-        .filter(Finding.is_deleted == False)
-        .group_by(Finding.case_id)
-        .all()
+        apply_tenant_filter(
+            db.session.query(Finding.case_id, func.count(Finding.id))
+            .filter(Finding.is_deleted == False)
+            .group_by(Finding.case_id),
+            Finding,
+        ).all()
     )
 
     for case in (
-        Case.query.filter_by(is_deleted=False).order_by(Case.case_number).yield_per(200)
+        apply_tenant_filter(Case.query.filter_by(is_deleted=False), Case)
+        .order_by(Case.case_number)
+        .yield_per(200)
     ):
         writer.writerow(
             [

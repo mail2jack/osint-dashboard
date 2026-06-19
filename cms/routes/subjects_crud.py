@@ -14,7 +14,7 @@ from ..validation import (
     BulkDeleteSchema,
 )
 from ..models import db, Subject, Case, Address, Contact, AuditLog, case_subjects
-from ..auth import roles_required, subject_access_required
+from ..auth import roles_required, subject_access_required, apply_tenant_filter
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
@@ -623,8 +623,9 @@ def bulk_delete_subjects() -> flask.Response:
     if not ids or len(ids) > 100:
         return api_error("Provide a list of up to 100 subject IDs", 400)
     now = datetime.now(timezone.utc)
-    count = Subject.query.filter(
-        Subject.id.in_(ids), Subject.is_deleted == False
+    count = apply_tenant_filter(
+        Subject.query.filter(Subject.id.in_(ids), Subject.is_deleted == False),
+        Subject,
     ).update({"is_deleted": True, "deleted_at": now}, synchronize_session=False)
     db.session.commit()
     AuditLog.log(

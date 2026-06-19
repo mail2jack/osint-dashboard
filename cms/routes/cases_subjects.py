@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..validation import validate, AddSubjectToCaseSchema, BulkAddSubjectsSchema
 from ..models import db, Case, Subject, AuditLog
-from ..auth import roles_required, case_edit_required
+from ..auth import roles_required, case_edit_required, apply_tenant_filter
 
 from .response import api_success, api_error
 
@@ -72,7 +72,10 @@ def bulk_add_subjects_to_case(case_id: str) -> flask.Response:
 
     # Batch-load subjects + existing links
     subjects = {
-        s.id: s for s in Subject.query.filter(Subject.id.in_(subject_ids)).all()
+        s.id: s
+        for s in apply_tenant_filter(
+            Subject.query.filter(Subject.id.in_(subject_ids)), Subject
+        ).all()
     }
     existing_linked_ids = {s.id for s in case.subjects.all()}
 

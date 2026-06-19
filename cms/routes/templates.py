@@ -15,7 +15,7 @@ from ..validation import (
     GenerateReportSchema,
 )
 from ..models import db, Case, DocumentTemplate, Document, AuditLog
-from ..auth import roles_required, case_access_required
+from ..auth import roles_required, case_access_required, apply_tenant_filter
 
 from .response import api_error
 
@@ -26,11 +26,9 @@ logger = logging.getLogger(__name__)
 @login_required
 def list_templates() -> str:
     """List all document templates."""
-    templates = (
-        DocumentTemplate.query.filter_by(is_active=True)
-        .order_by(DocumentTemplate.name)
-        .all()
-    )
+    query = DocumentTemplate.query.filter_by(is_active=True)
+    query = apply_tenant_filter(query, DocumentTemplate)
+    templates = query.order_by(DocumentTemplate.name).all()
     return render_template("cms/templates/list.html", templates=templates)
 
 
@@ -156,11 +154,9 @@ def generate_case_report(case_id: str) -> flask.Response:
     """Generate a report from a template for a specific case."""
     case = db.session.get(Case, case_id) or abort(404)
 
-    templates = (
-        DocumentTemplate.query.filter_by(is_active=True)
-        .order_by(DocumentTemplate.name)
-        .all()
-    )
+    tmpl_query = DocumentTemplate.query.filter_by(is_active=True)
+    tmpl_query = apply_tenant_filter(tmpl_query, DocumentTemplate)
+    templates = tmpl_query.order_by(DocumentTemplate.name).all()
 
     if request.method == "POST":
         vd = request.validated_data
@@ -311,11 +307,9 @@ def _build_report_context(case: Case) -> dict:
 @login_required
 def get_all_templates() -> flask.Response:
     """Get all templates as JSON."""
-    templates = (
-        DocumentTemplate.query.filter_by(is_active=True)
-        .order_by(DocumentTemplate.name)
-        .all()
-    )
+    query = DocumentTemplate.query.filter_by(is_active=True)
+    query = apply_tenant_filter(query, DocumentTemplate)
+    templates = query.order_by(DocumentTemplate.name).all()
     return jsonify({"templates": [t.to_dict() for t in templates]})
 
 

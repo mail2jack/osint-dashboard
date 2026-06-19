@@ -11,7 +11,7 @@ from PIL import Image
 from . import cms_bp
 from ..validation import validate, CaptureScreenshotSchema, ScreenshotUploadSchema
 from ..models import db, Case, Screenshot, AuditLog
-from ..auth import case_access_required, case_edit_required
+from ..auth import case_access_required, case_edit_required, apply_tenant_filter
 from ..image_validation import validate_image_file
 
 from .response import api_success, api_error
@@ -43,11 +43,9 @@ def get_screenshot_path(case_id: str, filename: str = None) -> str:
 def list_screenshots(case_id: str) -> str:
     """List all screenshots for a case."""
     db.session.get(Case, case_id) or abort(404)
-    screenshots = (
-        Screenshot.query.filter_by(case_id=case_id)
-        .order_by(Screenshot.created_at.desc())
-        .all()
-    )
+    query = Screenshot.query.filter_by(case_id=case_id)
+    query = apply_tenant_filter(query, Screenshot)
+    screenshots = query.order_by(Screenshot.created_at.desc()).all()
 
     return jsonify(
         {"screenshots": [s.to_dict() for s in screenshots], "count": len(screenshots)}

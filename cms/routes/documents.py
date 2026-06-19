@@ -14,6 +14,7 @@ from ..auth import (
     case_access_required,
     case_edit_required,
     subject_access_required,
+    apply_tenant_filter,
 )
 from ..image_validation import validate_upload
 from ..validation import validate, DocumentUploadSchema
@@ -284,10 +285,8 @@ def delete_document(document_id: str) -> flask.Response:
 @case_access_required
 def get_case_documents(case_id: str) -> flask.Response:
     """Get all documents for a case."""
-    documents = (
-        Document.query.filter_by(case_id=case_id, is_deleted=False)
-        .order_by(Document.created_at.desc())
-        .all()
-    )
+    query = Document.query.filter_by(case_id=case_id, is_deleted=False)
+    query = apply_tenant_filter(query, Document)
+    documents = query.order_by(Document.created_at.desc()).all()
 
     return jsonify({"documents": [d.to_dict() for d in documents]})

@@ -17,6 +17,7 @@ from ..models import db, Setting
 from ..validation import validate, PhoneLookupSchema
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
+from ..auth import apply_tenant_filter
 from ..feature_flags import tool_enabled
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,11 @@ def phone_lookup_stored() -> flask.Response:
     from ..models import PhoneLookup
 
     lookup = (
-        PhoneLookup.query.filter(
-            PhoneLookup.phone == normalized, PhoneLookup.raw_response.isnot(None)
+        apply_tenant_filter(
+            PhoneLookup.query.filter(
+                PhoneLookup.phone == normalized, PhoneLookup.raw_response.isnot(None)
+            ),
+            PhoneLookup,
         )
         .order_by(PhoneLookup.created_at.desc())
         .first()

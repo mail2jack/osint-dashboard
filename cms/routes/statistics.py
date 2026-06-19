@@ -19,7 +19,7 @@ from ..models import (
     SpiderFootScan,
     Setting,
 )
-from ..auth import admin_required
+from ..auth import admin_required, apply_tenant_filter
 from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
@@ -31,16 +31,20 @@ logger = logging.getLogger(__name__)
 def statistics() -> str:
     """Statistics page with all dashboard widgets."""
     case_counts = dict(
-        db.session.query(Case.status, func.count(Case.id))
-        .filter(Case.is_deleted == False)
-        .group_by(Case.status)
-        .all()
+        apply_tenant_filter(
+            db.session.query(Case.status, func.count(Case.id))
+            .filter(Case.is_deleted == False)
+            .group_by(Case.status),
+            Case,
+        ).all()
     )
     priority_counts = dict(
-        db.session.query(Case.priority, func.count(Case.id))
-        .filter(Case.is_deleted == False)
-        .group_by(Case.priority)
-        .all()
+        apply_tenant_filter(
+            db.session.query(Case.priority, func.count(Case.id))
+            .filter(Case.is_deleted == False)
+            .group_by(Case.priority),
+            Case,
+        ).all()
     )
 
     stats = {
@@ -49,13 +53,18 @@ def statistics() -> str:
         "suspended_cases": case_counts.get(CaseStatus.SUSPENDED.value, 0),
         "closed_cases": case_counts.get(CaseStatus.CLOSED.value, 0),
         "archived_cases": case_counts.get(CaseStatus.ARCHIVED.value, 0),
-        "total_clients": Client.query.filter_by(
-            is_deleted=False, is_active=True
+        "total_clients": apply_tenant_filter(
+            Client.query.filter_by(is_deleted=False, is_active=True), Client
         ).count(),
-        "total_subjects": Subject.query.filter_by(is_deleted=False).count(),
-        "total_findings": Finding.query.filter_by(is_deleted=False).count(),
-        "high_risk_subjects": Subject.query.filter(
-            Subject.risk_score >= 70, Subject.is_deleted == False
+        "total_subjects": apply_tenant_filter(
+            Subject.query.filter_by(is_deleted=False), Subject
+        ).count(),
+        "total_findings": apply_tenant_filter(
+            Finding.query.filter_by(is_deleted=False), Finding
+        ).count(),
+        "high_risk_subjects": apply_tenant_filter(
+            Subject.query.filter(Subject.risk_score >= 70, Subject.is_deleted == False),
+            Subject,
         ).count(),
     }
 
@@ -76,21 +85,22 @@ def statistics() -> str:
     }
 
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    recent_cases = Case.query.filter(
-        Case.created_at >= thirty_days_ago, Case.is_deleted == False
+    recent_cases = apply_tenant_filter(
+        Case.query.filter(Case.created_at >= thirty_days_ago, Case.is_deleted == False),
+        Case,
     ).count()
 
-    subject_types = (
+    subject_types = apply_tenant_filter(
         db.session.query(Subject.subject_type, func.count(Subject.id))
         .filter(Subject.is_deleted == False)
-        .group_by(Subject.subject_type)
-        .all()
-    )
+        .group_by(Subject.subject_type),
+        Subject,
+    ).all()
     subject_type_labels = [s[0] for s in subject_types]
     subject_type_values = [s[1] for s in subject_types]
 
     _instr = func.instr if db.engine.dialect.name == "sqlite" else func.strpos
-    case_type_stats = (
+    case_type_stats = apply_tenant_filter(
         db.session.query(
             func.substr(Case.case_type, 1, _instr(Case.case_type, "|") - 1).label(
                 "code"
@@ -105,14 +115,14 @@ def statistics() -> str:
         )
         .group_by(func.substr(Case.case_type, 1, _instr(Case.case_type, "|") - 1))
         .order_by(func.count(Case.id).desc())
-        .limit(10)
-        .all()
-    )
+        .limit(10),
+        Case,
+    ).all()
 
     case_type_labels = [s.code if s.code else "Unknown" for s in case_type_stats]
     case_type_values = [s.count for s in case_type_stats]
 
-    lead_investigator_stats = (
+    lead_investigator_stats = apply_tenant_filter(
         db.session.query(User.full_name, func.count(Case.id).label("case_count"))
         .join(Case, Case.lead_investigator_id == User.id)
         .filter(
@@ -120,9 +130,9 @@ def statistics() -> str:
             Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
         )
         .group_by(User.id, User.full_name)
-        .order_by(func.count(Case.id).desc())
-        .all()
-    )
+        .order_by(func.count(Case.id).desc()),
+        Case,
+    ).all()
 
     investigator_names = [s.full_name for s in lead_investigator_stats]
     investigator_counts = [s.case_count for s in lead_investigator_stats]
@@ -136,30 +146,39 @@ def statistics() -> str:
     )
     my_assigned_ids = [row[0] for row in my_assigned_ids]
 
-    my_open_cases = Case.query.filter(
-        Case.is_deleted == False,
-        Case.status == CaseStatus.OPEN.value,
-        db.or_(
-            Case.assigned_to == current_user.id,
-            Case.lead_investigator_id == current_user.id,
-            Case.id.in_(my_assigned_ids) if my_assigned_ids else False,
+    my_open_cases = apply_tenant_filter(
+        Case.query.filter(
+            Case.is_deleted == False,
+            Case.status == CaseStatus.OPEN.value,
+            db.or_(
+                Case.assigned_to == current_user.id,
+                Case.lead_investigator_id == current_user.id,
+                Case.id.in_(my_assigned_ids) if my_assigned_ids else False,
+            ),
         ),
+        Case,
     ).count()
 
-    my_active_cases = Case.query.filter(
-        Case.is_deleted == False,
-        Case.status == CaseStatus.ACTIVE.value,
-        db.or_(
-            Case.assigned_to == current_user.id,
-            Case.lead_investigator_id == current_user.id,
-            Case.id.in_(my_assigned_ids) if my_assigned_ids else False,
+    my_active_cases = apply_tenant_filter(
+        Case.query.filter(
+            Case.is_deleted == False,
+            Case.status == CaseStatus.ACTIVE.value,
+            db.or_(
+                Case.assigned_to == current_user.id,
+                Case.lead_investigator_id == current_user.id,
+                Case.id.in_(my_assigned_ids) if my_assigned_ids else False,
+            ),
         ),
+        Case,
     ).count()
 
-    overdue_cases = Case.query.filter(
-        Case.is_deleted == False,
-        Case.target_end_date < datetime.now(timezone.utc).date(),
-        Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
+    overdue_cases = apply_tenant_filter(
+        Case.query.filter(
+            Case.is_deleted == False,
+            Case.target_end_date < datetime.now(timezone.utc).date(),
+            Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
+        ),
+        Case,
     ).count()
 
     assigned_ids = (
@@ -170,14 +189,17 @@ def statistics() -> str:
     assigned_ids = [row[0] for row in assigned_ids]
 
     my_cases = (
-        Case.query.filter(
-            Case.is_deleted == False,
-            Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
-            db.or_(
-                Case.assigned_to == current_user.id,
-                Case.lead_investigator_id == current_user.id,
-                Case.id.in_(assigned_ids) if assigned_ids else Case.id == None,
+        apply_tenant_filter(
+            Case.query.filter(
+                Case.is_deleted == False,
+                Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
+                db.or_(
+                    Case.assigned_to == current_user.id,
+                    Case.lead_investigator_id == current_user.id,
+                    Case.id.in_(assigned_ids) if assigned_ids else Case.id == None,
+                ),
             ),
+            Case,
         )
         .order_by(Case.updated_at.desc())
         .limit(10)
@@ -185,17 +207,25 @@ def statistics() -> str:
     )
 
     recent_activity = (
-        AuditLog.query.options(db.joinedload(AuditLog.user))
+        apply_tenant_filter(
+            AuditLog.query.options(db.joinedload(AuditLog.user)),
+            AuditLog,
+        )
         .order_by(AuditLog.timestamp.desc())
         .limit(20)
         .all()
     )
 
     priority_cases = (
-        Case.query.filter(
-            Case.priority.in_([CasePriority.CRITICAL.value, CasePriority.HIGH.value]),
-            Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
-            Case.is_deleted == False,
+        apply_tenant_filter(
+            Case.query.filter(
+                Case.priority.in_(
+                    [CasePriority.CRITICAL.value, CasePriority.HIGH.value]
+                ),
+                Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
+                Case.is_deleted == False,
+            ),
+            Case,
         )
         .order_by(Case.start_date.asc())
         .limit(5)
@@ -233,18 +263,26 @@ def statistics() -> str:
         db.session.commit()
 
     # SpiderFoot stats
-    sf_total = SpiderFootScan.query.filter_by(is_deleted=False).count()
-    sf_running = SpiderFootScan.query.filter_by(
-        is_deleted=False, status="RUNNING"
+    sf_total = apply_tenant_filter(
+        SpiderFootScan.query.filter_by(is_deleted=False), SpiderFootScan
     ).count()
-    sf_completed = SpiderFootScan.query.filter_by(
-        is_deleted=False, status="FINISHED"
+    sf_running = apply_tenant_filter(
+        SpiderFootScan.query.filter_by(is_deleted=False, status="RUNNING"),
+        SpiderFootScan,
     ).count()
-    sf_failed = SpiderFootScan.query.filter_by(
-        is_deleted=False, status="FAILED"
+    sf_completed = apply_tenant_filter(
+        SpiderFootScan.query.filter_by(is_deleted=False, status="FINISHED"),
+        SpiderFootScan,
+    ).count()
+    sf_failed = apply_tenant_filter(
+        SpiderFootScan.query.filter_by(is_deleted=False, status="FAILED"),
+        SpiderFootScan,
     ).count()
     sf_last_scan = (
-        SpiderFootScan.query.filter_by(is_deleted=False)
+        apply_tenant_filter(
+            SpiderFootScan.query.filter_by(is_deleted=False),
+            SpiderFootScan,
+        )
         .order_by(SpiderFootScan.created_at.desc())
         .first()
     )

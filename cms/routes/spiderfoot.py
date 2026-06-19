@@ -23,7 +23,7 @@ from ..validation import (
     SpiderFootScanSubjectSchema,
 )
 from ..models import db, SpiderFootScan, Setting, Case, Subject, Finding, AuditLog
-from ..auth import roles_required, admin_required
+from ..auth import roles_required, admin_required, apply_tenant_filter
 
 try:
     from ..spiderfoot_service import SpiderFootService, ScanTarget
@@ -78,7 +78,10 @@ def spiderfoot_index() -> str:
         db.session.rollback()
 
         db_scans = (
-            SpiderFootScan.query.filter_by(is_deleted=False)
+            apply_tenant_filter(
+                SpiderFootScan.query.filter_by(is_deleted=False),
+                SpiderFootScan,
+            )
             .order_by(SpiderFootScan.created_at.desc())
             .limit(10)
             .all()
@@ -166,17 +169,21 @@ def spiderfoot_index() -> str:
 
         status_counts = {"running": 0, "completed": 0, "pending": 0, "failed": 0}
         db_counts = {
-            "running": SpiderFootScan.query.filter_by(
-                status="running", is_deleted=False
+            "running": apply_tenant_filter(
+                SpiderFootScan.query.filter_by(status="running", is_deleted=False),
+                SpiderFootScan,
             ).count(),
-            "completed": SpiderFootScan.query.filter_by(
-                status="completed", is_deleted=False
+            "completed": apply_tenant_filter(
+                SpiderFootScan.query.filter_by(status="completed", is_deleted=False),
+                SpiderFootScan,
             ).count(),
-            "pending": SpiderFootScan.query.filter_by(
-                status="pending", is_deleted=False
+            "pending": apply_tenant_filter(
+                SpiderFootScan.query.filter_by(status="pending", is_deleted=False),
+                SpiderFootScan,
             ).count(),
-            "failed": SpiderFootScan.query.filter_by(
-                status="failed", is_deleted=False
+            "failed": apply_tenant_filter(
+                SpiderFootScan.query.filter_by(status="failed", is_deleted=False),
+                SpiderFootScan,
             ).count(),
         }
         status_map = {
@@ -228,8 +235,10 @@ def spiderfoot_scan() -> str:
     if request.method == "GET":
         # Show scan form
         search_q = request.args.get("q", "").strip()
-        case_query = Case.query.filter_by(is_deleted=False)
-        subject_query = Subject.query.filter_by(is_deleted=False)
+        case_query = apply_tenant_filter(Case.query.filter_by(is_deleted=False), Case)
+        subject_query = apply_tenant_filter(
+            Subject.query.filter_by(is_deleted=False), Subject
+        )
         if search_q:
             case_query = case_query.filter(Case.title.ilike(f"%{search_q}%"))
             subject_query = subject_query.filter(Subject.name.ilike(f"%{search_q}%"))
@@ -242,7 +251,10 @@ def spiderfoot_scan() -> str:
 
         # Get recent unique targets for quick-select
         recent_scans = (
-            SpiderFootScan.query.filter_by(is_deleted=False)
+            apply_tenant_filter(
+                SpiderFootScan.query.filter_by(is_deleted=False),
+                SpiderFootScan,
+            )
             .order_by(SpiderFootScan.created_at.desc())
             .limit(20)
             .all()
@@ -688,7 +700,9 @@ def spiderfoot_scans() -> str:
     status = request.args.get("status", "")
     search = request.args.get("search", "")
 
-    query = SpiderFootScan.query.filter_by(is_deleted=False)
+    query = apply_tenant_filter(
+        SpiderFootScan.query.filter_by(is_deleted=False), SpiderFootScan
+    )
 
     if status:
         query = query.filter_by(status=status)
@@ -826,12 +840,16 @@ def api_spiderfoot_status() -> flask.Response:
 
     # Count scans
     scan_counts = {
-        "total": SpiderFootScan.query.filter_by(is_deleted=False).count(),
-        "running": SpiderFootScan.query.filter_by(
-            status="running", is_deleted=False
+        "total": apply_tenant_filter(
+            SpiderFootScan.query.filter_by(is_deleted=False), SpiderFootScan
         ).count(),
-        "completed": SpiderFootScan.query.filter_by(
-            status="completed", is_deleted=False
+        "running": apply_tenant_filter(
+            SpiderFootScan.query.filter_by(status="running", is_deleted=False),
+            SpiderFootScan,
+        ).count(),
+        "completed": apply_tenant_filter(
+            SpiderFootScan.query.filter_by(status="completed", is_deleted=False),
+            SpiderFootScan,
         ).count(),
     }
 
@@ -944,7 +962,7 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
 
     # GET - Show scan form with subject info
     cases = (
-        Case.query.filter_by(is_deleted=False)
+        apply_tenant_filter(Case.query.filter_by(is_deleted=False), Case)
         .order_by(Case.case_number.desc())
         .limit(500)
         .all()

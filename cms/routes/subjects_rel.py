@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Subject, subject_relations, AuditLog
-from ..auth import roles_required, subject_access_required
+from ..auth import roles_required, subject_access_required, apply_tenant_filter
 from ..validation import validate, AddRelationSchema, RemoveRelationSchema
 
 from .response import api_success, api_error
@@ -32,8 +32,11 @@ def get_subject_relationships(subject_id: str) -> flask.Response:
         # Build a map of related subjects
         related_ids = [row.related_subject_id for row in related_rows]
         related = (
-            Subject.query.filter(
-                Subject.id.in_(related_ids), Subject.is_deleted == False
+            apply_tenant_filter(
+                Subject.query.filter(
+                    Subject.id.in_(related_ids), Subject.is_deleted == False
+                ),
+                Subject,
             ).all()
             if related_ids
             else []
@@ -111,10 +114,13 @@ def get_subject_relationships(subject_id: str) -> flask.Response:
                 if row.related_subject_id != subject.id
             ]
             rel_related = (
-                Subject.query.filter(
-                    Subject.id.in_(second_degree_ids),
-                    Subject.is_deleted == False,
-                    Subject.id != subject.id,
+                apply_tenant_filter(
+                    Subject.query.filter(
+                        Subject.id.in_(second_degree_ids),
+                        Subject.is_deleted == False,
+                        Subject.id != subject.id,
+                    ),
+                    Subject,
                 ).all()
                 if second_degree_ids
                 else []

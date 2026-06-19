@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from .. import csrf
 from ..models import db, FinancialRecord, AuditLog, Case
-from ..auth import senior_required, case_access_required
+from ..auth import senior_required, case_access_required, apply_tenant_filter
 from ..encryption_utils import encryptor
 from ..validation import validate, CreateFinancialSchema, VerifyFinancialSchema
 
@@ -129,7 +129,10 @@ def verify_financial(record_id: str) -> flask.Response:
 def get_financial_summary(case_id: str) -> flask.Response:
     """Get aggregated financial data for a case."""
     db.session.get(Case, case_id) or abort(404)
-    records = FinancialRecord.query.filter_by(case_id=case_id, is_deleted=False).all()
+    records = apply_tenant_filter(
+        FinancialRecord.query.filter_by(case_id=case_id, is_deleted=False),
+        FinancialRecord,
+    ).all()
 
     if not records:
         return jsonify(

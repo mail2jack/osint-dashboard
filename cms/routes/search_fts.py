@@ -10,7 +10,7 @@ from .. import csrf
 from ..models import db, Subject, Case, Finding, case_subjects
 from ..validation import validate, FTSSearchSchema
 from ..api_key_auth import api_key_required
-from ..auth import get_accessible_case_ids
+from ..auth import get_accessible_case_ids, apply_tenant_filter
 
 from .response import api_error
 
@@ -23,7 +23,10 @@ def _fts_query(model, columns, query: str, limit: int = 20) -> list:
     if not conditions:
         return []
     return (
-        model.query.filter(or_(*conditions))
+        apply_tenant_filter(
+            model.query.filter(or_(*conditions)),
+            model,
+        )
         .order_by(
             model.updated_at.desc()
             if hasattr(model, "updated_at")

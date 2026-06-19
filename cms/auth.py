@@ -637,17 +637,19 @@ def get_client_ip() -> str:
 
 def get_accessible_case_ids(user) -> list[str]:
     """
-    Return all case IDs the user can access.
+    Return all case IDs the user can access within their tenant.
     Replicates can_access_case() logic but in bulk.
     """
     from .models import Case, case_assignments
 
-    # Admin bypass — returns all non-deleted case IDs
+    tid = user.tenant_id
+
+    # Admin bypass — returns all non-deleted case IDs within tenant
     if user.is_admin:
         return [
             r[0]
             for r in Case.query.with_entities(Case.id)
-            .filter(Case.is_deleted == False)
+            .filter(Case.is_deleted == False, Case.tenant_id == tid)
             .all()
         ]
 
@@ -656,6 +658,7 @@ def get_accessible_case_ids(user) -> list[str]:
         Case.query.with_entities(Case.id)
         .filter(
             Case.is_deleted == False,
+            Case.tenant_id == tid,
             db.or_(
                 Case.created_by == user.id,
                 Case.lead_investigator_id == user.id,
