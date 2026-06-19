@@ -287,7 +287,7 @@ class ChangePasswordSchema(BaseModel):
 class SignupSchema(BaseModel):
     full_name: str = Field(min_length=1, description="Full name")
     email: str = Field(min_length=1, description="Email address")
-    organization_name: str = Field(min_length=1, description="Organization name")
+    join_code: str = Field(min_length=1, description="Tenant join code")
     password: str = Field(min_length=8, description="Password")
     confirm_password: str = ""
 

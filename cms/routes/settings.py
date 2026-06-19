@@ -651,6 +651,7 @@ def list_tenants() -> str:
             "id": t.id,
             "name": t.name,
             "slug": t.slug,
+            "join_code": t.join_code,
             "domain": t.domain,
             "tier": t.tier,
             "is_active": t.is_active,
@@ -703,11 +704,20 @@ def create_tenant() -> flask.Response:
     if Tenant.query.filter_by(slug=slug).first():
         return api_error("Slug already exists", 409)
     import uuid as _uuid
+    import secrets
+    import string
+
+    alphabet = string.ascii_uppercase + string.digits
+    while True:
+        join_code = "".join(secrets.choice(alphabet) for _ in range(8))
+        if not Tenant.query.filter_by(join_code=join_code).first():
+            break
 
     tenant = Tenant(
         id=str(_uuid.uuid4()),
         name=name,
         slug=slug,
+        join_code=join_code,
         is_active=True,
         tier=data.get("tier", "free"),
     )

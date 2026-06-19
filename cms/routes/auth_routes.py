@@ -7,9 +7,7 @@ import hashlib
 import io
 import json
 import base64
-import re
 import secrets
-import uuid as _uuid
 import logging
 from datetime import datetime, timezone
 
@@ -70,15 +68,10 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-def _slugify(text: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return slug or "organization"
-
-
 @auth_bp.route("/signup", methods=["GET", "POST"])
 @rate_limit(limit=(5, 300), key_prefix="signup_ip")
 def signup() -> flask.Response:
-    """Self-service signup with auto-provisioned tenant."""
+    """Signup with tenant join code."""
     if current_user.is_authenticated:
         return redirect(url_for("cms.dashboard"))
 
@@ -104,7 +97,6 @@ def signup() -> flask.Response:
                 "cms/signup.html",
                 full_name=d.get("full_name", ""),
                 email=d.get("email", ""),
-                organization_name=d.get("organization_name", ""),
             )
 
         email = validated.email.strip().lower()
@@ -113,7 +105,6 @@ def signup() -> flask.Response:
             return render_template(
                 "cms/signup.html",
                 full_name=validated.full_name,
-                organization_name=validated.organization_name,
             )
 
         if validated.password != validated.confirm_password:
@@ -122,28 +113,38 @@ def signup() -> flask.Response:
                 "cms/signup.html",
                 full_name=validated.full_name,
                 email=email,
-                organization_name=validated.organization_name,
             )
 
-        org_name = validated.organization_name.strip()
-        slug = _slugify(org_name)
-        existing = Tenant.query.filter_by(slug=slug).first()
-        if existing:
-            counter = 1
-            while Tenant.query.filter_by(slug=f"{slug}-{counter}").first():
-                counter += 1
-            slug = f"{slug}-{counter}"
+        join_code = validated.join_code.strip().upper()
+        tenant = Tenant.query.filter_by(join_code=join_code, is_active=True).first()
+        if not tenant:
+            flash(
+                "Invalid or inactive tenant code. Please check your code and try again.",
+                "danger",
+            )
+            return render_template(
+                "cms/signup.html",
+                full_name=validated.full_name,
+                email=email,
+            )
 
-        tenant = Tenant(
-            id=str(_uuid.uuid4()),
-            name=org_name,
-            slug=slug,
-            is_active=True,
-            tier="free",
+        from ..tier_limits import check_resource_limit
+
+        ok, current, maximum = check_resource_limit(
+            User, "tenant_id", "max_users", tenant=tenant
         )
-        db.session.add(tenant)
+        if not ok:
+            flash(
+                f"User limit reached ({current}/{maximum}) for this tenant. "
+                "Contact your tenant administrator.",
+                "danger",
+            )
+            return render_template(
+                "cms/signup.html",
+                full_name=validated.full_name,
+                email=email,
+            )
 
-        # Use email as username, or derive from email prefix
         username = email.split("@")[0]
         if User.query.filter_by(username=username).first():
             username = f"{username}_{secrets.token_hex(2)}"
@@ -152,19 +153,16 @@ def signup() -> flask.Response:
             username=username,
             email=email,
             full_name=validated.full_name.strip(),
-            role="owner",
+            role="investigator",
             tenant_id=tenant.id,
             is_super_admin=False,
             is_active=True,
         )
         user.set_password(validated.password)
         db.session.add(user)
-        db.session.flush()
-
-        tenant.owner_id = user.id
         db.session.commit()
 
-        notify_signup(username=username, email=email, org_name=org_name)
+        notify_signup(username=username, email=email, org_name=tenant.name)
 
         AuditLog.log(
             user_id=user.id,
@@ -172,11 +170,10 @@ def signup() -> flask.Response:
             entity_type="user",
             entity_id=user.id,
             ip_address=request.remote_addr,
-            description=f"User {username} signed up and created organization {org_name}",
+            description=f"User {username} joined tenant {tenant.name} via join code",
         )
         db.session.commit()
 
-        # Auto-login and redirect to 2FA setup (same flow as password verification)
         session["_2fa_user_id"] = user.id
         session["_2fa_remember"] = False
         flash("Account created! Please set up two-factor authentication.", "info")

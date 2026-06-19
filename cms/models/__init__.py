@@ -2769,6 +2769,7 @@ class Tenant(db.Model):
     stripe_subscription_id = db.Column(db.String(255), nullable=True)
     subscription_status = db.Column(db.String(50), default="incomplete", nullable=False)
     current_period_end = db.Column(db.DateTime, nullable=True)
+    join_code = db.Column(db.String(20), unique=True, nullable=False, index=True)
     owner_id = db.Column(
         db.String(36), db.ForeignKey("users.id"), nullable=True, index=True
     )
@@ -2794,6 +2795,7 @@ class Tenant(db.Model):
             "id": self.id,
             "name": self.name,
             "slug": self.slug,
+            "join_code": self.join_code,
             "domain": self.domain,
             "is_active": self.is_active,
             "tier": self.tier,

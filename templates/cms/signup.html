@@ -68,9 +68,9 @@
                 <div class="field-note">{{ _('Your email will be used as your login ID') }}</div>
             </div>
             <div class="form-group">
-                <label for="organization_name">{{ _('Organization Name') }}</label>
-                <input type="text" name="organization_name" id="organization_name" required value="{{ organization_name or '' }}">
-                <div class="field-note">{{ _('Your team\'s workspace name') }}</div>
+                <label for="join_code">{{ _('Tenant Code') }}</label>
+                <input type="text" name="join_code" id="join_code" required value="{{ join_code or '' }}" placeholder="e.g. ABC123DE" style="text-transform:uppercase;letter-spacing:0.1em;font-family:monospace;">
+                <div class="field-note">{{ _('Enter the code provided by your organization') }}</div>
             </div>
             <div class="form-group">
                 <label for="password">{{ _('Password') }}</label>

@@ -98,6 +98,7 @@
         <tr>
             <th>Name</th>
             <th>Slug</th>
+            <th>Code</th>
             <th>Status</th>
             <th>Users</th>
             <th>Tier</th>
@@ -110,6 +111,7 @@
         <tr>
             <td>{{ tenant.name }}</td>
             <td><code>{{ tenant.slug }}</code></td>
+            <td><code style="font-size:0.9rem;letter-spacing:0.05em;background:var(--info-bg, #dbeafe);padding:0.15rem 0.5rem;border-radius:4px;">{{ tenant.join_code }}</code></td>
             <td>
                 {% if tenant.is_active %}
                 <span class="badge-active">Active</span>
