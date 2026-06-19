@@ -123,6 +123,7 @@
                 {{ tenant.created_at.strftime('%Y-%m-%d') if tenant.created_at else '—' }}
             </td>
             <td>
+                <button class="btn-cms small" data-click="editTenant" data-arg0="{{ tenant.id }}">Edit</button>
                 {% if tenant.is_active %}
                 <button class="btn-cms small" data-click="toggleTenant" data-arg0="{{ tenant.id }}">Deactivate</button>
                 {% else %}
@@ -165,6 +166,37 @@
     </div>
 </div>
 
+<!-- Edit Tenant Modal -->
+<div id="editModal" class="modal-overlay">
+    <div class="modal-box">
+        <h2>Edit Tenant</h2>
+        <input type="hidden" id="editTenantId">
+        <label for="editTenantName">Tenant Name</label>
+        <input type="text" id="editTenantName" placeholder="e.g. Acme Corp">
+
+        <label for="editTenantSlug">Slug</label>
+        <input type="text" id="editTenantSlug" placeholder="e.g. acme-corp">
+
+        <label for="editTenantDomain">Custom Domain</label>
+        <input type="text" id="editTenantDomain" placeholder="e.g. acme.example.com">
+
+        <label for="editTenantTier">Tier</label>
+        <select id="editTenantTier">
+            <option value="">— No change —</option>
+            <option value="free">Free</option>
+            <option value="starter">Starter</option>
+            <option value="professional">Professional</option>
+            <option value="enterprise">Enterprise</option>
+        </select>
+
+        <div style="display:flex;gap:0.5rem;margin-top:1rem">
+            <button class="btn-cms primary" data-click="saveTenant">Save</button>
+            <button class="btn-cms" data-click="closeEditModal">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script id="tenants-data" type="application/json">{{ tenants_json|safe }}</script>
 <script nonce="{{ csp_nonce }}">
 function showCreateModal(btn) {
     document.getElementById('createModal').classList.add('show');
@@ -188,6 +220,47 @@ function createTenant(btn) {
             'X-CSRFToken': '{{ csrf_token() }}'
         },
         body: JSON.stringify({ name: name, slug: slug, tier: tier })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        location.reload();
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
+
+function editTenant(btn, id) {
+    const tenants = JSON.parse(document.getElementById('tenants-data').textContent);
+    const tenant = tenants.find(t => t.id === id);
+    if (!tenant) { alert('Tenant not found'); return; }
+    document.getElementById('editTenantId').value = tenant.id;
+    document.getElementById('editTenantName').value = tenant.name;
+    document.getElementById('editTenantSlug').value = tenant.slug;
+    document.getElementById('editTenantDomain').value = tenant.domain || '';
+    document.getElementById('editTenantTier').value = '';
+    document.getElementById('editModal').classList.add('show');
+}
+function closeEditModal(btn) {
+    document.getElementById('editModal').classList.remove('show');
+}
+function saveTenant(btn) {
+    const id = document.getElementById('editTenantId').value;
+    const name = document.getElementById('editTenantName').value.trim();
+    const slug = document.getElementById('editTenantSlug').value.trim();
+    const domain = document.getElementById('editTenantDomain').value.trim();
+    const tier = document.getElementById('editTenantTier').value;
+    const body = {};
+    if (name) body.name = name;
+    if (slug) body.slug = slug;
+    body.domain = domain || null;
+    if (tier) body.tier = tier;
+    apiFetch('/api/tenants/' + id, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify(body)
     })
     .then(r => r.json())
     .then(data => {

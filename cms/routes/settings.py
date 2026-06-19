@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -645,8 +646,24 @@ def list_tenants() -> str:
         .filter(User.tenant_id.isnot(None))
         .all()
     )
+    tenants_list = [
+        {
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "domain": t.domain,
+            "tier": t.tier,
+            "is_active": t.is_active,
+            "owner_id": t.owner_id,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+        }
+        for t in tenants
+    ]
     return render_template(
-        "cms/settings/tenants.html", tenants=tenants, user_counts=user_counts
+        "cms/settings/tenants.html",
+        tenants=tenants,
+        user_counts=user_counts,
+        tenants_json=json.dumps(tenants_list),
     )
 
 
@@ -699,6 +716,37 @@ def create_tenant() -> flask.Response:
     return jsonify(
         {"message": f"Tenant '{name}' created", "tenant": tenant.to_dict()}
     ), 201
+
+
+@cms_bp.route("/api/tenants/<tenant_id>", methods=["PUT"])
+@login_required
+@admin_required
+def update_tenant(tenant_id: str) -> flask.Response:
+    """Update tenant name, slug, domain, or tier."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    data = request.get_json() or {}
+    name = data.get("name", "").strip()
+    slug = data.get("slug", "").strip()
+    if name:
+        tenant.name = name
+    if slug:
+        existing = Tenant.query.filter(
+            Tenant.slug == slug, Tenant.id != tenant_id
+        ).first()
+        if existing:
+            return api_error("Slug already exists", 409)
+        tenant.slug = slug
+    if "domain" in data:
+        tenant.domain = data.get("domain", "").strip() or None
+    if data.get("tier"):
+        tenant.tier = data["tier"]
+    tenant.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify(
+        {"message": f"Tenant '{tenant.name}' updated", "tenant": tenant.to_dict()}
+    )
 
 
 @cms_bp.route("/api/tenants/<tenant_id>", methods=["DELETE"])
