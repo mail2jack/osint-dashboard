@@ -7,7 +7,12 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from .. import csrf
 from ..models import db, FinancialRecord, AuditLog, Case
-from ..auth import senior_required, case_access_required, apply_tenant_filter
+from ..auth import (
+    senior_required,
+    case_access_required,
+    apply_tenant_filter,
+    ensure_tenant_access,
+)
 from ..encryption_utils import encryptor
 from ..validation import validate, CreateFinancialSchema, VerifyFinancialSchema
 
@@ -38,6 +43,9 @@ def create_financial() -> flask.Response:
         return jsonify(
             {"error": "Invalid transaction_date format. Use YYYY-MM-DD."}
         ), 400
+
+    case = db.session.get(Case, request.validated_data["case_id"]) or abort(404)
+    ensure_tenant_access(case)
 
     record = FinancialRecord(
         case_id=request.validated_data["case_id"],
@@ -93,6 +101,7 @@ def create_financial() -> flask.Response:
 def verify_financial(record_id: str) -> flask.Response:
     """Verify or flag a financial record."""
     record = db.session.get(FinancialRecord, record_id) or abort(404)
+    ensure_tenant_access(record)
 
     action = request.validated_data.get("action")  # 'verify' or 'flag'
     notes = request.validated_data.get("notes", "")

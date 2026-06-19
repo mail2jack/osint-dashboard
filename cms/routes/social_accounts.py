@@ -7,7 +7,7 @@ from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..auth import apply_tenant_filter
+from ..auth import apply_tenant_filter, ensure_tenant_access
 from ..models import db, Subject, Finding, AuditLog
 from ..validation import (
     validate,
@@ -59,6 +59,7 @@ def add_social_account(subject_id: str) -> flask.Response:
     subject = db.session.get(Subject, subject_id)
     if not subject:
         return api_error("Subject not found", 404)
+    ensure_tenant_access(subject)
     data = request.validated_data
     platform = (data.get("platform") or "").strip().lower()
     username = (data.get("username") or "").strip()
@@ -87,6 +88,7 @@ def delete_social_account(subject_id: str, account_id: str) -> flask.Response:
     account = db.session.get(SocialAccount, account_id)
     if not account or str(account.subject_id) != subject_id:
         return api_error("Social account not found", 404)
+    ensure_tenant_access(account)
     db.session.delete(account)
     db.session.commit()
     return api_success({}, "Social account deleted")
@@ -113,6 +115,7 @@ def save_finding_as_social_account() -> flask.Response:
 
     if finding_id:
         finding = db.session.get(Finding, finding_id) or abort(404)
+        ensure_tenant_access(finding)
         if not finding.subject_id:
             return api_error("Finding not linked to a subject", 400)
         subject_id = finding.subject_id
@@ -120,6 +123,8 @@ def save_finding_as_social_account() -> flask.Response:
             url = finding.source_url
         if not username:
             subj = db.session.get(Subject, subject_id)
+            if subj:
+                ensure_tenant_access(subj)
             username = data.get("username") or (
                 subj.name if subj else finding.title.strip()
             )
@@ -167,6 +172,12 @@ def save_username_findings(subject_id: str) -> flask.Response:
 
     case_id = data.get("case_id") or ""
     subject = db.session.get(Subject, subject_id) or abort(404)
+    ensure_tenant_access(subject)
+    if case_id:
+        from ..models import Case
+
+        case = db.session.get(Case, case_id) or abort(404)
+        ensure_tenant_access(case)
 
     # Batch-load existing social accounts for dedup
     existing_accounts = {
@@ -280,6 +291,7 @@ def create_subject_from_username() -> flask.Response:
 
         case = db.session.get(Case, case_id)
         if case:
+            ensure_tenant_access(case)
             subject.cases.append(case)
 
     db.session.commit()

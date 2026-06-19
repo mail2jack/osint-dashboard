@@ -9,7 +9,12 @@ from . import cms_bp
 from .. import csrf
 from ..validation import validate, SetCaseParentSchema, TransitionCaseSchema
 from ..models import db, Case, AuditLog, CaseStatus
-from ..auth import roles_required, case_access_required, case_edit_required
+from ..auth import (
+    roles_required,
+    case_access_required,
+    case_edit_required,
+    ensure_tenant_access,
+)
 
 from .response import api_success, api_error
 
@@ -25,6 +30,7 @@ logger = logging.getLogger(__name__)
 def set_case_parent(case_id: str) -> flask.Response:
     """Set the parent case for a case."""
     case = db.session.get(Case, case_id) or abort(404)
+    ensure_tenant_access(case)
     data = request.validated_data
 
     parent_id = data.get("parent_case_id")
@@ -128,6 +134,7 @@ def search_cases() -> flask.Response:
 def get_case_hierarchy_api(case_id: str) -> flask.Response:
     """Get case hierarchy (parent and children) via API."""
     case = db.session.get(Case, case_id) or abort(404)
+    ensure_tenant_access(case)
     return jsonify(
         {
             "parent": {
@@ -154,7 +161,8 @@ def get_case_hierarchy_api(case_id: str) -> flask.Response:
 @login_required
 def get_case_audit_log_api(case_id: str) -> flask.Response:
     """Get audit log for a case via API."""
-    db.session.get(Case, case_id) or abort(404)
+    case = db.session.get(Case, case_id) or abort(404)
+    ensure_tenant_access(case)
     logs = (
         AuditLog.query.filter_by(entity_type="case", entity_id=case_id)
         .order_by(AuditLog.created_at.desc())

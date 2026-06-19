@@ -14,7 +14,12 @@ from ..validation import (
     BulkDeleteSchema,
 )
 from ..models import db, Subject, Case, Address, Contact, AuditLog, case_subjects
-from ..auth import roles_required, subject_access_required, apply_tenant_filter
+from ..auth import (
+    roles_required,
+    subject_access_required,
+    apply_tenant_filter,
+    ensure_tenant_access,
+)
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
@@ -235,6 +240,7 @@ def create_subject() -> flask.Response:
         if data.get("case_id"):
             case = db.session.get(Case, data["case_id"])
             if case:
+                ensure_tenant_access(case)
                 case.subjects.append(subject)
 
         AuditLog.log(

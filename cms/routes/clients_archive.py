@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Client, Case, AuditLog
-from ..auth import roles_required, apply_tenant_filter
+from ..auth import roles_required, apply_tenant_filter, ensure_tenant_access
 
 from .response import api_error
 
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 def archive_client(client_id: str) -> flask.Response:
     """Archive a client if no active cases exist."""
     client = db.session.get(Client, client_id) or abort(404)
+    ensure_tenant_access(client)
 
     if not client.is_active:
         return api_error("Client is already archived", 400)
@@ -64,6 +65,7 @@ def archive_client(client_id: str) -> flask.Response:
 def restore_client(client_id: str) -> flask.Response:
     """Restore an archived client."""
     client = db.session.get(Client, client_id) or abort(404)
+    ensure_tenant_access(client)
 
     if client.is_active:
         return api_error("Client is already active", 400)

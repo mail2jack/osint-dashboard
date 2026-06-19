@@ -3,12 +3,12 @@ import json
 from datetime import datetime, timezone
 
 import flask
-from flask import request, jsonify
+from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
 from .. import csrf
-from ..models import db, Subject, Finding, AuditLog
+from ..models import db, Subject, Finding, AuditLog, Case
 from ..auth import roles_required, ensure_tenant_access
 from ..encryption_utils import encryptor
 from ..validation import (
@@ -154,6 +154,9 @@ def create_finding_from_vessel() -> flask.Response:
 
     if not vessel_info or not isinstance(vessel_info, dict):
         return api_error("vessel_data is required", 400)
+
+    case = db.session.get(Case, case_id) or abort(404)
+    ensure_tenant_access(case)
 
     content_parts = ["Vessel Lookup Results", "=" * 30]
     name = vessel_info.get("name") or "Unknown"

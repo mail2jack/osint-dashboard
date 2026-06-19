@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Comment, CommentEditHistory, AuditLog
-from ..auth import apply_tenant_filter
+from ..auth import apply_tenant_filter, ensure_tenant_access
 from ..validation import validate, CreateCommentSchema, UpdateCommentSchema
 
 from .response import api_success, api_error
@@ -33,6 +33,13 @@ def create_comment() -> flask.Response:
 
     if not any(entity_ids.values()):
         return api_error("At least one entity ID is required", 400)
+
+    if entity_ids.get("case_id"):
+        from ..models import Case
+
+        case = db.session.get(Case, entity_ids["case_id"])
+        if case:
+            ensure_tenant_access(case)
 
     comment = Comment(
         content=request.validated_data["content"],
@@ -64,6 +71,7 @@ def create_comment() -> flask.Response:
 def update_comment(comment_id: str) -> flask.Response:
     """Update a comment."""
     comment = db.session.get(Comment, comment_id) or abort(404)
+    ensure_tenant_access(comment)
 
     # Only author or admin can edit
     if comment.author_id != current_user.id and not current_user.is_admin:
@@ -115,6 +123,7 @@ def update_comment(comment_id: str) -> flask.Response:
 def delete_comment(comment_id: str) -> flask.Response:
     """Delete a comment."""
     comment = db.session.get(Comment, comment_id) or abort(404)
+    ensure_tenant_access(comment)
 
     # Only author or admin can delete
     if comment.author_id != current_user.id and not current_user.is_admin:

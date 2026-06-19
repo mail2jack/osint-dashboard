@@ -7,7 +7,13 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..validation import validate, AddSubjectToCaseSchema, BulkAddSubjectsSchema
 from ..models import db, Case, Subject, AuditLog
-from ..auth import roles_required, case_edit_required, apply_tenant_filter
+from ..auth import (
+    roles_required,
+    case_edit_required,
+    apply_tenant_filter,
+    ensure_tenant_access,
+    case_access_required,
+)
 
 from .response import api_success, api_error
 
@@ -29,6 +35,7 @@ def add_subject_to_case(case_id: str) -> flask.Response:
         return api_error("subject_id is required", 400)
 
     subject = db.session.get(Subject, subject_id) or abort(404)
+    ensure_tenant_access(subject)
 
     if subject in case.subjects.all():
         return api_error("Subject already linked to this case", 400)
@@ -55,6 +62,7 @@ def add_subject_to_case(case_id: str) -> flask.Response:
 
 @cms_bp.route("/cases/<case_id>/add-subjects-bulk", methods=["POST"])
 @login_required
+@case_access_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @case_edit_required
 @validate(BulkAddSubjectsSchema)
@@ -131,6 +139,7 @@ def remove_subject_from_case(case_id: str, subject_id: str) -> flask.Response:
     """Remove a subject from a case."""
     case = db.session.get(Case, case_id) or abort(404)
     subject = db.session.get(Subject, subject_id) or abort(404)
+    ensure_tenant_access(subject)
 
     if subject not in case.subjects.all():
         return api_error("Subject not linked to this case", 400)

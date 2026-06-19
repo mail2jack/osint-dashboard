@@ -15,6 +15,7 @@ from ..auth import (
     case_edit_required,
     subject_access_required,
     apply_tenant_filter,
+    ensure_tenant_access,
 )
 from ..image_validation import validate_upload
 from ..validation import validate, DocumentUploadSchema
@@ -215,6 +216,7 @@ def upload_subject_document(subject_id: str) -> flask.Response:
 def get_document(document_id: str) -> flask.Response:
     """Get document metadata."""
     document = db.session.get(Document, document_id) or abort(404)
+    ensure_tenant_access(document)
 
     # Check access
     if document.case_id:
@@ -230,6 +232,7 @@ def get_document(document_id: str) -> flask.Response:
 def download_document(document_id: str) -> flask.Response:
     """Download a document."""
     document = db.session.get(Document, document_id) or abort(404)
+    ensure_tenant_access(document)
 
     # Check access
     if document.case_id:
@@ -259,6 +262,7 @@ def download_document(document_id: str) -> flask.Response:
 def delete_document(document_id: str) -> flask.Response:
     """Delete a document."""
     document = db.session.get(Document, document_id) or abort(404)
+    ensure_tenant_access(document)
 
     # Delete file
     file_path = os.path.join(current_app.root_path, "static", document.storage_path)
