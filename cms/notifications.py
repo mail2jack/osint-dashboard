@@ -90,6 +90,7 @@ def notify_search_restricted(
     Also notifies the searching user. Returns the list of case owner names.
     """
     try:
+        from flask_login import current_user
         from .models import Notification, Case, User, db, case_assignments
     except Exception:
         return []
@@ -97,7 +98,10 @@ def notify_search_restricted(
     owner_names: set[str] = set()
 
     for case_number in restricted_case_numbers:
-        case = Case.query.filter_by(case_number=case_number).first()
+        case = Case.query.filter(
+            Case.case_number == case_number,
+            Case.tenant_id == current_user.tenant_id,
+        ).first()
         if not case:
             continue
 

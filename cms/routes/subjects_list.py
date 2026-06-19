@@ -69,6 +69,8 @@ def subjects() -> str:
             from cms.notifications import notify_search_restricted
 
             accessible_count = query.count()
+            restricted_case_numbers = set()
+            restricted = 0
             total_q = Subject.query.filter(Subject.is_deleted == False).filter(
                 db.or_(
                     Subject.name.ilike(f"%{search}%"),
@@ -80,22 +82,29 @@ def subjects() -> str:
                     ),
                 )
             )
+            total_q = apply_tenant_filter(total_q, Subject)
             total_count = total_q.count()
             restricted = total_count - accessible_count
             if restricted > 0:
                 if linked_subject_ids:
-                    restricted_subjects = Subject.query.filter(
-                        Subject.is_deleted == False,
-                        Subject.name.ilike(f"%{search}%"),
-                        ~Subject.id.in_(linked_subject_ids),
-                    ).all()
+                    restricted_subjects = (
+                        Subject.query.filter(
+                            Subject.is_deleted == False,
+                            Subject.name.ilike(f"%{search}%"),
+                            ~Subject.id.in_(linked_subject_ids),
+                        )
+                        .filter(Subject.tenant_id == current_user.tenant_id)
+                        .all()
+                    )
                 else:
-                    restricted_subjects = Subject.query.filter(
-                        Subject.is_deleted == False,
-                        Subject.name.ilike(f"%{search}%"),
-                    ).all()
-            restricted_case_numbers = set()
-            if restricted_subjects:
+                    restricted_subjects = (
+                        Subject.query.filter(
+                            Subject.is_deleted == False,
+                            Subject.name.ilike(f"%{search}%"),
+                        )
+                        .filter(Subject.tenant_id == current_user.tenant_id)
+                        .all()
+                    )
                 restricted_ids = [s.id for s in restricted_subjects]
                 case_mappings = (
                     db.session.query(

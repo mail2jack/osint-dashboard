@@ -94,6 +94,10 @@ def search_cases() -> flask.Response:
 
     query = Case.query.filter_by(is_deleted=False)
 
+    from ..auth import apply_tenant_filter
+
+    query = apply_tenant_filter(query, Case)
+
     if q:
         query = query.filter(
             db.or_(Case.case_number.ilike(f"%{q}%"), Case.title.ilike(f"%{q}%"))

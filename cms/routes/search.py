@@ -16,7 +16,7 @@ from ..models import (
     AuditLog,
     case_subjects,
 )
-from ..auth import get_accessible_case_ids
+from ..auth import get_accessible_case_ids, apply_tenant_filter
 from ..notifications import notify_search_restricted
 
 logger = logging.getLogger(__name__)
@@ -95,6 +95,7 @@ def search() -> str:
                     ),
                 )
             )
+            base_q = apply_tenant_filter(base_q, Case)
             total_count = base_q.count()
             cases = base_q.filter(Case.id.in_(accessible_ids)).limit(20).all()
             results["cases"] = [
@@ -152,6 +153,7 @@ def search() -> str:
                     Subject.identification_number.ilike(f"%{query}%"),
                 ),
             )
+            subjects_q = apply_tenant_filter(subjects_q, Subject)
             if not current_user.is_admin:
                 subjects_q = subjects_q.filter(
                     db.select(case_subjects.c.case_id)
@@ -186,6 +188,7 @@ def search() -> str:
                     ),
                 )
             )
+            base_q = apply_tenant_filter(base_q, Case)
             total_count = base_q.count()
             findings = base_q.filter(Case.id.in_(accessible_ids)).limit(20).all()
             results["findings"] = [
