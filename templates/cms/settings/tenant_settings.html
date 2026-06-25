@@ -1,0 +1,247 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Tenant Settings') }} — CMS{% endblock %}
+{% block content %}
+<style>
+.tenant-settings-form {
+    max-width: 700px;
+    margin: 1.5rem 0;
+}
+.setting-group {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+.setting-group h3 {
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+.setting-group p {
+    margin: 0 0 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.setting-item {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.setting-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.setting-item label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+}
+.setting-item .desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+.setting-item input, .setting-item select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: var(--input-bg, #fff);
+    color: var(--text);
+    box-sizing: border-box;
+}
+.setting-item input[type="color"] {
+    height: 40px;
+    padding: 2px;
+    cursor: pointer;
+}
+.setting-item .input-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.setting-item .input-row input { flex: 1; }
+.setting-item .input-row .badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.badge-configured { background: #d1fae5; color: #065f46; }
+.badge-missing { background: #fee2e2; color: #991b1b; }
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+}
+.empty-state p { font-size: 1rem; margin: 0.5rem 0; }
+</style>
+
+<div style="margin-bottom:1.5rem;">
+    <a href="{{ url_for('cms.settings') }}">← {{ _('Back to Settings') }}</a>
+</div>
+
+<h1 style="margin:0 0 0.25rem;">🏢 {{ _('Tenant Settings') }}</h1>
+<p style="color:var(--text-muted);font-size:0.9rem;margin:0 0 1.5rem;">
+    {{ _('Manage settings for your organization') }}: <strong>{{ current_user.tenant.name if current_user.tenant else '' }}</strong>
+</p>
+
+{% if settings_list %}
+<form id="tenantSettingsForm" class="tenant-settings-form">
+    {% set groups = settings_list|groupby('category') %}
+    {% for category, items in groups %}
+    <div class="setting-group">
+        <h3>{{ category|title }}</h3>
+        <p>{{ _('Configure settings for') }} {{ category }}.</p>
+        {% for s in items %}
+        <div class="setting-item" data-setting-id="{{ s.id }}" data-is-encrypted="{{ 'true' if s.is_encrypted else 'false' }}">
+            <label for="ts-{{ s.id }}">{{ s.key.replace('_', ' ')|title }}</label>
+            {% if s.description %}
+            <div class="desc">{{ s.description }}</div>
+            {% endif %}
+            <div class="input-row">
+                {% if s.is_encrypted %}
+                <input type="password" id="ts-{{ s.id }}" name="{{ s.key }}" value="{{ s.value or '' }}" placeholder="{{ _('Enter value') }}" class="setting-input" data-setting-id="{{ s.id }}">
+                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;" onclick="togglePassword(this)">{{ _('Show') }}</button>
+                {% if s.value %}
+                <span class="badge badge-configured">{{ _('Configured') }}</span>
+                {% else %}
+                <span class="badge badge-missing">{{ _('Not configured') }}</span>
+                {% endif %}
+                {% else %}
+                <input type="text" id="ts-{{ s.id }}" name="{{ s.key }}" value="{{ s.value or '' }}" placeholder="{{ _('Enter value') }}" class="setting-input" data-setting-id="{{ s.id }}">
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    <div class="setting-group">
+        <h3>🎨 {{ _('Branding') }}</h3>
+        <p>{{ _('Customize the look and feel of your tenant.') }}</p>
+        <div class="setting-item">
+            <label>{{ _('Logo') }}</label>
+            <div class="desc">{{ _('Upload a logo for your tenant (PNG, JPG, SVG, WebP).') }}</div>
+            {% set tenant_logo = settings_list|selectattr('key', 'equalto', 'app_logo')|map(attribute='value')|first %}
+            {% if tenant_logo %}
+            <div style="margin-bottom:0.5rem;">
+                <img src="{{ url_for('static', filename='uploads/tenant_logos/' + tenant_logo) }}" alt="{{ _('Tenant logo') }}" style="max-height:60px;border:1px solid var(--border-color);border-radius:6px;padding:0.25rem;">
+            </div>
+            {% endif %}
+            <div class="input-row">
+                <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp" style="flex:1;padding:0.25rem;">
+                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;" onclick="uploadLogo()">{{ _('Upload') }}</button>
+                {% if tenant_logo %}
+                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;background:#ef4444;border-color:#ef4444;" onclick="deleteLogo()">{{ _('Remove') }}</button>
+                {% endif %}
+            </div>
+            <div id="logoStatus" style="font-size:0.75rem;margin-top:0.25rem;color:var(--text-muted);"></div>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+        <button type="submit" class="btn-cms">{{ _('Save Settings') }}</button>
+        <span id="saveStatus" style="font-size:0.8rem;color:var(--text-muted);"></span>
+    </div>
+</form>
+{% else %}
+<div class="empty-state">
+    <p style="font-size:2rem;">🔧</p>
+    <p>{{ _('No tenant-specific settings yet.') }}</p>
+    <p style="font-size:0.85rem;">{{ _('Tenant settings will appear here as features are configured.') }}</p>
+</div>
+{% endif %}
+
+<script nonce="{{ csp_nonce }}">
+function togglePassword(btn) {
+    var input = btn.previousElementSibling;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '{{ _("Hide") }}';
+    } else {
+        input.type = 'password';
+        btn.textContent = '{{ _("Show") }}';
+    }
+}
+
+document.getElementById('tenantSettingsForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    var status = document.getElementById('saveStatus');
+    status.textContent = '{{ _("Saving...") }}';
+
+    var settings = [];
+    document.querySelectorAll('.setting-input').forEach(function(input) {
+        settings.push({
+            id: input.dataset.settingId,
+            value: input.value
+        });
+    });
+
+    try {
+        var resp = await apiFetch('/cms/api/tenant-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: JSON.stringify({ settings: settings })
+        });
+        var data = await resp.json();
+        status.textContent = data.message || '{{ _("Saved") }}';
+        status.style.color = 'var(--success, #10b981)';
+        setTimeout(function() { location.reload(); }, 1500);
+    } catch (err) {
+        status.textContent = '{{ _("Error saving settings") }}';
+        status.style.color = 'var(--danger, #ef4444)';
+    }
+});
+
+async function uploadLogo() {
+    var input = document.getElementById('logoUpload');
+    var file = input.files[0];
+    if (!file) { document.getElementById('logoStatus').textContent = '{{ _("Select a file first") }}'; return; }
+
+    var status = document.getElementById('logoStatus');
+    status.textContent = '{{ _("Uploading...") }}';
+    var formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        var resp = await fetch('/cms/api/tenant-settings/upload-logo', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: formData
+        });
+        var data = await resp.json();
+        if (data.filename) {
+            status.textContent = '{{ _("Logo uploaded") }}';
+            status.style.color = '#10b981';
+            setTimeout(function() { location.reload(); }, 1000);
+        } else {
+            status.textContent = data.error || '{{ _("Upload failed") }}';
+            status.style.color = '#ef4444';
+        }
+    } catch (err) {
+        status.textContent = '{{ _("Upload error") }}';
+        status.style.color = '#ef4444';
+    }
+}
+
+async function deleteLogo() {
+    if (!confirm('{{ _("Remove logo?") }}')) return;
+    var status = document.getElementById('logoStatus');
+    status.textContent = '{{ _("Removing...") }}';
+    try {
+        var resp = await apiFetch('/cms/api/tenant-settings/delete-logo', { method: 'POST' });
+        var data = await resp.json();
+        if (data.status === 'ok') {
+            status.textContent = '{{ _("Logo removed") }}';
+            setTimeout(function() { location.reload(); }, 1000);
+        }
+    } catch (err) {
+        status.textContent = '{{ _("Error removing logo") }}';
+    }
+}
+</script>
+{% endblock %}

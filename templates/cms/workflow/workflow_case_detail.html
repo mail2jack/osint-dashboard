@@ -1,0 +1,623 @@
+{% extends "cms/base.html" %}
+{% block title %}Workflow — {{ case.case_number }}{% endblock %}
+{% block content %}
+<style>
+.workflow-step {
+  border: 2px solid var(--border-color); border-radius: 10px;
+  margin-bottom: 1.5rem; overflow: hidden;
+}
+.workflow-step-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600; font-size: 1rem;
+}
+.workflow-step-header .step-nr {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-primary); color: #fff; font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.workflow-step-body { padding: 1rem; }
+.action-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+.action-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  padding: 1.2rem 0.75rem; border: 2px solid var(--border-color);
+  border-radius: 10px; background: var(--bg-card); cursor: pointer;
+  transition: all 0.2s; text-align: center;
+}
+.action-btn:hover { border-color: var(--accent-primary); box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.action-btn:active { transform: scale(0.97); }
+.action-btn .icon { font-size: 1.8rem; }
+.action-btn .label { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); }
+.action-btn .desc { font-size: 0.75rem; color: var(--text-muted); }
+.action-btn.done { border-color: #10b981; background: #f0fdf4; }
+.action-btn.done .icon::after { content: ' ✅'; font-size: 1rem; }
+.action-btn.running { border-color: #f59e0b; background: #fffbeb; animation: pulse 1.5s ease-in-out infinite; }
+.action-btn.running .icon::after { content: ' ⏳'; font-size: 1rem; }
+.action-btn.failed { border-color: #ef4444; background: #fef2f2; }
+.action-btn.failed .icon::after { content: ' ❌'; font-size: 1rem; }
+.action-btn { position: relative; }
+.action-cancel {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(239,68,68,0.85); color: #fff; border: none;
+  border-radius: 50%; width: 22px; height: 22px;
+  font-size: 0.75rem; line-height: 1; cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  z-index: 2; transition: background 0.15s;
+}
+.action-cancel:hover { background: #dc2626; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.finding-item {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.75rem; border: 1px solid var(--border-color);
+  border-radius: 8px; margin-bottom: 0.5rem;
+  background: var(--bg-card); transition: all 0.3s;
+}
+.finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+.finding-item .icon-col { font-size: 1.4rem; padding-top: 0.1rem; flex-shrink: 0; }
+.finding-item .body-col { flex: 1; min-width: 0; }
+.finding-item .title { font-weight: 600; font-size: 0.9rem; }
+.finding-item .meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
+.finding-item .meta a { color: var(--link-color); }
+.finding-item .screenshot {
+  margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary);
+  border-radius: 6px; font-size: 0.78rem; border: 1px dashed var(--border-color);
+}
+.finding-item .screenshot .ss-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.finding-item .screenshot .ss-label { font-weight: 600; color: var(--text-secondary); }
+.finding-item { position: relative; }
+.finding-group {
+  border: 1px solid var(--border-color); border-radius: 8px;
+  margin-bottom: 0.5rem; overflow: hidden;
+}
+.finding-group-header {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 0.75rem; cursor: pointer;
+  background: var(--bg-secondary); user-select: none;
+  font-size: 0.85rem; transition: background 0.15s;
+}
+.finding-group-header:hover { background: var(--border-color); }
+.finding-group-header .toggle-icon { font-size: 0.7rem; color: var(--text-muted); transition: transform 0.2s; }
+.finding-group.open .finding-group-header .toggle-icon { transform: rotate(90deg); }
+.finding-group-header .fg-icon { font-size: 1.1rem; }
+.finding-group-header .fg-label { font-weight: 600; flex: 1; }
+.finding-group-header .fg-status { font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 4px; }
+.finding-group-header .fg-status.fg-done { background: #f0fdf4; color: #10b981; }
+.finding-group-header .fg-status.fg-failed { background: #fef2f2; color: #ef4444; }
+.finding-group-header .fg-status.fg-running { background: #fffbeb; color: #f59e0b; }
+.finding-group-header .fg-count {
+  font-size: 0.75rem; background: var(--accent-primary); color: #fff;
+  min-width: 1.4rem; height: 1.4rem; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.finding-group-header .fg-time { font-size: 0.7rem; color: var(--text-muted); }
+.finding-group-body { display: none; padding: 0.5rem; }
+.finding-group.open .finding-group-body { display: block; }
+.finding-delete {
+  position: absolute; top: 0.4rem; right: 0.5rem;
+  background: none; border: none; font-size: 1.2rem; cursor: pointer;
+  color: var(--text-muted,#999); padding: 0.15rem 0.4rem; line-height: 1;
+  border-radius: 4px; transition: background 0.15s, color 0.15s;
+}
+.finding-delete:hover { background: #fee2e2; color: #ef4444; }
+.subject-info-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+.subject-info-item {
+  padding: 0.6rem; background: var(--bg-secondary);
+  border-radius: 6px; font-size: 0.85rem;
+}
+.subject-info-item .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+.subject-info-item .val { font-weight: 500; margin-top: 0.1rem; }
+.findings-counter {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem;
+  background: var(--accent-primary); color: #fff;
+}
+.super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.pv-template {
+  background: #f8fafc; border: 2px dashed var(--border-color);
+  border-radius: 8px; padding: 1.5rem; margin-top: 1rem;
+  font-family: serif; font-size: 0.9rem; line-height: 1.6;
+}
+.pv-template h3 { font-family: serif; margin: 0 0 0.5rem 0; }
+@media (max-width: 768px) {
+  .action-grid { grid-template-columns: 1fr 1fr; }
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px var(--bg) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+}
+</style>
+{% if brave_health == 'quota exhausted' %}
+<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:0.6rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;">
+  <span style="font-size:1.1rem;">⚠️</span>
+  <span><strong>Brave Search quota overschreden</strong> — OSINT Deep Search resultaten zijn beperkt. Vernieuw je API key in <a href="{{ url_for('cms.list_api_keys') }}" style="color:#dc2626;text-decoration:underline;">Settings → API Keys</a> of er wordt DuckDuckGo als fallback gebruikt.</span>
+</div>
+{% elif brave_health == 'no key configured' %}
+<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:0.6rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;">
+  <span style="font-size:1.1rem;">⚙️</span>
+  <span><strong>Brave Search niet geconfigureerd</strong> — OSINT Deep Search gebruikt DuckDuckGo als fallback, maar resultaten kunnen beperkt zijn. Voeg een API key toe in <a href="{{ url_for('cms.list_api_keys') }}" style="color:#d97706;text-decoration:underline;">Settings → API Keys</a>.</span>
+</div>
+{% endif %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+      <h1 style="margin:0;font-size:1.1rem;">{{ case.case_number }} — {{ case.title }}</h1>
+      <span class="super-badge">Workflow</span>
+      <span class="badge badge-status-{{ case.status }}">{{ case.status }}</span>
+      <span class="badge badge-priority-{{ case.priority }}">{{ case.priority }}</span>
+    </div>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
+      Onderzoeker: {{ case.lead_investigator }}
+      · Aangemaakt {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
+    </p>
+  </div>
+  <div style="display:flex;gap:0.5rem;align-items:center;">
+    <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} bevindingen</span>
+    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Bewerken</a>
+    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Proces-verbaal</a>
+    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
+  </div>
+</div>
+
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">1</span>
+    Opdrachtgever (Client)
+    {% if client %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Gereed ✓</span>{% endif %}
+  </div>
+  <div class="workflow-step-body">
+    {% if client %}
+    <div class="subject-info-grid">
+      <div class="subject-info-item">
+        <div class="lbl">Naam</div>
+        <div class="val">{{ client.name }}</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">Contactpersoon</div>
+        <div class="val">{{ client.contact_person or '—' }}</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">E-mail</div>
+        <div class="val">{{ client.email or '—' }}</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">Telefoon</div>
+        <div class="val">{{ client.phone or '—' }}</div>
+      </div>
+      {% if client.street or client.city %}
+      <div class="subject-info-item" style="grid-column:1/-1;">
+        <div class="lbl">🏠 Adres</div>
+        <div class="val">{{ client.street or '' }} {{ client.house_number or '' }}{{ client.house_number_addition or '' }}{% if client.postal_code or client.city %}<br>{% endif %}{{ client.postal_code or '' }} {{ client.city or '' }}</div>
+      </div>
+      {% endif %}
+      {% if client.reference %}
+      <div class="subject-info-item">
+        <div class="lbl">Referentie</div>
+        <div class="val">{{ client.reference }}</div>
+      </div>
+      {% endif %}
+      {% if client.notes %}
+      <div class="subject-info-item" style="grid-column:1/-1;">
+        <div class="lbl">Notities</div>
+        <div class="val">{{ client.notes }}</div>
+      </div>
+      {% endif %}
+      <div class="subject-info-item">
+        <div class="lbl">Datum aanvraag</div>
+        <div class="val">{{ case.created_at.strftime('%d-%m-%Y') if case.created_at else '-' }}</div>
+      </div>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted);">Geen opdrachtgever ingevuld</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">2</span>
+    Betrokkene{% if subjects|length > 1 %}n{% endif %} (Subject{% if subjects|length > 1 %}en{% endif %})
+    {% if subjects %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ subjects|length }} betrokkene{% if subjects|length > 1 %}n{% endif %} ✓</span>{% endif %}
+    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ toevoegen</a>
+  </div>
+  <div class="workflow-step-body">
+    {% if subjects %}
+    {% for subject in subjects %}
+    <div style="margin-bottom:{% if not loop.last %}1rem{% endif %};padding-bottom:{% if not loop.last %}1rem{% endif %};border-bottom:{% if not loop.last %}1px solid var(--border-color){% endif %};">
+      <strong style="font-size:0.85rem;display:block;margin-bottom:0.5rem;">Betrokkene {{ loop.index }}</strong>
+      <div class="subject-info-grid">
+        <div class="subject-info-item">
+          <div class="lbl">Naam</div>
+          <div class="val">{{ subject.name }}</div>
+        </div>
+        <div class="subject-info-item">
+          <div class="lbl">Type</div>
+          <div class="val">{{ subject.subject_type }}</div>
+        </div>
+        {% if subject.identification_number %}
+        <div class="subject-info-item">
+          <div class="lbl">Identificatienummer</div>
+          <div class="val">{{ subject.identification_number }}</div>
+        </div>
+        {% endif %}
+        <div class="subject-info-item">
+          <div class="lbl">Risicoscore</div>
+          <div class="val" style="color:{% if subject.risk_score > 70 %}#dc2626{% elif subject.risk_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">{{ subject.risk_score }}/100 — {% if subject.risk_score > 70 %}Hoog{% elif subject.risk_score > 30 %}Gemiddeld{% else %}Laag{% endif %}</div>
+        </div>
+        {% if subject.email %}
+        <div class="subject-info-item">
+          <div class="lbl">📧 E-mail</div>
+          <div class="val">{{ subject.email }}</div>
+        </div>
+        {% endif %}
+        {% if subject.phone %}
+        <div class="subject-info-item">
+          <div class="lbl">📞 Telefoon</div>
+          <div class="val">{{ subject.phone }}</div>
+        </div>
+        {% endif %}
+        {% if subject.street or subject.city %}
+        <div class="subject-info-item" style="grid-column:1/-1;">
+          <div class="lbl">🏠 Adres</div>
+          <div class="val">{{ subject.street or '' }} {{ subject.house_number or '' }}{{ subject.house_number_addition or '' }}{% if subject.postal_code or subject.city %}<br>{% endif %}{{ subject.postal_code or '' }} {{ subject.city or '' }}</div>
+        </div>
+        {% endif %}
+        {% if subject.social_accounts %}
+        <div class="subject-info-item" style="grid-column:1/-1;">
+          <div class="lbl">🌐 Social media</div>
+          <div class="val" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.2rem;">
+            {% for acct in subject.social_accounts %}
+            <span style="padding:0.15rem 0.5rem;background:#e8f4ff;border-radius:4px;">{{ acct }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if subject.notes %}
+        <div class="subject-info-item" style="grid-column:1/-1;">
+          <div class="lbl">Notities</div>
+          <div class="val">{{ subject.notes }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:var(--text-muted);">Geen betrokkene ingevuld</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">3</span>
+    Onderzoeksacties
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Klik op een actie om te starten</span>
+  </div>
+  <div class="workflow-step-body">
+    <div class="action-grid">
+      {% for key, info in action_types.items() %}
+      {% set rem = action_credits.get(key, 0) if action_credits else 0 %}
+      {% set limits = {'tiktok': 50, 'instagram': 10, 'linkedin': 50, 'twitter': 1000} %}
+      {% set limit = limits.get(key, 0) %}
+      <div class="action-btn" data-action="run-action" data-action-key="{{ key }}" data-icon="{{ info.icon }}" data-label="{{ info.label }}"{% if limit > 0 %} data-credits="{{ rem }}" data-credit-limit="{{ limit }}"{% endif %}>
+        <div class="icon">{{ info.icon }}</div>
+        <div class="label">{{ info.label }}</div>
+        <div class="desc">{{ info.label }} uitvoeren{% if limit > 0 and rem <= 5 and rem > 0 %} — nog {{ rem }}/{{ limit }} credits{% elif limit > 0 and rem == 0 %} — 🚫 opgebruikt{% endif %}</div>
+        {% if limit > 0 %}
+        <span class="credit-badge" style="position:absolute;top:-4px;right:-4px;background:{% if rem == 0 %}#ef4444{% elif rem <= 5 %}#f59e0b{% else %}#22c55e{% endif %};color:#fff;font-size:0.65rem;font-weight:700;padding:1px 5px;border-radius:8px;line-height:1.4;">{{ rem }}/{{ limit }}</span>
+        {% endif %}
+        <button type="button" class="action-cancel" data-action="cancel-action" data-action-key="{{ key }}" title="Annuleren" style="display:none;">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">4</span>
+    Bevindingen (Findings)
+    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ findings|length }} bevindingen</span>
+    <span id="findingsToggleAll" style="font-size:0.78rem;margin-left:0.5rem;">
+      <button type="button" id="collapseAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬛ Alles dicht</button>
+      <button type="button" id="expandAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬜ Alles open</button>
+    </span>
+    <span id="findingsBatchActions" style="display:none;font-size:0.78rem;margin-left:0.75rem;">
+      <input type="checkbox" id="selectAllFindings" title="Alles selecteren">
+      <button type="button" id="deleteSelectedFindings" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-left:0.3rem;">Verwijder geselecteerd</button>
+    </span>
+  </div>
+  <div class="workflow-step-body">
+    <div id="findingsContainer">
+      {% if findings %}
+
+      {% set action_groups = {} %}
+      {% set ungrouped = [] %}
+
+      {% for a in actions %}
+        {% set _ = action_groups.update({a.id: {"action": a, "findings": []}}) %}
+      {% endfor %}
+
+      {% for f in findings %}
+        {% set aids = finding_actions.get(f.id, []) %}
+        {% if aids %}
+          {% for aid in aids %}
+            {% if aid in action_groups %}
+              {% set _ = action_groups[aid]["findings"].append(f) %}
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          {% set _ = ungrouped.append(f) %}
+        {% endif %}
+      {% endfor %}
+
+      <div id="findings-list">
+        {% for aid, group in action_groups|dictsort %}
+          {% if group.findings %}
+          {% set act = group.action %}
+          {% set type_info = action_types.get(act.action_type, {}) %}
+           <div class="finding-group">
+             <div class="finding-group-header" data-toggle="findings-{{ aid }}">
+              <span class="toggle-icon">▶</span>
+              <span class="fg-icon">{{ type_info.get('icon', '📄') }}</span>
+              <span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}</span>
+              <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
+              <span class="fg-count">{{ group.findings|length }}</span>
+              {% if act.completed_at %}
+              <span class="fg-time">{{ act.completed_at.strftime('%H:%M') }}</span>
+              {% endif %}
+            </div>
+            <div class="finding-group-body" id="findings-{{ aid }}">
+              {% for f in group.findings %}
+              {% include "cms/workflow/_finding_item.html" %}
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+
+        {% if ungrouped %}
+        <div class="finding-group">
+          <div class="finding-group-header" data-toggle="findings-ungrouped">
+            <span class="toggle-icon">▶</span>
+            <span class="fg-icon">📋</span>
+            <span class="fg-label">Overige bevindingen</span>
+            <span class="fg-count">{{ ungrouped|length }}</span>
+          </div>
+          <div class="finding-group-body" id="findings-ungrouped">
+            {% for f in ungrouped %}
+            {% include "cms/workflow/_finding_item.html" %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% else %}
+      <div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div>
+        <p>Voer onderzoeksacties uit in Stap 3 om bevindingen te genereren.</p>
+        <p style="font-size:0.85rem;">Elke actie voegt realistische bevindingen toe op basis van openbare bronnen.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">5</span>
+    Proces-verbaal
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Genereer na afronding onderzoek</span>
+  </div>
+  <div class="workflow-step-body">
+    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 Proces-verbaal bekijken</a>
+      <span style="font-size:0.85rem;color:var(--text-muted);">Alle bevindingen worden samengevoegd in een rechtsgeldig proces-verbaal</span>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+{% include "cms/workflow/_workflow_js_config.html" %}
+{% include "cms/workflow/_workflow_picker.html" %}
+{% include "cms/workflow/_workflow_polling.html" %}
+{% include "cms/workflow/_workflow_events.html" %}
+
+
+
+
+<style nonce="{{ csp_nonce }}">
+.picker-overlay {
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.5);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;
+}
+.picker-modal {
+  background:var(--bg-card,#fff);
+  border-radius:12px;
+  max-width:560px;width:90%;
+  max-height:80vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.picker-header {
+  display:flex;justify-content:space-between;align-items:center;
+  padding:1rem 1.25rem;
+  border-bottom:1px solid var(--border-color,#e5e7eb);
+}
+.picker-header h3{margin:0;font-size:1rem;}
+.picker-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:#666;}
+.picker-body{padding:1.25rem;}
+.picker-item {
+  display:flex;flex-direction:column;
+  padding:0.75rem;
+  margin-bottom:0.5rem;
+  border:1px solid var(--border-color,#e5e7eb);
+  border-radius:8px;
+  cursor:pointer;
+  transition:background 0.15s, border-color 0.15s;
+}
+.picker-item:hover{background:var(--bg-secondary,#f1f5f9);border-color:#2563eb;}
+.picker-subject{font-weight:600;font-size:0.85rem;color:var(--text,#111);}
+.picker-field{font-size:0.75rem;color:var(--text-muted,#6b7280);margin-top:2px;}
+.picker-value{font-size:0.85rem;color:#2563eb;margin-top:2px;word-break:break-all;}
+.check-col{display:flex;align-items:flex-start;padding:0.6rem 0 0 0.3rem;}
+.check-col input{cursor:pointer;}
+#findingsBatchActions{display:inline-flex;align-items:center;gap:0.2rem;}
+
+/* ── RDW card ── */
+.rdw-card {
+  margin-top: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+.rdw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2a5298 100%);
+  color: #fff;
+  gap: 1rem;
+}
+.rdw-make {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.rdw-sub {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin-top: 0.1rem;
+}
+.rdw-plate {
+  font-family: 'Courier New', monospace;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  background: rgba(255,255,255,0.15);
+  padding: 0.25rem 0.7rem;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.rdw-body {
+  padding: 0.75rem;
+}
+.rdw-section {
+  margin-bottom: 0.6rem;
+}
+.rdw-section:last-child {
+  margin-bottom: 0;
+}
+.rdw-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.rdw-section-icon {
+  font-size: 0.85rem;
+}
+.rdw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--border-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.rdw-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0.6rem;
+  background: var(--bg-card);
+  font-size: 0.78rem;
+  gap: 0.5rem;
+}
+.rdw-row:nth-child(even) {
+  background: var(--bg-secondary);
+}
+.rdw-label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.rdw-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+}
+.rdw-unit {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+.rdw-raw-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 0.6rem;
+  background: none;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  padding: 0.35rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  transition: background 0.15s;
+}
+.rdw-raw-toggle:hover {
+  background: var(--bg-secondary);
+}
+.rdw-raw-table {
+  display: none;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.rdw-raw-open {
+  display: block !important;
+}
+.rdw-raw-row {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+}
+.rdw-raw-row:last-child {
+  border-bottom: none;
+}
+.rdw-raw-label {
+  flex: 0 0 45%;
+  padding: 0.2rem 0.45rem;
+  background: var(--bg-secondary);
+  font-weight: 600;
+  word-break: break-word;
+}
+.rdw-raw-value {
+  flex: 1;
+  padding: 0.2rem 0.45rem;
+  word-break: break-word;
+}
+</style>
+{% endblock %}

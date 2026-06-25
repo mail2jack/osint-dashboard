@@ -41,20 +41,26 @@
     @keyframes scan { 0%, 100% { transform: translateX(-50%) rotate(-8deg); } 50% { transform: translateX(-50%) rotate(8deg); } }
     @keyframes scanRing { 0% { opacity: 0.8; width: 40px; height: 40px; } 100% { opacity: 0; width: 100px; height: 100px; } }
     .osint-timer { font-size: 0.9rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
-    .comment-item { padding: 0.75rem; border: 1px solid var(--border-color, #e2e5ed); border-radius: 6px; margin-bottom: 0.5rem; background: var(--bg-card, #fff); }
-    .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
-    .comment-author { font-weight: 600; color: var(--text-primary, #1e2235); font-size: 0.9rem; }
-    .comment-type-badge { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 0.7rem; font-weight: 500; background: var(--bg-secondary, #eef0f6); color: var(--text-secondary, #5b637a); margin-left: 0.4rem; text-transform: uppercase; }
-    .comment-time { font-size: 0.78rem; color: var(--text-muted, #9198ac); }
-    .comment-content { padding: 0.3rem 0; line-height: 1.5; white-space: pre-wrap; word-break: break-word; color: var(--text-primary, #1e2235); }
-    .comment-actions { display: flex; gap: 0.5rem; margin-top: 0.35rem; }
-    .comment-actions button { font-size: 0.78rem; padding: 0.2rem 0.6rem; border: 1px solid var(--border-color, #e2e5ed); border-radius: 4px; background: transparent; color: var(--text-secondary, #5b637a); cursor: pointer; }
-    .comment-actions button:hover { background: var(--bg-secondary, #eef0f6); color: var(--text-primary, #1e2235); }
+    .comment-bubble {
+      padding: 0.75rem 1rem; border-radius: 8px;
+      background: var(--bg-secondary); margin-bottom: 0.6rem;
+      border: 1px solid var(--border-color);
+    }
+    .comment-bubble.pinned { border-left: 3px solid #f59e0b; }
+    .comment-bubble .header {
+      display: flex; justify-content: space-between; font-size: 0.8rem;
+      margin-bottom: 0.3rem;
+    }
+    .comment-bubble .author { font-weight: 600; }
+    .comment-bubble .date { color: var(--text-muted); }
+    .comment-bubble .body { font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+    .comment-bubble .actions { margin-top: 0.4rem; display: flex; gap: 0.5rem; }
+    .comment-bubble .actions button { font-size: 0.72rem; padding: 0.15rem 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: transparent; color: var(--text-secondary); cursor: pointer; }
+    .comment-bubble .actions button:hover { background: var(--bg-card); color: var(--text-primary); }
     .comment-edit-form { margin-top: 0.5rem; }
     .comment-edit-form textarea { min-height: 80px; font-size: 0.875rem; }
     .comment-edit-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
     .comment-edited { font-size: 0.72rem; color: var(--text-muted, #9198ac); font-style: italic; }
-    .comment-pinned { border-left: 3px solid var(--accent-primary, #2a3b8f); }
     .comment-type-badge.note { background: #eef0f6; color: #5b637a; }
     .comment-type-badge.discussion { background: #dbeafe; color: #1d4ed8; }
     .comment-type-badge.phone { background: #d1fae5; color: #059669; }
@@ -66,36 +72,44 @@
 <div style="padding: 0 2rem; margin-top: 1rem;">
     <div class="back"><a href="{{ url_for('cms.cases') }}">{{ _('← Back to Cases') }}</a></div>
     
-    <div class="page-header">
-        <h1>{{ case.case_number }}: {{ case.title }}</h1>
-    <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <div style="display: flex; gap: 0.3rem; align-items: center; padding-right: 0.5rem; border-right: 1px solid var(--border, #ddd);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+        <div>
+            <h1 style="margin:0;font-size:1.4rem;">{{ case.case_number }}: {{ case.title }}</h1>
+            <div style="color:var(--text-muted);font-size:0.85rem;margin-top:0.2rem;">
+                {{ _('Created') }} {{ case.created_at.strftime('%Y-%m-%d') if case.created_at else '-' }} · {{ _('Updated') }} {{ case.updated_at.strftime('%Y-%m-%d') if case.updated_at else '-' }}
+            </div>
+        </div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+            <span class="badge badge-{{ case.status }}">{{ case.status }}</span>
+            <span class="badge badge-{{ case.priority }}">{{ case.priority }}</span>
+            <div style="display:flex;gap:0.3rem;align-items:center;padding-left:0.5rem;border-left:1px solid var(--border-color);">
             {% if case.status == 'open' %}
-            <button data-click="changeStatus" data-arg0="active" class="btn-cms small bg-green">{{ _('▶ Start Investigation') }}</button>
+            <button data-click="changeStatus" data-arg0="active" class="btn-cms small bg-green">{{ _('▶ Start') }}</button>
             {% elif case.status == 'active' %}
-            <button data-click="changeStatus" data-arg0="suspended" class="btn-cms small" style="background: #f59e0b;">{{ _('⏸ Suspend') }}</button>
-            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small bg-green">{{ _('✓ Close Case') }}</button>
+            <button data-click="changeStatus" data-arg0="suspended" class="btn-cms small" style="background:#f59e0b;">{{ _('⏸ Suspend') }}</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small bg-green">{{ _('✓ Close') }}</button>
             {% elif case.status == 'suspended' %}
             <button data-click="changeStatus" data-arg0="active" class="btn-cms small bg-green">{{ _('▶ Resume') }}</button>
-            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small bg-green">{{ _('✓ Close Case') }}</button>
+            <button data-click="changeStatus" data-arg0="closed" class="btn-cms small bg-green">{{ _('✓ Close') }}</button>
             {% elif case.status == 'closed' %}
-            <button data-click="changeStatus" data-arg0="archived" class="btn-cms small" style="background: #6b7280;">{{ _('📁 Archive') }}</button>
+            <button data-click="changeStatus" data-arg0="archived" class="btn-cms small" style="background:#6b7280;">{{ _('📁 Archive') }}</button>
             {% elif case.status == 'archived' %}
-            <button class="btn-cms small" style="background: #6b7280; opacity: 0.6;" disabled>{{ _('📁 Archived') }}</button>
+            <button class="btn-cms small" style="background:#6b7280;opacity:0.6;" disabled>{{ _('📁 Archived') }}</button>
             {% endif %}
             {% if case.status in ['closed', 'archived'] %}
             <button data-click="reopenCase" class="btn-cms small bg-green">{{ _('↩ Reopen') }}</button>
             {% endif %}
+            </div>
+            <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small">{{ _('📥 CSV') }}</a>
+            <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small bg-purple">{{ _('📄 Report') }}</a>
+            <a href="{{ url_for('cms.invoice_create') }}?case_id={{ case.id }}&client_id={{ case.client_id }}" class="btn-cms small" style="background:#2563eb;">{{ _('+ Factuur') }}</a>
+            <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small primary">{{ _('✏️') }}</a>
         </div>
-        <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small bg-green">{{ _('📥 Export CSV') }}</a>
-        <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small bg-purple">{{ _('📄 Report') }}</a>
-        <a href="{{ url_for('cms.invoice_create') }}?case_id={{ case.id }}&client_id={{ case.client_id }}" class="btn-cms small" style="background:#2563eb;text-decoration:none;">{{ _('+ Factuur') }}</a>
-        <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small primary">{{ _('✏️ Edit') }}</a>
     </div>
-</div>
 
-<div class="card">
-    <div class="info-grid">
+<!-- Case Info Card -->
+<div class="card" style="margin-bottom:1rem;">
+    <div class="info-grid" style="grid-template-columns:1fr 1fr;">
         <div class="info-row">
             <span class="info-label">{{ _('Client') }}</span>
             <span class="info-value">{{ case.client.name if case.client else '-' }}</span>
@@ -103,14 +117,6 @@
         <div class="info-row">
             <span class="info-label">{{ _('Lead Investigator') }}</span>
             <span class="info-value">{{ case.lead_investigator.full_name if case.lead_investigator else '-' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{{ _('Priority') }}</span>
-            <span class="info-value"><span class="badge badge-{{ case.priority }}">{{ case.priority }}</span></span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">{{ _('Status') }}</span>
-            <span class="info-value"><span class="badge badge-{{ case.status }}">{{ case.status }}</span></span>
         </div>
         <div class="info-row">
             <span class="info-label">{{ _('Start Date') }}</span>
@@ -128,99 +134,96 @@
                 {% endif %}
             </span>
         </div>
-    </div>
-    
-    {% if case.description %}
-    <div class="info-row">
-        <span class="info-label">{{ _('Description') }}</span>
-        <div class="info-value">{{ case.description }}</div>
-    </div>
-    {% endif %}
-    
-    {% if case.tags %}
-    <div class="info-row">
-        <span class="info-label">{{ _('Tags') }}</span>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
-            {% for tag in case.tags %}
-            <span style="background: #e8f4ff; color: #1e40af; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">{{ tag }}</span>
-            {% endfor %}
+        {% if case.description %}
+        <div class="info-row" style="grid-column:1/-1;">
+            <span class="info-label">{{ _('Description') }}</span>
+            <div class="info-value">{{ case.description }}</div>
         </div>
+        {% endif %}
+        {% if case.tags %}
+        <div class="info-row" style="grid-column:1/-1;">
+            <span class="info-label">{{ _('Tags') }}</span>
+            <div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-top:0.15rem;">
+                {% for tag in case.tags %}
+                <span style="background:#e8f4ff;color:#1e40af;padding:0.15rem 0.45rem;border-radius:4px;font-size:0.8rem;">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if case.parent_case or child_cases %}
+        <div class="info-row" style="grid-column:1/-1;">
+            <span class="info-label">{{ _('Hierarchy') }}</span>
+            <span class="info-value" style="display:flex;flex-direction:column;gap:0.3rem;">
+                {% if case.parent_case %}
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                    <span style="color:var(--text-muted);font-size:0.8rem;">{{ _('Parent:') }}</span>
+                    <a href="{{ url_for('cms.view_case', case_id=case.parent_case.id) }}" style="font-weight:500;">{{ case.parent_case.case_number }}: {{ case.parent_case.title }}</a>
+                </div>
+                {% endif %}
+                {% if child_cases %}
+                {% for child in child_cases %}
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                    <span style="color:var(--text-muted);font-size:0.8rem;">{{ _('Child:') }}</span>
+                    <a href="{{ url_for('cms.view_case', case_id=child.id) }}" style="font-weight:500;">{{ child.case_number }}: {{ child.title }}</a>
+                    <span class="badge badge-{{ child.status }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ child.status }}</span>
+                </div>
+                {% endfor %}
+                {% endif %}
+                <div><button data-click="openHierarchyModal" class="btn-cms small" style="font-size:0.75rem;">{{ _('Manage Hierarchy') }}</button></div>
+            </span>
+        </div>
+        {% endif %}
+        {% if case.closure_reason %}
+        <div style="grid-column:1/-1;margin-top:0.5rem;padding:0.6rem;background:#fef3c7;border-radius:4px;font-size:0.85rem;">
+            <strong>{{ _('Closure Reason:') }}</strong> {{ case.closure_reason }}
+        </div>
+        {% endif %}
+        {% if case.reopened_reason %}
+        <div style="grid-column:1/-1;margin-top:0.25rem;padding:0.6rem;background:#dcfce7;border-radius:4px;font-size:0.85rem;">
+            <strong>{{ _('Reopened Reason:') }}</strong> {{ case.reopened_reason }}
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
-    {% if case.closure_reason %}
-    <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border-radius: 4px;">
-        <strong>{{ _('Closure Reason:') }}</strong> {{ case.closure_reason }}
-    </div>
-    {% endif %}
-    
-    {% if case.reopened_reason %}
-    <div style="margin-top: 0.5rem; padding: 0.75rem; background: #dcfce7; border-radius: 4px;">
-        <strong>{{ _('Reopened Reason:') }}</strong> {{ case.reopened_reason }}
-    </div>
-    {% endif %}
 </div>
 
-{% if case.parent_case or child_cases %}
-<div class="card">
+{# ─── Two-column layout ───────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+
+{# ─── LEFT COLUMN ─────────────────────────────────────── #}
+<div>
+
+{# ─── Subjects ───────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
     <div class="card-header">
-        <h2>{{ _('Case Hierarchy') }}</h2>
-        <button data-click="openHierarchyModal" class="btn-cms small bg-purple">{{ _('Manage Hierarchy') }}</button>
-    </div>
-    
-    {% if case.parent_case %}
-    <div style="margin-top: 1rem; padding: 0.75rem; background: #ede9fe; border-radius: 8px;">
-        <label style="display: block; color: #666; font-size: 0.875rem;">{{ _('Parent Case') }}</label>
-        <a href="{{ url_for('cms.view_case', case_id=case.parent_case.id) }}" style="font-weight: 600;">
-            {{ case.parent_case.case_number }}: {{ case.parent_case.title }}
-        </a>
-    </div>
-    {% endif %}
-    
-    {% if child_cases %}
-    <div class="mt-1">
-        <label style="display: block; color: #666; font-size: 0.875rem;">{{ _('Child Cases (%(count)s)', count=child_cases|length) }}</label>
-        {% for child in child_cases %}
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f5f5f5; border-radius: 4px; margin-top: 0.5rem;">
-            <a href="{{ url_for('cms.view_case', case_id=child.id) }}">
-                {{ child.case_number }}: {{ child.title }}
-            </a>
-            <span class="badge badge-{{ child.status }}">{{ child.status }}</span>
+        <h2>{{ _('Subjects (%(count)s)', count=subjects|length) }}</h2>
+        {% if case.status not in ['closed', 'archived'] %}
+        <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+            <button data-click="showAddSubjectForm" class="btn-cms small">{{ _('+ Add') }}</button>
+            <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small bg-green">{{ _('+ New') }}</a>
+            <button data-click="openCreateFromUsernameModal" class="btn-cms small text-purple">{{ _('@ Username') }}</button>
+            <button data-click="openOsintModal" class="btn-cms small bg-purple">{{ _('OSINT') }}</button>
         </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-</div>
-{% endif %}
-
-<div class="card">
-    <h2>{{ _('Subjects (%(count)s)', count=subjects|length) }}</h2>
-    
-    {% if case.status not in ['closed', 'archived'] %}
-    <div class="mb-1">
-        <button data-click="showAddSubjectForm" class="btn-cms small">{{ _('+ Add Subject') }}</button>
-        <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small bg-green">{{ _('+ Create New Subject') }}</a>
-        <button data-click="openCreateFromUsernameModal" class="btn-cms small text-purple">{{ _('@ Create from Username') }}</button>
-        <button data-click="openOsintModal" class="btn-cms small bg-purple">{{ _('OSINT Search') }}</button>
+        {% endif %}
     </div>
     
-    <div id="addSubjectForm" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
-<form action="{{ url_for('cms.add_subject_to_case', case_id=case.id) }}" method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="form-group">
-        <label for="subject_id">{{ _('Select Existing Subject') }}</label>
-                <select name="subject_id" id="subject_id" required style="padding: 0.5rem; width: 100%;">
+    <div id="addSubjectForm" style="display:none;padding:0.75rem;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);">
+        <form action="{{ url_for('cms.add_subject_to_case', case_id=case.id) }}" method="POST" style="display:flex;gap:0.4rem;align-items:end;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="flex:1;">
+                <select name="subject_id" id="subject_id" required style="padding:0.4rem;width:100%;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;">
                     <option value="">{{ _('Choose a subject...') }}</option>
                     {% for s in all_subjects %}
                     <option value="{{ s.id }}">{{ s.name }} ({{ s.subject_type }})</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="btn-cms small">{{ _('Add to Case') }}</button>
+            <button type="submit" class="btn-cms small">{{ _('Add') }}</button>
             <button type="button" data-click="hideAddSubjectForm" class="btn-cms small bg-gray">{{ _('Cancel') }}</button>
         </form>
     </div>
-    {% else %}
-    <div style="margin-bottom: 1rem; padding: 0.75rem; background: #fee2e2; border-radius: 4px; color: #991b1b;">
+    
+    {% if case.status in ['closed', 'archived'] %}
+    <div style="padding:0.5rem 0.75rem;background:#fee2e2;border-radius:4px;color:#991b1b;font-size:0.85rem;margin:0.5rem;">
         <strong>{{ _('Read-only:') }}</strong> {{ _('This case is closed/archived. Reopen to make changes.') }}
     </div>
     {% endif %}
@@ -228,33 +231,27 @@
     {% if subjects %}
     <table class="data-table">
         <thead>
-            <tr><th>{{ _('Name') }}</th><th>{{ _('Type') }}</th><th>{{ _('Social Accounts') }}</th><th>{{ _('Risk Score') }}</th><th>{{ _('Actions') }}</th></tr>
+            <tr><th>{{ _('Name') }}</th><th>{{ _('Type') }}</th><th>{{ _('Risk') }}</th><th>{{ _('Actions') }}</th></tr>
         </thead>
         <tbody>
             {% for subject in subjects %}
             <tr>
                 <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">{{ subject.name }}</a></td>
                 <td>{{ subject.subject_type }}</td>
-                <td style="font-size:0.8rem;">
-                    {% set accts = subject.social_accounts.all() if subject.social_accounts else [] %}
-                    {% if accts %}
-                        {% for a in accts[:3] %}
-                            <span style="display:inline-block;background:#f3e8ff;color:#7c3aed;border-radius:4px;padding:0.1rem 0.35rem;margin:0.1rem;font-size:0.7rem;">{{ a.platform }}: {{ a.username }}</span>
-                        {% endfor %}
-                        {% if accts|length > 3 %}
-                            <span style="color:#888;font-size:0.7rem;">{{ _('+%(count)s more', count=accts|length - 3) }}</span>
-                        {% endif %}
-                    {% else %}
-                        <span style="color:#9ca3af;">{{ _('-') }}</span>
-                    {% endif %}
+                <td>
+                    <div style="display:flex;align-items:center;gap:0.3rem;">
+                        <span style="font-size:0.85rem;">{{ subject.risk_score }}%</span>
+                        <div style="width:40px;height:5px;border-radius:3px;background:var(--border-color);overflow:hidden;">
+                            <div style="width:{{ subject.risk_score }}%;height:100%;border-radius:3px;background:{% if subject.risk_score > 80 %}#dc2626{% elif subject.risk_score > 60 %}#f59e0b{% else %}#10b981{% endif %};"></div>
+                        </div>
+                    </div>
                 </td>
-                <td>{{ subject.risk_score }}/100</td>
                 <td>
                     <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms small" style="background:#7c3aed;color:white;text-decoration:none;">{{ _('View') }}</a>
                     {% if case.status not in ['closed', 'archived'] %}
-<form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" class="inline" style="display:inline;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-cms small danger" data-confirm="{{ _('Remove %(name)s from this case?', name=subject.name) }}" style="background:#dc2626;color:white;">{{ _('Remove') }}</button>
+                    <form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-cms small danger" data-confirm="{{ _('Remove %(name)s from this case?', name=subject.name) }}" style="background:#dc2626;color:white;">{{ _('Remove') }}</button>
                     </form>
                     {% endif %}
                 </td>
@@ -270,33 +267,30 @@
     {% endif %}
 </div>
 
-<div class="card">
+{# ─── Findings ───────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
     <div class="card-header">
         <h2>{{ _('Findings (%(count)s)', count=findings|length) }}</h2>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <div style="display:flex;gap:0.4rem;align-items:center;">
             <button data-click="openTimeline" class="btn-cms small bg-purple">{{ _('Timeline') }}</button>
-            <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">{{ _('📋 Report') }}</a>
-            <a href="{{ url_for('cms.case_report_pdf', case_id=case.id) }}" class="btn-cms small" style="background: #dc2626; text-decoration: none;">{{ _('📄 PDF') }}</a>
+            <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small" style="background:#0e7490;text-decoration:none;">{{ _('📋 Report') }}</a>
+            <a href="{{ url_for('cms.case_report_pdf', case_id=case.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;">{{ _('📄 PDF') }}</a>
         </div>
     </div>
     
     {% if findings %}
-    <div style="margin-bottom: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: 8px;">
-        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-            <span style="font-weight: 500;">{{ _('Filter:') }}</span>
-            <input type="text" id="filterTitle" placeholder="{{ _('Title') }}" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 150px;">
-            <input type="text" id="filterSubject" placeholder="{{ _('Subject') }}" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
-            <select id="filterSource" data-change="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                <option value="">{{ _('Source') }}</option>
-                <option value="osint">{{ _('OSINT') }}</option>
-                <option value="manual">{{ _('Manual') }}</option>
-                <option value="document">{{ _('Document') }}</option>
-            </select>
-            <input type="text" id="filterAddedBy" placeholder="{{ _('Added By') }}" data-input="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 100px;">
-            <input type="date" id="filterDate" data-change="filterFindings" style="padding: 0.25rem 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-            <button data-click="clearFindingFilters" style="padding: 0.25rem 0.5rem; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">{{ _('Clear') }}</button>
-            <span id="findingCount" style="margin-left: auto; color: #666; font-size: 0.875rem;"></span>
-        </div>
+    <div style="padding:0.5rem 0.75rem;display:flex;flex-wrap:wrap;gap:0.35rem;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);">
+        <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">{{ _('Filter') }}:</span>
+        <input type="text" id="filterTitle" placeholder="{{ _('Title') }}" data-input="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;width:120px;">
+        <input type="text" id="filterSubject" placeholder="{{ _('Subject') }}" data-input="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;width:100px;">
+        <select id="filterSource" data-change="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;">
+            <option value="">{{ _('Source') }}</option>
+            <option value="osint">{{ _('OSINT') }}</option>
+            <option value="manual">{{ _('Manual') }}</option>
+            <option value="document">{{ _('Document') }}</option>
+        </select>
+        <button data-click="clearFindingFilters" class="btn-cms gray small" style="font-size:0.72rem;">{{ _('Clear') }}</button>
+        <span id="findingCount" style="margin-left:auto;font-size:0.8rem;color:var(--text-muted);"></span>
     </div>
     <table id="findingsTable" class="data-table">
         <thead>
@@ -307,9 +301,9 @@
             <tr data-title="{{ finding.title|lower }}" data-subject="{{ finding.subject.name|lower if finding.subject else '' }}" data-source="{{ finding.source_type|lower }}" data-addedby="{{ finding.author.full_name|lower if finding.author else '' }}" data-date="{{ finding.created_at.strftime('%Y-%m-%d') if finding.created_at else '' }}">
                 <td>
                     {% if finding.source_url %}
-                    <a href="#" data-click="openCaptureFromFinding" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.title|replace("'", "\\'") }}" style="color: #3b82f6; text-decoration: none;">
+                    <a href="#" data-click="openCaptureFromFinding" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.title|replace("'", "\\'") }}" style="color:#3b82f6;text-decoration:none;">
                         {{ finding.title }}
-                        <span style="font-size: 0.75rem; color: #8b5cf6;">📸</span>
+                        <span style="font-size:0.75rem;color:#8b5cf6;">📸</span>
                     </a>
                     {% else %}
                     {{ finding.title }}
@@ -317,7 +311,7 @@
                     {% if finding.source_url and finding.subject_id %}
                     <br>
                     <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" 
-                            class="btn-cms small" style="font-size: 0.65rem; padding: 2px 6px; background: #8b5cf6; margin-top: 4px;">
+                            class="btn-cms small" style="font-size:0.65rem;padding:2px 6px;background:#8b5cf6;margin-top:4px;">
                         {{ _('🔍 Extract ID') }}
                     </button>
                     {% endif %}
@@ -328,7 +322,7 @@
                         {{ finding.subject.name if finding.subject else _('Unknown') }}
                     </a>
                     {% else %}
-                    <span style="color: #999;">-</span>
+                    <span style="color:#999;">-</span>
                     {% endif %}
                 </td>
                 <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span></td>
@@ -346,24 +340,44 @@
     {% endif %}
     
     {% if findings_pagination and findings_pagination.pages > 1 %}
-    <div class="mt-1 flex-gap justify-center">
+    <div style="padding:0.6rem;display:flex;justify-content:center;gap:0.5rem;font-size:0.8rem;">
         {% if findings_pagination.has_prev %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('Previous') }}</a>
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('← Previous') }}</a>
         {% endif %}
-        <span class="p-05-1">{{ _('Page %(page)s of %(pages)s', page=findings_pagination.page, pages=findings_pagination.pages) }}</span>
+        <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">{{ _('Page %(page)s of %(pages)s', page=findings_pagination.page, pages=findings_pagination.pages) }}</span>
         {% if findings_pagination.has_next %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next') }}</a>
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next →') }}</a>
         {% endif %}
     </div>
     {% endif %}
 </div>
 
-<!-- Documents Section -->
-<div class="card">
+</div>{# /LEFT COLUMN #}
+
+{# ─── RIGHT COLUMN ────────────────────────────────────── #}
+<div>
+
+{# ─── Comments ───────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+    <div class="card-header">
+        <h2>💬 {{ _('Comments') }} <span id="commentsCount" style="font-size:0.8rem;color:var(--text-muted);"></span></h2>
+        <button data-click="loadComments" class="btn-cms small" style="font-size:0.75rem;">{{ _('↻ Refresh') }}</button>
+    </div>
+    <div style="padding:0.5rem 0.75rem;border-bottom:1px solid var(--border-color);display:flex;gap:0.4rem;">
+        <textarea id="newComment" placeholder="{{ _('Write a comment...') }}" style="flex:1;padding:0.4rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;min-height:2.4rem;" rows="1"></textarea>
+        <button data-click="addComment" class="btn-cms primary small" style="align-self:flex-end;">{{ _('Post') }}</button>
+    </div>
+    <div id="commentsList" style="padding:0.5rem;">
+        <p style="color:var(--text-muted);font-size:0.85rem;text-align:center;">{{ _('Loading comments...') }}</p>
+    </div>
+</div>
+
+{# ─── Documents ─────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
     <div class="card-header">
         <h2>{{ _('Documents (%(count)s)', count=documents_pagination.total if documents_pagination else documents|length) }}</h2>
         {% if case.status not in ['closed', 'archived'] %}
-        <button data-click="openUploadModal" class="btn-cms small bg-green">{{ _('+ Upload Document') }}</button>
+        <button data-click="openUploadModal" class="btn-cms small bg-green">{{ _('+ Upload') }}</button>
         {% endif %}
     </div>
     
@@ -371,19 +385,19 @@
         {% if documents %}
         <table class="data-table">
             <thead>
-                <tr><th>{{ _('Filename') }}</th><th>{{ _('Type') }}</th><th>{{ _('Size') }}</th><th>{{ _('Uploaded') }}</th><th>{{ _('Actions') }}</th></tr>
+                <tr><th>{{ _('Filename') }}</th><th>{{ _('Type') }}</th><th>{{ _('Size') }}</th><th>{{ _('Uploaded') }}</th><th></th></tr>
             </thead>
             <tbody>
                 {% for doc in documents %}
                 <tr>
-                    <td>{{ doc.original_filename }}</td>
-                    <td><span class="badge badge-primary">{{ doc.document_type or 'file' }}</span></td>
-                    <td>{{ (doc.file_size / 1024)|round(1) }} KB</td>
-                    <td>{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '-' }}</td>
+                    <td style="font-weight:500;">{{ doc.original_filename }}</td>
+                    <td><span class="badge badge-primary" style="font-size:0.72rem;">{{ doc.document_type or 'file' }}</span></td>
+                    <td style="color:var(--text-muted);font-size:0.85rem;">{{ (doc.file_size / 1024)|round(1) }} KB</td>
+                    <td style="color:var(--text-muted);font-size:0.85rem;">{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '-' }}</td>
                     <td>
-                        <a href="/cms/documents/{{ doc.id }}/download" target="_blank">{{ _('Download') }}</a>
+                        <a href="/cms/documents/{{ doc.id }}/download" target="_blank" class="btn-cms gray small" style="font-size:0.72rem;">↓</a>
                         {% if current_user.is_admin or current_user.is_senior %}
-                        | <a href="#" data-click="deleteDocument" data-arg0="{{ doc.id }}" class="text-red">{{ _('Delete') }}</a>
+                        <a href="#" data-click="deleteDocument" data-arg0="{{ doc.id }}" class="btn-cms gray small" style="font-size:0.72rem;">✕</a>
                         {% endif %}
                     </td>
                 </tr>
@@ -391,13 +405,13 @@
             </tbody>
         </table>
         {% if documents_pagination and documents_pagination.pages > 1 %}
-        <div class="mt-1 flex-gap justify-center">
+        <div style="padding:0.5rem;display:flex;justify-content:center;gap:0.5rem;font-size:0.8rem;">
             {% if documents_pagination.has_prev %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.prev_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">{{ _('Previous') }}</a>
+            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.prev_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">{{ _('← Previous') }}</a>
             {% endif %}
-            <span class="p-05-1">{{ _('Page %(page)s of %(pages)s', page=documents_pagination.page, pages=documents_pagination.pages) }}</span>
+            <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">{{ _('Page %(page)s of %(pages)s', page=documents_pagination.page, pages=documents_pagination.pages) }}</span>
             {% if documents_pagination.has_next %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.next_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">{{ _('Next') }}</a>
+            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.next_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">{{ _('Next →') }}</a>
             {% endif %}
         </div>
         {% endif %}
@@ -409,6 +423,9 @@
         {% endif %}
     </div>
 </div>
+
+</div>{# /RIGHT COLUMN #}
+</div>{# /TWO-COLUMN #}
 
 <!-- Screenshots Section -->
 <div class="card">
@@ -531,47 +548,6 @@
     </div>
 </div>
 
-<!-- Financial Summary Section -->
-<div class="card">
-    <div class="card-header">
-        <h2>{{ _('Financial Summary') }}</h2>
-        <button data-click="openFinancialSummary" class="btn-cms small bg-purple">{{ _('📊 View Charts') }}</button>
-    </div>
-    
-    <div id="financialSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-        <div class="card-center">
-            <div style="font-size: 1.5rem; font-weight: bold; color: #1a1a2e;" id="finTotal">-</div>
-            <div class="text-muted-sm">{{ _('Total Amount') }}</div>
-        </div>
-        <div class="card-center">
-            <div style="font-size: 1.5rem; font-weight: bold; color: #1a1a2e;" id="finCount">-</div>
-            <div class="text-muted-sm">{{ _('Transactions') }}</div>
-        </div>
-        <div class="card-center">
-            <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;" id="finVerified">-</div>
-            <div class="text-muted-sm">{{ _('Verified') }}</div>
-        </div>
-        <div class="card-center">
-            <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;" id="finPending">-</div>
-            <div class="text-muted-sm">{{ _('Pending Review') }}</div>
-        </div>
-    </div>
-</div>
-
-<!-- Financial Modal -->
-<div id="financialModal" class="modal">
-    <div class="modal-content" style="max-width: 900px;">
-        <div class="modal-header">
-            <h2>{{ _('Financial Analysis') }}</h2>
-            <span class="close" data-click="closeFinancialSummary">&times;</span>
-        </div>
-        
-        <div id="financialCharts" style="max-height: 70vh; overflow-y: auto;">
-            <div class="text-center p-2" id="finLoading">{{ _('Loading...') }}</div>
-        </div>
-    </div>
-</div>
-
 <!-- Case Hierarchy Modal -->
 <div id="hierarchyModal" class="modal">
     <div class="modal-content">
@@ -639,33 +615,6 @@
         <p>{{ _('No reminders for this case.') }} <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}">{{ _('Add one') }}</a></p>
     </div>
     {% endif %}
-</div>
-
-<!-- Comments Section -->
-<div class="card">
-    <div class="card-header">
-        <h2>{{ _('Notes & Comments') }} <span id="commentCount" style="font-size: 0.9rem; color: #888;"></span></h2>
-        <button data-click="loadComments" class="btn-cms small">{{ _('🔄 Refresh') }}</button>
-    </div>
-    
-    <div class="comment-form">
-        <textarea id="newComment" placeholder="{{ _('Add a note or comment...') }}"></textarea>
-        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
-            <select id="commentType" style="padding: 0.4rem; border: 1px solid #ddd; border-radius: 4px;">
-                <option value="note">{{ _('Note') }}</option>
-                <option value="discussion">{{ _('Discussion') }}</option>
-                <option value="update">{{ _('Update') }}</option>
-            </select>
-            <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: #666;">
-                <input type="checkbox" id="commentPinned"> {{ _('Pin comment') }}
-            </label>
-            <button data-click="addComment" class="btn-cms small bg-green">{{ _('Add Comment') }}</button>
-        </div>
-    </div>
-    
-    <div id="commentsList">
-        <p style="color: #888; text-align: center; padding: 1rem;">{{ _('Loading comments...') }}</p>
-    </div>
 </div>
 
 <!-- Create from Username Modal -->
@@ -1859,113 +1808,6 @@ document.getElementById('uploadModal').addEventListener('click', function(e) {
     if (e.target === this) closeUploadModal();
 });
 
-// Financial Summary Functions
-function openFinancialSummary() {
-    document.getElementById('financialModal').classList.add('show');
-    loadFinancialSummary();
-}
-
-function closeFinancialSummary() {
-    document.getElementById('financialModal').classList.remove('show');
-}
-
-function loadFinancialSummary() {
-    apiFetch("{{ url_for('cms.get_financial_summary', case_id=case.id) }}")
-    .then(r => r.json())
-    .then(data => {
-        updateSummaryCards(data.summary);
-        displayFinancialCharts(data.summary);
-    })
-    .catch(() => {
-        document.getElementById('financialCharts').innerHTML = {{ _('Failed to load financial data')|tojson }};
-    });
-}
-
-function updateSummaryCards(summary) {
-    const currency = summary.currency || 'EUR';
-    document.getElementById('finTotal').textContent = formatCurrency(summary.total_amount, currency);
-    document.getElementById('finCount').textContent = summary.total_records;
-    
-    const verified = summary.by_status?.['verified']?.count || 0;
-    const pending = summary.by_status?.['pending']?.count || 0;
-    document.getElementById('finVerified').textContent = verified;
-    document.getElementById('finPending').textContent = pending;
-}
-
-function formatCurrency(amount, currency) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(amount);
-}
-
-function displayFinancialCharts(summary) {
-    const container = document.getElementById('financialCharts');
-    
-    if (summary.total_records === 0) {
-        container.innerHTML = '<p class="text-center p-2">' + {{ _('No financial records to display.')|tojson }} + '</p>';
-        return;
-    }
-    
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
-    
-    let html = '<div class="mb-2">' +
-        '<h3 class="mb-1">' + {{ _('By Transaction Type')|tojson }} + '</h3>' +
-        '<div style="display: flex; flex-wrap: wrap; gap: 1rem;">' +
-        Object.entries(summary.by_type || {}).map(([type, data], i) => {
-            return '<div style="flex: 1; min-width: 150px; background: ' + colors[i % colors.length] + '15; padding: 1rem; border-radius: 8px; border-left: 4px solid ' + colors[i % colors.length] + ';">' +
-                '<div style="font-weight: bold;">' + esc(type) + '</div>' +
-                '<div>' + esc(data.count) + ' ' + {{ _('transactions')|tojson }} + '</div>' +
-                '<div class="text-muted">' + formatCurrency(data.total, summary.currency) + '</div>' +
-            '</div>';
-        }).join('') +
-        '</div></div>' +
-        
-        '<div class="mb-2">' +
-            '<h3 class="mb-1">' + {{ _('By Month')|tojson }} + '</h3>' +
-            '<div style="display: flex; align-items: end; gap: 0.5rem; height: 150px; padding: 1rem; background: #f9fafb; border-radius: 8px;">' +
-            Object.entries(summary.by_month || {}).sort().map(([month, data]) => {
-                const max = Math.max(...Object.values(summary.by_month || {}).map(m => m.total));
-                const height = max > 0 ? (data.total / max) * 100 : 0;
-                return '<div style="flex: 1; display: flex; flex-direction: column; align-items: center;">' +
-                    '<div style="width: 100%; background: #3b82f6; border-radius: 4px 4px 0 0; height: ' + esc(height) + '%;"></div>' +
-                    '<div style="font-size: 0.7rem; color: #666; margin-top: 0.25rem;">' + esc(month.slice(5)) + '</div>' +
-                '</div>';
-            }).join('') +
-            '</div></div>' +
-        
-        '<div class="mb-2">' +
-            '<h3 class="mb-1">' + {{ _('By Verification Status')|tojson }} + '</h3>' +
-            '<div style="display: flex; gap: 1rem;">' +
-            Object.entries(summary.by_status || {}).map(([status, data], i) => {
-                return '<div style="flex: 1; background: ' + (status === 'verified' ? '#dcfce7' : status === 'flagged' ? '#fee2e2' : '#fef3c7') + '; padding: 1rem; border-radius: 8px; text-align: center;">' +
-                    '<div style="font-size: 1.25rem; font-weight: bold;">' + esc(data.count) + '</div>' +
-                    '<div style="text-transform: capitalize; color: #666;">' + esc(status) + '</div>' +
-                    '<div class="text-muted">' + formatCurrency(data.total, summary.currency) + '</div>' +
-                '</div>';
-            }).join('') +
-            '</div></div>' +
-        
-        '<div>' +
-            '<h3 class="mb-1">' + {{ _('Top Counterparties')|tojson }} + '</h3>' +
-            '<table style="width: 100%; border-collapse: collapse;">' +
-                '<thead><tr class="bg-light-gray"><th style="padding: 0.75rem; text-align: left;">' + {{ _('Counterparty')|tojson }} + '</th><th style="padding: 0.75rem; text-align: right;">' + {{ _('Total Amount')|tojson }} + '</th></tr></thead>' +
-                '<tbody>' +
-                (summary.top_counterparties || []).map((cp, i) => {
-                    return '<tr style="border-bottom: 1px solid #eee;">' +
-                        '<td style="padding: 0.75rem;">' + esc(i + 1) + '. ' + esc(cp.name) + '</td>' +
-                        '<td style="padding: 0.75rem; text-align: right; font-weight: 500;">' + formatCurrency(cp.total, summary.currency) + '</td>' +
-                    '</tr>';
-                }).join('') +
-                '</tbody>' +
-            '</table></div>';
-    
-    container.innerHTML = html;
-}
-
-document.getElementById('financialModal').addEventListener('click', function(e) {
-    if (e.target === this) closeFinancialSummary();
-});
-
-loadFinancialSummary();
-
 // Case Hierarchy Functions
 function openHierarchyModal() {
     document.getElementById('hierarchyModal').classList.add('show');
@@ -2077,7 +1919,8 @@ function loadComments() {
         .then(r => r.json())
         .then(data => {
             displayComments(data.comments);
-            document.getElementById('commentCount').textContent = `(${data.count})`;
+            const countEl = document.getElementById('commentsCount') || document.getElementById('commentCount');
+            if (countEl) countEl.textContent = `(${data.count})`;
         })
         .catch(() => {
             document.getElementById('commentsList').innerHTML = '<p class="text-red">' + {{ _('Failed to load comments.')|tojson }} + '</p>';
@@ -2094,7 +1937,7 @@ function displayComments(comments) {
     
     let html = '';
     comments.forEach(c => {
-        const pinnedClass = c.is_pinned ? 'comment-pinned' : '';
+        const pinnedClass = c.is_pinned ? 'pinned' : '';
         const date = new Date(c.created_at);
         const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         const canEdit = c.author_id === '{{ current_user.id }}' || {{ 'true' if current_user.is_admin else 'false' }};
@@ -2106,35 +1949,13 @@ function displayComments(comments) {
             editInfo = '<div class="comment-edited">' + {{ _('Edited')|tojson }} + ' ' + esc(c.edit_count) + ' ' + {{ _('time')|tojson }} + (c.edit_count > 1 ? 's' : '') + (c.last_edited_by_name ? ' ' + {{ _('by')|tojson }} + ' ' + esc(c.last_edited_by_name) : '') + (editDateStr ? ' ' + {{ _('on')|tojson }} + ' ' + esc(editDateStr) : '') + '</div>';
         }
         
-        let editHistory = '';
-        if (c.edit_history && c.edit_history.length > 0) {
-            editHistory = '<details class="comment-edit-history">' +
-                '<summary>' + {{ _('View edit history')|tojson }} + ' (' + esc(c.edit_history.length) + ')</summary>' +
-                c.edit_history.map(h => {
-                    const hDate = new Date(h.edited_at);
-                    const hDateStr = hDate.toLocaleDateString() + ' ' + hDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    return '<div class="comment-edit-entry">' +
-                        '<div><span class="edit-by">' + esc(h.edited_by_name) + '</span> <span class="edit-date">' + esc(hDateStr) + '</span></div>' +
-                        '<div class="edit-diff">' +
-                            '<div class="edit-old">- ' + escapeHtml(h.previous_content.substring(0, 100)) + (h.previous_content.length > 100 ? '...' : '') + '</div>' +
-                            '<div class="edit-new">+ ' + escapeHtml(h.new_content.substring(0, 100)) + (h.new_content.length > 100 ? '...' : '') + '</div>' +
-                        '</div></div>';
-                }).join('') +
-            '</details>';
-        }
-        
-        html += '<div class="comment-item ' + esc(pinnedClass) + '" id="comment-' + esc(c.id) + '">' +
-            '<div class="comment-header">' +
-                '<div>' +
-                    '<span class="comment-author">' + esc(c.author_name) + '</span>' +
-                    '<span class="comment-type-badge ' + esc(c.comment_type) + '">' + esc(c.comment_type) + '</span>' +
-                    (c.is_pinned ? '📌' : '') +
-                '</div>' +
-                '<div class="comment-time">' + esc(timeStr) + '</div>' +
+        html += '<div class="comment-bubble ' + esc(pinnedClass) + '" id="comment-' + esc(c.id) + '">' +
+            '<div class="header">' +
+                '<span class="author">' + esc(c.author_name) + (c.is_pinned ? ' 📌' : '') + '</span>' +
+                '<span class="date">' + esc(timeStr) + '</span>' +
             '</div>' +
             editInfo +
-            '<div class="comment-content" id="content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</div>' +
-            editHistory +
+            '<div class="body" id="content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</div>' +
             '<div class="comment-edit-form hidden" id="edit-form-' + esc(c.id) + '">' +
                 '<textarea id="edit-content-' + esc(c.id) + '">' + escapeHtml(c.content) + '</textarea>' +
                 '<div class="comment-edit-actions">' +
@@ -2142,7 +1963,7 @@ function displayComments(comments) {
                     '<button data-click="cancelEdit" data-arg0="' + esc(c.id) + '" class="btn-cms small bg-gray">' + {{ _('Cancel')|tojson }} + '</button>' +
                 '</div>' +
             '</div>' +
-            '<div class="comment-actions">' +
+            '<div class="actions">' +
                 (canEdit ? '<button data-click="showEditForm" data-arg0="' + esc(c.id) + '">' + {{ _('Edit')|tojson }} + '</button>' : '') +
                 '<button data-click="deleteComment" data-arg0="' + esc(c.id) + '">' + {{ _('Delete')|tojson }} + '</button>' +
             '</div></div>';
@@ -2198,23 +2019,19 @@ function addComment() {
         return;
     }
     
-    const commentType = document.getElementById('commentType').value;
-    const isPinned = document.getElementById('commentPinned').checked;
-    
     apiFetch('/cms/api/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             case_id: '{{ case.id }}',
             content: content,
-            comment_type: commentType,
-            is_pinned: isPinned
+            comment_type: 'note',
+            is_pinned: false
         })
     })
     .then(r => r.json())
     .then(data => {
         document.getElementById('newComment').value = '';
-        document.getElementById('commentPinned').checked = false;
         loadComments();
     })
     .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));

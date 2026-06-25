@@ -1,0 +1,467 @@
+{% extends "cms/base.html" %}
+{% block title %}Personenonderzoek — Workflow Demo{% endblock %}
+{% block content %}
+<style>
+.demo-banner {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff; text-align: center; padding: 0.5rem 1rem;
+  font-size: 0.85rem; font-weight: 600; border-radius: 8px; margin-bottom: 1rem;
+}
+.demo-banner a { color: #fff; text-decoration: underline; }
+.workflow-step {
+  border: 2px solid var(--border-color); border-radius: 10px;
+  margin-bottom: 1.5rem; overflow: hidden;
+}
+.workflow-step-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600; font-size: 1rem;
+}
+.workflow-step-header .step-nr {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-primary); color: #fff; font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.workflow-step-body { padding: 1rem; }
+.action-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+.action-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  padding: 1.2rem 0.75rem; border: 2px solid var(--border-color);
+  border-radius: 10px; background: var(--bg-card); cursor: pointer;
+  transition: all 0.2s; text-align: center;
+}
+.action-btn:hover { border-color: var(--accent-primary); box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.action-btn:active { transform: scale(0.97); }
+.action-btn .icon { font-size: 1.8rem; }
+.action-btn .label { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); }
+.action-btn .desc { font-size: 0.75rem; color: var(--text-muted); }
+.action-btn.done { border-color: #10b981; background: #f0fdf4; }
+.action-btn.done .icon::after { content: ' ✅'; font-size: 1rem; }
+.action-btn.running { border-color: #3b82f6; background: #eff6ff; animation: pulse 1.5s ease-in-out infinite; }
+.action-btn.running .icon::after { content: ' ⏳'; font-size: 1rem; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.finding-item {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.75rem; border: 1px solid var(--border-color);
+  border-radius: 8px; margin-bottom: 0.5rem;
+  background: var(--bg-card); transition: all 0.3s;
+}
+.finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+.finding-item .icon-col { font-size: 1.4rem; padding-top: 0.1rem; flex-shrink: 0; }
+.finding-item .body-col { flex: 1; min-width: 0; }
+.finding-item .title { font-weight: 600; font-size: 0.9rem; }
+.finding-item .meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
+.finding-item .meta a { color: var(--link-color); }
+.finding-item .screenshot {
+  margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary);
+  border-radius: 6px; font-size: 0.78rem; border: 1px dashed var(--border-color);
+}
+.finding-item .screenshot .ss-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.finding-item .screenshot .ss-label { font-weight: 600; color: var(--text-secondary); }
+.subject-info-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+.subject-info-item {
+  padding: 0.6rem; background: var(--bg-secondary);
+  border-radius: 6px; font-size: 0.85rem;
+}
+.subject-info-item .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+.subject-info-item .val { font-weight: 500; margin-top: 0.1rem; }
+.findings-counter {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem;
+  background: var(--accent-primary); color: #fff;
+}
+.pv-template {
+  background: #f8fafc; border: 2px dashed var(--border-color);
+  border-radius: 8px; padding: 1.5rem; margin-top: 0.5rem;
+  font-family: serif; font-size: 0.9rem; line-height: 1.6;
+}
+.pv-template h3 { font-family: serif; margin: 0 0 0.5rem 0; }
+@media (max-width: 768px) {
+  .action-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+
+<div class="demo-banner">
+  ⚡ DEMO WORKFLOW — Personenonderzoek · Simulatie van volledig onderzoekstraject
+  <a href="/demo/case/kees" style="margin-left:0.5rem;">← Naar casusdetail</a>
+</div>
+
+{# ─── HEADER ──────────────────────────────────────────── #}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+  <div>
+    <h1 style="margin:0;">🔍 Personenonderzoek — Workflow</h1>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
+      Simulatie: doorloop de stappen van een onderzoek van opdracht tot proces-verbaal
+    </p>
+  </div>
+  <div style="display:flex;gap:0.5rem;align-items:center;">
+    <span id="totalFindings" class="findings-counter">📋 0 bevindingen</span>
+    <a href="#" onclick="showProcesVerbaal();return false;" class="btn-cms primary small">📄 Proces-verbaal genereren</a>
+  </div>
+</div>
+
+{# ─── STAP 1: OPDRACHTGEVER ──────────────────────────── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">1</span>
+    Opdrachtgever (Client)
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Gereed ✓</span>
+  </div>
+  <div class="workflow-step-body">
+    <div class="subject-info-grid">
+      <div class="subject-info-item">
+        <div class="lbl">Naam</div>
+        <div class="val">Schadeverzekering Nederland N.V.</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">Contactpersoon</div>
+        <div class="val">Marloes de Ruiter</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">E-mail</div>
+        <div class="val">m.deruiter@schadeverzekering.nl</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">Telefoon</div>
+        <div class="val">+31 (0)20 123 4567</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">Referentie</div>
+        <div class="val">C-2026-042</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">Datum aanvraag</div>
+        <div class="val">{{ now.strftime('%d-%m-%Y') }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ─── STAP 2: BETROKKENE(N) ──────────────────────────── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">2</span>
+    Betrokkene(n) (Subject)
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Gereed ✓</span>
+  </div>
+  <div class="workflow-step-body">
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+      <div style="flex:2;min-width:280px;">
+        <div class="subject-info-grid">
+          <div class="subject-info-item">
+            <div class="lbl">Naam</div>
+            <div class="val">Kees de Vries</div>
+          </div>
+          <div class="subject-info-item">
+            <div class="lbl">Type</div>
+            <div class="val">Persoon</div>
+          </div>
+          <div class="subject-info-item">
+            <div class="lbl">BSN</div>
+            <div class="val">•••••382</div>
+          </div>
+          <div class="subject-info-item">
+            <div class="lbl">Risicoscore</div>
+            <div class="val" style="color:#dc2626;">92% — Hoog</div>
+          </div>
+          <div class="subject-info-item">
+            <div class="lbl">📧 E-mail</div>
+            <div class="val">kees.devries@protonmail.com</div>
+          </div>
+          <div class="subject-info-item">
+            <div class="lbl">📞 Telefoon</div>
+            <div class="val">+31 6 3847 2910</div>
+          </div>
+          <div class="subject-info-item" style="grid-column:1/-1;">
+            <div class="lbl">🏠 Adressen</div>
+            <div class="val">Damrak 45, 1012LL Amsterdam<br>Jonkerlaan 12, 3701TC Zeist</div>
+          </div>
+          <div class="subject-info-item" style="grid-column:1/-1;">
+            <div class="lbl">🌐 Social media</div>
+            <div class="val" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.2rem;">
+              <span style="padding:0.15rem 0.5rem;background:#e8f4ff;border-radius:4px;">LinkedIn: /in/keesdv</span>
+              <span style="padding:0.15rem 0.5rem;background:#e8f4ff;border-radius:4px;">Facebook: /kees.devries.92</span>
+              <span style="padding:0.15rem 0.5rem;background:#e8f4ff;border-radius:4px;">Instagram: @keesdv</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <div class="subject-info-item" style="margin-bottom:0.5rem;">
+          <div class="lbl">Ook betrokken</div>
+          <div class="val" style="font-weight:600;">Kees Holding B.V.</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">KvK 87654321 · Jonkerlaan 12, Zeist</div>
+        </div>
+        <div class="subject-info-item">
+          <div class="lbl">Medebetrokkene</div>
+          <div class="val" style="font-weight:600;">Mevr. J. de Vries-Wit</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">Echtgenote · Damrak 45, Amsterdam</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ─── STAP 3: ONDERZOEKSACTIES ───────────────────────── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">3</span>
+    Onderzoeksacties
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Klik op een actie om te starten</span>
+  </div>
+  <div class="workflow-step-body">
+    <div class="action-grid">
+      <div class="action-btn" onclick="runCheck(this, 'email')" data-check="email">
+        <div class="icon">📧</div>
+        <div class="label">E-mail check</div>
+        <div class="desc">ProtonMail + breaches</div>
+      </div>
+      <div class="action-btn" onclick="runCheck(this, 'phone')" data-check="phone">
+        <div class="icon">📞</div>
+        <div class="label">Telefoon check</div>
+        <div class="desc">Koppeling identiteiten</div>
+      </div>
+      <div class="action-btn" onclick="runCheck(this, 'address')" data-check="address">
+        <div class="icon">🏠</div>
+        <div class="label">Adres onderzoek</div>
+        <div class="desc">Kadaster + inschrijving</div>
+      </div>
+      <div class="action-btn" onclick="runCheck(this, 'social')" data-check="social">
+        <div class="icon">🌐</div>
+        <div class="label">Social media scan</div>
+        <div class="desc">LinkedIn, Facebook, IG</div>
+      </div>
+      <div class="action-btn" onclick="runCheck(this, 'kvk')" data-check="kvk">
+        <div class="icon">🏢</div>
+        <div class="label">KvK onderzoek</div>
+        <div class="desc">Bedrijfsgegevens Kees Holding</div>
+      </div>
+      <div class="action-btn" onclick="runCheck(this, 'rdw')" data-check="rdw">
+        <div class="icon">🚗</div>
+        <div class="label">Voertuig check (RDW)</div>
+        <div class="desc">Kentekenonderzoek</div>
+      </div>
+      <div class="action-btn" onclick="runCheck(this, 'osint')" data-check="osint">
+        <div class="icon">🌍</div>
+        <div class="label">OSINT Deep Search</div>
+        <div class="desc">Internet + dark web</div>
+      </div>
+      <div class="action-btn" onclick="runCheck(this, 'financial')" data-check="financial">
+        <div class="icon">💰</div>
+        <div class="label">Financieel onderzoek</div>
+        <div class="desc">Rekeningen + transacties</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ─── STAP 4: BEVINDINGEN ───────────────────────────── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">4</span>
+    Bevindingen (Findings)
+    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">0 bevindingen</span>
+  </div>
+  <div class="workflow-step-body">
+    <div id="findingsContainer">
+      <div style="text-align:center;padding:2rem;color:var(--text-muted);">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div>
+        <p>Voer onderzoeksacties uit in Stap 3 om bevindingen te genereren.</p>
+        <p style="font-size:0.85rem;">Elke actie voegt bevindingen met screenshots (datum/tijd/link) toe.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ─── STAP 5: PROCES-VERBAAL ─────────────────────────── #}
+<div class="workflow-step">
+  <div class="workflow-step-header">
+    <span class="step-nr">5</span>
+    Proces-verbaal
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Genereer na afronding onderzoek</span>
+  </div>
+  <div class="workflow-step-body">
+    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+      <button onclick="showProcesVerbaal()" class="btn-cms primary">📄 Proces-verbaal genereren</button>
+      <span style="font-size:0.85rem;color:var(--text-muted);">Alle bevindingen worden samengevoegd in een rechtsgeldig proces-verbaal</span>
+    </div>
+    <div id="pvOutput" style="display:none;"></div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+const FINDINGS_DB = {
+  email: [
+    { title: 'E-mail gevonden bij datalek — HaveIBeenPwned 2023', icon: '📧', url: 'https://haveibeenpwned.com/account/kees.devries@protonmail.com', detail: 'Gecompromitteerd in: LinkedIn breach (2021), MyFitnessPal breach (2022), Twitter breach (2023)', verified: true, screenshot: true },
+    { title: 'ProtonMail account aangemaakt 14-01-2024 — anoniem betaald met crypto', icon: '📧', url: 'https://proton.me/', detail: 'E-mail niet gekoppeld aan bestaande telefoon. Betaling via Bitcoin wallet.', verified: true, screenshot: true },
+    { title: 'Tweede e-mailadres ontdekt: kees.devries@gmail.com — gebruikt voor LinkedIn', icon: '📧', url: null, detail: 'Gmail-adres gevonden via reverse e-mail search. Gekoppeld aan LinkedIn profiel.', verified: false, screenshot: true },
+  ],
+  phone: [
+    { title: 'Telefoonnummer +31638472910 gekoppeld aan 3 identiteiten bij 2 verzekeraars', icon: '📞', url: null, detail: 'Zelfde nr. gebruikt voor aanvragen bij: ING, ABN Amro en hypotheekaanvraag bij Rabobank.', verified: true, screenshot: true },
+    { title: 'WhatsApp-account actief — profielfoto komt niet overeen met opgegeven identiteit', icon: '📞', url: null, detail: 'Profielfoto toont andere persoon. Mogelijk gebruik van gestolen identiteit.', verified: false, screenshot: true },
+    { title: 'Telefoonnummer gelinkt aan online advertenties op Marktplaats (2025-2026)', icon: '📞', url: 'https://marktplaats.nl/', detail: 'Advertenties voor dure elektronica. Account aangemaakt in 2025.', verified: true, screenshot: true },
+  ],
+  address: [
+    { title: 'Damrak 45 staat op naam van derde partij — Kees staat niet ingeschreven', icon: '🏠', url: null, detail: 'Kadaster: pand is eigendom van Vastgoed B.V. Kees staat niet ingeschreven in BRP op dit adres.', verified: true, screenshot: true },
+    { title: 'Jonkerlaan 12 is woonadres van Kees Holding B.V. — feitelijk vestigingsadres', icon: '🏠', url: null, detail: 'KvK: ingeschreven op Jonkerlaan 12. Tevens woonadres van Kees de Vries (BRP).', verified: true, screenshot: true },
+    { title: 'Vroeger adres: Kerkstraat 5, 3512GH Utrecht — uitgeschreven in 2023', icon: '🏠', url: null, detail: 'BRP-historie toont uitschrijving in 2023. Reden: verhuizing naar Amsterdam.', verified: false, screenshot: true },
+  ],
+  social: [
+    { title: 'LinkedIn profiel toont fictieve werkgever "FinCorp International" — niet geregistreerd bij KvK', icon: '🌐', url: 'https://linkedin.com/in/keesdv', detail: 'FinCorp International bestaat niet bij de Kamer van Koophandel. Mogelijk opgezet voor frauduleuze doeleinden.', verified: true, screenshot: true },
+    { title: 'Facebook: 3 profielen gevonden onder dezelfde naam — 2 lijken nep', icon: '🌐', url: 'https://facebook.com/kees.devries.92', detail: 'Echte profiel heeft 128 vrienden. 2 nepprofielen hebben alleen dezelfde profielfoto.', verified: true, screenshot: true },
+    { title: 'Instagram toont luxe levensstijl — dure auto\'s, horloges, vakanties', icon: '🌐', url: 'https://instagram.com/keesdv', detail: 'Verdacht: geen legale inkomstenbron die dit kan verklaren. Dure horloges zichtbaar op foto\'s.', verified: false, screenshot: true },
+  ],
+  kvk: [
+    { title: 'Kees Holding B.V. opgericht 12-04-2026 — pas 2 maanden geleden', icon: '🏢', url: null, detail: 'Oprichtingsdatum valt samen met start van verdachte transacties. Enig aandeelhouder: Kees de Vries.', verified: true, screenshot: true },
+    { title: 'Geen enkele bedrijfsactiviteit geregistreerd — lege BV met omzet van €0', icon: '🏢', url: null, detail: 'KvK-jaarrekening toont nul omzet. Wel €120.000 ontvangen op rekening.', verified: true, screenshot: true },
+    { title: 'Bestuurder ook verbonden aan 2 andere BV\'s — beide inactief', icon: '🏢', url: null, detail: 'Kees is bestuurder geweest van twee failliete BV\'s in 2023-2024.', verified: true, screenshot: true },
+  ],
+  rdw: [
+    { title: 'Kenteken 52-KS-7 — Audi Q5 2024 — op naam van Kees Holding B.V.', icon: '🚗', url: null, detail: 'RDW: gekentekend op 01-03-2025. Voertuig is operationeel. Geen openstaande boetes.', verified: true, screenshot: true },
+    { title: 'Voertuig gefotografeerd bij ophaallocatie in Duitsland — import', icon: '🚗', url: null, detail: 'Duitse kentekenhistorie gevonden via OSINT. Voertuig oorspronkelijk geleverd aan dealer in Keulen.', verified: false, screenshot: true },
+  ],
+  osint: [
+    { title: 'Nieuwsartikel: FIOD-inval bij bedrijfspand Kees Holding — maart 2026', icon: '🌍', url: 'https://nieuws.nl/fiod-inval-kees', detail: 'FIOD doorzoeking in verband met verzekeringsfraude. Kees de Vries is aangehouden maar later vrijgelaten.', verified: true, screenshot: true },
+    { title: 'Cryptowallet ontdekt (BTC) — saldo van ~€45.000', icon: '🌍', url: null, detail: 'Wallet-adres: bc1q... gevonden via blockchain analyse. Gekoppeld aan ProtonMail-adres.', verified: true, screenshot: true },
+    { title: 'Online forum: Kees actief op fraudegerelateerd forum (opgeheven 2025)', icon: '🌍', url: null, detail: 'Wayback Machine toont posts van gebruiker "KeesDV" op forum over verzekeringsfraude technieken.', verified: false, screenshot: true },
+  ],
+  financial: [
+    { title: 'ING-rekening NL39INGB... — onverklaarbare stortingen van €48.000', icon: '💰', url: null, detail: 'Drie stortingen van €16.000 in april 2026. Afkomstig van niet-gelieerde buitenlandse rekening.', verified: true, screenshot: true },
+    { title: 'Transactieoverzicht toont betalingen aan uitzendbureau — geen personeel ingehuurd', icon: '💰', url: null, detail: 'Betalingen aan "FlexWork B.V." totaal €12.500. Uitzendbureau zegt geen contract met Kees Holding te hebben.', verified: true, screenshot: true },
+    { title: 'Cryptowallet gekoppeld aan exchange-account (Kraken) — transacties €67.000', icon: '💰', url: null, detail: 'Stortingen naar Kraken exchange afkomstig van ING-rekening. Mogelijke witwaspraktijken.', verified: false, screenshot: true },
+  ],
+};
+
+const FINDINGS_MAP = [];
+let findingIdCounter = 0;
+
+function runCheck(btn, checkType) {
+  if (btn.classList.contains('done')) return;
+  
+  btn.classList.add('running');
+  document.getElementById('actionsStatus').textContent = '🔄 Bezig met ' + btn.querySelector('.label').textContent + '...';
+  
+  setTimeout(() => {
+    btn.classList.remove('running');
+    btn.classList.add('done');
+    
+    const findings = FINDINGS_DB[checkType];
+    findings.forEach(f => {
+      const id = 'finding-' + (findingIdCounter++);
+      FINDINGS_MAP.push({ id: id, ...f, checkType: checkType });
+    });
+    
+    renderFindings();
+    document.getElementById('actionsStatus').textContent = '✅ ' + btn.querySelector('.label').textContent + ' voltooid — ' + findings.length + ' bevindingen';
+  }, checkType === 'osint' ? 2500 : 1500);
+}
+
+function renderFindings() {
+  const container = document.getElementById('findingsContainer');
+  const countEl = document.getElementById('findingsCount');
+  const totalEl = document.getElementById('totalFindings');
+  
+  countEl.textContent = FINDINGS_MAP.length + ' bevindingen';
+  totalEl.innerHTML = '📋 ' + FINDINGS_MAP.length + ' bevindingen';
+  
+  if (FINDINGS_MAP.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Voer onderzoeksacties uit in Stap 3 om bevindingen te genereren.</p></div>';
+    return;
+  }
+  
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('nl-NL');
+  const timeStr = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+  
+  let html = '<div style="display:flex;flex-direction:column;gap:0.25rem;">';
+  FINDINGS_MAP.reverse().forEach(f => {
+    const isNew = f === FINDINGS_MAP[FINDINGS_MAP.length - 1 - (FINDINGS_MAP.length - FINDINGS_MAP.indexOf(f))];
+    // Actually just mark the last few as new
+    const isRecent = FINDINGS_MAP.indexOf(f) >= FINDINGS_MAP.length - 3;
+    html += '<div class="finding-item' + (isRecent ? ' new' : '') + '" id="' + f.id + '">' +
+      '<div class="icon-col">' + f.icon + '</div>' +
+      '<div class="body-col">' +
+        '<div class="title">' + esc(f.title) + '</div>' +
+        '<div class="meta">' +
+          esc(f.detail) +
+        '</div>' +
+        (f.url ? '<div class="meta">🔗 <a href="' + esc(f.url) + '" target="_blank">' + esc(f.url) + '</a></div>' : '') +
+        '<div class="screenshot">' +
+          '<div class="ss-row"><span class="ss-label">📸 Screenshot</span> <span>' + dateStr + ' om ' + timeStr + '</span></div>' +
+          '<div class="ss-row"><span class="ss-label">🔗 Bron:</span> <span>' + (f.url || 'Interne bron') + '</span></div>' +
+          '<div class="ss-row"><span class="ss-label">✅ Status:</span> <span style="color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? 'Geverifieerd' : 'Nog te verifiëren') + '</span></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  });
+  FINDINGS_MAP.reverse();
+  html += '</div>';
+  
+  container.innerHTML = html;
+}
+
+function showProcesVerbaal() {
+  const pv = document.getElementById('pvOutput');
+  const total = FINDINGS_MAP.length;
+  
+  if (total === 0) {
+    alert('Voer eerst onderzoeksacties uit om bevindingen te genereren.');
+    return;
+  }
+  
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('nl-NL');
+  
+  let findingsHtml = '';
+  FINDINGS_MAP.forEach((f, i) => {
+    findingsHtml += '<tr><td>' + (i + 1) + '.</td><td>' + esc(f.title) + '</td><td>' + esc(f.detail) + '</td><td>' + (f.url ? esc(f.url) : '—') + '</td><td>' + (f.verified ? 'Ja' : 'Nee') + '</td></tr>';
+  });
+  
+  pv.style.display = 'block';
+  pv.innerHTML = '<div class="pv-template">' +
+    '<h3>PROCES-VERBAAL</h3>' +
+    '<p><strong>Zaak:</strong> C-2026-042 — Fraudeonderzoek Kees de Vries</p>' +
+    '<p><strong>Opdrachtgever:</strong> Schadeverzekering Nederland N.V.</p>' +
+    '<p><strong>Datum opgemaakt:</strong> ' + dateStr + '</p>' +
+    '<p><strong>Opgesteld door:</strong> Lisa van Dijk, Senior Onderzoeker</p>' +
+    '<hr style="border:none;border-top:1px solid #ccc;margin:1rem 0;">' +
+    '<h4>1. Aanleiding</h4>' +
+    '<p>Naar aanleiding van een melding van Schadeverzekering Nederland N.V. is een onderzoek ingesteld naar Kees de Vries in verband met verzekeringsfraude en identiteitsdiefstal.</p>' +
+    '<h4>2. Onderzoeksbevindingen</h4>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">' +
+      '<thead><tr style="background:#f1f5f9;"><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">#</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Bevinding</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Detail</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Bron</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Geverifieerd</th></tr></thead>' +
+      '<tbody>' + findingsHtml + '</tbody>' +
+    '</table>' +
+    '<h4>3. Conclusie</h4>' +
+    '<p>Er zijn ' + total + ' bevindingen geregistreerd. Geadviseerd wordt om de zaak voor te leggen aan het Openbaar Ministerie in verband met verdenking van valsheid in geschrifte (Art. 225 Sr) en oplichting (Art. 326 Sr).</p>' +
+    '<h4>4. Bijlagen</h4>' +
+    '<p>De volgende bijlagen zijn beschikbaar:</p>' +
+    '<ul>' +
+      '<li>Ingescande documenten (5 stuks)</li>' +
+      '<li>Screenshots van online bronnen (' + total + ' stuks)</li>' +
+      '<li>Financieel transactieoverzicht</li>' +
+      '<li>KvK-uittreksels</li>' +
+    '</ul>' +
+    '<hr style="border:none;border-top:1px solid #ccc;margin:1rem 0;">' +
+    '<p style="font-size:0.8rem;color:#666;">Digitaal ondertekend door L. van Dijk, B.Sc. · ' + dateStr + '</p>' +
+  '</div>';
+  
+  pv.scrollIntoView({ behavior: 'smooth' });
+}
+
+function esc(s) {
+  if (!s) return '';
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+</script>
+{% endblock %}

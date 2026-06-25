@@ -1,0 +1,291 @@
+{% extends "cms/base.html" %}
+{% block title %}Workflow — Nieuw onderzoek{% endblock %}
+{% block content %}
+<style>
+.super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.form-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
+.form-section h2 { font-size: 1rem; margin: 0 0 1rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+@media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+.form-group { margin-bottom: 0; }
+.form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.15rem; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; background: var(--bg); color: var(--text); }
+.form-group textarea { resize: vertical; min-height: 60px; }
+.full-width { grid-column: 1 / -1; }
+.subject-type-row { margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); }
+.subject-type-row label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; }
+.subject-type-row select { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; background: var(--bg); color: var(--text); font-weight: 500; }
+.sf-hidden { display: none !important; }
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px var(--bg) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+}
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #bbb !important;
+  opacity: 1;
+}
+.form-group input::-webkit-input-placeholder,
+.form-group textarea::-webkit-input-placeholder {
+  color: #bbb !important;
+}
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+  <div>
+    <h1 style="margin:0;font-size:1.1rem;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> Nieuw onderzoek</h1>
+  </div>
+  <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
+</div>
+
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-section">
+    <h2>📋 Zaakgegevens</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Zaaknummer</label>
+        <input type="text" name="case_number" placeholder="W-20250101-120000">
+      </div>
+      <div class="form-group">
+        <label>Titel *</label>
+        <input type="text" name="title" required placeholder="Persoonsonderzoek">
+      </div>
+      <div class="form-group">
+        <label>Prioriteit</label>
+        <select name="priority">
+          <option value="low">Laag</option>
+          <option value="medium" selected>Normaal</option>
+          <option value="high">Hoog</option>
+          <option value="critical">Kritiek</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="open" selected>Open</option>
+          <option value="in_progress">In behandeling</option>
+          <option value="closed">Afgesloten</option>
+        </select>
+      </div>
+      <div class="form-group full-width">
+        <label>Omschrijving</label>
+        <textarea name="description" rows="2" placeholder="Korte omschrijving van het onderzoek"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2>🧑 Opdrachtgever</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Bedrijfsnaam *</label>
+        <input type="text" name="client_name" required placeholder="Opdrachtgever B.V.">
+      </div>
+      <div class="form-group">
+        <label>Contactpersoon</label>
+        <input type="text" name="client_contact" placeholder="J. Janssen">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="client_email" placeholder="contact@bedrijf.nl">
+      </div>
+      <div class="form-group">
+        <label>Telefoon</label>
+        <input type="text" name="client_phone" placeholder="+31 6 12345678">
+      </div>
+      <div class="form-group">
+        <label>Referentie</label>
+        <input type="text" name="reference" placeholder="Intern kenmerk">
+      </div>
+      <div class="form-group">
+        <label>Straat</label>
+        <input type="text" name="client_street" placeholder="Hoofdstraat">
+      </div>
+      <div class="form-group">
+        <label>Huisnummer</label>
+        <input type="text" name="client_house_number" placeholder="45">
+      </div>
+      <div class="form-group">
+        <label>Toevoeging</label>
+        <input type="text" name="client_house_number_addition" placeholder="A">
+      </div>
+      <div class="form-group">
+        <label>Postcode</label>
+        <input type="text" name="client_postal_code" placeholder="1012LL">
+      </div>
+      <div class="form-group">
+        <label>Plaats</label>
+        <input type="text" name="client_city" placeholder="Amsterdam">
+      </div>
+      <div class="form-group full-width">
+        <label>Notities</label>
+        <textarea name="client_notes" rows="2" placeholder="Interne notities over de opdrachtgever"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" id="subjects-section">
+    <h2 style="margin:0 0 1rem 0;">🎯 Betrokkenen</h2>
+    <div id="subjects-container">
+      <div class="subject-block" data-index="0">
+        <div class="subject-type-row">
+          <label>Type betrokkene</label>
+          <select name="subject_0_type" required>
+            <option value="">— Selecteer type —</option>
+            <option value="person">Persoon</option>
+            <option value="company">Bedrijf</option>
+            <option value="vehicle">Voertuig</option>
+            <option value="vessel">Vaartuig</option>
+            <option value="property">Onroerend goed</option>
+            <option value="online">Online entiteit</option>
+          </select>
+        </div>
+        <div class="subject-fields" style="display:none">
+          <div class="form-grid">
+            <div class="form-group sf-all">
+              <label>Naam *</label>
+              <input type="text" name="subject_0_name" placeholder="Volledige naam / benaming">
+            </div>
+            <div class="form-group sf-person sf-company sf-vehicle sf-vessel">
+              <label>Identificatienummer</label>
+              <input type="text" name="subject_0_identification" placeholder="BSN / KvK / kenteken / IMO">
+            </div>
+            <div class="form-group sf-person sf-company">
+              <label>Email</label>
+              <input type="email" name="subject_0_email" placeholder="naam@example.com">
+            </div>
+            <div class="form-group sf-person sf-company">
+              <label>Telefoon</label>
+              <input type="text" name="subject_0_phone" placeholder="+31 6 12345678">
+            </div>
+            <div class="form-group sf-person sf-company sf-property">
+              <label>Straat</label>
+              <input type="text" name="subject_0_street" placeholder="Straatnaam">
+            </div>
+            <div class="form-group sf-person sf-company sf-property">
+              <label>Huisnummer</label>
+              <input type="text" name="subject_0_house_number" placeholder="45">
+            </div>
+            <div class="form-group sf-person sf-company sf-property">
+              <label>Toevoeging</label>
+              <input type="text" name="subject_0_house_number_addition" placeholder="A">
+            </div>
+            <div class="form-group sf-person sf-company sf-property">
+              <label>Postcode</label>
+              <input type="text" name="subject_0_postal_code" placeholder="1012LL">
+            </div>
+            <div class="form-group sf-person sf-company sf-property">
+              <label>Plaats</label>
+              <input type="text" name="subject_0_city" placeholder="Amsterdam">
+            </div>
+            <div class="form-group full-width sf-person sf-online">
+              <label>Sociale accounts</label>
+              <input type="text" name="subject_0_social_accounts" placeholder="@gebruiker1, @gebruiker2">
+            </div>
+            <div class="form-group full-width sf-all">
+              <label>Notities</label>
+              <textarea name="subject_0_notes" rows="2" placeholder="Interne notities"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Betrokkene</button>
+  </div>
+
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+
+  function updateSubjectFields(sel) {
+    var block = sel.closest('.subject-block');
+    if (!block) return;
+    var fields = block.querySelector('.subject-fields');
+    if (!fields) return;
+    var val = sel.value;
+    if (!val) { fields.style.display = 'none'; return; }
+    fields.style.display = '';
+    var groups = fields.children[0] ? fields.children[0].children : [];
+    for (var i = 0; i < groups.length; i++) {
+      var el = groups[i];
+      if (el.classList.contains('sf-all')) {
+        el.style.display = '';
+      } else if (el.classList.contains('sf-' + val)) {
+        el.style.display = '';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+  }
+
+  function addSubject() {
+    var container = document.getElementById('subjects-container');
+    var count = container.children.length;
+    var div = document.createElement('div');
+    div.className = 'subject-block';
+    div.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-color);';
+    div.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
+        '<strong style="font-size:0.85rem;">Betrokkene ' + (count + 1) + '</strong>' +
+        '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Verwijderen</button>' +
+      '</div>' +
+      '<div class="subject-type-row">' +
+        '<label>Type betrokkene</label>' +
+        '<select name="subject_' + count + '_type" data-action="update-fields" required>' +
+          '<option value="">— Selecteer type —</option>' +
+          '<option value="person">Persoon</option>' +
+          '<option value="company">Bedrijf</option>' +
+          '<option value="vehicle">Voertuig</option>' +
+          '<option value="vessel">Vaartuig</option>' +
+          '<option value="property">Onroerend goed</option>' +
+          '<option value="online">Online entiteit</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="subject-fields" style="display:none">' +
+        '<div class="form-grid">' +
+          '<div class="form-group sf-all"><label>Naam *</label><input type="text" name="subject_' + count + '_name" placeholder="Volledige naam / benaming"></div>' +
+          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subject_' + count + '_identification" placeholder="BSN / KvK / kenteken / IMO"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subject_' + count + '_email" placeholder="naam@example.com"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subject_' + count + '_phone" placeholder="+31 6 12345678"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Straat</label><input type="text" name="subject_' + count + '_street" placeholder="Straatnaam"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Huisnummer</label><input type="text" name="subject_' + count + '_house_number" placeholder="45"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Toevoeging</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="A"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Postcode</label><input type="text" name="subject_' + count + '_postal_code" placeholder="1012LL"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Plaats</label><input type="text" name="subject_' + count + '_city" placeholder="Amsterdam"></div>' +
+          '<div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="@gebruiker1, @gebruiker2"></div>' +
+          '<div class="form-group full-width sf-all"><label>Notities</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="Interne notities"></textarea></div>' +
+        '</div>' +
+      '</div>';
+    container.parentElement.insertBefore(div, container.nextElementSibling);
+  }
+
+  // Event delegation
+  document.getElementById('subjects-section').addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+    if (action === 'add-subject') {
+      addSubject();
+    } else if (action === 'remove-new-subject') {
+      var block = btn.closest('.subject-block');
+      if (block) block.remove();
+    }
+  });
+
+  document.getElementById('subjects-section').addEventListener('change', function(e) {
+    if (e.target.getAttribute('data-action') === 'update-fields') {
+      updateSubjectFields(e.target);
+    }
+  });
+
+});
+</script>
+
+  <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms">Annuleren</a>
+    <button type="submit" class="btn-cms primary">Onderzoek aanmaken →</button>
+  </div>
+</form>
+{% endblock %}

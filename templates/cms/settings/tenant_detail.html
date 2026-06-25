@@ -1,0 +1,537 @@
+{% extends "cms/base.html" %}
+{% block title %}Tenant: {{ tenant.name }} — CMS{% endblock %}
+{% block content %}
+<style>
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+.stat-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+}
+.stat-card .value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text, #111);
+}
+.stat-card .label {
+    font-size: 0.75rem;
+    color: var(--text-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+}
+.stat-card .sub {
+    font-size: 0.65rem;
+    color: var(--text-muted, #6b7280);
+    margin-top: 0.15rem;
+}
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+}
+.detail-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+.detail-card h3 {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted, #6b7280);
+}
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border-color, #f3f4f6);
+    font-size: 0.875rem;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row .key { color: var(--text-muted, #6b7280); }
+.tier-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.tier-free { background: var(--bg-secondary); color: var(--text-secondary); }
+.tier-starter { background: var(--info-bg, #dbeafe); color: var(--info-text, #1e40af); }
+.tier-professional { background: var(--warning-bg, #fef3c7); color: var(--warning-text, #92400e); }
+.tier-enterprise { background: var(--danger-bg, #fee2e2); color: var(--danger-text, #991b1b); }
+.badge-active {
+    display: inline-block;
+    background: #059669; color: white;
+    padding: 0.2rem 0.5rem; border-radius: 4px;
+    font-size: 0.75rem;
+}
+.badge-inactive {
+    display: inline-block;
+    background: #9ca3af; color: white;
+    padding: 0.2rem 0.5rem; border-radius: 4px;
+    font-size: 0.75rem;
+}
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+.user-table th, .user-table td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.user-table th {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted, #6b7280);
+}
+.log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.log-table th, .log-table td {
+    text-align: left;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.log-table th {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted, #6b7280);
+}
+    .action-badge {
+    display: inline-block;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+    .action-badge.action-update { background: var(--info-bg, #dbeafe); color: var(--info-text, #1e40af); }
+    .action-badge.action-create { background: var(--success-bg, #d1fae5); color: var(--success-text, #065f46); }
+    .action-badge.action-delete { background: var(--danger-bg, #fee2e2); color: var(--danger-text, #991b1b); }
+    .action-badge.action-login { background: var(--warning-bg, #fef3c7); color: var(--warning-text, #92400e); }
+    .action-badge.action-read { background: var(--bg-secondary); color: var(--text-secondary); }
+    .action-badge.action-reactivate { background: #d1fae5; color: #065f46; }
+    .action-badge.action-2fa_reset { background: #fce7f3; color: #9d174d; }
+.actions-bar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.limit-bar {
+    margin-top: 0.35rem; height: 4px; background: var(--bg-secondary); border-radius: 2px; overflow: hidden;
+}
+.limit-fill {
+    height: 100%; border-radius: 2px; transition: width 0.3s;
+}
+.limit-fill.ok { background: #10b981; }
+.limit-fill.warn { background: #f59e0b; }
+.limit-fill.danger { background: #ef4444; }
+</style>
+
+<div class="back">
+    <a href="{{ url_for('cms.list_tenants') }}">← Back to Tenants</a>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin:1rem 0;">
+    <h1 style="margin:0;">{{ tenant.name }}</h1>
+    <div class="actions-bar">
+        <a href="{{ url_for('cms.tenant_export', tenant_id=tenant.id) }}" class="btn-cms" style="font-size:0.8rem;text-decoration:none;">📦 Export</a>
+        <form method="POST" action="{{ url_for('cms.switch_tenant', tenant_id=tenant.id) }}" style="display:inline;">
+            <button type="submit" class="btn-cms" style="font-size:0.8rem;">Switch to this tenant</button>
+        </form>
+        <form method="POST" action="{{ url_for('cms.tenant_toggle_active', tenant_id=tenant.id) }}" style="display:inline;" onsubmit="return confirm('{% if tenant.is_active %}{{ _('Deactivate this tenant? Users will lose access.') }}{% else %}{{ _('Reactivate this tenant?') }}{% endif %}')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-cms" style="font-size:0.8rem;{% if tenant.is_active %}background:#ef4444;border-color:#ef4444;{% else %}background:#10b981;border-color:#10b981;{% endif %}">
+                {% if tenant.is_active %}{{ _('Deactivate') }}{% else %}{{ _('Reactivate') }}{% endif %}
+            </button>
+        </form>
+        {% if tenant.is_active %}
+        <span class="badge-active">Active</span>
+        {% else %}
+        <span class="badge-inactive">Inactive</span>
+        {% endif %}
+        <span class="tier-badge tier-{{ tenant.tier }}">{{ tenant.tier|capitalize }}</span>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="value">{{ users|length }}</div>
+        <div class="label">Users</div>
+        {% set ulimit = tier_limits.get('users') %}
+        {% if ulimit %}
+        {% set upct = (users|length / ulimit * 100)|round(0)|int %}
+        <div class="limit-bar"><div class="limit-fill {{ 'danger' if upct >= 90 else ('warn' if upct >= 70 else 'ok') }}" style="width:{{ upct if upct <= 100 else 100 }}%;"></div></div>
+        <div class="sub" style="font-size:0.65rem;color:var(--text-muted);">{{ users|length }}/{{ ulimit }} ({{ upct }}%)</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ case_count }}</div>
+        <div class="label">Cases</div>
+        {% set climit = tier_limits.get('cases') %}
+        {% if climit %}
+        {% set cpct = (case_count / climit * 100)|round(0)|int %}
+        <div class="limit-bar"><div class="limit-fill {{ 'danger' if cpct >= 90 else ('warn' if cpct >= 70 else 'ok') }}" style="width:{{ cpct if cpct <= 100 else 100 }}%;"></div></div>
+        <div class="sub" style="font-size:0.65rem;color:var(--text-muted);">{{ case_count }}/{{ climit }} ({{ cpct }}%)</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ client_count }}</div>
+        <div class="label">Clients</div>
+        {% set cllimit = tier_limits.get('clients') %}
+        {% if cllimit %}
+        {% set clpct = (client_count / cllimit * 100)|round(0)|int %}
+        <div class="limit-bar"><div class="limit-fill {{ 'danger' if clpct >= 90 else ('warn' if clpct >= 70 else 'ok') }}" style="width:{{ clpct if clpct <= 100 else 100 }}%;"></div></div>
+        <div class="sub" style="font-size:0.65rem;color:var(--text-muted);">{{ client_count }}/{{ cllimit }} ({{ clpct }}%)</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ subject_count }}</div>
+        <div class="label">Subjects</div>
+        {% set slimt = tier_limits.get('subjects') %}
+        {% if slimt %}
+        {% set spct = (subject_count / slimt * 100)|round(0)|int %}
+        <div class="limit-bar"><div class="limit-fill {{ 'danger' if spct >= 90 else ('warn' if spct >= 70 else 'ok') }}" style="width:{{ spct if spct <= 100 else 100 }}%;"></div></div>
+        <div class="sub" style="font-size:0.65rem;color:var(--text-muted);">{{ subject_count }}/{{ slimt }} ({{ spct }}%)</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ finding_count }}</div>
+        <div class="label">Findings</div>
+        {% set flimit = tier_limits.get('findings') %}
+        {% if flimit %}
+        {% set fpct = (finding_count / flimit * 100)|round(0)|int %}
+        <div class="limit-bar"><div class="limit-fill {{ 'danger' if fpct >= 90 else ('warn' if fpct >= 70 else 'ok') }}" style="width:{{ fpct if fpct <= 100 else 100 }}%;"></div></div>
+        <div class="sub" style="font-size:0.65rem;color:var(--text-muted);">{{ finding_count }}/{{ flimit }} ({{ fpct }}%)</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ document_count }}</div>
+        <div class="label">Documents</div>
+        {% set dlimit = tier_limits.get('documents') %}
+        {% if dlimit %}
+        {% set dpct = (document_count / dlimit * 100)|round(0)|int %}
+        <div class="limit-bar"><div class="limit-fill {{ 'danger' if dpct >= 90 else ('warn' if dpct >= 70 else 'ok') }}" style="width:{{ dpct if dpct <= 100 else 100 }}%;"></div></div>
+        <div class="sub" style="font-size:0.65rem;color:var(--text-muted);">{{ document_count }}/{{ dlimit }} ({{ dpct }}%)</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ storage_used_mb }}MB</div>
+        <div class="label">Storage</div>
+        {% if storage_max_mb %}
+        {% set spct = (storage_used_mb / storage_max_mb * 100)|round(0)|int %}
+        <div class="limit-bar"><div class="limit-fill {{ 'danger' if spct >= 90 else ('warn' if spct >= 70 else 'ok') }}" style="width:{{ spct if spct <= 100 else 100 }}%;"></div></div>
+        <div class="sub" style="font-size:0.65rem;color:var(--text-muted);">{{ storage_used_mb }}/{{ storage_max_mb }} MB ({{ spct }}%)</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="detail-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>{{ _('Tenant Info') }}</h3>
+            <button class="btn-cms" style="font-size:0.75rem;padding:0.2rem 0.5rem;" onclick="document.getElementById('tenantEditForm').style.display=document.getElementById('tenantEditForm').style.display==='none'?'block':'none'">{{ _('Edit') }}</button>
+        </div>
+        <div class="detail-row">
+            <span class="key">ID</span>
+            <span><code>{{ tenant.id }}</code></span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Name') }}</span>
+            <span>{{ tenant.name }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="key">Slug</span>
+            <span><code>{{ tenant.slug }}</code></span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Join Code') }}</span>
+            <span><code style="letter-spacing:0.05em;">{{ tenant.join_code }}</code></span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Domain') }}</span>
+            <span>{{ tenant.domain or '—' }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Owner') }}</span>
+            <span>{% if tenant.owner %}{{ tenant.owner.full_name }} ({{ tenant.owner.email }}){% else %}—{% endif %}</span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Created') }}</span>
+            <span>{{ tenant.created_at.strftime('%Y-%m-%d %H:%M') if tenant.created_at else '—' }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Updated') }}</span>
+            <span>{{ tenant.updated_at.strftime('%Y-%m-%d %H:%M') if tenant.updated_at else '—' }}</span>
+        </div>
+        <form id="tenantEditForm" method="POST" action="{{ url_for('cms.tenant_update_settings', tenant_id=tenant.id) }}" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-color);">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-bottom:0.5rem;">
+                <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.2rem;">{{ _('Name') }}</label>
+                <input type="text" name="name" value="{{ tenant.name }}" style="width:100%;padding:0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.85rem;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:0.5rem;">
+                <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Slug</label>
+                <input type="text" name="slug" value="{{ tenant.slug }}" style="width:100%;padding:0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.85rem;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:0.5rem;">
+                <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.2rem;">{{ _('Domain') }}</label>
+                <input type="text" name="domain" value="{{ tenant.domain or '' }}" placeholder="tenant.example.com" style="width:100%;padding:0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.85rem;box-sizing:border-box;">
+            </div>
+            <button type="submit" class="btn-cms" style="font-size:0.8rem;">{{ _('Save') }}</button>
+        </form>
+    </div>
+
+    <div class="detail-card">
+        <h3>💳 {{ _('Billing') }}</h3>
+        <div class="detail-row">
+            <span class="key">{{ _('Tier') }}</span>
+            <span class="tier-badge tier-{{ tenant.tier }}" style="vertical-align:middle;">{{ tenant.tier|capitalize }}</span>
+            {% if current_user.is_super_admin %}
+            <form method="POST" action="{{ url_for('cms.admin_change_tier', tenant_id=tenant.id) }}" style="display:inline;margin-left:0.5rem;">
+                <select name="tier" onchange="this.form.submit()" style="font-size:0.75rem;padding:0.2rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;">
+                    {% set tier_order = ['free','starter','professional','enterprise'] %}
+                    {% for t in tier_order %}
+                    <option value="{{ t }}" {% if tenant.tier == t %}selected{% endif %}>{{ t|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Subscription') }}</span>
+            <span>{% if tenant.subscription_status == 'active' %}<span class="badge-active">Active</span>{% elif tenant.subscription_status == 'past_due' %}<span style="display:inline-block;background:#f59e0b;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Past Due ⚠️</span>{% elif tenant.subscription_status == 'canceled' %}<span style="display:inline-block;background:#ef4444;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Canceled</span>{% elif tenant.subscription_status == 'trialing' %}<span style="display:inline-block;background:#8b5cf6;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Trialing</span>{% elif tenant.subscription_status == 'incomplete' %}<span style="display:inline-block;background:#9ca3af;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;">Incomplete</span>{% else %}{{ tenant.subscription_status|capitalize }}{% endif %}</span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Period End') }}</span>
+            <span>{{ tenant.current_period_end.strftime('%Y-%m-%d') if tenant.current_period_end else '—' }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Trial Ends') }}</span>
+            <span>{{ tenant.trial_ends_at.strftime('%Y-%m-%d') if tenant.trial_ends_at else '—' }}</span>
+        </div>
+        {% if tenant.dunning_retries and tenant.dunning_retries > 0 %}
+        <div class="detail-row">
+            <span class="key">{{ _('Failed Payments') }}</span>
+            <span style="color:#ef4444;font-weight:600;">{{ tenant.dunning_retries }}</span>
+        </div>
+        {% endif %}
+        <div class="detail-row">
+            <span class="key">{{ _('Stripe Customer') }}</span>
+            <span>{% if tenant.stripe_customer_id %}<code>{{ tenant.stripe_customer_id }}</code>{% else %}—{% endif %}</span>
+        </div>
+        <div class="detail-row">
+            <span class="key">{{ _('Stripe Sub') }}</span>
+            <span>{% if tenant.stripe_subscription_id %}<code>{{ tenant.stripe_subscription_id }}</code>{% else %}—{% endif %}</span>
+        </div>
+        {% if config.get('STRIPE_SECRET_KEY') and tenant.stripe_customer_id %}
+        <div style="margin-top:0.75rem;text-align:center;">
+            <a href="{{ url_for('cms.tenant_billing_portal', tenant_id=tenant.id) }}" class="btn-cms" style="font-size:0.8rem;" target="_blank">🔗 {{ _('Stripe Customer Portal') }}</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if proration_logs %}
+<div class="detail-card" style="margin-bottom:1.5rem;">
+    <h3>🔄 {{ _('Tier Change History') }}</h3>
+    <table class="user-table" style="font-size:0.75rem;">
+        <thead><tr><th>{{ _('Date') }}</th><th>{{ _('From') }}</th><th>{{ _('To') }}</th><th>{{ _('Proration') }}</th><th>{{ _('Stripe Invoice') }}</th></tr></thead>
+        <tbody>
+            {% for log in proration_logs %}
+            <tr>
+                <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '—' }}</td>
+                <td><span class="tier-badge-sm tier-{{ log.from_tier }}">{{ log.from_tier|capitalize }}</span></td>
+                <td><span class="tier-badge-sm tier-{{ log.to_tier }}">{{ log.to_tier|capitalize }}</span></td>
+                <td>{% if log.amount_cents > 0 %}€{{ "%.2f"|format(log.amount_cents / 100) }}{% else %}{{ _('No charge') }}{% endif %}</td>
+                <td>{% if log.stripe_invoice_id %}<code style="font-size:0.65rem;">{{ log.stripe_invoice_id }}</code>{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if invoices or payments %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+    {% if invoices %}
+    <div class="detail-card">
+        <h3>🧾 {{ _('Recent Invoices') }}</h3>
+        <table class="user-table" style="font-size:0.75rem;">
+            <thead><tr><th>{{ _('Number') }}</th><th>{{ _('Date') }}</th><th>{{ _('Total') }}</th><th>{{ _('Status') }}</th></tr></thead>
+            <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td><code>{{ inv.invoice_number }}</code></td>
+                <td>{{ inv.issue_date.strftime('%Y-%m-%d') if inv.issue_date else '—' }}</td>
+                <td>€{{ "%.2f"|format(inv.total|float) if inv.total else '—' }}</td>
+                <td><span class="tier-badge-sm" style="background:{% if inv.status == 'paid' %}#d1fae5;color:#065f46{% elif inv.status == 'overdue' %}#fee2e2;color:#991b1b{% else %}#f3f4f6;color:#6b7280{% endif %};">{{ inv.status }}</span></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    {% if payments %}
+    <div class="detail-card">
+        <h3>💵 {{ _('Recent Payments') }}</h3>
+        <table class="user-table" style="font-size:0.75rem;">
+            <thead><tr><th>{{ _('Date') }}</th><th>{{ _('Amount') }}</th><th>{{ _('Method') }}</th><th>{{ _('Reference') }}</th></tr></thead>
+            <tbody>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.payment_date.strftime('%Y-%m-%d') if p.payment_date else '—' }}</td>
+                <td>€{{ "%.2f"|format(p.amount|float) if p.amount else '—' }}</td>
+                <td>{{ p.payment_method or '—' }}</td>
+                <td style="font-size:0.65rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;">{{ p.reference or '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="detail-card" style="margin-bottom:1.5rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 style="margin:0;">Users ({{ users|length }})</h3>
+        <details style="position:relative;">
+            <summary style="cursor:pointer;font-size:0.8rem;color:var(--accent);">+ {{ _('Invite User') }}</summary>
+            <div style="position:absolute;right:0;top:100%;background:var(--card-bg);border:1px solid var(--border-color);border-radius:8px;padding:1rem;width:320px;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-top:4px;">
+                <form method="POST" action="{{ url_for('cms.tenant_invite_user', tenant_id=tenant.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div style="margin-bottom:0.5rem;">
+                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.2rem;">{{ _('Email') }}</label>
+                        <input type="email" name="email" required placeholder="email@example.com" style="width:100%;padding:0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.85rem;box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.5rem;">
+                        <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.2rem;">{{ _('Role') }}</label>
+                        <select name="role" style="width:100%;padding:0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.85rem;">
+                            <option value="investigator">{{ _('Investigator') }}</option>
+                            <option value="senior_investigator">{{ _('Senior Investigator') }}</option>
+                            <option value="admin">{{ _('Admin') }}</option>
+                            <option value="viewer">{{ _('Viewer') }}</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-cms" style="width:100%;font-size:0.8rem;">{{ _('Send Invite') }}</button>
+                </form>
+            </div>
+        </details>
+    </div>
+    {% if users %}
+    <table class="user-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td><a href="{{ url_for('users.view_user', user_id=u.id) }}">{{ u.full_name }}</a></td>
+                <td>{{ u.email }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('cms.tenant_change_role', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline-flex;gap:0.25rem;align-items:center;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="role" onchange="this.form.submit()" style="font-size:0.75rem;padding:0.15rem 0.3rem;border:1px solid var(--border-color);border-radius:3px;background:var(--card-bg);color:var(--text);">
+                            {% for r in ['viewer','junior_investigator','investigator','senior_investigator','admin'] %}
+                            <option value="{{ r }}" {{ 'selected' if u.role == r }}>{{ r.replace('_',' ')|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </td>
+                <td>
+                    {% if u.is_active %}
+                    <span class="badge-active">Active</span>
+                    {% else %}
+                    <span class="badge-inactive">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>{{ u.last_login.strftime('%Y-%m-%d %H:%M') if u.last_login else '—' }}</td>
+                <td style="white-space:nowrap;">
+                    <form method="POST" action="{% if u.is_active %}{{ url_for('cms.tenant_deactivate_user', tenant_id=tenant.id, user_id=u.id) }}{% else %}{{ url_for('cms.tenant_reactivate_user', tenant_id=tenant.id, user_id=u.id) }}{% endif %}" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-cms" style="font-size:0.7rem;padding:0.15rem 0.4rem;{% if u.is_active %}background:#ef4444;border-color:#ef4444;{% else %}background:#10b981;border-color:#10b981;{% endif %}">
+                            {% if u.is_active %}{{ _('Deactivate') }}{% else %}{{ _('Reactivate') }}{% endif %}
+                        </button>
+                    </form>
+                    {% if u.totp_enabled %}
+                    <form method="POST" action="{{ url_for('cms.tenant_reset_2fa', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;margin-left:0.25rem;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-cms" style="font-size:0.7rem;padding:0.15rem 0.4rem;background:#8b5cf6;border-color:#8b5cf6;" onclick="return confirm('{{ _('Reset 2FA for this user?') }}')">{{ _('Reset 2FA') }}</button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('users.edit_user', user_id=u.id) }}" style="font-size:0.7rem;margin-left:0.25rem;">✎</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted);">No users found.</p>
+    {% endif %}
+</div>
+
+<div class="detail-card">
+    <h3>Recent Activity</h3>
+    {% if recent_logs %}
+    <table class="log-table">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in recent_logs %}
+            <tr>
+                <td style="white-space:nowrap;">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp else '—' }}</td>
+                <td>{% if log.user %}{{ log.user.full_name }}{% else %}<span style="color:var(--text-muted);">unknown</span>{% endif %}</td>
+                <td><span class="action-badge action-{{ log.action }}">{{ log.action }}</span></td>
+                <td>{{ log.entity_type }}<br><code style="font-size:0.65rem;">{{ log.entity_id|truncate(12) }}</code></td>
+                <td>{{ log.description or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted);">No activity recorded.</p>
+    {% endif %}
+</div>
+
+<div class="detail-card" style="border-color:#ef4444;">
+    <h3 style="color:#ef4444;">⚠️ {{ _('Danger Zone') }}</h3>
+    <p style="color:var(--text-secondary);font-size:0.85rem;">
+        {{ _('Permanently delete all data for this tenant. This action cannot be undone. Consider exporting the data first.') }}
+    </p>
+    <a href="{{ url_for('cms.tenant_gdpr_delete', tenant_id=tenant.id) }}" class="btn-cms" style="background:#ef4444;border-color:#ef4444;color:white;text-decoration:none;font-size:0.85rem;">
+        🗑️ {{ _('Delete All Tenant Data') }}
+    </a>
+</div>
+{% endblock %}

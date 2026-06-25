@@ -142,6 +142,7 @@ window.apiFetch = function(url, options) {
       .then(function(data) {
         var h = '<div style="padding:0.75rem 1rem;border-bottom:1px solid var(--border-color);font-weight:600;display:flex;justify-content:space-between;align-items:center;"><span>Notifications</span>';
         if (data.unread_count > 0) h += '<button class="btn btn-xs" data-click="markAllRead">Mark all read</button>';
+        h += '<a href="/cms/notifications" style="font-size:0.7rem;color:var(--accent);text-decoration:none;font-weight:400;">See all</a>';
         h += '</div>';
         if (data.notifications.length === 0) {
           h += '<div style="padding:1.5rem;text-align:center;color:var(--text-secondary);font-size:0.875rem;">' + (C.noNotificationsText || 'No notifications') + '</div>';

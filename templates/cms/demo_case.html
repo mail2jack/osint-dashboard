@@ -1,0 +1,349 @@
+{% extends "cms/base.html" %}
+{% block title %}Casus {{ case.case_number }} — Kees (Demo){% endblock %}
+{% block content %}
+<style>
+.demo-banner {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+.demo-banner a { color: #fff; text-decoration: underline; }
+.case-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+}
+.case-header h1 { margin: 0; font-size: 1.4rem; }
+.case-header .meta { color: var(--text-muted); font-size: 0.85rem; }
+.badge-priority-critical { background: #dc2626; color: #fff; }
+.badge-priority-high { background: #f59e0b; color: #fff; }
+.badge-priority-medium { background: #3b82f6; color: #fff; }
+.badge-priority-low { background: #6b7280; color: #fff; }
+.badge-status-open { background: #3b82f6; color: #fff; }
+.badge-status-active { background: #10b981; color: #fff; }
+.badge-status-closed { background: #6b7280; color: #fff; }
+.badge-status-suspended { background: #f59e0b; color: #fff; }
+.badge-class-geheim { background: #dc2626; color: #fff; }
+.badge-class-vertrouwelijk { background: #f59e0b; color: #111; }
+.badge-class-intern { background: #6b7280; color: #fff; }
+.subject-card {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.75rem 1rem; border: 1px solid var(--border-color);
+  border-radius: 8px; margin-bottom: 0.5rem;
+  background: var(--card-bg); transition: box-shadow .15s;
+}
+.subject-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.subject-card .name { font-weight: 600; }
+.subject-card .type { font-size: 0.8rem; color: var(--text-muted); }
+.subject-card .socials { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.25rem; }
+.subject-card .socials a {
+  font-size: 0.75rem; padding: 0.15rem 0.4rem;
+  border-radius: 4px; background: var(--bg-secondary);
+  color: var(--link-color); text-decoration: none;
+}
+.risk-meter {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; font-weight: 700;
+}
+.risk-bar {
+  width: 60px; height: 6px; border-radius: 3px; background: var(--border-color);
+  overflow: hidden;
+}
+.risk-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.finding-row {
+  padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color);
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 0.75rem;
+}
+.finding-row:last-child { border-bottom: none; }
+.finding-row .title { flex: 1; font-weight: 500; font-size: 0.9rem; }
+.finding-row .meta { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+.doc-row {
+  padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border-color);
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 0.5rem; font-size: 0.85rem;
+}
+.doc-row:last-child { border-bottom: none; }
+.doc-row .name { font-weight: 500; flex: 1; }
+.fin-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem; margin-bottom: 1rem;
+}
+.fin-stat {
+  text-align: center; padding: 1rem;
+  border: 1px solid var(--border-color); border-radius: 8px;
+}
+.fin-stat .value { font-size: 1.3rem; font-weight: 700; }
+.fin-stat .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+.fin-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.45rem 0; border-bottom: 1px solid var(--border-color);
+  font-size: 0.85rem;
+}
+.fin-row:last-child { border-bottom: none; }
+.fin-amount { font-weight: 600; }
+.fin-amount.credit { color: #10b981; }
+.fin-amount.debit { color: #dc2626; }
+.comment-bubble {
+  padding: 0.75rem 1rem; border-radius: 8px;
+  background: var(--bg-secondary); margin-bottom: 0.6rem;
+  border: 1px solid var(--border-color);
+}
+.comment-bubble.pinned { border-left: 3px solid #f59e0b; }
+.comment-bubble .header {
+  display: flex; justify-content: space-between; font-size: 0.8rem;
+  margin-bottom: 0.3rem;
+}
+.comment-bubble .author { font-weight: 600; }
+.comment-bubble .date { color: var(--text-muted); }
+.comment-bubble .body { font-size: 0.9rem; line-height: 1.5; }
+.tag {
+  display: inline-block; padding: 0.15rem 0.5rem;
+  border-radius: 12px; font-size: 0.72rem; font-weight: 500;
+  background: var(--bg-secondary); border: 1px solid var(--border-color);
+}
+.tag-urgent { border-color: #dc2626; color: #dc2626; }
+.tag-fraude { border-color: #f59e0b; color: #f59e0b; }
+.child-case {
+  padding: 0.5rem 0.75rem; border: 1px solid var(--border-color);
+  border-radius: 6px; margin-bottom: 0.4rem; font-size: 0.85rem;
+}
+</style>
+
+<div class="demo-banner">
+  ⚡ DEMO MODUS — Dit is een voorbeeldcasus. Geen echte data.
+  <a href="/demo">← Design system</a>
+  <a href="/demo/workflow/personenonderzoek" style="margin-left:0.5rem;">🔍 Workflow →</a>
+</div>
+
+{# ─── Header ──────────────────────────────────────────── #}
+<div class="case-header">
+  <div>
+    <h1>{{ case.title }}</h1>
+    <div class="meta">
+      {{ case.case_number }} · Aangemaakt {{ case.created_at }} ·
+      Gewijzigd {{ case.updated_at }}
+    </div>
+  </div>
+  <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+    <span class="badge badge-status-{{ case.status }}">{{ case.status }}</span>
+    <span class="badge badge-priority-{{ case.priority }}">{{ case.priority }}</span>
+    <a href="#" class="btn-cms small">📋 Export CSV</a>
+    <a href="#" class="btn-cms primary small">✏️ Bewerk</a>
+  </div>
+</div>
+
+{# ─── Case Info Card ──────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-header"><h2>📄 Casusinformatie</h2></div>
+  <div class="info-grid" style="grid-template-columns:1fr 1fr;">
+    <div class="info-row"><span class="info-label">Opdrachtgever</span><span class="info-value"><a href="#" style="font-weight:500;">{{ case.client_name }}</a></span></div>
+    <div class="info-row"><span class="info-label">Lead Investigator</span><span class="info-value">{{ case.lead_investigator }}</span></div>
+    <div class="info-row"><span class="info-label">Toegewezen aan</span><span class="info-value">{{ case.assigned_to }}</span></div>
+    <div class="info-row"><span class="info-label">Uiterlijke datum</span><span class="info-value">{{ case.due_date }}</span></div>
+    <div class="info-row" style="grid-column:1/-1;">
+      <span class="info-label">Wetsartikelen</span>
+      <span class="info-value" style="font-size:0.85rem;">{{ case.criminal_code }}</span>
+    </div>
+    <div class="info-row" style="grid-column:1/-1;">
+      <span class="info-label">Omschrijving</span>
+      <span class="info-value">{{ case.description }}</span>
+    </div>
+    <div class="info-row" style="grid-column:1/-1;">
+      <span class="info-label">Tags</span>
+      <span class="info-value" style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+        {% for t in case.tags %}
+        <span class="tag tag-{{ t }}">{{ t }}</span>
+        {% endfor %}
+      </span>
+    </div>
+    {% if child_cases %}
+    <div class="info-row" style="grid-column:1/-1;">
+      <span class="info-label">Gerelateerde zaken</span>
+      <span class="info-value" style="display:flex;flex-direction:column;gap:0.3rem;">
+        {% for cc in child_cases %}
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <a href="#" style="font-weight:500;">{{ cc.case_number }}</a>
+          <span style="color:var(--text-muted);font-size:0.85rem;">{{ cc.title }}</span>
+          <span class="badge badge-status-{{ cc.status }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ cc.status }}</span>
+        </div>
+        {% endfor %}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ─── Two-column layout ───────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+
+{# ─── LEFT COLUMN ─────────────────────────────────────── #}
+<div>
+
+{# ─── Subjects ───────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-header">
+    <h2>👤 Betrokkenen ({{ subjects|length }})</h2>
+    <a href="#" class="btn-cms small">+ Koppel subject</a>
+  </div>
+  {% for s in subjects %}
+  <div class="subject-card">
+    <div>
+      <div class="name">{{ s.name }}</div>
+      <div class="type">{{ s.subject_type }} · {{ s.identification_number }}</div>
+      {% if s.social_accounts %}
+      <div class="socials">
+        {% for acct in s.social_accounts %}
+        <a href="{{ acct.url }}">{{ acct.platform }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if s.addresses %}
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem;">
+        {% for a in s.addresses %}{{ a }}{% if not loop.last %}; {% endif %}{% endfor %}
+      </div>
+      {% endif %}
+      {% if s.phone or s.email %}
+      <div style="font-size:0.78rem;color:var(--text-muted);">
+        {{ s.phone }}{% if s.phone and s.email %} · {% endif %}{{ s.email }}
+      </div>
+      {% endif %}
+    </div>
+    <div style="text-align:right;">
+      <div class="risk-meter">
+        <span>{{ s.risk_score }}%</span>
+        <div class="risk-bar">
+          <div class="risk-bar-fill" style="width:{{ s.risk_score }}%;background:{% if s.risk_score > 80 %}#dc2626{% elif s.risk_score > 60 %}#f59e0b{% else %}#10b981{% endif %};"></div>
+        </div>
+      </div>
+      <div style="margin-top:0.3rem;"><a href="#" class="btn-cms purple small">→ Open</a></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ─── Findings ───────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-header">
+    <h2>📋 Bevindingen ({{ findings|length }})</h2>
+    <div style="display:flex;gap:0.4rem;">
+      <a href="#" class="btn-cms purple small">⏳ Timeline</a>
+      <a href="#" class="btn-cms small">+ Nieuwe</a>
+    </div>
+  </div>
+  <div style="padding:0.5rem 0.75rem;display:flex;flex-wrap:wrap;gap:0.35rem;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);">
+    <input type="text" placeholder="Filter op titel" style="flex:1;min-width:100px;padding:0.3rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;">
+    <select style="padding:0.3rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;">
+      <option>Alle bronnen</option><option>OSINT</option><option>Document</option><option>Handmatig</option>
+    </select>
+    <a href="#" class="btn-cms gray small">Filter</a>
+  </div>
+  {% for f in findings %}
+  <div class="finding-row">
+    <div>
+      <div class="title">{{ f.title }}</div>
+      <div style="font-size:0.78rem;color:var(--text-muted);">
+        <a href="#" style="font-weight:500;">{{ f.subject }}</a>
+        {% if f.source_url %} · <a href="{{ f.source_url }}" style="color:var(--link-color);">🔗 Bron</a>{% endif %}
+      </div>
+    </div>
+    <div class="meta">
+      <span class="badge badge-status-open" style="text-transform:none;font-size:0.7rem;padding:0.1rem 0.4rem;">{{ f.source_type }}</span>
+      <div style="margin-top:0.15rem;">{{ f.author }} · {{ f.created_at }}</div>
+    </div>
+  </div>
+  {% endfor %}
+  <div style="padding:0.6rem;display:flex;justify-content:center;gap:0.5rem;font-size:0.8rem;">
+    <a href="#" class="btn-cms gray small">← Vorige</a>
+    <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">Pagina 1 van 1</span>
+    <a href="#" class="btn-cms gray small">Volgende →</a>
+  </div>
+</div>
+
+</div>{# /LEFT COLUMN #}
+
+{# ─── RIGHT COLUMN ────────────────────────────────────── #}
+<div>
+
+{# ─── Comments ───────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-header">
+    <h2>💬 Comments ({{ comments|length }})</h2>
+    <a href="#" class="btn-cms small">+ Nieuwe notitie</a>
+  </div>
+  <div style="padding:0.5rem 0.75rem;border-bottom:1px solid var(--border-color);display:flex;gap:0.4rem;">
+    <textarea placeholder="Schrijf een notitie..." style="flex:1;padding:0.4rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;min-height:2.4rem;" rows="1"></textarea>
+    <button class="btn-cms primary small" style="align-self:flex-end;">Plaats</button>
+  </div>
+  {% for c in comments %}
+  <div class="comment-bubble {% if c.is_pinned %}pinned{% endif %}">
+    <div class="header">
+      <span class="author">{{ c.author }}{% if c.is_pinned %} 📌{% endif %}</span>
+      <span class="date">{{ c.created_at }}</span>
+    </div>
+    <div class="body">{{ c.content }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ─── Documents ─────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-header">
+    <h2>📎 Documenten ({{ documents|length }})</h2>
+    <a href="#" class="btn-cms small">+ Upload</a>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Naam</th>
+        <th>Classificatie</th>
+        <th>Type</th>
+        <th>Grootte</th>
+        <th>Toegevoegd door</th>
+        <th>Datum</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in documents %}
+      <tr>
+        <td style="font-weight:500;">{{ d.name }}</td>
+        <td><span class="badge badge-class-{{ d.classification }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;text-transform:none;">{{ d.classification }}</span></td>
+        <td style="color:var(--text-muted);font-size:0.85rem;">{{ d.type }}</td>
+        <td style="color:var(--text-muted);font-size:0.85rem;">{{ d.size }}</td>
+        <td style="color:var(--text-muted);font-size:0.85rem;">{{ d.uploaded_by }}</td>
+        <td style="color:var(--text-muted);font-size:0.85rem;">{{ d.created_at }}</td>
+        <td><a href="#" class="btn-cms gray small">↓</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+</div>{# /RIGHT COLUMN #}
+</div>{# /TWO-COLUMN #}
+
+{# ─── Reminders full width ───────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-header">
+    <h2>⏰ Herinneringen</h2>
+    <a href="#" class="btn-cms small">+ Nieuwe</a>
+  </div>
+  {% for r in reminders %}
+  <div class="reminder-item {% if r.is_overdue %}overdue{% endif %}">
+    <div>
+      <strong>{{ r.title }}</strong>
+      <div style="font-size:0.8rem;color:var(--text-muted);">
+        {% if r.is_overdue %}⚠️ Verlopen: {% endif %}{{ r.date }}
+      </div>
+    </div>
+    <button class="btn-cms small primary">✓</button>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

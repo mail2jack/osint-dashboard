@@ -20,6 +20,7 @@ from ..auth import (
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_clients, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
+from ..tier_limits import check_resource_limit
 
 from .response import api_success, api_error
 
@@ -118,7 +119,7 @@ def view_client(client_id: str) -> str:
 
 @cms_bp.route("/clients/create", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "senior_investigator", "investigator")
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="create_client")
 @validate(CreateClientSchema)
 def create_client() -> flask.Response:
@@ -177,6 +178,20 @@ def create_client() -> flask.Response:
                     submitted_name=name,
                     submitted_is_company=bool(data.get("is_company")),
                 )
+
+        # Check client limit before creating
+        ok, cur, maximum = check_resource_limit(Client, "tenant_id", "max_clients")
+        if not ok:
+            if request.is_json:
+                return api_error(
+                    f"Client limit reached ({cur}/{maximum}). Upgrade your plan to add more clients.",
+                    403,
+                )
+            flash(
+                f"Client limit reached ({cur}/{maximum}). Upgrade your plan to add more clients.",
+                "danger",
+            )
+            return render_template("cms/clients/create.html")
 
         client = Client(name=name)
         client.is_company = bool(data.get("is_company"))
@@ -296,7 +311,7 @@ def create_client() -> flask.Response:
 
 @cms_bp.route("/clients/<client_id>/edit", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "senior_investigator", "investigator")
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="edit_client")
 @validate(EditClientSchema)
 def edit_client(client_id: str) -> flask.Response:

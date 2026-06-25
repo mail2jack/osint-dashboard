@@ -1,6 +1,8 @@
 """
 Notification system — sends webhooks for important events.
 Webhook URL is configured via Setting 'webhook_url'.
+
+Also handles SMS/WhatsApp delivery for critical alerts.
 """
 
 import logging
@@ -139,6 +141,8 @@ def notify_search_restricted(
         for uid in target_user_ids:
             n = Notification(
                 user_id=uid,
+                category="search_restricted",
+                title="Restricted search match",
                 message=f'🔍 User "{searching_username}" searched for "{query}" — found {restricted_count} result(s) in case {case_number} that were filtered',
                 link=f"/cases/{case.id}",
             )
@@ -148,6 +152,8 @@ def notify_search_restricted(
     owners_str = ", ".join(sorted(owner_names)) if owner_names else "the case owner"
     searching_notification = Notification(
         user_id=user_id,
+        category="search_restricted",
+        title="Search results restricted",
         message=f'🔍 Your search for "{query}" matched restricted content. '
         f"Case owner(s) ({owners_str}) have been notified and will contact you if needed.",
         link=None,
@@ -156,3 +162,48 @@ def notify_search_restricted(
     db.session.commit()
 
     return list(owner_names)
+
+
+def send_alert_sms_whatsapp(
+    tenant,
+    category: str,
+    subject: str,
+    message: str,
+) -> None:
+    """Send SMS/WhatsApp alerts to tenant admins who have opted in.
+
+    Only sends for critical categories where SMS/WhatsApp makes sense:
+    ``usage_alerts``, ``system``, ``payment_failed``.
+    """
+    critical = {"usage_alerts", "system", "payment_failed"}
+    if category not in critical:
+        return
+
+    try:
+        from flask_login import current_user
+        from .models import User, NotificationPreference
+        from .sms_utils import send_sms, send_whatsapp
+    except ImportError:
+        return
+
+    admins = User.query.filter(
+        User.tenant_id == tenant.id,
+        User.is_active == True,
+        User.role.in_(["admin", "owner"]),
+        User.phone_number.isnot(None),
+    ).all()
+
+    for admin in admins:
+        pref = NotificationPreference.get_pref(admin.id, category)
+
+        if pref.sms_enabled and admin.phone_number:
+            try:
+                send_sms(admin.phone_number, f"{subject}: {message[:200]}")
+            except Exception:
+                logger.exception("Failed to send SMS to %s", admin.phone_number)
+
+        if pref.whatsapp_enabled and admin.phone_number:
+            try:
+                send_whatsapp(admin.phone_number, f"{subject}: {message[:200]}")
+            except Exception:
+                logger.exception("Failed to send WhatsApp to %s", admin.phone_number)

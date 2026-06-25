@@ -1,0 +1,67 @@
+{% extends "cms/base.html" %}
+{% block title %}Workflow — Dashboard{% endblock %}
+{% block content %}
+<style>
+.wf-card {
+  border: 1px solid var(--border-color); border-radius: 10px;
+  padding: 1rem; margin-bottom: 0.75rem;
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--bg-card); transition: box-shadow .15s;
+}
+.wf-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.wf-card .info { flex: 1; min-width: 0; }
+.wf-card .title { font-weight: 600; font-size: 0.95rem; }
+.wf-card .meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+.wf-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px var(--bg) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+}
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+  <div>
+    <h1 style="margin:0;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> Onderzoeken</h1>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
+      Superadmin — aparte zandbakomgeving voor het testen van de onderzoekworkflow
+    </p>
+  </div>
+  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ Nieuw onderzoek</a>
+</div>
+
+{% if cases %}
+  {% for case in cases %}
+  <div class="wf-card">
+    <div class="info">
+      <div class="title">
+        <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" style="text-decoration:none;">
+          {{ case.case_number }} — {{ case.title or 'Onbekend' }}
+        </a>
+      </div>
+      <div class="meta">
+        <span class="badge badge-status-{{ case.status }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ case.status }}</span>
+        <span class="badge badge-priority-{{ case.priority }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ case.priority }}</span>
+        {% set ac = action_counts.get(case.id, {}) %}
+        Acties: {{ ac.get('completed', 0) }}/{{ ac.get('total', 0) }} voltooid
+        {% if ac.get('running', 0) > 0 %}<span style="color:#3b82f6;"> · ⏳ {{ ac.get('running', 0) }} bezig</span>{% endif %}
+        · Aangemaakt {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
+      </div>
+    </div>
+    <div class="wf-actions">
+      <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small">Open →</a>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div style="text-align:center;padding:3rem;color:var(--text-muted);">
+  <div style="font-size:3rem;margin-bottom:0.5rem;">🔬</div>
+  <h2>Nog geen onderzoeken</h2>
+  <p>Start een nieuw onderzoek om de workflow te testen.</p>
+  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary" style="margin-top:1rem;">+ Nieuw onderzoek</a>
+</div>
+{% endif %}
+{% endblock %}

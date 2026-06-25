@@ -109,7 +109,7 @@
     <tbody>
         {% for tenant in tenants %}
         <tr>
-            <td>{{ tenant.name }}</td>
+            <td><a href="{{ url_for('cms.tenant_detail', tenant_id=tenant.id) }}" style="font-weight:600;">{{ tenant.name }}</a></td>
             <td><code>{{ tenant.slug }}</code></td>
             <td><code style="font-size:0.9rem;letter-spacing:0.05em;background:var(--info-bg, #dbeafe);padding:0.15rem 0.5rem;border-radius:4px;">{{ tenant.join_code }}</code></td>
             <td>

@@ -44,6 +44,53 @@ def normalize_phone_number(phone: str) -> str:
     return cleaned
 
 
+def _whatsapp_check_internal(phone: str) -> dict:
+    """Internal: check if a phone number exists on WhatsApp. Returns dict with 'exists' and 'url'."""
+    normalized = normalize_phone_number(phone)
+    result = {"exists": None, "url": f"https://wa.me/{normalized}"}
+    try:
+        url = f"https://api.whatsapp.com/send?phone={normalized}"
+        jitter_sleep(domain_hint="https://api.whatsapp.com")
+        response = curl_requests.get(
+            url, headers=WHATSAPP_HEADERS, impersonate="chrome124", timeout=10
+        )
+        text = response.text.lower()
+        absence_patterns = [
+            "phone number is not on whatsapp",
+            "is unavailable",
+            "cannot send messages to this number",
+            "invalid phone number",
+            "check the number",
+        ]
+        if any(pattern in text for pattern in absence_patterns):
+            result["exists"] = False
+        else:
+            result["exists"] = True
+    except Exception as e:
+        logger.debug(f"Internal WhatsApp check failed ({type(e).__name__}): {e}")
+    return result
+
+
+def _telegram_check_internal(phone: str) -> dict:
+    """Internal: check if a phone number exists on Telegram. Returns dict with 'exists' and 'url'."""
+    normalized = normalize_phone_number(phone)
+    result = {"exists": None, "url": f"https://t.me/+{normalized}"}
+    try:
+        tg_url = f"https://t.me/+{normalized}"
+        jitter_sleep(domain_hint="https://t.me")
+        response = curl_requests.get(
+            tg_url, headers=HEADERS, impersonate="chrome124", timeout=5
+        )
+        text = response.text.lower()
+        if response.status_code == 400 or "join" in text or "subscribe" in text:
+            result["exists"] = True
+        elif response.status_code == 200:
+            result["exists"] = False
+    except Exception as e:
+        logger.debug(f"Internal Telegram check failed ({type(e).__name__}): {e}")
+    return result
+
+
 def phone_osint() -> flask.Response:
     """Comprehensive phone number OSINT lookup"""
     import phonenumbers

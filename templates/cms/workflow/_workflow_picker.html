@@ -1,0 +1,135 @@
+// ── Action picker modal ──
+function showActionPicker(actionType) {
+  const btn = document.querySelector(`[data-action-key="${actionType}"]`);
+  if (!btn || btn.classList.contains('done') || btn.classList.contains('running')) return;
+
+  const label = btn.dataset.label;
+  const items = buildPickerItems(actionType);
+  if (items.length === 0) {
+    runAction(actionType, '');
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'picker-overlay';
+  overlay.innerHTML =
+    '<div class="picker-modal">' +
+      '<div class="picker-header">' +
+        '<h3>' + (btn ? btn.dataset.icon : '') + ' ' + esc(label) + '</h3>' +
+        '<button class="picker-close" data-action="close-picker">&times;</button>' +
+      '</div>' +
+      '<div class="picker-body">' +
+        '<div class="picker-items">' + items.map(function(item, idx) {
+          return '<div class="picker-item" data-idx="' + idx + '">' +
+            '<div class="pi-subject">' + esc(item.subject) + '</div>' +
+            '<div class="pi-label">' + esc(item.label) + '</div>' +
+            '<div class="pi-value">' + esc(item.display) + '</div>' +
+          '</div>';
+        }).join('') + '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('.picker-item').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var idx = parseInt(el.dataset.idx);
+      if (isNaN(idx)) return;
+      overlay.remove();
+      var val = items[parseInt(el.dataset.idx)].value;
+      if (actionType === 'facebook' || actionType === 'tiktok' || actionType === 'instagram' || actionType === 'linkedin' || actionType === 'twitter') {
+        showEditConfirm(actionType, val);
+      } else {
+        runAction(actionType, val);
+      }
+    });
+  });
+  overlay.querySelector('[data-action="close-picker"]').onclick = function() { overlay.remove(); };
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
+function showEditConfirm(actionType, currentValue) {
+  const btn = document.querySelector('[data-action-key="' + actionType + '"]');
+  const label = btn ? btn.dataset.label : actionType;
+  var desc = 'Zoek op naam of gebruikersnaam:';
+  if (actionType === 'facebook') desc = 'Zoek op naam, Facebook URL of gebruikersnaam:';
+  else if (actionType === 'tiktok') desc = 'Zoek op TikTok gebruikersnaam of naam:';
+  else if (actionType === 'instagram') desc = 'Zoek op Instagram gebruikersnaam of naam:';
+  else if (actionType === 'linkedin') desc = 'Zoek op LinkedIn URL, gebruikersnaam of naam:';
+  else if (actionType === 'twitter') desc = 'Zoek op X/Twitter gebruikersnaam of naam:';
+  const overlay = document.createElement('div');
+  overlay.className = 'picker-overlay';
+  overlay.innerHTML =
+    '<div class="picker-modal">' +
+      '<div class="picker-header">' +
+        '<h3>' + (btn ? btn.dataset.icon : '') + ' ' + esc(label) + '</h3>' +
+        '<button class="picker-close" data-action="close-edit">&times;</button>' +
+      '</div>' +
+      '<div class="picker-body">' +
+        '<p style="margin-bottom:0.8rem;color:var(--text-muted);font-size:0.85rem;">' + desc + '</p>' +
+        '<input id="edit-value" type="text" value="' + esc(currentValue) + '" style="width:100%;padding:0.5rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-bottom:1rem;box-sizing:border-box;" autofocus />' +
+        '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
+          '<button class="action-btn" data-action="cancel-edit" style="background:var(--border-color);color:var(--text-primary);">Annuleren</button>' +
+          '<button class="action-btn" data-action="confirm-edit" style="background:#1877f2;color:#fff;font-weight:600;">Bevestig en start</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  var input = overlay.querySelector('#edit-value');
+  input.focus();
+  input.setSelectionRange(0, input.value.length);
+
+  overlay.querySelector('[data-action="close-edit"]').onclick = function() { overlay.remove(); };
+  overlay.querySelector('[data-action="cancel-edit"]').onclick = function() { overlay.remove(); };
+  overlay.querySelector('[data-action="confirm-edit"]').onclick = function() {
+    overlay.remove();
+    runAction(actionType, input.value.trim() || currentValue);
+  };
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      overlay.remove();
+      runAction(actionType, input.value.trim() || currentValue);
+    }
+  });
+}
+
+function buildPickerItems(actionType) {
+  var items = [];
+  SUBJECTS.forEach(function(s) {
+    if (actionType === 'email' && s.email) {
+      items.push({ subject: s.name, label: 'E-mail', value: s.email, display: s.email });
+    } else if (actionType === 'phone' && s.phone) {
+      items.push({ subject: s.name, label: 'Telefoon', value: s.phone, display: s.phone });
+    } else if (actionType === 'address' && (s.street || s.city)) {
+      var addr = [s.street, s.house_number, s.house_number_addition].filter(Boolean).join(' ');
+      var loc = [s.postal_code, s.city].filter(Boolean).join(' ');
+      var full = [addr, loc].filter(Boolean).join(', ');
+      if (full) items.push({ subject: s.name, label: 'Adres', value: full, display: full });
+    } else if (actionType === 'social') {
+      if (s.social_accounts && s.social_accounts.length) {
+        items.push({ subject: s.name, label: 'Social media', value: JSON.stringify(s.social_accounts), display: s.social_accounts.map(function(a) { return a.platform || a.url; }).join(', ') });
+      } else if (s.name) {
+        items.push({ subject: s.name, label: 'Gebruikersnaam', value: JSON.stringify([s.name]), display: s.name });
+      }
+    } else if (actionType === 'kvk' && s.name) {
+      items.push({ subject: s.name, label: 'Bedrijfsnaam', value: s.name, display: s.name });
+    } else if (actionType === 'rdw' && s.identification_number) {
+      items.push({ subject: s.name, label: 'Kenteken', value: s.identification_number, display: s.identification_number });
+    } else if (actionType === 'facebook' && s.name) {
+      items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
+    } else if (actionType === 'tiktok' && s.name) {
+      items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
+    } else if (actionType === 'instagram' && s.name) {
+      items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
+    } else if (actionType === 'linkedin' && s.name) {
+      items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
+    } else if (actionType === 'twitter' && s.name) {
+      items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
+    } else if (actionType === 'osint' && s.name) {
+      items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
+    }
+  });
+  return items;
+}

@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Comment, CommentEditHistory, AuditLog
-from ..auth import apply_tenant_filter, ensure_tenant_access
+from ..auth import apply_tenant_filter, ensure_tenant_access, staff_required
 from ..validation import validate, CreateCommentSchema, UpdateCommentSchema
 
 from .response import api_success, api_error
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/api/comments", methods=["POST"])
 @login_required
+@staff_required
 @validate(CreateCommentSchema)
 def create_comment() -> flask.Response:
     """Create a new comment on any entity."""
@@ -67,6 +68,7 @@ def create_comment() -> flask.Response:
 
 @cms_bp.route("/api/comments/<comment_id>", methods=["PUT"])
 @login_required
+@staff_required
 @validate(UpdateCommentSchema)
 def update_comment(comment_id: str) -> flask.Response:
     """Update a comment."""
@@ -120,6 +122,7 @@ def update_comment(comment_id: str) -> flask.Response:
 
 @cms_bp.route("/api/comments/<comment_id>", methods=["DELETE"])
 @login_required
+@staff_required
 def delete_comment(comment_id: str) -> flask.Response:
     """Delete a comment."""
     comment = db.session.get(Comment, comment_id) or abort(404)

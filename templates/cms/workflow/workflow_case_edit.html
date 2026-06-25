@@ -1,0 +1,287 @@
+{% extends "cms/base.html" %}
+{% block title %}Workflow — {{ case.case_number }} bewerken{% endblock %}
+{% block content %}
+<style>
+.super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.form-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
+.form-section h2 { font-size: 1rem; margin: 0 0 1rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+@media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+.form-group { margin-bottom: 0; }
+.form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.15rem; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; background: var(--bg); color: var(--text); }
+.form-group textarea { resize: vertical; min-height: 60px; }
+.full-width { grid-column: 1 / -1; }
+.subject-type-row { margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); }
+.subject-type-row label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; }
+.subject-type-row select { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; background: var(--bg); color: var(--text); font-weight: 500; }
+.sf-hidden { display: none !important; }
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px var(--bg) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+}
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #bbb !important;
+  opacity: 1;
+}
+.form-group input::-webkit-input-placeholder,
+.form-group textarea::-webkit-input-placeholder {
+  color: #bbb !important;
+}
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+  <div>
+    <h1 style="margin:0;font-size:1.1rem;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ case.case_number }} — Bewerken</h1>
+  </div>
+  <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small">← Terug naar zaak</a>
+</div>
+
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="existing_subject_ids" id="existing_subject_ids" value='{{ subjects|map(attribute="id")|list|tojson }}'>
+  <input type="hidden" name="removed_subject_ids" id="removed_subject_ids" value="[]">
+
+  <div class="form-section">
+    <h2>📋 Zaakgegevens</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Zaaknummer</label>
+        <input type="text" name="case_number" value="{{ case.case_number or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Titel *</label>
+        <input type="text" name="title" required value="{{ case.title or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Prioriteit</label>
+        <select name="priority">
+          <option value="low" {% if case.priority == 'low' %}selected{% endif %}>Laag</option>
+          <option value="medium" {% if case.priority == 'medium' or not case.priority %}selected{% endif %}>Normaal</option>
+          <option value="high" {% if case.priority == 'high' %}selected{% endif %}>Hoog</option>
+          <option value="critical" {% if case.priority == 'critical' %}selected{% endif %}>Kritiek</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="open" {% if case.status == 'open' %}selected{% endif %}>Open</option>
+          <option value="in_progress" {% if case.status == 'in_progress' %}selected{% endif %}>In behandeling</option>
+          <option value="closed" {% if case.status == 'closed' %}selected{% endif %}>Afgesloten</option>
+        </select>
+      </div>
+      <div class="form-group full-width">
+        <label>Omschrijving</label>
+        <textarea name="description" rows="2">{{ case.description or '' }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2>🧑 Opdrachtgever</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Bedrijfsnaam *</label>
+        <input type="text" name="client_name" required value="{{ client.name if client else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Contactpersoon</label>
+        <input type="text" name="client_contact" value="{{ client.contact_person or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="client_email" value="{{ client.email or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Telefoon</label>
+        <input type="text" name="client_phone" value="{{ client.phone or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Referentie</label>
+        <input type="text" name="reference" value="{{ client.reference or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Straat</label>
+        <input type="text" name="client_street" value="{{ client.street or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Huisnummer</label>
+        <input type="text" name="client_house_number" value="{{ client.house_number or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Toevoeging</label>
+        <input type="text" name="client_house_number_addition" value="{{ client.house_number_addition or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Postcode</label>
+        <input type="text" name="client_postal_code" value="{{ client.postal_code or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Plaats</label>
+        <input type="text" name="client_city" value="{{ client.city or '' }}">
+      </div>
+      <div class="form-group full-width">
+        <label>Notities</label>
+        <textarea name="client_notes" rows="2">{{ client.notes or '' }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" id="subjects-section">
+    <h2 style="margin:0 0 1rem 0;">🎯 Betrokkenen</h2>
+    <div id="subjects-container">
+      {% for subject in subjects %}
+      {% set sid = subject.id %}
+      <div class="subject-block" data-subject-id="{{ sid }}">
+        {% if not loop.first %}<hr style="border:none;border-top:1px solid var(--border-color);margin:1rem 0;">{% endif %}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+          <strong style="font-size:0.85rem;">Betrokkene {{ loop.index }}</strong>
+          <button type="button" class="btn-cms small" data-action="remove-subject" data-sid="{{ sid }}" style="color:#ef4444;">Verwijderen</button>
+        </div>
+        <div class="subject-type-row">
+          <label>Type betrokkene</label>
+          <select name="subj_{{ sid }}_type" data-action="update-fields" required>
+            <option value="">— Selecteer type —</option>
+            <option value="person" {% if subject.subject_type == 'person' %}selected{% endif %}>Persoon</option>
+            <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>Bedrijf</option>
+            <option value="vehicle" {% if subject.subject_type == 'vehicle' %}selected{% endif %}>Voertuig</option>
+            <option value="vessel" {% if subject.subject_type == 'vessel' %}selected{% endif %}>Vaartuig</option>
+            <option value="property" {% if subject.subject_type == 'property' %}selected{% endif %}>Onroerend goed</option>
+            <option value="online" {% if subject.subject_type == 'online' %}selected{% endif %}>Online entiteit</option>
+          </select>
+        </div>
+        <div class="subject-fields">
+          <div class="form-grid">
+            <div class="form-group sf-all"><label>Naam *</label><input type="text" name="subj_{{ sid }}_name" value="{{ subject.name or '' }}"></div>
+            <div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subj_{{ sid }}_identification" value="{{ subject.identification_number or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_{{ sid }}_email" value="{{ subject.email or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subj_{{ sid }}_phone" value="{{ subject.phone or '' }}"></div>
+            <div class="form-group sf-person sf-company sf-property"><label>Straat</label><input type="text" name="subj_{{ sid }}_street" value="{{ subject.street or '' }}"></div>
+            <div class="form-group sf-person sf-company sf-property"><label>Huisnummer</label><input type="text" name="subj_{{ sid }}_house_number" value="{{ subject.house_number or '' }}"></div>
+            <div class="form-group sf-person sf-company sf-property"><label>Toevoeging</label><input type="text" name="subj_{{ sid }}_house_number_addition" value="{{ subject.house_number_addition or '' }}"></div>
+            <div class="form-group sf-person sf-company sf-property"><label>Postcode</label><input type="text" name="subj_{{ sid }}_postal_code" value="{{ subject.postal_code or '' }}"></div>
+            <div class="form-group sf-person sf-company sf-property"><label>Plaats</label><input type="text" name="subj_{{ sid }}_city" value="{{ subject.city or '' }}"></div>
+            <div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subj_{{ sid }}_social_accounts" value="{{ subject.social_accounts|join(', ') if subject.social_accounts else '' }}" placeholder="@gebruiker1, @gebruiker2"></div>
+            <div class="form-group full-width sf-all"><label>Risicoscore (0-100)</label><input type="number" name="subj_{{ sid }}_risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100"></div>
+            <div class="form-group full-width sf-all"><label>Notities</label><textarea name="subj_{{ sid }}_notes" rows="2">{{ subject.notes or '' }}</textarea></div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Betrokkene</button>
+  </div>
+
+  <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">Annuleren</a>
+    <button type="submit" class="btn-cms primary">Wijzigingen opslaan →</button>
+  </div>
+</form>
+
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+
+  function updateFields(sel) {
+    var block = sel.closest('.subject-block');
+    var fields = block.querySelector('.subject-fields');
+    if (!fields) return;
+    var val = sel.value;
+    if (!val) { fields.classList.add('sf-hidden'); return; }
+    fields.classList.remove('sf-hidden');
+    var groups = fields.querySelectorAll('.form-group');
+    for (var i = 0; i < groups.length; i++) {
+      var el = groups[i];
+      var show = el.classList.contains('sf-all') || el.classList.contains('sf-' + val);
+      el.classList.toggle('sf-hidden', !show);
+    }
+  }
+
+  function removeExistingSubject(sid, blockEl) {
+    if (!confirm('Deze betrokkene ontkoppelen van de zaak?')) return;
+    var removed = document.getElementById('removed_subject_ids');
+    var arr = JSON.parse(removed.value || '[]');
+    arr.push(sid);
+    removed.value = JSON.stringify(arr);
+    blockEl.style.display = 'none';
+    blockEl.querySelectorAll('input, select, textarea').forEach(function(el) { el.disabled = true; });
+  }
+
+  var _newIdx = 0;
+  function addSubject() {
+    var container = document.getElementById('subjects-container');
+    var idx = _newIdx++;
+    var sep = container.querySelectorAll('.subject-block').length > 0 ? '<hr style="border:none;border-top:1px solid var(--border-color);margin:1rem 0;">' : '';
+    var div = document.createElement('div');
+    div.className = 'subject-block';
+    div.innerHTML = sep +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
+        '<strong style="font-size:0.85rem;">Betrokkene ' + (idx + 1) + '</strong>' +
+        '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Verwijderen</button>' +
+      '</div>' +
+      '<div class="subject-type-row">' +
+        '<label>Type betrokkene</label>' +
+        '<select name="subj_new_' + idx + '_type" data-action="update-fields" required>' +
+          '<option value="">— Selecteer type —</option>' +
+          '<option value="person">Persoon</option>' +
+          '<option value="company">Bedrijf</option>' +
+          '<option value="vehicle">Voertuig</option>' +
+          '<option value="vessel">Vaartuig</option>' +
+          '<option value="property">Onroerend goed</option>' +
+          '<option value="online">Online entiteit</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="subject-fields sf-hidden">' +
+        '<div class="form-grid">' +
+          '<div class="form-group sf-all"><label>Naam *</label><input type="text" name="subj_new_' + idx + '_name" placeholder="Volledige naam / benaming"></div>' +
+          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subj_new_' + idx + '_identification" placeholder="BSN / KvK / kenteken / IMO"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_new_' + idx + '_email" placeholder="naam@example.com"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Straat</label><input type="text" name="subj_new_' + idx + '_street" placeholder="Straatnaam"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Huisnummer</label><input type="text" name="subj_new_' + idx + '_house_number" placeholder="45"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Toevoeging</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="A"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Postcode</label><input type="text" name="subj_new_' + idx + '_postal_code" placeholder="1012LL"></div>' +
+          '<div class="form-group sf-person sf-company sf-property"><label>Plaats</label><input type="text" name="subj_new_' + idx + '_city" placeholder="Amsterdam"></div>' +
+          '<div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subj_new_' + idx + '_social_accounts" placeholder="@gebruiker1, @gebruiker2"></div>' +
+          '<div class="form-group full-width sf-all"><label>Risicoscore (0-100)</label><input type="number" name="subj_new_' + idx + '_risk_score" value="0" min="0" max="100"></div>' +
+          '<div class="form-group full-width sf-all"><label>Notities</label><textarea name="subj_new_' + idx + '_notes" rows="2" placeholder="Interne notities"></textarea></div>' +
+        '</div>' +
+      '</div>';
+    container.parentElement.insertBefore(div, container.nextElementSibling);
+  }
+
+  // Event delegation
+  document.getElementById('subjects-section').addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+
+    if (action === 'add-subject') {
+      addSubject();
+    } else if (action === 'remove-subject') {
+      var sid = btn.getAttribute('data-sid');
+      var block = btn.closest('.subject-block');
+      if (block) removeExistingSubject(sid, block);
+    } else if (action === 'remove-new-subject') {
+      var block = btn.closest('.subject-block');
+      if (block) block.remove();
+    }
+  });
+
+  document.getElementById('subjects-section').addEventListener('change', function(e) {
+    if (e.target.getAttribute('data-action') === 'update-fields') {
+      updateFields(e.target);
+    }
+  });
+
+  // init field visibility for existing subjects
+  document.querySelectorAll('.subject-block select[data-action="update-fields"]').forEach(function(sel) {
+    if (sel.value) updateFields(sel);
+  });
+
+});
+</script>
+{% endblock %}

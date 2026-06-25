@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Credit Note {{ cn.credit_note_number }}</title>
+<style>
+@page {
+    size: A4;
+    margin: 2cm 1.5cm 2.5cm 1.5cm;
+    @bottom-center {
+        content: "Creditnote {{ cn.credit_note_number }} — Pagina " counter(page);
+        font-size: 8pt;
+        color: #9ca3af;
+        font-family: 'Helvetica', 'Arial', sans-serif;
+    }
+}
+body {
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    font-size: 9pt;
+    line-height: 1.5;
+    color: #1f2937;
+    margin: 0;
+    padding: 0;
+}
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #1a1a2e;
+    padding-bottom: 0.5cm;
+    margin-bottom: 0.5cm;
+}
+.header .company {
+    font-size: 18pt;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+.header .company-details {
+    font-size: 8pt;
+    color: #6b7280;
+    margin-top: 0.2cm;
+}
+.header .invoice-title {
+    text-align: right;
+}
+.header .invoice-title h1 {
+    font-size: 16pt;
+    color: #1a1a2e;
+    margin: 0;
+}
+.header .invoice-title .subtitle {
+    font-size: 8pt;
+    color: #dc2626;
+    font-weight: 600;
+}
+.parties {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5cm;
+}
+.parties .bill-to {
+    width: 45%;
+}
+.parties .meta {
+    width: 45%;
+    text-align: right;
+}
+.parties h3 {
+    font-size: 8pt;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin: 0 0 0.2cm 0;
+}
+table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5cm 0;
+}
+table.items th {
+    background: #1a1a2e;
+    color: white;
+    padding: 0.2cm;
+    font-size: 7pt;
+    text-transform: uppercase;
+    text-align: left;
+}
+table.items th.right {
+    text-align: right;
+}
+table.items td {
+    padding: 0.15cm 0.2cm;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 8pt;
+}
+table.items td.right {
+    text-align: right;
+}
+table.items tr.total-row td {
+    font-weight: 700;
+    border-top: 2px solid #1a1a2e;
+    padding-top: 0.2cm;
+    font-size: 10pt;
+}
+.reason-box {
+    background: #fefce8;
+    border: 1px solid #eab308;
+    padding: 0.25cm;
+    margin: 0.5cm 0;
+    font-size: 8pt;
+    border-radius: 4px;
+}
+.terms {
+    margin-top: 0.5cm;
+    font-size: 7pt;
+    color: #6b7280;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.3cm;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="company">
+        Iveras
+        <div class="company-details">
+            OSINT Dashboard<br>
+            {{ _('Credit Note') }}
+        </div>
+    </div>
+    <div class="invoice-title">
+        <h1>{{ _('CREDIT NOTE') }}</h1>
+        <div class="subtitle">{{ cn.credit_note_number }}</div>
+    </div>
+</div>
+
+<div class="parties">
+    <div class="bill-to">
+        <h3>{{ _('Credit to') }}</h3>
+        {% if client %}
+        <strong>{{ client.name }}</strong><br>
+        {% if client.address_street %}{{ client.address_street }} {{ client.address_number or '' }}<br>{% endif %}
+        {% if client.address_postal %}{{ client.address_postal }} {% endif %}{% if client.address_city %}{{ client.address_city }}<br>{% endif %}
+        {% if client.vat_number %}{{ _('VAT:') }} {{ client.vat_number }}<br>{% endif %}
+        {% endif %}
+    </div>
+    <div class="meta">
+        <strong>{{ _('Date:') }}</strong> {{ cn.issue_date.strftime('%d-%m-%Y') }}<br>
+        {% if invoice %}<strong>{{ _('Invoice:') }}</strong> {{ invoice.invoice_number }}<br>{% endif %}
+        <strong>{{ _('Currency:') }}</strong> {{ cn.currency }}<br>
+    </div>
+</div>
+
+{% if cn.reason %}
+<div class="reason-box">
+    <strong>{{ _('Reason:') }}</strong> {{ cn.reason }}
+</div>
+{% endif %}
+
+<table class="items">
+    <thead>
+        <tr>
+            <th style="width:50%;">{{ _('Description') }}</th>
+            <th class="right" style="width:10%;">{{ _('Quantity') }}</th>
+            <th class="right" style="width:15%;">{{ _('Unit Price') }}</th>
+            <th class="right" style="width:8%;">{{ _('VAT') }}</th>
+            <th class="right" style="width:17%;">{{ _('Total') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.description }}</td>
+            <td class="right">-{{ item.quantity }}</td>
+            <td class="right">{{ cn.currency }} {{ "%.2f"|format(item.unit_price) }}</td>
+            <td class="right">{{ "%.1f"|format(item.vat_rate) }}%</td>
+            <td class="right">-{{ cn.currency }} {{ "%.2f"|format(item.total) }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+            <td colspan="4" style="text-align:right;">{{ _('Subtotal:') }}</td>
+            <td class="right">-{{ cn.currency }} {{ "%.2f"|format(cn.subtotal) }}</td>
+        </tr>
+        <tr>
+            <td colspan="4" style="text-align:right;">{{ _('VAT:') }}</td>
+            <td class="right">-{{ cn.currency }} {{ "%.2f"|format(cn.vat_amount) }}</td>
+        </tr>
+        <tr class="total-row">
+            <td colspan="4" style="text-align:right;">{{ _('Total:') }}</td>
+            <td class="right">-{{ cn.currency }} {{ "%.2f"|format(cn.total) }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="terms">
+    <p>{{ _('This credit note cancels the specified amount on the referenced invoice.') }}</p>
+    <p>Iveras OSINT Dashboard — {{ now().strftime('%Y-%m-%d %H:%M') }}</p>
+</div>
+
+</body>
+</html>

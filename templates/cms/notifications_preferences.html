@@ -1,0 +1,85 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Notification Preferences') }} — CMS{% endblock %}
+{% block content %}
+<style>
+.pref-card {
+    background:var(--card-bg);border:1px solid var(--border-color);border-radius:8px;padding:1rem;margin-bottom:0.75rem;
+}
+.pref-card h3 { margin:0 0 0.25rem;font-size:0.9rem; }
+.pref-card .desc { font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem; }
+.toggle-row { display:flex;gap:1.5rem;align-items:center; }
+.toggle-row label { display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;cursor:pointer; }
+.toggle-row input[type="checkbox"] { width:1rem;height:1rem;cursor:pointer; }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 1.5rem;">
+    <h1 style="margin:0;">⚙️ {{ _('Notification Preferences') }}</h1>
+    <a href="{{ url_for('cms.notification_history') }}" class="btn-cms" style="font-size:0.8rem;">← {{ _('Back to Notifications') }}</a>
+</div>
+
+<p style="color:var(--text-secondary);margin-bottom:1.5rem;">{{ _('Choose which notification types you receive and how.') }}</p>
+
+<div id="prefList"></div>
+
+<div style="margin-top:1rem;">
+    <button class="btn-cms" id="savePrefs">{{ _('Save Preferences') }}</button>
+    <span id="saveStatus" style="margin-left:0.5rem;font-size:0.8rem;color:var(--text-muted);"></span>
+</div>
+
+<script>
+function loadPrefs() {
+    fetch('/cms/api/notifications/preferences')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var h = '';
+            data.preferences.forEach(function(p) {
+                var catLabel = p.label;
+                h += '<div class="pref-card">';
+                h += '<h3>' + catLabel + '</h3>';
+                h += '<div class="toggle-row">';
+                h += '<label><input type="checkbox" class="pref-web" data-category="' + p.category + '"' + (p.web_enabled ? ' checked' : '') + '> {{ _("In-app") }}</label>';
+                h += '<label><input type="checkbox" class="pref-email" data-category="' + p.category + '"' + (p.email_enabled ? ' checked' : '') + '> 📧 {{ _("Email") }}</label>';
+                h += '<label><input type="checkbox" class="pref-sms" data-category="' + p.category + '"' + (p.sms_enabled ? ' checked' : '') + '> 💬 {{ _("SMS") }}</label>';
+                h += '<label><input type="checkbox" class="pref-whatsapp" data-category="' + p.category + '"' + (p.whatsapp_enabled ? ' checked' : '') + '> 📱 {{ _("WhatsApp") }}</label>';
+                h += '</div></div>';
+            });
+            document.getElementById('prefList').innerHTML = h;
+        });
+}
+
+document.getElementById('savePrefs').addEventListener('click', function() {
+    var status = document.getElementById('saveStatus');
+    status.textContent = '{{ _("Saving...") }}';
+    var prefs = [];
+    document.querySelectorAll('.pref-card').forEach(function(card) {
+        var web = card.querySelector('.pref-web');
+        var email = card.querySelector('.pref-email');
+        var sms = card.querySelector('.pref-sms');
+        var whatsapp = card.querySelector('.pref-whatsapp');
+        if (web) {
+            prefs.push({
+                category: web.dataset.category,
+                web_enabled: web.checked,
+                email_enabled: email ? email.checked : false,
+                sms_enabled: sms ? sms.checked : false,
+                whatsapp_enabled: whatsapp ? whatsapp.checked : false,
+            });
+        }
+    });
+    apiFetch('/cms/api/notifications/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferences: prefs }),
+    }).then(function() {
+        status.textContent = '{{ _("Saved") }}';
+        status.style.color = '#10b981';
+        setTimeout(function() { status.textContent = ''; }, 2000);
+    }).catch(function() {
+        status.textContent = '{{ _("Error saving") }}';
+        status.style.color = '#ef4444';
+    });
+});
+
+loadPrefs();
+</script>
+{% endblock %}

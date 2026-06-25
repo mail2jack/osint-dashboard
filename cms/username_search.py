@@ -10,6 +10,7 @@ from cms.constants import HEADERS
 from cms.validators import verify_profile, interpolate_string
 from cms.search_tracking import get_maigret_database
 from cms.sherlock_utils import get_sherlock_sites
+from cms.whatsmyname_utils import get_whatsmyname_sites
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +178,35 @@ async def check_sherlock_site(client, site_name, site_info, username):
     return finding
 
 
+PRIORITY_USERNAME_SITES = [
+    "Twitter",
+    "Facebook",
+    "Instagram",
+    "TikTok",
+    "LinkedIn",
+    "YouTube",
+    "Telegram",
+    "Snapchat",
+    "Reddit",
+    "GitHub",
+    "Discord",
+    "Twitch",
+    "Steam",
+    "Pinterest",
+    "Tumblr",
+    "Spotify",
+    "Threads",
+    "Bluesky",
+    "Mastodon",
+    "WhatsApp",
+    "Signal",
+    "WeChat",
+    "X",
+    "Xbox",
+    "PlayStation",
+]
+
+
 async def search_username_async(username, progress_callback=None, max_sites=150):
     sherlock_sites = get_sherlock_sites()
     if not sherlock_sites:
@@ -187,7 +217,12 @@ async def search_username_async(username, progress_callback=None, max_sites=150)
             "error": "Could not load Sherlock site data",
         }
 
-    sites_list = list(sherlock_sites.items())[:max_sites]
+    priority = {k: v for k, v in sherlock_sites.items() if k in PRIORITY_USERNAME_SITES}
+    remaining = {
+        k: v for k, v in sherlock_sites.items() if k not in PRIORITY_USERNAME_SITES
+    }
+    combined = {**priority, **remaining}
+    sites_list = list(combined.items())[:max_sites]
     all_findings = []
     total_sites = len(sites_list)
     checked = 0
@@ -317,8 +352,17 @@ def search_username_maigret(username, progress_callback=None, max_sites=500):
         found_count = 0
 
         for site_name, site_result in results.items():
-            exists = site_result.get("exists", False)
-            status = site_result.get("status", "unknown")
+            status_obj = site_result.get("status")
+            if status_obj:
+                exists = status_obj.is_found()
+                status = (
+                    status_obj.status.value
+                    if hasattr(status_obj, "status")
+                    else "unknown"
+                )
+            else:
+                exists = False
+                status = "unknown"
             finding = {
                 "site": site_name,
                 "url": site_result.get("url_user") or site_result.get("url_main", ""),
@@ -350,10 +394,222 @@ def search_username_maigret(username, progress_callback=None, max_sites=500):
         }
 
 
+async def check_whatsmyname_site(client, site_name, site_info, username):
+    finding = {
+        "site": site_name,
+        "platform": site_name,
+        "url": "",
+        "exists": None,
+        "status": "unknown",
+        "http_status": None,
+        "source": "whatsmyname",
+    }
+    url_template = site_info.get("check_uri", "")
+    if not url_template:
+        finding["status"] = "no_url"
+        finding["exists"] = False
+        return finding
+
+    url = url_template.replace("{userName}", username)
+    finding["url"] = url
+
+    method = site_info.get("mCode", "GET").upper()
+    headers = dict(HEADERS)
+    extra_headers = site_info.get("headers")
+    if extra_headers and isinstance(extra_headers, dict):
+        headers.update(extra_headers)
+
+    try:
+        if method == "POST":
+            body_template = site_info.get("mBody", "")
+            body = (
+                body_template.replace("{userName}", username) if body_template else None
+            )
+            response = await client.post(url, headers=headers, data=body, timeout=10)
+        elif method == "HEAD":
+            response = await client.head(url, headers=headers, timeout=10)
+        else:
+            response = await client.get(url, headers=headers, timeout=10)
+
+        finding["http_status"] = response.status_code
+        expected_code = site_info.get("account_existence_code")
+        if expected_code is not None:
+            expected_code = int(expected_code)
+
+        match_str = site_info.get("account_existence_string")
+        miss_str = site_info.get("account_missing_string")
+
+        response_text = ""
+        if match_str or miss_str:
+            try:
+                response_text = (
+                    await response.text()
+                    if hasattr(response, "text")
+                    else response.content
+                )
+                if isinstance(response_text, bytes):
+                    response_text = response_text.decode("utf-8", errors="replace")
+            except Exception:
+                response_text = ""
+
+        if expected_code and response.status_code == expected_code:
+            if match_str and match_str not in response_text:
+                finding["status"] = "not_found"
+                finding["exists"] = False
+            elif miss_str and miss_str in response_text:
+                finding["status"] = "not_found"
+                finding["exists"] = False
+            else:
+                finding["status"] = "found"
+                finding["exists"] = True
+        elif expected_code and response.status_code != expected_code:
+            if miss_str and miss_str in response_text:
+                finding["status"] = "not_found"
+                finding["exists"] = False
+            elif match_str and match_str in response_text:
+                finding["status"] = "found"
+                finding["exists"] = True
+            else:
+                finding["status"] = "not_found"
+                finding["exists"] = False
+        else:
+            if match_str and match_str in response_text:
+                finding["status"] = "found"
+                finding["exists"] = True
+            elif miss_str and miss_str in response_text:
+                finding["status"] = "not_found"
+                finding["exists"] = False
+            elif response.status_code == 200:
+                finding["status"] = "found"
+                finding["exists"] = True
+            elif response.status_code == 404:
+                finding["status"] = "not_found"
+                finding["exists"] = False
+            else:
+                finding["status"] = "unverified"
+                finding["exists"] = None
+
+    except CurlError as e:
+        if "timeout" in str(e).lower() or "timed out" in str(e).lower():
+            finding["status"] = "timeout"
+        elif "connection" in str(e).lower() or "couldn't connect" in str(e).lower():
+            finding["status"] = "connection_error"
+        else:
+            finding["status"] = "error"
+        finding["exists"] = None
+    except Exception:
+        finding["status"] = "error"
+        finding["exists"] = None
+
+    return finding
+
+
+_WMN_PRIORITY_CATS = {
+    "social": 0,
+    "coding": 1,
+    "music": 2,
+    "images": 3,
+    "video": 4,
+    "gaming": 5,
+    "blog": 6,
+    "hobby": 7,
+    "business": 8,
+    "tech": 9,
+}
+
+
+async def search_username_whatsmyname(username, progress_callback=None, max_sites=500):
+    wmn_sites = get_whatsmyname_sites()
+    if not wmn_sites:
+        return {
+            "username": username,
+            "platforms_checked": 0,
+            "findings": [],
+            "error": "Could not load WhatsMyName site data",
+        }
+
+    sites_list = sorted(
+        wmn_sites.items(),
+        key=lambda x: _WMN_PRIORITY_CATS.get(x[1].get("category", ""), 99),
+    )[:max_sites]
+    all_findings = []
+    total_sites = len(sites_list)
+    checked = 0
+    found_count = 0
+    batch_size = 20
+
+    async with curl_requests.AsyncSession(
+        impersonate="chrome124", timeout=15
+    ) as client:
+        for i in range(0, total_sites, batch_size):
+            batch = sites_list[i : i + batch_size]
+            tasks = []
+            for site_name, site_info in batch:
+                tasks.append(
+                    check_whatsmyname_site(client, site_name, site_info, username)
+                )
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for site_name, result in zip([s[0] for s in batch], results):
+                if isinstance(result, BaseException):
+                    all_findings.append(
+                        {
+                            "site": site_name,
+                            "exists": False,
+                            "status": "error",
+                            "source": "whatsmyname",
+                        }
+                    )
+                else:
+                    all_findings.append(result)
+                    if result.get("exists") == True:
+                        found_count += 1
+                checked += 1
+                if progress_callback:
+                    progress_callback(
+                        {
+                            "checked": checked,
+                            "total": total_sites,
+                            "found": found_count,
+                            "percent": int((checked / total_sites) * 100),
+                            "current_site": site_name,
+                        }
+                    )
+
+    result = {
+        "username": username,
+        "platforms_checked": total_sites,
+        "findings": all_findings,
+        "method": "whatsmyname",
+    }
+    result["found_count"] = sum(1 for f in all_findings if f.get("exists") == True)
+    result["not_found_count"] = sum(1 for f in all_findings if f.get("exists") == False)
+    result["error_count"] = sum(
+        1
+        for f in all_findings
+        if f.get("status") in ["timeout", "connection_error", "error", "unknown"]
+    )
+    return result
+
+
+def search_username_whatsmyname_sync(
+    username, progress_callback=None, max_sites=500, timeout=300
+):
+    return asyncio.run(
+        asyncio.wait_for(
+            search_username_whatsmyname(username, progress_callback, max_sites),
+            timeout=timeout,
+        )
+    )
+
+
 __all__ = [
     "check_username_async",
     "check_sherlock_site",
     "search_username_async",
     "search_username",
     "search_username_maigret",
+    "check_whatsmyname_site",
+    "search_username_whatsmyname",
+    "search_username_whatsmyname_sync",
 ]

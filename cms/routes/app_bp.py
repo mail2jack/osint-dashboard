@@ -82,15 +82,25 @@ from cms.services.phone_service import (
 from cms.validation import validate, PhoneNumberSchema, PhoneLookupAllSchema
 from cms.rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
-# Apply validation + rate limiting
+# Apply auth, validation + rate limiting
 phone_osint = rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="phone")(phone_osint)
 phone_osint = validate(PhoneNumberSchema)(phone_osint)
+phone_osint = login_required(phone_osint)
 
 whatsapp_lookup = validate(PhoneNumberSchema)(whatsapp_lookup)
+whatsapp_lookup = login_required(whatsapp_lookup)
+
 check_whatsapp_2chat = validate(PhoneNumberSchema)(check_whatsapp_2chat)
+check_whatsapp_2chat = login_required(check_whatsapp_2chat)
+
 telegram_lookup = validate(PhoneNumberSchema)(telegram_lookup)
+telegram_lookup = login_required(telegram_lookup)
+
 carrier_lookup = validate(PhoneNumberSchema)(carrier_lookup)
+carrier_lookup = login_required(carrier_lookup)
+
 phone_lookup_all = validate(PhoneLookupAllSchema)(phone_lookup_all)
+phone_lookup_all = login_required(phone_lookup_all)
 
 # Register routes
 app_routes_bp.add_url_rule(

@@ -1,0 +1,228 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Global Search (Super Admin)') }}{% endblock %}
+{% block content %}
+<style>
+    .search-header { margin-bottom: 2rem; }
+    .search-box { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+    .search-box input { flex: 1; padding: 1rem; font-size: 1.1rem; }
+    .search-box button { padding: 1rem 2rem; }
+    .search-filters { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .filter-btn { padding: 0.5rem 1rem; border: 1px solid var(--border-color); border-radius: 20px; background: var(--bg-card); color: var(--text-primary); cursor: pointer; transition: all 0.2s; }
+    .filter-btn:hover { border-color: var(--accent-primary); }
+    .filter-btn.active { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
+    .results-section { margin-bottom: 2rem; }
+    .results-section h3 { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color); }
+    .result-count { background: var(--info-bg); color: var(--info-text); padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.85rem; }
+    .result-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 1rem; border-bottom: 1px solid var(--border-color); transition: background 0.2s; }
+    .result-item:hover { background: var(--table-hover); }
+    .result-info { flex: 1; }
+    .result-title { font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem; }
+    .result-meta { font-size: 0.85rem; color: var(--text-secondary); }
+    .result-badge { padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; margin-left: 0.25rem; }
+    .badge-case { background: var(--info-bg); color: var(--info-text); }
+    .badge-client { background: var(--success-bg); color: var(--success-text); }
+    .badge-subject { background: var(--warning-bg); color: var(--warning-text); }
+    .badge-finding { background: var(--danger-bg); color: var(--danger-text); }
+    .badge-financial { background: #e0e7ff; color: #4338ca; }
+    .badge-comment { background: #f3e8ff; color: #7c3aed; }
+    .badge-note { background: #fef3c7; color: #92400e; }
+    .tenant-tag { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.65rem; font-weight: 600; background: #1e293b; color: #94a3b8; margin-left: 0.5rem; }
+    .comment-preview { font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px; border-left: 3px solid #7c3aed; }
+    .note-preview { font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.5rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px; border-left: 3px solid #92400e; }
+    .no-results { text-align: center; padding: 3rem; color: var(--text-secondary); }
+    .no-results-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .quick-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .quick-stat { background: var(--bg-card); padding: 1rem; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px var(--shadow); }
+    .quick-stat-value { font-size: 1.5rem; font-weight: bold; color: var(--accent-primary); }
+    .quick-stat-label { font-size: 0.85rem; color: var(--text-secondary); }
+    .super-badge { display: inline-block; background: #7c3aed; color: white; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    @media (max-width: 768px) { .search-box { flex-direction: column; } .search-box button { width: 100%; } }
+</style>
+
+<div class="search-header">
+    <h1><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">{{ _('Super Admin') }}</span> {{ _('Cross-Tenant Search') }}</h1>
+    <p style="color: var(--text-secondary);">{{ _('Search across all tenants\' cases, clients, subjects, findings, and comments') }}</p>
+</div>
+
+<form method="GET" action="{{ url_for('cms.global_search') }}">
+    <div class="search-box">
+        <input type="text" name="q" id="search-input" value="{{ query }}" placeholder="{{ _('Search across all tenants...') }}" autofocus>
+        <button type="submit" class="btn-cms primary">{{ _('Search') }}</button>
+    </div>
+    <div class="search-filters">
+        <button type="button" class="filter-btn {% if not active_filter or active_filter == 'all' %}active{% endif %}" data-click="filterResults" data-arg0="all">{{ _('All') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'cases' %}active{% endif %}" data-click="filterResults" data-arg0="cases">{{ _('Cases') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'clients' %}active{% endif %}" data-click="filterResults" data-arg0="clients">{{ _('Clients') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'subjects' %}active{% endif %}" data-click="filterResults" data-arg0="subjects">{{ _('Subjects') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'findings' %}active{% endif %}" data-click="filterResults" data-arg0="findings">{{ _('Findings') }}</button>
+        <button type="button" class="filter-btn {% if active_filter == 'comments' %}active{% endif %}" data-click="filterResults" data-arg0="comments">{{ _('Comments') }}</button>
+    </div>
+    <input type="hidden" name="type" id="filter-type" value="{{ active_filter or 'all' }}">
+</form>
+
+{% if query %}
+    {% if results.cases or results.clients or results.subjects or results.findings or results.financials or results.comments %}
+        <div class="quick-stats">
+            {% if results.cases %}<div class="quick-stat"><div class="quick-stat-value">{{ results.cases|length }}</div><div class="quick-stat-label">{{ _('Cases') }}</div></div>{% endif %}
+            {% if results.clients %}<div class="quick-stat"><div class="quick-stat-value">{{ results.clients|length }}</div><div class="quick-stat-label">{{ _('Clients') }}</div></div>{% endif %}
+            {% if results.subjects %}<div class="quick-stat"><div class="quick-stat-value">{{ results.subjects|length }}</div><div class="quick-stat-label">{{ _('Subjects') }}</div></div>{% endif %}
+            {% if results.findings %}<div class="quick-stat"><div class="quick-stat-value">{{ results.findings|length }}</div><div class="quick-stat-label">{{ _('Findings') }}</div></div>{% endif %}
+            {% if results.financials %}<div class="quick-stat"><div class="quick-stat-value">{{ results.financials|length }}</div><div class="quick-stat-label">{{ _('Financials') }}</div></div>{% endif %}
+            {% if results.comments %}<div class="quick-stat"><div class="quick-stat-value">{{ results.comments|length }}</div><div class="quick-stat-label">{{ _('Comments') }}</div></div>{% endif %}
+        </div>
+
+        {% if results.cases and (not active_filter or active_filter == 'all' or active_filter == 'cases') %}
+        <div class="results-section" data-type="cases">
+            <h3>{{ _('Cases') }} <span class="result-count">{{ results.cases|length }}</span></h3>
+            {% for case in results.cases %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="result-title">{{ case.title }}</a>
+                    <span class="tenant-tag">{{ case.tenant_name }}</span>
+                    <div class="result-meta">
+                        {{ case.case_number }} | {{ case.client_name or _('No client') }} |
+                        <span class="badge badge-{{ case.status }}">{{ case.status }}</span>
+                    </div>
+                </div>
+                <span class="result-badge badge-case">{{ _('Case') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if results.clients and (not active_filter or active_filter == 'all' or active_filter == 'clients') %}
+        <div class="results-section" data-type="clients">
+            <h3>{{ _('Clients') }} <span class="result-count">{{ results.clients|length }}</span></h3>
+            {% for client in results.clients %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_client', client_id=client.id) }}" class="result-title">{{ client.name }}</a>
+                    <span class="tenant-tag">{{ client.tenant_name }}</span>
+                    <div class="result-meta">
+                        {% if client.contact_person %}{{ client.contact_person }}{% endif %}
+                        {% if client.is_active %}{{ _('Active') }}{% else %}{{ _('Inactive') }}{% endif %}
+                    </div>
+                </div>
+                <span class="result-badge badge-client">{{ _('Client') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if results.subjects and (not active_filter or active_filter == 'all' or active_filter == 'subjects') %}
+        <div class="results-section" data-type="subjects">
+            <h3>{{ _('Subjects') }} <span class="result-count">{{ results.subjects|length }}</span></h3>
+            {% for subject in results.subjects %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="result-title">{{ subject.name }}</a>
+                    <span class="tenant-tag">{{ subject.tenant_name }}</span>
+                    <div class="result-meta">
+                        {{ subject.subject_type|title }} | Risk: {{ subject.risk_score or 0 }}
+                    </div>
+                </div>
+                <span class="result-badge badge-subject">{{ _('Subject') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if results.findings and (not active_filter or active_filter == 'all' or active_filter == 'findings') %}
+        <div class="results-section" data-type="findings">
+            <h3>{{ _('Findings') }} <span class="result-count">{{ results.findings|length }}</span></h3>
+            {% for finding in results.findings %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_case', case_id=finding.case_id) }}#finding-{{ finding.id }}" class="result-title">{{ finding.title }}</a>
+                    <span class="tenant-tag">{{ finding.tenant_name }}</span>
+                    <div class="result-meta">
+                        Case: {{ finding.case_number }} | {{ finding.finding_type or 'General' }} | {{ finding.source_type or 'manual' }}
+                    </div>
+                </div>
+                <span class="result-badge badge-finding">{{ _('Finding') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if results.financials and (not active_filter or active_filter == 'all' or active_filter == 'financials') %}
+        <div class="results-section" data-type="financials">
+            <h3>{{ _('Financial Records') }} <span class="result-count">{{ results.financials|length }}</span></h3>
+            {% for fin in results.financials %}
+            <div class="result-item">
+                <div class="result-info">
+                    <a href="{{ url_for('cms.view_case', case_id=fin.case_id) }}" class="result-title">{{ fin.currency }} {{ "%.2f"|format(fin.amount) }}</a>
+                    <span class="tenant-tag">{{ fin.tenant_name }}</span>
+                    <div class="result-meta">
+                        Case: {{ fin.case_number }} | {{ fin.transaction_type or 'Transaction' }} | {{ fin.transaction_date }}
+                    </div>
+                </div>
+                <span class="result-badge badge-financial">{{ _('Financial') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if results.comments and (not active_filter or active_filter == 'all' or active_filter == 'comments') %}
+        <div class="results-section" data-type="comments">
+            <h3>{{ _('Comments') }} <span class="result-count">{{ results.comments|length }}</span></h3>
+            {% for item in results.comments %}
+            <div class="result-item" style="flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.5rem;">
+                    <div class="result-info">
+                        <div class="result-meta">
+                            {% if item._source == "subject_note" %}
+                            <a href="{{ url_for('cms.view_subject', subject_id=item.subject_id) }}" class="result-title">{{ item.author_name }}</a> |
+                            Subject note |
+                            {% elif item._source == "subject_comment" %}
+                            <a href="{{ url_for('cms.view_subject', subject_id=item.subject_id) }}">{{ item._subject_name }}</a> |
+                            By {{ item.author_name }} | {{ item.created_at }} |
+                            {% elif item.case_id %}
+                            <a href="{{ url_for('cms.view_case', case_id=item.case_id) }}">Case: {{ item.case_number }}</a> |
+                            By {{ item.author_name }} | {{ item.created_at }} |
+                            {% endif %}
+                            <span class="badge {% if item._source == 'subject_note' %}badge-note{% else %}badge-comment{% endif %}">{{ item.comment_type }}</span>
+                            {% if item.tenant_name %}<span class="tenant-tag">{{ item.tenant_name }}</span>{% endif %}
+                        </div>
+                    </div>
+                    <span class="result-badge {% if item._source == 'subject_note' %}badge-note{% else %}badge-comment{% endif %}">{% if item._source == 'subject_note' %}{{ _('Subject Note') }}{% else %}{{ _('Comment') }}{% endif %}</span>
+                </div>
+                <div class="{% if item._source == 'subject_note' %}note-preview{% else %}comment-preview{% endif %}">{{ item.content }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="no-results">
+            <div class="no-results-icon">&#128269;</div>
+            <h2>{{ _('No results found') }}</h2>
+            <p>{{ _('No matches found across any tenant for') }} "<strong>{{ query }}</strong>". {{ _('Try different keywords.') }}</p>
+        </div>
+    {% endif %}
+{% else %}
+    <div class="no-results">
+        <div class="no-results-icon">&#128269;</div>
+        <h2>{{ _('Search across all tenants') }}</h2>
+        <p>{{ _('Enter a search term to find results in any tenant\'s cases, clients, subjects, findings, and more.') }}</p>
+    </div>
+{% endif %}
+
+<script nonce="{{ csp_nonce }}">
+function filterResults(btn, type) {
+    document.getElementById('filter-type').value = type;
+    document.querySelector('form').submit();
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 's' && !e.target.matches('input, textarea, select')) {
+        e.preventDefault();
+        document.getElementById('search-input').focus();
+    }
+});
+document.getElementById('search-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.querySelector('form').submit();
+    }
+});
+</script>
+{% endblock %}

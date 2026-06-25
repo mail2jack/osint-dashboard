@@ -86,6 +86,10 @@ WHATSAPP_HEADERS = {
 
 SHERLOCK_DATA_URL = "https://raw.githubusercontent.com/sherlock-project/sherlock/master/sherlock_project/resources/data.json"
 
+WHATSMYNAME_DATA_URL = (
+    "https://raw.githubusercontent.com/WebBreacher/WhatsMyName/main/wmn-data.json"
+)
+
 WEBCAM_DATA = {
     "countries": [
         {"code": "us", "name": "United States"},
@@ -539,5 +543,6 @@ __all__ = [
     "HEADERS",
     "WHATSAPP_HEADERS",
     "SHERLOCK_DATA_URL",
+    "WHATSMYNAME_DATA_URL",
     "WEBCAM_DATA",
 ]

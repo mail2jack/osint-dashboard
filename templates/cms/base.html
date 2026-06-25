@@ -45,7 +45,11 @@
     <div class="header">
         <div>
             {% if app_logo %}
+            {% if app_logo.startswith('tenant_logos/') %}
+            <img src="{{ url_for('static', filename='uploads/' + app_logo) }}" alt="Logo" style="height:2rem;width:auto;vertical-align:middle;margin-right:0.5rem;">
+            {% else %}
             <img src="{{ url_for('static', filename='uploads/logo/' + app_logo) }}" alt="Logo" style="height:2rem;width:auto;vertical-align:middle;margin-right:0.5rem;">
+            {% endif %}
             {% else %}
             <strong>CMS</strong>
             {% endif %}
@@ -55,6 +59,7 @@
             <a href="{{ url_for('cms.invoice_list') }}">{{ _('Facturen') }}</a>
             <a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a>
             <a href="{{ url_for('cms.search') }}">{{ _('Search') }}</a>
+                <a href="{{ url_for('cms.notification_history') }}">🔔 {{ _('Notifications') }}</a>
                 <a href="{{ url_for('cms.reminders') }}">{{ _('Reminders') }}</a>
                 {% if current_user.has_role('admin', 'senior_investigator') %}
                 <a href="{{ url_for('cms.spiderfoot_index') }}">SpiderFoot</a>
@@ -62,10 +67,28 @@
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>
                 {% endif %}
+                {% if current_user.is_admin or current_user.has_role('senior_investigator') %}
+                <a href="{{ url_for('cms.analytics') }}">📊 {{ _('Analytics') }}</a>
+                {% endif %}
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('cms.tenant_settings') }}">🏢 {{ _('Tenant') }}</a>
+                {% endif %}
+                {% if current_user.is_super_admin %}
+                <a href="{{ url_for('cms.global_search') }}">🌐 {{ _('Global Search') }}</a>
+                <a href="{{ url_for('cms.admin_feature_flags') }}">🚩 {{ _('Features') }}</a>
+                <a href="{{ url_for('cms.admin_rate_limits') }}">⏱️ {{ _('Rate Limits') }}</a>
+                <a href="{{ url_for('cms.analytics_super') }}">🔭 {{ _('Super Admin') }}</a>
+                {% endif %}
             </div>
             <div style="display:flex;align-items:center;gap:0.5rem;">
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('users.view_user', user_id=current_user.id) }}" style="color:white;text-decoration:none;margin-left:0;">{{ current_user.full_name }}</a>
+                    {% if 'switched_tenant_id' in session %}
+                    <span style="background:#f59e0b;color:#000;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;" title="Viewing tenant: {{ session.switched_tenant_id }}">SWITCHED</span>
+                    <form method="POST" action="{{ url_for('cms.clear_switch_tenant') }}" style="display:inline;margin:0;">
+                        <button type="submit" style="background:transparent;border:1px solid rgba(255,255,255,0.5);color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:3px;cursor:pointer;">✕</button>
+                    </form>
+                    {% endif %}
                     {% if current_user.totp_enabled %}
                     <span style="color:#6ee7b7;font-size:0.75rem;" title="2FA enabled">✓</span>
                     {% endif %}
@@ -77,6 +100,7 @@
                         <span id="notificationBadge" style="display:none;position:absolute;top:-6px;right:-8px;background:#dc2626;color:white;font-size:0.6rem;border-radius:50%;width:16px;height:16px;text-align:center;line-height:16px;font-weight:bold;">0</span>
                     </span>
                     <div id="notificationPanel" style="display:none;position:absolute;top:100%;right:0;"></div>
+                    <a href="{{ url_for('cms.notification_history') }}" style="color:white;text-decoration:none;font-size:0.85rem;" title="{{ _('All notifications') }}">📋</a>
                     <a href="{{ url_for('set_lang', lang='nl') }}" style="color:white;text-decoration:none;font-size:0.85rem;{% if current_locale == 'nl' %}font-weight:bold;text-decoration:underline;{% endif %}">NL</a>
                     <a href="{{ url_for('set_lang', lang='en') }}" style="color:white;text-decoration:none;font-size:0.85rem;{% if current_locale == 'en' %}font-weight:bold;text-decoration:underline;{% endif %}">EN</a>
                     <button class="theme-toggle" data-click="toggleTheme" title="{{ _('Toggle dark mode') }}">
@@ -94,6 +118,15 @@
     <div id="sfHealthBanner" style="display:none;background:#dc2626;color:white;text-align:center;padding:0.5rem;font-size:0.875rem;">
         ⚠️ {{ _('SpiderFoot is unreachable. Some OSINT features may not work.') }}
     </div>
+
+    {% if current_user.is_authenticated and current_user.tenant and current_user.tenant.scheduled_deletion_at %}
+    <div style="background:#dc2626;color:white;text-align:center;padding:0.5rem 1rem;font-size:0.875rem;display:flex;justify-content:center;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+        <span>⚠️ {{ _('Your subscription has ended. Your data will be permanently deleted on') }}
+        <strong>{{ current_user.tenant.scheduled_deletion_at.strftime('%-d %B %Y') }}</strong>.
+        {{ _('Contact support to reactivate.') }}</span>
+        <a href="{{ url_for('cms.settings', category='plan') }}" style="color:white;font-weight:600;text-decoration:underline;white-space:nowrap;">{{ _('Reactivate →') }}</a>
+    </div>
+    {% endif %}
 
     <div id="loginAnomalyBanner" style="display:none;background:#f59e0b;color:black;text-align:center;padding:0.5rem;font-size:0.875rem;">
         🔒 <span id="loginAnomalyCount">0</span> {{ _('login anomaly/anomalies detected in the last 24 hours.') }}
@@ -279,6 +312,8 @@ function toggleHealthModal() {
             color = '#f59e0b'; label = '⚙️ Geen sleutel';
         } else if (status === 'auth error') {
             color = '#f97316'; label = '🔑 Auth fout';
+        } else if (status === 'quota exhausted') {
+            color = '#ef4444'; label = '⚠️ Quota overschreden';
         } else if (status.startsWith('unavailable') || status.startsWith('error')) {
             color = '#ef4444'; label = '⚠️ ' + status;
         } else {

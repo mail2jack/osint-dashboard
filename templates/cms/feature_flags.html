@@ -1,0 +1,87 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Feature Flags — Super Admin') }}{% endblock %}
+{% block content %}
+<style>
+    .ff-header { display:flex; justify-content:space-between; align-items:center; margin:0 0 1.5rem; }
+    .ff-header h1 { margin:0; }
+    .ff-table { width:100%; border-collapse:collapse; }
+    .ff-table th { text-align:left; padding:0.5rem 0.75rem; border-bottom:2px solid var(--border-color); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); }
+    .ff-table td { padding:0.4rem 0.75rem; border-bottom:1px solid var(--border-color); font-size:0.85rem; }
+    .ff-table tr:hover td { background:var(--table-hover); }
+    .ff-toggle-wrap { display:flex; align-items:center; gap:0.4rem; }
+    .ff-toggle { position:relative; width:36px; height:20px; flex-shrink:0; }
+    .ff-toggle input { opacity:0; width:0; height:0; }
+    .ff-toggle .slider { position:absolute; inset:0; cursor:pointer; background:var(--bg-secondary); border-radius:10px; transition:0.2s; }
+    .ff-toggle .slider::before { content:""; position:absolute; width:16px; height:16px; left:2px; bottom:2px; background:white; border-radius:50%; transition:0.2s; }
+    .ff-toggle input:checked+.slider { background:#059669; }
+    .ff-toggle input:checked+.slider::before { transform:translateX(16px); }
+    .ff-toggle input:disabled+.slider { opacity:0.4; cursor:not-allowed; }
+    .tier-badge-sm { display:inline-block; padding:0.1rem 0.35rem; border-radius:3px; font-size:0.65rem; font-weight:600; }
+    .tier-badge-sm.tier-free { background:var(--bg-secondary); color:var(--text-secondary); }
+    .tier-badge-sm.tier-starter { background:#dbeafe; color:#1e40af; }
+    .tier-badge-sm.tier-professional { background:#fef3c7; color:#92400e; }
+    .tier-badge-sm.tier-enterprise { background:#fee2e2; color:#991b1b; }
+    .override-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#7c3aed; margin-right:0.25rem; }
+    .ff-override { font-size:0.65rem; color:#7c3aed; font-weight:600; }
+</style>
+
+<div class="ff-header">
+    <h1>🚩 {{ _('Feature Flag Overrides') }}</h1>
+    <span class="super-badge" style="background:#7c3aed;color:white;padding:0.2rem 0.6rem;border-radius:4px;font-size:0.7rem;font-weight:600;text-transform:uppercase;">{{ _('Super Admin') }}</span>
+</div>
+
+<p style="color:var(--text-secondary);margin-bottom:1.5rem;">
+    {{ _('Override tier-based feature flags per tenant. Toggle a switch to override; toggle again to restore tier default.') }}
+</p>
+
+<div style="overflow-x:auto;">
+    <table class="ff-table">
+        <thead>
+            <tr>
+                <th>{{ _('Tenant') }}</th>
+                <th>{{ _('Tier') }}</th>
+                {% for name in flag_order %}
+                <th style="text-align:center;">{{ flag_names[name] }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('cms.tenant_detail', tenant_id=row.tenant.id) }}" style="font-weight:600;">{{ row.tenant.name }}</a>
+                    <div style="font-size:0.7rem;color:var(--text-muted);">{{ row.tenant.slug }}</div>
+                </td>
+                <td><span class="tier-badge-sm tier-{{ row.tenant.tier }}">{{ row.tenant.tier|capitalize }}</span></td>
+                {% for name in flag_order %}
+                {% set override = row.flags[name] %}
+                {% set tier_default = name != 'export' and row.tenant.tier in ('professional', 'enterprise') or name == 'export' and row.tenant.tier in ('starter', 'professional', 'enterprise') %}
+                {% set is_overridden = override is not none %}
+                {% set current_value = override.enabled if is_overridden else tier_default %}
+                <td style="text-align:center;">
+                    <form method="POST" action="{{ url_for('cms.admin_feature_flag_toggle') }}" style="display:inline;" class="ff-form">
+                        <input type="hidden" name="tenant_id" value="{{ row.tenant.id }}">
+                        <input type="hidden" name="flag_name" value="{{ name }}">
+                        <input type="hidden" name="enabled" value="{{ '0' if current_value else '1' }}">
+                        <label class="ff-toggle" title="{% if is_overridden %}{{ _('Override active') }} — {{ _('click to restore tier default') }}{% else %}{{ _('Using tier default') }} — {{ _('click to override') }}{% endif %}">
+                            <input type="checkbox" {% if current_value %}checked{% endif %} data-click="submitFlagToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </form>
+                    {% if is_overridden %}
+                    <div class="ff-override"><span class="override-dot"></span>{{ _('override') }}</div>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function submitFlagToggle(el) {
+    el.closest('form').submit();
+}
+</script>
+{% endblock %}

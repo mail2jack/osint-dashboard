@@ -26,6 +26,7 @@ def register_modules() -> None:
     from . import findings  # noqa: F401
     from . import comments  # noqa: F401
     from . import settings  # noqa: F401
+    from . import analytics  # noqa: F401
     from . import exports  # noqa: F401
     from . import documents  # noqa: F401
     from . import reminders  # noqa: F401
@@ -52,11 +53,15 @@ def register_modules() -> None:
     from . import imports  # noqa: F401
     from . import kvk  # noqa: F401
     from . import notifications_api  # noqa: F401
+    from . import notifications  # noqa: F401
     from . import translations  # noqa: F401
     from . import statistics  # noqa: F401
     from . import demo  # noqa: F401
     from . import invoicing  # noqa: F401
+    from . import credit_notes  # noqa: F401
     from . import stripe_billing  # noqa: F401
+    from . import feature_flags_admin  # noqa: F401
+    from . import rate_limits_admin  # noqa: F401
 
     # Background task status API
     from ..background import register_background_routes

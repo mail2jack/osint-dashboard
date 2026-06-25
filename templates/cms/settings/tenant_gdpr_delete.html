@@ -1,0 +1,49 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Delete Tenant — %(name)s', name=tenant.name) }}{% endblock %}
+{% block content %}
+<style>
+    .gdpr-card { max-width:600px; margin:2rem auto; padding:2rem; border:2px solid #ef4444; border-radius:8px; background:var(--bg-primary); }
+    .gdpr-card h1 { color:#ef4444; margin:0 0 1rem; font-size:1.25rem; }
+    .gdpr-warning { background:#fef2f2; border:1px solid #fecaca; border-radius:6px; padding:1rem; margin-bottom:1.5rem; font-size:0.85rem; color:#991b1b; }
+    .gdpr-counts { display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; margin-bottom:1.5rem; }
+    .gdpr-count-item { text-align:center; padding:0.75rem; background:var(--bg-secondary); border-radius:6px; }
+    .gdpr-count-item .num { font-size:1.5rem; font-weight:700; }
+    .gdpr-count-item .label { font-size:0.75rem; color:var(--text-muted); }
+    .gdpr-input { width:100%; padding:0.5rem; border:2px solid var(--border-color); border-radius:4px; font-size:0.9rem; box-sizing:border-box; margin-bottom:1rem; }
+    .gdpr-input:focus { border-color:#ef4444; outline:none; }
+</style>
+
+<div class="gdpr-card">
+    <h1>🗑️ {{ _('Permanently Delete Tenant') }}</h1>
+
+    <div class="gdpr-warning">
+        <strong>⚠️ {{ _('This action cannot be undone.') }}</strong><br>
+        {{ _('All data belonging to this tenant will be permanently deleted. This includes all users, cases, subjects, clients, findings, documents, screenshots, audit logs, and associated records.') }}
+    </div>
+
+    <p style="margin-bottom:0.5rem;font-weight:600;">{{ _('The following data will be deleted:') }}</p>
+    <div class="gdpr-counts">
+        <div class="gdpr-count-item"><div class="num">{{ counts.users }}</div><div class="label">{{ _('Users') }}</div></div>
+        <div class="gdpr-count-item"><div class="num">{{ counts.cases }}</div><div class="label">{{ _('Cases') }}</div></div>
+        <div class="gdpr-count-item"><div class="num">{{ counts.subjects }}</div><div class="label">{{ _('Subjects') }}</div></div>
+        <div class="gdpr-count-item"><div class="num">{{ counts.clients }}</div><div class="label">{{ _('Clients') }}</div></div>
+        <div class="gdpr-count-item"><div class="num">{{ counts.findings }}</div><div class="label">{{ _('Findings') }}</div></div>
+        <div class="gdpr-count-item"><div class="num">{{ counts.documents }}</div><div class="label">{{ _('Documents') }}</div></div>
+    </div>
+
+    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">
+        {{ _('To confirm deletion, type the tenant name below:') }}
+    </p>
+    <p style="font-size:1.1rem;font-weight:700;text-align:center;padding:0.5rem;background:var(--bg-secondary);border-radius:4px;margin-bottom:1rem;">
+        {{ tenant.name }}
+    </p>
+
+    <form method="POST" action="{{ url_for('cms.tenant_gdpr_delete', tenant_id=tenant.id) }}" onsubmit="return confirm('{{ _('Are you absolutely sure? This permanently deletes ALL data for this tenant.') }}')">
+        <input type="text" name="confirm_name" class="gdpr-input" placeholder="{{ _('Type the tenant name to confirm') }}" required autocomplete="off" autofocus>
+        <div style="display:flex;gap:0.75rem;">
+            <a href="{{ url_for('cms.tenant_detail', tenant_id=tenant.id) }}" class="btn-cms" style="text-decoration:none;flex:1;text-align:center;">{{ _('Cancel') }}</a>
+            <button type="submit" class="btn-cms" style="background:#ef4444;border-color:#ef4444;color:white;flex:1;">🗑️ {{ _('Permanently Delete') }}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

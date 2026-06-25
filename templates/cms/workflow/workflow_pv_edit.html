@@ -1,0 +1,29 @@
+{% extends "cms/base.html" %}
+{% block title %}Workflow — PV Bewerken — {{ case.case_number }}{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <h1 style="margin:0;">📄 Proces-verbaal bewerken</h1>
+    <div style="display:flex;gap:0.5rem;">
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">← Terug naar PV</a>
+      <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">Naar zaak</a>
+    </div>
+  </div>
+
+  <p style="color:var(--text-muted);margin-bottom:1.5rem;">
+    Schrijf de inhoud van het proces-verbaal in Markdown. 
+    <br>Case-gegevens (zaaknummer, opdrachtgever, betrokkenen, bevindingen) worden automatisch toegevoegd.
+  </p>
+
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="margin-bottom:1rem;">
+      <textarea name="pv_body" rows="40" style="width:100%;font-family:monospace;font-size:0.85rem;padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary, #fafafa);">{{ case.pv_body or '' }}</textarea>
+    </div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">Annuleren</a>
+      <button type="submit" class="btn-cms primary">Opslaan en bekijken →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -24,7 +24,6 @@ from flask import (
     redirect,
     url_for,
     flash,
-    current_app,
     abort,
     g,
 )
@@ -86,27 +85,6 @@ def unauthorized() -> flask.Response:
 # =============================================================================
 # RBAC Decorators
 # =============================================================================
-
-
-def tenant_owner_required(f: Callable) -> Callable:
-    """
-    Decorator to restrict access to tenant owners (or super admins).
-
-    Usage:
-        @tenant_owner_required
-        def tenant_settings():
-            ...
-    """
-
-    @functools.wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            abort(401)
-        if not current_user.is_super_admin and not current_user.is_tenant_owner:
-            abort(403)
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 
 def roles_required(*allowed_roles: str) -> Callable:
@@ -180,50 +158,23 @@ def senior_required(f: Callable) -> Callable:
     return roles_required("admin", "owner", "senior_investigator")(f)
 
 
-def investigator_required(f: Callable) -> Callable:
-    """Decorator for routes requiring any investigator role."""
+def staff_required(f: Callable) -> Callable:
+    """Decorator for routes requiring any staff role (all roles except viewer)."""
     return roles_required(
         "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
     )(f)
 
 
-def require_scope(*scopes: str) -> Callable:
-    """
-    Decorator for API routes that require specific API key scopes.
-
-    Works with both session-based auth (full access) and API-key auth (scope-checked).
-    Session-authenticated users bypass scope checks.
-
-    Usage:
-        @require_scope('read')
-        @require_scope('read', 'write')
-    """
-
-    def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def decorated_function(*args, **kwargs):
-            if not current_user.is_authenticated:
-                return unauthorized()
-
-            # Session-authenticated users have full access
-            if not getattr(g, "authenticated_via_api_key", False):
-                return f(*args, **kwargs)
-
-            # API-key authenticated: check scopes
-            key_scopes = set(getattr(g, "api_key_scopes", ["read"]))
-            if not any(s in key_scopes for s in scopes):
-                return jsonify(
-                    {
-                        "error": "Insufficient API key scope. Required one of: "
-                        + ", ".join(scopes)
-                    }
-                ), 403
-
-            return f(*args, **kwargs)
-
-        return decorated_function
-
-    return decorator
+def viewer_required(f: Callable) -> Callable:
+    """Decorator for routes accessible to all authenticated users (including viewers)."""
+    return roles_required(
+        "admin",
+        "owner",
+        "senior_investigator",
+        "investigator",
+        "junior_investigator",
+        "viewer",
+    )(f)
 
 
 def can_export(f: Callable) -> Callable:
@@ -471,10 +422,8 @@ def subject_access_required(f: Callable) -> Callable:
         ]
 
         if not linked_case_ids:
-            if request.is_json:
-                return jsonify({"error": "No access to this subject"}), 403
-            flash("You do not have access to this subject.", "warning")
-            return redirect(url_for("cms.subjects"))
+            # No case links yet — allow same-tenant access (e.g. newly created subject)
+            return f(*args, **kwargs)
 
         has_access = False
         for cid in linked_case_ids:
@@ -678,26 +627,3 @@ def get_accessible_case_ids(user) -> list[str]:
     }
 
     return list(direct_ids | assigned_ids)
-
-
-def require_api_key(f: Callable) -> Callable:
-    """
-    Decorator for API routes that require an API key.
-    Used for programmatic access (e.g., from OSINT tools).
-    """
-
-    @functools.wraps(f)
-    def decorated_function(*args, **kwargs):
-        api_key = request.headers.get("X-API-Key")
-
-        if not api_key:
-            return jsonify({"error": "API key required"}), 401
-
-        # Validate API key (in production, this should check a database)
-        expected_key = current_app.config.get("CMS_API_KEY")
-        if not expected_key or api_key != expected_key:
-            return jsonify({"error": "Invalid API key"}), 403
-
-        return f(*args, **kwargs)
-
-    return decorated_function

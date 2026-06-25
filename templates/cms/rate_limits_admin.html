@@ -1,0 +1,112 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Rate Limits — Super Admin') }}{% endblock %}
+{% block content %}
+<style>
+    .rl-header { display:flex; justify-content:space-between; align-items:center; margin:0 0 1.5rem; }
+    .rl-header h1 { margin:0; }
+    .rl-table { width:100%; border-collapse:collapse; }
+    .rl-table th { text-align:left; padding:0.5rem 0.75rem; border-bottom:2px solid var(--border-color); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); }
+    .rl-table td { padding:0.4rem 0.75rem; border-bottom:1px solid var(--border-color); font-size:0.85rem; }
+    .rl-table tr:hover td { background:var(--table-hover); }
+    .rl-number-input { width:70px; padding:0.25rem 0.4rem; border:1px solid var(--border-color); border-radius:4px; font-size:0.8rem; background:var(--bg-primary); color:var(--text-primary); }
+    .rl-btn-sm { padding:0.2rem 0.6rem; border:none; border-radius:4px; cursor:pointer; font-size:0.7rem; font-weight:600; }
+    .rl-btn-primary { background:#2563eb; color:white; }
+    .rl-btn-primary:hover { background:#1d4ed8; }
+    .rl-btn-danger { background:#dc2626; color:white; }
+    .rl-btn-danger:hover { background:#b91c1c; }
+    .tier-badge-sm { display:inline-block; padding:0.1rem 0.35rem; border-radius:3px; font-size:0.65rem; font-weight:600; }
+    .tier-badge-sm.tier-free { background:var(--bg-secondary); color:var(--text-secondary); }
+    .tier-badge-sm.tier-starter { background:#dbeafe; color:#1e40af; }
+    .tier-badge-sm.tier-professional { background:#fef3c7; color:#92400e; }
+    .tier-badge-sm.tier-enterprise { background:#fee2e2; color:#991b1b; }
+    .override-badge { display:inline-block; padding:0.1rem 0.35rem; border-radius:3px; font-size:0.65rem; background:#f3e8ff; color:#7c3aed; font-weight:600; }
+    .rl-tier-defaults { display:flex; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.5rem; padding:1rem; background:var(--bg-secondary); border-radius:6px; }
+    .rl-tier-item { display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; }
+    .rl-tier-item label { font-weight:600; min-width:5rem; }
+    .rl-usage-bar { width:60px; height:6px; background:var(--bg-primary); border-radius:3px; overflow:hidden; display:inline-block; vertical-align:middle; }
+    .rl-usage-fill { height:100%; border-radius:3px; transition:width 0.3s; }
+    .rl-usage-fill.ok { background:#22c55e; }
+    .rl-usage-fill.warn { background:#f59e0b; }
+    .rl-usage-fill.danger { background:#ef4444; }
+</style>
+
+<div class="rl-header">
+    <h1>⏱️ {{ _('Per-Tenant Rate Limits') }}</h1>
+    <span class="super-badge" style="background:#7c3aed;color:white;padding:0.2rem 0.6rem;border-radius:4px;font-size:0.7rem;font-weight:600;text-transform:uppercase;">{{ _('Super Admin') }}</span>
+</div>
+
+<p style="color:var(--text-secondary);margin-bottom:1.5rem;">
+    {{ _('Configure per-tenant API rate limits. These limits are enforced per-tenant per-minute in addition to the global per-IP limits.') }}
+</p>
+
+<h3 style="margin-bottom:0.75rem;">{{ _('Tier Defaults') }}</h3>
+<form method="POST" action="{{ url_for('cms.admin_rate_limits_update_tier_default') }}" class="rl-tier-defaults">
+    {% for tier in ['free', 'starter', 'professional', 'enterprise'] %}
+    {% set current = tier_defaults.get(tier, 30) %}
+    <div class="rl-tier-item">
+        <label>{{ tier|capitalize }}</label>
+        <input type="number" name="limit" class="rl-number-input" value="{{ current }}" min="1" required>
+        <input type="hidden" name="tier" value="{{ tier }}">
+        <span style="font-size:0.7rem;color:var(--text-muted);">/min</span>
+    </div>
+    {% endfor %}
+    <button type="submit" class="rl-btn-sm rl-btn-primary" style="margin-left:auto;">{{ _('Save Tier Defaults') }}</button>
+</form>
+
+<h3 style="margin-bottom:0.75rem;">{{ _('Tenant Overrides') }}</h3>
+<div style="overflow-x:auto;">
+    <table class="rl-table">
+        <thead>
+            <tr>
+                <th>{{ _('Tenant') }}</th>
+                <th>{{ _('Tier') }}</th>
+                <th>{{ _('Tier Limit') }}</th>
+                <th>{{ _('Override') }}</th>
+                <th>{{ _('Effective') }}</th>
+                <th>{{ _('Usage') }}</th>
+                <th>{{ _('Actions') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            {% set pct = (row.current_requests / row.effective * 100) if row.effective > 0 else 0 %}
+            {% set bar_class = 'ok' if pct < 60 else ('warn' if pct < 90 else 'danger') %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('cms.tenant_detail', tenant_id=row.tenant.id) }}" style="font-weight:600;">{{ row.tenant.name }}</a>
+                    <div style="font-size:0.7rem;color:var(--text-muted);">{{ row.tenant.slug }}</div>
+                </td>
+                <td><span class="tier-badge-sm tier-{{ row.tenant.tier }}">{{ row.tenant.tier|capitalize }}</span></td>
+                <td>{{ row.tier_limit }}/min</td>
+                <td>
+                    {% if row.override is not none %}
+                    <span class="override-badge">{{ row.override }}/min</span>
+                    {% else %}
+                    <span style="color:var(--text-muted);font-size:0.8rem;">—</span>
+                    {% endif %}
+                </td>
+                <td><strong>{{ row.effective }}/min</strong></td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:0.4rem;">
+                        <div class="rl-usage-bar">
+                            <div class="rl-usage-fill {{ bar_class }}" style="width:{{ pct|round }}%;"></div>
+                        </div>
+                        <span style="font-size:0.75rem;">{{ row.current_requests }}/{{ row.effective }}</span>
+                    </div>
+                </td>
+                <td>
+                    <form method="POST" action="{{ url_for('cms.admin_rate_limits_update_override') }}" style="display:flex;align-items:center;gap:0.3rem;">
+                        <input type="hidden" name="tenant_id" value="{{ row.tenant.id }}">
+                        <input type="number" name="requests_per_min" class="rl-number-input" value="{{ row.override if row.override is not none else '' }}" placeholder="auto" min="1" style="width:60px;">
+                        <button type="submit" class="rl-btn-sm rl-btn-primary" title="{{ _('Set override') }}">{{ _('Set') }}</button>
+                        {% if row.override is not none %}
+                        <button type="submit" class="rl-btn-sm rl-btn-danger" name="requests_per_min" value="" title="{{ _('Clear override') }}">✕</button>
+                        {% endif %}
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

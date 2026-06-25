@@ -19,6 +19,7 @@ from ..auth import (
 )
 from ..image_validation import validate_upload
 from ..validation import validate, DocumentUploadSchema
+from ..tier_limits import check_storage_limit, check_resource_limit
 
 from .response import api_success, api_error
 
@@ -76,6 +77,27 @@ def upload_case_document(case_id: str) -> flask.Response:
                 "error": f"File content does not match extension ({detected or 'unknown format'})"
             }
         ), 400
+
+    # Check storage quota before saving
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    ok, used_mb, max_mb = check_storage_limit(
+        current_user.tenant_id, extra_bytes=file_size
+    )
+    if not ok:
+        return api_error(
+            f"Storage limit reached ({used_mb}/{max_mb} MB). Upgrade your plan to upload more files.",
+            403,
+        )
+
+    # Check document count limit
+    ok, cur, maximum = check_resource_limit(Document, "tenant_id", "max_documents")
+    if not ok:
+        return api_error(
+            f"Document limit reached ({cur}/{maximum}). Upgrade your plan to upload more documents.",
+            403,
+        )
 
     # Create upload directory if not exists
     upload_dir = os.path.join(
@@ -162,6 +184,27 @@ def upload_subject_document(subject_id: str) -> flask.Response:
                 "error": f"File content does not match extension ({detected or 'unknown format'})"
             }
         ), 400
+
+    # Check storage quota before saving
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    ok, used_mb, max_mb = check_storage_limit(
+        current_user.tenant_id, extra_bytes=file_size
+    )
+    if not ok:
+        return api_error(
+            f"Storage limit reached ({used_mb}/{max_mb} MB). Upgrade your plan to upload more files.",
+            403,
+        )
+
+    # Check document count limit
+    ok, cur, maximum = check_resource_limit(Document, "tenant_id", "max_documents")
+    if not ok:
+        return api_error(
+            f"Document limit reached ({cur}/{maximum}). Upgrade your plan to upload more documents.",
+            403,
+        )
 
     # Create upload directory
     upload_dir = os.path.join(

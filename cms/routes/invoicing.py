@@ -13,8 +13,8 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..models import db, Invoice, InvoiceItem, Payment, Client, Case, AuditLog
 from ..auth import (
-    roles_required,
     admin_required,
+    senior_required,
     apply_tenant_filter,
     ensure_tenant_access,
 )
@@ -122,7 +122,7 @@ def invoice_list():
 # ── Create ──────────────────────────────────────────────────────────────
 @cms_bp.route("/invoices/create", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior")
+@senior_required
 def invoice_create():
     clients = (
         apply_tenant_filter(
@@ -266,7 +266,7 @@ def invoice_view(invoice_id: str):
 # ── Edit ────────────────────────────────────────────────────────────────
 @cms_bp.route("/invoices/<invoice_id>/edit", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior")
+@senior_required
 def invoice_edit(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
@@ -374,7 +374,7 @@ def invoice_pdf(invoice_id: str):
 # ── Send (mark sent) ────────────────────────────────────────────────────
 @cms_bp.route("/invoices/<invoice_id>/send", methods=["POST"])
 @login_required
-@roles_required("admin", "senior")
+@senior_required
 def invoice_send(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
@@ -398,7 +398,7 @@ def invoice_send(invoice_id: str):
 # ── Mark Paid ───────────────────────────────────────────────────────────
 @cms_bp.route("/invoices/<invoice_id>/mark-paid", methods=["POST"])
 @login_required
-@roles_required("admin", "senior")
+@senior_required
 def invoice_mark_paid(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
@@ -452,7 +452,7 @@ def invoice_mark_paid(invoice_id: str):
 # ── Cancel ──────────────────────────────────────────────────────────────
 @cms_bp.route("/invoices/<invoice_id>/cancel", methods=["POST"])
 @login_required
-@roles_required("admin", "senior")
+@senior_required
 def invoice_cancel(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)

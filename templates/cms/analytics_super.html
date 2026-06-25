@@ -1,0 +1,224 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Super Admin Analytics') }} — CMS{% endblock %}
+{% block content %}
+<style>
+.super-grid {
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:1rem;margin-bottom:2rem;
+}
+.super-card {
+    background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:1.25rem;text-align:center;
+}
+.super-card .value { font-size:1.75rem;font-weight:700;color:var(--text); }
+.super-card .label { font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-top:0.25rem; }
+.super-card .sub { font-size:0.75rem;color:var(--text-muted);margin-top:0.15rem; }
+.panel {
+    background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;
+}
+.panel h3 { margin:0 0 1rem;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted); }
+.tenants-table th {
+    text-align:left;padding:0.4rem 0.5rem;border-bottom:2px solid var(--border-color);
+    font-size:0.65rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);
+}
+.tenants-table td { padding:0.4rem 0.5rem;border-bottom:1px solid var(--border-color);font-size:0.85rem; }
+.tenants-table tr:hover td { background:var(--table-hover); }
+.tenants-table .num { text-align:right;font-variant-numeric:tabular-nums; }
+.tier-badge-sm {
+    display:inline-block;padding:0.1rem 0.35rem;border-radius:3px;font-size:0.65rem;font-weight:600;
+}
+.tier-badge-sm.tier-free { background: var(--bg-secondary); color: var(--text-secondary); }
+.tier-badge-sm.tier-starter { background: #dbeafe; color: #1e40af; }
+.tier-badge-sm.tier-professional { background: #fef3c7; color: #92400e; }
+.tier-badge-sm.tier-enterprise { background: #fee2e2; color: #991b1b; }
+.badge-active {
+    display:inline-block;background:#059669;color:white;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.65rem;
+}
+.badge-inactive {
+    display:inline-block;background:#9ca3af;color:white;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.65rem;
+}
+.bar-row { display:flex;align-items:center;gap:0.5rem;margin:0.25rem 0; }
+.bar-fill { height:6px;border-radius:3px;transition:width 0.3s;min-width:2px; }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 1.5rem;">
+    <h1 style="margin:0;">🔭 {{ _('Super Admin Overview') }}</h1>
+    <form method="POST" action="{{ url_for('cms.aggregate_usage_now') }}" style="display:inline;">
+        <button type="submit" class="btn-cms" style="font-size:0.8rem;">{{ _('Aggregate Now') }}</button>
+    </form>
+</div>
+
+<div class="super-grid">
+    <div class="super-card">
+        <div class="value">{{ total_tenants }}</div>
+        <div class="label">{{ _('Total Tenants') }}</div>
+    </div>
+    <div class="super-card" style="border-color:#10b981;">
+        <div class="value" style="color:#10b981;">{{ active_tenants }}</div>
+        <div class="label">{{ _('Active') }}</div>
+    </div>
+    <div class="super-card" style="border-color:#ef4444;">
+        <div class="value" style="color:#ef4444;">{{ inactive_tenants }}</div>
+        <div class="label">{{ _('Inactive') }}</div>
+    </div>
+    <div class="super-card">
+        <div class="value">{{ new_tenants_30d }}</div>
+        <div class="label">{{ _('New (30d)') }}</div>
+    </div>
+    <div class="super-card">
+        <div class="value">{{ totals.users }}</div>
+        <div class="label">{{ _('Total Users') }}</div>
+    </div>
+    <div class="super-card">
+        <div class="value">{{ totals.cases }}</div>
+        <div class="label">{{ _('Total Cases') }}</div>
+    </div>
+    <div class="super-card">
+        <div class="value">{{ totals.subjects }}</div>
+        <div class="label">{{ _('Total Subjects') }}</div>
+    </div>
+    <div class="super-card">
+        <div class="value">{{ totals.clients }}</div>
+        <div class="label">{{ _('Total Clients') }}</div>
+    </div>
+    <div class="super-card">
+        <div class="value">{{ totals.findings }}</div>
+        <div class="label">{{ _('Total Findings') }}</div>
+    </div>
+    <div class="super-card">
+        <div class="value">{{ totals.documents }}</div>
+        <div class="label">{{ _('Total Documents') }}</div>
+    </div>
+    <div class="super-card" style="border-color:#8b5cf6;">
+        <div class="value" style="color:#8b5cf6;">€{{ "{:,.0f}".format(mrr) }}</div>
+        <div class="label">{{ _('MRR') }}</div>
+        <div class="sub">{{ _('Monthly Recurring Revenue') }}</div>
+    </div>
+    <div class="super-card" style="border-color:#6366f1;">
+        <div class="value" style="color:#6366f1;">€{{ "{:,.0f}".format(arr) }}</div>
+        <div class="label">{{ _('ARR') }}</div>
+        <div class="sub">{{ _('Annual Run Rate') }}</div>
+    </div>
+    <div class="super-card" style="border-color:#ef4444;">
+        <div class="value" style="color:#ef4444;">{{ churn_rate }}%</div>
+        <div class="label">{{ _('Churn Rate') }}</div>
+        <div class="sub">{{ canceled_30d }} {{ _('canceled in 30d') }}</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+    <div class="panel">
+        <h3>{{ _('Tenants by Tier') }}</h3>
+        {% if tier_counts %}
+        {% set tier_colors = {'free':'#9ca3af','starter':'#3b82f6','professional':'#f59e0b','enterprise':'#ef4444'} %}
+        {% set tier_order = ['free','starter','professional','enterprise'] %}
+        {% set max_tier = tier_counts.values()|max or 1 %}
+        {% for t in tier_order %}
+        {% if t in tier_counts %}
+        <div class="bar-row">
+            <span style="width:100px;font-size:0.8rem;">{{ t|capitalize }}</span>
+            <div style="flex:1;background:var(--bg-secondary);border-radius:3px;height:6px;">
+                <div class="bar-fill" style="width:{{ (tier_counts[t] / max_tier * 100)|round|int }}%;background:{{ tier_colors[t] }};"></div>
+            </div>
+            <span style="font-size:0.8rem;font-weight:600;min-width:30px;text-align:right;">{{ tier_counts[t] }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% else %}
+        <p style="color:var(--text-muted);font-size:0.85rem;">{{ _('No data') }}</p>
+        {% endif %}
+    </div>
+
+    <div class="panel">
+        <h3>{{ _('Subscription Status') }}</h3>
+        {% set sub_labels = {'active':'Active','incomplete':'Incomplete','past_due':'Past Due','canceled':'Canceled','trialing':'Trialing','incomplete_expired':'Expired'} %}
+        {% if sub_counts %}
+        {% set max_sub = sub_counts.values()|max or 1 %}
+        {% for s, c in sub_counts.items() %}
+        {% set color = 'active' if s == 'active' else ('past_due' if s == 'past_due' else 'incomplete') %}
+        <div class="bar-row">
+            <span style="width:100px;font-size:0.8rem;">{{ sub_labels.get(s, s) }}</span>
+            <div style="flex:1;background:var(--bg-secondary);border-radius:3px;height:6px;">
+                <div class="bar-fill" style="width:{{ (c / max_sub * 100)|round|int }}%;background:{% if s == 'active' %}#10b981{% elif s == 'past_due' %}#ef4444{% else %}#9ca3af{% endif %};"></div>
+            </div>
+            <span style="font-size:0.8rem;font-weight:600;min-width:30px;text-align:right;">{{ c }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p style="color:var(--text-muted);font-size:0.85rem;">{{ _('No data') }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+    <div class="panel">
+        <h3>🏆 {{ _('Top 10 by Users') }}</h3>
+        <table class="tenants-table" style="width:100%;">
+            <thead><tr><th>{{ _('Tenant') }}</th><th class="num">{{ _('Users') }}</th></tr></thead>
+            <tbody>
+            {% for tid, name, tier, cnt in top_by_users %}
+            <tr>
+                <td><a href="{{ url_for('cms.tenant_detail', tenant_id=tid) }}">{{ name }}</a> <span class="tier-badge-sm tier-{{ tier }}">{{ tier }}</span></td>
+                <td class="num">{{ cnt }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <h3>🏆 {{ _('Top 10 by Cases') }}</h3>
+        <table class="tenants-table" style="width:100%;">
+            <thead><tr><th>{{ _('Tenant') }}</th><th class="num">{{ _('Cases') }}</th></tr></thead>
+            <tbody>
+            {% for tid, name, tier, cnt in top_by_cases %}
+            <tr>
+                <td><a href="{{ url_for('cms.tenant_detail', tenant_id=tid) }}">{{ name }}</a> <span class="tier-badge-sm tier-{{ tier }}">{{ tier }}</span></td>
+                <td class="num">{{ cnt }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel">
+    <h3>🆕 {{ _('Recent Tenants') }}</h3>
+    <table class="tenants-table" style="width:100%;">
+        <thead><tr><th>{{ _('Name') }}</th><th>{{ _('Tier') }}</th><th>{{ _('Status') }}</th><th>{{ _('Subscription') }}</th><th>{{ _('Created') }}</th></tr></thead>
+        <tbody>
+        {% for t in recent_tenants %}
+        <tr>
+            <td><a href="{{ url_for('cms.tenant_detail', tenant_id=t.id) }}">{{ t.name }}</a></td>
+            <td><span class="tier-badge-sm tier-{{ t.tier }}">{{ t.tier|capitalize }}</span></td>
+            <td>{% if t.is_active %}<span class="badge-active">Active</span>{% else %}<span class="badge-inactive">Inactive</span>{% endif %}</td>
+            <td style="font-size:0.75rem;">{{ t.subscription_status }}</td>
+            <td style="font-size:0.75rem;color:var(--text-muted);">{{ t.created_at.strftime('%Y-%m-%d') if t.created_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="panel">
+    <h3>📊 {{ _('Latest Usage Snapshot') }}</h3>
+    {% if usage %}
+    <table class="tenants-table" style="width:100%;">
+        <thead><tr><th>{{ _('Tenant') }}</th><th class="num">{{ _('Users') }}</th><th class="num">{{ _('Cases') }}</th><th class="num">{{ _('Subjects') }}</th><th class="num">{{ _('Findings') }}</th><th class="num">{{ _('Documents') }}</th><th class="num">{{ _('Audit Log') }}</th></tr></thead>
+        <tbody>
+        {% for tid, data in usage.items() %}
+        <tr>
+            <td><a href="{{ url_for('cms.tenant_detail', tenant_id=tid) }}">{{ data.name }}</a></td>
+            <td class="num">{{ data.get('users', '—') }}</td>
+            <td class="num">{{ data.get('cases', '—') }}</td>
+            <td class="num">{{ data.get('subjects', '—') }}</td>
+            <td class="num">{{ data.get('findings', '—') }}</td>
+            <td class="num">{{ data.get('documents', '—') }}</td>
+            <td class="num">{{ data.get('audit_log_entries', '—') }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted);font-size:0.85rem;">{{ _('Run aggregation to see usage data.') }}</p>
+    {% endif %}
+</div>
+{% endblock %}

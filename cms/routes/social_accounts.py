@@ -273,6 +273,7 @@ def create_subject_from_username() -> flask.Response:
         name=display_name,
         subject_type="person",
         notes=f"Created from username '{username}' on {platform}",
+        created_by=current_user.id,
     )
     db.session.add(subject)
     db.session.flush()

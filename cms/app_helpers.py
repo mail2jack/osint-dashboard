@@ -77,6 +77,8 @@ from cms.username_search import (  # noqa: E402, F401
     check_sherlock_site,
     search_username_async,
     search_username,
+    check_whatsmyname_site,
+    search_username_whatsmyname,
 )
 
 from cms.ip_domain_lookup import lookup_ip, lookup_domain  # noqa: E402, F401

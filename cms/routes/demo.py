@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 
 from flask import render_template
 from flask_login import login_required
@@ -174,3 +175,302 @@ def demo() -> str:
         ],
     }
     return render_template("cms/demo.html", **demo_data)
+
+
+@cms_bp.route("/demo/case/kees")
+@login_required
+def demo_case_kees() -> str:
+    """Demo case detail page for Kees."""
+    return render_template("cms/demo_case.html", **_build_kees_case())
+
+
+@cms_bp.route("/demo/workflow/personenonderzoek")
+@login_required
+def demo_workflow():
+    """Interactive demo: full person investigation workflow."""
+    now = datetime.now()
+    return render_template("cms/demo_workflow.html", now=now)
+
+
+def _build_kees_case() -> dict:
+    """Build realistic demo data for 'Kees' case."""
+    now = datetime.now()
+    return {
+        "case": {
+            "case_number": "C-2026-042",
+            "title": "Kees — Fraudeonderzoek & Identiteitsdiefstal",
+            "status": "active",
+            "priority": "critical",
+            "client_name": "Schadeverzekering Nederland N.V.",
+            "client_id": "client-svn",
+            "lead_investigator": "Lisa van Dijk",
+            "assigned_to": "Piet Jansen",
+            "created_at": (now - timedelta(days=14)).strftime("%Y-%m-%d %H:%M"),
+            "updated_at": now.strftime("%Y-%m-%d %H:%M"),
+            "due_date": (now + timedelta(days=16)).strftime("%Y-%m-%d"),
+            "description": (
+                "Verdachte transacties en identiteitsdiefstal gemeld door "
+                "Schadeverzekering Nederland N.V. Betrokkene 'Kees' heeft "
+                "zich voorgedaan als meerdere personen om verzekeringsuitkeringen "
+                "te frauderen. Mogelijk link met eerder gesloten zaak C-2025-089 "
+                "(Marijkefraude)."
+            ),
+            "criminal_code": "Art. 326 Sr (Oplichting), Art. 225 Sr (Valsheid in geschrifte)",
+            "tags": ["fraude", "identiteitsdiefstal", "verzekering", "urgent"],
+            "closure_reason": "",
+            "reopened_reason": "",
+            "total_financial": 184_500.00,
+            "total_transactions": 23,
+        },
+        "subjects": [
+            {
+                "id": "subj-kees",
+                "name": "Kees de Vries",
+                "subject_type": "person",
+                "risk_score": 92,
+                "identification_number": "BSN •••• 382",
+                "social_accounts": [
+                    {"platform": "LinkedIn", "url": "https://linkedin.com/in/keesdv"},
+                    {
+                        "platform": "Facebook",
+                        "url": "https://facebook.com/kees.devries.92",
+                    },
+                    {"platform": "Instagram", "url": "https://instagram.com/keesdv"},
+                ],
+                "addresses": [
+                    "Damrak 45, 1012LL Amsterdam",
+                    "Jonkerlaan 12, 3701TC Zeist",
+                ],
+                "phone": "+31638472910",
+                "email": "kees.devries@protonmail.com",
+            },
+            {
+                "id": "subj-bv",
+                "name": "Kees Holding B.V.",
+                "subject_type": "company",
+                "risk_score": 78,
+                "identification_number": "KvK 87654321",
+                "social_accounts": [],
+                "addresses": ["Jonkerlaan 12, 3701TC Zeist"],
+                "phone": "",
+                "email": "info@keesholding.nl",
+            },
+            {
+                "id": "subj-mede",
+                "name": "Mevrouw J. de Vries-Wit",
+                "subject_type": "person",
+                "risk_score": 45,
+                "identification_number": "BSN •••• 671",
+                "social_accounts": [],
+                "addresses": ["Damrak 45, 1012LL Amsterdam"],
+                "phone": "+31611223344",
+                "email": "",
+            },
+        ],
+        "findings": [
+            {
+                "title": "ING-rekeningafschriften — onverklaarbare stortingen €48.000",
+                "subject": "Kees de Vries",
+                "source_type": "document",
+                "author": "Lisa van Dijk",
+                "created_at": (now - timedelta(days=12)).strftime("%Y-%m-%d %H:%M"),
+                "source_url": None,
+            },
+            {
+                "title": "LinkedIn profiel toont fictieve werkgever 'FinCorp International'",
+                "subject": "Kees de Vries",
+                "source_type": "osint",
+                "author": "Piet Jansen",
+                "created_at": (now - timedelta(days=11)).strftime("%Y-%m-%d %H:%M"),
+                "source_url": "https://linkedin.com/in/keesdv",
+            },
+            {
+                "title": "KvK-uittreksel — Kees Holding B.V. opgericht 2 maanden geleden",
+                "subject": "Kees Holding B.V.",
+                "source_type": "manual",
+                "author": "Lisa van Dijk",
+                "created_at": (now - timedelta(days=10)).strftime("%Y-%m-%d %H:%M"),
+                "source_url": None,
+            },
+            {
+                "title": "Verzekeringsclaim 2026-031 — valse overlijdensakte bijgevoegd",
+                "subject": "Kees de Vries",
+                "source_type": "document",
+                "author": "Piet Jansen",
+                "created_at": (now - timedelta(days=9)).strftime("%Y-%m-%d %H:%M"),
+                "source_url": None,
+            },
+            {
+                "title": "Telefoonnummer gekoppeld aan 3 verschillende identiteiten bij 2 verzekeraars",
+                "subject": "Kees de Vries",
+                "source_type": "osint",
+                "author": "Piet Jansen",
+                "created_at": (now - timedelta(days=8)).strftime("%Y-%m-%d %H:%M"),
+                "source_url": None,
+            },
+            {
+                "title": "Holding heeft geen enkele bedrijfsactiviteit — lege BV",
+                "subject": "Kees Holding B.V.",
+                "source_type": "manual",
+                "author": "Lisa van Dijk",
+                "created_at": (now - timedelta(days=6)).strftime("%Y-%m-%d %H:%M"),
+                "source_url": None,
+            },
+            {
+                "title": "Mevrouw J. de Vries-Wit staat als uittrekseladres ingeschreven — medeplichtigheid?",
+                "subject": "Mevrouw J. de Vries-Wit",
+                "source_type": "osint",
+                "author": "Piet Jansen",
+                "created_at": (now - timedelta(days=5)).strftime("%Y-%m-%d %H:%M"),
+                "source_url": None,
+            },
+            {
+                "title": "Kees Holding B.V. heeft €120.000 ontvangen van niet-gelieerde rekening",
+                "subject": "Kees Holding B.V.",
+                "source_type": "document",
+                "author": "Lisa van Dijk",
+                "created_at": (now - timedelta(days=3)).strftime("%Y-%m-%d %H:%M"),
+                "source_url": None,
+            },
+        ],
+        "documents": [
+            {
+                "name": "ING_rekening_2026_01.pdf",
+                "type": "bank_afschrift",
+                "size": "1.2 MB",
+                "uploaded_by": "Lisa van Dijk",
+                "created_at": (now - timedelta(days=12)).strftime("%Y-%m-%d"),
+                "classification": "vertrouwelijk",
+            },
+            {
+                "name": "claim_2026_031_overlijdensakte.pdf",
+                "type": "claim_document",
+                "size": "0.8 MB",
+                "uploaded_by": "Piet Jansen",
+                "created_at": (now - timedelta(days=9)).strftime("%Y-%m-%d"),
+                "classification": "geheim",
+            },
+            {
+                "name": "kvk_keesholding.pdf",
+                "type": "kvk_uittreksel",
+                "size": "0.3 MB",
+                "uploaded_by": "Lisa van Dijk",
+                "created_at": (now - timedelta(days=10)).strftime("%Y-%m-%d"),
+                "classification": "intern",
+            },
+            {
+                "name": "transactie_overzicht_holding.xlsx",
+                "type": "financieel",
+                "size": "0.5 MB",
+                "uploaded_by": "Lisa van Dijk",
+                "created_at": (now - timedelta(days=3)).strftime("%Y-%m-%d"),
+                "classification": "vertrouwelijk",
+            },
+            {
+                "name": "facebook_profiel_kees.pdf",
+                "type": "osint_export",
+                "size": "2.1 MB",
+                "uploaded_by": "Piet Jansen",
+                "created_at": (now - timedelta(days=7)).strftime("%Y-%m-%d"),
+                "classification": "intern",
+            },
+        ],
+        "financials": {
+            "total_amount": 184_500.00,
+            "transaction_count": 23,
+            "verified_count": 12,
+            "pending_count": 11,
+            "latest": [
+                {
+                    "date": (now - timedelta(days=1)).strftime("%Y-%m-%d"),
+                    "description": "Storting Kees Holding B.V.",
+                    "amount": 48000.00,
+                    "type": "credit",
+                    "verified": False,
+                },
+                {
+                    "date": (now - timedelta(days=3)).strftime("%Y-%m-%d"),
+                    "description": "Opname contant — geldautomaat Zeist",
+                    "amount": 5000.00,
+                    "type": "debit",
+                    "verified": True,
+                },
+                {
+                    "date": (now - timedelta(days=5)).strftime("%Y-%m-%d"),
+                    "description": "Overschrijving naar rekening NL39RABO...",
+                    "amount": 12000.00,
+                    "type": "debit",
+                    "verified": True,
+                },
+                {
+                    "date": (now - timedelta(days=7)).strftime("%Y-%m-%d"),
+                    "description": "Storting onbekende bron",
+                    "amount": 7500.00,
+                    "type": "credit",
+                    "verified": False,
+                },
+                {
+                    "date": (now - timedelta(days=10)).strftime("%Y-%m-%d"),
+                    "description": "Verzekeringsuitkering claim 2026-031",
+                    "amount": 25000.00,
+                    "type": "credit",
+                    "verified": True,
+                },
+            ],
+        },
+        "reminders": [
+            {
+                "title": "ING-rekening opvragen bij rechtbank",
+                "date": (now + timedelta(days=1)).strftime("%Y-%m-%d 09:00"),
+                "is_overdue": False,
+            },
+            {
+                "title": "Getuigenverhoor mevrouw J. de Vries-Wit plannen",
+                "date": (now + timedelta(days=3)).strftime("%Y-%m-%d 14:00"),
+                "is_overdue": False,
+            },
+            {
+                "title": "KvK-uittreksel Kees Holding controleren",
+                "date": (now - timedelta(days=2)).strftime("%Y-%m-%d 12:00"),
+                "is_overdue": True,
+            },
+            {
+                "title": "Voortgangsrapportage indienen bij opdrachtgever",
+                "date": (now + timedelta(days=14)).strftime("%Y-%m-%d 17:00"),
+                "is_overdue": False,
+            },
+        ],
+        "comments": [
+            {
+                "author": "Lisa van Dijk",
+                "content": "Heb zojuist de ING-rekeningafschriften ontvangen. Bevestigen ons vermoeden van onverklaarbare stortingen. Ga door met brononderzoek.",
+                "created_at": (now - timedelta(days=12)).strftime("%Y-%m-%d %H:%M"),
+                "is_pinned": True,
+            },
+            {
+                "author": "Piet Jansen",
+                "content": "LinkedIn profiel toont 'FinCorp International' als werkgever — dit bedrijf blijkt niet te bestaan bij KvK. Kees gebruikt dus een fictieve werkgever.",
+                "created_at": (now - timedelta(days=11)).strftime("%Y-%m-%d %H:%M"),
+                "is_pinned": False,
+            },
+            {
+                "author": "Lisa van Dijk",
+                "content": "Overlijdensakte blijkt vals — document is onderzocht door forensisch team. Papier en inkt komen niet overeen met echt overlijdensbewijs. Zaak wordt voorgelegd aan OM.",
+                "created_at": (now - timedelta(days=8)).strftime("%Y-%m-%d %H:%M"),
+                "is_pinned": True,
+            },
+            {
+                "author": "Piet Jansen",
+                "content": "Mevrouw J. de Vries-Wit is de echtgenote. Zij staat ingeschreven op hetzelfde adres. Moet worden gehoord over haar betrokkenheid.",
+                "created_at": (now - timedelta(days=5)).strftime("%Y-%m-%d %H:%M"),
+                "is_pinned": False,
+            },
+        ],
+        "child_cases": [
+            {
+                "case_number": "C-2025-089",
+                "title": "Marijkefraude — identiteitsdiefstal",
+                "status": "closed",
+            },
+        ],
+    }

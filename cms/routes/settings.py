@@ -13,6 +13,7 @@ from flask import (
     redirect,
     url_for,
     current_app,
+    session,
 )
 from flask_login import login_required, current_user
 
@@ -26,6 +27,14 @@ from ..models import (
     Tenant,
     PlatformSetting,
     TenantSetting,
+    Case,
+    Subject,
+    Client,
+    Finding,
+    Invoice,
+    Payment,
+    Document,
+    ProrationLog,
     init_default_settings,
 )
 from ..auth import admin_required, apply_tenant_filter, ensure_tenant_access
@@ -106,6 +115,23 @@ def settings() -> str:
         search_query=search_q,
         is_platform_cat=is_platform_cat,
         plan_info=plan_info,
+    )
+
+
+@cms_bp.route("/tenant-settings")
+@login_required
+def tenant_settings():
+    """Per-tenant settings page (tenant owner / admin)."""
+    if not current_user.is_admin:
+        abort(403)
+    settings_list = (
+        TenantSetting.query.filter_by(tenant_id=current_user.tenant_id)
+        .order_by(TenantSetting.category, TenantSetting.key)
+        .all()
+    )
+    return render_template(
+        "cms/settings/tenant_settings.html",
+        settings_list=settings_list,
     )
 
 
@@ -683,6 +709,79 @@ def list_tenants() -> str:
     )
 
 
+@cms_bp.route("/tenants/<tenant_id>")
+@login_required
+@admin_required
+def tenant_detail(tenant_id: str) -> str:
+    """Tenant detail page (super admin only)."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+
+    users = (
+        User.query.filter_by(tenant_id=tenant_id).order_by(User.created_at.desc()).all()
+    )
+    case_count = Case.query.filter_by(tenant_id=tenant_id).count()
+    subject_count = Subject.query.filter_by(tenant_id=tenant_id).count()
+    client_count = Client.query.filter_by(tenant_id=tenant_id).count()
+    finding_count = Finding.query.filter_by(tenant_id=tenant_id).count()
+    document_count = Document.query.filter_by(
+        tenant_id=tenant_id, is_deleted=False
+    ).count()
+
+    from ..tier_limits import get_tier_limits, check_storage_limit
+
+    tier_limits = get_tier_limits(tenant.tier)
+    storage_ok, storage_used_mb, storage_max_mb = check_storage_limit(
+        tenant.id, tenant.tier
+    )
+
+    invoices = (
+        Invoice.query.filter_by(tenant_id=tenant_id, is_deleted=False)
+        .order_by(Invoice.issue_date.desc())
+        .limit(10)
+        .all()
+    )
+    payments = (
+        Payment.query.filter_by(tenant_id=tenant_id)
+        .order_by(Payment.payment_date.desc())
+        .limit(10)
+        .all()
+    )
+    proration_logs = (
+        ProrationLog.query.filter_by(tenant_id=tenant_id)
+        .order_by(ProrationLog.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    recent_logs = (
+        AuditLog.query.filter_by(tenant_id=tenant_id)
+        .order_by(AuditLog.timestamp.desc())
+        .limit(20)
+        .all()
+    )
+
+    return render_template(
+        "cms/settings/tenant_detail.html",
+        tenant=tenant,
+        users=users,
+        case_count=case_count,
+        subject_count=subject_count,
+        client_count=client_count,
+        finding_count=finding_count,
+        document_count=document_count,
+        tier_limits=tier_limits,
+        storage_used_mb=storage_used_mb,
+        storage_max_mb=storage_max_mb,
+        invoices=invoices,
+        payments=payments,
+        recent_logs=recent_logs,
+        user_counts={},
+        proration_logs=proration_logs,
+    )
+
+
 @cms_bp.route("/api/tenants")
 @login_required
 @admin_required
@@ -807,6 +906,355 @@ def toggle_tenant(tenant_id: str) -> flask.Response:
     )
 
 
+@cms_bp.route("/switch-tenant/<tenant_id>", methods=["POST"])
+@login_required
+@admin_required
+def switch_tenant(tenant_id: str) -> flask.Response:
+    """Super-admin: switch tenant context to inspect tenant data."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    session["switched_tenant_id"] = tenant.id
+    flash(f"Switched to tenant: {tenant.name}", "info")
+    return redirect(url_for("cms.dashboard"))
+
+
+@cms_bp.route("/switch-tenant/clear", methods=["POST"])
+@login_required
+def clear_switch_tenant() -> flask.Response:
+    """Super-admin: return to own tenant context."""
+    session.pop("switched_tenant_id", None)
+    flash("Returned to your own tenant context.", "info")
+    return redirect(url_for("cms.dashboard"))
+
+
+# =============================================================================
+# Tenant-scoped user management (super admin)
+# =============================================================================
+
+
+@cms_bp.route("/tenants/<tenant_id>/invite", methods=["POST"])
+@login_required
+@admin_required
+def tenant_invite_user(tenant_id: str) -> flask.Response:
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    email = (request.form.get("email") or "").strip().lower()
+    role = request.form.get("role", "investigator").strip()
+    if not email or "@" not in email:
+        flash("Invalid email address.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+
+    if User.query.filter(
+        db.func.lower(User.email) == email, User.tenant_id == tenant.id
+    ).first():
+        flash("A user with this email already exists in this tenant.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+
+    from ..models import Invitation
+
+    inv = Invitation.create_invitation(
+        tenant_id=tenant.id,
+        email=email,
+        role=role,
+        invited_by_id=current_user.id,
+    )
+    db.session.commit()
+
+    accept_url = url_for("auth.accept_invite", token=inv.token, _external=True)
+    from ..email_utils import is_smtp_configured, send_email
+
+    if is_smtp_configured():
+        subject = f"You've been invited to {tenant.name}"
+        send_email(
+            email,
+            subject,
+            f"<p>Accept: <a href='{accept_url}'>{accept_url}</a></p>",
+            f"Accept: {accept_url}",
+        )
+        flash(f"Invitation sent to {email}.", "success")
+    else:
+        flash(f"Invitation link: {accept_url}", "info")
+
+    return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+
+
+@cms_bp.route("/tenants/<tenant_id>/users/<user_id>/deactivate", methods=["POST"])
+@login_required
+@admin_required
+def tenant_deactivate_user(tenant_id: str, user_id: str) -> flask.Response:
+    if not current_user.is_super_admin:
+        abort(403)
+    db.session.get(Tenant, tenant_id) or abort(404)
+    user = db.session.get(User, user_id) or abort(404)
+    if user.tenant_id != tenant_id:
+        abort(404)
+    if user.id == current_user.id:
+        flash("Cannot deactivate yourself.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
+    user.is_active = False
+    AuditLog.log(
+        user_id=current_user.id,
+        action="deactivate",
+        entity_type="user",
+        entity_id=user.id,
+        ip_address=request.remote_addr,
+        description=f"Super-admin deactivated user {user.username} in tenant {tenant_id}",
+    )
+    db.session.commit()
+    flash(f"User {user.full_name} deactivated.", "info")
+    return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
+
+
+@cms_bp.route("/tenants/<tenant_id>/users/<user_id>/reactivate", methods=["POST"])
+@login_required
+@admin_required
+def tenant_reactivate_user(tenant_id: str, user_id: str) -> flask.Response:
+    if not current_user.is_super_admin:
+        abort(403)
+    db.session.get(Tenant, tenant_id) or abort(404)
+    user = db.session.get(User, user_id) or abort(404)
+    if user.tenant_id != tenant_id:
+        abort(404)
+    user.is_active = True
+    AuditLog.log(
+        user_id=current_user.id,
+        action="reactivate",
+        entity_type="user",
+        entity_id=user.id,
+        ip_address=request.remote_addr,
+        description=f"Super-admin reactivated user {user.username} in tenant {tenant_id}",
+    )
+    db.session.commit()
+    flash(f"User {user.full_name} reactivated.", "success")
+    return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
+
+
+@cms_bp.route("/tenants/<tenant_id>/users/<user_id>/role", methods=["POST"])
+@login_required
+@admin_required
+def tenant_change_role(tenant_id: str, user_id: str) -> flask.Response:
+    if not current_user.is_super_admin:
+        abort(403)
+    db.session.get(Tenant, tenant_id) or abort(404)
+    user = db.session.get(User, user_id) or abort(404)
+    if user.tenant_id != tenant_id:
+        abort(404)
+    new_role = request.form.get("role", "").strip()
+    valid = {
+        "admin",
+        "senior_investigator",
+        "investigator",
+        "junior_investigator",
+        "viewer",
+    }
+    if new_role not in valid:
+        flash("Invalid role.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
+    old_role = user.role
+    user.role = new_role
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="user",
+        entity_id=user.id,
+        ip_address=request.remote_addr,
+        description=f"Super-admin changed role from {old_role} to {new_role} for user {user.username} in tenant {tenant_id}",
+    )
+    db.session.commit()
+    flash(f"Role for {user.full_name} changed to {new_role}.", "success")
+    return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
+
+
+@cms_bp.route("/tenants/<tenant_id>/users/<user_id>/reset-2fa", methods=["POST"])
+@login_required
+@admin_required
+def tenant_reset_2fa(tenant_id: str, user_id: str) -> flask.Response:
+    if not current_user.is_super_admin:
+        abort(403)
+    db.session.get(Tenant, tenant_id) or abort(404)
+    user = db.session.get(User, user_id) or abort(404)
+    if user.tenant_id != tenant_id:
+        abort(404)
+    user.totp_secret = None
+    user.totp_enabled = False
+    user.backup_codes = None
+    AuditLog.log(
+        user_id=current_user.id,
+        action="2fa_reset",
+        entity_type="user",
+        entity_id=user.id,
+        ip_address=request.remote_addr,
+        description=f"Super-admin reset 2FA for user {user.username} in tenant {tenant_id}",
+    )
+    db.session.commit()
+    flash(f"2FA reset for {user.full_name}.", "success")
+    return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
+
+
+@cms_bp.route("/tenants/<tenant_id>/billing-portal")
+@login_required
+@admin_required
+def tenant_billing_portal(tenant_id: str) -> flask.Response:
+    """Super-admin: open Stripe customer portal for a specific tenant."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    if not tenant.stripe_customer_id:
+        flash("No Stripe customer ID for this tenant.", "warning")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+    try:
+        import stripe
+
+        stripe.api_key = current_app.config.get("STRIPE_SECRET_KEY")
+        session = stripe.billing_portal.Session.create(
+            customer=tenant.stripe_customer_id,
+            return_url=url_for(
+                "cms.tenant_detail", tenant_id=tenant.id, _external=True
+            ),
+        )
+        return redirect(session.url, code=303)
+    except Exception as e:
+        logger.exception("Stripe portal error for tenant %s", tenant_id)
+        flash(f"Billing portal error: {e}", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+
+
+@cms_bp.route("/api/tenant-settings/upload-logo", methods=["POST"])
+@login_required
+def upload_tenant_logo():
+    """Upload logo for the current tenant."""
+    if not current_user.is_admin:
+        abort(403)
+    if "file" not in request.files:
+        return api_error("No file provided", 400)
+    file = request.files["file"]
+    if not file.filename:
+        return api_error("No file selected", 400)
+
+    import os as _os
+
+    ext = _os.path.splitext(file.filename)[1].lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"):
+        return api_error("Unsupported file type. Use PNG, JPG, GIF, SVG or WebP.", 400)
+
+    logo_dir = _os.path.join(current_app.root_path, "static", "uploads", "tenant_logos")
+    _os.makedirs(logo_dir, exist_ok=True)
+
+    filename = f"tenant_{current_user.tenant_id}{ext}"
+    filepath = _os.path.join(logo_dir, filename)
+    file.save(filepath)
+
+    TenantSetting.set(
+        "app_logo", filename, category="branding", description="Tenant logo filename"
+    )
+    db.session.commit()
+
+    return jsonify(
+        {
+            "filename": filename,
+            "url": url_for("static", filename=f"uploads/tenant_logos/{filename}"),
+        }
+    )
+
+
+@cms_bp.route("/api/tenant-settings/delete-logo", methods=["POST"])
+@login_required
+def delete_tenant_logo():
+    """Delete tenant logo."""
+    if not current_user.is_admin:
+        abort(403)
+    logo = TenantSetting.get("app_logo", tenant_id=current_user.tenant_id)
+    if logo:
+        import os as _os
+
+        filepath = _os.path.join(
+            current_app.root_path, "static", "uploads", "tenant_logos", logo
+        )
+        if _os.path.isfile(filepath):
+            try:
+                _os.remove(filepath)
+            except OSError:
+                pass
+        existing = TenantSetting.query.filter_by(
+            tenant_id=current_user.tenant_id, key="app_logo"
+        ).first()
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+    return jsonify({"status": "ok"})
+
+
+@cms_bp.route("/tenants/<tenant_id>/settings", methods=["POST"])
+@login_required
+@admin_required
+def tenant_update_settings(tenant_id: str) -> flask.Response:
+    """Super-admin: update tenant name/slug/domain."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    name = (request.form.get("name") or "").strip()
+    slug = (request.form.get("slug") or "").strip()
+    domain = (request.form.get("domain") or "").strip()
+
+    if name:
+        tenant.name = name
+    if slug:
+        existing = Tenant.query.filter(
+            Tenant.slug == slug, Tenant.id != tenant.id
+        ).first()
+        if existing:
+            flash("Slug already in use.", "danger")
+            return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+        tenant.slug = slug
+    if domain:
+        existing = Tenant.query.filter(
+            Tenant.domain == domain, Tenant.id != tenant.id
+        ).first()
+        if existing:
+            flash("Domain already in use.", "danger")
+            return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+        tenant.domain = domain
+    else:
+        tenant.domain = None
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="tenant",
+        entity_id=tenant.id,
+        ip_address=request.remote_addr,
+        description=f"Super-admin updated tenant {tenant.name} settings",
+    )
+    db.session.commit()
+    flash("Tenant settings updated.", "success")
+    return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+
+
+@cms_bp.route("/tenants/<tenant_id>/toggle-active", methods=["POST"])
+@login_required
+@admin_required
+def tenant_toggle_active(tenant_id: str) -> flask.Response:
+    """Super-admin: toggle tenant active/inactive."""
+    if not current_user.is_super_admin:
+        abort(403)
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    tenant.is_active = not tenant.is_active
+    action = "activated" if tenant.is_active else "deactivated"
+    AuditLog.log(
+        user_id=current_user.id,
+        action=action,
+        entity_type="tenant",
+        entity_id=tenant.id,
+        ip_address=request.remote_addr,
+        description=f"Super-admin {action} tenant {tenant.name}",
+    )
+    db.session.commit()
+    flash(f"Tenant {action}.", "success")
+    return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
+
+
 @cms_bp.route("/settings/update-tier", methods=["POST"])
 @login_required
 def update_tier():
@@ -920,3 +1368,184 @@ def delete_logo():
     db.session.commit()
 
     return jsonify({"status": "ok"})
+
+
+@cms_bp.route("/tenants/<tenant_id>/export")
+@login_required
+def tenant_export(tenant_id: str) -> flask.Response:
+    """Export all tenant data as a ZIP file (super-admin only)."""
+    if not current_user.is_super_admin:
+        abort(403)
+
+    import io
+    import zipfile
+
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+    from ..tier_limits import check_feature
+
+    if not check_feature("export", tenant_id=tenant_id):
+        flash("Export feature is not enabled for this tenant's plan.", "warning")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        # Tenant info
+        zf.writestr("tenant.json", json.dumps(tenant.to_dict(), indent=2, default=str))
+
+        # Users
+        users = User.query.filter_by(tenant_id=tenant_id).all()
+        zf.writestr(
+            "users.json",
+            json.dumps([u.to_dict() for u in users], indent=2, default=str),
+        )
+
+        # Cases
+        cases = Case.query.filter_by(tenant_id=tenant_id).all()
+        zf.writestr(
+            "cases.json",
+            json.dumps([c.to_dict() for c in cases], indent=2, default=str),
+        )
+
+        # Subjects
+        subjects = Subject.query.filter_by(tenant_id=tenant_id).all()
+        for s in subjects:
+            try:
+                s.decrypt_identifiers()
+            except Exception:
+                pass
+        zf.writestr(
+            "subjects.json",
+            json.dumps([s.to_dict() for s in subjects], indent=2, default=str),
+        )
+
+        # Clients
+        clients = Client.query.filter_by(tenant_id=tenant_id).all()
+        zf.writestr(
+            "clients.json",
+            json.dumps([c.to_dict() for c in clients], indent=2, default=str),
+        )
+
+        # Findings
+        findings = Finding.query.filter_by(tenant_id=tenant_id).all()
+        zf.writestr(
+            "findings.json",
+            json.dumps([f.to_dict() for f in findings], indent=2, default=str),
+        )
+
+        # Financial records
+        from ..models import FinancialRecord
+
+        fins = FinancialRecord.query.filter_by(tenant_id=tenant_id).all()
+        zf.writestr(
+            "financial_records.json",
+            json.dumps([f.to_dict() for f in fins], indent=2, default=str),
+        )
+
+        # Audit logs
+        logs = AuditLog.query.filter_by(tenant_id=tenant_id).all()
+        zf.writestr(
+            "audit_logs.json",
+            json.dumps([l.to_dict() for l in logs], indent=2, default=str),
+        )
+
+        # Screenshots (metadata + files)
+        from ..models import Screenshot
+
+        screenshots = Screenshot.query.filter_by(tenant_id=tenant_id).all()
+        zf.writestr(
+            "screenshots.json",
+            json.dumps([s.to_dict() for s in screenshots], indent=2, default=str),
+        )
+        for ss in screenshots:
+            if ss.storage_path:
+                file_path = os.path.join(
+                    current_app.root_path, "static", ss.storage_path
+                )
+                if os.path.isfile(file_path):
+                    arcname = f"screenshots/{ss.id}_{ss.filename}"
+                    zf.write(file_path, arcname)
+
+        # Documents (metadata + files)
+        docs = Document.query.filter_by(tenant_id=tenant_id, is_deleted=False).all()
+        zf.writestr(
+            "documents.json",
+            json.dumps([d.to_dict() for d in docs], indent=2, default=str),
+        )
+        for doc in docs:
+            if doc.storage_path:
+                file_path = os.path.join(
+                    current_app.root_path, "static", doc.storage_path
+                )
+                if os.path.isfile(file_path):
+                    arcname = f"documents/{doc.id}_{doc.filename}"
+                    zf.write(file_path, arcname)
+
+    buf.seek(0)
+    safe_name = tenant.slug.replace("/", "_").replace("\\", "_")
+    return flask.send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"{safe_name}-export.zip",
+    )
+
+
+@cms_bp.route("/tenants/<tenant_id>/gdpr-delete", methods=["GET", "POST"])
+@login_required
+def tenant_gdpr_delete(tenant_id: str):
+    """GDPR-compliant tenant deletion with confirmation (super-admin only)."""
+    if not current_user.is_super_admin:
+        abort(403)
+
+    tenant = db.session.get(Tenant, tenant_id) or abort(404)
+
+    if request.method == "GET":
+        from ..models import User, Case, Subject, Client, Finding, Document
+
+        counts = {
+            "users": User.query.filter_by(tenant_id=tenant_id).count(),
+            "cases": Case.query.filter_by(tenant_id=tenant_id).count(),
+            "subjects": Subject.query.filter_by(tenant_id=tenant_id).count(),
+            "clients": Client.query.filter_by(tenant_id=tenant_id).count(),
+            "findings": Finding.query.filter_by(tenant_id=tenant_id).count(),
+            "documents": Document.query.filter_by(
+                tenant_id=tenant_id, is_deleted=False
+            ).count(),
+        }
+        return render_template(
+            "cms/settings/tenant_gdpr_delete.html",
+            tenant=tenant,
+            counts=counts,
+        )
+
+    # POST — perform deletion
+    confirm_name = request.form.get("confirm_name", "").strip()
+    if confirm_name != tenant.name:
+        flash("Tenant name does not match. Deletion cancelled.", "error")
+        return redirect(url_for("cms.tenant_gdpr_delete", tenant_id=tenant_id))
+
+    # Log the deletion before purging
+    from ..data_retention import _purge_single_tenant
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="delete",
+        entity_type="tenant",
+        entity_id=tenant_id,
+        description=f"GDPR deletion of tenant '{tenant.name}' ({tenant.slug}) by {current_user.full_name}",
+        ip_address=request.remote_addr,
+    )
+    db.session.commit()
+
+    try:
+        _purge_single_tenant(tenant, dry_run=False)
+        flash(
+            f"All data for tenant '{tenant.name}' has been permanently deleted.",
+            "success",
+        )
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("GDPR deletion failed for tenant %s", tenant_id)
+        flash(f"Deletion failed: {e}", "error")
+
+    return redirect(url_for("cms.list_tenants"))

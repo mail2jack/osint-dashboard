@@ -1,0 +1,232 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Analytics') }} — CMS{% endblock %}
+{% block content %}
+<style>
+.analytics-header {
+    display:flex;justify-content:space-between;align-items:center;margin:0 0 1.5rem;
+}
+.analytics-header h1 { margin:0; }
+.period-toggle { display:flex;gap:0.25rem; }
+.period-btn {
+    padding:0.35rem 0.75rem;border:1px solid var(--border-color);border-radius:6px;
+    background:var(--card-bg);cursor:pointer;font-size:0.8rem;color:var(--text);
+}
+.period-btn.active { background:var(--accent);color:#fff;border-color:var(--accent); }
+.metric-grid {
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:2rem;
+}
+.metric-card {
+    background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:1.25rem;
+    position:relative;overflow:hidden;
+}
+.metric-card .label {
+    font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;
+    color:var(--text-muted);margin-bottom:0.35rem;
+}
+.metric-card .value {
+    font-size:1.75rem;font-weight:700;color:var(--text);
+}
+.metric-card .sub {
+    font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;
+}
+.metric-card .limit-bar {
+    margin-top:0.5rem;height:4px;background:var(--bg-secondary);border-radius:2px;overflow:hidden;
+}
+.metric-card .limit-fill {
+    height:100%;border-radius:2px;transition:width 0.3s;
+}
+.metric-card .limit-fill.ok { background:#10b981; }
+.metric-card .limit-fill.warn { background:#f59e0b; }
+.metric-card .limit-fill.danger { background:#ef4444; }
+.usage-row {
+    display:flex;align-items:flex-end;gap:2px;height:120px;margin:1.5rem 0;
+}
+.usage-bar {
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    position:relative;height:100%;
+}
+.usage-bar .bar {
+    width:100%;min-height:2px;border-radius:3px 3px 0 0;
+    transition:height 0.4s ease;position:relative;
+}
+.usage-bar .bar-tooltip {
+    display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+    background:#1f2937;color:#fff;font-size:0.65rem;padding:0.2rem 0.5rem;border-radius:4px;
+    white-space:nowrap;z-index:10;margin-bottom:4px;
+}
+.usage-bar:hover .bar-tooltip { display:block; }
+.usage-bar .date-label {
+    font-size:0.55rem;color:var(--text-muted);margin-top:4px;white-space:nowrap;
+}
+.chart-tabs { display:flex;gap:0.25rem;margin-bottom:1rem;flex-wrap:wrap; }
+.chart-tab {
+    padding:0.3rem 0.6rem;border:1px solid var(--border-color);border-radius:5px;
+    background:var(--card-bg);cursor:pointer;font-size:0.75rem;color:var(--text);
+}
+.chart-tab.active { background:var(--accent);color:#fff;border-color:var(--accent); }
+.history-table {
+    width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:1rem;
+}
+.history-table th {
+    text-align:left;padding:0.4rem 0.5rem;border-bottom:2px solid var(--border-color);
+    font-size:0.65rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);
+}
+.history-table td {
+    padding:0.4rem 0.5rem;border-bottom:1px solid var(--border-color);
+}
+.history-table tr:hover td { background:var(--table-hover); }
+</style>
+
+<div class="analytics-header">
+    <h1>📊 {{ _('Usage Analytics') }}</h1>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+        {% if current_user.is_super_admin %}
+        <a href="{{ url_for('cms.analytics_super') }}" class="btn-cms" style="font-size:0.8rem;">🔭 {{ _('Super Admin Overview') }}</a>
+        {% endif %}
+        <div class="period-toggle">
+            <button class="period-btn active" data-period="7">7 {{ _('days') }}</button>
+            <button class="period-btn" data-period="30">30 {{ _('days') }}</button>
+        </div>
+    </div>
+</div>
+
+<div class="metric-grid" id="metricGrid">
+    {% for key, label, icon, unit in [
+        ('users', 'Users', '👥', ''),
+        ('cases', 'Cases', '📁', ''),
+        ('subjects', 'Subjects', '👤', ''),
+        ('clients', 'Clients', '🏢', ''),
+        ('findings', 'Findings', '📄', ''),
+        ('documents', 'Documents', '📎', ''),
+        ('audit_log_entries', 'Audit Log', '📋', 'entries'),
+    ] %}
+    {% set v = stats_7[key][0] %}
+    {% set delta = stats_7[key][2] %}
+    {% set limit = tier_limits.get(key) %}
+    <div class="metric-card" data-metric="{{ key }}">
+        <div class="label">{{ icon }} {{ label }}</div>
+        <div class="value">{{ v }}</div>
+        <div class="sub">
+            {% if delta > 0 %}
+            <span style="color:#10b981;">↑ +{{ delta }}</span>
+            {% elif delta < 0 %}
+            <span style="color:#ef4444;">↓ {{ delta }}</span>
+            {% else %}
+            <span style="color:var(--text-muted);">—</span>
+            {% endif %}
+            <span style="color:var(--text-muted);margin-left:0.25rem;">{{ _('7 day change') }}</span>
+        </div>
+        {% if limit %}
+        {% set pct = (v / limit * 100)|round(0)|int %}
+        {% set cls = 'danger' if pct >= 90 else ('warn' if pct >= 70 else 'ok') %}
+        <div class="limit-bar"><div class="limit-fill {{ cls }}" style="width:{{ pct if pct <= 100 else 100 }}%;"></div></div>
+        <div class="sub" style="font-size:0.65rem;margin-top:0.15rem;">
+            {{ v }}/{{ limit }} {{ unit }} ({{ pct }}%)
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% if chart_dates %}
+<div style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:1.25rem;margin-bottom:2rem;">
+    <h3 style="margin:0 0 0.5rem;">📈 {{ _('Usage over time') }}</h3>
+    <div class="chart-tabs" id="chartTabs">
+        {% for m, lbl in [('users','Users'),('cases','Cases'),('subjects','Subjects'),('findings','Findings'),('audit_log_entries','Audit Log')] %}
+        <button class="chart-tab {{ 'active' if loop.first }}" data-metric="{{ m }}">{{ lbl }}</button>
+        {% endfor %}
+    </div>
+    {% for m, lbl in [('users','Users'),('cases','Cases'),('subjects','Subjects'),('findings','Findings'),('audit_log_entries','Audit Log')] %}
+    {% set vals = chart_data[m] %}
+    {% set maxv = vals|max or 1 %}
+    <div class="chart-container" data-metric="{{ m }}" style="{{ '' if loop.first else 'display:none;' }}">
+        <div class="usage-row">
+            {% for d in chart_dates %}
+            {% set v = chart_data[m][loop.index0] %}
+            {% set h = (v / maxv * 100)|round(1) %}
+            <div class="usage-bar">
+                <div class="bar" style="height:{{ h }}%;background:{% if m == 'users' %}#6366f1{% elif m == 'cases' %}#10b981{% elif m == 'subjects' %}#f59e0b{% elif m == 'findings' %}#3b82f6{% else %}#8b5cf6{% endif %};">
+                    <div class="bar-tooltip">{{ lbl }}: {{ v }}</div>
+                </div>
+                <div class="date-label">{{ d.strftime('%-d') if chart_dates|length > 14 else d.strftime('%-d/%m') }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:2rem;text-align:center;color:var(--text-muted);margin-bottom:2rem;">
+    <p style="font-size:1.1rem;">{{ _('No usage data yet.') }}</p>
+    <p>{{ _('Run the daily aggregation or wait for the first cron run.') }}</p>
+    {% if current_user.is_super_admin %}
+    <form method="POST" action="{{ url_for('cms.aggregate_usage_now') }}" style="margin-top:1rem;">
+        <button type="submit" class="btn-cms">{{ _('Aggregate Now') }}</button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<div style="background:var(--card-bg);border:1px solid var(--border-color);border-radius:10px;padding:1.25rem;">
+    <h3 style="margin:0 0 0.5rem;">📋 {{ _('Detailed History') }}</h3>
+    {% if days_30 %}
+    <div style="overflow-x:auto;">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>{{ _('Date') }}</th>
+                    <th>{{ _('Users') }}</th>
+                    <th>{{ _('Cases') }}</th>
+                    <th>{{ _('Subjects') }}</th>
+                    <th>{{ _('Clients') }}</th>
+                    <th>{{ _('Findings') }}</th>
+                    <th>{{ _('Documents') }}</th>
+                    <th>{{ _('Audit Log') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in chart_dates|reverse %}
+                {% set r = days_30|selectattr('record_date', 'equalto', d)|list %}
+                <tr>
+                    <td>{{ d.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ r|selectattr('metric_name','equalto','users')|map(attribute='metric_value')|first|default('—') }}</td>
+                    <td>{{ r|selectattr('metric_name','equalto','cases')|map(attribute='metric_value')|first|default('—') }}</td>
+                    <td>{{ r|selectattr('metric_name','equalto','subjects')|map(attribute='metric_value')|first|default('—') }}</td>
+                    <td>{{ r|selectattr('metric_name','equalto','clients')|map(attribute='metric_value')|first|default('—') }}</td>
+                    <td>{{ r|selectattr('metric_name','equalto','findings')|map(attribute='metric_value')|first|default('—') }}</td>
+                    <td>{{ r|selectattr('metric_name','equalto','documents')|map(attribute='metric_value')|first|default('—') }}</td>
+                    <td>{{ r|selectattr('metric_name','equalto','audit_log_entries')|map(attribute='metric_value')|first|default('—') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted);">{{ _('No data recorded yet.') }}</p>
+    {% endif %}
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(function() {
+    var tabs = document.querySelectorAll('.chart-tab');
+    tabs.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            tabs.forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            var m = btn.dataset.metric;
+            document.querySelectorAll('.chart-container').forEach(function(c) {
+                c.style.display = c.dataset.metric === m ? '' : 'none';
+            });
+        });
+    });
+
+    var periodBtns = document.querySelectorAll('.period-btn');
+    periodBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            periodBtns.forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+        });
+    });
+})();
+</script>
+{% endblock %}

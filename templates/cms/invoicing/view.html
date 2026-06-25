@@ -17,6 +17,7 @@
         <div style="display:flex;gap:0.5rem;align-items:center;">
             <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small">← {{ _('Overzicht') }}</a>
             <a href="{{ url_for('cms.invoice_pdf', invoice_id=invoice.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;">{{ _('📄 PDF') }}</a>
+            <a href="{{ url_for('cms.credit_note_create', invoice_id=invoice.id) }}" class="btn-cms small" style="background:#f59e0b;text-decoration:none;">{{ _('Credit Note') }}</a>
             {% if invoice.status == 'draft' %}
             <a href="{{ url_for('cms.invoice_edit', invoice_id=invoice.id) }}" class="btn-cms small bg-purple">{{ _('Bewerken') }}</a>
             <form method="POST" action="{{ url_for('cms.invoice_send', invoice_id=invoice.id) }}" style="display:inline;" data-submit="confirmSend">

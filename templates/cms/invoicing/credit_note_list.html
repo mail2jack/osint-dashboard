@@ -1,0 +1,72 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Credit Notes') }}{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">
+        <h2>{{ _('Credit Notes') }}</h2>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+            <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small">{{ _('← Invoices') }}</a>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem;padding:0.75rem 1rem;background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+        <div><span style="color:#6b7280;font-size:0.75rem;">{{ _('Total issued') }}</span><br><strong style="color:#059669;">€ {{ "%.2f"|format(total_issued) }}</strong></div>
+    </div>
+
+    <div style="padding:0.75rem 1rem;display:flex;flex-wrap:wrap;gap:0.5rem;border-bottom:1px solid #e5e7eb;">
+        <form method="GET" action="{{ url_for('cms.credit_note_list') }}" style="display:flex;flex-wrap:wrap;gap:0.5rem;width:100%;">
+            <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Search by number...') }}" style="padding:0.3rem 0.5rem;border:1px solid #ddd;border-radius:4px;flex:1;min-width:150px;">
+            <button type="submit" class="btn-cms small">{{ _('Search') }}</button>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>{{ _('Number') }}</th>
+                <th>{{ _('Invoice') }}</th>
+                <th>{{ _('Client') }}</th>
+                <th>{{ _('Date') }}</th>
+                <th>{{ _('Total') }}</th>
+                <th>{{ _('Status') }}</th>
+                <th>{{ _('Created by') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cn in credit_notes %}
+            <tr>
+                <td><a href="{{ url_for('cms.credit_note_view', credit_note_id=cn.id) }}" style="font-weight:600;">{{ cn.credit_note_number }}</a></td>
+                <td>{% if cn.invoice_number %}<a href="{{ url_for('cms.invoice_view', invoice_id=cn.invoice_id) }}">{{ cn.invoice_number }}</a>{% else %}—{% endif %}</td>
+                <td>{{ cn.client_name or '—' }}</td>
+                <td>{{ cn.issue_date }}</td>
+                <td><strong>€ {{ "%.2f"|format(cn.total) }}</strong></td>
+                <td>
+                    <span style="display:inline-block;padding:0.1rem 0.4rem;border-radius:3px;font-size:0.75rem;font-weight:600;
+                    {% if cn.status=='draft' %}background:#f3f4f6;color:#6b7280;
+                    {% elif cn.status=='issued' %}background:#dbeafe;color:#2563eb;
+                    {% endif %}">{{ cn.status }}</span>
+                </td>
+                <td>{{ cn.created_by or '—' }}</td>
+                <td>
+                    <a href="{{ url_for('cms.credit_note_pdf', credit_note_id=cn.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;padding:0.15rem 0.4rem;font-size:0.75rem;">PDF</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:2rem;">{{ _('No credit notes found.') }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if pagination.pages > 1 %}
+    <div style="padding:0.75rem 1rem;display:flex;justify-content:center;gap:0.5rem;">
+        {% for p in range(1, pagination.pages + 1) %}
+        <a href="?page={{ p }}&q={{ search }}"
+           style="padding:0.2rem 0.5rem;border:1px solid #ddd;border-radius:4px;text-decoration:none;{% if p==pagination.page %}background:#1a1a2e;color:white;{% endif %}">{{ p }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

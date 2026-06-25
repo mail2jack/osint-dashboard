@@ -11,6 +11,7 @@ from ..models import db, Subject, AuditLog
 from ..auth import roles_required, subject_access_required, apply_tenant_filter
 from ..image_validation import validate_image_file
 from ..validation import validate, SaveFaceEncodingSchema, CompareFacesSchema
+from ..tier_limits import check_storage_limit
 
 from .response import api_error
 
@@ -40,6 +41,19 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
             {"error": "Only image files allowed (PNG, JPEG, GIF, WebP)"}
         ), 400
     ext = detected_ext
+
+    # Check storage quota before saving
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    ok, used_mb, max_mb = check_storage_limit(
+        current_user.tenant_id, extra_bytes=file_size
+    )
+    if not ok:
+        return api_error(
+            f"Storage limit reached ({used_mb}/{max_mb} MB). Upgrade your plan to upload photos.",
+            403,
+        )
 
     # Create upload directory
     upload_dir = os.path.join(

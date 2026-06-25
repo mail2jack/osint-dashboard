@@ -244,6 +244,19 @@ Developers kunnen kiezen: SQLite (snel, zero-config) of PostgreSQL (productiemat
 
 ---
 
+## June 19 — Subject.created_by + Analytics import fix
+
+### Wijzigingen
+- **`cms/models/__init__.py`**: `Subject.created_by` column (`String(36)`, FK → `users.id`, indexed) + `creator` relationship added.
+- **Subject creation routes**: `created_by=current_user.id` set in `subjects_crud.py` (`create_subject`), `social_accounts.py` (`create_subject_from_username`), `imports.py` (`import_subjects_csv`).
+- **Migration `29bb9c967909`**: Idempotent `ALTER TABLE` for `subjects.created_by` + `clients.created_by` using `_has_column()` dialect-aware helper (works on both PostgreSQL and SQLite).
+- **Pre-existing bugfix**: `analytics.py` used `request.method` on line 83 but `request` was not imported — added `request` to Flask import line.
+
+### Tests
+292 passed, 4 skipped, 0 failed — geen regressie.
+
+---
+
 ## May 30
 ### Search Access Control + Notifications
 - `cms/routes/notifications_api.py` — `/cms/api/notifications/*` endpoints.

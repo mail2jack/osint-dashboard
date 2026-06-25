@@ -1,0 +1,26 @@
+const CASE_ID = '{{ case.id }}';
+const POLL_INTERVAL = 2000;
+const CREDIT_LIMITS = {tiktok: 50, instagram: 10, linkedin: 50, twitter: 1000};
+let pollTimer = null;
+
+function updateCredits(actionType) {
+  var btn = document.querySelector('[data-action-key="' + actionType + '"]');
+  if (!btn) return;
+  var cur = parseInt(btn.dataset.credits);
+  if (isNaN(cur)) return;
+  var rem = Math.max(0, cur - 1);
+  btn.dataset.credits = rem;
+  var badge = btn.querySelector('.credit-badge');
+  if (badge) {
+    badge.textContent = rem + '/' + CREDIT_LIMITS[actionType];
+    badge.style.background = rem === 0 ? '#ef4444' : rem <= 5 ? '#f59e0b' : '#22c55e';
+  }
+  var desc = btn.querySelector('.desc');
+  if (desc && rem === 0) {
+    desc.textContent = btn.dataset.label + ' uitvoeren — 🚫 opgebruikt';
+  } else if (desc && rem <= 5) {
+    desc.textContent = btn.dataset.label + ' uitvoeren — nog ' + rem + '/' + CREDIT_LIMITS[actionType] + ' credits';
+  }
+}
+
+const SUBJECTS = {{ subjects_data|tojson }};

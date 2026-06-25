@@ -23,6 +23,7 @@ from ..auth import (
 from ..encryption_utils import encryptor
 from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
+from ..tier_limits import check_resource_limit
 
 from .response import api_success, api_error
 
@@ -97,6 +98,20 @@ def create_subject() -> flask.Response:
                     submitted_type=data.get("subject_type"),
                 )
 
+        # Check subject limit before creating
+        ok, cur, maximum = check_resource_limit(Subject, "tenant_id", "max_subjects")
+        if not ok:
+            if request.is_json:
+                return api_error(
+                    f"Subject limit reached ({cur}/{maximum}). Upgrade your plan to add more subjects.",
+                    403,
+                )
+            flash(
+                f"Subject limit reached ({cur}/{maximum}). Upgrade your plan to add more subjects.",
+                "danger",
+            )
+            return render_template("cms/subjects/create.html")
+
         subject = Subject(
             name=name,
             subject_type=data["subject_type"],
@@ -121,6 +136,7 @@ def create_subject() -> flask.Response:
             place_of_birth=data.get("place_of_birth"),
             identification_number=data.get("identification_number"),
             bank_account=data.get("bank_account"),
+            created_by=current_user.id,
         )
 
         if data["subject_type"] == "vehicle":

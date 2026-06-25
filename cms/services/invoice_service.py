@@ -8,7 +8,15 @@ from datetime import datetime
 import flask
 from weasyprint import HTML as WPHTML
 
-from ..models import db, Invoice, InvoiceItem, Payment, Client
+from ..models import (
+    db,
+    Invoice,
+    InvoiceItem,
+    Payment,
+    Client,
+    CreditNote,
+    CreditNoteItem,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,3 +86,28 @@ def mark_invoice_overdue(invoice: Invoice) -> None:
 def mark_invoice_cancelled(invoice: Invoice, reason: str = "") -> None:
     invoice.mark_cancelled(reason)
     db.session.commit()
+
+
+def generate_credit_note_pdf(cn: CreditNote) -> bytes:
+    """Render credit note as PDF bytes via WeasyPrint."""
+    invoice = db.session.get(Invoice, cn.invoice_id) if cn.invoice_id else None
+    client = db.session.get(Client, invoice.client_id) if invoice else None
+    items = (
+        CreditNoteItem.query.filter_by(credit_note_id=cn.id)
+        .order_by(CreditNoteItem.sort_order)
+        .all()
+    )
+
+    html = flask.render_template(
+        "cms/invoicing/credit_note_pdf.html",
+        cn=cn,
+        invoice=invoice,
+        client=client,
+        items=items,
+        now=datetime.now,
+    )
+    try:
+        return WPHTML(string=html).write_pdf()
+    except Exception as e:
+        logger.error("Credit note PDF generation failed: %s", e)
+        raise

@@ -2,6 +2,10 @@
 Rate limiting utilities for API endpoints and external platform calls.
 Rate limit state is persisted to the database via Setting model
 so it survives restarts.
+
+Supports per-tenant rate limits (checked in addition to per-IP limits)
+using tier defaults stored in PlatformSetting("rate_limit_tier_defaults")
+with optional per-tenant overrides in PlatformSetting("rate_limit_overrides").
 """
 
 import time
@@ -15,6 +19,8 @@ logger = __import__("logging").getLogger(__name__)
 
 _SETTING_KEY_API = "rate_limits_api"
 _SETTING_KEY_PLATFORM = "rate_limits_platform"
+_SETTING_KEY_TIER = "rate_limit_tier_defaults"
+_SETTING_KEY_OVERRIDES = "rate_limit_overrides"
 _LOADED = False
 
 # ---------------------------------------------------------------------------
@@ -27,6 +33,15 @@ _api_lock = threading.Lock()
 DEFAULT_RATE_LIMIT = (100, 60)  # 100 requests / 60 seconds
 STRICT_RATE_LIMIT = (30, 60)  # 30 requests / 60 seconds
 GLOBAL_LIMIT = (300, 60)  # 300 requests / 60 seconds per IP (all endpoints combined)
+
+# ---------------------------------------------------------------------------
+# Per-tenant rate limit counters — separate from per-IP limits
+# ---------------------------------------------------------------------------
+
+_tenant_api_counters: dict = {}
+_tenant_lock = threading.Lock()
+
+DEFAULT_TENANT_RATE_LIMIT = 200  # requests/min fallback if no config found
 
 
 def load_rate_limits():
@@ -186,6 +201,44 @@ def rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="default"):
 
                 rate_data["count"] += 1
 
+            # Per-tenant limit check (only for authenticated users)
+            try:
+                from flask_login import current_user as _cu
+
+                if _cu and _cu.is_authenticated:
+                    tid = _cu.tenant_id
+                    tkey = f"tenant:{tid}:{key_prefix}"
+                    tlimit = get_tenant_rate_limit(tid)
+
+                    with _tenant_lock:
+                        tnow = time.time()
+                        if tkey not in _tenant_api_counters:
+                            _tenant_api_counters[tkey] = {
+                                "count": 0,
+                                "window_start": tnow,
+                            }
+                        tdata = _tenant_api_counters[tkey]
+                        if tnow - tdata["window_start"] > 60:
+                            tdata["count"] = 0
+                            tdata["window_start"] = tnow
+                        if tdata["count"] >= tlimit:
+                            retry_after = int(60 - (tnow - tdata["window_start"]))
+                            return (
+                                flask.jsonify(
+                                    {
+                                        "error": "Tenant rate limit exceeded",
+                                        "limit": tlimit,
+                                        "window_seconds": 60,
+                                        "retry_after": max(retry_after, 1),
+                                    }
+                                ),
+                                429,
+                                {"Retry-After": str(max(retry_after, 1))},
+                            )
+                        tdata["count"] += 1
+            except Exception:
+                pass  # Not authenticated or no app context — skip tenant check
+
             response = f(*args, **kwargs)
 
             if hasattr(response, "headers"):
@@ -202,6 +255,75 @@ def rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="default"):
         return decorated_function
 
     return decorator
+
+
+# ---------------------------------------------------------------------------
+# Per-tenant rate limit helpers
+# ---------------------------------------------------------------------------
+
+
+def get_tier_rate_limit(tier: str) -> int:
+    """Return the default rate limit (requests/min) for a given tier."""
+    try:
+        from .models import Setting as _Setting
+
+        raw = _Setting.get(_SETTING_KEY_TIER)
+        if raw:
+            import json
+
+            config = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(config, dict) and tier in config:
+                return int(config[tier])
+    except Exception:
+        pass
+    return DEFAULT_TENANT_RATE_LIMIT
+
+
+def get_tenant_rate_limit(tenant_id: str, tier: str | None = None) -> int:
+    """Return effective per-tenant rate limit (requests/min).
+
+    Priority: per-tenant override > tier default > fallback.
+    """
+    try:
+        from .models import Setting as _Setting
+
+        raw = _Setting.get(_SETTING_KEY_OVERRIDES)
+        if raw:
+            import json
+
+            overrides = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(overrides, dict) and tenant_id in overrides:
+                return int(overrides[tenant_id])
+    except Exception:
+        pass
+
+    if tier:
+        return get_tier_rate_limit(tier)
+    try:
+        from .models import Tenant
+
+        tenant = Tenant.query.get(tenant_id)
+        if tenant:
+            return get_tier_rate_limit(tenant.tier)
+    except Exception:
+        pass
+    return DEFAULT_TENANT_RATE_LIMIT
+
+
+def get_tenant_api_rate_status() -> list:
+    """Return current per-tenant rate limit counters for monitoring."""
+    with _tenant_lock:
+        now = time.time()
+        return [
+            {
+                "tenant_key": key,
+                "count": data["count"],
+                "window_start": data["window_start"],
+                "remaining": max(0, 60 - (now - data["window_start"])),
+            }
+            for key, data in _tenant_api_counters.items()
+            if data["count"] > 0
+        ]
 
 
 def get_api_rate_limit_status() -> list:

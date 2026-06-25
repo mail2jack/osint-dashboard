@@ -13,6 +13,7 @@ from ..validation import validate, CaptureScreenshotSchema, ScreenshotUploadSche
 from ..models import db, Case, Screenshot, AuditLog
 from ..auth import case_access_required, case_edit_required, apply_tenant_filter
 from ..image_validation import validate_image_file
+from ..tier_limits import check_storage_limit
 
 from .response import api_success, api_error
 
@@ -75,6 +76,19 @@ def upload_screenshot(case_id: str) -> flask.Response:
         return jsonify(
             {"error": "File must be an image (PNG, JPEG, GIF, or WebP)"}
         ), 400
+
+    # Check storage quota before saving
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    ok, used_mb, max_mb = check_storage_limit(
+        current_user.tenant_id, extra_bytes=file_size
+    )
+    if not ok:
+        return api_error(
+            f"Storage limit reached ({used_mb}/{max_mb} MB). Upgrade your plan to upload more files.",
+            403,
+        )
 
     # Create screenshot directory
     screenshot_dir = get_screenshot_path(case_id)
@@ -204,6 +218,17 @@ def capture_screenshot(case_id: str) -> flask.Response:
                 browser.close()
 
             file_size = os.path.getsize(filepath)
+
+            # Check storage quota after capturing
+            ok, used_mb, max_mb = check_storage_limit(
+                current_user.tenant_id, extra_bytes=file_size
+            )
+            if not ok:
+                os.remove(filepath)
+                return api_error(
+                    f"Storage limit reached ({used_mb}/{max_mb} MB). Upgrade your plan to capture more screenshots.",
+                    403,
+                )
 
         except ImportError:
             # Playwright not installed - try selenium as fallback

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Proces-verbaal — {{ case.case_number }}</title>
+<style nonce="{{ csp_nonce }}">
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Times New Roman','Georgia',serif;font-size:12pt;line-height:1.6;color:#111;background:#fff;padding:40px 60px}
+h1{font-size:18pt;text-align:center;text-transform:uppercase;letter-spacing:1px;margin-bottom:4pt;font-weight:700}
+h2{font-size:14pt;margin-top:24pt;margin-bottom:8pt;font-weight:700;border-bottom:1px solid #222;padding-bottom:2pt}
+h3{font-size:12pt;margin-top:18pt;margin-bottom:6pt;font-weight:700}
+h4{font-size:12pt;margin-top:14pt;margin-bottom:4pt;font-weight:600;font-style:italic}
+p{margin-bottom:8pt;text-align:justify}
+table{width:100%;border-collapse:collapse;margin:10pt 0;font-size:11pt}
+th,td{text-align:left;padding:4pt 6pt;border:1px solid #444;vertical-align:top}
+th{background:#f0f0f0;font-weight:700}
+hr{border:none;border-top:1px solid #222;margin:18pt 0}
+.header{text-align:center;margin-bottom:24pt}
+.header .meta{font-size:11pt;margin-top:6pt;color:#333}
+.footer{margin-top:30pt;padding-top:12pt;border-top:1px solid #222;font-size:11pt;color:#444}
+.footer .signature{margin-top:30pt}
+.pv-actions{text-align:right;margin-bottom:20pt}
+.pv-actions .btn-cms{display:inline-block;padding:6px 14px;font-size:11pt;background:#2563eb;color:#fff;text-decoration:none;border-radius:4px;border:none;cursor:pointer}
+.pv-actions .btn-cms:hover{background:#1d4ed8}
+.pv-body h2:first-of-type{margin-top:0}
+.pv-body table th{background:#f0f0f0}
+.subject-line{font-size:11pt;margin-bottom:4pt}
+.print-hide{display:block}
+@media print{body{padding:20px 40px}.pv-actions{display:none!important}@page{margin:20mm 25mm}}
+</style>
+</head>
+<body>
+
+<div class="pv-actions print-hide">
+  <a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}" class="btn-cms" style="background:#6b7280;margin-right:8px;">✏️ Bewerken</a>
+  <button class="btn-cms" onclick="window.print()">🖨️ Print / PDF</button>
+</div>
+
+<div class="header">
+  <h1>Proces-verbaal van onderzoek</h1>
+  <div class="meta">
+    <strong>{{ case.case_number }}</strong> — {{ case.title }}
+  </div>
+</div>
+
+<table>
+  <tr><th style="width:180px">Zaak</th><td>{{ case.case_number }} — {{ case.title }}</td></tr>
+  <tr><th>Opdrachtgever</th><td>{{ client.name if client else 'Onbekend' }}{% if client and client.reference %} (ref: {{ client.reference }}){% endif %}</td></tr>
+  <tr><th>Betrokkene(n)</th><td>{% for s in subjects %}{{ s.name }}{% if s.identification_number %} ({{ s.identification_number }}){% endif %}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</td></tr>
+  <tr><th>Datum opgemaakt</th><td>{{ case.updated_at.strftime('%d-%m-%Y') if case.updated_at else case.created_at.strftime('%d-%m-%Y') }}</td></tr>
+  <tr><th>Opgesteld door</th><td>{{ case.lead_investigator or 'Onbekend' }}</td></tr>
+  <tr><th>Status</th><td>{{ case.status }}</td></tr>
+</table>
+
+<hr>
+
+{% if body_html %}
+<div class="pv-body">
+{{ body_html|safe }}
+</div>
+{% else %}
+<p style="color:#888;font-style:italic;">Nog geen PV-tekst opgesteld. <a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}">Klik hier om te bewerken</a>.</p>
+{% endif %}
+
+{% if findings %}
+<hr>
+<h2>Bevindingen</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">#</th>
+      <th>Bevinding</th>
+      <th>Bron</th>
+      <th>Datum</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for f in findings %}
+    <tr>
+      <td>{{ loop.index }}.</td>
+      <td>{{ f.title }}{% if f.detail %}<br><span style="font-size:10pt;color:#555;">{{ f.detail }}</span>{% endif %}</td>
+      <td>{{ f.source_type or '—' }}</td>
+      <td>{{ f.created_at.strftime('%d-%m-%Y') if f.created_at else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="footer">
+  <p>Digitaal opgemaakt te {{ client.city if client and client.city else '[plaats]' }} op {{ case.updated_at.strftime('%d-%m-%Y') if case.updated_at else case.created_at.strftime('%d-%m-%Y') }}.</p>
+  <div class="signature">
+    <p>{{ case.lead_investigator or 'Onderzoeker' }}</p>
+  </div>
+</div>
+
+</body>
+</html>

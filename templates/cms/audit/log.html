@@ -15,8 +15,23 @@
     .filter-group label { font-size: 0.75rem; color: var(--text-secondary, #666); }
 </style>
 
-<div style="margin-bottom: 1rem;">
-    <h1 style="margin-bottom: 1rem;">Audit Log</h1>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+    <div>
+        <h1>Audit Log</h1>
+        <p style="color:var(--text-secondary);font-size:0.85rem;margin:0;">
+            {{ total_count }} entries &middot;
+            {% if retention_days > 0 %}
+            Retaining {{ retention_days }} days
+            {% else %}
+            Keeping forever
+            {% endif %}
+        </p>
+    </div>
+    {% if current_user.is_admin %}
+    <form method="POST" action="{{ url_for('cms.audit_purge') }}" onsubmit="return confirm('Purge audit logs older than {{ retention_days }} days? This cannot be undone.')">
+        <button type="submit" class="btn-cms danger" {% if retention_days <= 0 %}disabled title="Set retention period in settings first"{% endif %}>🗑️ Purge Old</button>
+    </form>
+    {% endif %}
 </div>
 
 <div class="card">

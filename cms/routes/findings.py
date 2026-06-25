@@ -11,6 +11,7 @@ from ..auth import roles_required
 from ..validation import validate, CreateFindingSchema
 
 from .response import api_error
+from ..tier_limits import check_resource_limit
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,14 @@ def create_finding() -> flask.Response:
     ).first()
     if not case:
         return api_error("Case not found", 404)
+
+    # Check finding limit before creating
+    ok, cur, maximum = check_resource_limit(Finding, "tenant_id", "max_findings")
+    if not ok:
+        return api_error(
+            f"Finding limit reached ({cur}/{maximum}). Upgrade your plan to add more findings.",
+            403,
+        )
 
     finding = Finding(
         case_id=request.validated_data["case_id"],

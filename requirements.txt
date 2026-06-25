@@ -69,3 +69,6 @@ Flask-Babel>=4.0
 flask-compress>=1.24
 playwright>=1.40.0
 python-telegram-bot>=20.0
+
+# SMS/WhatsApp delivery (optional, requires Twilio account)
+twilio>=9.0.0

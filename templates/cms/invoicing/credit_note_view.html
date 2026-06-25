@@ -1,0 +1,93 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Credit Note') }} {{ cn.credit_note_number }}{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">
+        <div>
+            <h2 style="margin:0;">{{ _('Credit Note') }} {{ cn.credit_note_number }}</h2>
+            <span style="display:inline-block;margin-top:0.25rem;padding:0.15rem 0.5rem;border-radius:3px;font-size:0.75rem;font-weight:600;
+            {% if cn.status=='draft' %}background:#f3f4f6;color:#6b7280;
+            {% elif cn.status=='issued' %}background:#dbeafe;color:#2563eb;
+            {% endif %}">{{ cn.status }}</span>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+            <a href="{{ url_for('cms.credit_note_list') }}" class="btn-cms small">← {{ _('Overview') }}</a>
+            <a href="{{ url_for('cms.credit_note_pdf', credit_note_id=cn.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;">{{ _('📄 PDF') }}</a>
+            {% if cn.status == 'draft' %}
+            <form method="POST" action="{{ url_for('cms.credit_note_issue', credit_note_id=cn.id) }}" style="display:inline;" onsubmit="return confirm('{{ _('Issue this credit note? This cannot be undone.') }}')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-cms small" style="background:#2563eb;">{{ _('Issue') }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('cms.credit_note_delete', credit_note_id=cn.id) }}" style="display:inline;" onsubmit="return confirm('{{ _('Delete this credit note?') }}')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-cms small" style="background:#dc2626;">{{ _('Delete') }}</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding:1rem;">
+        <div>
+            <h3 style="font-size:0.75rem;color:#6b7280;text-transform:uppercase;margin:0 0 0.25rem;">{{ _('Credit to') }}</h3>
+            <p style="margin:0;">
+                {% if client %}
+                <strong>{{ client.name }}</strong><br>
+                {% if client.address_street %}{{ client.address_street }} {{ client.address_number or '' }}<br>{% endif %}
+                {% if client.address_postal %}{{ client.address_postal }} {% endif %}{% if client.address_city %}{{ client.address_city }}<br>{% endif %}
+                {% if client.vat_number %}BTW: {{ client.vat_number }}<br>{% endif %}
+                {% endif %}
+            </p>
+        </div>
+        <div style="text-align:right;">
+            <table style="margin-left:auto;">
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Date:') }}</td><td style="font-weight:600;">{{ cn.issue_date.strftime('%d-%m-%Y') }}</td></tr>
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Currency:') }}</td><td>{{ cn.currency }}</td></tr>
+                {% if invoice %}
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Invoice:') }}</td><td><a href="{{ url_for('cms.invoice_view', invoice_id=invoice.id) }}">{{ invoice.invoice_number }}</a></td></tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    {% if cn.reason %}
+    <div style="padding:0.5rem 1rem;background:#fefce8;margin:0 1rem 0.5rem;border-radius:4px;">
+        <strong style="font-size:0.75rem;color:#a16207;">{{ _('Reason:') }}</strong>
+        <p style="margin:0.25rem 0 0;font-size:0.85rem;">{{ cn.reason }}</p>
+    </div>
+    {% endif %}
+
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th style="text-align:left;padding:0.5rem;border-bottom:2px solid #1a1a2e;">{{ _('Description') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Quantity') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Unit Price') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('VAT') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Total') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">{{ item.description }}</td>
+                <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">-{{ item.quantity }}</td>
+                <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">€ {{ "%.2f"|format(item.unit_price) }}</td>
+                <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">{{ "%.1f"|format(item.vat_rate) }}%</td>
+                <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:600;">-€ {{ "%.2f"|format(item.total) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="padding:1rem;text-align:right;">
+        <table style="margin-left:auto;width:300px;">
+            <tr><td>{{ _('Subtotal') }}</td><td style="text-align:right;">-€ {{ "%.2f"|format(cn.subtotal) }}</td></tr>
+            <tr><td>{{ _('VAT') }}</td><td style="text-align:right;">-€ {{ "%.2f"|format(cn.vat_amount) }}</td></tr>
+            <tr><td style="font-weight:700;font-size:1.1rem;padding-top:0.5rem;border-top:2px solid #1a1a2e;">{{ _('Total') }}</td>
+                <td style="text-align:right;font-weight:700;font-size:1.1rem;padding-top:0.5rem;border-top:2px solid #1a1a2e;">-€ {{ "%.2f"|format(cn.total) }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

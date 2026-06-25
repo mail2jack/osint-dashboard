@@ -1,0 +1,317 @@
+var timerInterval = null;
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(function() {
+    var btn = document.querySelector('[data-action-key].running');
+    if (!btn) { clearInterval(timerInterval); timerInterval = null; return; }
+    var sec = Math.floor((Date.now() - parseInt(btn.dataset.runningSince || Date.now())) / 1000);
+    var m = Math.floor(sec / 60), s = sec % 60;
+    document.getElementById('actionsStatus').textContent = '⏳ ' + btn.dataset.label + ' loopt ' + m + 'm' + (s < 10 ? '0' : '') + s;
+  }, 1000);
+}
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function runAction(actionType, dataValue) {
+  const btn = document.querySelector(`[data-action-key="${actionType}"]`);
+  if (!btn || btn.classList.contains('done') || btn.classList.contains('running')) return;
+  btn.classList.add('running');
+  btn.dataset.runningSince = Date.now();
+  var cancelBtn = btn.querySelector('.action-cancel');
+  if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+  startTimer();
+
+  fetch(`/cms/workflow/api/case/${CASE_ID}/run-action`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+    body: JSON.stringify({ action_type: actionType, data_value: dataValue || '' }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      btn.classList.remove('running');
+      btn.classList.add('failed');
+      document.getElementById('actionsStatus').textContent = '❌ ' + btn.dataset.label + ' mislukt: ' + data.error;
+      return;
+    }
+    btn.dataset.actionId = data.id;
+    document.getElementById('actionsStatus').textContent = '⏳ ' + btn.dataset.label + ' wordt verwerkt...';
+    if (!pollTimer) startPolling();
+  })
+  .catch(err => {
+    btn.classList.remove('running');
+    btn.classList.add('failed');
+    document.getElementById('actionsStatus').textContent = '❌ Netwerkfout: ' + err.message;
+  });
+}
+
+function startPolling() {
+  pollTimer = setInterval(pollStatus, POLL_INTERVAL);
+  setTimeout(pollStatus, 200);
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function pollStatus() {
+  fetch(`/cms/workflow/api/case/${CASE_ID}/status`)
+    .then(r => r.json())
+    .then(data => {
+      var latest = {};
+      data.actions.forEach(function(a) {
+        var prev = latest[a.action_type];
+        if (!prev || new Date(a.created_at) > new Date(prev.created_at)) { latest[a.action_type] = a; }
+      });
+      data.actions.forEach(function(a) {
+        if (a !== latest[a.action_type]) return;
+        var btn = document.querySelector('[data-action-key="' + a.action_type + '"]');
+        if (!btn) return;
+        if (a.status === 'running') {
+          btn.dataset.actionId = a.id;
+        }
+        if (a.status === 'cancelled' && btn.classList.contains('running')) {
+          btn.classList.remove('running', 'done', 'failed');
+          btn.dataset.runningSince = '';
+          delete btn.dataset.actionId;
+          var cb = btn.querySelector('.action-cancel');
+          if (cb) cb.style.display = 'none';
+          stopTimer();
+          document.getElementById('actionsStatus').textContent = '⏹️ ' + btn.dataset.label + ' geannuleerd';
+        }
+        if (a.status === 'completed' && btn.classList.contains('running')) {
+          btn.classList.remove('running');
+          btn.classList.add('done');
+          btn.dataset.runningSince = '';
+          var cb = btn.querySelector('.action-cancel');
+          if (cb) cb.style.display = 'none';
+          stopTimer();
+          document.getElementById('actionsStatus').textContent = '✅ ' + btn.dataset.label + ' voltooid — ' + (a.result_summary || '');
+          if (CREDIT_LIMITS.hasOwnProperty(a.action_type)) updateCredits(a.action_type);
+        }
+        if (a.status === 'failed' && btn.classList.contains('running')) {
+          btn.classList.remove('running');
+          btn.classList.add('failed');
+          btn.dataset.runningSince = '';
+          var cb = btn.querySelector('.action-cancel');
+          if (cb) cb.style.display = 'none';
+          stopTimer();
+          document.getElementById('actionsStatus').textContent = '❌ ' + btn.dataset.label + ' mislukt: ' + (a.error || '');
+        }
+      });
+      var hasRunning = data.actions.some(function(a) { return a.status === 'running'; });
+      if (!hasRunning) { stopPolling(); }
+      updateFindings(data.findings || [], data.actions || []);
+    })
+    .catch(function() {});
+}
+
+function rdwCardHtml(data) {
+  function v(key) { var val = data[key]; return (val === null || val === undefined || val === '' || val === 'Niet geregistreerd') ? null : String(val); }
+  function fmtDate(s) { if (!s || s.length < 8) return s; return s.substring(6,8) + '-' + s.substring(4,6) + '-' + s.substring(0,4); }
+  function row(label, val, unit) {
+    if (val === null) return '';
+    return '<div class="rdw-row"><span class="rdw-label">' + esc(label) + '</span><span class="rdw-value">' + esc(val) + (unit ? ' <span class="rdw-unit">' + esc(unit) + '</span>' : '') + '</span></div>';
+  }
+  function section(icon, title, content) {
+    if (!content) return '';
+    return '<div class="rdw-section"><div class="rdw-section-title"><span class="rdw-section-icon">' + icon + '</span> ' + esc(title) + '</div><div class="rdw-grid">' + content + '</div></div>';
+  }
+
+  var plate = v('kenteken') || '';
+  var make = (v('merk') || '') + (v('handelsbenaming') ? ' ' + v('handelsbenaming') : '');
+  var soort = v('voertuigsoort') || '';
+  var inr = v('inrichting') || '';
+
+  var dating = row('Eerste toelating', fmtDate(v('datum_eerste_toelating')))
+    + row('Tenaamstelling', fmtDate(v('datum_tenaamstelling')))
+    + row('APK vervaldatum', fmtDate(v('vervaldatum_apk')));
+
+  var tech = row('Vermogen', v('vermogen_massario'), 'kW')
+    + row('Brandstof', v('brandstof_omschrijving'))
+    + row('Emissiecode', v('emissiecode'))
+    + row('Milieuklasse', v('milieuklasse_eg_goedkeuring'))
+    + row('Max. snelheid', v('maximale_constructiesnelheid'), 'km/h')
+    + row('Europese categorie', v('europese_voertuigcategorie'))
+    + row('Soort', soort)
+    + row('Inrichting', inr);
+
+  var dims = row('Lengte', v('lengte'), 'mm')
+    + row('Breedte', v('breedte'), 'mm')
+    + row('Wielbasis', v('wielbasis'), 'mm')
+    + row('Ledig gewicht', v('massa_ledig_voertuig'), 'kg')
+    + row('Rijklaar gewicht', v('massa_rijklaar'), 'kg')
+    + row('Max. toegestaan', v('maximale_massa_toegestaan'), 'kg')
+    + row('Max. constructie', v('maximale_massa_constructie'), 'kg')
+    + row('Laadvermogen', v('laadvermogen'), 'kg')
+    + row('Aanhanger geremd', v('maximum_massa_aanhangwagen_geremd'), 'kg')
+    + row('Aanhanger ongeremd', v('maximum_massa_aanhangwagen_ongeremd'), 'kg')
+    + row('Technische max. massa', v('technische_max_massa_voertuig'), 'kg');
+
+  var kleur = row('Kleur', v('eerste_kleur'))
+    + row('Tweede kleur', v('tweede_kleur'));
+
+  var cap = row('Zitplaatsen', v('aantal_zitplaatsen'))
+    + row('Deuren', v('aantal_deuren'))
+    + row('Wielen', v('aantal_wielen'))
+    + row('Staplaatsen', v('aantal_staplaatsen'));
+
+  var overig = row('Catalogusprijs', v('_prijs_eur') || (v('catalogusprijs') ? '€ ' + v('catalogusprijs') : null))
+    + row('Export', v('export_indicator'))
+    + row('Terugroepactie', v('openstaande_terugroepactie_indicator'))
+    + row('Zuinigheidslabel', v('zuinigheidslabel'))
+    + row('Gasinstallatie', v('type_gasinstallatie'))
+    + row('Soort gasinstallatie', v('soort_gasinstallatie'))
+    + row('Plaats chassisnummer', v('plaats_chassisnummer'));
+
+  var sub = soort;
+  if (inr) sub += ' · ' + inr;
+
+  var rawRows = '';
+  Object.keys(data).sort().forEach(function(k) {
+    var val = data[k];
+    if (val === null || val === '' || val === undefined) return;
+    var label = k.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    rawRows += '<div class="rdw-raw-row"><span class="rdw-raw-label">' + esc(label) + '</span><span class="rdw-raw-value">' + esc(String(val)) + '</span></div>';
+  });
+
+  return '<div class="rdw-card">' +
+    '<div class="rdw-header"><div class="rdw-header-left"><div class="rdw-make">' + esc(make) + '</div><div class="rdw-sub">' + esc(sub) + '</div></div><div class="rdw-plate">' + esc(plate) + '</div></div>' +
+    '<div class="rdw-body">' +
+      section('📅', 'Datering', dating) +
+      section('⚙️', 'Technisch', tech) +
+      section('📐', 'Afmetingen & Gewicht', dims) +
+      section('🎨', 'Kleur', kleur) +
+      section('👥', 'Capaciteit', cap) +
+      section('💰', 'Overig', overig) +
+      '<button type="button" class="rdw-raw-toggle">📊 Toon alle ruwe RDW-data</button>' +
+      '<div class="rdw-raw-table">' + rawRows + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function findingHtml(f) {
+  var ssHtml = '';
+  if (f.screenshots && f.screenshots.length) {
+    ssHtml = '<div class="screenshot"><div class="ss-row"><span class="ss-label">📸 Screenshots</span></div>';
+    f.screenshots.forEach(function(ss) {
+      ssHtml += '<div class="ss-row" style="margin-top:0.3rem;padding:0.3rem 0;border-bottom:1px dashed var(--border-color);">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">';
+      if (ss.url) ssHtml += '<a href="' + esc(ss.url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ Bekijk screenshot</a>';
+      if (ss.source_url && ss.source_url !== ss.url) ssHtml += '<a href="' + esc(ss.source_url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 Open website</a>';
+      ssHtml += '<span style="font-size:0.72rem;color:var(--text-muted);">' + (ss.captured_at ? new Date(ss.captured_at).toLocaleString('nl-NL') : '-') + '</span>';
+      ssHtml += '</div>';
+      if (ss.url) ssHtml += '<div style="margin-top:0.3rem;"><a href="' + esc(ss.url) + '" target="_blank" rel="noopener"><img src="' + esc(ss.url) + '" alt="Screenshot" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy"></a></div>';
+      if (ss.notes) ssHtml += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">' + esc(ss.notes) + '</div>';
+      ssHtml += '</div>';
+    });
+    ssHtml += '</div>';
+  }
+
+  return '<div class="finding-item" data-finding-id="' + esc(f.id) + '">' +
+    '<div class="check-col"><input type="checkbox" class="finding-check" data-finding-id="' + esc(f.id) + '"></div>' +
+    '<div class="icon-col">' + esc(f.icon || '📄') + '</div>' +
+    '<div class="body-col">' +
+      '<div class="title">' + esc(f.title) + '</div>' +
+      (f.detail ? '<div class="meta" style="white-space:pre-wrap;">' + esc(f.detail) + '</div>' : '') +
+      (f.source_url ? '<div class="meta">🔗 <a href="' + esc(f.source_url) + '" target="_blank">' + esc(f.source_url) + '</a></div>' : '') +
+      (f.raw_data ? rdwCardHtml(f.raw_data) : '') +
+      ssHtml +
+      '<div style="margin-top:0.4rem;">' +
+        '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="Notitie / opmerking..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">' +
+        '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="' + (f.verified ? 'true' : 'false') + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? '✅ Geverifieerd' : '⏳ Nog te verifiëren') + '</button>' +
+        '<button type="button" data-action="add-screenshot-btn" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + Screenshot</button>' +
+      '</div>' +
+      '<div class="ss-upload-form" data-finding-id="' + esc(f.id) + '" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">' +
+        '<div style="display:flex;flex-direction:column;gap:0.3rem;">' +
+          '<input type="file" class="ss-file-input" accept="image/*" style="font-size:0.78rem;">' +
+          '<input type="text" class="ss-source-input" placeholder="Bron URL (optioneel, website waar screenshot van is)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
+          '<input type="text" class="ss-notes-input" placeholder="Notitie (optioneel)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
+          '<div style="display:flex;gap:0.3rem;">' +
+            '<button type="button" data-action="save-screenshot" data-finding-id="' + esc(f.id) + '" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Opslaan</button>' +
+            '<button type="button" data-action="cancel-screenshot" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Annuleren</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<button type="button" class="finding-delete" data-action="delete-finding" data-finding-id="' + esc(f.id) + '" title="Verwijderen">&times;</button>' +
+  '</div>';
+}
+
+function updateFindings(findings, actions) {
+  const container = document.getElementById('findingsContainer');
+  const countEl = document.getElementById('findingsCount');
+  const totalEl = document.getElementById('totalFindings');
+  if (!container) return;
+
+  countEl.textContent = findings.length + ' bevindingen';
+  if (totalEl) totalEl.innerHTML = '📋 ' + findings.length + ' bevindingen';
+
+  if (findings.length === 0) {
+    container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Voer onderzoeksacties uit in Stap 3 om bevindingen te genereren.</p></div>';
+    return;
+  }
+
+  var actionMap = {}, ungrouped = [];
+  actions.forEach(function(a) { actionMap[a.id] = a; });
+
+  var groups = {};
+  findings.forEach(function(f) {
+    var aids = f.action_ids || [];
+    if (aids.length) {
+      aids.forEach(function(aid) {
+        if (!groups[aid]) groups[aid] = [];
+        groups[aid].push(f);
+      });
+    } else {
+      ungrouped.push(f);
+    }
+  });
+
+  var html = '';
+  actions.forEach(function(a) {
+    var gf = groups[a.id];
+    if (!gf || !gf.length) return;
+    var icon = '📄';
+    var statusClass = a.status === 'completed' ? 'fg-done' : a.status === 'failed' ? 'fg-failed' : a.status === 'running' ? 'fg-running' : '';
+    html += '<div class="finding-group">' +
+      '<div class="finding-group-header" data-toggle="grp-' + esc(a.id) + '">' +
+        '<span class="toggle-icon">▶</span>' +
+        '<span class="fg-icon">' + esc(icon) + '</span>' +
+        '<span class="fg-label">' + esc(label) + '</span>' +
+        '<span class="fg-status ' + statusClass + '">' + esc(a.status) + '</span>' +
+        '<span class="fg-count">' + gf.length + '</span>' +
+        (a.completed_at ? '<span class="fg-time">' + new Date(a.completed_at).toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'}) + '</span>' : '') +
+      '</div>' +
+      '<div class="finding-group-body" id="grp-' + esc(a.id) + '">' +
+        gf.map(function(f) { return findingHtml(f); }).join('') +
+      '</div>' +
+    '</div>';
+  });
+
+  if (ungrouped.length) {
+    html += '<div class="finding-group">' +
+      '<div class="finding-group-header" data-toggle="grp-ungrouped">' +
+        '<span class="toggle-icon">▶</span>' +
+        '<span class="fg-icon">📋</span>' +
+        '<span class="fg-label">Overige bevindingen</span>' +
+        '<span class="fg-count">' + ungrouped.length + '</span>' +
+      '</div>' +
+      '<div class="finding-group-body" id="grp-ungrouped">' +
+        ungrouped.map(function(f) { return findingHtml(f); }).join('') +
+      '</div>' +
+    '</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+function esc(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}

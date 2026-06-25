@@ -1,7 +1,7 @@
 import logging
 
 import flask
-from flask import request, jsonify, render_template
+from flask import abort, request, jsonify, render_template
 from flask_login import login_required, current_user
 
 from . import cms_bp
@@ -13,10 +13,11 @@ from ..models import (
     Finding,
     FinancialRecord,
     Comment,
+    Tenant,
     AuditLog,
     case_subjects,
 )
-from ..auth import get_accessible_case_ids, apply_tenant_filter
+from ..auth import get_accessible_case_ids, apply_tenant_filter, viewer_required
 from ..notifications import notify_search_restricted
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ def _record_restricted(
 
 @cms_bp.route("/search")
 @login_required
+@viewer_required
 def search() -> str:
     """Global search across all entities with full page results."""
     query = request.args.get("q", "")
@@ -76,7 +78,6 @@ def search() -> str:
         "findings": [],
         "financials": [],
         "comments": [],
-        "notes": [],
     }
 
     if query and len(query) >= 2:
@@ -251,7 +252,8 @@ def search() -> str:
                 for f in total_financials
             ]
 
-        if entity_type in ["all", "comments"]:
+        if entity_type in ["all", "comments", "notes"]:
+            # Case-scoped comments
             comments_q = Comment.query.options(db.joinedload(Comment.author)).filter(
                 Comment.is_deleted == False,
                 Comment.content.ilike(f"%{query}%"),
@@ -261,7 +263,6 @@ def search() -> str:
                 comments_q = comments_q.filter(Comment.case_id.in_(accessible_ids))
             total_comments = comments_q.limit(20).all()
 
-            # Batch-load cases for comments
             comment_case_ids = {c.case_id for c in total_comments if c.case_id}
             comment_cases_map = {}
             if comment_case_ids:
@@ -287,10 +288,11 @@ def search() -> str:
                         "created_at": c.created_at.strftime("%Y-%m-%d")
                         if c.created_at
                         else None,
+                        "_source": "comment",
                     }
                 )
 
-        if entity_type in ["all", "notes"]:
+            # Subject.notes matches
             subject_notes_q = Subject.query.filter(
                 Subject.is_deleted == False, Subject.notes.ilike(f"%{query}%")
             )
@@ -304,19 +306,25 @@ def search() -> str:
                     )
                     .exists()
                 )
-            results["notes"] = [
-                {
-                    "id": s.id,
-                    "name": s.name,
-                    "subject_type": s.subject_type,
-                    "note_preview": s.notes[:150]
-                    + ("..." if len(s.notes) > 150 else "")
-                    if s.notes
-                    else None,
-                    "entity_type": "subject",
-                }
-                for s in subject_notes_q.limit(10).all()
-            ]
+            for s in subject_notes_q.limit(10).all():
+                results["comments"].append(
+                    {
+                        "id": s.id,
+                        "content": (s.notes[:200] + "...")
+                        if s.notes and len(s.notes) > 200
+                        else (s.notes or ""),
+                        "comment_type": "note",
+                        "case_id": None,
+                        "subject_id": s.id,
+                        "client_id": None,
+                        "case_number": None,
+                        "author_name": s.name,
+                        "created_at": None,
+                        "_source": "subject_note",
+                    }
+                )
+
+            # Subject-scoped comments
             comment_notes_q = Comment.query.options(
                 db.joinedload(Comment.author)
             ).filter(
@@ -332,7 +340,6 @@ def search() -> str:
             total_comment_notes = (
                 comment_notes_q.order_by(Comment.created_at.desc()).limit(10).all()
             )
-            # Batch-load subjects for comment notes
             note_subject_ids = {
                 c.subject_id for c in total_comment_notes if c.subject_id
             }
@@ -345,19 +352,23 @@ def search() -> str:
             for c in total_comment_notes:
                 sub = note_subjects_map.get(c.subject_id)
                 if sub and not sub.is_deleted:
-                    results["notes"].append(
+                    results["comments"].append(
                         {
-                            "id": sub.id,
-                            "name": sub.name + f" (comment: {c.comment_type})",
-                            "subject_type": sub.subject_type,
-                            "note_preview": c.content[:150]
-                            + ("..." if len(c.content) > 150 else "")
-                            if c.content
-                            else None,
-                            "entity_type": "subject",
-                            "comment_date": c.created_at.isoformat()
+                            "id": c.id,
+                            "content": (c.content[:200] + "...")
+                            if c.content and len(c.content) > 200
+                            else (c.content or ""),
+                            "comment_type": c.comment_type,
+                            "case_id": c.case_id,
+                            "subject_id": c.subject_id,
+                            "client_id": c.client_id,
+                            "case_number": None,
+                            "author_name": c.author.full_name if c.author else sub.name,
+                            "created_at": c.created_at.strftime("%Y-%m-%d")
                             if c.created_at
                             else None,
+                            "_source": "subject_comment",
+                            "_subject_name": sub.name,
                         }
                     )
 
@@ -442,3 +453,296 @@ def api_search() -> flask.Response:
         ]
 
     return jsonify({"results": results})
+
+
+@cms_bp.route("/admin/global-search")
+@login_required
+def global_search():
+    """Super-admin cross-tenant search across all entities."""
+    if not current_user.is_super_admin:
+        abort(403)
+
+    q = request.args.get("q", "")
+    entity_type = request.args.get("type", "all")
+
+    results = {
+        "cases": [],
+        "clients": [],
+        "subjects": [],
+        "findings": [],
+        "financials": [],
+        "comments": [],
+    }
+
+    def _tenant_name(tid):
+        t = db.session.get(Tenant, tid)
+        return t.name if t else "Unknown"
+
+    if q and len(q) >= 2:
+        if entity_type in ("all", "cases"):
+            cases = (
+                Case.query.options(db.contains_eager(Case.client))
+                .join(Client)
+                .filter(
+                    Case.is_deleted == False,
+                    db.or_(
+                        Case.title.ilike(f"%{q}%"),
+                        Case.case_number.ilike(f"%{q}%"),
+                        Case.description.ilike(f"%{q}%"),
+                    ),
+                )
+                .limit(20)
+                .all()
+            )
+            results["cases"] = [
+                {
+                    "id": c.id,
+                    "title": c.title,
+                    "case_number": c.case_number,
+                    "status": c.status,
+                    "priority": c.priority,
+                    "client_name": c.client.name if c.client else None,
+                    "tenant_name": _tenant_name(c.tenant_id),
+                    "tenant_id": c.tenant_id,
+                    "created_at": c.created_at.strftime("%Y-%m-%d")
+                    if c.created_at
+                    else None,
+                }
+                for c in cases
+            ]
+
+        if entity_type in ("all", "clients"):
+            clients = (
+                Client.query.filter(
+                    Client.is_deleted == False,
+                    Client.name.ilike(f"%{q}%"),
+                )
+                .limit(20)
+                .all()
+            )
+            results["clients"] = [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "contact_person": c.contact_person,
+                    "is_company": c.is_company,
+                    "is_active": c.is_active,
+                    "contract_number": c.contract_number,
+                    "tenant_name": _tenant_name(c.tenant_id),
+                    "tenant_id": c.tenant_id,
+                }
+                for c in clients
+            ]
+
+        if entity_type in ("all", "subjects"):
+            subjects = (
+                Subject.query.filter(
+                    Subject.is_deleted == False,
+                    db.or_(
+                        Subject.name.ilike(f"%{q}%"),
+                        Subject.identification_number.ilike(f"%{q}%"),
+                    ),
+                )
+                .limit(20)
+                .all()
+            )
+            results["subjects"] = [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "subject_type": s.subject_type,
+                    "risk_score": s.risk_score,
+                    "tenant_name": _tenant_name(s.tenant_id),
+                    "tenant_id": s.tenant_id,
+                    "created_at": s.created_at.strftime("%Y-%m-%d")
+                    if s.created_at
+                    else None,
+                }
+                for s in subjects
+            ]
+
+        if entity_type in ("all", "findings"):
+            findings = (
+                Finding.query.options(db.joinedload(Finding.case))
+                .join(Case)
+                .filter(
+                    Finding.is_deleted == False,
+                    db.or_(
+                        Finding.title.ilike(f"%{q}%"),
+                        Finding.content.ilike(f"%{q}%"),
+                    ),
+                )
+                .limit(20)
+                .all()
+            )
+            results["findings"] = [
+                {
+                    "id": f.id,
+                    "title": f.title,
+                    "case_id": f.case_id,
+                    "case_number": f.case.case_number if f.case else None,
+                    "finding_type": f.finding_type,
+                    "source_type": f.source_type,
+                    "tenant_name": _tenant_name(f.tenant_id),
+                    "tenant_id": f.tenant_id,
+                    "created_at": f.created_at.strftime("%Y-%m-%d")
+                    if f.created_at
+                    else None,
+                }
+                for f in findings
+            ]
+
+        if entity_type in ("all", "financials"):
+            financials = (
+                FinancialRecord.query.options(db.joinedload(FinancialRecord.case))
+                .join(Case)
+                .filter(
+                    FinancialRecord.is_deleted == False,
+                    db.or_(
+                        FinancialRecord.description.ilike(f"%{q}%"),
+                        FinancialRecord.source_reference.ilike(f"%{q}%"),
+                    ),
+                )
+                .limit(20)
+                .all()
+            )
+            results["financials"] = [
+                {
+                    "id": f.id,
+                    "amount": float(f.amount) if f.amount else 0,
+                    "currency": f.currency or "EUR",
+                    "case_id": f.case_id,
+                    "case_number": f.case.case_number if f.case else None,
+                    "transaction_type": f.transaction_type,
+                    "transaction_date": f.transaction_date.strftime("%Y-%m-%d")
+                    if f.transaction_date
+                    else "",
+                    "description": f.description[:100] if f.description else None,
+                    "tenant_name": _tenant_name(f.tenant_id),
+                    "tenant_id": f.tenant_id,
+                }
+                for f in financials
+            ]
+
+        if entity_type in ("all", "comments", "notes"):
+            comments = (
+                Comment.query.options(db.joinedload(Comment.author))
+                .filter(
+                    Comment.is_deleted == False,
+                    Comment.content.ilike(f"%{q}%"),
+                )
+                .limit(20)
+                .all()
+            )
+            comment_case_ids = {c.case_id for c in comments if c.case_id}
+            case_map = {}
+            if comment_case_ids:
+                for _c in Case.query.filter(Case.id.in_(comment_case_ids)).all():
+                    case_map[_c.id] = _c
+            results["comments"] = [
+                {
+                    "id": c.id,
+                    "content": (c.content[:200] + "...")
+                    if c.content and len(c.content) > 200
+                    else (c.content or ""),
+                    "comment_type": c.comment_type,
+                    "case_id": c.case_id,
+                    "subject_id": c.subject_id,
+                    "client_id": c.client_id,
+                    "case_number": case_map[c.case_id].case_number
+                    if c.case_id in case_map
+                    else None,
+                    "author_name": c.author.full_name if c.author else "Unknown",
+                    "tenant_name": _tenant_name(c.tenant_id),
+                    "tenant_id": c.tenant_id,
+                    "created_at": c.created_at.strftime("%Y-%m-%d")
+                    if c.created_at
+                    else None,
+                    "_source": "comment",
+                }
+                for c in comments
+            ]
+
+            # Subject.notes matches
+            subject_notes = (
+                Subject.query.filter(
+                    Subject.is_deleted == False,
+                    Subject.notes.ilike(f"%{q}%"),
+                )
+                .limit(10)
+                .all()
+            )
+            for s in subject_notes:
+                results["comments"].append(
+                    {
+                        "id": s.id,
+                        "content": (s.notes[:200] + "...")
+                        if s.notes and len(s.notes) > 200
+                        else (s.notes or ""),
+                        "comment_type": "note",
+                        "case_id": None,
+                        "subject_id": s.id,
+                        "client_id": None,
+                        "case_number": None,
+                        "author_name": s.name,
+                        "created_at": None,
+                        "tenant_name": _tenant_name(s.tenant_id),
+                        "tenant_id": s.tenant_id,
+                        "_source": "subject_note",
+                    }
+                )
+
+            # Subject-scoped comments
+            comment_notes = (
+                Comment.query.options(db.joinedload(Comment.author))
+                .filter(
+                    Comment.is_deleted == False,
+                    Comment.subject_id.isnot(None),
+                    Comment.content.ilike(f"%{q}%"),
+                )
+                .order_by(Comment.created_at.desc())
+                .limit(10)
+                .all()
+            )
+            note_subject_ids = {c.subject_id for c in comment_notes if c.subject_id}
+            subject_map = {}
+            if note_subject_ids:
+                for _s in Subject.query.filter(Subject.id.in_(note_subject_ids)).all():
+                    subject_map[_s.id] = _s
+            for c in comment_notes:
+                sub = subject_map.get(c.subject_id)
+                if sub and not sub.is_deleted:
+                    results["comments"].append(
+                        {
+                            "id": c.id,
+                            "content": (c.content[:200] + "...")
+                            if c.content and len(c.content) > 200
+                            else (c.content or ""),
+                            "comment_type": c.comment_type,
+                            "case_id": c.case_id,
+                            "subject_id": c.subject_id,
+                            "client_id": c.client_id,
+                            "case_number": None,
+                            "author_name": c.author.full_name if c.author else sub.name,
+                            "created_at": c.created_at.strftime("%Y-%m-%d")
+                            if c.created_at
+                            else None,
+                            "tenant_name": _tenant_name(c.tenant_id),
+                            "tenant_id": c.tenant_id,
+                            "_source": "subject_comment",
+                            "_subject_name": sub.name,
+                        }
+                    )
+
+        AuditLog.log(
+            user_id=current_user.id,
+            action="search",
+            entity_type="global_search_super",
+            ip_address=request.remote_addr,
+            description=f"Super-admin global search for: {q}",
+        )
+        db.session.commit()
+
+    return render_template(
+        "cms/global_search.html", query=q, results=results, active_filter=entity_type
+    )

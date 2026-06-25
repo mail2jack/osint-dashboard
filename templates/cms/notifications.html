@@ -1,0 +1,189 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Notifications') }} — CMS{% endblock %}
+{% block content %}
+<style>
+.notif-page-header {
+    display:flex;justify-content:space-between;align-items:center;margin:0 0 1.5rem;flex-wrap:wrap;gap:0.75rem;
+}
+.notif-page-header h1 { margin:0; }
+.notif-filters { display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap; }
+.notif-filters select, .notif-filters input {
+    padding:0.35rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;
+    font-size:0.8rem;background:var(--card-bg);color:var(--text);
+}
+.notif-list { list-style:none;padding:0;margin:0; }
+.notif-item-page {
+    display:flex;align-items:flex-start;gap:0.75rem;padding:0.75rem 1rem;
+    border-bottom:1px solid var(--border-color);transition:background 0.15s;
+}
+.notif-item-page:hover { background:var(--table-hover); }
+.notif-item-page.unread { background:var(--accent-light, #eff6ff); }
+.notif-item-page .notif-icon { font-size:1.2rem;flex-shrink:0;margin-top:0.1rem; }
+.notif-item-page .notif-body { flex:1;min-width:0; }
+.notif-item-page .notif-title { font-weight:600;font-size:0.9rem;margin-bottom:0.15rem; }
+.notif-item-page .notif-message { font-size:0.8rem;color:var(--text-secondary); }
+.notif-item-page .notif-meta {
+    font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem;display:flex;gap:0.75rem;
+}
+.notif-item-page .notif-actions { display:flex;gap:0.35rem;flex-shrink:0; }
+.notif-item-page .notif-actions button {
+    background:none;border:1px solid transparent;cursor:pointer;font-size:0.75rem;
+    padding:0.15rem 0.35rem;border-radius:4px;color:var(--text-muted);
+}
+.notif-item-page .notif-actions button:hover { border-color:var(--border-color);background:var(--bg-secondary); }
+.pagination {
+    display:flex;justify-content:center;gap:0.5rem;margin-top:1.5rem;
+}
+.pagination button {
+    padding:0.35rem 0.7rem;border:1px solid var(--border-color);border-radius:6px;
+    background:var(--card-bg);cursor:pointer;font-size:0.8rem;
+}
+.pagination button:disabled { opacity:0.4;cursor:default; }
+.pagination button.active { background:var(--accent);color:#fff;border-color:var(--accent); }
+.notif-badge {
+    display:inline-block;padding:0.1rem 0.4rem;border-radius:999px;
+    font-size:0.65rem;font-weight:600;
+}
+.notif-badge-usage_alerts { background:#fef3c7;color:#92400e; }
+.notif-badge-search_restricted { background:#dbeafe;color:#1e40af; }
+.notif-badge-case_updates { background:#d1fae5;color:#065f46; }
+.notif-badge-system { background:#f3f4f6;color:#374151; }
+.notif-badge-general { background:#f3f4f6;color:#374151; }
+.sub-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem; }
+.empty-state { text-align:center;padding:3rem 1rem;color:var(--text-muted); }
+</style>
+
+<div class="notif-page-header">
+    <h1>🔔 {{ _('Notifications') }}</h1>
+    <div class="notif-filters">
+        <select id="filterCategory">
+            <option value="">{{ _('All categories') }}</option>
+            <option value="usage_alerts">{{ _('Usage Alerts') }}</option>
+            <option value="search_restricted">{{ _('Search Restrictions') }}</option>
+            <option value="case_updates">{{ _('Case Updates') }}</option>
+            <option value="system">{{ _('System') }}</option>
+            <option value="general">{{ _('General') }}</option>
+        </select>
+        <select id="filterRead">
+            <option value="">{{ _('All status') }}</option>
+            <option value="unread">{{ _('Unread') }}</option>
+            <option value="read">{{ _('Read') }}</option>
+        </select>
+        <button class="btn-cms" style="font-size:0.8rem;" id="clearFiltersBtn">{{ _('Clear') }}</button>
+        <button class="btn-cms" style="font-size:0.8rem;background:#ef4444;border-color:#ef4444;" id="deleteAllReadBtn">{{ _('Delete read') }}</button>
+    </div>
+</div>
+
+<div class="sub-header">
+    <span id="notifCount" style="font-size:0.85rem;color:var(--text-muted);"></span>
+    <div>
+        <a href="{{ url_for('cms.notification_preferences') }}" class="btn-cms" style="font-size:0.8rem;">⚙️ {{ _('Preferences') }}</a>
+    </div>
+</div>
+
+<div id="notifList" class="notif-list">
+    <div class="empty-state">{{ _('Loading...') }}</div>
+</div>
+
+<div class="pagination" id="pagination"></div>
+
+<script>
+var currentPage = 0;
+var pageSize = 20;
+
+function loadNotifications() {
+    var cat = document.getElementById('filterCategory').value;
+    var read = document.getElementById('filterRead').value;
+    var params = '?limit=' + pageSize + '&offset=' + (currentPage * pageSize) + '&all=1';
+    if (cat) params += '&category=' + encodeURIComponent(cat);
+    if (read === 'unread') params += '&all=0';
+    if (read === 'read') params += '&all=1&read=1';
+
+    var list = document.getElementById('notifList');
+    list.innerHTML = '<div class="empty-state">{{ _("Loading...") }}</div>';
+
+    fetch(CMS.notificationListUrl + params)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.notifications.length === 0) {
+                list.innerHTML = '<div class="empty-state">🔕 {{ _("No notifications found") }}</div>';
+            } else {
+                var h = '';
+                data.notifications.forEach(function(n) {
+                    var cat = n.category || 'general';
+                    var catLabel = cat.replace('_', ' ').replace(/\b\w/g, function(l){return l.toUpperCase();});
+                    var time = new Date(n.created_at).toLocaleString();
+                    var safeLink = (n.link || '').replace(/"/g, '&quot;');
+                    var safeTitle = (n.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    var safeMsg = (n.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    h += '<div class="notif-item-page' + (n.is_read ? '' : ' unread') + '">';
+                    h += '<div class="notif-icon">🔔</div>';
+                    h += '<div class="notif-body">';
+                    if (safeTitle) h += '<div class="notif-title">' + safeTitle + '</div>';
+                    h += '<div class="notif-message">' + safeMsg + '</div>';
+                    h += '<div class="notif-meta">';
+                    h += '<span class="notif-badge notif-badge-' + cat + '">' + catLabel + '</span>';
+                    h += '<span>' + time + '</span>';
+                    h += '</div></div>';
+                    h += '<div class="notif-actions">';
+                    if (!n.is_read) {
+                        h += '<button onclick="markRead(\'' + n.id + '\')" title="{{ _("Mark read") }}">✓</button>';
+                    }
+                    if (safeLink) {
+                        h += '<button onclick="navigate(\'' + safeLink + '\')" title="{{ _("Open") }}">↗</button>';
+                    }
+                    h += '<button onclick="deleteNotif(\'' + n.id + '\')" title="{{ _("Delete") }}">✕</button>';
+                    h += '</div></div>';
+                });
+                list.innerHTML = h;
+            }
+
+            var totalPages = Math.ceil(data.total / pageSize) || 1;
+            var ph = document.getElementById('pagination');
+            if (totalPages <= 1) { ph.innerHTML = ''; return; }
+            var phHtml = '';
+            phHtml += '<button onclick="goPage(0)"' + (currentPage === 0 ? ' disabled' : '') + '>«</button>';
+            for (var i = 0; i < totalPages; i++) {
+                if (i === 0 || i === totalPages - 1 || Math.abs(i - currentPage) <= 2) {
+                    phHtml += '<button onclick="goPage(' + i + ')"' + (i === currentPage ? ' class="active"' : '') + '>' + (i + 1) + '</button>';
+                } else if (phHtml.slice(-8) !== '...') {
+                    phHtml += '<span style="padding:0 0.25rem;">...</span>';
+                }
+            }
+            phHtml += '<button onclick="goPage(' + (totalPages - 1) + ')"' + (currentPage === totalPages - 1 ? ' disabled' : '') + '>»</button>';
+            ph.innerHTML = phHtml;
+
+            document.getElementById('notifCount').textContent = data.total + ' {{ _("notification(s)") }}';
+        });
+}
+
+function goPage(p) { currentPage = p; loadNotifications(); }
+
+function markRead(id) {
+    var url = CMS.notificationReadUrl.replace('__ID__', id);
+    apiFetch(url, { method: 'POST' }).then(function() { loadNotifications(); });
+}
+
+function navigate(link) { window.location.href = link; }
+
+function deleteNotif(id) {
+    if (!confirm('{{ _("Delete this notification?") }}')) return;
+    apiFetch('/cms/api/notifications/' + id, { method: 'DELETE' }).then(function() { loadNotifications(); });
+}
+
+document.getElementById('filterCategory').addEventListener('change', function() { currentPage = 0; loadNotifications(); });
+document.getElementById('filterRead').addEventListener('change', function() { currentPage = 0; loadNotifications(); });
+document.getElementById('clearFiltersBtn').addEventListener('click', function() {
+    document.getElementById('filterCategory').value = '';
+    document.getElementById('filterRead').value = '';
+    currentPage = 0;
+    loadNotifications();
+});
+document.getElementById('deleteAllReadBtn').addEventListener('click', function() {
+    if (!confirm('{{ _("Delete all read notifications?") }}')) return;
+    apiFetch('/cms/api/notifications', { method: 'DELETE' }).then(function() { loadNotifications(); });
+});
+
+loadNotifications();
+</script>
+{% endblock %}

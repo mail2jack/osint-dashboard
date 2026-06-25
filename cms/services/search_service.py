@@ -385,9 +385,43 @@ def person_dorks_search(full_name) -> dict:
         logger.info("Trying DuckDuckGo scraping methods")
         log_ddg("Trying DuckDuckGo scraping...")
 
+        _ua_base = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{}.0.0.0 Safari/537.36"
+        _ddg_headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Connection": "keep-alive",
+            "DNT": "1",
+        }
+
+        def _is_blocked(text):
+            return any(
+                p in text.lower()
+                for p in [
+                    "challenge-platform",
+                    "cf-browser-request",
+                    "please complete the security",
+                    "captcha",
+                    "ddos",
+                    "blocked",
+                    "automated requests",
+                ]
+            )
+
         ddg_methods = [
-            {"name": "duckduckgo_lite", "url": "https://lite.duckduckgo.com/50x.html"},
-            {"name": "duckduckgo_html", "url": "https://html.duckduckgo.com/html/"},
+            # 1) DDG Lite — simplest HTML, most stable endpoint
+            {
+                "name": "lite",
+                "url": "https://lite.duckduckgo.com/lite/",
+                "ua_chrome": "121",
+            },
+            # 2) DDG HTML — full results, uses redirect wrapping
+            {
+                "name": "html",
+                "url": "https://html.duckduckgo.com/html/",
+                "ua_chrome": "122",
+            },
+            # 3) DDG JSON API — no scraping, limited results but very stable
+            {"name": "api", "url": "https://api.duckduckgo.com/", "ua_chrome": "123"},
         ]
 
         for method in ddg_methods:
@@ -397,57 +431,114 @@ def person_dorks_search(full_name) -> dict:
                 break
 
             try:
-                client = _get_http_client(
-                    timeout=6.0,
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                        "Accept-Language": "en-US,en;q=0.9",
-                        "Connection": "keep-alive",
-                    },
-                )
+                headers = dict(_ddg_headers)
+                headers["User-Agent"] = _ua_base.format(method["ua_chrome"])
+                client = _get_http_client(timeout=7.0, headers=headers)
 
-                for query in dork_queries[:5]:
+                queries_to_run = (
+                    dork_queries[:5] if method["name"] != "api" else dork_queries[:3]
+                )
+                for query in queries_to_run:
                     if ddg_success and results["ddg_results_count"] > 5:
                         break
 
                     results["queries_run"].append(query)
                     method_url = method["url"]
                     params = {"q": query}
+                    if method["name"] == "api":
+                        params.update(
+                            {"format": "json", "no_html": "1", "skip_disambig": "1"}
+                        )
 
                     try:
                         jitter_sleep(domain_hint=method_url)
                         response = client.get(method_url, params=params)
 
-                        log_ddg(f"DDG Query: {query}")
+                        log_ddg(f"DDG {method['name']}: {query}")
                         log_ddg(f"  Status: {response.status_code}")
 
                         if response.status_code == 200 and response.text:
+                            text = response.text
+                            if _is_blocked(text):
+                                log_ddg("  BLOCKED — skipping method")
+                                break
+
                             found_count = 0
 
-                            if "duckduckgo_lite" in method["name"]:
-                                links = re.findall(
-                                    r'<a rel="nofollow" href="(https?://[^"]+)"',
-                                    response.text,
-                                )
-                                for link in links[:10]:
-                                    add_result(link, query, "duckduckgo")
-                                    found_count += 1
+                            if method["name"] == "lite":
+                                for pat in [
+                                    r'<a[^>]+rel="nofollow"[^>]+href="(https?://[^"]+)"',
+                                    r'<a[^>]+href="(https?://[^"]+)"[^>]*>',
+                                ]:
+                                    links = re.findall(pat, text)
+                                    if links:
+                                        for link in links[:10]:
+                                            add_result(link, query, "duckduckgo")
+                                            found_count += 1
+                                        break
 
-                            elif "duckduckgo_html" in method["name"]:
+                            elif method["name"] == "html":
                                 redirect_links = re.findall(
-                                    r'uddg=(https?%3A%2F%2F[^&"]+)', response.text
+                                    r'uddg=(https?%3A%2F%2F[^&"]+)', text
                                 )
-                                for link in redirect_links[:10]:
-                                    add_result(
-                                        unquote(unquote(link)), query, "duckduckgo"
+                                if redirect_links:
+                                    for link in redirect_links[:10]:
+                                        add_result(
+                                            unquote(unquote(link)), query, "duckduckgo"
+                                        )
+                                        found_count += 1
+                                else:
+                                    links = re.findall(
+                                        r'<a[^>]+href="(https?://[^"]+)"[^>]*class="result__a"',
+                                        text,
                                     )
-                                    found_count += 1
+                                    if not links:
+                                        links = re.findall(
+                                            r'<a[^>]+href="(https?://[^"]+)"[^>]*rel="nofollow"',
+                                            text,
+                                        )
+                                    for link in links[:10]:
+                                        add_result(link, query, "duckduckgo")
+                                        found_count += 1
+
+                            elif method["name"] == "api":
+                                try:
+                                    import json as _json
+
+                                    api_data = _json.loads(text)
+                                    seen_api = set()
+                                    for topic in api_data.get("RelatedTopics", []):
+                                        if "Topics" in topic:
+                                            for sub in topic["Topics"]:
+                                                url = sub.get("FirstURL") or sub.get(
+                                                    "URL", ""
+                                                )
+                                                if url and url not in seen_api:
+                                                    seen_api.add(url)
+                                                    add_result(url, query, "duckduckgo")
+                                                    found_count += 1
+                                        else:
+                                            url = topic.get("FirstURL") or topic.get(
+                                                "URL", ""
+                                            )
+                                            if url and url not in seen_api:
+                                                seen_api.add(url)
+                                                add_result(url, query, "duckduckgo")
+                                                found_count += 1
+                                    for res in api_data.get("Results", []):
+                                        url = res.get("FirstURL") or res.get("URL", "")
+                                        if url and url not in seen_api:
+                                            seen_api.add(url)
+                                            add_result(url, query, "duckduckgo")
+                                            found_count += 1
+                                except Exception as e:
+                                    log_ddg(f"  API parse error: {e}")
 
                             if found_count > 0:
                                 ddg_success = True
                                 if "duckduckgo" not in results["sources_used"]:
                                     results["sources_used"].append("duckduckgo")
+                            log_ddg(f"  Found {found_count} results")
 
                     except CurlError as e:
                         log_ddg(f"  CurlError: {str(e)[:80]}")
@@ -456,7 +547,7 @@ def person_dorks_search(full_name) -> dict:
                         log_ddg(f"  Exception ({type(e).__name__}): {str(e)}")
                         continue
 
-                    time.sleep(0.3)
+                    time.sleep(0.5)
 
                 client.close()
 

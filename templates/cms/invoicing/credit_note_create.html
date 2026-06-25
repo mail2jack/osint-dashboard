@@ -1,0 +1,94 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Create Credit Note') }} — {{ invoice.invoice_number }}{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">
+        <h2>{{ _('Create Credit Note for') }} {{ invoice.invoice_number }}</h2>
+        <a href="{{ url_for('cms.invoice_view', invoice_id=invoice.id) }}" class="btn-cms small">← {{ _('Back to Invoice') }}</a>
+    </div>
+
+    <form method="POST" action="{{ url_for('cms.credit_note_create', invoice_id=invoice.id) }}" id="creditNoteForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="items" id="itemsInput" value="">
+
+        <div style="padding:1rem;">
+            <div style="margin-bottom:1rem;">
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Reason for credit') }}</label>
+                <textarea name="reason" rows="2" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;" placeholder="{{ _('e.g. Incorrect amount, service cancelled, etc.') }}"></textarea>
+            </div>
+
+            <h3 style="margin:0 0 0.75rem 0;font-size:0.9rem;">{{ _('Select items to credit') }}</h3>
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:40px;">
+                            <input type="checkbox" id="selectAll" checked>
+                        </th>
+                        <th style="text-align:left;padding:0.5rem;border-bottom:2px solid #1a1a2e;">{{ _('Description') }}</th>
+                        <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Quantity') }}</th>
+                        <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Unit Price') }}</th>
+                        <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('VAT') }}</th>
+                        <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Total') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in inv_items %}
+                    <tr>
+                        <td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">
+                            <input type="checkbox" class="item-checkbox" checked
+                                   data-invoice-item-id="{{ item.id }}"
+                                   data-description="{{ item.description }}"
+                                   data-quantity="{{ item.quantity }}"
+                                   data-unit-price="{{ item.unit_price }}"
+                                   data-vat-rate="{{ item.vat_rate }}">
+                        </td>
+                        <td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">{{ item.description }}</td>
+                        <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">
+                            <input type="number" class="item-qty" value="{{ item.quantity }}" step="0.01" min="0" style="width:60px;padding:0.2rem;border:1px solid #ddd;border-radius:3px;text-align:right;">
+                        </td>
+                        <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">€ {{ "%.2f"|format(item.unit_price) }}</td>
+                        <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;">{{ "%.1f"|format(item.vat_rate) }}%</td>
+                        <td style="text-align:right;padding:0.4rem 0.5rem;border-bottom:1px solid #e5e7eb;font-weight:600;">€ {{ "%.2f"|format(item.total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="margin-top:1rem;display:flex;gap:0.5rem;justify-content:flex-end;">
+                <a href="{{ url_for('cms.invoice_view', invoice_id=invoice.id) }}" class="btn-cms small">{{ _('Cancel') }}</a>
+                <button type="submit" class="btn-cms bg-green">{{ _('Create Credit Note') }}</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+document.getElementById('selectAll').addEventListener('change', function() {
+    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = this.checked);
+});
+
+document.getElementById('creditNoteForm').addEventListener('submit', function(e) {
+    const items = [];
+    document.querySelectorAll('.item-checkbox:checked').forEach(cb => {
+        const qtyInput = cb.closest('tr').querySelector('.item-qty');
+        const qty = parseFloat(qtyInput.value) || 0;
+        if (qty <= 0) return;
+        items.push({
+            invoice_item_id: cb.dataset.invoiceItemId,
+            description: cb.dataset.description,
+            quantity: qty,
+            unit_price: parseFloat(cb.dataset.unitPrice),
+            vat_rate: parseFloat(cb.dataset.vatRate),
+        });
+    });
+    if (items.length === 0) {
+        e.preventDefault();
+        alert('{{ _("Select at least one item with quantity > 0.") }}');
+        return;
+    }
+    document.getElementById('itemsInput').value = JSON.stringify(items);
+});
+</script>
+
+{% endblock %}

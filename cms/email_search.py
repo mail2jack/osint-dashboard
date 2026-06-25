@@ -1,6 +1,9 @@
 import asyncio
 import logging
+import os
+import re
 import socket
+import time
 
 from curl_cffi import requests as curl_requests
 from curl_cffi import CurlError
@@ -12,6 +15,17 @@ from cms.search_tracking import increment_request_count
 from cms.sherlock_utils import get_sherlock_sites
 
 logger = logging.getLogger(__name__)
+
+
+async def _dummy_check(site_name):
+    """Return an immediate rate-limited placeholder, no I/O."""
+    return {
+        "site": site_name,
+        "name": site_name,
+        "exists": None,
+        "status": "rate_limited",
+        "rateLimit": True,
+    }
 
 
 async def check_site_with_retry(client, site_name, site_info, email, max_retries=None):
@@ -82,6 +96,18 @@ def check_site_email(client, email, site_info):
         }
 
 
+EMAIL_FALSE_POSITIVE_PATTERNS = re.compile(
+    r"\b(not found|no results?|doesn\'t exist|not exist|user not found|"
+    r"profile not found|account not found|page not found|404|"
+    r"invalid user|user invalid|user does not|username not|"
+    r"sign up|create account|log in|login|"
+    r"this (page|profile|account) (is|has been|was) (not|removed|deleted)|"
+    r"the (requested|specified) (user|account|profile) (could not|cannot) be found"
+    r")\b",
+    re.I,
+)
+
+
 async def check_email_site(client, site_name, site_info, email):
     finding = {
         "name": site_name,
@@ -93,14 +119,43 @@ async def check_email_site(client, site_name, site_info, email):
     url = interpolate_string(site_info.get("url", ""), email)
     finding["url"] = url
     try:
-        response = await client.head(url, headers=HEADERS, timeout=10)
+        response = await client.get(url, headers=HEADERS, timeout=15)
         finding["http_status"] = response.status_code
-        if response.status_code == 200:
-            finding["exists"] = True
-            finding["status"] = "found"
-        else:
+
+        if response.status_code != 200:
             finding["exists"] = False
             finding["status"] = "not_found"
+            return finding
+
+        response_text = response.text
+        if isinstance(response_text, bytes):
+            response_text = response_text.decode("utf-8", errors="replace")
+        text_lower = response_text.lower()
+
+        if (
+            EMAIL_FALSE_POSITIVE_PATTERNS.search(text_lower)
+            and len(response_text) < 2000
+        ):
+            finding["exists"] = False
+            finding["status"] = "not_found"
+            finding["matched_pattern"] = "false_positive"
+            return finding
+
+        email_lower = email.lower()
+        email_local = email_lower.split("@")[0]
+
+        if email_lower in text_lower:
+            finding["exists"] = True
+            finding["status"] = "confirmed"
+            finding["verified"] = True
+        elif email_local in text_lower:
+            finding["exists"] = True
+            finding["status"] = "confirmed"
+            finding["verified"] = True
+        else:
+            finding["exists"] = None
+            finding["status"] = "unverified"
+            finding["verification"] = "no_content_match"
     except CurlError as e:
         if "timeout" in str(e).lower() or "timed out" in str(e).lower():
             finding["status"] = "timeout"
@@ -221,6 +276,9 @@ async def search_email_async(email, progress_callback=None, limit=30):
     rate_limits_hit = []
     batch_size = 30
 
+    conn_timeout = float(os.environ.get("EMAIL_SEARCH_TIMEOUT", "60"))
+    start_time = time.time()
+
     async with curl_requests.AsyncSession(
         impersonate="chrome124", timeout=30
     ) as client:
@@ -229,33 +287,31 @@ async def search_email_async(email, progress_callback=None, limit=30):
         for i in range(0, total_sites, batch_size):
             batch = site_items[i : i + batch_size]
             tasks = []
+            site_names = []
             for site_name, site_info in batch:
+                site_names.append(site_name)
                 limited, limit_data = is_rate_limited(site_name)
                 if limited:
                     rate_limits_hit.append(
                         {"site": site_name, "wait": limit_data["reset_at"]}
                     )
-                    tasks.append(
-                        asyncio.coroutine(
-                            lambda sn=site_name, si=site_info: {
-                                "site": sn,
-                                "name": sn,
-                                "exists": None,
-                                "status": "rate_limited",
-                                "rateLimit": True,
-                            }
-                        )()
-                    )
+                    tasks.append(_dummy_check(site_name))
                 else:
                     tasks.append(
                         check_site_with_retry(client, site_name, site_info, email)
                     )
 
-            for site_name, site_info, task in zip(
-                [s[0] for s in batch], [s[1] for s in batch], tasks
-            ):
-                try:
-                    r = await asyncio.wait_for(task, timeout=15)
+            results = await asyncio.gather(
+                *[asyncio.wait_for(t, timeout=15) for t in tasks],
+                return_exceptions=True,
+            )
+
+            for site_name, r in zip(site_names, results):
+                if isinstance(r, Exception):
+                    all_checks.append(
+                        {"site": site_name, "exists": False, "status": "error"}
+                    )
+                else:
                     if r.get("retried"):
                         retried_count += 1
                     if r.get("rateLimit"):
@@ -263,10 +319,6 @@ async def search_email_async(email, progress_callback=None, limit=30):
                     all_checks.append(r)
                     if r.get("exists") == True:
                         found_count += 1
-                except (asyncio.TimeoutError, Exception):
-                    all_checks.append(
-                        {"site": site_name, "exists": False, "status": "error"}
-                    )
                 checked += 1
                 if progress_callback:
                     progress_callback(
@@ -278,6 +330,16 @@ async def search_email_async(email, progress_callback=None, limit=30):
                             "current_site": site_name,
                         }
                     )
+
+            elapsed = time.time() - start_time
+            if elapsed > conn_timeout:
+                logger.warning(
+                    "Email search timed out after %ss, stopping early (checked %d/%d)",
+                    conn_timeout,
+                    checked,
+                    total_sites,
+                )
+                break
 
     result["account_checks"] = all_checks
     result["found_count"] = sum(1 for c in all_checks if c.get("exists") == True)

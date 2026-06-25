@@ -1,11 +1,12 @@
 import logging
+from datetime import datetime, timezone, timedelta
 
-from flask import request, render_template
-from flask_login import login_required
+from flask import request, render_template, redirect, url_for, flash
+from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, AuditLog, User
-from ..auth import senior_required, apply_tenant_filter
+from ..models import db, AuditLog, User, Setting
+from ..auth import senior_required, admin_required, apply_tenant_filter
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,12 @@ def audit_log() -> str:
     ).all()
     actions = [a[0] for a in actions]
 
+    # Retention info
+    retention_days = int(Setting.get("audit_log_retention_days", "365"))
+    total_count = apply_tenant_filter(
+        db.session.query(db.func.count(AuditLog.id)), AuditLog
+    ).scalar()
+
     return render_template(
         "cms/audit/log.html",
         logs=pagination.items,
@@ -72,4 +79,38 @@ def audit_log() -> str:
         users=users,
         entity_types=entity_types,
         actions=actions,
+        retention_days=retention_days,
+        total_count=total_count,
     )
+
+
+@cms_bp.route("/audit/purge", methods=["POST"])
+@login_required
+@admin_required
+def audit_purge():
+    """Manually purge audit logs older than the configured retention period."""
+    retention_days = int(Setting.get("audit_log_retention_days", "365"))
+    if retention_days <= 0:
+        flash(
+            "Audit log retention is set to keep logs forever. Set a positive retention period in settings first.",
+            "warning",
+        )
+        return redirect(url_for("cms.audit_log"))
+
+    # Purge across ALL tenants for super-admins, or scoped to tenant for regular admins
+    if current_user.is_super_admin:
+        deleted = AuditLog.purge_old(retention_days)
+    else:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        deleted = AuditLog.query.filter(
+            AuditLog.tenant_id == current_user.tenant_id,
+            AuditLog.timestamp < cutoff,
+        ).delete()
+        if deleted:
+            db.session.commit()
+
+    flash(
+        f"Purged {deleted} audit log entries older than {retention_days} days.",
+        "success",
+    )
+    return redirect(url_for("cms.audit_log"))

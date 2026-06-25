@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from enum import Enum as PyEnum
 import uuid
 
@@ -214,4 +214,134 @@ class Payment(db.Model):
             "notes": self.notes,
             "created_by": self.created_by,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class CreditNoteStatus(PyEnum):
+    DRAFT = "draft"
+    ISSUED = "issued"
+
+
+class CreditNote(db.Model):
+    __tablename__ = "credit_notes"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    invoice_id = db.Column(db.String(36), db.ForeignKey("invoices.id"), index=True)
+    credit_note_number = db.Column(
+        db.String(50), unique=True, nullable=False, index=True
+    )
+    issue_date = db.Column(db.Date, nullable=False, default=lambda: date.today())
+    reason = db.Column(db.Text)
+    status = db.Column(db.String(20), default=CreditNoteStatus.DRAFT.value)
+
+    currency = db.Column(db.String(3), default="EUR")
+    subtotal = db.Column(db.Numeric(15, 2), nullable=False, default=0)
+    vat_amount = db.Column(db.Numeric(15, 2), nullable=False, default=0)
+    total = db.Column(db.Numeric(15, 2), nullable=False, default=0)
+
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    invoice = db.relationship("Invoice", foreign_keys=[invoice_id])
+    creator = db.relationship("User", foreign_keys=[created_by])
+    items = db.relationship(
+        "CreditNoteItem",
+        backref="credit_note",
+        lazy="dynamic",
+        order_by="CreditNoteItem.sort_order",
+        cascade="all, delete-orphan",
+    )
+
+    @staticmethod
+    def generate_number() -> str:
+        year = datetime.now().year
+        prefix = f"CRD-{year}-"
+        last = (
+            CreditNote.query.filter(CreditNote.credit_note_number.like(f"{prefix}%"))
+            .order_by(CreditNote.created_at.desc())
+            .first()
+        )
+        if last:
+            seq = int(last.credit_note_number.split("-")[-1]) + 1
+        else:
+            seq = 1
+        return f"{prefix}{seq:05d}"
+
+    def recalculate(self) -> None:
+        self.subtotal = 0
+        self.vat_amount = 0
+        for item in self.items:
+            self.subtotal += item.total
+            self.vat_amount += item.vat_total
+        self.total = self.subtotal + self.vat_amount
+
+    def mark_issued(self) -> None:
+        self.status = CreditNoteStatus.ISSUED.value
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "invoice_id": self.invoice_id,
+            "credit_note_number": self.credit_note_number,
+            "issue_date": self.issue_date.isoformat() if self.issue_date else None,
+            "reason": self.reason,
+            "status": self.status,
+            "currency": self.currency,
+            "subtotal": float(self.subtotal) if self.subtotal else 0,
+            "vat_amount": float(self.vat_amount) if self.vat_amount else 0,
+            "total": float(self.total) if self.total else 0,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "items": [i.to_dict() for i in self.items],
+        }
+
+
+class CreditNoteItem(db.Model):
+    __tablename__ = "credit_note_items"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    credit_note_id = db.Column(
+        db.String(36), db.ForeignKey("credit_notes.id"), nullable=False, index=True
+    )
+    invoice_item_id = db.Column(
+        db.String(36), db.ForeignKey("invoice_items.id"), index=True
+    )
+
+    description = db.Column(db.String(500), nullable=False)
+    quantity = db.Column(db.Numeric(15, 2), nullable=False, default=1)
+    unit_price = db.Column(db.Numeric(15, 2), nullable=False, default=0)
+    vat_rate = db.Column(db.Numeric(5, 2), nullable=False, default=21.00)
+    total = db.Column(db.Numeric(15, 2), nullable=False, default=0)
+    vat_total = db.Column(db.Numeric(15, 2), nullable=False, default=0)
+    sort_order = db.Column(db.Integer, default=0)
+
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def recalculate(self) -> None:
+        self.total = self.quantity * self.unit_price
+        self.vat_total = self.total * (self.vat_rate / 100)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "credit_note_id": self.credit_note_id,
+            "invoice_item_id": self.invoice_item_id,
+            "description": self.description,
+            "quantity": float(self.quantity) if self.quantity else 0,
+            "unit_price": float(self.unit_price) if self.unit_price else 0,
+            "vat_rate": float(self.vat_rate) if self.vat_rate else 0,
+            "total": float(self.total) if self.total else 0,
+            "vat_total": float(self.vat_total) if self.vat_total else 0,
+            "sort_order": self.sort_order,
         }

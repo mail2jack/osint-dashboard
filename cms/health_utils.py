@@ -97,9 +97,12 @@ def check_external_services(quick: bool = False) -> dict:
                     impersonate="chrome124",
                     timeout=5,
                 )
-                result["brave"] = (
-                    "ok" if r.status_code == 200 else f"unexpected: {r.status_code}"
-                )
+                if r.status_code == 200:
+                    result["brave"] = "ok"
+                elif r.status_code == 402:
+                    result["brave"] = "quota exhausted"
+                else:
+                    result["brave"] = f"unexpected: {r.status_code}"
             except Exception as e:
                 result["brave"] = f"unavailable: {e}"
         else:
@@ -127,11 +130,12 @@ def check_external_services(quick: bool = False) -> dict:
                                 "Accept": "application/json",
                             },
                         )
-                    result["tor"] = (
-                        "ok"
-                        if r.status_code == 200
-                        else f"brave_via_tor: {r.status_code}"
-                    )
+                    if r.status_code == 200:
+                        result["tor"] = "ok"
+                    elif r.status_code == 402:
+                        result["tor"] = "brave quota exhausted"
+                    else:
+                        result["tor"] = f"brave_via_tor: {r.status_code}"
                 except Exception as e:
                     result["tor"] = f"unavailable: {e}"
             else:

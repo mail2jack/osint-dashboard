@@ -122,11 +122,16 @@ def set_tenant_context():
     from cms.models import db as _db
 
     if current_user.is_authenticated:
-        g.tenant_id = current_user.tenant_id
+        tid = current_user.tenant_id
+        if current_user.is_super_admin:
+            from flask import session as _session
+
+            tid = _session.get("switched_tenant_id") or tid
+        g.tenant_id = tid
         try:
             _db.session.execute(
                 text("SET app.tenant_id = :tid"),
-                {"tid": current_user.tenant_id},
+                {"tid": tid},
             )
             if current_user.is_super_admin:
                 _db.session.execute(text("SET app.bypass_rls = 'true'"))
@@ -633,6 +638,11 @@ from cms.routes.system_app import register_system_routes
 
 register_system_routes(app)
 
+# Workflow sandbox blueprint — superadmin only, separate SQLite DB
+from cms.workflow import workflow_bp
+
+app.register_blueprint(workflow_bp)
+
 
 @app.route("/lang/<lang>")
 def set_lang(lang: str):
@@ -690,6 +700,81 @@ app.config["COMPRESS_ALGORITHM"] = "br"
 app.config["COMPRESS_BR_LEVEL"] = 4
 app.config["COMPRESS_MIN_SIZE"] = 500
 Compress(app)
+
+
+# =============================================================================
+# CLI commands
+# =============================================================================
+
+
+@app.cli.command("aggregate-usage")
+def aggregate_usage():
+    """Aggregate daily usage metrics for all active tenants."""
+    from cms.aggregation import aggregate_yesterday, check_and_alert_usage_limits
+
+    count = aggregate_yesterday()
+    alerts = check_and_alert_usage_limits()
+    print(f"Aggregated usage for {count} tenants")
+    if alerts:
+        print(f"Triggered {len(alerts)} usage alerts")
+    else:
+        print("No usage alerts triggered")
+
+
+@app.cli.command("purge-expired-tenants")
+def purge_expired_tenants_cli():
+    """Hard-delete tenant data for tenants past their retention grace period."""
+    from cms.data_retention import purge_expired_tenants
+
+    count = purge_expired_tenants()
+    print(f"Purged {count} expired tenant(s)")
+
+
+@app.cli.command("purge-expired-tenants-dry-run")
+def purge_expired_tenants_dry_run():
+    """Dry-run: show what would be purged without deleting anything."""
+    from cms.data_retention import purge_expired_tenants
+
+    count = purge_expired_tenants(dry_run=True)
+    print(f"Would purge {count} expired tenant(s) (dry run)")
+
+
+@app.cli.command("check-overdue-invoices")
+def check_overdue_invoices():
+    """Mark sent invoices past due_date as overdue and notify."""
+    from datetime import date
+    from cms.models import db, Invoice, Notification, User
+
+    today = date.today()
+    overdue = Invoice.query.filter(
+        Invoice.status == "sent",
+        Invoice.due_date < today,
+        Invoice.is_deleted == False,
+    ).all()
+
+    marked = 0
+    for inv in overdue:
+        inv.mark_overdue()
+        # Notify tenant admins
+        admins = User.query.filter(
+            User.tenant_id == inv.tenant_id,
+            User.is_active == True,
+            User.role.in_(["admin", "owner"]),
+        ).all()
+        for admin in admins:
+            n = Notification(
+                tenant_id=inv.tenant_id,
+                user_id=admin.id,
+                category="system",
+                title="Invoice overdue",
+                message=f"Invoice {inv.invoice_number} is now overdue (due: {inv.due_date}).",
+                link=f"/cms/invoices/{inv.id}",
+            )
+            db.session.add(n)
+        marked += 1
+
+    db.session.commit()
+    print(f"Marked {marked} invoice(s) as overdue")
 
 
 # =============================================================================

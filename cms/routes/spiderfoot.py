@@ -285,7 +285,7 @@ def spiderfoot_scan() -> str:
     # POST - Start scan
     data = request.validated_data
 
-    from ..tier_limits import check_feature
+    from ..tier_limits import check_feature, check_concurrent_spiderfoot_scans
 
     if not check_feature("spiderfoot"):
         if request.is_json:
@@ -295,6 +295,19 @@ def spiderfoot_scan() -> str:
             )
         flash("SpiderFoot is not available on your current plan.", "warning")
         return redirect(url_for("cms.settings", category="plan"))
+
+    ok, running, maximum = check_concurrent_spiderfoot_scans()
+    if not ok:
+        if request.is_json:
+            return api_error(
+                f"Maximum concurrent SpiderFoot scans reached ({running}/{maximum}). Please wait for a scan to finish.",
+                429,
+            )
+        flash(
+            f"Maximum concurrent SpiderFoot scans reached ({running}/{maximum}). Please wait for a scan to finish.",
+            "warning",
+        )
+        return redirect(url_for("cms.spiderfoot_index"))
 
     target = data.get("target")
     target_type = data.get("target_type", "DOMAIN_NAME")
@@ -882,7 +895,7 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
     if request.method == "POST":
         data = request.validated_data
 
-        from ..tier_limits import check_feature
+        from ..tier_limits import check_feature, check_concurrent_spiderfoot_scans
 
         if not check_feature("spiderfoot"):
             if request.is_json:
@@ -892,6 +905,19 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
                 )
             flash("SpiderFoot is not available on your current plan.", "warning")
             return redirect(url_for("cms.settings", category="plan"))
+
+        ok, running, maximum = check_concurrent_spiderfoot_scans()
+        if not ok:
+            if request.is_json:
+                return api_error(
+                    f"Maximum concurrent SpiderFoot scans reached ({running}/{maximum}). Please wait for a scan to finish.",
+                    429,
+                )
+            flash(
+                f"Maximum concurrent SpiderFoot scans reached ({running}/{maximum}). Please wait for a scan to finish.",
+                "warning",
+            )
+            return redirect(url_for("cms.spiderfoot_index"))
 
         profile = data.get("profile", "basic")
         use_case = data.get("use_case", "passive")

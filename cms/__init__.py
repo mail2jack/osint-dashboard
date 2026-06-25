@@ -70,6 +70,19 @@ def create_cms_module(app: Flask):
 
             style = cached_setting_get("theme_style", "classic")
             logo = cached_setting_get("app_logo", "")
+            try:
+                from flask_login import current_user
+
+                if current_user.is_authenticated and current_user.tenant_id:
+                    from .models import TenantSetting
+
+                    tlogo = TenantSetting.get(
+                        "app_logo", tenant_id=current_user.tenant_id
+                    )
+                    if tlogo:
+                        logo = "tenant_logos/" + tlogo
+            except Exception:
+                pass
             return {"theme_style": style, "app_logo": logo}
         except Exception:
             from .models import db

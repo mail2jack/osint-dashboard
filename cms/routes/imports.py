@@ -10,7 +10,7 @@ import logging
 
 import flask
 from flask import request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Subject, Client
@@ -70,6 +70,7 @@ def import_subjects_csv() -> flask.Response:
                 if row.get("risk_score")
                 else 0,
                 notes=row.get("notes") or None,
+                created_by=current_user.id,
             )
             subject.encrypt_identifiers()
             db.session.add(subject)

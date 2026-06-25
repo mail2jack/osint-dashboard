@@ -50,10 +50,18 @@ db = SQLAlchemy()
 # via the `db` import. All classes are available at `cms.models.ClassName`.
 from .setting import Setting
 from .comments import Comment, CommentEditHistory
-from .billing import InvoiceStatus, Invoice, InvoiceItem, Payment
+from .billing import (
+    InvoiceStatus,
+    Invoice,
+    InvoiceItem,
+    Payment,
+    CreditNote,
+    CreditNoteItem,
+)
 from .background_task import BackgroundTask
 from .platform_setting import PlatformSetting
 from .invitation import Invitation
+from .usage_record import UsageRecord
 
 # Explicit re-exports — used by other modules importing from cms.models
 __all__ = [
@@ -67,6 +75,9 @@ __all__ = [
     "BackgroundTask",
     "PlatformSetting",
     "Invitation",
+    "UsageRecord",
+    "NotificationPreference",
+    "NOTIFICATION_CATEGORIES",
 ]
 
 
@@ -274,6 +285,9 @@ class User(UserMixin, db.Model):
     failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime, nullable=True)
 
+    # SMS/WhatsApp notifications
+    phone_number = db.Column(db.String(30), nullable=True)
+
     # Relationships
     assigned_cases = db.relationship(
         "Case",
@@ -415,15 +429,16 @@ class Client(db.Model):
     financial_notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
     is_deleted = db.Column(db.Boolean, default=False, index=True)  # Soft delete
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-    deleted_at = db.Column(db.DateTime)
 
     # Relationships
+    creator = db.relationship("User", foreign_keys=[created_by])
     cases = db.relationship("Case", backref="client", lazy="dynamic")
     invoices = db.relationship("Invoice", backref="client", lazy="dynamic")
     contacts = db.relationship(
@@ -786,6 +801,7 @@ class Subject(db.Model):
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -794,6 +810,7 @@ class Subject(db.Model):
     )
 
     # Relationships
+    creator = db.relationship("User", foreign_keys=[created_by])
     financial_records = db.relationship(
         "FinancialRecord", backref="subject", lazy="dynamic"
     )
@@ -2356,6 +2373,57 @@ def init_default_settings() -> None:
             "value_type": "text",
             "display_order": 3,
         },
+        # Twilio SMS/WhatsApp settings
+        {
+            "key": "twilio_account_sid",
+            "category": "general",
+            "value": "",
+            "description": "Twilio Account SID",
+            "value_type": "text",
+            "display_order": 60,
+        },
+        {
+            "key": "twilio_auth_token",
+            "category": "general",
+            "value": "",
+            "description": "Twilio Auth Token",
+            "value_type": "password",
+            "is_sensitive": True,
+            "display_order": 61,
+        },
+        {
+            "key": "twilio_phone_number",
+            "category": "general",
+            "value": "",
+            "description": "Twilio SMS sender number (e.g. +12025551234)",
+            "value_type": "text",
+            "display_order": 62,
+        },
+        {
+            "key": "twilio_whatsapp_number",
+            "category": "general",
+            "value": "",
+            "description": "Twilio WhatsApp sender number (e.g. +14155238886)",
+            "value_type": "text",
+            "display_order": 63,
+        },
+        # Rate limit tier defaults
+        {
+            "key": "rate_limit_tier_defaults",
+            "category": "general",
+            "value": '{"free": 30, "starter": 60, "professional": 120, "enterprise": 300}',
+            "description": "Per-tier API rate limits (requests/min) as JSON object",
+            "value_type": "text",
+            "display_order": 70,
+        },
+        {
+            "key": "rate_limit_overrides",
+            "category": "general",
+            "value": "{}",
+            "description": "Per-tenant rate limit overrides (tenant_id: requests/min) as JSON object",
+            "value_type": "text",
+            "display_order": 71,
+        },
     ]
     for default in defaults:
         existing = Setting.query.filter_by(key=default["key"]).first()
@@ -2604,6 +2672,8 @@ class Notification(db.Model):
     user_id = db.Column(
         db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
     )
+    category = db.Column(db.String(50), default="general", index=True)
+    title = db.Column(db.String(200), default="")
     message = db.Column(db.String(500), nullable=False)
     link = db.Column(db.String(500))
     is_read = db.Column(db.Boolean, default=False, index=True)
@@ -2612,6 +2682,91 @@ class Notification(db.Model):
     )
 
     user = db.relationship("User", backref=db.backref("notifications", lazy="dynamic"))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "category": self.category,
+            "title": self.title,
+            "message": self.message,
+            "link": self.link,
+            "is_read": self.is_read,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+NOTIFICATION_CATEGORIES = [
+    ("usage_alerts", "Usage Alerts"),
+    ("search_restricted", "Search Restrictions"),
+    ("case_updates", "Case Updates"),
+    ("system", "System Notifications"),
+    ("general", "General"),
+]
+
+
+class NotificationPreference(db.Model):
+    """Per-user notification preference for each category."""
+
+    __tablename__ = "notification_preferences"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
+    )
+    category = db.Column(db.String(50), nullable=False)
+    web_enabled = db.Column(db.Boolean, default=True)
+    email_enabled = db.Column(db.Boolean, default=False)
+    sms_enabled = db.Column(db.Boolean, default=False)
+    whatsapp_enabled = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, onupdate=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship(
+        "User", backref=db.backref("notification_preferences", lazy="dynamic")
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id", "category", name="uq_user_notification_category"
+        ),
+    )
+
+    @classmethod
+    def get_pref(cls, user_id: str, category: str) -> "NotificationPreference":
+        pref = cls.query.filter_by(user_id=user_id, category=category).first()
+        if not pref:
+            pref = cls(user_id=user_id, category=category)
+            db.session.add(pref)
+            db.session.commit()
+        return pref
+
+    @classmethod
+    def wants_web(cls, user_id: str, category: str) -> bool:
+        return cls.get_pref(user_id, category).web_enabled
+
+    @classmethod
+    def wants_email(cls, user_id: str, category: str) -> bool:
+        return cls.get_pref(user_id, category).email_enabled
+
+    @classmethod
+    def wants_sms(cls, user_id: str, category: str) -> bool:
+        return cls.get_pref(user_id, category).sms_enabled
+
+    @classmethod
+    def wants_whatsapp(cls, user_id: str, category: str) -> bool:
+        return cls.get_pref(user_id, category).whatsapp_enabled
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "category": self.category,
+            "web_enabled": self.web_enabled,
+            "email_enabled": self.email_enabled,
+            "sms_enabled": self.sms_enabled,
+            "whatsapp_enabled": self.whatsapp_enabled,
+        }
 
 
 class LoginLog(db.Model):
@@ -2771,6 +2926,10 @@ class Tenant(db.Model):
     stripe_subscription_id = db.Column(db.String(255), nullable=True)
     subscription_status = db.Column(db.String(50), default="incomplete", nullable=False)
     current_period_end = db.Column(db.DateTime, nullable=True)
+    trial_ends_at = db.Column(db.DateTime, nullable=True)
+    dunning_retries = db.Column(db.Integer, default=0)
+    canceled_at = db.Column(db.DateTime, nullable=True)
+    scheduled_deletion_at = db.Column(db.DateTime, nullable=True)
     join_code = db.Column(db.String(20), unique=True, nullable=False, index=True)
     owner_id = db.Column(
         db.String(36), db.ForeignKey("users.id"), nullable=True, index=True
@@ -2807,7 +2966,79 @@ class Tenant(db.Model):
             "current_period_end": self.current_period_end.isoformat()
             if self.current_period_end
             else None,
+            "trial_ends_at": self.trial_ends_at.isoformat()
+            if self.trial_ends_at
+            else None,
+            "dunning_retries": self.dunning_retries,
+            "canceled_at": self.canceled_at.isoformat() if self.canceled_at else None,
+            "scheduled_deletion_at": self.scheduled_deletion_at.isoformat()
+            if self.scheduled_deletion_at
+            else None,
             "owner_id": self.owner_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class FeatureFlag(db.Model):
+    """Super-admin overrides for tier-based feature flags per tenant."""
+
+    __tablename__ = "feature_flags"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    flag_name = db.Column(db.String(50), nullable=False)
+    enabled = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "tenant_id", "flag_name", name="uq_feature_flag_tenant_flag"
+        ),
+    )
+
+    tenant = db.relationship(
+        "Tenant", backref=db.backref("feature_flags", lazy="dynamic")
+    )
+
+
+class ProrationLog(db.Model):
+    """Record of prorated tier changes for billing transparency."""
+
+    __tablename__ = "proration_logs"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    from_tier = db.Column(db.String(20), nullable=False)
+    to_tier = db.Column(db.String(20), nullable=False)
+    stripe_invoice_id = db.Column(db.String(255), nullable=True)
+    amount_cents = db.Column(db.Integer, nullable=False, default=0)
+    currency = db.Column(db.String(3), default="eur")
+    description = db.Column(db.String(500), default="")
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    tenant = db.relationship(
+        "Tenant", backref=db.backref("proration_logs", lazy="dynamic")
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "from_tier": self.from_tier,
+            "to_tier": self.to_tier,
+            "stripe_invoice_id": self.stripe_invoice_id,
+            "amount_cents": self.amount_cents,
+            "currency": self.currency,
+            "description": self.description,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -2924,9 +3155,13 @@ _TENANT_MODELS = [
     Invoice,
     InvoiceItem,
     Payment,
+    CreditNote,
+    CreditNoteItem,
+    ProrationLog,
     TenantSetting,
     SpiderFootScan,
     User,
+    UsageRecord,
 ]
 
 

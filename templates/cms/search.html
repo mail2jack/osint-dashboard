@@ -158,7 +158,7 @@
 
 <div class="search-header">
     <h1>{{ _('Global Search') }}</h1>
-    <p style="color: var(--text-secondary);">{{ _('Search across cases, clients, subjects, findings, comments, and notes') }}</p>
+    <p style="color: var(--text-secondary);">{{ _('Search across cases, clients, subjects, findings, and comments') }}</p>
 </div>
 
 <form method="GET" action="{{ url_for('cms.search') }}">
@@ -174,7 +174,6 @@
         <button type="button" class="filter-btn {% if active_filter == 'subjects' %}active{% endif %}" data-click="filterResults" data-arg0="subjects">{{ _('Subjects') }}</button>
         <button type="button" class="filter-btn {% if active_filter == 'findings' %}active{% endif %}" data-click="filterResults" data-arg0="findings">{{ _('Findings') }}</button>
         <button type="button" class="filter-btn {% if active_filter == 'comments' %}active{% endif %}" data-click="filterResults" data-arg0="comments">{{ _('Comments') }}</button>
-        <button type="button" class="filter-btn {% if active_filter == 'notes' %}active{% endif %}" data-click="filterResults" data-arg0="notes">{{ _('Notes') }}</button>
     </div>
     
     <input type="hidden" name="type" id="filter-type" value="{{ active_filter or 'all' }}">
@@ -205,7 +204,7 @@
 </style>
 
 {% if query %}
-    {% if results.cases or results.clients or results.subjects or results.findings or results.financials or results.comments or results.notes %}
+    {% if results.cases or results.clients or results.subjects or results.findings or results.financials or results.comments %}
         <div class="quick-stats">
             {% if results.cases %}
             <div class="quick-stat">
@@ -241,12 +240,6 @@
             <div class="quick-stat">
                 <div class="quick-stat-value">{{ results.comments|length }}</div>
                 <div class="quick-stat-label">{{ _('Comments') }}</div>
-            </div>
-            {% endif %}
-            {% if results.notes %}
-            <div class="quick-stat">
-                <div class="quick-stat-value">{{ results.notes|length }}</div>
-                <div class="quick-stat-label">{{ _('Notes') }}</div>
             </div>
             {% endif %}
         </div>
@@ -343,43 +336,27 @@
         {% if results.comments and (not active_filter or active_filter == 'all' or active_filter == 'comments') %}
         <div class="results-section" data-type="comments">
             <h3>{{ _('Comments') }} <span class="result-count">{{ results.comments|length }}</span></h3>
-            {% for comment in results.comments %}
+            {% for item in results.comments %}
             <div class="result-item" style="flex-direction: column;">
                 <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.5rem;">
                     <div class="result-info">
                         <div class="result-meta">
-                            {% if comment.case_id %}
-                            <a href="{{ url_for('cms.view_case', case_id=comment.case_id) }}">Case: {{ comment.case_number }}</a> |
+                            {% if item._source == "subject_note" %}
+                            <a href="{{ url_for('cms.view_subject', subject_id=item.subject_id) }}" class="result-title">{{ item.author_name }}</a> |
+                            Subject note |
+                            {% elif item._source == "subject_comment" %}
+                            <a href="{{ url_for('cms.view_subject', subject_id=item.subject_id) }}">{{ item._subject_name }}</a> |
+                            By {{ item.author_name }} | {{ item.created_at }} |
+                            {% elif item.case_id %}
+                            <a href="{{ url_for('cms.view_case', case_id=item.case_id) }}">Case: {{ item.case_number }}</a> |
+                            By {{ item.author_name }} | {{ item.created_at }} |
                             {% endif %}
-                            By {{ comment.author_name }} | {{ comment.created_at }} | 
-                            <span class="badge badge-comment">{{ comment.comment_type }}</span>
+                            <span class="badge {% if item._source == 'subject_note' %}badge-note{% else %}badge-comment{% endif %}">{{ item.comment_type }}</span>
                         </div>
                     </div>
-                    <span class="result-badge badge-comment">{{ _('Comment') }}</span>
+                    <span class="result-badge {% if item._source == 'subject_note' %}badge-note{% else %}badge-comment{% endif %}">{% if item._source == 'subject_note' %}{{ _('Subject Note') }}{% else %}{{ _('Comment') }}{% endif %}</span>
                 </div>
-                <div class="comment-preview">{{ comment.content }}</div>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        
-        {% if results.notes and (not active_filter or active_filter == 'all' or active_filter == 'notes') %}
-        <div class="results-section" data-type="notes">
-            <h3>{{ _('Subject Notes') }} <span class="result-count">{{ results.notes|length }}</span></h3>
-            {% for note in results.notes %}
-            <div class="result-item" style="flex-direction: column;">
-                <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 0.5rem;">
-                    <div class="result-info">
-                        <a href="{{ url_for('cms.view_subject', subject_id=note.id) }}" class="result-title">{{ note.name }}</a>
-                        <div class="result-meta">
-                            {{ note.subject_type|title }}
-                        </div>
-                    </div>
-                    <span class="result-badge badge-note">{{ _('Note') }}</span>
-                </div>
-                {% if note.note_preview %}
-                <div class="note-preview">{{ note.note_preview }}</div>
-                {% endif %}
+                <div class="{% if item._source == 'subject_note' %}note-preview{% else %}comment-preview{% endif %}">{{ item.content }}</div>
             </div>
             {% endfor %}
         </div>
