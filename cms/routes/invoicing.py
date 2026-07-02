@@ -57,6 +57,7 @@ def _invoice_to_dict(inv: Invoice) -> dict:
 # ── List ────────────────────────────────────────────────────────────────
 @cms_bp.route("/invoices")
 @login_required
+@senior_required
 def invoice_list():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 25, type=int)
@@ -234,11 +235,13 @@ def invoice_create():
 # ── View ────────────────────────────────────────────────────────────────
 @cms_bp.route("/invoices/<invoice_id>")
 @login_required
+@senior_required
 def invoice_view(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
     client = db.session.get(Client, invoice.client_id) or abort(404)
     ensure_tenant_access(client)
+    client.decrypt_naw()
     items = (
         InvoiceItem.query.filter_by(invoice_id=invoice_id)
         .order_by(InvoiceItem.sort_order)
@@ -351,6 +354,7 @@ def invoice_edit(invoice_id: str):
 # ── PDF ─────────────────────────────────────────────────────────────────
 @cms_bp.route("/invoices/<invoice_id>/pdf")
 @login_required
+@senior_required
 def invoice_pdf(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
@@ -499,6 +503,7 @@ def invoice_delete(invoice_id: str):
 # ── API: quick status counts ────────────────────────────────────────────
 @cms_bp.route("/api/invoices/stats")
 @login_required
+@senior_required
 def invoice_stats():
     base = apply_tenant_filter(
         Invoice.query.filter(Invoice.is_deleted == False), Invoice

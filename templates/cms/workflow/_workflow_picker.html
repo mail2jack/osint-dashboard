@@ -6,11 +6,45 @@ function showActionPicker(actionType) {
   const label = btn.dataset.label;
   const items = buildPickerItems(actionType);
   if (items.length === 0) {
-    runAction(actionType, '');
+    if (actionType === 'subdomain') {
+      showEditConfirm(actionType, '');
+      return;
+    }
+    var warnings = {
+      phone: 'Geen telefoonnummers beschikbaar. Voeg een betrokkene met telefoonnummer toe in Stap 2.',
+      email: 'Geen e-mailadressen beschikbaar. Voeg een betrokkene met e-mailadres toe in Stap 2.',
+      address: 'Geen adressen beschikbaar. Voeg een betrokkene met adresgegevens toe in Stap 2.',
+      kvk: 'Geen bedrijfsnamen beschikbaar. Voeg een betrokkene van type "Bedrijf" toe in Stap 2.',
+      rdw: 'Geen kentekens beschikbaar. Voeg een betrokkene van type "Voertuig" met kenteken toe in Stap 2.',
+      social: 'Geen social media accounts beschikbaar. Vul social media accounts in bij een betrokkene in Stap 2.',
+      vessel: 'Geen vaartuiggegevens beschikbaar. Voeg een betrokkene van type "Vaartuig" met IMO/MMSI/ENI toe in Stap 2.',
+    };
+    var msg = warnings[actionType] || 'Geen geschikte betrokkenen voor deze actie. Vul eerst de benodigde gegevens in bij een betrokkene in Stap 2.';
+    var overlay = document.createElement('div');
+    overlay.className = 'picker-overlay';
+    overlay.innerHTML =
+      '<div class="picker-modal" style="max-width:400px;">' +
+        '<div class="picker-header">' +
+          '<h3>' + (btn ? btn.dataset.icon : '') + ' ' + esc(label) + '</h3>' +
+          '<button class="picker-close" data-action="close-warn">&times;</button>' +
+        '</div>' +
+        '<div class="picker-body" style="text-align:center;padding:1.25rem;">' +
+          '<div style="font-size:1.8rem;margin-bottom:0.6rem;">⚠️</div>' +
+          '<p style="color:var(--text-primary);font-size:0.85rem;margin:0 0 1rem 0;line-height:1.5;">' + esc(msg) + '</p>' +
+          '<button class="action-btn" data-action="close-warn" style="background:var(--accent-primary);color:#fff;font-weight:600;">Begrepen</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelectorAll('[data-action="close-warn"]').forEach(function(el) {
+      el.onclick = function() { overlay.remove(); };
+    });
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) overlay.remove();
+    });
     return;
   }
 
-  const overlay = document.createElement('div');
+  var overlay = document.createElement('div');
   overlay.className = 'picker-overlay';
   overlay.innerHTML =
     '<div class="picker-modal">' +
@@ -36,7 +70,7 @@ function showActionPicker(actionType) {
       if (isNaN(idx)) return;
       overlay.remove();
       var val = items[parseInt(el.dataset.idx)].value;
-      if (actionType === 'facebook' || actionType === 'tiktok' || actionType === 'instagram' || actionType === 'linkedin' || actionType === 'twitter') {
+      if (actionType === 'facebook' || actionType === 'tiktok' || actionType === 'instagram' || actionType === 'linkedin' || actionType === 'twitter' || actionType === 'vessel' || actionType === 'subdomain' || actionType === 'osint') {
         showEditConfirm(actionType, val);
       } else {
         runAction(actionType, val);
@@ -58,6 +92,8 @@ function showEditConfirm(actionType, currentValue) {
   else if (actionType === 'instagram') desc = 'Zoek op Instagram gebruikersnaam of naam:';
   else if (actionType === 'linkedin') desc = 'Zoek op LinkedIn URL, gebruikersnaam of naam:';
   else if (actionType === 'twitter') desc = 'Zoek op X/Twitter gebruikersnaam of naam:';
+  else if (actionType === 'subdomain') desc = 'Voer een domeinnaam in (bijv. example.nl):';
+  else if (actionType === 'osint') desc = 'Voer een naam of zoekterm in voor het deep search onderzoek:';
   const overlay = document.createElement('div');
   overlay.className = 'picker-overlay';
   overlay.innerHTML =
@@ -108,8 +144,9 @@ function buildPickerItems(actionType) {
       var full = [addr, loc].filter(Boolean).join(', ');
       if (full) items.push({ subject: s.name, label: 'Adres', value: full, display: full });
     } else if (actionType === 'social') {
-      if (s.social_accounts && s.social_accounts.length) {
-        items.push({ subject: s.name, label: 'Social media', value: JSON.stringify(s.social_accounts), display: s.social_accounts.map(function(a) { return a.platform || a.url; }).join(', ') });
+      if (s.workflow_social_accounts && s.workflow_social_accounts.length) {
+        var vals = s.workflow_social_accounts.map(function(a) { return (typeof a === 'object' ? a.platform || a.url : a); }).filter(Boolean);
+        items.push({ subject: s.name, label: 'Social media', value: JSON.stringify(s.workflow_social_accounts), display: vals.join(', ') });
       } else if (s.name) {
         items.push({ subject: s.name, label: 'Gebruikersnaam', value: JSON.stringify([s.name]), display: s.name });
       }
@@ -129,6 +166,17 @@ function buildPickerItems(actionType) {
       items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
     } else if (actionType === 'osint' && s.name) {
       items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
+    } else if (actionType === 'vessel') {
+      if (s.imo_number) items.push({ subject: s.name, label: 'IMO', value: s.imo_number, display: s.imo_number });
+      if (s.mmsi) items.push({ subject: s.name, label: 'MMSI', value: s.mmsi, display: s.mmsi });
+      if (s.eni_number) items.push({ subject: s.name, label: 'ENI', value: s.eni_number, display: s.eni_number });
+      if (s.identification_number) items.push({ subject: s.name, label: 'Identificatienummer', value: s.identification_number, display: s.identification_number });
+      if (s.name) items.push({ subject: s.name, label: 'Naam', value: s.name, display: s.name });
+    } else if (actionType === 'subdomain') {
+      if (s.email && s.email.indexOf('@') !== -1) {
+        var domain = s.email.split('@')[1];
+        items.push({ subject: s.name, label: 'Domein (uit e-mail)', value: domain, display: domain });
+      }
     }
   });
   return items;

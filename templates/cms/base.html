@@ -25,7 +25,24 @@
             d.appendChild(document.createTextNode(str));
             return d.innerHTML;
         }
+        window.apiFetch = function(url, options) {
+            options = options || {};
+            options.headers = options.headers || {};
+            var token = window.csrfToken || (document.querySelector('meta[name="csrf-token"]') || {}).content;
+            if (token) options.headers['X-CSRFToken'] = token;
+            return fetch(url, options);
+        };
     </script>
+    <style nonce="{{ csp_nonce }}">
+.nav-dropdown { position: relative; display: inline-block; margin-left: 1.5rem; }
+.nav-dropdown-trigger { color: white; text-decoration: none; cursor: pointer; display: inline-block; }
+.nav-dropdown-trigger:hover { opacity: 0.8; }
+.nav-dropdown-menu { display: none !important; position: absolute; top: 100%; left: 0; background: var(--bg-header, #1a1a2e); min-width: 200px; border-radius: 0 0 8px 8px; padding: 0.5rem 0; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 200; }
+.nav-dropdown-menu a { display: block; margin-left: 0 !important; padding: 0.5rem 1rem; white-space: nowrap; }
+.nav-dropdown-menu a:hover { background: rgba(255,255,255,0.1); opacity: 1 !important; }
+.nav-dropdown:hover .nav-dropdown-menu { display: block !important; }
+.nav-dropdown-menu::before { content: ''; position: absolute; top: -6px; left: 16px; width: 12px; height: 12px; background: var(--bg-header, #1a1a2e); transform: rotate(45deg); }
+</style>
     {% if g.use_bundle %}
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/bundle.min.css') }}?v={{ g.css_version }}">
     {% else %}
@@ -35,6 +52,80 @@
     {% if theme_style == 'professional' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cms-professional.css') }}?v={{ g.css_version }}">
     {% endif %}
+    <style nonce="{{ csp_nonce }}">
+        /* ─── Global button color classes ─── */
+        .bg-green       { background: #059669; color: #fff; }
+        .bg-purple      { background: #7c3aed; color: #fff; }
+        .bg-blue        { background: #2563eb; color: #fff; }
+        .bg-orange      { background: #d97706; color: #fff; }
+        .bg-gray        { background: #6b7280; color: #fff; }
+        .btn-cms.green,
+        .btn-cms.success { background: #059669; color: #fff; border-color: #059669; }
+        .btn-cms.blue    { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .btn-cms.orange  { background: #d97706; color: #fff; border-color: #d97706; }
+        .btn-cms.purple  { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+        .btn-cms.teal    { background: #0e7490; color: #fff; border-color: #0e7490; }
+        .btn-cms.gray    { background: #6b7280; color: #fff; border-color: #6b7280; }
+        .btn-cms.danger  { background: #dc2626; color: #fff; border-color: #dc2626; }
+        .btn-cms.primary { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+
+        /* ─── Button refinements ─── */
+        .btn-cms {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            font-weight: 600;
+            letter-spacing: 0.015em;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-input);
+            cursor: pointer;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        .btn-cms:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        .btn-cms.small {
+            font-weight: 500;
+            padding: 0.45rem 0.9rem;
+            font-size: 0.8rem;
+            border-radius: 6px;
+        }
+        .btn-cms:disabled, .btn-cms[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .btn-cms:disabled:hover, .btn-cms[disabled]:hover {
+            box-shadow: none;
+        }
+
+        /* ─── Colored button hover states ─── */
+        .btn-cms.green:hover, .btn-cms.success:hover { background: #047857; border-color: #047857; }
+        .btn-cms.blue:hover { background: #1d4ed8; border-color: #1d4ed8; }
+        .btn-cms.orange:hover { background: #b45309; border-color: #b45309; }
+        .btn-cms.purple:hover { background: #6d28d9; border-color: #6d28d9; }
+        .btn-cms.teal:hover { background: #0c5b72; border-color: #0c5b72; }
+        .btn-cms.gray:hover { background: #4b5563; border-color: #4b5563; }
+        .btn-cms.danger:hover { background: #b91c1c; border-color: #b91c1c; }
+        .btn-cms.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .btn-cms.bg-green { background: #059669; color: #fff; border-color: #059669; }
+        .btn-cms.bg-green:hover { background: #047857; border-color: #047857; }
+        .btn-cms.bg-purple { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+        .btn-cms.bg-purple:hover { background: #6d28d9; border-color: #6d28d9; }
+        .btn-cms.bg-blue { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .btn-cms.bg-blue:hover { background: #1d4ed8; border-color: #1d4ed8; }
+        .btn-cms.bg-orange { background: #d97706; color: #fff; border-color: #d97706; }
+        .btn-cms.bg-orange:hover { background: #b45309; border-color: #b45309; }
+        .btn-cms.bg-gray { background: #6b7280; color: #fff; border-color: #6b7280; }
+        .btn-cms.bg-gray:hover { background: #4b5563; border-color: #4b5563; }
+    </style>
 </head>
 <body data-help-topic="{{ help_topic|default('general') }}">
     <div class="app-loader" id="appLoader">
@@ -54,30 +145,46 @@
             <strong>CMS</strong>
             {% endif %}
             <a href="{{ url_for('cms.dashboard') }}">{{ _('Dashboard') }}</a>
-            <a href="{{ url_for('cms.cases') }}">{{ _('Cases') }}</a>
-            <a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a>
-            <a href="{{ url_for('cms.invoice_list') }}">{{ _('Facturen') }}</a>
-            <a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a>
-            <a href="{{ url_for('cms.search') }}">{{ _('Search') }}</a>
-                <a href="{{ url_for('cms.notification_history') }}">🔔 {{ _('Notifications') }}</a>
+            <div class="nav-dropdown">
+              <a href="#" class="nav-dropdown-trigger">📁 {{ _('Entity') }}</a>
+              <div class="nav-dropdown-menu">
+                <a href="{{ url_for('cms.cases') }}">{{ _('Cases') }}</a>
+                <a href="{{ url_for('cms.clients') }}">{{ _('Clients') }}</a>
+                <a href="{{ url_for('cms.subjects') }}">{{ _('Subjects') }}</a>
                 <a href="{{ url_for('cms.reminders') }}">{{ _('Reminders') }}</a>
                 {% if current_user.has_role('admin', 'senior_investigator') %}
                 <a href="{{ url_for('cms.spiderfoot_index') }}">SpiderFoot</a>
                 {% endif %}
+              </div>
+            </div>
+            {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}">{{ _('Facturen') }}</a>{% endif %}
+            <a href="{{ url_for('cms.search') }}">{{ _('Search') }}</a>
+                {% if current_user.has_role('investigator', 'senior_investigator', 'admin') %}
+                <a href="{{ url_for('workflow.dashboard') }}">🔬 {{ _('Onderzoeken') }}</a>
+                {% endif %}
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>
                 {% endif %}
-                {% if current_user.is_admin or current_user.has_role('senior_investigator') %}
-                <a href="{{ url_for('cms.analytics') }}">📊 {{ _('Analytics') }}</a>
-                {% endif %}
-                {% if current_user.is_admin %}
-                <a href="{{ url_for('cms.tenant_settings') }}">🏢 {{ _('Tenant') }}</a>
-                {% endif %}
-                {% if current_user.is_super_admin %}
-                <a href="{{ url_for('cms.global_search') }}">🌐 {{ _('Global Search') }}</a>
-                <a href="{{ url_for('cms.admin_feature_flags') }}">🚩 {{ _('Features') }}</a>
-                <a href="{{ url_for('cms.admin_rate_limits') }}">⏱️ {{ _('Rate Limits') }}</a>
-                <a href="{{ url_for('cms.analytics_super') }}">🔭 {{ _('Super Admin') }}</a>
+                {% if current_user.is_admin or current_user.has_role('senior_investigator') or current_user.is_super_admin %}
+                <div class="nav-dropdown">
+                  <a href="#" class="nav-dropdown-trigger">🔱 {{ _('Super') }}</a>
+                  <div class="nav-dropdown-menu">
+                    {% if current_user.is_admin or current_user.has_role('senior_investigator') %}
+                    <a href="{{ url_for('cms.analytics') }}">📊 {{ _('Analytics') }}</a>
+                    {% endif %}
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('cms.tenant_settings') }}">🏢 {{ _('Tenant') }}</a>
+                    <a href="{{ url_for('cms.brave_status') }}">🦁 {{ _('Brave Status') }}</a>
+                    {% endif %}
+                    {% if current_user.is_super_admin %}
+                    <a href="{{ url_for('cms.global_search') }}">🌐 {{ _('Global Search') }}</a>
+                    <a href="{{ url_for('cms.admin_feature_flags') }}">🚩 {{ _('Features') }}</a>
+                    <a href="{{ url_for('cms.admin_rate_limits') }}">⏱️ {{ _('Rate Limits') }}</a>
+                    <a href="{{ url_for('cms.analytics_super') }}">🔭 {{ _('Super Admin') }}</a>
+                    <a href="{{ url_for('cms.list_announcements') }}">📢 {{ _('Announcements') }}</a>
+                    {% endif %}
+                  </div>
+                </div>
                 {% endif %}
             </div>
             <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -86,6 +193,7 @@
                     {% if 'switched_tenant_id' in session %}
                     <span style="background:#f59e0b;color:#000;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:3px;font-weight:600;" title="Viewing tenant: {{ session.switched_tenant_id }}">SWITCHED</span>
                     <form method="POST" action="{{ url_for('cms.clear_switch_tenant') }}" style="display:inline;margin:0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" style="background:transparent;border:1px solid rgba(255,255,255,0.5);color:white;font-size:0.65rem;padding:0.1rem 0.35rem;border-radius:3px;cursor:pointer;">✕</button>
                     </form>
                     {% endif %}
@@ -138,7 +246,7 @@
             <h3>⏰ Session Timeout Warning</h3>
             <p id="sessionTimeoutText" style="color:var(--text-secondary);margin:1rem 0;">Your session will expire in <strong id="sessionTimeoutCountdown">5:00</strong>.</p>
             <button class="btn btn-primary" data-click="extendSession">Extend Session</button>
-            <button class="btn" data-click="closeParentModal">Dismiss</button>
+            <button class="btn-cms" data-click="closeParentModal">Dismiss</button>
         </div>
     </div>
 
@@ -158,8 +266,8 @@
             </div>
             <div id="updateResult" style="display:none;"></div>
             <div style="margin-top:1rem;display:flex;gap:0.5rem;">
-                <button id="updateNowBtn" data-click="runUpdate" class="btn" style="background:#16a34a;">⬆️ Update Now</button>
-                <button data-click="closeParentModal" class="btn" style="background:#666;">Later</button>
+                <button id="updateNowBtn" data-click="runUpdate" class="btn-cms small bg-green">⬆️ Update Now</button>
+                <button data-click="closeParentModal" class="btn-cms small bg-gray">Later</button>
             </div>
             <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted);">
                 The update runs git pull, pip install, and restarts services. Database is backed up first.
@@ -182,8 +290,11 @@
     <div class="keyboard-hint">
         <span class="kh-left">
             {% if current_user.is_authenticated and current_user.tenant %}
-            <span class="tenant-badge">{{ current_user.tenant.name }}
+            <span class="tenant-badge">{% if switched_tenant %}{{ switched_tenant.name }}
+                <span style="font-size:0.65rem;opacity:0.7;margin-left:0.25rem;">({{ switched_tenant.tier|title }})</span>
+                {% else %}{{ current_user.tenant.name }}
                 <span style="font-size:0.65rem;opacity:0.7;margin-left:0.25rem;">({{ current_user.tenant.tier|title }})</span>
+                {% endif %}
             </span>
             {% endif %}
         </span>
@@ -195,6 +306,8 @@
             <a href="#" data-click="openChangelog" style="color:var(--text-secondary);text-decoration:none;">changelog</a>
             <span style="opacity:0.4;">|</span>
             <a href="{{ url_for('static', filename='ALGEMENE_VOORWAARDEN_TEMPLATE.md') }}" target="_blank" style="color:var(--text-secondary);text-decoration:none;" title="Algemene Voorwaarden (niet-juridisch sjabloon)">📄 voorwaarden</a>
+            <span style="opacity:0.4;">|</span>
+            <a href="{{ url_for('cms.privacy_policy') }}" style="color:var(--text-secondary);text-decoration:none;" title="Privacybeleid">🔒 privacy</a>
         </span>
     </div>
 
@@ -233,6 +346,21 @@
     <div id="helpOverlay" class="help-overlay" data-click="closeHelp" style="display:none;"></div>
 
     <div id="toast-container"></div>
+
+    {# Cookie consent banner #}
+    <div id="cookieBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg-card,#1e1e2e);color:var(--text-primary,#e0e0e0);padding:1rem 1.5rem;box-shadow:0 -4px 20px rgba(0,0,0,0.3);z-index:9999;border-top:1px solid var(--border-color,#333);">
+        <div style="max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+            <div style="font-size:0.85rem;line-height:1.5;flex:1;min-width:200px;">
+                Deze site gebruikt alleen functionele cookies voor sessiebeheer.
+                <a href="{{ url_for('cms.privacy_policy') }}" style="color:var(--accent,#6ee7b7);text-decoration:underline;">Privacybeleid</a>
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-shrink:0;">
+                <button type="button" data-cookie-accept="necessary" class="btn-cms primary" style="padding:0.4rem 1rem;font-size:0.85rem;">Alleen noodzakelijk</button>
+                <button type="button" data-cookie-accept="all" class="btn-cms primary" style="padding:0.4rem 1rem;font-size:0.85rem;">Akkoord</button>
+            </div>
+        </div>
+    </div>
+
     <div class="action-loader" id="actionLoader">
         <div class="action-loader-box">
             <div class="action-loader-spinner"></div>
@@ -336,9 +464,106 @@ function closeHealthModal() {
 
 // Init
 updateHealthLight();
-setInterval(updateHealthLight, 60000);
+setInterval(updateHealthLight, 300000);
+
+// Announcement modal
+(function() {
+  var anns = {{ unacknowledged_announcements|tojson }};
+  if (!anns || !anns.length) return;
+  var idx = 0;
+  var overlay = document.createElement('div');
+  overlay.id = 'announcementOverlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  document.body.appendChild(overlay);
+  function showAnn(i) {
+    if (i >= anns.length) { overlay.style.display = 'none'; overlay.remove(); return; }
+    var a = anns[i];
+    var sev = a.severity || 'info';
+    var color = sev === 'critical' ? '#7c3aed' : sev === 'error' ? '#ef4444' : sev === 'warning' ? '#f59e0b' : '#3b82f6';
+    overlay.innerHTML = '<div style="background:var(--bg-card);border-radius:12px;max-width:550px;width:90%;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);border-top:5px solid ' + color + ';">' +
+      '<div style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">' + esc(a.title || '') + '</div>' +
+      '<div style="white-space:pre-wrap;font-size:0.9rem;color:var(--text-primary);margin-bottom:1rem;">' + esc(a.body || '') + '</div>' +
+      '<button type="button" class="btn-cms primary" data-ann-id="' + esc(a.id) + '" style="width:100%;padding:0.6rem;font-size:0.9rem;">Bevestigen</button>' +
+      '</div>';
+    overlay.querySelector('button').addEventListener('click', function() {
+      var id = this.getAttribute('data-ann-id');
+      var btn = this;
+      btn.textContent = 'Bezig...';
+      btn.disabled = true;
+      apiFetch('/cms/api/announcements/' + id + '/ack', {method:'POST'}).then(function() {
+        showAnn(i + 1);
+      }).catch(function() {
+        showAnn(i + 1);
+      });
+    });
+  }
+  showAnn(0);
+})();
+
+// ─── Auto postcode lookup ───
+document.addEventListener('input', function(e) {
+    var el = e.target;
+    if (!el.classList.contains('addr-zipcode') && !el.classList.contains('addr-number')) return;
+    var entry = el.closest('.address-entry') || (function findGroup(node) {
+        for (var p = node.parentElement; p && p !== document; p = p.parentElement) {
+            if (p.querySelector('.addr-zipcode') && p.querySelector('.addr-number') && p.querySelector('.addr-street') && p.querySelector('.addr-town')) return p;
+        }
+        return null;
+    })(el);
+    if (!entry) return;
+    var zipcode = entry.querySelector('.addr-zipcode');
+    var number = entry.querySelector('.addr-number');
+    if (!zipcode || !number) return;
+    clearTimeout(entry._autopcTimer);
+    entry._autopcTimer = setTimeout(function() {
+        var z = zipcode.value.trim();
+        var n = number.value.trim();
+        if (!z || !n) return;
+        if (!/^[0-9]{4}\s?[a-zA-Z]{2}$/.test(z)) return;
+        if (!/^[0-9]+/.test(n)) return;
+        var street = entry.querySelector('.addr-street');
+        var town = entry.querySelector('.addr-town');
+        if (!street || !town) return;
+        if (street.value.trim() && town.value.trim()) return;
+        apiFetch('/cms/api/kadaster-lookup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({zipcode: z.toUpperCase(), number: n})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.found && data.bag_data) {
+                if (data.bag_data.street) street.value = data.bag_data.street;
+                if (data.bag_data.town) town.value = data.bag_data.town;
+                if (data.bag_data.number) number.value = data.bag_data.number;
+            }
+        })
+        .catch(function() {});
+    }, 500);
+});
 </script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js" nonce="{{ csp_nonce }}"></script>
+    <script nonce="{{ csp_nonce }}">
+// Cookie consent banner
+(function() {
+    var banner = document.getElementById('cookieBanner');
+    if (!banner) return;
+    if (document.cookie.indexOf('cookie_consent=') !== -1) return;
+    banner.style.display = 'block';
+    banner.querySelectorAll('[data-cookie-accept]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var level = this.getAttribute('data-cookie-accept');
+            apiFetch('/cms/api/cookie-consent', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': window.CMS.csrfToken},
+                body: JSON.stringify({consent_level: level})
+            }).catch(function(){});
+            banner.style.display = 'none';
+            try { localStorage.setItem('cookie_consent', level); } catch(e) {}
+        });
+    });
+})();
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js" nonce="{{ csp_nonce }}"></script>
 </body>
 </html>
 

@@ -89,7 +89,19 @@
 
 ---
 
-## API Keys — Settings GUI (not .env)
+## Sherlock Username Search (`cms/sherlock_utils.py`, `cms/username_search.py`)
+- Sherlock site list wordt live opgehaald van `https://raw.githubusercontent.com/sherlock-project/sherlock/master/sherlock_project/resources/data.json` en 24u gecached in `instance/sherlock_cache.json`.
+- `get_sherlock_sites()` in `cms/sherlock_utils.py` cached via `@lru_cache` + disk cache met TTL.
+- `search_username_async(username, max_sites=150)` in `cms/username_search.py` checkt sites uit de Sherlock JSON. `PRIORITY_USERNAME_SITES` (24 stuks) worden eerst gecheckt.
+- **Uitbreiden mogelijkheden:**
+  1. **Meer sites**: verhoog `max_sites` (default 150) — Sherlock heeft ~500+ sites.
+  2. **Prioriteit**: voeg namen toe aan `PRIORITY_USERNAME_SITES` (moeten exact matchen met keys in upstream `data.json`).
+  3. **Eigen sites**: merge na het ophalen in `get_sherlock_sites()` extra dict-entries — formaat: `{"errorType": "status_code", "url": "https://site.nl/{}", "urlMain": "https://site.nl", "username_claimed": "test"}`.
+- Hoe meer sites, hoe langer de check duurt (`batch_size=30` parallel).
+- Email search (`cms/email_search.py`) gebruikt dezelfde Sherlock-data voor email-checks met eigen `priority_sites` (30 stuks).
+- Vallet altijd terug op Sherlock als RapidAPI onconfigureerd/uitgeput is (`cms/routes/osint_routes.py:1045`).
+
+---
 - Prefer Settings table over `.env` for all API keys.
 - API key access pattern: `Setting.get('openrouter_api_key')`, `Setting.get('overheid_api_key')`, etc. — env var fallback removed; use Settings GUI.
 - `.env` should only retain `DATABASE_URL`, `CMS_ENCRYPTION_KEY`, `SECRET_KEY`.

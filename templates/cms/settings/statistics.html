@@ -333,14 +333,14 @@
             </div>
             <form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" style="display: inline;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
+                <button type="submit" class="btn-cms small bg-green">✓</button>
             </form>
         </div>
         {% endfor %}
         {% else %}
         <p style="color: var(--text-secondary);">No pending reminders</p>
         {% endif %}
-        <a href="{{ url_for('cms.create_reminder') }}" class="btn" style="margin-top: 0.5rem; font-size: 0.85rem; padding: 0.5rem 1rem;">+ New Reminder</a>
+        <a href="{{ url_for('cms.create_reminder') }}" class="btn-cms" style="margin-top: 0.5rem;">+ New Reminder</a>
     </div>
 
     <div class="card">

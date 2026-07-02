@@ -32,6 +32,9 @@ def app():
         )
         command.upgrade(alembic_cfg, "head")
         init_default_settings()
+        from cms.services.invoice_service import seed_service_rates
+
+        seed_service_rates()
 
         admin = User.query.filter_by(username="admin").first()
         if admin:
@@ -79,7 +82,7 @@ def _clean_db_between_tests(app):
 
     # Delete all tables EXCEPT seed/config tables (keep admin + tenant from app fixture)
     for t in inspect(db.engine).get_table_names():
-        if t in ("alembic_version", "users", "tenants"):
+        if t in ("alembic_version", "users", "tenants", "service_rates"):
             continue
         db.session.execute(text(f'DELETE FROM "{t}"'))
     db.session.commit()

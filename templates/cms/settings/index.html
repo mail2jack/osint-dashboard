@@ -403,6 +403,10 @@
             <span class="icon">📊</span>
             <span>{{ _('Statistics') }}</span>
         </a>
+        <a href="{{ url_for('cms.avg_requests_admin') }}" class="category-item">
+            <span class="icon">&#128221;</span>
+            <span>AVG-verzoeken</span>
+        </a>
         {% if current_user.is_super_admin %}
         <hr class="sidebar-divider">
         <h3>{{ _('Admin') }}</h3>
@@ -423,6 +427,14 @@
             <span class="icon">🏢</span>
             <span>{{ _('Tenant Settings') }}</span>
         </a>
+        <a href="{{ url_for('cms.dpa_register') }}" class="category-item">
+            <span class="icon">&#128221;</span>
+            <span>DPA-register</span>
+        </a>
+        <a href="{{ url_for('cms.breach_list') }}" class="category-item">
+            <span class="icon">&#128737;</span>
+            <span>Datalekken</span>
+        </a>
         {% endif %}
     </div>
     
@@ -435,6 +447,7 @@
         <p>{{ _('Configure %(category)s settings.', category=categories[active_category].name) }}</p>
         {% endif %}
         <form id="settingsForm"{% if is_platform_cat %} data-platform-settings="true"{% endif %}>
+            <input type="text" autocomplete="username" style="position:absolute;left:-9999px;width:1px;height:1px;" tabindex="-1" aria-hidden="true">
             {% for setting in settings_list %}
             {% if is_platform_cat %}
             <div class="setting-item" data-setting-id="{{ setting.id }}" data-value-type="{% if setting.is_encrypted %}password{% else %}text{% endif %}" data-key="{{ setting.key }}">
@@ -449,7 +462,8 @@
                 <div style="position: relative;">
                     <input type="password" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
                            value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
-                           class="setting-input" autocomplete="new-password">
+                           class="setting-input" autocomplete="off"
+                           aria-label="{{ setting.key.replace('_', ' ').title() }}">
                     <button type="button" data-click="togglePassword" data-arg0="{{ setting.id }}" 
                             style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.5rem;">
                         👁️
@@ -551,8 +565,9 @@
                 <div style="position: relative;">
                     <input type="password" id="setting-{{ setting.id }}" name="{{ setting.key }}" 
                            value="{{ setting.value or '' }}" data-setting-id="{{ setting.id }}" 
-                           class="setting-input" autocomplete="new-password"
-                           placeholder="{% if not setting.value %}{{ _('Enter value') }}{% endif %}">
+                           class="setting-input" autocomplete="off"
+                           placeholder="{% if not setting.value %}{{ _('Enter value') }}{% endif %}"
+                           aria-label="{{ display_name }}">
                     <button type="button" data-click="togglePassword" data-arg0="{{ setting.id }}" 
                             style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.5rem;">
                         👁️
@@ -580,8 +595,8 @@
             </div>
             {% endif %}
             {% endfor %}
-            
-            {% if plan_info %}
+        </form>
+        {% if plan_info %}
             <div class="plan-info">
                 <div class="plan-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border-color);">
                     <div>
@@ -671,7 +686,7 @@
                     <p style="color:var(--text-secondary);font-size:0.85rem;">
                         {{ _('Manage your saved payment methods and billing details through the Stripe Customer Portal.') }}
                     </p>
-                    <a href="{{ url_for('cms.billing_portal') }}" class="btn" style="display:inline-block;padding:0.5rem 1.5rem;background:var(--accent-primary);color:white;text-decoration:none;border-radius:6px;" target="_blank">
+                    <a href="{{ url_for('cms.billing_portal') }}" class="btn-cms primary" target="_blank">
                         {{ _('Manage Payment Methods ↗') }}
                     </a>
                 </div>
@@ -687,14 +702,14 @@
                         <form method="POST" action="{{ url_for('cms.create_checkout_session') }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="tier" value="{{ upgrade_tier }}">
-                            <button type="submit" class="btn" style="padding:0.5rem 1.5rem;background:var(--accent-primary);color:white;border:none;border-radius:6px;cursor:pointer;">
+                            <button type="submit" class="btn-cms primary">
                                 {{ _('Upgrade to %(tier)s', tier=upgrade_tier|title) }}
                             </button>
                         </form>
                         {% endif %}
                         {% endfor %}
                         {% else %}
-                        <a href="#" class="btn" style="display:inline-block;padding:0.5rem 1.5rem;background:var(--accent-primary);color:white;text-decoration:none;border-radius:6px;">{{ _('Contact Sales') }}</a>
+                        <a href="#" class="btn-cms primary">{{ _('Contact Sales') }}</a>
                         {% endif %}
                     </div>
                 </div>
@@ -713,7 +728,7 @@
                             <option value="enterprise" {% if plan_info.tier == 'enterprise' %}selected{% endif %}>Enterprise</option>
                             {% endif %}
                         </select>
-                        <button type="submit" class="btn" style="padding:0.5rem 1rem;">{{ _('Update') }}</button>
+                        <button type="submit" class="btn-cms">{{ _('Update') }}</button>
                     </form>
                 </div>
                 {% endif %}
@@ -731,7 +746,7 @@
                             <option value="admin">{{ _('Admin') }}</option>
                             <option value="viewer">{{ _('Viewer') }}</option>
                         </select>
-                        <button type="submit" class="btn" style="padding:0.5rem 1rem;">{{ _('Invite') }}</button>
+                        <button type="submit" class="btn-cms">{{ _('Invite') }}</button>
                     </form>
                     <p style="margin:0.5rem 0 0 0;font-size:0.8rem;color:var(--text-secondary);">
                         {{ _('An email with an invitation link will be sent. The link expires in 48 hours.') }}
@@ -740,19 +755,20 @@
                 {% endif %}
             </div>
             {% elif settings_list %}
+        <form id="settingsForm"{% if is_platform_cat %} data-platform-settings="true"{% endif %}>
             <div class="action-buttons">
-                <button type="button" data-click="resetAllSettings" class="btn" style="background: #6b7280;">
+                <button type="button" data-click="resetAllSettings" class="btn-cms gray">
                     {{ _('Reset All') }}
                 </button>
-                <button type="submit" class="btn">{{ _('Save Changes') }}</button>
+                <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
                 <div class="save-status" id="saveStatus"></div>
             </div>
+        </form>
             {% else %}
             <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
                 {{ _('No settings in this category.') }}
             </p>
             {% endif %}
-        </form>
     </div>
 
     {% if active_category == 'email' %}
@@ -786,7 +802,7 @@
                    style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; min-width: 200px; background: var(--input-bg); color: var(--text);">
             <button type="button" data-click="uploadLogo" class="btn bg-green">{{ _('Upload') }}</button>
             {% if app_logo %}
-            <button type="button" data-click="deleteLogo" class="btn" style="background:#dc2626;color:white;">{{ _('Verwijder') }}</button>
+            <button type="button" data-click="deleteLogo" class="btn-cms danger">{{ _('Verwijder') }}</button>
             {% endif %}
             <span id="logoStatus" style="font-size: 0.875rem;"></span>
         </div>
@@ -803,7 +819,7 @@
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
             <input type="text" id="newApiKeyName" placeholder="{{ _('Key name (e.g. automation-script)') }}"
                    style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text);">
-            <button type="button" data-click="generateApiKey" class="btn">{{ _('Generate Key') }}</button>
+            <button type="button" data-click="generateApiKey" class="btn-cms">{{ _('Generate Key') }}</button>
         </div>
 
         <table class="data-table" id="apiKeysTable">
@@ -983,8 +999,8 @@ async function loadApiKeys() {
             const lastUsedAt = k.last_used_at ? esc(new Date(k.last_used_at).toLocaleString()) : '{{ _('Never') }}';
             const prefix = k.prefix || (k.id.slice(0,8)+'...');
             const activeBadge = k.is_active ? '<span style="color: #059669;">{{ _('Active') }}</span>' : '<span style="color: #dc2626;">{{ _('Revoked') }}</span>';
-            const revokeBtn = k.is_active ? '<button type="button" data-click="revokeApiKey" data-arg0="' + esc(k.id) + '" class="btn" style="background: #dc2626; padding: 0.25rem 0.5rem; font-size: 0.8rem;">{{ _('Revoke') }}</button>' : '';
-            const deleteBtn = '<button type="button" data-click="deleteApiKey" data-arg0="' + esc(k.id) + '" class="btn" style="background: #6b7280; padding: 0.25rem 0.5rem; font-size: 0.8rem;">{{ _('Delete') }}</button>';
+            const revokeBtn = k.is_active ? '<button type="button" data-click="revokeApiKey" data-arg0="' + esc(k.id) + '" class="btn-cms small danger">{{ _('Revoke') }}</button>' : '';
+            const deleteBtn = '<button type="button" data-click="deleteApiKey" data-arg0="' + esc(k.id) + '" class="btn-cms small gray">{{ _('Delete') }}</button>';
             return '<tr>' +
                 '<td>' + esc(k.name) + '</td>' +
                 '<td><code>' + esc(prefix) + '</code></td>' +

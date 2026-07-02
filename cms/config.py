@@ -19,6 +19,7 @@ class Config:
         "max_overflow": 20,
         "pool_recycle": 3600,
         "pool_pre_ping": True,
+        "connect_args": {"sslmode": os.environ.get("DB_SSL_MODE", "prefer")},
     }
 
     # Security
@@ -31,6 +32,9 @@ class Config:
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+
+    # Database SSL mode (disable | allow | prefer | require | verify-ca | verify-full)
+    DB_SSL_MODE = os.environ.get("DB_SSL_MODE", "prefer")
 
     # CMS Encryption Key (REQUIRED in production)
     CMS_ENCRYPTION_KEY = os.environ.get("CMS_ENCRYPTION_KEY")
@@ -75,6 +79,8 @@ class ProductionConfig(Config):
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Strict"
     WTF_CSRF_ENABLED = True
+
+    DB_SSL_MODE = os.environ.get("DB_SSL_MODE", "require")
 
     # Encryption key is REQUIRED in production
     @classmethod

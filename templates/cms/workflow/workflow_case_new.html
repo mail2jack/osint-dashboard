@@ -43,12 +43,13 @@ input:-webkit-autofill:focus {
 
 <form method="POST">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="existing_client_id" id="existingClientId" value="">
   <div class="form-section">
     <h2>📋 Zaakgegevens</h2>
     <div class="form-grid">
       <div class="form-group">
         <label>Zaaknummer</label>
-        <input type="text" name="case_number" placeholder="W-20250101-120000">
+        <input type="text" name="case_number" value="{{ generated_case_number }}">
       </div>
       <div class="form-group">
         <label>Titel *</label>
@@ -80,6 +81,11 @@ input:-webkit-autofill:focus {
 
   <div class="form-section">
     <h2>🧑 Opdrachtgever</h2>
+    <div id="client-lookup-wrap" style="position:relative;">
+      <div style="margin-bottom:0.75rem;font-size:0.8rem;color:var(--text-secondary);">
+        <em>Typ een bedrijfsnaam of contactpersoon — bestaande opdrachtgevers worden voorgesteld.</em>
+      </div>
+      <div id="client-suggestions" style="display:none;z-index:100;background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-bottom:0.75rem;"></div>
     <div class="form-grid">
       <div class="form-group">
         <label>Bedrijfsnaam *</label>
@@ -103,11 +109,11 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Straat</label>
-        <input type="text" name="client_street" placeholder="Hoofdstraat">
+        <input type="text" name="client_street" class="addr-street" placeholder="Hoofdstraat">
       </div>
       <div class="form-group">
         <label>Huisnummer</label>
-        <input type="text" name="client_house_number" placeholder="45">
+        <input type="text" name="client_house_number" class="addr-number" placeholder="45">
       </div>
       <div class="form-group">
         <label>Toevoeging</label>
@@ -115,11 +121,31 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Postcode</label>
-        <input type="text" name="client_postal_code" placeholder="1012LL">
+        <input type="text" name="client_postal_code" class="addr-zipcode" placeholder="1012LL">
       </div>
       <div class="form-group">
         <label>Plaats</label>
-        <input type="text" name="client_city" placeholder="Amsterdam">
+        <input type="text" name="client_city" class="addr-town" placeholder="Amsterdam">
+      </div>
+      <div class="form-group">
+        <label>Land</label>
+        <input type="text" name="client_country" placeholder="Nederland" value="Nederland">
+      </div>
+      <div class="form-group">
+        <label>BTW-nummer</label>
+        <input type="text" name="client_vat_number" placeholder="NL123456789B01">
+      </div>
+      <div class="form-group">
+        <label>Bankrekening</label>
+        <input type="text" name="client_bank_account" placeholder="NL00 INGB 0000 0000 00">
+      </div>
+      <div class="form-group">
+        <label>Contractnummer</label>
+        <input type="text" name="client_contract_number" placeholder="CON-2026-001">
+      </div>
+      <div class="form-group full-width">
+        <label>Contractinformatie</label>
+        <textarea name="client_contract_info" rows="2" placeholder="Bijzonderheden over het contract"></textarea>
       </div>
       <div class="form-group full-width">
         <label>Notities</label>
@@ -134,13 +160,11 @@ input:-webkit-autofill:focus {
       <div class="subject-block" data-index="0">
         <div class="subject-type-row">
           <label>Type betrokkene</label>
-          <select name="subject_0_type" required>
-            <option value="">— Selecteer type —</option>
-            <option value="person">Persoon</option>
+          <select name="subject_0_type" data-action="update-fields" required>
+            <option value="person" selected>Persoon</option>
             <option value="company">Bedrijf</option>
             <option value="vehicle">Voertuig</option>
             <option value="vessel">Vaartuig</option>
-            <option value="property">Onroerend goed</option>
             <option value="online">Online entiteit</option>
           </select>
         </div>
@@ -162,25 +186,41 @@ input:-webkit-autofill:focus {
               <label>Telefoon</label>
               <input type="text" name="subject_0_phone" placeholder="+31 6 12345678">
             </div>
-            <div class="form-group sf-person sf-company sf-property">
+            <div class="form-group sf-person">
+              <label>Geboortedatum</label>
+              <input type="date" name="subject_0_date_of_birth">
+            </div>
+            <div class="form-group sf-person">
+              <label>Geboorteplaats</label>
+              <input type="text" name="subject_0_place_of_birth" placeholder="Amsterdam">
+            </div>
+            <div class="form-group sf-person">
+              <label>Nationaliteit</label>
+              <input type="text" name="subject_0_nationality" placeholder="Nederlandse">
+            </div>
+            <div class="form-group sf-person sf-company">
+              <label>Bankrekening</label>
+              <input type="text" name="subject_0_bank_account" placeholder="NL00 INGB 0000 0000 00">
+            </div>
+            <div class="form-group sf-person sf-company">
               <label>Straat</label>
-              <input type="text" name="subject_0_street" placeholder="Straatnaam">
+              <input type="text" name="subject_0_street" class="addr-street" placeholder="Straatnaam">
             </div>
-            <div class="form-group sf-person sf-company sf-property">
+            <div class="form-group sf-person sf-company">
               <label>Huisnummer</label>
-              <input type="text" name="subject_0_house_number" placeholder="45">
+              <input type="text" name="subject_0_house_number" class="addr-number" placeholder="45">
             </div>
-            <div class="form-group sf-person sf-company sf-property">
+            <div class="form-group sf-person sf-company">
               <label>Toevoeging</label>
               <input type="text" name="subject_0_house_number_addition" placeholder="A">
             </div>
-            <div class="form-group sf-person sf-company sf-property">
+            <div class="form-group sf-person sf-company">
               <label>Postcode</label>
-              <input type="text" name="subject_0_postal_code" placeholder="1012LL">
+              <input type="text" name="subject_0_postal_code" class="addr-zipcode" placeholder="1012LL">
             </div>
-            <div class="form-group sf-person sf-company sf-property">
+            <div class="form-group sf-person sf-company">
               <label>Plaats</label>
-              <input type="text" name="subject_0_city" placeholder="Amsterdam">
+              <input type="text" name="subject_0_city" class="addr-town" placeholder="Amsterdam">
             </div>
             <div class="form-group full-width sf-person sf-online">
               <label>Sociale accounts</label>
@@ -198,6 +238,11 @@ input:-webkit-autofill:focus {
 
 <script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
+
+  // Show fields for pre-selected subject types on page load
+  document.querySelectorAll('.subject-block select[name$="_type"]').forEach(function(sel) {
+    if (sel.value) updateSubjectFields(sel);
+  });
 
   function updateSubjectFields(sel) {
     var block = sel.closest('.subject-block');
@@ -239,7 +284,6 @@ document.addEventListener('DOMContentLoaded', function() {
           '<option value="company">Bedrijf</option>' +
           '<option value="vehicle">Voertuig</option>' +
           '<option value="vessel">Vaartuig</option>' +
-          '<option value="property">Onroerend goed</option>' +
           '<option value="online">Online entiteit</option>' +
         '</select>' +
       '</div>' +
@@ -249,11 +293,15 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subject_' + count + '_identification" placeholder="BSN / KvK / kenteken / IMO"></div>' +
           '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subject_' + count + '_email" placeholder="naam@example.com"></div>' +
           '<div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subject_' + count + '_phone" placeholder="+31 6 12345678"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Straat</label><input type="text" name="subject_' + count + '_street" placeholder="Straatnaam"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Huisnummer</label><input type="text" name="subject_' + count + '_house_number" placeholder="45"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Toevoeging</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="A"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Postcode</label><input type="text" name="subject_' + count + '_postal_code" placeholder="1012LL"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Plaats</label><input type="text" name="subject_' + count + '_city" placeholder="Amsterdam"></div>' +
+          '<div class="form-group sf-person"><label>Geboortedatum</label><input type="date" name="subject_' + count + '_date_of_birth"></div>' +
+          '<div class="form-group sf-person"><label>Geboorteplaats</label><input type="text" name="subject_' + count + '_place_of_birth" placeholder="Amsterdam"></div>' +
+          '<div class="form-group sf-person"><label>Nationaliteit</label><input type="text" name="subject_' + count + '_nationality" placeholder="Nederlandse"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Bankrekening</label><input type="text" name="subject_' + count + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Straat</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="Straatnaam"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Huisnummer</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="45"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Toevoeging</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="A"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Postcode</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Plaats</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
           '<div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="@gebruiker1, @gebruiker2"></div>' +
           '<div class="form-group full-width sf-all"><label>Notities</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="Interne notities"></textarea></div>' +
         '</div>' +
@@ -281,6 +329,157 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
 });
+
+// ── Client lookup ──────────────────────────────────────────
+(function() {
+  var nameInput = document.querySelector('[name="client_name"]');
+  var contactInput = document.querySelector('[name="client_contact"]');
+  var suggestions = document.getElementById('client-suggestions');
+  var existingId = document.getElementById('existingClientId');
+  var lookupWrap = document.getElementById('client-lookup-wrap');
+  var lookupTimeout;
+  var selectedClientId = null;
+
+  function getQuery() {
+    var parts = [];
+    if (nameInput && nameInput.value.trim().length >= 2) parts.push(nameInput.value.trim());
+    if (contactInput && contactInput.value.trim().length >= 2) parts.push(contactInput.value.trim());
+    return parts.join(' ');
+  }
+
+  function doLookup() {
+    var q = getQuery();
+    if (!q || q.length < 2) {
+      suggestions.style.display = 'none';
+      return;
+    }
+    fetch('/cms/workflow/api/client-lookup?q=' + encodeURIComponent(q))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        suggestions.innerHTML = '';
+        if (!data.results || data.results.length === 0) {
+          suggestions.style.display = 'none';
+          return;
+        }
+        data.results.forEach(function(c) {
+          var item = document.createElement('div');
+          item.className = 'client-suggestion';
+          item.style.cssText = 'padding:0.6rem 0.8rem;cursor:pointer;border-bottom:1px solid var(--border-color);display:flex;flex-direction:column;gap:0.15rem;';
+          item.onmouseover = function() { this.style.background = 'var(--table-hover)'; };
+          item.onmouseout = function() { this.style.background = ''; };
+          var nameEl = document.createElement('strong');
+          nameEl.textContent = c.name;
+          nameEl.style.fontSize = '0.85rem';
+          item.appendChild(nameEl);
+          if (c.contact_person) {
+            var cp = document.createElement('span');
+            cp.textContent = 'Contact: ' + c.contact_person;
+            cp.style.fontSize = '0.75rem';
+            cp.style.color = 'var(--text-secondary)';
+            item.appendChild(cp);
+          }
+          if (c.contact_email) {
+            var em = document.createElement('span');
+            em.textContent = c.contact_email;
+            em.style.fontSize = '0.75rem';
+            em.style.color = 'var(--text-secondary)';
+            item.appendChild(em);
+          }
+          item.addEventListener('click', function() { selectClient(c); });
+          suggestions.appendChild(item);
+        });
+        suggestions.style.display = 'block';
+      })
+      .catch(function() { suggestions.style.display = 'none'; });
+  }
+
+  function selectClient(c) {
+    selectedClientId = c.id;
+    existingId.value = c.id;
+    suggestions.style.display = 'none';
+    setFieldValue('client_name', c.name);
+    setFieldValue('client_contact', c.contact_person || '');
+    setFieldValue('client_email', c.contact_email || '');
+    setFieldValue('client_phone', c.contact_phone || '');
+    setFieldValue('client_street', (c.address && c.address.street) || '');
+    // Split combined address_number into house_number + addition
+    var num = (c.address && c.address.number) || '';
+    if (num) {
+      var parts = num.split(/(\s+)/);
+      var hn = parts[0] || '';
+      var add = parts.slice(2).join('') || '';
+      setFieldValue('client_house_number', hn);
+      setFieldValue('client_house_number_addition', add);
+    }
+    setFieldValue('client_city', (c.address && c.address.city) || '');
+    setFieldValue('client_postal_code', (c.address && c.address.postal) || '');
+    setFieldValue('client_country', (c.address && c.address.country) || 'Nederland');
+    setFieldValue('client_vat_number', c.vat_number || '');
+    setFieldValue('client_bank_account', c.bank_account || '');
+    setFieldValue('client_contract_number', c.contract_number || '');
+    setFieldValue('client_contract_info', c.contract_info || '');
+    setFieldValue('client_notes', c.financial_notes || '');
+
+    // Mark empty fields
+    var anyEmpty = false;
+    var fields = lookupWrap.querySelectorAll('input, textarea');
+    fields.forEach(function(f) {
+      if (f.name && f.name !== 'csrf_token' && f.name !== 'existing_client_id' && !f.value.trim()) {
+        anyEmpty = true;
+        f.style.outline = '2px solid #f59e0b';
+        f.style.outlineOffset = '1px';
+        f.dataset.emptySuggestion = 'true';
+      } else {
+        f.style.outline = '';
+        delete f.dataset.emptySuggestion;
+      }
+    });
+
+    if (anyEmpty) {
+      // Remove any existing prompt
+      var oldPrompt = document.getElementById('empty-fields-prompt');
+      if (oldPrompt) oldPrompt.remove();
+      var prompt = document.createElement('div');
+      prompt.id = 'empty-fields-prompt';
+      prompt.style.cssText = 'margin-top:0.75rem;padding:0.75rem;background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;font-size:0.8rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;';
+      prompt.innerHTML = '<span style="color:#92400e;">⚠️ Sommige velden zijn leeg. Wil je deze alsnog invullen of overslaan?</span>' +
+        '<button type="button" id="dismiss-empty-fields" class="btn-cms small orange">Overslaan, zo is goed</button>';
+      lookupWrap.insertBefore(prompt, lookupWrap.firstChild);
+      document.getElementById('dismiss-empty-fields').addEventListener('click', function() {
+        fields.forEach(function(f) {
+          if (f.dataset.emptySuggestion) {
+            f.style.outline = '';
+            delete f.dataset.emptySuggestion;
+          }
+        });
+        var p = document.getElementById('empty-fields-prompt');
+        if (p) p.remove();
+      });
+    }
+  }
+
+  function setFieldValue(name, value) {
+    var el = document.querySelector('[name="' + name + '"]');
+    if (el) el.value = value;
+  }
+
+  function onInputChange() {
+    selectedClientId = null;
+    existingId.value = '';
+    clearTimeout(lookupTimeout);
+    lookupTimeout = setTimeout(doLookup, 400);
+  }
+
+  if (nameInput) nameInput.addEventListener('input', onInputChange);
+  if (contactInput) contactInput.addEventListener('input', onInputChange);
+
+  // Close suggestions on outside click
+  document.addEventListener('click', function(e) {
+    if (!lookupWrap.contains(e.target)) {
+      suggestions.style.display = 'none';
+    }
+  });
+})();
 </script>
 
   <div style="display:flex;gap:0.5rem;justify-content:flex-end;">

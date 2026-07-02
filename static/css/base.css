@@ -91,6 +91,14 @@ body {
 .header a { color: white; text-decoration: none; margin-left: 1.5rem; }
 .header .nav-active { font-weight: bold; border-bottom: 2px solid white; padding-bottom: 2px; }
 .header a:hover { opacity: 0.8; }
+.header .nav-dropdown { position: relative; display: inline-block; margin-left: 1.5rem; }
+.header .nav-dropdown-trigger { color: white; text-decoration: none; cursor: pointer; display: inline-block; }
+.header .nav-dropdown-trigger:hover { opacity: 0.8; }
+.header .nav-dropdown-menu { display: none; position: absolute; top: 100%; left: 0; background: var(--bg-header, #1a1a2e); min-width: 200px; border-radius: 0 0 8px 8px; padding: 0.5rem 0; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 200; }
+.header .nav-dropdown-menu a { display: block; margin-left: 0; padding: 0.5rem 1rem; white-space: nowrap; }
+.header .nav-dropdown-menu a:hover { background: rgba(255,255,255,0.1); opacity: 1; }
+.header .nav-dropdown:hover .nav-dropdown-menu { display: block; }
+.header .nav-dropdown-menu::before { content: ''; position: absolute; top: -6px; left: 16px; width: 12px; height: 12px; background: var(--bg-header, #1a1a2e); transform: rotate(45deg); }
 .container { max-width: 1400px; margin: 1.5rem auto; padding: 0 1rem 5rem; padding-left: calc(1rem + env(safe-area-inset-left)); }
 
 @media (max-width: 768px) {
@@ -312,6 +320,10 @@ tbody tr:hover { background: var(--table-hover); }
 .btn-cms.purple { background: #7c3aed; color: white; border-color: #7c3aed; }
 .btn-cms.teal { background: #0e7490; color: white; border-color: #0e7490; }
 .btn-cms.gray { background: #6b7280; color: white; border-color: #6b7280; }
+.btn-cms.green,
+.btn-cms.success { background: #059669; color: white; border-color: #059669; }
+.btn-cms.blue { background: #2563eb; color: white; border-color: #2563eb; }
+.btn-cms.orange { background: #d97706; color: white; border-color: #d97706; }
 .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
 .stat-grid {
     display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; margin-bottom: 1rem;
@@ -557,6 +569,8 @@ option { background: var(--bg-card); color: var(--text-primary); }
 /* Colors – backgrounds */
 .bg-green       { background: #059669; }
 .bg-purple      { background: #7c3aed; }
+.bg-blue        { background: #2563eb; }
+.bg-orange      { background: #d97706; }
 .bg-gray        { background: #666; }
 .bg-light-gray  { background: #f5f5f5; }
 .bg-purple-light { background: #ede9fe; }

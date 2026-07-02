@@ -267,7 +267,7 @@ def create_subject() -> flask.Response:
             new_values={"name": subject.name, "type": subject.subject_type},
             ip_address=request.remote_addr,
             case_id=data.get("case_id"),
-            description=f"Created subject: {subject.name}",
+            description=f"Created subject ({subject.subject_type})",
         )
         db.session.commit()
 
@@ -374,8 +374,8 @@ def edit_subject(subject_id: str) -> flask.Response:
                     new_value = normalize_phone(new_value)
                 if new_value != old_value:
                     changes[field] = {
-                        "old": old_value or "[empty]",
-                        "new": new_value or "[empty]",
+                        "old": "[encrypted]",
+                        "new": "[encrypted]",
                     }
                     if new_value:
                         setattr(subject, field, encryptor.encrypt(new_value))
@@ -400,8 +400,8 @@ def edit_subject(subject_id: str) -> flask.Response:
                     )
                 if new_value != old_value:
                     changes[field] = {
-                        "old": old_value or "[empty]",
-                        "new": new_value or "[empty]",
+                        "old": "[encrypted]",
+                        "new": "[encrypted]",
                     }
                     if new_value:
                         setattr(subject, field, encryptor.encrypt(new_value))
@@ -609,7 +609,7 @@ def edit_subject(subject_id: str) -> flask.Response:
             entity_id=subject_id,
             changes=changes,
             ip_address=request.remote_addr,
-            description=f"Updated subject: {subject.name}",
+            description=f"Updated subject ({subject.subject_type})",
         )
         db.session.commit()
 
@@ -699,7 +699,7 @@ def delete_subject(subject_id: str) -> flask.Response:
         entity_type="subject",
         entity_id=subject_id,
         ip_address=request.remote_addr,
-        description=f"Deleted subject: {subject.name}",
+        description=f"Deleted subject ({subject.subject_type})",
     )
     db.session.commit()
 

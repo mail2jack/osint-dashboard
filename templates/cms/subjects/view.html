@@ -94,7 +94,7 @@
     <div>
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
             <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary" style="margin-left: 0.5rem; text-decoration: none;">{{ _('✏️ Edit') }}</a>
-            <button data-click="confirmDeleteSubject" class="btn-cms small" style="margin-left: 0.25rem; background: #dc2626; color: white; border: none; cursor: pointer; text-decoration: none;">{{ _('🗑️ Delete') }}</button>
+            <button data-click="confirmDeleteSubject" class="btn-cms small danger" style="margin-left: 0.25rem;">{{ _('🗑️ Delete') }}</button>
         </h1>
         <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             {% if subject.subject_type == 'person' %}
@@ -107,12 +107,12 @@
                 {{ _('🔍 OSINT Search') }}
             </button>
             {% endif %}
-            <button data-click="checkPolitieData" id="policieCheckBtn" class="btn-cms primary small" style="background: #1e40af;">
+            <button data-click="checkPolitieData" id="policieCheckBtn" class="btn-cms small bg-blue">
                 {{ _('🌍 Check Interpol') }}
             </button>
             {% endif %}
             {% if subject.subject_type == 'vessel' %}
-            <button data-click="checkVessel" id="vesselCheckBtn" class="btn-cms primary small" style="background: #0e7490;">
+            <button data-click="checkVessel" id="vesselCheckBtn" class="btn-cms small teal">
                 {{ _('🚢 Check Vessel') }}
             </button>
             {% endif %}
@@ -126,7 +126,7 @@
             {% endif %}
             {% if subject.face_encoding %}
             <span class="badge badge-status-success">{{ _('✅ Face Encoded') }}</span>
-            <button data-click="deleteFaceEncoding" class="btn-cms small" style="background: #dc2626; padding: 0.3rem 0.6rem;">{{ _('Remove') }}</button>
+            <button data-click="deleteFaceEncoding" class="btn-cms small danger">{{ _('Remove') }}</button>
             {% endif %}
         </div>
         <div id="faceStatus" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
@@ -243,7 +243,7 @@
                 <span class="info-label">{{ _('License Plate (Kenteken)') }}</span>
                 <span class="info-value" style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate|redact_for_viewer if subject.license_plate else '-' }}</span>
                 {% if subject.license_plate %}
-                <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate }}" data-arg1="{{ subject.id }}" class="btn-cms small" style="background: #f59e0b; margin-left: 0.5rem;">{{ _('🚗 Check RDW') }}</button>
+                <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate }}" data-arg1="{{ subject.id }}" class="btn-cms small orange" style="margin-left: 0.5rem;">{{ _('🚗 Check RDW') }}</button>
                 {% else %}
                 <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">{{ _('(Add license plate first)') }}</span>
                 {% endif %}
@@ -329,7 +329,7 @@
                     {% endif %}
                 </div>
                 <div style="margin-top: 0.75rem;">
-                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="background: #0ea5e9; text-decoration: none;">{{ _('✏️ Edit RDW Data') }}</a>
+                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small bg-blue">{{ _('✏️ Edit RDW Data') }}</a>
                 </div>
             </div>
             {% endif %}
@@ -367,7 +367,7 @@
                     {% endfor %}
                 </div>
                 <div style="margin-top: 0.75rem;">
-                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small" style="background: #0e7490; text-decoration: none;">{{ _('✏️ Edit Vessel Data') }}</a>
+                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small teal">{{ _('✏️ Edit Vessel Data') }}</a>
                 </div>
             </div>
             {% endif %}
@@ -389,8 +389,8 @@
                                     </div>
                                 </div>
                                 <div class="btn-group m-0">
-                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;">{{ _('🏛 Kadaster') }}</button>
-                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#b91c1c;">{{ _('🚔 Politiebureau') }}</button>
+                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">{{ _('🏛 Kadaster') }}</button>
+                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small danger">{{ _('🚔 Politiebureau') }}</button>
                                 </div>
                             </div>
                             <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
@@ -458,14 +458,14 @@
         <h2>{{ _('🌐 Social Accounts') }}</h2>
         <div class="btn-group">
             <button data-click="bulkExtractSocialIds" class="btn-cms small bg-green" id="bulkExtractBtn">{{ _('🔍 Bulk Extract from Findings') }}</button>
-            <button data-click="openAddSocialAccountModal" class="btn-cms small text-purple">{{ _('+ Add Account') }}</button>
+            <button data-click="openAddSocialAccountModal" class="btn-cms small purple">{{ _('+ Add Account') }}</button>
         </div>
     </div>
 
     <!-- Inline username search -->
     <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
         <input type="text" id="usernameSearchInput" placeholder="{{ _('Search username...') }}" style="flex:1;padding:0.5rem;border:1px solid var(--border-color);border-radius:4px;">
-        <button data-click="searchUsername" class="btn-cms small text-purple">{{ _('🔍 Check') }}</button>
+        <button data-click="searchUsername" class="btn-cms small purple">{{ _('🔍 Check') }}</button>
         <span id="usageBadge" style="font-size:0.75rem;color:var(--text-secondary);display:none;align-self:center;"></span>
     </div>
 
@@ -485,8 +485,8 @@
                     <td>{% if acct.account_id %}<code style="font-size:0.8rem;background:var(--bg-secondary);padding:1px 4px;border-radius:3px;">{{ acct.account_id }}</code>{% else %}<span style="color:var(--text-muted);font-size:0.75rem;">—</span>{% endif %}</td>
                     <td>{% if acct.url %}<a href="{{ acct.url }}" target="_blank" style="font-size:0.8rem;">{{ _('🔗 link') }}</a>{% else %}-{% endif %}</td>
                     <td style="white-space: nowrap;">
-                        <button data-click="openEditSocialAccountModal" data-arg0="{{ acct.id }}" data-arg1='{{ acct.to_dict() | tojson }}' class="btn-cms small" style="padding: 2px 8px;">{{ _('Edit') }}</button>
-                        <button data-click="deleteSocialAccount" data-arg0="{{ acct.id }}" class="btn-cms small" style="background: #dc2626; padding: 2px 8px;">{{ _('Delete') }}</button>
+                        <button data-click="openEditSocialAccountModal" data-arg0="{{ acct.id }}" data-arg1='{{ acct.to_dict() | tojson }}' class="btn-cms small">{{ _('Edit') }}</button>
+                        <button data-click="deleteSocialAccount" data-arg0="{{ acct.id }}" class="btn-cms small danger">{{ _('Delete') }}</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -659,8 +659,8 @@
             
             <div id="resultsList" style="max-height: 400px; overflow-y: auto; margin-bottom: 0.5rem;"></div>
             <div style="display: flex; gap: 0.5rem; justify-content: flex-end; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
-                <button data-click="closeOsintModal" class="btn-cms">{{ _('Close') }}</button>
-                <button data-click="saveSelectedAsSocialAccounts" class="btn-cms primary" id="saveSocialBtn" disabled>{{ _('🌐 Save as Social Accounts') }} (<span id="socialSelectedCount">0</span>)</button>
+                <button data-click="closeOsintModal" class="btn-cms small">{{ _('Close') }}</button>
+                <button data-click="saveSelectedAsSocialAccounts" class="btn-cms primary small" id="saveSocialBtn" disabled>{{ _('🌐 Save as Social Accounts') }} (<span id="socialSelectedCount">0</span>)</button>
                 <button data-click="addSelectedFindings" class="btn-cms success small" id="addFindingsBtn" disabled>{{ _('Add Selected to Findings') }} (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
@@ -890,7 +890,7 @@
         const nodeMap = {};
         nodes.forEach(n => nodeMap[n.id] = n);
         
-        const colors = { 'person': '#3b82f6', 'company': '#10b981', 'organization': '#8b5cf6', 'vehicle': '#f59e0b', 'vessel': '#06b6d4', 'property': '#ec4899' };
+                    const colors = { 'person': '#3b82f6', 'company': '#10b981', 'organization': '#8b5cf6', 'vehicle': '#f59e0b', 'vessel': '#06b6d4' };
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         const lineColor = isDark ? '#4b5563' : '#d1d5db';
         
@@ -1446,9 +1446,9 @@
             // Save as finding button
             const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
             if (firstCaseId) {
-html += '<button data-click="saveVesselFinding" class="btn-cms small" style="background:#0e7490;">{{ _("📥 Bewaar als bevinding") }}</button>';
+html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _("📥 Bewaar als bevinding") }}</button>';
 
-                html += ' <button data-click="updateVesselFromCheck" class="btn-cms small" style="background:#0891b2;">{{ _("💾 Update vessel fields") }}</button>';
+                html += ' <button data-click="updateVesselFromCheck" class="btn-cms small teal">{{ _("💾 Update vessel fields") }}</button>';
             } else {
                 html += '<div style="font-size:0.8rem;color:#888;">{{ _("Link subject to a case to save findings.") }}</div>';
             }

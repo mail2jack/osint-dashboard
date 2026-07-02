@@ -133,8 +133,14 @@ def set_tenant_context():
                 text("SET app.tenant_id = :tid"),
                 {"tid": tid},
             )
-            if current_user.is_super_admin:
+            # Only bypass RLS when NOT switched (super-admin viewing own tenant)
+            is_switched = current_user.is_super_admin and _session.get(
+                "switched_tenant_id"
+            )
+            if current_user.is_super_admin and not is_switched:
                 _db.session.execute(text("SET app.bypass_rls = 'true'"))
+            else:
+                _db.session.execute(text("SET app.bypass_rls = 'false'"))
         except Exception:
             _db.session.rollback()
     else:
@@ -280,8 +286,10 @@ if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql"):
     try:
         from sqlalchemy import create_engine
 
+        ssl_mode = app.config.get("DB_SSL_MODE", "prefer")
         engine = create_engine(
-            app.config["SQLALCHEMY_DATABASE_URI"], connect_args={"connect_timeout": 2}
+            app.config["SQLALCHEMY_DATABASE_URI"],
+            connect_args={"connect_timeout": 2, "sslmode": ssl_mode},
         )
         engine.connect().close()
         engine.dispose()
@@ -623,6 +631,55 @@ def inject_globals():
     ctx["_"] = _t
     ctx["current_locale"] = _get_locale()
     ctx["now"] = lambda: datetime.now(timezone.utc)
+
+    # Unacknowledged announcements for mandatory popup
+    try:
+        from cms.models import Announcement, AnnouncementAck, db
+        from flask_login import current_user
+        from datetime import datetime, timezone
+
+        if current_user and current_user.is_authenticated:
+            now = datetime.now(timezone.utc)
+            announcements = (
+                Announcement.query.outerjoin(
+                    AnnouncementAck,
+                    db.and_(
+                        AnnouncementAck.announcement_id == Announcement.id,
+                        AnnouncementAck.user_id == current_user.id,
+                    ),
+                )
+                .filter(
+                    Announcement.is_active == True,
+                    Announcement.starts_at <= now,
+                    (Announcement.expires_at.is_(None))
+                    | (Announcement.expires_at > now),
+                    AnnouncementAck.id.is_(None),
+                )
+                .all()
+            )
+            ctx["unacknowledged_announcements"] = [a.to_dict() for a in announcements]
+        else:
+            ctx["unacknowledged_announcements"] = []
+    except Exception:
+        from cms.models import db
+
+        db.session.rollback()
+        ctx["unacknowledged_announcements"] = []
+
+    # Switched tenant context for super-admin
+    try:
+        from flask import session as _ctx_session
+        from cms.models import Tenant
+
+        tid = _ctx_session.get("switched_tenant_id")
+        if tid:
+            _switched = db.session.get(Tenant, tid)
+            ctx["switched_tenant"] = _switched.to_dict() if _switched else None
+        else:
+            ctx["switched_tenant"] = None
+    except Exception:
+        ctx["switched_tenant"] = None
+
     return ctx
 
 

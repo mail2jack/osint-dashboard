@@ -98,6 +98,20 @@ def brave_search(query, api_key, results_meta: dict | None = None) -> list:
                 results_meta["brave_status"] = response.status_code
             return []
 
+        if results_meta is not None:
+            remaining_header = response.headers.get("X-RateLimit-Remaining", "")
+            limit_header = response.headers.get("X-RateLimit-Limit", "")
+            try:
+                parts_remaining = remaining_header.split(",")
+                parts_limit = limit_header.split(",")
+                if len(parts_remaining) >= 2 and len(parts_limit) >= 2:
+                    results_meta["brave_remaining_monthly"] = int(
+                        parts_remaining[1].strip()
+                    )
+                    results_meta["brave_limit_monthly"] = int(parts_limit[1].strip())
+            except (ValueError, IndexError):
+                pass
+
         data = response.json()
         results = []
 
@@ -143,7 +157,7 @@ def _get_brave_key() -> str:
     return key
 
 
-def person_dorks_search(full_name) -> dict:
+def person_dorks_search(full_name, cancel_event: threading.Event | None = None) -> dict:
     """Search using Google dorks to find person info across web.
 
     Uses Brave Search API if available, falls back to multiple DuckDuckGo methods.
@@ -358,6 +372,9 @@ def person_dorks_search(full_name) -> dict:
         log_ddg("Using Brave Search API (key configured)")
 
         for query in dork_queries[:6]:
+            if cancel_event and cancel_event.is_set():
+                log_ddg("  Cancelled via cancel_event")
+                break
             results["queries_run"].append(query)
             try:
                 brave_results = brave_search(query, brave_api_key, brave_meta)
@@ -373,6 +390,26 @@ def person_dorks_search(full_name) -> dict:
                 logger.warning(f"Brave search error: {e}")
 
         bs = brave_meta.get("brave_status", 0)
+        remaining = brave_meta.get("brave_remaining_monthly")
+        limit = brave_meta.get("brave_limit_monthly")
+        if remaining is not None and limit is not None:
+            used = limit - remaining
+            est_cost = 5.0 + (used / 1000) * 5.0
+            results["brave_usage"] = {
+                "remaining": remaining,
+                "limit": limit,
+                "used": used,
+                "estimated_cost": round(est_cost, 2),
+            }
+            pct = remaining / limit * 100 if limit else 0
+            if pct < 20:
+                logger.warning(
+                    f"Brave API quota low: {remaining}/{limit} ({pct:.0f}%) — est. cost ${est_cost:.2f} this month"
+                )
+                results["brave_warning"] = (
+                    f"Brave quota bijna op: {remaining}/{limit} ({pct:.0f}%) — ~${est_cost:.2f} deze maand"
+                )
+
         if bs == 402:
             results["brave_error"] = "Brave API quota exhausted (402)"
         elif bs:

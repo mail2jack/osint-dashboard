@@ -34,7 +34,6 @@
             <option value="organization" {% if filters.type == 'organization' %}selected{% endif %}>{{ _('Organization') }}</option>
             <option value="vehicle" {% if filters.type == 'vehicle' %}selected{% endif %}>{{ _('Vehicle') }}</option>
             <option value="vessel" {% if filters.type == 'vessel' %}selected{% endif %}>{{ _('Vessel') }}</option>
-            <option value="property" {% if filters.type == 'property' %}selected{% endif %}>{{ _('Property') }}</option>
         </select>
         <select name="case_filter" style="padding: 0.5rem; border: 1px solid var(--border-input); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
             <option value="all" {% if filters.case_filter == 'all' %}selected{% endif %}>{{ _('All Subjects') }}</option>

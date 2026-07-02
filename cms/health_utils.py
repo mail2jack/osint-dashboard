@@ -83,61 +83,22 @@ def check_external_services(quick: bool = False) -> dict:
         else:
             result["overheid"] = "no key configured"
 
-        # Brave Search
+        # Brave Search — key presence only; no live call to avoid burning quota
         brave_key = Setting.get("brave_api_key", "")
         if brave_key:
-            try:
-                jitter_sleep(domain_hint="https://api.search.brave.com")
-                r = curl_requests.get(
-                    "https://api.search.brave.com/res/v1/web/search?q=test&count=1",
-                    headers={
-                        "X-Subscription-Token": brave_key,
-                        "Accept": "application/json",
-                    },
-                    impersonate="chrome124",
-                    timeout=5,
-                )
-                if r.status_code == 200:
-                    result["brave"] = "ok"
-                elif r.status_code == 402:
-                    result["brave"] = "quota exhausted"
-                else:
-                    result["brave"] = f"unexpected: {r.status_code}"
-            except Exception as e:
-                result["brave"] = f"unavailable: {e}"
+            result["brave"] = "ok"
         else:
             result["brave"] = "no key configured"
 
-        # Tor
+        # Tor — requires Brave key via Tor; skip live call for same reason
         tor_enabled = Setting.get("tor_enabled", "false").lower() in (
             "true",
             "1",
             "yes",
         )
         if tor_enabled:
-            tor_proxy = Setting.get("tor_proxy", "socks5://127.0.0.1:9050")
             if brave_key:
-                try:
-                    with curl_requests.Session(
-                        impersonate="chrome124",
-                        proxies={"http": tor_proxy, "https": tor_proxy},
-                        timeout=5.0,
-                    ) as c:
-                        r = c.get(
-                            "https://api.search.brave.com/res/v1/web/search?q=test&count=1",
-                            headers={
-                                "X-Subscription-Token": brave_key,
-                                "Accept": "application/json",
-                            },
-                        )
-                    if r.status_code == 200:
-                        result["tor"] = "ok"
-                    elif r.status_code == 402:
-                        result["tor"] = "brave quota exhausted"
-                    else:
-                        result["tor"] = f"brave_via_tor: {r.status_code}"
-                except Exception as e:
-                    result["tor"] = f"unavailable: {e}"
+                result["tor"] = "ok"
             else:
                 result["tor"] = "no_brave_key"
         else:

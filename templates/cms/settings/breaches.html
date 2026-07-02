@@ -1,0 +1,268 @@
+{% extends "cms/base.html" %}
+{% block title %}Datalekken register{% endblock %}
+{% block content %}
+<div class="settings-layout">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        .br-container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+        .br-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .5rem; }
+        .br-header h1 { margin: 0; font-size: 1.5rem; }
+        .br-header p { margin: .25rem 0 0; color: var(--text-muted,#64748b); font-size: .85rem; width: 100%; }
+        .br-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1rem; }
+        .br-card { background: var(--card-bg,#fff); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.1); padding: 1.25rem; border-left: 4px solid #94a3b8; }
+        .br-card.risk-critical { border-left-color: #dc2626; }
+        .br-card.risk-high { border-left-color: #f97316; }
+        .br-card.risk-medium { border-left-color: #eab308; }
+        .br-card.risk-low { border-left-color: #22c55e; }
+        .br-card.overdue { border-left-color: #dc2626 !important; }
+        .br-card-title { font-weight: 600; font-size: 1rem; margin-bottom: .25rem; display: flex; justify-content: space-between; align-items: center; }
+        .br-card-meta { font-size: .8rem; color: var(--text-muted,#64748b); margin-bottom: .75rem; }
+        .br-card-desc { font-size: .9rem; margin-bottom: .75rem; line-height: 1.5; }
+        .br-card-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+        .badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+        .badge-open { background: #fee2e2; color: #991b1b; }
+        .badge-investigating { background: #fef3c7; color: #92400e; }
+        .badge-mitigated { background: #dbeafe; color: #1e40af; }
+        .badge-closed { background: #dcfce7; color: #166534; }
+        .badge-overdue { background: #dc2626; color: #fff; }
+        .badge-ok { background: #dcfce7; color: #166534; }
+        .timer { font-weight: 700; font-size: .9rem; }
+        .timer-urgent { color: #dc2626; }
+        .timer-warn { color: #f97316; }
+        .timer-ok { color: #22c55e; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: var(--card-bg,#fff); border-radius: 12px; padding: 1.5rem; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; }
+        .br-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .br-form .full-width { grid-column: 1 / -1; }
+        .br-form label { display: block; font-size: .85rem; font-weight: 500; margin-bottom: .25rem; }
+        .br-form input, .br-form select, .br-form textarea { width: 100%; padding: .5rem .75rem; border: 1px solid var(--border,#e2e8f0); border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
+        .br-form textarea { min-height: 70px; resize: vertical; }
+        .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted,#64748b); }
+        .notif-tracker { display: flex; gap: 2rem; margin: .75rem 0; font-size: .85rem; }
+        .notif-tracker .done { color: #166534; }
+        .notif-tracker .pending { color: #92400e; }
+    </style>
+
+    <div class="br-container">
+        <div class="br-header">
+            <div>
+                <h1>Datalekken register</h1>
+                <p>Artikel 33-34 AVG — Meldingsplicht datalekken (72 uur)</p>
+            </div>
+            <button class="btn-cms danger" onclick="openCreateModal()">+ Nieuw datalek</button>
+        </div>
+
+        {% if records %}
+        <div class="br-grid">
+            {% for r in records %}
+            <div class="br-card risk-{{ r.risk_level }}{% if r.is_overdue %} overdue{% endif %}">
+                <div class="br-card-title">
+                    <span>{{ r.breach_type or 'Datalek' }}</span>
+                    <span>
+                        {% if r.status == 'open' %}
+                        <span class="badge badge-open">Open</span>
+                        {% elif r.status == 'investigating' %}
+                        <span class="badge badge-investigating">Onderzoek</span>
+                        {% elif r.status == 'mitigated' %}
+                        <span class="badge badge-mitigated">Gemicigeerd</span>
+                        {% elif r.status == 'closed' %}
+                        <span class="badge badge-closed">Afgesloten</span>
+                        {% endif %}
+                        {% if r.is_overdue %}
+                        <span class="badge badge-overdue">&#9888; Verstreken</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="br-card-meta">
+                    {{ r.detected_at.strftime('%d-%m-%Y %H:%M') if r.detected_at else '-' }}
+                    &middot;
+                    Risico: {{ r.risk_level }}
+                    {% if r.affected_count %}
+                    &middot; {{ r.affected_count }} betrokkenen
+                    {% endif %}
+                </div>
+                <div class="br-card-desc">{{ r.description[:200] }}{% if r.description|length > 200 %}...{% endif %}</div>
+                {% if not r.authority_notified %}
+                <div class="timer {% if r.hours_remaining < 12 %}timer-urgent{% elif r.hours_remaining < 48 %}timer-warn{% else %}timer-ok{% endif %}">
+                    &#9200; {{ r.hours_remaining|int }}u resterend (72u deadline)
+                </div>
+                {% endif %}
+                <div class="notif-tracker">
+                    <span class="{% if r.authority_notified %}done{% else %}pending{% endif %}">
+                        Art. 33 {{ '&#10003;'|safe if r.authority_notified else '&#10007;'|safe }} Autoriteit
+                    </span>
+                    <span class="{% if r.subjects_notified %}done{% else %}pending{% endif %}">
+                        Art. 34 {{ '&#10003;'|safe if r.subjects_notified else '&#10007;'|safe }} Betrokkenen
+                    </span>
+                </div>
+                <div class="br-card-actions">
+                    <button class="btn-cms blue" onclick='openEditModal({{ r.to_dict() | tojson }})'>Bewerken</button>
+                    {% if not r.authority_notified %}
+                    <button class="btn-cms orange" onclick='markNotified("{{ r.id }}", "authority")'>Meld autoriteit</button>
+                    {% endif %}
+                    {% if r.authority_notified and not r.subjects_notified %}
+                    <button class="btn-cms success" onclick='markNotified("{{ r.id }}", "subjects")'>Informeer betrokkenen</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p style="font-size:2rem;margin-bottom:.5rem;">&#128737;</p>
+            <p>Nog geen datalekken geregistreerd.</p>
+            <p style="font-size:.85rem;">Registreer datalekken om te voldoen aan de meldplicht (Art. 33-34 AVG).</p>
+            <button class="btn-cms danger" onclick="openCreateModal()" style="margin-top:1rem;">+ Nieuw datalek</button>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-overlay" id="breachModal">
+        <div class="modal-box">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                <h2 id="modalTitle" style="margin:0;">Nieuw datalek</h2>
+                <button class="btn-cms gray btn-icon" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="breachForm" class="br-form" onsubmit="return saveRecord(event)">
+                <input type="hidden" id="recordId" value="">
+                <div>
+                    <label for="fieldType">Type datalek</label>
+                    <input type="text" id="fieldType" placeholder="Bijv. hacking, phishing, verlies">
+                </div>
+                <div>
+                    <label for="fieldRisk">Risiconiveau</label>
+                    <select id="fieldRisk">
+                        <option value="unknown">Onbekend</option>
+                        <option value="low">Laag</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">Hoog</option>
+                        <option value="critical">Kritiek</option>
+                    </select>
+                </div>
+                <div class="full-width">
+                    <label for="fieldDesc">Beschrijving *</label>
+                    <textarea id="fieldDesc" required placeholder="Wat is er gebeurd?"></textarea>
+                </div>
+                <div class="full-width">
+                    <label for="fieldData">Getroffen gegevenscategorieën</label>
+                    <input type="text" id="fieldData" placeholder="Bijv. namen, e-mailadressen, wachtwoorden">
+                </div>
+                <div>
+                    <label for="fieldCount">Aantal betrokkenen</label>
+                    <input type="number" id="fieldCount" min="0">
+                </div>
+                <div>
+                    <label for="fieldStatus">Status</label>
+                    <select id="fieldStatus">
+                        <option value="open">Open</option>
+                        <option value="investigating">In onderzoek</option>
+                        <option value="mitigated">Gemicigeerd</option>
+                        <option value="closed">Afgesloten</option>
+                    </select>
+                </div>
+                <div class="full-width">
+                    <label for="fieldActions">Genomen maatregelen</label>
+                    <textarea id="fieldActions" placeholder="Welke maatregelen zijn genomen?"></textarea>
+                </div>
+                <div class="full-width" style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem;">
+                    <button type="button" class="btn-cms gray" onclick="closeModal()">Annuleren</button>
+                    <button type="submit" class="btn-cms success">Opslaan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+var breachModal = document.getElementById('breachModal');
+
+function openCreateModal() {
+    document.getElementById('modalTitle').textContent = 'Nieuw datalek';
+    document.getElementById('breachForm').reset();
+    document.getElementById('recordId').value = '';
+    document.getElementById('fieldRisk').value = 'unknown';
+    document.getElementById('fieldStatus').value = 'open';
+    breachModal.classList.add('active');
+}
+
+function openEditModal(record) {
+    document.getElementById('modalTitle').textContent = 'Datalek bewerken';
+    document.getElementById('recordId').value = record.id;
+    document.getElementById('fieldType').value = record.breach_type || '';
+    document.getElementById('fieldDesc').value = record.description || '';
+    document.getElementById('fieldData').value = record.data_affected || '';
+    document.getElementById('fieldCount').value = record.affected_count || '';
+    document.getElementById('fieldRisk').value = record.risk_level || 'unknown';
+    document.getElementById('fieldStatus').value = record.status || 'open';
+    document.getElementById('fieldActions').value = record.remedial_actions || '';
+    breachModal.classList.add('active');
+}
+
+function closeModal() {
+    breachModal.classList.remove('active');
+}
+
+function saveRecord(event) {
+    event.preventDefault();
+    var id = document.getElementById('recordId').value;
+    var payload = {
+        breach_type: document.getElementById('fieldType').value.trim(),
+        description: document.getElementById('fieldDesc').value.trim(),
+        data_affected: document.getElementById('fieldData').value.trim(),
+        affected_count: parseInt(document.getElementById('fieldCount').value) || null,
+        risk_level: document.getElementById('fieldRisk').value,
+        status: document.getElementById('fieldStatus').value,
+        remedial_actions: document.getElementById('fieldActions').value.trim(),
+    };
+    if (!payload.description) { alert('Beschrijving is verplicht.'); return false; }
+
+    var url = '/cms/api/breaches';
+    var method = 'POST';
+    if (id) { url += '/' + id; method = 'PUT'; }
+
+    var btn = document.querySelector('#breachForm button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Bezig...';
+
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        location.reload();
+    })
+    .catch(function(err) { alert('Fout: ' + err.message); })
+    .finally(function() { btn.disabled = false; btn.textContent = 'Opslaan'; });
+
+    return false;
+}
+
+function markNotified(id, type) {
+    var label = type === 'authority' ? 'autoriteit' : 'betrokkenen';
+    if (!confirm('Markeer als gemeld aan ' + label + '?')) return;
+    var payload = {};
+    if (type === 'authority') payload.authority_notified = true;
+    else payload.subjects_notified = true;
+
+    fetch('/cms/api/breaches/' + id, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        location.reload();
+    })
+    .catch(function(err) { alert('Fout: ' + err.message); });
+}
+
+breachModal.addEventListener('click', function(e) {
+    if (e.target === breachModal) closeModal();
+});
+</script>
+{% endblock %}

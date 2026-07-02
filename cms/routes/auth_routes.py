@@ -171,6 +171,15 @@ def signup() -> flask.Response:
         db.session.flush()
         if is_first_user:
             tenant.owner_id = user.id
+
+        AuditLog.log(
+            user_id=user.id,
+            action="privacy_consent",
+            entity_type="user",
+            entity_id=user.id,
+            ip_address=request.remote_addr,
+            description="Privacybeleid en algemene voorwaarden geaccepteerd bij registratie",
+        )
         db.session.commit()
 
         notify_signup(username=username, email=email, org_name=tenant.name)

@@ -51,7 +51,7 @@
                         <td><input type="number" class="item-price" value="{{ item.unit_price }}" min="0" step="0.01" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
                         <td><input type="number" class="item-vat" value="{{ item.vat_rate }}" min="0" max="100" step="0.1" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
                         <td class="item-total" style="text-align:right;padding:0.3rem;font-weight:600;">€ {{ "%.2f"|format(item.total + item.vat_total) }}</td>
-                        <td><button type="button" data-click="removeItem" class="btn-cms small" style="background:#dc2626;padding:0.15rem 0.4rem;">×</button></td>
+                        <td><button type="button" data-click="removeItem" class="btn-cms small danger">×</button></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -119,7 +119,7 @@ function addItem() {
         <td><input type="number" class="item-price" value="0" min="0" step="0.01" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
         <td><input type="number" class="item-vat" value="21" min="0" max="100" step="0.1" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
         <td class="item-total" style="text-align:right;padding:0.3rem;font-weight:600;">€ 0,00</td>
-        <td><button type="button" data-click="removeItem" class="btn-cms small" style="background:#dc2626;padding:0.15rem 0.4rem;">×</button></td>
+        <td><button type="button" data-click="removeItem" class="btn-cms small danger">×</button></td>
     `;
     row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => recalcRow(row)));
     tbody.appendChild(row);

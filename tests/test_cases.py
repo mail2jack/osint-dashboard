@@ -149,7 +149,9 @@ class TestCaseArchive:
         resp = auth_client.post(f"/cms/cases/{case_id}/archive")
         assert resp.status_code == 302
 
-    def test_archive_open_case_fails(self, auth_client, db_session):
+    def test_archive_open_case(self, auth_client, db_session):
+        from cms.models import Case
+
         client_id = self._create_client(auth_client)
         resp = auth_client.post(
             "/cms/cases/create",
@@ -160,9 +162,9 @@ class TestCaseArchive:
         )
         case_id = resp.get_json()["case"]["id"]
         resp = auth_client.post(f"/cms/cases/{case_id}/archive")
-        assert resp.status_code == 400
-        data = resp.get_json()
-        assert "error" in data
+        assert resp.status_code == 302
+        case = db_session.get(Case, case_id)
+        assert case.archived_at is not None
 
 
 class TestCaseBulkDelete:

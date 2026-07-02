@@ -15,6 +15,7 @@ Design Decisions:
 import uuid
 import json
 import hashlib
+import re
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
@@ -62,6 +63,9 @@ from .background_task import BackgroundTask
 from .platform_setting import PlatformSetting
 from .invitation import Invitation
 from .usage_record import UsageRecord
+from .announcement import Announcement, AnnouncementAck
+from .dpa import DpaRecord
+from .breach import BreachRecord
 
 # Explicit re-exports — used by other modules importing from cms.models
 __all__ = [
@@ -78,6 +82,10 @@ __all__ = [
     "UsageRecord",
     "NotificationPreference",
     "NOTIFICATION_CATEGORIES",
+    "Announcement",
+    "AnnouncementAck",
+    "DpaRecord",
+    "BreachRecord",
 ]
 
 
@@ -169,7 +177,6 @@ class SubjectType(PyEnum):
     ORGANIZATION = "organization"
     VEHICLE = "vehicle"
     VESSEL = "vessel"
-    PROPERTY = "property"
 
 
 class VerificationStatus(PyEnum):
@@ -317,6 +324,10 @@ class User(UserMixin, db.Model):
 
     def can_access_case(self, case) -> bool:
         """Check if user can access a specific case."""
+        if self.is_super_admin:
+            return True
+        if getattr(case, "is_deleted", False):
+            return False
         if not case.tenant_id or case.tenant_id != self.tenant_id:
             return False
         if self.is_admin:
@@ -421,6 +432,7 @@ class Client(db.Model):
     address_city = db.Column(db.String(500))  # Encrypted
     address_postal = db.Column(db.String(500))  # Encrypted
     address_country = db.Column(db.String(500))  # Encrypted
+    reference = db.Column(db.String(100))  # Client reference from workflow
     contract_number = db.Column(db.String(500))
     contract_info = db.Column(db.Text)
     social_security_number = db.Column(db.String(500))  # Encrypted
@@ -586,6 +598,13 @@ class Case(db.Model):
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     deleted_at = db.Column(db.DateTime)
 
+    # Archive (soft hide, distinct from delete)
+    archived_at = db.Column(db.DateTime, nullable=True, index=True)
+
+    # Proces verbaal (process report — markdown)
+    pv_body = db.Column(db.Text)
+    pv_updated_at = db.Column(db.DateTime)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -669,6 +688,27 @@ class Case(db.Model):
         """Soft delete the case."""
         self.is_deleted = True
 
+    def soft_archive(self) -> None:
+        """Archive the case (soft hide, cascades to actions and findings)."""
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        self.archived_at = now
+        for action in self.research_actions:
+            if not action.archived_at:
+                action.archived_at = now
+        for finding in self.findings:
+            if not finding.archived_at:
+                finding.archived_at = now
+
+    def restore_from_archive(self) -> None:
+        """Restore archived case and all its archived children."""
+        self.archived_at = None
+        for action in self.research_actions:
+            action.archived_at = None
+        for finding in self.findings:
+            finding.archived_at = None
+
     def to_dict(self, include_relations: bool = True) -> dict:
         """Serialize case data."""
         result = {
@@ -692,6 +732,7 @@ class Case(db.Model):
             "case_type": self.case_type,
             "jurisdiction": self.jurisdiction,
             "tags": self.tags,
+            "archived_at": self.archived_at.isoformat() if self.archived_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -750,6 +791,11 @@ class Subject(db.Model):
     nationality = db.Column(db.String(500))  # Encrypted
     identification_number = db.Column(db.String(500))  # Encrypted (BSN, passport, etc.)
     address = db.Column(db.String(500))  # Encrypted
+    street = db.Column(db.String(500))  # Encrypted
+    house_number = db.Column(db.String(500))  # Encrypted
+    house_number_addition = db.Column(db.String(500))  # Encrypted
+    postal_code = db.Column(db.String(500))  # Encrypted
+    city = db.Column(db.String(500))  # Encrypted
     phone = db.Column(db.String(500))  # Encrypted
     email = db.Column(db.String(500))  # Encrypted
     bank_account = db.Column(db.String(500))  # Encrypted
@@ -771,6 +817,9 @@ class Subject(db.Model):
     # Social media identifiers (extracted from profiles)
     # Structure: {"facebook": {"id": "123456", "username": "johndoe"}, "vk": {...}, etc.}
     social_media_ids = db.Column(SafeJSON)
+    workflow_social_accounts = db.Column(
+        SafeJSON
+    )  # Simple list from workflow: ["@user", "@user2"]
 
     # Vehicle-specific fields (encrypted)
     license_plate = db.Column(db.String(500))  # Encrypted
@@ -852,6 +901,11 @@ class Subject(db.Model):
         "nationality",
         "identification_number",
         "address",
+        "street",
+        "house_number",
+        "house_number_addition",
+        "postal_code",
+        "city",
         "phone",
         "email",
         "bank_account",
@@ -1286,6 +1340,7 @@ class Finding(db.Model):
 
     title = db.Column(db.String(300), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    detail = db.Column(db.Text)  # Optional extended detail from workflow findings
     source_url = db.Column(db.String(500))
     source_type = db.Column(db.String(50))  # osint, interview, document, etc.
 
@@ -1297,6 +1352,20 @@ class Finding(db.Model):
         db.String(50), index=True
     )  # identity, location, connection, financial, etc.
     tags = db.Column(SafeJSON)
+
+    # Workflow/OSINT-specific columns (merged from WorkflowFinding)
+    icon = db.Column(db.String(10), default="📄")
+    verified = db.Column(db.Boolean, default=False)
+    comment = db.Column(db.Text)
+    raw_data = db.Column(SafeJSON)
+    archived_at = db.Column(db.DateTime, nullable=True, index=True)
+
+    finding_screenshots = db.relationship(
+        "FindingScreenshot",
+        back_populates="finding",
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
 
     created_by = db.Column(
         db.String(36), db.ForeignKey("users.id"), nullable=False, index=True
@@ -1403,8 +1472,133 @@ class Screenshot(db.Model):
 
 
 # =============================================================================
+# ResearchAction — OSINT research action linked to a case
+# =============================================================================
+
+
+class ResearchAction(db.Model):
+    __tablename__ = "research_actions"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    case_id = db.Column(
+        db.String(36), db.ForeignKey("cases.id"), nullable=False, index=True
+    )
+    action_type = db.Column(db.String(50), nullable=False)
+    data_value = db.Column(db.Text)
+    label = db.Column(db.String(200))
+    status = db.Column(db.String(20), default="pending")
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    error = db.Column(db.Text)
+    result_summary = db.Column(db.Text)
+    cancel_requested = db.Column(db.Boolean, default=False)
+    archived_at = db.Column(db.DateTime, nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, onupdate=lambda: datetime.now(timezone.utc))
+    created_by = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=True, index=True
+    )
+
+    case = db.relationship("Case", backref="research_actions")
+    findings = db.relationship(
+        "Finding", secondary="action_findings", backref="research_actions"
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "action_type": self.action_type,
+            "data_value": self.data_value,
+            "label": self.label,
+            "status": self.status,
+            "error": self.error,
+            "result_summary": self.result_summary,
+            "archived_at": self.archived_at.isoformat() if self.archived_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
+        }
+
+
+class ActionFinding(db.Model):
+    __tablename__ = "action_findings"
+
+    action_id = db.Column(
+        db.String(36), db.ForeignKey("research_actions.id"), primary_key=True
+    )
+    finding_id = db.Column(
+        db.String(36), db.ForeignKey("findings.id"), primary_key=True
+    )
+
+
+class FindingScreenshot(db.Model):
+    __tablename__ = "finding_screenshots"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    finding_id = db.Column(
+        db.String(36), db.ForeignKey("findings.id"), nullable=False, index=True
+    )
+    url = db.Column(db.String(500))
+    source_url = db.Column(db.String(500))
+    file_path = db.Column(db.String(500))
+    captured_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_by = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=True, index=True
+    )
+
+    finding = db.relationship(
+        "Finding", back_populates="finding_screenshots", lazy="select"
+    )
+
+
+class ServiceRate(db.Model):
+    __tablename__ = "service_rates"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    service_type = db.Column(db.String(50), nullable=False, index=True)
+    description = db.Column(db.String(300), nullable=False)
+    unit_price = db.Column(db.Numeric(15, 2), nullable=False, default=0)
+    vat_rate = db.Column(db.Numeric(5, 2), nullable=False, default=21.00)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "service_type": self.service_type,
+            "description": self.description,
+            "unit_price": float(self.unit_price) if self.unit_price else 0,
+            "vat_rate": float(self.vat_rate) if self.vat_rate else 0,
+            "is_active": self.is_active,
+        }
+
+
+# =============================================================================
 # Audit Log Model
 # =============================================================================
+
+
+def _redact_pii(text: str | None) -> str | None:
+    """Redact common PII patterns from audit log descriptions."""
+    if not text:
+        return text
+    text = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[REDACTED EMAIL]", text)
+    text = re.sub(r"\b\d{10,15}\b", "[REDACTED PHONE]", text)
+    return text
 
 
 class AuditLog(db.Model):
@@ -1478,13 +1672,24 @@ class AuditLog(db.Model):
         user_agent: str = None,
         case_id: str = None,
         description: str = None,
+        tenant_id: str = None,
     ):
         """
         Create an audit log entry.
 
         This should be called after every significant action.
         """
+        if tenant_id is None:
+            try:
+                from flask import g
+
+                tenant_id = getattr(g, "tenant_id", None)
+            except Exception:
+                pass
+        if description:
+            description = _redact_pii(description)
         log_entry = AuditLog(
+            tenant_id=tenant_id,
             user_id=user_id,
             action=action,
             entity_type=entity_type,
@@ -1863,6 +2068,9 @@ class SocialAccount(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+    def __str__(self) -> str:
+        return f"{self.platform}: {self.username}"
 
     def to_dict(self) -> dict:
         return {
@@ -2842,17 +3050,15 @@ class PhoneLookup(db.Model):
     )
 
     def _get_encryptor(self):
-        from cms.config import _get_encryption_key
-        from cryptography.fernet import Fernet
+        from ..encryption_utils import encryptor
 
-        key = _get_encryption_key()
-        return Fernet(key.encode()) if key else None
+        return encryptor
 
     def _encrypt_field(self, value):
         f = self._get_encryptor()
-        if f and value is not None:
+        if value is not None:
             try:
-                return f.encrypt(str(value).encode()).decode()
+                return f.encrypt(str(value))
             except Exception:
                 return value
         return value
@@ -2863,7 +3069,7 @@ class PhoneLookup(db.Model):
         f = self._get_encryptor()
         if f:
             try:
-                return f.decrypt(value.encode()).decode()
+                return f.decrypt(value)
             except Exception:
                 return value
         return value
@@ -3089,10 +3295,10 @@ class TenantSetting(db.Model):
         if not row:
             return default
         if row.is_encrypted and row.value:
-            from ..config import fernet
+            from ..encryption_utils import encryptor
 
             try:
-                return fernet.decrypt(row.value.encode()).decode()
+                return encryptor.decrypt(row.value)
             except Exception:
                 return default
         return row.value
@@ -3113,12 +3319,12 @@ class TenantSetting(db.Model):
         tid = tenant_id or getattr(g, "tenant_id", None)
         if not tid:
             raise ValueError("No tenant_id provided or available in context")
-        from ..config import fernet
+        from ..encryption_utils import encryptor
 
         row = cls.query.filter_by(tenant_id=tid, key=key).first()
         if not row:
             row = cls(tenant_id=tid, key=key)
-        row.value = fernet.encrypt(value.encode()).decode() if encrypt else value
+        row.value = encryptor.encrypt(value) if encrypt else value
         row.category = category
         row.description = description
         row.is_encrypted = encrypt
@@ -3162,6 +3368,9 @@ _TENANT_MODELS = [
     SpiderFootScan,
     User,
     UsageRecord,
+    ResearchAction,
+    FindingScreenshot,
+    ServiceRate,
 ]
 
 

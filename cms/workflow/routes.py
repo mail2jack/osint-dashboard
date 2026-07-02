@@ -1,11 +1,12 @@
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from flask import (
     abort,
+    flash,
     jsonify,
     redirect,
     render_template,
@@ -15,7 +16,8 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
-from . import ensure_db, get_session, workflow_bp, WORKFLOW_DB_PATH
+from cms.models import db, UserRole
+from . import workflow_bp
 from .models import (
     WorkflowActionFinding,
     WorkflowCase,
@@ -32,35 +34,87 @@ from .research import (
     get_remaining_credits,
 )
 from cms.routes.dashboard import _get_cached_health
+from cms.services.invoice_service import auto_invoice_case_created
+from cms.routes.utils import find_similar_clients
 
 
-def _superadmin_required(f):
+def _investigator_required(f):
     from functools import wraps
 
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_super_admin:
+        if not current_user.is_authenticated:
+            return jsonify({"error": "Forbidden"}), 403
+        if current_user.role not in (
+            UserRole.INVESTIGATOR.value,
+            UserRole.SENIOR_INVESTIGATOR.value,
+            UserRole.ADMIN.value,
+            UserRole.OWNER.value,
+        ):
             return jsonify({"error": "Forbidden"}), 403
         return f(*args, **kwargs)
 
     return wrapper
 
 
+def _combine_address(prefix: str) -> str:
+    """Combine separate address form fields into a single address string."""
+    parts = [
+        request.form.get(f"{prefix}_street", ""),
+        request.form.get(f"{prefix}_house_number", ""),
+        request.form.get(f"{prefix}_house_number_addition", ""),
+    ]
+    street = " ".join(p for p in parts if p)
+    pc = request.form.get(f"{prefix}_postal_code", "")
+    city = request.form.get(f"{prefix}_city", "")
+    loc = " ".join(p for p in [pc, city] if p)
+    return ", ".join(p for p in [street, loc] if p)
+
+
+def _combine_address_number(number: str, addition: str) -> str:
+    """Combine house number and addition into a single field (e.g. '45A')."""
+    n = number.strip()
+    a = addition.strip()
+    if not n and not a:
+        return ""
+    if not a:
+        return n
+    return n + a
+
+
+def _set_address_fields(obj, prefix: str) -> None:
+    """Set all address fields (combined + individual) on a subject/client from form data."""
+    obj.address = _combine_address(prefix)
+    obj.street = request.form.get(f"{prefix}_street", "")
+    obj.house_number = request.form.get(f"{prefix}_house_number", "")
+    obj.house_number_addition = request.form.get(f"{prefix}_house_number_addition", "")
+    obj.postal_code = request.form.get(f"{prefix}_postal_code", "")
+    obj.city = request.form.get(f"{prefix}_city", "")
+
+
+SCREENSHOT_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "instance",
+    "finding_screenshots",
+)
+
+
 @workflow_bp.route("/")
 @login_required
-@_superadmin_required
+@_investigator_required
 def dashboard():
-    ensure_db()
-    session = get_session()
-    cases = session.query(WorkflowCase).order_by(WorkflowCase.created_at.desc()).all()
+    cases = (
+        WorkflowCase.query.filter(WorkflowCase.archived_at.is_(None))
+        .order_by(WorkflowCase.created_at.desc())
+        .all()
+    )
     action_counts = {}
     for c in cases:
         action_counts[c.id] = {
-            "total": len(c.actions),
-            "completed": sum(1 for a in c.actions if a.status == "completed"),
-            "running": sum(1 for a in c.actions if a.status == "running"),
+            "total": len(c.research_actions),
+            "completed": sum(1 for a in c.research_actions if a.status == "completed"),
+            "running": sum(1 for a in c.research_actions if a.status == "running"),
         }
-    session.close()
     return render_template(
         "cms/workflow/workflow_dashboard.html",
         cases=cases,
@@ -69,12 +123,70 @@ def dashboard():
     )
 
 
+@workflow_bp.route("/api/client-lookup", methods=["GET"])
+@login_required
+@_investigator_required
+def client_lookup():
+    """Search existing CMS clients by name or contact person."""
+    q = request.args.get("q", "").strip()
+    if len(q) < 2:
+        return jsonify({"results": []})
+
+    from cms.models import Client as CmsClient
+
+    similar = find_similar_clients(q)
+    ids = [s["id"] for s in similar]
+
+    # Also check for exact match
+    from cms.routes.utils import check_for_exact_match
+
+    exact = check_for_exact_match(q, "client")
+    if exact and exact["id"] not in ids:
+        ids.insert(0, exact["id"])
+
+    results = []
+    for cid in ids:
+        client = db.session.get(CmsClient, cid)
+        if not client:
+            continue
+        client.decrypt_naw()
+        raw = client.to_dict(decrypted=True)
+        # Also search by contact person
+        contact = raw.get("contact_person", "") or ""
+        contact_score = 0
+        if contact and q.lower() in contact.lower():
+            contact_score = 90
+        results.append(
+            {
+                "id": client.id,
+                "name": client.name,
+                "contact_person": contact,
+                "contact_email": raw.get("contact_email", ""),
+                "contact_phone": raw.get("contact_phone", ""),
+                "address": raw.get("address", {}),
+                "contract_number": raw.get("contract_number", ""),
+                "contract_info": raw.get("contract_info", ""),
+                "vat_number": client.vat_number or "",
+                "bank_account": client.bank_account or "",
+                "financial_notes": client.financial_notes or "",
+                "score": max(
+                    next(
+                        (s["similarity"] for s in similar if s["id"] == client.id),
+                        100 if exact and exact["id"] == client.id else 0,
+                    ),
+                    contact_score,
+                ),
+            }
+        )
+
+    results.sort(key=lambda r: r["score"], reverse=True)
+    return jsonify({"results": results[:10]})
+
+
 @workflow_bp.route("/case/new", methods=["GET", "POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def case_new():
-    ensure_db()
-    session = get_session()
     if request.method == "POST":
         client_id = str(uuid.uuid4())
         case_id = str(uuid.uuid4())
@@ -100,127 +212,203 @@ def case_new():
             except (ValueError, TypeError):
                 return default
 
-        client = WorkflowClient(
-            id=client_id,
-            name=request.form.get("client_name", "Onbekend"),
-            contact_person=request.form.get("client_contact", ""),
-            email=request.form.get("client_email", ""),
-            phone=request.form.get("client_phone", ""),
-            reference=request.form.get("reference", ""),
-            street=request.form.get("client_street", ""),
-            house_number=request.form.get("client_house_number", ""),
-            house_number_addition=request.form.get("client_house_number_addition", ""),
-            postal_code=request.form.get("client_postal_code", ""),
-            city=request.form.get("client_city", ""),
-            notes=request.form.get("client_notes", ""),
-        )
+        existing_client_id = request.form.get("existing_client_id", "").strip()
+
+        if existing_client_id:
+            from cms.models import Client as CmsClient
+
+            src = db.session.get(CmsClient, existing_client_id)
+            if src:
+                src.decrypt_naw()
+                client = WorkflowClient(
+                    id=client_id,
+                    name=src.name,
+                    contact_person=src.contact_person or "",
+                    contact_email=src.contact_email or "",
+                    contact_phone=src.contact_phone or "",
+                    reference=request.form.get("reference", ""),
+                    address_street=src.address_street or "",
+                    address_number=src.address_number or "",
+                    address_city=src.address_city or "",
+                    address_postal=src.address_postal or "",
+                    address_country=src.address_country or "Nederland",
+                    vat_number=src.vat_number or "",
+                    bank_account=src.bank_account or "",
+                    contract_number=src.contract_number or "",
+                    contract_info=src.contract_info or "",
+                    financial_notes=src.financial_notes or "",
+                    created_by=current_user.id,
+                )
+                # Override with any explicitly submitted values
+                override = request.form.get("client_name", "").strip()
+                if override:
+                    client.name = override
+                override = request.form.get("client_contact", "").strip()
+                if override:
+                    client.contact_person = override
+                override = request.form.get("client_email", "").strip()
+                if override:
+                    client.contact_email = override
+                override = request.form.get("client_phone", "").strip()
+                if override:
+                    client.contact_phone = override
+                override = request.form.get("client_street", "").strip()
+                if override:
+                    client.address_street = override
+                override = request.form.get("client_house_number", "").strip()
+                override_add = request.form.get(
+                    "client_house_number_addition", ""
+                ).strip()
+                if override:
+                    client.address_number = _combine_address_number(
+                        override, override_add
+                    )
+                override = request.form.get("client_city", "").strip()
+                if override:
+                    client.address_city = override
+                override = request.form.get("client_postal_code", "").strip()
+                if override:
+                    client.address_postal = override
+                override = request.form.get("client_country", "").strip()
+                if override:
+                    client.address_country = override
+                override = request.form.get("client_vat_number", "").strip()
+                if override:
+                    client.vat_number = override
+                override = request.form.get("client_bank_account", "").strip()
+                if override:
+                    client.bank_account = override
+                override = request.form.get("client_contract_number", "").strip()
+                if override:
+                    client.contract_number = override
+                override = request.form.get("client_contract_info", "").strip()
+                if override:
+                    client.contract_info = override
+                override = request.form.get("client_notes", "").strip()
+                if override:
+                    client.financial_notes = override
+                client.encrypt_naw()
+                db.session.add(client)
+        else:
+            client = WorkflowClient(
+                id=client_id,
+                name=request.form.get("client_name", "Onbekend"),
+                contact_person=request.form.get("client_contact", ""),
+                contact_email=request.form.get("client_email", ""),
+                contact_phone=request.form.get("client_phone", ""),
+                reference=request.form.get("reference", ""),
+                address_street=request.form.get("client_street", ""),
+                address_number=_combine_address_number(
+                    request.form.get("client_house_number", ""),
+                    request.form.get("client_house_number_addition", ""),
+                ),
+                address_city=request.form.get("client_city", ""),
+                address_postal=request.form.get("client_postal_code", ""),
+                address_country=request.form.get("client_country", "Nederland"),
+                vat_number=request.form.get("client_vat_number", ""),
+                bank_account=request.form.get("client_bank_account", ""),
+                contract_number=request.form.get("client_contract_number", ""),
+                contract_info=request.form.get("client_contract_info", ""),
+                financial_notes=request.form.get("client_notes", ""),
+                created_by=current_user.id,
+            )
+            client.encrypt_naw()
+            db.session.add(client)
+
+        def _make_subject(idx_str):
+            s = WorkflowSubject(
+                id=str(uuid.uuid4()),
+                name=request.form.get(f"{idx_str}_name", "Onbekend"),
+                subject_type=request.form.get(f"{idx_str}_type", "person"),
+                identification_number=request.form.get(f"{idx_str}_identification", ""),
+                email=request.form.get(f"{idx_str}_email", ""),
+                phone=request.form.get(f"{idx_str}_phone", ""),
+                date_of_birth=request.form.get(f"{idx_str}_date_of_birth", ""),
+                place_of_birth=request.form.get(f"{idx_str}_place_of_birth", ""),
+                nationality=request.form.get(f"{idx_str}_nationality", ""),
+                bank_account=request.form.get(f"{idx_str}_bank_account", ""),
+                workflow_social_accounts=_social_field(f"{idx_str}_social_accounts"),
+                risk_score=_int_field(f"{idx_str}_risk_score"),
+                notes=request.form.get(f"{idx_str}_notes", ""),
+                created_by=current_user.id,
+            )
+            _set_address_fields(s, idx_str)
+            s.encrypt_identifiers()
+            return s
 
         subjects = []
         idx = 0
         while request.form.get(f"subject_{idx}_name"):
-            s = WorkflowSubject(
-                id=str(uuid.uuid4()),
-                name=request.form.get(f"subject_{idx}_name", "Onbekend"),
-                subject_type=request.form.get(f"subject_{idx}_type", "person"),
-                identification_number=request.form.get(
-                    f"subject_{idx}_identification", ""
-                ),
-                email=request.form.get(f"subject_{idx}_email", ""),
-                phone=request.form.get(f"subject_{idx}_phone", ""),
-                street=request.form.get(f"subject_{idx}_street", ""),
-                house_number=request.form.get(f"subject_{idx}_house_number", ""),
-                house_number_addition=request.form.get(
-                    f"subject_{idx}_house_number_addition", ""
-                ),
-                postal_code=request.form.get(f"subject_{idx}_postal_code", ""),
-                city=request.form.get(f"subject_{idx}_city", ""),
-                social_accounts=_social_field(f"subject_{idx}_social_accounts"),
-                risk_score=_int_field(f"subject_{idx}_risk_score"),
-                notes=request.form.get(f"subject_{idx}_notes", ""),
-            )
-            subjects.append(s)
+            subjects.append(_make_subject(f"subject_{idx}"))
             idx += 1
         if not subjects:
-            subjects.append(
-                WorkflowSubject(
-                    id=str(uuid.uuid4()),
-                    name=request.form.get("subject_name", "Onbekend"),
-                    subject_type=request.form.get("subject_type", "person"),
-                    identification_number=request.form.get("identification", ""),
-                    email=request.form.get("subject_email", ""),
-                    phone=request.form.get("subject_phone", ""),
-                    street=request.form.get("subject_street", ""),
-                    house_number=request.form.get("subject_house_number", ""),
-                    house_number_addition=request.form.get(
-                        "subject_house_number_addition", ""
-                    ),
-                    postal_code=request.form.get("subject_postal_code", ""),
-                    city=request.form.get("subject_city", ""),
-                    social_accounts=_social_field("social_accounts"),
-                    risk_score=_int_field("risk_score"),
-                    notes=request.form.get("subject_notes", ""),
-                )
-            )
+            subjects.append(_make_subject("subject"))
 
+        raw_number = request.form.get("case_number", "").strip()
+        if not raw_number:
+            raw_number = WorkflowCase.generate_case_number(current_user.tenant_id)
         case = WorkflowCase(
             id=case_id,
-            case_number=request.form.get(
-                "case_number", f"W-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-            ),
+            case_number=raw_number,
             title=request.form.get("title", "Nieuw onderzoek"),
             status="open",
             priority=request.form.get("priority", "medium"),
             description=request.form.get("description", ""),
             client_id=client_id,
-            lead_investigator=current_user.full_name or current_user.email,
+            start_date=datetime.now().date(),
+            created_by=current_user.id,
+            lead_investigator_id=current_user.id,
         )
-        session.add(client)
-        session.add(case)
+        db.session.add(client)
+        db.session.add(case)
         for s in subjects:
-            session.add(s)
+            db.session.add(s)
             case.subjects.append(s)
-        session.commit()
-        session.close()
+        db.session.commit()
+
+        auto_invoice_case_created(case)
+
         return redirect(url_for("workflow.case_detail", case_id=case_id))
 
-    session.close()
-    return render_template("cms/workflow/workflow_case_new.html")
+    return render_template(
+        "cms/workflow/workflow_case_new.html",
+        generated_case_number=WorkflowCase.generate_case_number(current_user.tenant_id),
+    )
 
 
 @workflow_bp.route("/case/<case_id>")
 @login_required
-@_superadmin_required
+@_investigator_required
 def case_detail(case_id):
-    ensure_db()
-    session = get_session()
-    case = session.query(WorkflowCase).get(case_id)
+    case = db.session.get(WorkflowCase, case_id)
     if not case:
-        session.close()
-        from flask import abort
-
         abort(404)
+    show_archived = request.args.get("show_archived") == "1"
     actions = (
-        session.query(WorkflowResearchAction)
-        .filter_by(case_id=case_id)
+        WorkflowResearchAction.query.filter_by(case_id=case_id)
+        .filter(
+            WorkflowResearchAction.archived_at.is_(None)
+            if not show_archived
+            else sa.true()
+        )
         .order_by(WorkflowResearchAction.created_at.desc())
         .all()
     )
     findings = (
-        session.query(WorkflowFinding)
-        .filter_by(case_id=case_id)
-        .filter(WorkflowFinding.archived_at.is_(None))
-        .options(sa.orm.joinedload(WorkflowFinding.screenshots))
+        WorkflowFinding.query.filter_by(case_id=case_id)
+        .filter(
+            WorkflowFinding.archived_at.is_(None) if not show_archived else sa.true()
+        )
+        .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
         .order_by(WorkflowFinding.created_at.desc())
         .all()
     )
 
     finding_ids = [f.id for f in findings]
     links = (
-        (
-            session.query(WorkflowActionFinding)
-            .filter(WorkflowActionFinding.finding_id.in_(finding_ids))
-            .all()
-        )
+        WorkflowActionFinding.query.filter(
+            WorkflowActionFinding.finding_id.in_(finding_ids)
+        ).all()
         if finding_ids
         else []
     )
@@ -228,28 +416,37 @@ def case_detail(case_id):
     for link in links:
         finding_actions.setdefault(link.finding_id, []).append(link.action_id)
 
-    client = (
-        session.query(WorkflowClient).get(case.client_id) if case.client_id else None
-    )
+    client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
+    if client:
+        client.decrypt_naw()
     subjects = list(case.subjects)
+    for s in subjects:
+        s.decrypt_identifiers()
     subjects_data = [
         {
             "name": s.name,
             "subject_type": s.subject_type,
             "email": s.email,
             "phone": s.phone,
+            "date_of_birth": s.date_of_birth,
+            "place_of_birth": s.place_of_birth,
+            "nationality": s.nationality,
+            "bank_account": s.bank_account,
             "street": s.street,
             "house_number": s.house_number,
             "house_number_addition": s.house_number_addition,
             "postal_code": s.postal_code,
             "city": s.city,
-            "social_accounts": s.social_accounts,
+            "workflow_social_accounts": s.workflow_social_accounts,
             "identification_number": s.identification_number,
+            "imo_number": s.imo_number,
+            "mmsi": s.mmsi,
+            "eni_number": s.eni_number,
+            "vessel_nationality": s.vessel_nationality,
         }
         for s in subjects
         if s
     ]
-    session.close()
     brave_health = _get_cached_health().get("brave", "no key configured")
     action_credits = {}
     for key in ACTION_REGISTRY:
@@ -266,26 +463,24 @@ def case_detail(case_id):
         action_types=ACTION_REGISTRY,
         action_credits=action_credits,
         brave_health=brave_health,
+        show_archived=show_archived,
     )
 
 
 @workflow_bp.route("/case/<case_id>/edit", methods=["GET", "POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def case_edit(case_id):
-    ensure_db()
-    session = get_session()
-    case = session.query(WorkflowCase).get(case_id)
+    case = db.session.get(WorkflowCase, case_id)
     if not case:
-        session.close()
-        from flask import abort
-
         abort(404)
 
-    client = (
-        session.query(WorkflowClient).get(case.client_id) if case.client_id else None
-    )
+    client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
+    if client:
+        client.decrypt_naw()
     subjects = list(case.subjects)
+    for s in subjects:
+        s.decrypt_identifiers()
 
     if request.method == "POST":
 
@@ -314,17 +509,23 @@ def case_edit(case_id):
         if client:
             client.name = request.form.get("client_name", client.name)
             client.contact_person = request.form.get("client_contact", "")
-            client.email = request.form.get("client_email", "")
-            client.phone = request.form.get("client_phone", "")
+            client.contact_email = request.form.get("client_email", "")
+            client.contact_phone = request.form.get("client_phone", "")
             client.reference = request.form.get("reference", "")
-            client.street = request.form.get("client_street", "")
-            client.house_number = request.form.get("client_house_number", "")
-            client.house_number_addition = request.form.get(
-                "client_house_number_addition", ""
+            client.address_street = request.form.get("client_street", "")
+            client.address_number = _combine_address_number(
+                request.form.get("client_house_number", ""),
+                request.form.get("client_house_number_addition", ""),
             )
-            client.postal_code = request.form.get("client_postal_code", "")
-            client.city = request.form.get("client_city", "")
-            client.notes = request.form.get("client_notes", "")
+            client.address_city = request.form.get("client_city", "")
+            client.address_postal = request.form.get("client_postal_code", "")
+            client.address_country = request.form.get("client_country", "Nederland")
+            client.vat_number = request.form.get("client_vat_number", "")
+            client.bank_account = request.form.get("client_bank_account", "")
+            client.contract_number = request.form.get("client_contract_number", "")
+            client.contract_info = request.form.get("client_contract_info", "")
+            client.financial_notes = request.form.get("client_notes", "")
+            client.encrypt_naw()
 
         # update case
         case.case_number = request.form.get("case_number", case.case_number)
@@ -350,7 +551,7 @@ def case_edit(case_id):
         for sid in list(keep_ids):
             if not sid:
                 continue
-            subj = session.query(WorkflowSubject).get(sid)
+            subj = db.session.get(WorkflowSubject, sid)
             if not subj:
                 continue
             subj.name = request.form.get(f"subj_{sid}_name", subj.name)
@@ -360,16 +561,15 @@ def case_edit(case_id):
             )
             subj.email = request.form.get(f"subj_{sid}_email", "")
             subj.phone = request.form.get(f"subj_{sid}_phone", "")
-            subj.street = request.form.get(f"subj_{sid}_street", "")
-            subj.house_number = request.form.get(f"subj_{sid}_house_number", "")
-            subj.house_number_addition = request.form.get(
-                f"subj_{sid}_house_number_addition", ""
-            )
-            subj.postal_code = request.form.get(f"subj_{sid}_postal_code", "")
-            subj.city = request.form.get(f"subj_{sid}_city", "")
-            subj.social_accounts = _social_field(f"subj_{sid}_social_accounts")
+            subj.date_of_birth = request.form.get(f"subj_{sid}_date_of_birth", "")
+            subj.place_of_birth = request.form.get(f"subj_{sid}_place_of_birth", "")
+            subj.nationality = request.form.get(f"subj_{sid}_nationality", "")
+            subj.bank_account = request.form.get(f"subj_{sid}_bank_account", "")
+            _set_address_fields(subj, f"subj_{sid}")
+            subj.workflow_social_accounts = _social_field(f"subj_{sid}_social_accounts")
             subj.risk_score = _int_field(f"subj_{sid}_risk_score")
             subj.notes = request.form.get(f"subj_{sid}_notes", "")
+            subj.encrypt_identifiers()
 
         # process new subjects
         n = 0
@@ -383,18 +583,18 @@ def case_edit(case_id):
                 ),
                 email=request.form.get(f"subj_new_{n}_email", ""),
                 phone=request.form.get(f"subj_new_{n}_phone", ""),
-                street=request.form.get(f"subj_new_{n}_street", ""),
-                house_number=request.form.get(f"subj_new_{n}_house_number", ""),
-                house_number_addition=request.form.get(
-                    f"subj_new_{n}_house_number_addition", ""
-                ),
-                postal_code=request.form.get(f"subj_new_{n}_postal_code", ""),
-                city=request.form.get(f"subj_new_{n}_city", ""),
-                social_accounts=_social_field(f"subj_new_{n}_social_accounts"),
+                date_of_birth=request.form.get(f"subj_new_{n}_date_of_birth", ""),
+                place_of_birth=request.form.get(f"subj_new_{n}_place_of_birth", ""),
+                nationality=request.form.get(f"subj_new_{n}_nationality", ""),
+                bank_account=request.form.get(f"subj_new_{n}_bank_account", ""),
+                workflow_social_accounts=_social_field(f"subj_new_{n}_social_accounts"),
                 risk_score=_int_field(f"subj_new_{n}_risk_score"),
                 notes=request.form.get(f"subj_new_{n}_notes", ""),
+                created_by=current_user.id,
             )
-            session.add(new_subj)
+            _set_address_fields(new_subj, f"subj_new_{n}")
+            new_subj.encrypt_identifiers()
+            db.session.add(new_subj)
             case.subjects.append(new_subj)
             n += 1
 
@@ -402,15 +602,13 @@ def case_edit(case_id):
         for sid in list(removed_ids):
             if not sid:
                 continue
-            subj = session.query(WorkflowSubject).get(sid)
+            subj = db.session.get(WorkflowSubject, sid)
             if subj and subj in case.subjects:
                 case.subjects.remove(subj)
 
-        session.commit()
-        session.close()
+        db.session.commit()
         return redirect(url_for("workflow.case_detail", case_id=case_id))
 
-    session.close()
     return render_template(
         "cms/workflow/workflow_case_edit.html",
         case=case,
@@ -421,13 +619,10 @@ def case_edit(case_id):
 
 @workflow_bp.route("/api/case/<case_id>/run-action", methods=["POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def run_action(case_id):
-    ensure_db()
-    session = get_session()
-    case = session.query(WorkflowCase).get(case_id)
+    case = db.session.get(WorkflowCase, case_id)
     if not case:
-        session.close()
         return jsonify({"error": "Case not found"}), 404
 
     body = request.get_json(silent=True) or {}
@@ -435,15 +630,12 @@ def run_action(case_id):
     data_value = body.get("data_value") or ""
 
     if action_type not in ACTION_REGISTRY:
-        session.close()
         return jsonify({"error": f"Unknown action: {action_type}"}), 400
 
     _STALE_TIMEOUT = 600  # 10 minutes
-    existing = (
-        session.query(WorkflowResearchAction)
-        .filter_by(case_id=case_id, action_type=action_type, status="running")
-        .first()
-    )
+    existing = WorkflowResearchAction.query.filter_by(
+        case_id=case_id, action_type=action_type, status="running"
+    ).first()
     if existing:
         if (
             existing.started_at
@@ -451,9 +643,8 @@ def run_action(case_id):
         ):
             existing.status = "error"
             existing.error = "Stale action auto-reset (timed out)"
-            session.commit()
+            db.session.commit()
         else:
-            session.close()
             return jsonify({"error": "Action already running"}), 409
 
     action = WorkflowResearchAction(
@@ -464,10 +655,9 @@ def run_action(case_id):
         label=ACTION_REGISTRY[action_type]["label"],
         status="pending",
     )
-    session.add(action)
-    session.commit()
+    db.session.add(action)
+    db.session.commit()
     action_id = action.id
-    session.close()
 
     start_action_async(action_id)
     return jsonify({"id": action_id, "status": "started"})
@@ -475,40 +665,32 @@ def run_action(case_id):
 
 @workflow_bp.route("/api/case/<case_id>/status")
 @login_required
-@_superadmin_required
+@_investigator_required
 def case_status(case_id):
-    ensure_db()
-    session = get_session()
-    case = session.query(WorkflowCase).get(case_id)
+    case = db.session.get(WorkflowCase, case_id)
     if not case:
-        session.close()
         return jsonify({"error": "Not found"}), 404
 
-    actions = session.query(WorkflowResearchAction).filter_by(case_id=case_id).all()
+    actions = WorkflowResearchAction.query.filter_by(case_id=case_id).all()
     findings = (
-        session.query(WorkflowFinding)
-        .filter_by(case_id=case_id)
+        WorkflowFinding.query.filter_by(case_id=case_id)
         .filter(WorkflowFinding.archived_at.is_(None))
-        .options(sa.orm.joinedload(WorkflowFinding.screenshots))
+        .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
         .order_by(WorkflowFinding.created_at.desc())
         .all()
     )
 
     finding_ids = [f.id for f in findings]
     links = (
-        (
-            session.query(WorkflowActionFinding)
-            .filter(WorkflowActionFinding.finding_id.in_(finding_ids))
-            .all()
-        )
+        WorkflowActionFinding.query.filter(
+            WorkflowActionFinding.finding_id.in_(finding_ids)
+        ).all()
         if finding_ids
         else []
     )
     finding_actions = {}
     for link in links:
         finding_actions.setdefault(link.finding_id, []).append(link.action_id)
-
-    session.close()
 
     def finding_json(f):
         raw = f.raw_data
@@ -540,7 +722,7 @@ def case_status(case_id):
                     else None,
                     "notes": ss.notes,
                 }
-                for ss in (f.screenshots or [])
+                for ss in (f.finding_screenshots or [])
             ],
         }
 
@@ -570,36 +752,26 @@ def case_status(case_id):
 
 @workflow_bp.route("/api/case/<case_id>/delete", methods=["POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def delete_case(case_id):
-    ensure_db()
-    session = get_session()
-    case = session.query(WorkflowCase).get(case_id)
+    case = db.session.get(WorkflowCase, case_id)
     if not case:
-        session.close()
         return jsonify({"error": "Not found"}), 404
-    session.delete(case)
-    session.commit()
-    session.close()
+    db.session.delete(case)
+    db.session.commit()
     return jsonify({"ok": True})
 
 
 @workflow_bp.route("/case/<case_id>/pv")
 @login_required
-@_superadmin_required
+@_investigator_required
 def pv_view(case_id):
-    ensure_db()
-    session = get_session()
-    case = session.query(WorkflowCase).get(case_id)
+    case = db.session.get(WorkflowCase, case_id)
     if not case:
-        session.close()
         abort(404)
-    client = (
-        session.query(WorkflowClient).get(case.client_id) if case.client_id else None
-    )
+    client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
     findings = list(case.findings)
-    session.close()
 
     import markdown as md_lib
 
@@ -617,78 +789,69 @@ def pv_view(case_id):
 
 @workflow_bp.route("/case/<case_id>/pv/edit", methods=["GET", "POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def pv_edit(case_id):
-    ensure_db()
-    session = get_session()
-    case = session.query(WorkflowCase).get(case_id)
+    case = db.session.get(WorkflowCase, case_id)
     if not case:
-        session.close()
         abort(404)
 
     if request.method == "POST":
+        was_empty = not case.pv_body
         case.pv_body = request.form.get("pv_body", "")
-        session.commit()
-        session.close()
+        case.pv_updated_at = datetime.now()
+        db.session.commit()
+
+        if was_empty and case.pv_body:
+            from cms.services.invoice_service import auto_invoice_pv_created
+
+            auto_invoice_pv_created(case)
+
         return redirect(url_for("workflow.pv_view", case_id=case_id))
 
-    session.close()
     return render_template("cms/workflow/workflow_pv_edit.html", case=case)
 
 
 @workflow_bp.route("/api/case/<case_id>/findings/<finding_id>/delete", methods=["POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def delete_finding(case_id, finding_id):
-    ensure_db()
-    session = get_session()
-    finding = session.query(WorkflowFinding).get(finding_id)
+    finding = db.session.get(WorkflowFinding, finding_id)
     if not finding or finding.case_id != case_id:
-        session.close()
         return jsonify({"error": "Not found"}), 404
-    session.delete(finding)
-    session.commit()
-    session.close()
+    db.session.delete(finding)
+    db.session.commit()
     return jsonify({"ok": True})
 
 
 @workflow_bp.route("/api/case/<case_id>/findings/batch-delete", methods=["POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def batch_delete_findings(case_id):
-    ensure_db()
-    session = get_session()
     body = request.get_json(silent=True) or {}
     ids = body.get("ids", [])
     if not ids or not isinstance(ids, list):
-        session.close()
         return jsonify({"error": "No IDs provided"}), 400
     deleted = 0
     for fid in ids:
-        finding = session.query(WorkflowFinding).get(fid)
+        finding = db.session.get(WorkflowFinding, fid)
         if finding and finding.case_id == case_id:
-            session.delete(finding)
+            db.session.delete(finding)
             deleted += 1
-    session.commit()
-    session.close()
+    db.session.commit()
     return jsonify({"ok": True, "deleted": deleted})
 
 
 @workflow_bp.route("/api/case/<case_id>/findings/<finding_id>/verify", methods=["POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def verify_finding(case_id, finding_id):
-    ensure_db()
-    session = get_session()
-    finding = session.query(WorkflowFinding).get(finding_id)
+    finding = db.session.get(WorkflowFinding, finding_id)
     if not finding or finding.case_id != case_id:
-        session.close()
         return jsonify({"error": "Not found"}), 404
     body = request.get_json(silent=True) or {}
     new_val = body.get("verified", not finding.verified)
     finding.verified = new_val
-    session.commit()
-    session.close()
+    db.session.commit()
     return jsonify({"ok": True, "verified": new_val})
 
 
@@ -696,61 +859,45 @@ def verify_finding(case_id, finding_id):
     "/api/case/<case_id>/findings/<finding_id>/comment", methods=["POST"]
 )
 @login_required
-@_superadmin_required
+@_investigator_required
 def save_comment(case_id, finding_id):
-    ensure_db()
-    session = get_session()
-    finding = session.query(WorkflowFinding).get(finding_id)
+    finding = db.session.get(WorkflowFinding, finding_id)
     if not finding or finding.case_id != case_id:
-        session.close()
         return jsonify({"error": "Not found"}), 404
     body = request.get_json(silent=True) or {}
     new_comment = body.get("comment", "")
     finding.comment = new_comment
-    session.commit()
-    session.close()
+    db.session.commit()
     return jsonify({"ok": True, "comment": new_comment})
 
 
 @workflow_bp.route("/api/case/<case_id>/actions/<action_id>/cancel", methods=["POST"])
 @login_required
-@_superadmin_required
+@_investigator_required
 def cancel_action_api(case_id, action_id):
-    ensure_db()
-    session = get_session()
-    action = session.query(WorkflowResearchAction).get(action_id)
+    action = db.session.get(WorkflowResearchAction, action_id)
     if not action or action.case_id != case_id:
-        session.close()
         return jsonify({"error": "Not found"}), 404
     if action.status != "running":
-        session.close()
         return jsonify({"error": "Action is not running"}), 400
     cancel_action(action_id)
-    session.close()
     return jsonify({"ok": True})
-
-
-SCREENSHOT_DIR = os.path.join(os.path.dirname(WORKFLOW_DB_PATH), "screenshots")
 
 
 @workflow_bp.route(
     "/api/case/<case_id>/findings/<finding_id>/screenshots", methods=["POST"]
 )
 @login_required
-@_superadmin_required
+@_investigator_required
 def add_screenshot(case_id, finding_id):
-    ensure_db()
-    session = get_session()
-    finding = session.query(WorkflowFinding).get(finding_id)
+    finding = db.session.get(WorkflowFinding, finding_id)
     if not finding or finding.case_id != case_id:
-        session.close()
         return jsonify({"error": "Not found"}), 404
 
     url = ""
     source_url = ""
     notes = ""
     file_path = ""
-    uploaded_filename = ""
 
     if request.content_type and "multipart/form-data" in request.content_type:
         source_url = request.form.get("source_url", "")
@@ -764,7 +911,6 @@ def add_screenshot(case_id, finding_id):
             dest = os.path.join(finding_dir, stored_name)
             file.save(dest)
             file_path = dest
-            uploaded_filename = stored_name
             url = url_for(
                 "workflow.serve_screenshot",
                 finding_id=finding_id,
@@ -786,19 +932,107 @@ def add_screenshot(case_id, finding_id):
         notes=notes,
         captured_at=datetime.now(),
     )
-    session.add(ss)
-    session.commit()
+    db.session.add(ss)
+    db.session.commit()
     ss_data = {
         "url": ss.url,
         "source_url": ss.source_url,
         "captured_at": ss.captured_at.isoformat() if ss.captured_at else None,
         "notes": ss.notes,
     }
-    session.close()
     return jsonify({"ok": True, "screenshot": ss_data})
 
 
 @workflow_bp.route("/uploads/<finding_id>/<filename>")
+@login_required
 def serve_screenshot(finding_id, filename):
     finding_dir = os.path.join(SCREENSHOT_DIR, finding_id)
     return send_from_directory(finding_dir, filename)
+
+
+# ── Archive / Restore ───────────────────────────────────────────────────────
+
+
+@workflow_bp.route("/api/actions/<action_id>/archive", methods=["POST"])
+@login_required
+def archive_action(action_id):
+    """Archive a single research action and its linked findings."""
+    from cms.models import ResearchAction, Finding, ActionFinding, db
+
+    action = db.session.get(ResearchAction, action_id) or abort(404)
+    now = datetime.now(timezone.utc)
+    action.archived_at = now
+    finding_ids = [
+        af.finding_id for af in ActionFinding.query.filter_by(action_id=action.id)
+    ]
+    if finding_ids:
+        Finding.query.filter(
+            Finding.id.in_(finding_ids), Finding.archived_at.is_(None)
+        ).update({"archived_at": now}, synchronize_session=False)
+    db.session.commit()
+    if request.is_json:
+        return jsonify({"ok": True})
+    flash("Actie gearchiveerd.", "info")
+    return redirect(
+        request.referrer or url_for("workflow.case_detail", case_id=action.case_id)
+    )
+
+
+@workflow_bp.route("/api/actions/<action_id>/restore", methods=["POST"])
+@login_required
+def restore_action(action_id):
+    """Restore a research action and its linked findings."""
+    from cms.models import ResearchAction, Finding, ActionFinding, db
+
+    action = db.session.get(ResearchAction, action_id) or abort(404)
+    action.archived_at = None
+    finding_ids = [
+        af.finding_id for af in ActionFinding.query.filter_by(action_id=action.id)
+    ]
+    if finding_ids:
+        Finding.query.filter(Finding.id.in_(finding_ids)).update(
+            {"archived_at": None}, synchronize_session=False
+        )
+    db.session.commit()
+    if request.is_json:
+        return jsonify({"ok": True})
+    flash("Actie hersteld.", "info")
+    return redirect(
+        request.referrer or url_for("workflow.case_detail", case_id=action.case_id)
+    )
+
+
+@workflow_bp.route("/api/findings/<finding_id>/archive", methods=["POST"])
+@login_required
+def archive_finding(finding_id):
+    """Archive a single finding."""
+    from cms.models import Finding, db
+
+    finding = db.session.get(Finding, finding_id) or abort(404)
+    finding.archived_at = datetime.now(timezone.utc)
+    db.session.commit()
+    if request.is_json:
+        return jsonify({"ok": True})
+    flash("Bevinding gearchiveerd.", "info")
+    return redirect(
+        request.referrer or url_for("workflow.case_detail", case_id=finding.case_id)
+    )
+
+
+@workflow_bp.route("/api/findings/<finding_id>/restore", methods=["POST"])
+@login_required
+def restore_finding(finding_id):
+    """Restore an archived finding."""
+    from cms.models import Finding, db
+
+    finding = db.session.get(Finding, finding_id) or abort(404)
+    finding.archived_at = None
+    db.session.commit()
+    if request.is_json:
+        return jsonify({"ok": True})
+    flash("Bevinding hersteld.", "info")
+    return redirect(
+        request.referrer or url_for("workflow.case_detail", case_id=finding.case_id)
+    )
+    db.session.commit()
+    return jsonify({"ok": True})

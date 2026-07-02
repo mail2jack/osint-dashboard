@@ -50,7 +50,7 @@
                 </td>
                 <td>{{ cn.created_by or '—' }}</td>
                 <td>
-                    <a href="{{ url_for('cms.credit_note_pdf', credit_note_id=cn.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;padding:0.15rem 0.4rem;font-size:0.75rem;">PDF</a>
+                    <a href="{{ url_for('cms.credit_note_pdf', credit_note_id=cn.id) }}" class="btn-cms small danger">PDF</a>
                 </td>
             </tr>
             {% else %}

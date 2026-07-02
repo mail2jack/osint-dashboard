@@ -23,11 +23,13 @@ from ..feature_flags import tool_enabled
 logger = logging.getLogger(__name__)
 
 
-@cms_bp.route("/api/phone-lookup-stored", methods=["GET"])
+@cms_bp.route("/api/phone-lookup-stored", methods=["POST"])
+@csrf.exempt
 @login_required
 def phone_lookup_stored() -> flask.Response:
     """Return the most recent stored lookup for a phone number."""
-    phone = (request.args.get("phone") or "").strip()
+    data = request.get_json(silent=True) or {}
+    phone = (data.get("phone") or "").strip()
     if not phone:
         return jsonify({"found": False})
     try:

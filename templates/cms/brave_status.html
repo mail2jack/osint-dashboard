@@ -1,0 +1,116 @@
+{% extends "cms/base.html" %}
+{% block title %}🦁 Brave Search Status{% endblock %}
+{% block content %}
+<style>
+  .bs-header { display:flex; justify-content:space-between; align-items:center; margin:0 0 1.5rem; }
+  .bs-header h1 { margin:0; }
+  .bs-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:1.25rem; margin-bottom:1rem; }
+  .bs-card-title { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); font-weight:600; margin-bottom:0.75rem; }
+  .bs-stat { display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid var(--border-color); }
+  .bs-stat:last-child { border-bottom:none; }
+  .bs-label { font-size:0.85rem; color:var(--text-secondary); }
+  .bs-value { font-size:0.95rem; font-weight:600; }
+  .bs-bar { width:100%; height:10px; background:var(--bg-secondary); border-radius:5px; overflow:hidden; margin-top:0.5rem; }
+  .bs-bar-fill { height:100%; border-radius:5px; transition:width 0.5s; }
+  .bs-bar-fill.ok { background:#22c55e; }
+  .bs-bar-fill.warn { background:#f59e0b; }
+  .bs-bar-fill.danger { background:#ef4444; }
+  .bs-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; }
+  .bs-badge { display:inline-block; padding:0.15rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600; }
+  .bs-badge.ok { background:#f0fdf4; color:#16a34a; }
+  .bs-badge.warn { background:#fffbeb; color:#d97706; }
+  .bs-badge.danger { background:#fef2f2; color:#dc2626; }
+  .bs-badge.info { background:#eff6ff; color:#2563eb; }
+  .bs-refresh { display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.7rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-card); color:var(--text-primary); cursor:pointer; font-size:0.8rem; text-decoration:none; }
+  .bs-refresh:hover { background:var(--bg-secondary); }
+</style>
+
+<div class="bs-header">
+  <h1>🦁 Brave Search Status</h1>
+  <a href="{{ url_for('cms.brave_status') }}" class="bs-refresh">🔄 Verversen</a>
+</div>
+
+{% if not data.configured %}
+<div class="bs-card" style="text-align:center;padding:2rem;">
+  <div style="font-size:2rem;margin-bottom:0.5rem;">⚙️</div>
+  <p><strong>Brave Search niet geconfigureerd</strong></p>
+  <p style="font-size:0.85rem;color:var(--text-muted);">Voeg een API key toe in <a href="{{ url_for('cms.list_api_keys') }}">Settings → API Keys</a>.</p>
+</div>
+{% elif data.status_code == 402 %}
+<div class="bs-card" style="text-align:center;padding:2rem;border-color:#fca5a5;background:#fef2f2;">
+  <div style="font-size:2rem;margin-bottom:0.5rem;">⚠️</div>
+  <p><strong>Brave Search quota exhausted (402)</strong></p>
+  <p style="font-size:0.85rem;color:var(--text-muted);">Het maandelijkse quotum is bereikt of er is een betalingsprobleem. Controleer je saldo op het <a href="https://brave.com/search/api/" target="_blank" rel="noopener" style="color:var(--link-color);">Brave dashboard</a> of vernieuw je API key in <a href="{{ url_for('cms.list_api_keys') }}">Settings → API Keys</a>.</p>
+  {% if data.api_error %}
+  <p style="font-size:0.8rem;color:var(--text-muted);background:var(--bg-primary);padding:0.5rem;border-radius:4px;margin-top:0.5rem;font-family:monospace;">{{ data.api_error }}</p>
+  {% endif %}
+  {% if data.monthly_reset_days is not none %}
+  <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem;">Reset over {{ data.monthly_reset_days }} dag(en)</p>
+  {% endif %}
+</div>
+{% elif data.status_code == 200 %}
+{% set pct = data.pct_remaining|default(100) %}
+{% set bar_class = 'danger' if pct < 20 else ('warn' if pct < 50 else 'ok') %}
+{% set badge_class = 'danger' if pct < 20 else ('warn' if pct < 50 else 'ok') %}
+
+<div class="bs-grid">
+  <div class="bs-card">
+    <div class="bs-card-title">📊 Maandverbruik</div>
+    <div class="bs-stat">
+      <span class="bs-label">Limiet</span>
+      <span class="bs-value">{{ data.monthly_limit }}</span>
+    </div>
+    <div class="bs-stat">
+      <span class="bs-label">Gebruikt</span>
+      <span class="bs-value">{{ data.monthly_used }}</span>
+    </div>
+    <div class="bs-stat">
+      <span class="bs-label">Resterend</span>
+      <span class="bs-value">{{ data.monthly_remaining }}</span>
+    </div>
+    <div class="bs-bar">
+      <div class="bs-bar-fill {{ bar_class }}" style="width:{{ (100 - pct)|round }}%;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:0.3rem;font-size:0.7rem;color:var(--text-muted);">
+      <span>0%</span>
+      <span>{{ pct }}% over</span>
+      <span>100%</span>
+    </div>
+  </div>
+
+  <div class="bs-card">
+    <div class="bs-card-title">💰 Kosten</div>
+    <div class="bs-stat">
+      <span class="bs-label">Geschatte kosten</span>
+      <span class="bs-value">${{ data.estimated_cost }}</span>
+    </div>
+    <div class="bs-stat">
+      <span class="bs-label">Plan</span>
+      <span class="bs-value" style="font-size:0.8rem;">$5/mo + $5/1000 req</span>
+    </div>
+    <div class="bs-stat">
+      <span class="bs-label">Status</span>
+      <span class="bs-badge {{ badge_class }}">{{ 'Goed' if pct >= 50 else ('Opraken' if pct >= 20 else 'Bijna op') }}</span>
+    </div>
+  </div>
+
+  <div class="bs-card">
+    <div class="bs-card-title">🕐 Reset</div>
+    <div class="bs-stat">
+      <span class="bs-label">Reset over</span>
+      <span class="bs-value">{{ data.monthly_reset_days if data.monthly_reset_days is not none else '?' }} dag(en)</span>
+    </div>
+    <div class="bs-stat">
+      <span class="bs-label">Seconden</span>
+      <span class="bs-value" style="font-size:0.8rem;">{{ data.monthly_reset_seconds|default('?') }}</span>
+    </div>
+  </div>
+</div>
+{% elif data.error %}
+<div class="bs-card" style="text-align:center;padding:2rem;border-color:#fca5a5;background:#fef2f2;">
+  <div style="font-size:2rem;margin-bottom:0.5rem;">❌</div>
+  <p><strong>Fout bij controleren Brave status</strong></p>
+  <p style="font-size:0.85rem;color:var(--text-muted);">{{ data.error }}</p>
+</div>
+{% endif %}
+{% endblock %}

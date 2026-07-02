@@ -154,6 +154,7 @@
     <div class="actions-bar">
         <a href="{{ url_for('cms.tenant_export', tenant_id=tenant.id) }}" class="btn-cms" style="font-size:0.8rem;text-decoration:none;">📦 Export</a>
         <form method="POST" action="{{ url_for('cms.switch_tenant', tenant_id=tenant.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-cms" style="font-size:0.8rem;">Switch to this tenant</button>
         </form>
         <form method="POST" action="{{ url_for('cms.tenant_toggle_active', tenant_id=tenant.id) }}" style="display:inline;" onsubmit="return confirm('{% if tenant.is_active %}{{ _('Deactivate this tenant? Users will lose access.') }}{% else %}{{ _('Reactivate this tenant?') }}{% endif %}')">
@@ -514,7 +515,7 @@
                 <td style="white-space:nowrap;">{{ log.timestamp.strftime('%Y-%m-%d %H:%M') if log.timestamp else '—' }}</td>
                 <td>{% if log.user %}{{ log.user.full_name }}{% else %}<span style="color:var(--text-muted);">unknown</span>{% endif %}</td>
                 <td><span class="action-badge action-{{ log.action }}">{{ log.action }}</span></td>
-                <td>{{ log.entity_type }}<br><code style="font-size:0.65rem;">{{ log.entity_id|truncate(12) }}</code></td>
+                <td>{{ log.entity_type }}<br><code style="font-size:0.65rem;">{{ log.entity_id|string|truncate(12) }}</code></td>
                 <td>{{ log.description or '' }}</td>
             </tr>
             {% endfor %}
@@ -530,7 +531,7 @@
     <p style="color:var(--text-secondary);font-size:0.85rem;">
         {{ _('Permanently delete all data for this tenant. This action cannot be undone. Consider exporting the data first.') }}
     </p>
-    <a href="{{ url_for('cms.tenant_gdpr_delete', tenant_id=tenant.id) }}" class="btn-cms" style="background:#ef4444;border-color:#ef4444;color:white;text-decoration:none;font-size:0.85rem;">
+    <a href="{{ url_for('cms.tenant_gdpr_delete', tenant_id=tenant.id) }}" class="btn-cms danger" style="font-size:0.85rem;">
         🗑️ {{ _('Delete All Tenant Data') }}
     </a>
 </div>

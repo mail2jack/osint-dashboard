@@ -11,7 +11,6 @@ from sqlalchemy.orm import joinedload
 from ..models import db, Case, Client, Subject, AuditLog, User, CaseStatus, CasePriority
 from ..auth import (
     roles_required,
-    admin_required,
     case_access_required,
     case_edit_required,
     apply_tenant_filter,
@@ -64,12 +63,17 @@ def cases() -> str:
     assigned = request.args.get("assigned", "")
     sort = request.args.get("sort", "case_number")
     order = request.args.get("order", "desc")
+    show_archived = request.args.get("show_archived", "0") == "1"
 
     query = (
         Case.query.filter_by(is_deleted=False)
         .join(Client)
         .options(joinedload(Case.client), joinedload(Case.lead_investigator))
     )
+
+    # Hide archived by default
+    if not show_archived:
+        query = query.filter(Case.archived_at.is_(None))
 
     # Tenant isolation (SQLite compat, RLS only works on Postgres)
     query = apply_tenant_filter(query, Case)
@@ -175,6 +179,7 @@ def cases() -> str:
             "sort": sort,
             "order": order,
             "case_type": case_type_filter,
+            "show_archived": show_archived,
         },
     )
 
@@ -461,17 +466,13 @@ def edit_case(case_id: str) -> flask.Response:
 
 @cms_bp.route("/cases/<case_id>/archive", methods=["POST"])
 @login_required
-@admin_required
 def archive_case(case_id: str) -> flask.Response:
-    """Archive a closed case."""
+    """Archive a case and cascade to its research actions and findings."""
     case = db.session.get(Case, case_id) or abort(404)
     if case.tenant_id != current_user.tenant_id:
         abort(404)
 
-    if case.status != CaseStatus.CLOSED.value:
-        return api_error("Only closed cases can be archived", 400)
-
-    case.soft_delete()
+    case.soft_archive()
 
     AuditLog.log(
         user_id=current_user.id,
@@ -483,5 +484,29 @@ def archive_case(case_id: str) -> flask.Response:
     )
     db.session.commit()
 
-    flash(f"Case {case.case_number} has been archived.", "info")
+    flash(f"Case {case.case_number} is gearchiveerd.", "info")
+    return redirect(url_for("cms.cases"))
+
+
+@cms_bp.route("/cases/<case_id>/restore", methods=["POST"])
+@login_required
+def restore_case(case_id: str) -> flask.Response:
+    """Restore an archived case and its archived children."""
+    case = db.session.get(Case, case_id) or abort(404)
+    if case.tenant_id != current_user.tenant_id:
+        abort(404)
+
+    case.restore_from_archive()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="restore",
+        entity_type="case",
+        entity_id=case_id,
+        ip_address=request.remote_addr,
+        description=f"Restored case: {case.case_number}",
+    )
+    db.session.commit()
+
+    flash(f"Case {case.case_number} is hersteld.", "info")
     return redirect(url_for("cms.cases"))

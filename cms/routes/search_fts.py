@@ -85,7 +85,7 @@ def full_text_search() -> flask.Response:
             filtered_subjects = [s for s in subjects if s.id in allowed_subject_ids]
         else:
             filtered_subjects = []
-        results["subjects"] = [s.to_dict() for s in filtered_subjects]
+        results["subjects"] = [s.to_dict(decrypted=False) for s in filtered_subjects]
 
     if scope in ("all", "cases"):
         cases = _fts_query(

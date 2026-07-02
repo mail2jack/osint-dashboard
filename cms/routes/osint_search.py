@@ -126,12 +126,15 @@ def run_osint_search(
         # Run the dorks search with a 2-minute total timeout
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         try:
-            future = executor.submit(person_dorks_search, name)
+            future = executor.submit(person_dorks_search, name, cancel_event)
             try:
                 results = future.result(timeout=120)
             except concurrent.futures.TimeoutError:
                 logger.warning(f"OSINT search {search_id} timed out after 120s")
+                if cancel_event:
+                    cancel_event.set()
                 search_manager.set_error(search_id, "Search timed out after 2 minutes")
+                executor.shutdown(wait=False)
                 return
 
             # Check if cancelled before setting results

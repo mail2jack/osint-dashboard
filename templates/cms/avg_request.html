@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>AVG-verzoek indienen — Iveras CMS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 600px;
+            margin: 2rem auto;
+            background: white;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        h1 { color: #1a1a2e; font-size: 1.5rem; margin-bottom: 0.25rem; }
+        .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.4rem; color: #555; font-weight: 500; font-size: 0.9rem; }
+        input, select, textarea {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #16213e; }
+        textarea { resize: vertical; min-height: 100px; }
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #16213e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn:hover { background: #1a1a2e; }
+        .alert { padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; }
+        .alert-danger { background: #fee2e2; color: #dc2626; }
+        .alert-success { background: #dcfce7; color: #16a34a; }
+        .alert-info { background: #dbeafe; color: #2563eb; }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.25rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .back-link a { color: #16213e; text-decoration: none; font-weight: 500; }
+        .back-link a:hover { text-decoration: underline; }
+        .disclaimer {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 AVG-verzoek indienen</h1>
+        <p class="subtitle">Gebruik dit formulier om een verzoek in te dienen op basis van uw rechten onder de Algemene Verordening Gegevensbescherming (AVG/GDPR).</p>
+
+        <div class="disclaimer">
+            <strong>Let op:</strong> Wij verwerken uw verzoek binnen 30 dagen.
+            Bij complexe verzoeken kan deze termijn met maximaal 60 dagen worden verlengd.
+            Wij kunnen u vragen om uw identiteit te verifiëren voordat wij uw verzoek behandelen.
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="name">Volledige naam</label>
+                <input type="text" name="name" id="name" required autocomplete="name">
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-mailadres *</label>
+                <input type="email" name="email" id="email" required autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Telefoonnummer (optioneel)</label>
+                <input type="tel" name="phone" id="phone" autocomplete="tel">
+            </div>
+
+            <div class="form-group">
+                <label for="request_type">Type verzoek *</label>
+                <select name="request_type" id="request_type" required>
+                    <option value="access">Inzage (art. 15 AVG) — Alle gegevens inzien</option>
+                    <option value="rectification">Rectificatie (art. 16 AVG) — Gegevens corrigeren</option>
+                    <option value="erasure">Vergetelheid (art. 17 AVG) — Gegevens verwijderen</option>
+                    <option value="portability">Dataportabiliteit (art. 20 AVG) — Gegevens overdragen</option>
+                    <option value="restrict">Beperking (art. 18 AVG) — Verwerking beperken</option>
+                    <option value="object">Bezwaar (art. 21 AVG) — Bezwaar tegen verwerking</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Toelichting</label>
+                <textarea name="description" id="description" placeholder="Beschrijf uw verzoek zo specifiek mogelijk. Bij een inzageverzoek: welke gegevens zoekt u? Bij een verwijderverzoek: om welke gegevens gaat het?"></textarea>
+            </div>
+
+            <button type="submit" class="btn-cms primary">Verzoek indienen</button>
+        </form>
+
+        <div class="back-link">
+            <a href="{{ url_for('cms.privacy_policy') }}">← Terug naar Privacybeleid</a>
+        </div>
+    </div>
+</body>
+</html>

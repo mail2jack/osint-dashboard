@@ -17,7 +17,7 @@ from ..models import (
     Document,
     Reminder,
 )
-from ..auth import case_access_required, audit_read, apply_tenant_filter
+from ..auth import case_access_required, audit_read, apply_tenant_filter, can_export
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 @cms_bp.route("/cases/<case_id>/export-json", methods=["GET"])
 @login_required
 @case_access_required
+@can_export
 def export_case_json(case_id: str) -> flask.Response:
     """Export a case as JSON with all relations."""
     import json as json_mod

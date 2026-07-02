@@ -52,24 +52,23 @@
 .action-cancel:hover { background: #dc2626; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 .finding-item {
-  display: flex; align-items: flex-start; gap: 0.75rem;
   padding: 0.75rem; border: 1px solid var(--border-color);
   border-radius: 8px; margin-bottom: 0.5rem;
-  background: var(--bg-card); transition: all 0.3s;
+  background: var(--bg-card); position: relative;
 }
 .finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
-.finding-item .icon-col { font-size: 1.4rem; padding-top: 0.1rem; flex-shrink: 0; }
-.finding-item .body-col { flex: 1; min-width: 0; }
-.finding-item .title { font-weight: 600; font-size: 0.9rem; }
 .finding-item .meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
 .finding-item .meta a { color: var(--link-color); }
+.finding-item .finding-content { margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem; white-space: pre-wrap; }
+.finding-item .finding-check-wrap { position: absolute; top: 0.75rem; right: 2rem; opacity: 0.3; }
+.finding-item:hover .finding-check-wrap { opacity: 1; }
+.finding-item .finding-check-wrap input { cursor: pointer; }
 .finding-item .screenshot {
   margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary);
   border-radius: 6px; font-size: 0.78rem; border: 1px dashed var(--border-color);
 }
 .finding-item .screenshot .ss-row { display: flex; gap: 1rem; flex-wrap: wrap; }
 .finding-item .screenshot .ss-label { font-weight: 600; color: var(--text-secondary); }
-.finding-item { position: relative; }
 .finding-group {
   border: 1px solid var(--border-color); border-radius: 8px;
   margin-bottom: 0.5rem; overflow: hidden;
@@ -188,16 +187,16 @@ input:-webkit-autofill:focus {
       </div>
       <div class="subject-info-item">
         <div class="lbl">E-mail</div>
-        <div class="val">{{ client.email or '—' }}</div>
+        <div class="val">{{ client.contact_email or '—' }}</div>
       </div>
       <div class="subject-info-item">
         <div class="lbl">Telefoon</div>
-        <div class="val">{{ client.phone or '—' }}</div>
+        <div class="val">{{ client.contact_phone or '—' }}</div>
       </div>
-      {% if client.street or client.city %}
+      {% if client.address_street or client.address_city %}
       <div class="subject-info-item" style="grid-column:1/-1;">
         <div class="lbl">🏠 Adres</div>
-        <div class="val">{{ client.street or '' }} {{ client.house_number or '' }}{{ client.house_number_addition or '' }}{% if client.postal_code or client.city %}<br>{% endif %}{{ client.postal_code or '' }} {{ client.city or '' }}</div>
+        <div class="val">{{ client.address_street or '' }} {{ client.address_number or '' }}{% if client.address_postal or client.address_city %}<br>{% endif %}{{ client.address_postal or '' }} {{ client.address_city or '' }}</div>
       </div>
       {% endif %}
       {% if client.reference %}
@@ -206,10 +205,10 @@ input:-webkit-autofill:focus {
         <div class="val">{{ client.reference }}</div>
       </div>
       {% endif %}
-      {% if client.notes %}
+      {% if client.financial_notes %}
       <div class="subject-info-item" style="grid-column:1/-1;">
         <div class="lbl">Notities</div>
-        <div class="val">{{ client.notes }}</div>
+        <div class="val">{{ client.financial_notes }}</div>
       </div>
       {% endif %}
       <div class="subject-info-item">
@@ -272,11 +271,11 @@ input:-webkit-autofill:focus {
           <div class="val">{{ subject.street or '' }} {{ subject.house_number or '' }}{{ subject.house_number_addition or '' }}{% if subject.postal_code or subject.city %}<br>{% endif %}{{ subject.postal_code or '' }} {{ subject.city or '' }}</div>
         </div>
         {% endif %}
-        {% if subject.social_accounts %}
+        {% if subject.workflow_social_accounts %}
         <div class="subject-info-item" style="grid-column:1/-1;">
           <div class="lbl">🌐 Social media</div>
           <div class="val" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.2rem;">
-            {% for acct in subject.social_accounts %}
+            {% for acct in subject.workflow_social_accounts %}
             <span style="padding:0.15rem 0.5rem;background:#e8f4ff;border-radius:4px;">{{ acct }}</span>
             {% endfor %}
           </div>
@@ -336,6 +335,7 @@ input:-webkit-autofill:focus {
       <input type="checkbox" id="selectAllFindings" title="Alles selecteren">
       <button type="button" id="deleteSelectedFindings" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-left:0.3rem;">Verwijder geselecteerd</button>
     </span>
+    <a href="?show_archived={{ '0' if show_archived else '1' }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Toon actieve' if show_archived else '📂 Toon gearchiveerde' }}</a>
   </div>
   <div class="workflow-step-body">
     <div id="findingsContainer">
@@ -368,14 +368,25 @@ input:-webkit-autofill:focus {
           {% set type_info = action_types.get(act.action_type, {}) %}
            <div class="finding-group">
              <div class="finding-group-header" data-toggle="findings-{{ aid }}">
-              <span class="toggle-icon">▶</span>
-              <span class="fg-icon">{{ type_info.get('icon', '📄') }}</span>
-              <span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}</span>
-              <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
-              <span class="fg-count">{{ group.findings|length }}</span>
-              {% if act.completed_at %}
-              <span class="fg-time">{{ act.completed_at.strftime('%H:%M') }}</span>
-              {% endif %}
+               <span class="toggle-icon">▶</span>
+               <span class="fg-icon">{{ type_info.get('icon', '📄') }}</span>
+               <span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}</span>
+               <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
+               <span class="fg-count">{{ group.findings|length }}</span>
+               {% if act.completed_at %}
+               <span class="fg-time">{{ act.completed_at.strftime('%H:%M') }}</span>
+               {% endif %}
+               {% if act.archived_at %}
+               <form method="POST" action="{{ url_for('workflow.restore_action', action_id=act.id) }}" style="display:inline;margin-left:auto;">
+                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                 <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Herstel</button>
+               </form>
+               {% elif act.status == 'completed' %}
+               <form method="POST" action="{{ url_for('workflow.archive_action', action_id=act.id) }}" style="display:inline;margin-left:auto;">
+                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                 <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Archiveer</button>
+               </form>
+               {% endif %}
             </div>
             <div class="finding-group-body" id="findings-{{ aid }}">
               {% for f in group.findings %}
@@ -433,7 +444,7 @@ input:-webkit-autofill:focus {
 {% include "cms/workflow/_workflow_picker.html" %}
 {% include "cms/workflow/_workflow_polling.html" %}
 {% include "cms/workflow/_workflow_events.html" %}
-
+</script>
 
 
 
@@ -472,8 +483,6 @@ input:-webkit-autofill:focus {
 .picker-subject{font-weight:600;font-size:0.85rem;color:var(--text,#111);}
 .picker-field{font-size:0.75rem;color:var(--text-muted,#6b7280);margin-top:2px;}
 .picker-value{font-size:0.85rem;color:#2563eb;margin-top:2px;word-break:break-all;}
-.check-col{display:flex;align-items:flex-start;padding:0.6rem 0 0 0.3rem;}
-.check-col input{cursor:pointer;}
 #findingsBatchActions{display:inline-flex;align-items:center;gap:0.2rem;}
 
 /* ── RDW card ── */

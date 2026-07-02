@@ -62,20 +62,27 @@ VESSELFINDER_HEADERS = {
 
 
 def lookup_vesselfinder(
-    name: str | None = None, mmsi: str | None = None
+    name: str | None = None, mmsi: str | None = None, imo: str | None = None
 ) -> dict | None:
-    """Look up vessel on VesselFinder by MMSI or name (free, no key).
+    """Look up vessel on VesselFinder by IMO, MMSI or name (free, no key).
+
+    Uses the details page (``/vessels/details/<id>``) which returns vessel data
+    in server-rendered meta tags — no JavaScript required.
 
     Returns dict with keys: name, mmsi, imo, ship_type, position, source, source_url
     or None if not found.
     """
-    query = mmsi or name
-    if not query:
+    identifier = imo or mmsi or name
+    if not identifier:
         return None
 
     try:
-        param = f"mmsi={query}" if mmsi else f"q={quote(query)}"
-        url = f"https://www.vesselfinder.com/?{param}"
+        # Details page works with IMO or MMSI
+        if imo or mmsi:
+            url = f"https://www.vesselfinder.com/vessels/details/{imo or mmsi}"
+        else:
+            # Name-only: use the search page URL (results require JS, but try anyway)
+            url = f"https://www.vesselfinder.com/vessels?name={quote(name)}"
         jitter_sleep(domain_hint=url)
         resp = curl_requests.get(url, headers=VESSELFINDER_HEADERS, timeout=15)
 
@@ -88,56 +95,70 @@ def lookup_vesselfinder(
             return None
         title = title_tag.text
 
-        # Extract name from title: "NAME Current position (type, MMSI X)" or "NAME..."
-        name_match = re.match(r"^(.+?)\s+Current position", title)
-        if not name_match:
-            return None
-        vessel_name = name_match.group(1).strip()
+        # Bail out early if this is the homepage / generic page (no vessel data)
+        if "Error" in title or "VesselFinder" == title or "Vessels Database" in title:
+            if not (imo or mmsi):
+                return None
+            # Details page with IMO/MMSI should always have a valid title
+            if "Error" in title:
+                return None
 
-        # Extract vessel type from title
-        type_match = re.search(r"\(([^)]+)\)", title)
-        ship_type = type_match.group(1).split(",")[0].strip() if type_match else None
-
-        # Extract MMSI and IMO from embedded JS vars
-        imo = None
-        mmsi_val = None
-        for script in soup.find_all("script"):
-            if script.string and "MMSI=" in script.string:
-                mmsi_m = re.search(r"MMSI=(\d+)", script.string)
-                if mmsi_m:
-                    mmsi_val = mmsi_m.group(1)
-                imo_m = re.search(r"IMO=(\d+)", script.string)
-                if imo_m and imo_m.group(1) != "0":
-                    imo = imo_m.group(1)
-                break
-
-        # Extract position from meta description
         meta_desc = soup.find("meta", attrs={"name": "description"})
-        position = None
-        if meta_desc:
-            pos_match = re.search(
-                r"position is ([\d.]+ [NS], [\d.]+ [EW])", meta_desc.get("content", "")
-            )
-            if pos_match:
-                raw = pos_match.group(1)
-                try:
-                    lat_str, lon_str = raw.split(", ")
-                    lat = _parse_dms(lat_str)
-                    lon = _parse_dms(lon_str)
-                    if lat is not None and lon is not None:
-                        position = {"lat": lat, "lon": lon}
-                except (ValueError, IndexError):
-                    logger.debug("Failed to parse VesselFinder position data")
+        meta_text = meta_desc.get("content", "") if meta_desc else ""
+
+        # Parse meta description: "Vessel NAME (IMO XXXXXXX, MMSI YYYYYYY) is a SHIP_TYPE built in YEAR ... flag of FLAG."
+        vessel_name = None
+        vessel_imo = None
+        vessel_mmsi = None
+        ship_type = None
+        year_built = None
+        flag = None
+
+        m = re.match(r"Vessel (.+?) \(IMO (\d+), MMSI (\d+)\)", meta_text)
+        if m:
+            vessel_name = m.group(1)
+            vessel_imo = m.group(2)
+            vessel_mmsi = m.group(3)
+
+        type_m = re.search(r"is a (.+?) built", meta_text)
+        if type_m:
+            ship_type = type_m.group(1).strip()
+
+        year_m = re.search(r"built in (\d{4})", meta_text)
+        if year_m:
+            year_built = year_m.group(1)
+
+        flag_m = re.search(r"flag of (.+?)\.$", meta_text)
+        if flag_m:
+            flag = flag_m.group(1).strip()
+
+        # Fallback: extract name from title if meta parsing failed
+        if not vessel_name:
+            title_parts = title.split(" - ")[0].split(",")
+            vessel_name = title_parts[0].strip() if title_parts else name
+
+        # Extract MMSI and IMO from embedded JS vars (fallback)
+        if not vessel_imo or not vessel_mmsi:
+            for script in soup.find_all("script"):
+                if script.string and "MMSI=" in script.string:
+                    mmsi_m = re.search(r"MMSI=(\d+)", script.string)
+                    if mmsi_m and not vessel_mmsi:
+                        vessel_mmsi = mmsi_m.group(1)
+                    imo_m = re.search(r"IMO=(\d+)", script.string)
+                    if imo_m and imo_m.group(1) != "0" and not vessel_imo:
+                        vessel_imo = imo_m.group(1)
+                    break
 
         return {
             "name": vessel_name,
-            "mmsi": mmsi_val or (query if mmsi else None),
-            "imo": imo,
+            "mmsi": vessel_mmsi or (mmsi if mmsi else None),
+            "imo": vessel_imo or imo,
             "ship_type": ship_type,
-            "position": position,
+            "flag": flag,
+            "year_built": year_built,
             "source": "vesselfinder",
-            "source_url": f"https://www.vesselfinder.com/?mmsi={mmsi_val}"
-            if mmsi_val
+            "source_url": f"https://www.vesselfinder.com/vessels/details/{vessel_imo or imo or mmsi}"
+            if (vessel_imo or imo or mmsi)
             else url,
         }
 
@@ -146,7 +167,122 @@ def lookup_vesselfinder(
         return None
 
 
-def _parse_dms(s: str) -> float | None:
+def lookup_vesselfinder_detailed(
+    imo: str | None = None, mmsi: str | None = None, name: str | None = None
+) -> dict | None:
+    """Full VesselFinder lookup using Playwright (JS rendering required).
+
+    Returns position, speed, destination, draft, callsign, length/beam etc.
+    Falls back to the basic curl lookup if Playwright is unavailable.
+    """
+    identifier = imo or mmsi
+    if not identifier:
+        return None
+
+    from cms.services.playwright_service import is_playwright_available
+
+    if not is_playwright_available():
+        return lookup_vesselfinder(name=name, mmsi=mmsi, imo=imo)
+
+    url = f"https://www.vesselfinder.com/vessels/details/{identifier}"
+
+    try:
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, timeout=30000)
+            ctx = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                )
+            )
+            page = ctx.new_page()
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=20000)
+
+                # Kill cookie consent
+                page.evaluate("document.querySelector('.fc-consent-root')?.remove()")
+
+                # Wait for SPA to render vessel detail content
+                page.wait_for_function(
+                    "() => document.body.innerText.includes('VOYAGE DATA')"
+                    " || document.body.innerText.includes('Destination')",
+                    timeout=15000,
+                )
+                page.wait_for_timeout(1000)
+
+                body = page.inner_text("body")
+            except Exception:
+                logger.debug(
+                    "VesselFinder Playwright render failed, falling back to curl"
+                )
+                return lookup_vesselfinder(name=name, mmsi=mmsi, imo=imo)
+            finally:
+                browser.close()
+
+        result = lookup_vesselfinder(name=name, mmsi=mmsi, imo=imo) or {}
+        result["source"] = "vesselfinder"
+        result["source_url"] = url
+
+        # Parse position from "The current position of NAME is at LOCATION ..."
+        pos_match = re.search(
+            r"The current position of .+? is at (.+?) reported",
+            body,
+        )
+        if pos_match:
+            result["position_text"] = pos_match.group(1).strip()
+
+        # Try to extract lat/lon from meta (server-rendered)
+        # Already handled by lookup_vesselfinder
+
+        # Destination (label on own line, value on next line)
+        dest_match = re.search(r"Destination\s*\n\s*(.+)", body)
+        if dest_match:
+            result["destination"] = dest_match.group(1).strip()
+
+        # ETA: (on same line)
+        eta_match = re.search(r"ETA:\s*(.+?)(?:\n|$)", body)
+        if eta_match:
+            result["eta"] = eta_match.group(1).strip()
+
+        # Course / Speed<TAB>value
+        cs_match = re.search(
+            r"Course\s*/\s*Speed[:\t ]*\s*([\d.]+)°\s*/\s*([\d.]+)\s*kn", body
+        )
+        if cs_match:
+            result["course"] = cs_match.group(1)
+            result["speed"] = cs_match.group(2)
+
+        # Current draught<TAB>value
+        draft_match = re.search(r"Current draught[:\t ]*\s*([\d.]+)\s*m", body)
+        if draft_match:
+            result["draught"] = draft_match.group(1)
+
+        # Callsign<TAB>value
+        call_match = re.search(r"Callsign[:\t ]*\s*(\S+)", body)
+        if call_match:
+            result["callsign"] = call_match.group(1)
+
+        # Length / Beam<TAB>value
+        lb_match = re.search(
+            r"Length\s*/\s*Beam[:\t ]*\s*([\d.]+)\s*/\s*([\d.]+)\s*m", body
+        )
+        if lb_match:
+            result["length"] = lb_match.group(1)
+            result["beam"] = lb_match.group(2)
+
+        # Navigation Status<TAB>value
+        nav_match = re.search(r"Navigation Status[:\t ]*\s*(.+)", body)
+        if nav_match:
+            result["navigation_status"] = nav_match.group(1).strip()
+
+        return result
+
+    except Exception as e:
+        logger.warning(f"VesselFinder detailed lookup failed: {e}")
+        return lookup_vesselfinder(name=name, mmsi=mmsi, imo=imo)
     """Parse '46 N' or '-12.5' style coordinate strings."""
     s = s.strip()
     direction = 1
@@ -587,8 +723,8 @@ def lookup_vessel(
         "source_data": {},
     }
 
-    # 1. VesselFinder (free, no key — good for MMSI/name)
-    vf = lookup_vesselfinder(name=name, mmsi=mmsi)
+    # 1. VesselFinder (free, no key — good for IMO/MMSI/name)
+    vf = lookup_vesselfinder(name=name, mmsi=mmsi, imo=imo)
     if vf:
         result["sources"].append("vesselfinder")
         result["source_data"]["vesselfinder"] = vf
@@ -599,6 +735,31 @@ def lookup_vessel(
         result["imo"] = result["imo"] or vf.get("imo")
         result["ship_type"] = result["ship_type"] or vf.get("ship_type")
         result["position"] = result["position"] or vf.get("position")
+        result["flag"] = result["flag"] or vf.get("flag")
+        result["year_built"] = result["year_built"] or vf.get("year_built")
+
+    # 1b. VesselFinder (Playwright — full details incl. position/speed/destination)
+    if vf and (imo or mmsi):
+        vfd = lookup_vesselfinder_detailed(
+            imo=imo or vf.get("imo"), mmsi=mmsi or vf.get("mmsi")
+        )
+        if vfd:
+            result["position"] = result.get("position") or vfd.get("position")
+            result["position_text"] = result.get("position_text") or vfd.get(
+                "position_text"
+            )
+            result["speed"] = result.get("speed") or vfd.get("speed")
+            result["destination"] = result.get("destination") or vfd.get("destination")
+            result["callsign"] = result.get("callsign") or vfd.get("callsign")
+            result["length"] = result.get("length") or vfd.get("length")
+            result["beam"] = result.get("beam") or vfd.get("beam")
+            result["navigation_status"] = result.get("navigation_status") or vfd.get(
+                "navigation_status"
+            )
+            result["course"] = result.get("course") or vfd.get("course")
+            result["eta"] = result.get("eta") or vfd.get("eta")
+            result["draught"] = result.get("draught") or vfd.get("draught")
+            result["source_data"]["vesselfinder"] = vfd
 
     # 2. MarinePlan (needs name or MMSI + API key — richer data)
     lookup_name = result.get("name") or name
@@ -682,7 +843,7 @@ EQUASIS_LOGIN_URL = "https://www.equasis.org/EquasisWeb/public/Login"
 EQUASIS_SEARCH_URL = "https://www.equasis.org/EquasisWeb/restricted/ShipResult"
 
 
-def lookup_equasis(imo: str) -> dict | None:
+def lookup_equasis(imo: str | None = None) -> dict | None:
     """Look up vessel on Equasis by IMO (requires credentials in settings).
 
     Returns dict with keys: name, imo, flag, gt, dwt, year_built,
@@ -868,6 +1029,36 @@ async def lookup_vessel_async(
             result["speed"] = result["speed"] or data.get("speed")
             result["destination"] = result["destination"] or data.get("destination")
             result["callsign"] = result["callsign"] or data.get("callsign")
+
+    # VesselFinder detailed (Playwright — full details)
+    vf_data = result["source_data"].get("vesselfinder")
+    if (
+        vf_data
+        and result.get("found")
+        and (imo or mmsi or result.get("imo") or result.get("mmsi"))
+    ):
+        vfd = await asyncio.to_thread(
+            lookup_vesselfinder_detailed,
+            imo=imo or result.get("imo"),
+            mmsi=mmsi or result.get("mmsi"),
+        )
+        if vfd:
+            result["position"] = result.get("position") or vfd.get("position")
+            result["position_text"] = result.get("position_text") or vfd.get(
+                "position_text"
+            )
+            result["speed"] = result.get("speed") or vfd.get("speed")
+            result["destination"] = result.get("destination") or vfd.get("destination")
+            result["callsign"] = result.get("callsign") or vfd.get("callsign")
+            result["length"] = result.get("length") or vfd.get("length")
+            result["beam"] = result.get("beam") or vfd.get("beam")
+            result["navigation_status"] = result.get("navigation_status") or vfd.get(
+                "navigation_status"
+            )
+            result["course"] = result.get("course") or vfd.get("course")
+            result["eta"] = result.get("eta") or vfd.get("eta")
+            result["draught"] = result.get("draught") or vfd.get("draught")
+            result["source_data"]["vesselfinder"] = vfd
 
     # Fallback: DeBinnenvaart only when Binnenvaart.eu missed
     if "binnenvaart" not in result["sources"]:

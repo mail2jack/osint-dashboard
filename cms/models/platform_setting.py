@@ -28,10 +28,10 @@ class PlatformSetting(db.Model):
         if not row:
             return default
         if row.is_encrypted and row.value:
-            from ..config import fernet
+            from ..encryption_utils import encryptor
 
             try:
-                return fernet.decrypt(row.value.encode()).decode()
+                return encryptor.decrypt(row.value)
             except Exception:
                 return default
         return row.value
@@ -45,12 +45,12 @@ class PlatformSetting(db.Model):
         description: str = "",
         encrypt: bool = False,
     ) -> "PlatformSetting":
-        from ..config import fernet
+        from ..encryption_utils import encryptor
 
         row = cls.query.filter_by(key=key).first()
         if not row:
             row = cls(key=key)
-        row.value = fernet.encrypt(value.encode()).decode() if encrypt else value
+        row.value = encryptor.encrypt(value) if encrypt else value
         row.category = category
         row.description = description
         row.is_encrypted = encrypt

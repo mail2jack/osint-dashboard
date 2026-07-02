@@ -9,7 +9,16 @@ from flask_login import login_required, current_user
 from sqlalchemy import func
 
 from . import cms_bp
-from ..models import db, Case, Subject, Client, Finding, Address, case_subjects
+from ..models import (
+    db,
+    Case,
+    Subject,
+    Client,
+    Finding,
+    Address,
+    case_subjects,
+    AuditLog,
+)
 from ..auth import can_export, case_access_required, apply_tenant_filter
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 
@@ -21,6 +30,7 @@ logger = logging.getLogger(__name__)
 @cms_bp.route("/cases/<case_id>/export")
 @login_required
 @case_access_required
+@can_export
 @rate_limit(limit=STRICT_RATE_LIMIT, key_prefix="export_case")
 def export_case(case_id: str) -> str:
     """Export case data as CSV."""
@@ -33,6 +43,16 @@ def export_case(case_id: str) -> str:
         )
     case = db.session.get(Case, case_id) or abort(404)
     format_type = request.args.get("format", "csv")
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="export",
+        entity_type="case",
+        entity_id=case_id,
+        ip_address=request.remote_addr,
+        description=f"Exported case {case.case_number} as {format_type}",
+    )
+    db.session.commit()
 
     if format_type == "csv":
         return export_case_csv(case)
@@ -131,6 +151,15 @@ def export_subjects() -> str:
         )
     format_type = request.args.get("format", "csv")
 
+    AuditLog.log(
+        user_id=current_user.id,
+        action="export",
+        entity_type="subject",
+        ip_address=request.remote_addr,
+        description=f"Exported all subjects as {format_type}",
+    )
+    db.session.commit()
+
     if format_type == "csv":
         return export_subjects_csv()
     else:
@@ -226,6 +255,15 @@ def export_clients() -> str:
         )
     format_type = request.args.get("format", "csv")
 
+    AuditLog.log(
+        user_id=current_user.id,
+        action="export",
+        entity_type="client",
+        ip_address=request.remote_addr,
+        description=f"Exported all clients as {format_type}",
+    )
+    db.session.commit()
+
     if format_type == "csv":
         return export_clients_csv()
     else:
@@ -302,6 +340,15 @@ def export_cases() -> str:
             403,
         )
     format_type = request.args.get("format", "csv")
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="export",
+        entity_type="case",
+        ip_address=request.remote_addr,
+        description=f"Exported all cases as {format_type}",
+    )
+    db.session.commit()
 
     if format_type == "csv":
         return export_cases_csv()

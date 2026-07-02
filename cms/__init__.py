@@ -13,6 +13,7 @@ providing:
 """
 
 import os
+from datetime import timedelta
 
 from flask import Flask
 from flask_migrate import Migrate
@@ -159,6 +160,26 @@ def create_cms_module(app: Flask):
 
         init_default_settings()
 
+        # Apply session timeout from settings, fallback to 8h (28800s)
+        try:
+            timeout_minutes = Setting.get("session_timeout_minutes", "480")
+            timeout_seconds = int(timeout_minutes) * 60
+            app.permanent_session_lifetime = timedelta(seconds=timeout_seconds)
+            app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
+                seconds=timeout_seconds
+            )
+        except Exception as e:
+            app.logger.debug(f"Session timeout note: {e}")
+
+        # Seed default service rates for auto-invoicing
+        try:
+            from .services.invoice_service import seed_service_rates
+
+            seed_service_rates()
+        except Exception as e:
+            app.logger.debug(f"Service rate seed note: {e}")
+            db.session.rollback()
+
         # Purge old audit logs on startup
         try:
             retention = int(Setting.get("audit_log_retention_days", "365"))
@@ -220,7 +241,6 @@ def create_cms_module(app: Flask):
         # Purge old login logs on startup
         try:
             from .models import LoginLog
-            from datetime import timedelta
 
             cutoff = datetime.now(timezone.utc) - timedelta(days=365)
             deleted = LoginLog.query.filter(LoginLog.created_at < cutoff).delete()
@@ -334,16 +354,19 @@ def init_db(app: Flask, database_url: str = None):
         db_user = app.config.get("DB_USER", "postgres")
         db_pass = app.config.get("DB_PASSWORD", "")
 
+        ssl_mode = app.config.get("DB_SSL_MODE", "prefer")
         app.config["SQLALCHEMY_DATABASE_URI"] = (
-            f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+            f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}?sslmode={ssl_mode}"
         )
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    ssl_mode = app.config.get("DB_SSL_MODE", "prefer")
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_size": 10,
         "max_overflow": 20,
         "pool_recycle": 3600,
         "pool_pre_ping": True,
+        "connect_args": {"sslmode": ssl_mode},
     }
 
 

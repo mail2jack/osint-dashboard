@@ -116,7 +116,7 @@
                                     <input type="text" class="addr-town" value="{{ addr.town or '' }}" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                                 </div>
                                 <div style="display:flex;align-items:center;gap:0.25rem;">
-                                    <button type="button" data-click="postcodeCheck" title="{{ _('Look up zipcode + number') }}" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;padding:0.4rem 0.5rem;">🔍</button>
+                                    <button type="button" data-click="postcodeCheck" title="{{ _('Look up zipcode + number') }}" class="btn-cms small bg-blue">🔍</button>
                                     <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
                                         <input type="checkbox" class="addr-primary" {% if addr.is_primary %}checked{% endif %}> {{ _('Primary') }}
                                     </label>
@@ -146,7 +146,7 @@
                                 <input type="text" class="addr-town" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                             </div>
                             <div style="display:flex;align-items:center;gap:0.25rem;">
-                                <button type="button" data-click="postcodeCheck" title="{{ _('Look up zipcode + number') }}" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;padding:0.4rem 0.5rem;">🔍</button>
+                                <button type="button" data-click="postcodeCheck" title="{{ _('Look up zipcode + number') }}" class="btn-cms small bg-blue">🔍</button>
                                 <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
                                     <input type="checkbox" class="addr-primary" checked> {{ _('Primary') }}
                                 </label>

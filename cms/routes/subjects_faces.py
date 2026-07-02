@@ -84,7 +84,7 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
         entity_id=subject_id,
         changes={"photo": "uploaded"},
         ip_address=request.remote_addr,
-        description=f"Uploaded photo for {subject.name}",
+        description="Uploaded subject photo",
     )
     db.session.commit()
 
@@ -113,7 +113,7 @@ def save_face_encoding(subject_id: str) -> flask.Response:
         entity_type="subject",
         entity_id=subject_id,
         ip_address=request.remote_addr,
-        description=f"Saved face encoding for {subject.name}",
+        description="Saved face encoding",
     )
     db.session.commit()
 
@@ -136,7 +136,7 @@ def delete_face_encoding(subject_id: str) -> flask.Response:
         entity_type="subject",
         entity_id=subject_id,
         ip_address=request.remote_addr,
-        description=f"Deleted face encoding for {subject.name}",
+        description="Deleted face encoding",
     )
     db.session.commit()
 

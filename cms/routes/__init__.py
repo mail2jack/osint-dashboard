@@ -62,6 +62,9 @@ def register_modules() -> None:
     from . import stripe_billing  # noqa: F401
     from . import feature_flags_admin  # noqa: F401
     from . import rate_limits_admin  # noqa: F401
+    from . import gdpr  # noqa: F401
+    from . import dpa  # noqa: F401
+    from . import breach  # noqa: F401
 
     # Background task status API
     from ..background import register_background_routes

@@ -33,9 +33,15 @@ hr{border:none;border-top:1px solid #222;margin:18pt 0}
 <body>
 
 <div class="pv-actions print-hide">
-  <a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}" class="btn-cms" style="background:#6b7280;margin-right:8px;">✏️ Bewerken</a>
-  <button class="btn-cms" onclick="window.print()">🖨️ Print / PDF</button>
+  <a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}" class="btn-cms gray" style="margin-right:8px;">✏️ Bewerken</a>
+  <button class="btn-cms" id="pvPrintBtn">🖨️ Print / PDF</button>
 </div>
+
+<script nonce="{{ csp_nonce }}">
+document.getElementById('pvPrintBtn').addEventListener('click', function() {
+  window.print();
+});
+</script>
 
 <div class="header">
   <h1>Proces-verbaal van onderzoek</h1>
@@ -49,7 +55,7 @@ hr{border:none;border-top:1px solid #222;margin:18pt 0}
   <tr><th>Opdrachtgever</th><td>{{ client.name if client else 'Onbekend' }}{% if client and client.reference %} (ref: {{ client.reference }}){% endif %}</td></tr>
   <tr><th>Betrokkene(n)</th><td>{% for s in subjects %}{{ s.name }}{% if s.identification_number %} ({{ s.identification_number }}){% endif %}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</td></tr>
   <tr><th>Datum opgemaakt</th><td>{{ case.updated_at.strftime('%d-%m-%Y') if case.updated_at else case.created_at.strftime('%d-%m-%Y') }}</td></tr>
-  <tr><th>Opgesteld door</th><td>{{ case.lead_investigator or 'Onbekend' }}</td></tr>
+  <tr><th>Opgesteld door</th><td>{{ case.lead_investigator.full_name if case.lead_investigator else 'Onbekend' }}</td></tr>
   <tr><th>Status</th><td>{{ case.status }}</td></tr>
 </table>
 
@@ -91,7 +97,7 @@ hr{border:none;border-top:1px solid #222;margin:18pt 0}
 <div class="footer">
   <p>Digitaal opgemaakt te {{ client.city if client and client.city else '[plaats]' }} op {{ case.updated_at.strftime('%d-%m-%Y') if case.updated_at else case.created_at.strftime('%d-%m-%Y') }}.</p>
   <div class="signature">
-    <p>{{ case.lead_investigator or 'Onderzoeker' }}</p>
+    <p>{{ case.lead_investigator.full_name if case.lead_investigator else 'Onderzoeker' }}</p>
   </div>
 </div>
 

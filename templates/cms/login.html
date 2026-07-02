@@ -56,10 +56,15 @@
                 <label for="password">{{ _('Password') }}</label>
                 <input type="password" name="password" id="password" required autocomplete="current-password">
             </div>
-            <button type="submit" class="btn">{{ _('Login') }}</button>
+            <button type="submit" class="btn-cms primary">{{ _('Login') }}</button>
         </form>
         <div style="text-align:center;margin-top:1.25rem;font-size:0.9rem;color:#666;">
             {{ _('Don\'t have an account?') }} <a href="{{ url_for('auth.signup') }}" style="color:#16213e;text-decoration:none;font-weight:500;">{{ _('Sign up') }}</a>
+        </div>
+        <div style="text-align:center;margin-top:0.75rem;font-size:0.8rem;color:#999;">
+            <a href="{{ url_for('cms.privacy_policy') }}" style="color:#999;text-decoration:underline;">Privacybeleid</a>
+            <span style="margin:0 0.4rem;">|</span>
+            <a href="{{ url_for('static', filename='ALGEMENE_VOORWAARDEN_TEMPLATE.md') }}" target="_blank" style="color:#999;text-decoration:underline;">Voorwaarden</a>
         </div>
     </div>
 </body>

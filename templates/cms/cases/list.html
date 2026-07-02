@@ -93,6 +93,10 @@
             <option value="3.9.2" {% if filters.case_type == '3.9.2' %}selected{% endif %}>3.9.2 - Verticale fraude</option>
             <option value="3.9.3" {% if filters.case_type == '3.9.3' %}selected{% endif %}>3.9.3 - Overige fraude</option>
         </select>
+        <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.82rem;white-space:nowrap;margin-left:auto;">
+          <input type="checkbox" name="show_archived" value="1" {% if filters.show_archived %}checked{% endif %}>
+          {{ _('Toon gearchiveerde') }}
+        </label>
         <button type="submit" class="btn-cms primary">{{ _('Filter') }}</button>
         <a href="{{ url_for('cms.cases') }}" class="btn-cms gray">{{ _('Clear') }}</a>
     </form>

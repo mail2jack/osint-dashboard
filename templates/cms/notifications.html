@@ -70,7 +70,7 @@
             <option value="read">{{ _('Read') }}</option>
         </select>
         <button class="btn-cms" style="font-size:0.8rem;" id="clearFiltersBtn">{{ _('Clear') }}</button>
-        <button class="btn-cms" style="font-size:0.8rem;background:#ef4444;border-color:#ef4444;" id="deleteAllReadBtn">{{ _('Delete read') }}</button>
+        <button class="btn-cms danger" style="font-size:0.8rem;" id="deleteAllReadBtn">{{ _('Delete read') }}</button>
     </div>
 </div>
 
@@ -87,7 +87,7 @@
 
 <div class="pagination" id="pagination"></div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 var currentPage = 0;
 var pageSize = 20;
 
@@ -102,7 +102,7 @@ function loadNotifications() {
     var list = document.getElementById('notifList');
     list.innerHTML = '<div class="empty-state">{{ _("Loading...") }}</div>';
 
-    fetch(CMS.notificationListUrl + params)
+    fetch('{{ url_for("cms.list_notifications") }}' + params)
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.notifications.length === 0) {
@@ -160,7 +160,7 @@ function loadNotifications() {
 function goPage(p) { currentPage = p; loadNotifications(); }
 
 function markRead(id) {
-    var url = CMS.notificationReadUrl.replace('__ID__', id);
+    var url = '{{ url_for("cms.mark_notification_read", notif_id="__ID__") }}'.replace('__ID__', id);
     apiFetch(url, { method: 'POST' }).then(function() { loadNotifications(); });
 }
 

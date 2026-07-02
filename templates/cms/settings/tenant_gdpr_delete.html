@@ -42,7 +42,7 @@
         <input type="text" name="confirm_name" class="gdpr-input" placeholder="{{ _('Type the tenant name to confirm') }}" required autocomplete="off" autofocus>
         <div style="display:flex;gap:0.75rem;">
             <a href="{{ url_for('cms.tenant_detail', tenant_id=tenant.id) }}" class="btn-cms" style="text-decoration:none;flex:1;text-align:center;">{{ _('Cancel') }}</a>
-            <button type="submit" class="btn-cms" style="background:#ef4444;border-color:#ef4444;color:white;flex:1;">🗑️ {{ _('Permanently Delete') }}</button>
+            <button type="submit" class="btn-cms danger" style="flex:1;">🗑️ {{ _('Permanently Delete') }}</button>
         </div>
     </form>
 </div>

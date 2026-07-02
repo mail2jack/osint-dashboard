@@ -572,7 +572,12 @@ def apply_tenant_filter(query, model):
     This is the SQLite-compatible counterpart of PostgreSQL RLS — always add this
     to every ``Model.query`` in list/index routes.
     """
-    if not current_user.is_super_admin and g.get("tenant_id"):
+    from flask import session as _auth_session
+
+    # Super admin not switched → see all tenants (no filter)
+    if current_user.is_super_admin and not _auth_session.get("switched_tenant_id"):
+        return query
+    if g.get("tenant_id"):
         return query.filter(model.tenant_id == g.tenant_id)
     return query
 
@@ -591,7 +596,14 @@ def get_accessible_case_ids(user) -> list[str]:
     """
     from .models import Case, case_assignments
 
-    tid = user.tenant_id
+    from flask import session as _auth_session
+
+    # Super admin: use switched_tenant_id if active, otherwise own tenant_id
+    if user.is_super_admin:
+        sw = _auth_session.get("switched_tenant_id")
+        tid = sw if sw else user.tenant_id
+    else:
+        tid = user.tenant_id
 
     # Admin bypass — returns all non-deleted case IDs within tenant
     if user.is_admin:

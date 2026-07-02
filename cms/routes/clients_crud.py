@@ -287,7 +287,7 @@ def create_client() -> flask.Response:
             entity_id=client.id,
             new_values={"name": client.name},
             ip_address=request.remote_addr,
-            description=f"Created client: {client.name}",
+            description="Created client",
         )
         db.session.commit()
 
@@ -454,7 +454,7 @@ def edit_client(client_id: str) -> flask.Response:
             entity_id=client_id,
             changes=changes,
             ip_address=request.remote_addr,
-            description=f"Updated client: {client.name}",
+            description="Updated client",
         )
         db.session.commit()
 
@@ -488,7 +488,7 @@ def delete_client(client_id: str) -> flask.Response:
         entity_type="client",
         entity_id=client_id,
         ip_address=request.remote_addr,
-        description=f"Deleted client: {client.name}",
+        description="Deleted client",
     )
     db.session.commit()
 

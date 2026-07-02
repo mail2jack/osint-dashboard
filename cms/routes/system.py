@@ -5,13 +5,13 @@ import time
 
 import flask
 from flask import jsonify, current_app, render_template
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import Setting
 from ..auth import admin_required
 from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jitter_sleep, next_impersonate
 
 from .response import api_success, api_error
 
@@ -621,3 +621,253 @@ sudo systemctl restart osint-dashboard
                 "message": "Update crashed with an unexpected error",
             }
         ), 500
+
+
+@cms_bp.route("/admin/brave-status")
+@login_required
+@admin_required
+def brave_status():
+    """Check Brave API remaining quota by making a test request."""
+    from cms.services.search_service import _get_brave_key
+
+    api_key = _get_brave_key()
+    if not api_key:
+        return render_template("cms/brave_status.html", data={"configured": False})
+
+    result = {"configured": True}
+    headers = {
+        "X-Subscription-Token": api_key,
+        "Accept": "application/json",
+    }
+    try:
+        with curl_requests.Session(
+            timeout=10.0, impersonate=next_impersonate(), headers=headers
+        ) as client:
+            resp = client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                params={"q": "test", "count": 1},
+            )
+        remaining_header = resp.headers.get("X-RateLimit-Remaining", "")
+        limit_header = resp.headers.get("X-RateLimit-Limit", "")
+        reset_header = resp.headers.get("X-RateLimit-Reset", "")
+        result["status_code"] = resp.status_code
+        logger.info(
+            "Brave rate limit headers — limit=%r remaining=%r reset=%r",
+            limit_header,
+            remaining_header,
+            reset_header,
+        )
+        if resp.status_code == 402:
+            try:
+                body = resp.json()
+                result["api_error"] = body.get("error", body.get("message", str(body)))
+            except Exception:
+                result["api_error"] = resp.text[:500] or "Unknown error"
+        try:
+            parts_remaining = remaining_header.split(",")
+            parts_limit = limit_header.split(",")
+            parts_reset = reset_header.split(",")
+
+            def _pick_monthly(parts):
+                """Pick the monthly value from rate-limit header parts.
+                If 2+ parts, the second is monthly (first is per-minute).
+                If 1 part, use it directly as monthly limit (free tier)."""
+                cleaned = [p.strip() for p in parts if p.strip()]
+                if len(cleaned) >= 2:
+                    return int(cleaned[1])
+                if len(cleaned) == 1:
+                    return int(cleaned[0])
+                return None
+
+            limit_val = _pick_monthly(parts_limit)
+            if limit_val is not None:
+                result["monthly_limit"] = limit_val
+
+            remaining_val = _pick_monthly(parts_remaining)
+            if remaining_val is not None:
+                result["monthly_remaining"] = remaining_val
+
+            reset_val = _pick_monthly(parts_reset)
+            if reset_val is not None:
+                result["monthly_reset_seconds"] = reset_val
+                result["monthly_reset_days"] = round(
+                    result["monthly_reset_seconds"] / 86400, 1
+                )
+        except (ValueError, IndexError):
+            pass
+
+        if result.get("monthly_remaining") is not None and result.get("monthly_limit"):
+            pct = result["monthly_remaining"] / result["monthly_limit"] * 100
+            result["pct_remaining"] = round(pct, 1)
+            used = result["monthly_limit"] - result["monthly_remaining"]
+            result["monthly_used"] = used
+            cost_per_1000 = 5.0
+            result["estimated_cost"] = round((used / 1000) * cost_per_1000, 2)
+            result["plan"] = (
+                f"$5/1000 requests — ${result['estimated_cost']:.2f} this month"
+            )
+            if pct < 20:
+                result["warning"] = (
+                    f"Brave quota bijna op: {result['monthly_remaining']}/{result['monthly_limit']} ({pct:.0f}%)"
+                )
+                logger.warning(
+                    "Brave quota low: %s/%s (%s%%) — est. cost $%.2f this month",
+                    result["monthly_remaining"],
+                    result["monthly_limit"],
+                    pct,
+                    result["estimated_cost"],
+                )
+        else:
+            result["pct_remaining"] = 100
+            result["monthly_limit"] = result.get("monthly_limit", 2000)
+            result["monthly_remaining"] = result.get("monthly_remaining", 0)
+            result["monthly_used"] = result.get("monthly_used", 0)
+            result["estimated_cost"] = result.get("estimated_cost", 0)
+
+        return render_template("cms/brave_status.html", data=result)
+    except Exception as e:
+        logger.exception("Brave status check failed")
+        return render_template(
+            "cms/brave_status.html", data={"configured": True, "error": str(e)}
+        )
+
+
+# ── Announcements ──────────────────────────────────────────────────────────
+
+
+@cms_bp.route("/admin/announcements")
+@login_required
+@admin_required
+def list_announcements():
+    from cms.models import Announcement
+
+    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+    return render_template("cms/announcements/list.html", announcements=announcements)
+
+
+@cms_bp.route("/admin/announcements/create", methods=["GET", "POST"])
+@login_required
+@admin_required
+def create_announcement():
+    from cms.models import Announcement, db
+    from datetime import datetime
+
+    if flask.request.method == "POST":
+        title = flask.request.form.get("title", "").strip()
+        body = flask.request.form.get("body", "").strip()
+        severity = flask.request.form.get("severity", "info")
+        expires_at_str = flask.request.form.get("expires_at", "").strip()
+
+        if not title or not body:
+            flask.flash("Titel en bericht zijn verplicht.", "danger")
+            return render_template("cms/announcements/form.html", announcement=None)
+
+        expires_at = None
+        if expires_at_str:
+            try:
+                expires_at = datetime.fromisoformat(expires_at_str)
+            except ValueError:
+                flask.flash("Ongeldige datum/tijd.", "danger")
+                return render_template("cms/announcements/form.html", announcement=None)
+
+        announcement = Announcement(
+            title=title,
+            body=body,
+            severity=severity,
+            expires_at=expires_at,
+            created_by_id=current_user.id,
+        )
+        db.session.add(announcement)
+        db.session.commit()
+        flask.flash("Aankondiging aangemaakt.", "success")
+        return flask.redirect(flask.url_for("cms.list_announcements"))
+
+    return render_template("cms/announcements/form.html", announcement=None)
+
+
+@cms_bp.route("/admin/announcements/<announcement_id>/edit", methods=["GET", "POST"])
+@login_required
+@admin_required
+def edit_announcement(announcement_id):
+    from cms.models import Announcement, db
+    from datetime import datetime
+
+    announcement = Announcement.query.get_or_404(announcement_id)
+
+    if flask.request.method == "POST":
+        announcement.title = flask.request.form.get("title", "").strip()
+        announcement.body = flask.request.form.get("body", "").strip()
+        announcement.severity = flask.request.form.get("severity", "info")
+        expires_at_str = flask.request.form.get("expires_at", "").strip()
+
+        if not announcement.title or not announcement.body:
+            flask.flash("Titel en bericht zijn verplicht.", "danger")
+            return render_template(
+                "cms/announcements/form.html", announcement=announcement
+            )
+
+        if expires_at_str:
+            try:
+                announcement.expires_at = datetime.fromisoformat(expires_at_str)
+            except ValueError:
+                flask.flash("Ongeldige datum/tijd.", "danger")
+                return render_template(
+                    "cms/announcements/form.html", announcement=announcement
+                )
+        else:
+            announcement.expires_at = None
+
+        db.session.commit()
+        flask.flash("Aankondiging bijgewerkt.", "success")
+        return flask.redirect(flask.url_for("cms.list_announcements"))
+
+    return render_template("cms/announcements/form.html", announcement=announcement)
+
+
+@cms_bp.route("/admin/announcements/<announcement_id>/toggle", methods=["POST"])
+@login_required
+@admin_required
+def toggle_announcement(announcement_id):
+    from cms.models import Announcement, db
+
+    announcement = Announcement.query.get_or_404(announcement_id)
+    announcement.is_active = not announcement.is_active
+    db.session.commit()
+    flask.flash(
+        f"Aankondiging {'geactiveerd' if announcement.is_active else 'gedeactiveerd'}.",
+        "success",
+    )
+    return flask.redirect(flask.url_for("cms.list_announcements"))
+
+
+@cms_bp.route("/admin/announcements/<announcement_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def delete_announcement(announcement_id):
+    from cms.models import Announcement, AnnouncementAck, db
+
+    announcement = Announcement.query.get_or_404(announcement_id)
+    AnnouncementAck.query.filter_by(announcement_id=announcement.id).delete()
+    db.session.delete(announcement)
+    db.session.commit()
+    flask.flash("Aankondiging verwijderd.", "success")
+    return flask.redirect(flask.url_for("cms.list_announcements"))
+
+
+@cms_bp.route("/api/announcements/<announcement_id>/ack", methods=["POST"])
+@login_required
+def ack_announcement(announcement_id):
+    from cms.models import Announcement, AnnouncementAck, db
+
+    announcement = Announcement.query.get_or_404(announcement_id)
+    existing = AnnouncementAck.query.filter_by(
+        announcement_id=announcement.id, user_id=current_user.id
+    ).first()
+    if not existing:
+        ack = AnnouncementAck(
+            announcement_id=announcement.id,
+            user_id=current_user.id,
+        )
+        db.session.add(ack)
+        db.session.commit()
+    return api_success({"status": "acknowledged"})

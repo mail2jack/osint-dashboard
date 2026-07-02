@@ -1,0 +1,109 @@
+{% extends "cms/base.html" %}
+{% block title %}AVG-verzoeken beheren{% endblock %}
+{% block content %}
+<div class="settings-layout">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <style>
+        .avg-container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+        .avg-header { margin-bottom: 1.5rem; }
+        .avg-header h1 { margin: 0 0 .25rem; font-size: 1.5rem; }
+        .avg-header p { margin: 0; color: var(--text-muted, #64748b); font-size: .85rem; }
+        .avg-table { width: 100%; border-collapse: collapse; background: var(--card-bg, #fff); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+        .avg-table th, .avg-table td { padding: .75rem 1rem; text-align: left; border-bottom: 1px solid var(--border, #e2e8f0); }
+        .avg-table th { background: var(--bg-subtle, #f8fafc); font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
+        .avg-table tr:last-child td { border-bottom: none; }
+        .avg-table tr:hover { background: var(--bg-hover, #f1f5f9); }
+        .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted, #64748b); }
+        .badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+        .badge-received { background: #dbeafe; color: #1e40af; }
+        .badge-in_progress { background: #fef3c7; color: #92400e; }
+        .badge-completed { background: #dcfce7; color: #166534; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
+        .status-select { padding: .25rem .5rem; border-radius: 6px; border: 1px solid var(--border, #e2e8f0); font-size: .8rem; }
+        .request-detail { max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+
+    <div class="avg-container">
+        <div class="avg-header">
+            <h1>AVG-verzoeken beheren</h1>
+            <p>Artikel 15-22 AVG — Inkomende verzoeken van betrokkenen</p>
+        </div>
+
+        {% if requests %}
+        <table class="avg-table">
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Naam</th>
+                    <th>Contact</th>
+                    <th>Type</th>
+                    <th>Omschrijving</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in requests %}
+                <tr>
+                    <td style="white-space:nowrap;">{{ r.created_at[:10] if r.created_at else '-' }}</td>
+                    <td><strong>{{ r.name }}</strong></td>
+                    <td><a href="mailto:{{ r.email }}">{{ r.email }}</a>{% if r.phone %}<br><small>{{ r.phone }}</small>{% endif %}</td>
+                    <td>
+                        {% set labels = {"access":"Inzage","rectification":"Rectificatie","erasure":"Verwijdering","portability":"Dataportabiliteit","restrict":"Beperking","object":"Bezwaar"} %}
+                        {{ labels.get(r.request_type, r.request_type) }}
+                    </td>
+                    <td class="request-detail" title="{{ r.description or '' }}">{{ r.description or '-' }}</td>
+                    <td>
+                        {% set status_labels = {"received":"Ontvangen","in_progress":"In behandeling","completed":"Afgehandeld","rejected":"Afgewezen"} %}
+                        <span class="badge badge-{{ r.status }}">{{ status_labels.get(r.status, r.status) }}</span>
+                    </td>
+                    <td>
+                        <form class="status-form" data-request-id="{{ r.id }}" style="display:flex;gap:.25rem;align-items:center;">
+                            <select class="status-select">
+                                <option value="received" {% if r.status == 'received' %}selected{% endif %}>Ontvangen</option>
+                                <option value="in_progress" {% if r.status == 'in_progress' %}selected{% endif %}>In behandeling</option>
+                                <option value="completed" {% if r.status == 'completed' %}selected{% endif %}>Afgehandeld</option>
+                                <option value="rejected" {% if r.status == 'rejected' %}selected{% endif %}>Afgewezen</option>
+                            </select>
+                            <button type="submit" class="btn-cms blue btn-icon" title="Status bijwerken">&#10003;</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <p style="font-size:2rem;margin-bottom:.5rem;">&#128221;</p>
+            <p>Nog geen AVG-verzoeken ontvangen.</p>
+            <p style="font-size:.85rem;">Verzoeken ingediend via het <a href="{{ url_for('cms.avg_request') }}">AVG-formulier</a> verschijnen hier.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('.status-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var requestId = form.dataset.requestId;
+        var status = form.querySelector('.status-select').value;
+        var btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = '...';
+        fetch('/cms/api/avg-requests/' + requestId, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+            body: JSON.stringify({status: status}),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        })
+        .catch(function(err) { alert('Fout: ' + err.message); })
+        .finally(function() { btn.disabled = false; btn.innerHTML = '&#10003;'; });
+    });
+});
+</script>
+{% endblock %}

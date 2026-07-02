@@ -209,31 +209,38 @@ function findingHtml(f) {
     ssHtml += '</div>';
   }
 
+  var dateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('nl-NL', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  var confClass = f.confidence_level === 'high' || f.confidence_level === 'verified' ? 'badge-status-success' : f.confidence_level === 'medium' ? 'badge-status-warning' : 'badge-status-default';
+
   return '<div class="finding-item" data-finding-id="' + esc(f.id) + '">' +
-    '<div class="check-col"><input type="checkbox" class="finding-check" data-finding-id="' + esc(f.id) + '"></div>' +
-    '<div class="icon-col">' + esc(f.icon || '📄') + '</div>' +
-    '<div class="body-col">' +
-      '<div class="title">' + esc(f.title) + '</div>' +
-      (f.detail ? '<div class="meta" style="white-space:pre-wrap;">' + esc(f.detail) + '</div>' : '') +
-      (f.source_url ? '<div class="meta">🔗 <a href="' + esc(f.source_url) + '" target="_blank">' + esc(f.source_url) + '</a></div>' : '') +
-      (f.raw_data ? rdwCardHtml(f.raw_data) : '') +
-      ssHtml +
-      '<div style="margin-top:0.4rem;">' +
-        '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="Notitie / opmerking..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +
+    '<div class="finding-check-wrap"><input type="checkbox" class="finding-check" data-finding-id="' + esc(f.id) + '"></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+      '<div>' +
+        '<strong>' + esc(f.title) + '</strong>' +
+        '<span class="badge badge-info" style="margin-left:0.5rem;">' + esc(f.source_type || 'manual') + '</span>' +
+        (f.confidence_level ? '<span class="badge ' + confClass + '" style="margin-left:0.25rem;">' + esc(f.confidence_level) + '</span>' : '') +
       '</div>' +
-      '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">' +
-        '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="' + (f.verified ? 'true' : 'false') + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? '✅ Geverifieerd' : '⏳ Nog te verifiëren') + '</button>' +
-        '<button type="button" data-action="add-screenshot-btn" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + Screenshot</button>' +
-      '</div>' +
-      '<div class="ss-upload-form" data-finding-id="' + esc(f.id) + '" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">' +
-        '<div style="display:flex;flex-direction:column;gap:0.3rem;">' +
-          '<input type="file" class="ss-file-input" accept="image/*" style="font-size:0.78rem;">' +
-          '<input type="text" class="ss-source-input" placeholder="Bron URL (optioneel, website waar screenshot van is)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
-          '<input type="text" class="ss-notes-input" placeholder="Notitie (optioneel)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
-          '<div style="display:flex;gap:0.3rem;">' +
-            '<button type="button" data-action="save-screenshot" data-finding-id="' + esc(f.id) + '" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Opslaan</button>' +
-            '<button type="button" data-action="cancel-screenshot" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Annuleren</button>' +
-          '</div>' +
+      '<span style="color:var(--text-muted);font-size:0.75rem;">' + dateStr + '</span>' +
+    '</div>' +
+    (f.detail ? '<div class="finding-content">' + linkify(f.detail) + '</div>' : '') +
+    (f.source_url ? '<div style="margin-top:0.25rem;"><a href="' + esc(f.source_url) + '" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 ' + esc(f.source_url) + '</a></div>' : '') +
+    (f.raw_data ? rdwCardHtml(f.raw_data) : '') +
+    ssHtml +
+    '<div style="margin-top:0.4rem;">' +
+      '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="Notitie / opmerking..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">' +
+      '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="' + (f.verified ? 'true' : 'false') + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? '✅ Geverifieerd' : '⏳ Nog te verifiëren') + '</button>' +
+      '<button type="button" data-action="add-screenshot-btn" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + Screenshot</button>' +
+    '</div>' +
+    '<div class="ss-upload-form" data-finding-id="' + esc(f.id) + '" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">' +
+      '<div style="display:flex;flex-direction:column;gap:0.3rem;">' +
+        '<input type="file" class="ss-file-input" accept="image/*" style="font-size:0.78rem;">' +
+        '<input type="text" class="ss-source-input" placeholder="Bron URL (optioneel, website waar screenshot van is)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
+        '<input type="text" class="ss-notes-input" placeholder="Notitie (optioneel)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
+        '<div style="display:flex;gap:0.3rem;">' +
+          '<button type="button" data-action="save-screenshot" data-finding-id="' + esc(f.id) + '" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Opslaan</button>' +
+          '<button type="button" data-action="cancel-screenshot" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Annuleren</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -281,7 +288,7 @@ function updateFindings(findings, actions) {
       '<div class="finding-group-header" data-toggle="grp-' + esc(a.id) + '">' +
         '<span class="toggle-icon">▶</span>' +
         '<span class="fg-icon">' + esc(icon) + '</span>' +
-        '<span class="fg-label">' + esc(label) + '</span>' +
+        '<span class="fg-label">' + esc(a.label || a.action_type) + '</span>' +
         '<span class="fg-status ' + statusClass + '">' + esc(a.status) + '</span>' +
         '<span class="fg-count">' + gf.length + '</span>' +
         (a.completed_at ? '<span class="fg-time">' + new Date(a.completed_at).toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'}) + '</span>' : '') +

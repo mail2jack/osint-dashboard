@@ -290,6 +290,7 @@ class SignupSchema(BaseModel):
     join_code: str = Field(min_length=1, description="Tenant join code")
     password: str = Field(min_length=8, description="Password")
     confirm_password: str = ""
+    consent: bool = False
 
     @field_validator("email")
     @classmethod
@@ -309,6 +310,15 @@ class SignupSchema(BaseModel):
     def check_confirm(cls, v: str, info) -> str:
         if v and info.data.get("password") != v:
             raise ValueError("Passwords do not match")
+
+    @field_validator("consent")
+    @classmethod
+    def check_consent(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError(
+                "U moet akkoord gaan met het privacybeleid en de algemene voorwaarden"
+            )
+        return v
         return v
 
 

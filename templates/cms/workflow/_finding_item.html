@@ -1,154 +1,174 @@
 <div class="finding-item" data-finding-id="{{ f.id }}">
-  <div class="check-col"><input type="checkbox" class="finding-check" data-finding-id="{{ f.id }}"></div>
-  <div class="icon-col">{{ f.icon or '📄' }}</div>
-  <div class="body-col">
-    <div class="title">{{ f.title }}</div>
-    {% if f.detail %}<div class="meta">{{ f.detail }}</div>{% endif %}
-    {% if f.source_url %}<div class="meta">🔗 <a href="{{ f.source_url }}" target="_blank" rel="noopener">{{ f.source_url }}</a></div>{% endif %}
-    {% if f.source_type == 'rdw' and f.raw_data %}
-    {% set d = f.raw_data %}
-    {% macro _rd(label, val, unit) %}
-      {% if val is not none and val != '' and val != 'Niet geregistreerd' %}
-      <div class="rdw-row"><span class="rdw-label">{{ label }}</span><span class="rdw-value">{{ val }}{% if unit %} <span class="rdw-unit">{{ unit }}</span>{% endif %}</span></div>
+  <div class="finding-check-wrap"><input type="checkbox" class="finding-check" data-finding-id="{{ f.id }}"></div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <strong>{{ f.title }}</strong>
+      <span class="badge badge-info" style="margin-left:0.5rem;">{{ f.source_type or 'manual' }}</span>
+      {% if f.confidence_level %}
+      <span class="badge {% if f.confidence_level in ('high','verified') %}badge-status-success{% elif f.confidence_level == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;">{{ f.confidence_level }}</span>
       {% endif %}
-    {% endmacro %}
-    {% macro _dt(key) %}{% if d.get(key) and d.get(key)|length == 8 %}{{ d.get(key)[6:8] }}-{{ d.get(key)[4:6] }}-{{ d.get(key)[0:4] }}{% elif d.get(key) %}{{ d.get(key) }}{% endif %}{% endmacro %}
-    {% macro _v(key) %}{{ d.get(key) or '' }}{% endmacro %}
-    {% macro _n(key) %}{%- if d.get(key) and d.get(key) != '' and d.get(key) != 'Niet geregistreerd' %}true{%- endif %}{% endmacro %}
-    <div class="rdw-card">
-      <div class="rdw-header">
-        <div class="rdw-header-left">
-          <div class="rdw-make">{{ _v('merk') }}{% if _v('handelsbenaming') %} {{ _v('handelsbenaming') }}{% endif %}</div>
-          <div class="rdw-sub">{{ _v('voertuigsoort') }}{% if _v('inrichting') %} · {{ _v('inrichting') }}{% endif %}</div>
-        </div>
-        <div class="rdw-plate">{{ _v('kenteken') }}</div>
-      </div>
-      <div class="rdw-body">
-        <div class="rdw-section">
-          <div class="rdw-section-title"><span class="rdw-section-icon">📅</span> Datering</div>
-          <div class="rdw-grid">
-            {{ _rd('Eerste toelating', _dt('datum_eerste_toelating'), '') }}
-            {{ _rd('Tenaamstelling', _dt('datum_tenaamstelling'), '') }}
-            {{ _rd('APK vervaldatum', _dt('vervaldatum_apk'), '') }}
-          </div>
-        </div>
-        <div class="rdw-section">
-          <div class="rdw-section-title"><span class="rdw-section-icon">⚙️</span> Technisch</div>
-          <div class="rdw-grid">
-            {{ _rd('Vermogen', _v('vermogen_massario'), 'kW') }}
-            {{ _rd('Brandstof', _v('brandstof_omschrijving'), '') }}
-            {{ _rd('Emissiecode', _v('emissiecode'), '') }}
-            {{ _rd('Milieuklasse', _v('milieuklasse_eg_goedkeuring'), '') }}
-            {{ _rd('Max. snelheid', _v('maximale_constructiesnelheid'), 'km/h') }}
-            {{ _rd('Europese categorie', _v('europese_voertuigcategorie'), '') }}
-          </div>
-        </div>
-        <div class="rdw-section">
-          <div class="rdw-section-title"><span class="rdw-section-icon">📐</span> Afmetingen &amp; Gewicht</div>
-          <div class="rdw-grid">
-            {{ _rd('Lengte', _v('lengte'), 'mm') }}
-            {{ _rd('Breedte', _v('breedte'), 'mm') }}
-            {{ _rd('Wielbasis', _v('wielbasis'), 'mm') }}
-            {{ _rd('Ledig gewicht', _v('massa_ledig_voertuig'), 'kg') }}
-            {{ _rd('Rijklaar gewicht', _v('massa_rijklaar'), 'kg') }}
-            {{ _rd('Max. toegestaan', _v('maximale_massa_toegestaan'), 'kg') }}
-            {{ _rd('Max. constructie', _v('maximale_massa_constructie'), 'kg') }}
-            {{ _rd('Laadvermogen', _v('laadvermogen'), 'kg') }}
-            {{ _rd('Aanhanger geremd', _v('maximum_massa_aanhangwagen_geremd'), 'kg') }}
-            {{ _rd('Aanhanger ongeremd', _v('maximum_massa_aanhangwagen_ongeremd'), 'kg') }}
-            {{ _rd('Technische max. massa', _v('technische_max_massa_voertuig'), 'kg') }}
-          </div>
-        </div>
-        <div class="rdw-section">
-          <div class="rdw-section-title"><span class="rdw-section-icon">🎨</span> Kleur</div>
-          <div class="rdw-grid">
-            {{ _rd('Kleur', _v('eerste_kleur'), '') }}
-            {{ _rd('Tweede kleur', _v('tweede_kleur'), '') }}
-          </div>
-        </div>
-        <div class="rdw-section">
-          <div class="rdw-section-title"><span class="rdw-section-icon">👥</span> Capaciteit</div>
-          <div class="rdw-grid">
-            {{ _rd('Zitplaatsen', _v('aantal_zitplaatsen'), '') }}
-            {{ _rd('Deuren', _v('aantal_deuren'), '') }}
-            {{ _rd('Wielen', _v('aantal_wielen'), '') }}
-            {{ _rd('Staplaatsen', _v('aantal_staplaatsen'), '') }}
-          </div>
-        </div>
-        <div class="rdw-section">
-          <div class="rdw-section-title"><span class="rdw-section-icon">💰</span> Overig</div>
-          <div class="rdw-grid">
-            {{ _rd('Catalogusprijs', _v('_prijs_eur'), '') }}
-            {{ _rd('Export', _v('export_indicator'), '') }}
-            {{ _rd('Terugroepactie', _v('openstaande_terugroepactie_indicator'), '') }}
-            {{ _rd('Zuinigheidslabel', _v('zuinigheidslabel'), '') }}
-            {{ _rd('Gasinstallatie', _v('type_gasinstallatie'), '') }}
-            {{ _rd('Soort gasinstallatie', _v('soort_gasinstallatie'), '') }}
-            {{ _rd('Plaats chassisnummer', _v('plaats_chassisnummer'), '') }}
-          </div>
-        </div>
-        <button type="button" class="rdw-raw-toggle">📊 Toon alle ruwe RDW-data</button>
-        <div class="rdw-raw-table">
-          {% for k, v in d|dictsort %}
-          {% if v is not none and v != '' %}
-          <div class="rdw-raw-row">
-            <span class="rdw-raw-label">{{ k|replace('_', ' ')|title }}</span>
-            <span class="rdw-raw-value">{{ v }}</span>
-          </div>
-          {% endif %}
-          {% endfor %}
-        </div>
-      </div>
     </div>
-    {% endif %}
+    <span style="color:var(--text-muted);font-size:0.75rem;">{{ f.created_at.strftime('%d-%m-%Y %H:%M') if f.created_at else '' }}</span>
+  </div>
 
-    {% if f.screenshots %}
-    <div class="screenshot">
-      <div class="ss-row"><span class="ss-label">📸 Screenshots</span></div>
-      {% for ss in f.screenshots %}
-      <div class="ss-row" style="margin-top:0.3rem;padding:0.3rem 0;border-bottom:1px dashed var(--border-color);{% if loop.last %}border:none{% endif %}">
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-          {% if ss.url %}
-          <a href="{{ ss.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ Bekijk screenshot</a>
-          {% endif %}
-          {% if ss.source_url and ss.source_url != ss.url %}
-          <a href="{{ ss.source_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 Open website</a>
-          {% endif %}
-          <span style="font-size:0.72rem;color:var(--text-muted);">{{ ss.captured_at.strftime('%d-%m-%Y %H:%M') if ss.captured_at else '-' }}</span>
+  {% if f.detail %}<div class="finding-content">{{ f.detail | urlize_target | safe }}</div>{% endif %}
+  {% if f.source_url %}<div style="margin-top:0.25rem;"><a href="{{ f.source_url }}" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 {{ f.source_url }}</a></div>{% endif %}
+
+  {% if f.source_type == 'rdw' and f.raw_data %}
+  {% set d = f.raw_data %}
+  {% macro _rd(label, val, unit) %}
+    {% if val is not none and val != '' and val != 'Niet geregistreerd' %}
+    <div class="rdw-row"><span class="rdw-label">{{ label }}</span><span class="rdw-value">{{ val }}{% if unit %} <span class="rdw-unit">{{ unit }}</span>{% endif %}</span></div>
+    {% endif %}
+  {% endmacro %}
+  {% macro _dt(key) %}{% if d.get(key) and d.get(key)|length == 8 %}{{ d.get(key)[6:8] }}-{{ d.get(key)[4:6] }}-{{ d.get(key)[0:4] }}{% elif d.get(key) %}{{ d.get(key) }}{% endif %}{% endmacro %}
+  {% macro _v(key) %}{{ d.get(key) or '' }}{% endmacro %}
+  {% macro _n(key) %}{%- if d.get(key) and d.get(key) != '' and d.get(key) != 'Niet geregistreerd' %}true{%- endif %}{% endmacro %}
+  <div class="rdw-card">
+    <div class="rdw-header">
+      <div class="rdw-header-left">
+        <div class="rdw-make">{{ _v('merk') }}{% if _v('handelsbenaming') %} {{ _v('handelsbenaming') }}{% endif %}</div>
+        <div class="rdw-sub">{{ _v('voertuigsoort') }}{% if _v('inrichting') %} · {{ _v('inrichting') }}{% endif %}</div>
+      </div>
+      <div class="rdw-plate">{{ _v('kenteken') }}</div>
+    </div>
+    <div class="rdw-body">
+      <div class="rdw-section">
+        <div class="rdw-section-title"><span class="rdw-section-icon">📅</span> Datering</div>
+        <div class="rdw-grid">
+          {{ _rd('Eerste toelating', _dt('datum_eerste_toelating'), '') }}
+          {{ _rd('Tenaamstelling', _dt('datum_tenaamstelling'), '') }}
+          {{ _rd('APK vervaldatum', _dt('vervaldatum_apk'), '') }}
         </div>
-        {% if ss.url %}
-        <div style="margin-top:0.3rem;">
-          <a href="{{ ss.url }}" target="_blank" rel="noopener">
-            <img src="{{ ss.url }}" alt="Screenshot" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy">
-          </a>
+      </div>
+      <div class="rdw-section">
+        <div class="rdw-section-title"><span class="rdw-section-icon">⚙️</span> Technisch</div>
+        <div class="rdw-grid">
+          {{ _rd('Vermogen', _v('vermogen_massario'), 'kW') }}
+          {{ _rd('Brandstof', _v('brandstof_omschrijving'), '') }}
+          {{ _rd('Emissiecode', _v('emissiecode'), '') }}
+          {{ _rd('Milieuklasse', _v('milieuklasse_eg_goedkeuring'), '') }}
+          {{ _rd('Max. snelheid', _v('maximale_constructiesnelheid'), 'km/h') }}
+          {{ _rd('Europese categorie', _v('europese_voertuigcategorie'), '') }}
+        </div>
+      </div>
+      <div class="rdw-section">
+        <div class="rdw-section-title"><span class="rdw-section-icon">📐</span> Afmetingen &amp; Gewicht</div>
+        <div class="rdw-grid">
+          {{ _rd('Lengte', _v('lengte'), 'mm') }}
+          {{ _rd('Breedte', _v('breedte'), 'mm') }}
+          {{ _rd('Wielbasis', _v('wielbasis'), 'mm') }}
+          {{ _rd('Ledig gewicht', _v('massa_ledig_voertuig'), 'kg') }}
+          {{ _rd('Rijklaar gewicht', _v('massa_rijklaar'), 'kg') }}
+          {{ _rd('Max. toegestaan', _v('maximale_massa_toegestaan'), 'kg') }}
+          {{ _rd('Max. constructie', _v('maximale_massa_constructie'), 'kg') }}
+          {{ _rd('Laadvermogen', _v('laadvermogen'), 'kg') }}
+          {{ _rd('Aanhanger geremd', _v('maximum_massa_aanhangwagen_geremd'), 'kg') }}
+          {{ _rd('Aanhanger ongeremd', _v('maximum_massa_aanhangwagen_ongeremd'), 'kg') }}
+          {{ _rd('Technische max. massa', _v('technische_max_massa_voertuig'), 'kg') }}
+        </div>
+      </div>
+      <div class="rdw-section">
+        <div class="rdw-section-title"><span class="rdw-section-icon">🎨</span> Kleur</div>
+        <div class="rdw-grid">
+          {{ _rd('Kleur', _v('eerste_kleur'), '') }}
+          {{ _rd('Tweede kleur', _v('tweede_kleur'), '') }}
+        </div>
+      </div>
+      <div class="rdw-section">
+        <div class="rdw-section-title"><span class="rdw-section-icon">👥</span> Capaciteit</div>
+        <div class="rdw-grid">
+          {{ _rd('Zitplaatsen', _v('aantal_zitplaatsen'), '') }}
+          {{ _rd('Deuren', _v('aantal_deuren'), '') }}
+          {{ _rd('Wielen', _v('aantal_wielen'), '') }}
+          {{ _rd('Staplaatsen', _v('aantal_staplaatsen'), '') }}
+        </div>
+      </div>
+      <div class="rdw-section">
+        <div class="rdw-section-title"><span class="rdw-section-icon">💰</span> Overig</div>
+        <div class="rdw-grid">
+          {{ _rd('Catalogusprijs', _v('_prijs_eur'), '') }}
+          {{ _rd('Export', _v('export_indicator'), '') }}
+          {{ _rd('Terugroepactie', _v('openstaande_terugroepactie_indicator'), '') }}
+          {{ _rd('Zuinigheidslabel', _v('zuinigheidslabel'), '') }}
+          {{ _rd('Gasinstallatie', _v('type_gasinstallatie'), '') }}
+          {{ _rd('Soort gasinstallatie', _v('soort_gasinstallatie'), '') }}
+          {{ _rd('Plaats chassisnummer', _v('plaats_chassisnummer'), '') }}
+        </div>
+      </div>
+      <button type="button" class="rdw-raw-toggle">📊 Toon alle ruwe RDW-data</button>
+      <div class="rdw-raw-table">
+        {% for k, v in d|dictsort %}
+        {% if v is not none and v != '' %}
+        <div class="rdw-raw-row">
+          <span class="rdw-raw-label">{{ k|replace('_', ' ')|title }}</span>
+          <span class="rdw-raw-value">{{ v }}</span>
         </div>
         {% endif %}
-        {% if ss.notes %}<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">{{ ss.notes }}</div>{% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <div style="margin-top:0.4rem;">
-      <textarea data-action="comment-input" data-finding-id="{{ f.id }}" placeholder="Notitie / opmerking..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">{{ f.comment or '' }}</textarea>
-    </div>
-
-    <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">
-      <button type="button" data-action="verify-finding" data-finding-id="{{ f.id }}" data-verified="{{ 'true' if f.verified else 'false' }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:{% if f.verified %}#10b981{% else %}#f59e0b{% endif %};">{{ '✅ Geverifieerd' if f.verified else '⏳ Nog te verifiëren' }}</button>
-      <button type="button" data-action="add-screenshot-btn" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + Screenshot</button>
-    </div>
-
-    <div class="ss-upload-form" data-finding-id="{{ f.id }}" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">
-      <div style="display:flex;flex-direction:column;gap:0.3rem;">
-        <input type="file" class="ss-file-input" accept="image/*" style="font-size:0.78rem;">
-        <input type="text" class="ss-source-input" placeholder="Bron URL (optioneel, website waar screenshot van is)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
-        <input type="text" class="ss-notes-input" placeholder="Notitie (optioneel)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
-        <div style="display:flex;gap:0.3rem;">
-          <button type="button" data-action="save-screenshot" data-finding-id="{{ f.id }}" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Opslaan</button>
-          <button type="button" data-action="cancel-screenshot" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Annuleren</button>
-        </div>
+        {% endfor %}
       </div>
     </div>
   </div>
+  {% endif %}
+
+  {% if f.screenshots %}
+  <div class="screenshot">
+    <div class="ss-row"><span class="ss-label">📸 Screenshots</span></div>
+    {% for ss in f.screenshots %}
+    <div class="ss-row" style="margin-top:0.3rem;padding:0.3rem 0;border-bottom:1px dashed var(--border-color);{% if loop.last %}border:none{% endif %}">
+      <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        {% if ss.url %}
+        <a href="{{ ss.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ Bekijk screenshot</a>
+        {% endif %}
+        {% if ss.source_url and ss.source_url != ss.url %}
+        <a href="{{ ss.source_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 Open website</a>
+        {% endif %}
+        <span style="font-size:0.72rem;color:var(--text-muted);">{{ ss.captured_at.strftime('%d-%m-%Y %H:%M') if ss.captured_at else '-' }}</span>
+      </div>
+      {% if ss.url %}
+      <div style="margin-top:0.3rem;">
+        <a href="{{ ss.url }}" target="_blank" rel="noopener">
+          <img src="{{ ss.url }}" alt="Screenshot" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy">
+        </a>
+      </div>
+      {% endif %}
+      {% if ss.notes %}<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">{{ ss.notes }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div style="margin-top:0.4rem;">
+    <textarea data-action="comment-input" data-finding-id="{{ f.id }}" placeholder="Notitie / opmerking..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">{{ f.comment or '' }}</textarea>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">
+    <button type="button" data-action="verify-finding" data-finding-id="{{ f.id }}" data-verified="{{ 'true' if f.verified else 'false' }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:{% if f.verified %}#10b981{% else %}#f59e0b{% endif %};">{{ '✅ Geverifieerd' if f.verified else '⏳ Nog te verifiëren' }}</button>
+    <button type="button" data-action="add-screenshot-btn" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + Screenshot</button>
+    {% if f.archived_at %}
+    <form method="POST" action="{{ url_for('workflow.restore_finding', finding_id=f.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">Herstel</button>
+    </form>
+    {% else %}
+    <form method="POST" action="{{ url_for('workflow.archive_finding', finding_id=f.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">Archiveer</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="ss-upload-form" data-finding-id="{{ f.id }}" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">
+    <div style="display:flex;flex-direction:column;gap:0.3rem;">
+      <input type="file" class="ss-file-input" accept="image/*" style="font-size:0.78rem;">
+      <input type="text" class="ss-source-input" placeholder="Bron URL (optioneel, website waar screenshot van is)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
+      <input type="text" class="ss-notes-input" placeholder="Notitie (optioneel)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">
+      <div style="display:flex;gap:0.3rem;">
+        <button type="button" data-action="save-screenshot" data-finding-id="{{ f.id }}" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Opslaan</button>
+        <button type="button" data-action="cancel-screenshot" data-finding-id="{{ f.id }}" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Annuleren</button>
+      </div>
+    </div>
+  </div>
+
   <button type="button" class="finding-delete" data-action="delete-finding" data-finding-id="{{ f.id }}" title="Verwijderen">&times;</button>
 </div>

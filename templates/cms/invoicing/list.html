@@ -7,7 +7,7 @@
         <h2>{{ _('Facturen') }}</h2>
         <div style="display:flex;gap:0.5rem;align-items:center;">
             <a href="{{ url_for('cms.invoice_create') }}" class="btn-cms small bg-green">{{ _('+ Nieuwe factuur') }}</a>
-            <a href="{{ url_for('cms.credit_note_list') }}" class="btn-cms small" style="background:#f59e0b;text-decoration:none;">{{ _('Credit Notes') }}</a>
+            <a href="{{ url_for('cms.credit_note_list') }}" class="btn-cms small orange">{{ _('Credit Notes') }}</a>
         </div>
     </div>
 
@@ -69,7 +69,7 @@
                 </td>
                 <td>{{ inv.created_by or '-' }}</td>
                 <td>
-                    <a href="{{ url_for('cms.invoice_pdf', invoice_id=inv.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;padding:0.15rem 0.4rem;font-size:0.75rem;">PDF</a>
+                    <a href="{{ url_for('cms.invoice_pdf', invoice_id=inv.id) }}" class="btn-cms small danger">PDF</a>
                 </td>
             </tr>
             {% else %}

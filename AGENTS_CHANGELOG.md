@@ -273,3 +273,25 @@ Developers kunnen kiezen: SQLite (snel, zero-config) of PostgreSQL (productiemat
 - Removed redundant `alembic stamp head` from `create_cms_module()`.
 - Log file corruption (null bytes) cleaned up by restarting with clean output redirect.
 - Bugfix: `notify_account_locked` import + call added.
+
+---
+
+## June 30 — Announcement System
+
+### Doel
+System-wide announcement feature so super admin can broadcast mandatory popup messages to all users.
+
+### Wijzigingen
+- **`cms/models/announcement.py`** (NIEUW): `Announcement` + `AnnouncementAck` models — system-wide, no tenant_id, severity levels, acknowledgment tracking.
+- **`cms/models/__init__.py`**: Added `Announcement` + `AnnouncementAck` to imports and `__all__`.
+- **`migrations/versions/bd1055cd35b5_add_announcements_tables.py`** (NIEUW): Creates `announcements` + `announcement_acks` tables.
+- **`cms/routes/system.py`**: Added `list_announcements`, `create_announcement`, `edit_announcement`, `toggle_announcement`, `delete_announcement`, `ack_announcement` routes. Fixed missing `current_user` import.
+- **`templates/cms/announcements/list.html`** (NIEUW): Admin list with severity color-coded cards, toggle/delete.
+- **`templates/cms/announcements/form.html`** (NIEUW): Create/edit form.
+- **`templates/cms/base.html`**: Added announcement modal JS (shows unacknowledged announcements on page load, POST `/cms/api/announcements/<id>/ack`, cycles through queue). Added nav link under Super dropdown. Added context processor in `app.py` that injects `unacknowledged_announcements` (active, non-expired, unacknowledged by current user).
+
+### Key Decisions
+- No tenant_id — announcements are system-wide, visible to all users
+- `expires_at` nullable (null = never expires)
+- Modal shown on every page load until all active announcements acknowledged
+- Acknowledgment is idempotent (unique constraint on announcement_id + user_id)

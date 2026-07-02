@@ -1,0 +1,59 @@
+{% extends "cms/base.html" %}
+{% block title %}Aankondigingen{% endblock %}
+{% block content %}
+<style>
+  .ann-header { display:flex; justify-content:space-between; align-items:center; margin:0 0 1.5rem; }
+  .ann-header h1 { margin:0; }
+  .ann-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:1rem; margin-bottom:0.75rem; }
+  .ann-card.severity-info { border-left:4px solid #3b82f6; }
+  .ann-card.severity-warning { border-left:4px solid #f59e0b; }
+  .ann-card.severity-error { border-left:4px solid #ef4444; }
+  .ann-card.severity-critical { border-left:4px solid #7c3aed; }
+  .ann-meta { font-size:0.78rem; color:var(--text-muted); margin-top:0.3rem; }
+  .ann-meta span { margin-right:1rem; }
+  .ann-actions { display:flex; gap:0.4rem; margin-top:0.5rem; }
+</style>
+
+<div class="ann-header">
+  <h1>📢 Aankondigingen</h1>
+  <a href="{{ url_for('cms.create_announcement') }}" class="btn-cms primary small">➕ Nieuwe aankondiging</a>
+</div>
+
+{% if announcements %}
+  {% for ann in announcements %}
+  <div class="ann-card severity-{{ ann.severity }}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <strong>{{ ann.title }}</strong>
+        <span class="badge {% if ann.severity == 'critical' %}badge-status-danger{% elif ann.severity == 'error' %}badge-status-danger{% elif ann.severity == 'warning' %}badge-status-warning{% else %}badge-info{% endif %}" style="margin-left:0.5rem;">{{ ann.severity }}</span>
+        {% if not ann.is_active %}<span class="badge" style="background:var(--bg-secondary);color:var(--text-muted);margin-left:0.3rem;">Gedeactiveerd</span>{% endif %}
+      </div>
+      <span style="font-size:0.75rem;color:var(--text-muted);">{{ ann.created_at.strftime('%d-%m-%Y %H:%M') if ann.created_at else '' }}</span>
+    </div>
+    <div style="margin-top:0.5rem;white-space:pre-wrap;font-size:0.88rem;">{{ ann.body }}</div>
+    <div class="ann-meta">
+      <span>🕐 Start: {{ ann.starts_at.strftime('%d-%m-%Y %H:%M') if ann.starts_at else '-' }}</span>
+      <span>⏳ Vervalt: {{ ann.expires_at.strftime('%d-%m-%Y %H:%M') if ann.expires_at else 'Nooit' }}</span>
+      <span>👤 Door: {{ ann.creator.full_name if ann.creator else 'Onbekend' }}</span>
+      <span>✅ Gelezen: {{ ann.acks.count() }}</span>
+    </div>
+    <div class="ann-actions">
+      <a href="{{ url_for('cms.edit_announcement', announcement_id=ann.id) }}" class="btn-cms small">✏️ Bewerken</a>
+      <form method="POST" action="{{ url_for('cms.toggle_announcement', announcement_id=ann.id) }}" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-cms small">{{ '📥 Deactiveer' if ann.is_active else '📤 Activeer' }}</button>
+      </form>
+      <form method="POST" action="{{ url_for('cms.delete_announcement', announcement_id=ann.id) }}" style="display:inline;" onsubmit="return confirm('Zeker weten?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-cms small" style="color:#ef4444;">🗑️ Verwijderen</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">
+  <div class="icon">📢</div>
+  <p>Nog geen aankondigingen.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -46,7 +46,7 @@
         </div>
         <div style="margin-top:0.75rem;">
             {% if current_user.id == user.id and user.totp_secret %}
-            <a href="{{ url_for('auth.setup_2fa') }}" class="btn" style="padding:0.4rem 0.75rem;font-size:0.85rem;">Reconfigure 2FA</a>
+            <a href="{{ url_for('auth.setup_2fa') }}" class="btn-cms small">Reconfigure 2FA</a>
             {% endif %}
             {% if current_user.is_admin and user.id != current_user.id %}
 <form method="POST" action="{{ url_for('auth.reset_2fa', user_id=user.id) }}" style="display:inline;" data-confirm="Reset 2FA for this user? They will need to set it up again on next login.">
@@ -83,7 +83,7 @@
                     <button type="button" class="btn-icon" data-click="toggleField" data-arg0="confirm_password">👁️</button>
                 </div>
             </div>
-            <button type="submit" class="btn">Change Password</button>
+            <button type="submit" class="btn-cms primary">Change Password</button>
             <span id="pwError" style="color:#dc2626;display:none;margin-left:0.5rem;"></span>
         </form>
     </div>
@@ -91,7 +91,7 @@
 
     <div class="actions">
         {% if current_user.is_admin and user.id != current_user.id %}
-        <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn">Edit User</a>
+        <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn-cms">Edit User</a>
         {% endif %}
         {% if current_user.is_admin and user.id != current_user.id and user.is_active %}
 <form method="POST" action="{{ url_for('users.deactivate_user', user_id=user.id) }}" style="display: inline;" data-confirm="Are you sure you want to deactivate this user?">

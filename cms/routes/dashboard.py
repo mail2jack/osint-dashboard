@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 _health_cache: dict[str, tuple[float, dict]] = {}
 _health_cache_lock = threading.Lock()
-_HEALTH_CACHE_TTL = 60
+_HEALTH_CACHE_TTL = 300
 
 
 def _get_cached_health() -> dict:
@@ -42,7 +42,8 @@ def dashboard() -> str:
     case_counts = dict(
         apply_tenant_filter(
             db.session.query(Case.status, db.func.count(Case.id)).filter(
-                Case.is_deleted == False
+                Case.is_deleted == False,
+                Case.archived_at.is_(None),
             ),
             Case,
         )
@@ -80,6 +81,7 @@ def dashboard() -> str:
 
     my_cases_q = Case.query.filter(
         Case.is_deleted == False,
+        Case.archived_at.is_(None),
         Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
         db.or_(
             Case.assigned_to == current_user.id,

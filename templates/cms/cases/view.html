@@ -67,6 +67,44 @@
     .comment-type-badge.email { background: #fef3c7; color: #d97706; }
     .comment-type-badge.meeting { background: #ede9fe; color: #7c3aed; }
     .comment-type-badge.report { background: #fce7f3; color: #db2777; }
+    
+    .btn-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-icon:hover {
+        background: var(--table-hover);
+        border-color: var(--accent-primary);
+    }
+    .btn-icon.danger {
+        background: #dc2626;
+        color: #fff;
+        border-color: #dc2626;
+    }
+    .btn-icon.danger:hover {
+        background: #b91c1c;
+        border-color: #b91c1c;
+    }
+    .btn-icon.success {
+        background: #059669;
+        color: #fff;
+        border-color: #059669;
+    }
+    .btn-icon.success:hover {
+        background: #047857;
+        border-color: #047857;
+    }
 </style>
 
 <div style="padding: 0 2rem; margin-top: 1rem;">
@@ -86,23 +124,34 @@
             {% if case.status == 'open' %}
             <button data-click="changeStatus" data-arg0="active" class="btn-cms small bg-green">{{ _('▶ Start') }}</button>
             {% elif case.status == 'active' %}
-            <button data-click="changeStatus" data-arg0="suspended" class="btn-cms small" style="background:#f59e0b;">{{ _('⏸ Suspend') }}</button>
+            <button data-click="changeStatus" data-arg0="suspended" class="btn-cms small bg-orange">{{ _('⏸ Suspend') }}</button>
             <button data-click="changeStatus" data-arg0="closed" class="btn-cms small bg-green">{{ _('✓ Close') }}</button>
             {% elif case.status == 'suspended' %}
             <button data-click="changeStatus" data-arg0="active" class="btn-cms small bg-green">{{ _('▶ Resume') }}</button>
             <button data-click="changeStatus" data-arg0="closed" class="btn-cms small bg-green">{{ _('✓ Close') }}</button>
             {% elif case.status == 'closed' %}
-            <button data-click="changeStatus" data-arg0="archived" class="btn-cms small" style="background:#6b7280;">{{ _('📁 Archive') }}</button>
+            <button data-click="changeStatus" data-arg0="archived" class="btn-cms small bg-gray">{{ _('📁 Archive') }}</button>
             {% elif case.status == 'archived' %}
-            <button class="btn-cms small" style="background:#6b7280;opacity:0.6;" disabled>{{ _('📁 Archived') }}</button>
+            <button class="btn-cms small bg-gray" disabled>{{ _('📁 Archived') }}</button>
             {% endif %}
             {% if case.status in ['closed', 'archived'] %}
             <button data-click="reopenCase" class="btn-cms small bg-green">{{ _('↩ Reopen') }}</button>
             {% endif %}
+            {% if case.archived_at %}
+            <form method="POST" action="{{ url_for('cms.restore_case', case_id=case.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-cms small bg-gray">{{ _('📂 Herstellen') }}</button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('cms.archive_case', case_id=case.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-cms small bg-gray">{{ _('📁 Archiveer') }}</button>
+            </form>
+            {% endif %}
             </div>
             <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small">{{ _('📥 CSV') }}</a>
             <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small bg-purple">{{ _('📄 Report') }}</a>
-            <a href="{{ url_for('cms.invoice_create') }}?case_id={{ case.id }}&client_id={{ case.client_id }}" class="btn-cms small" style="background:#2563eb;">{{ _('+ Factuur') }}</a>
+            {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_create') }}?case_id={{ case.id }}&client_id={{ case.client_id }}" class="btn-cms small bg-blue">{{ _('+ Factuur') }}</a>{% endif %}
             <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small primary">{{ _('✏️') }}</a>
         </div>
     </div>
@@ -169,7 +218,7 @@
                 </div>
                 {% endfor %}
                 {% endif %}
-                <div><button data-click="openHierarchyModal" class="btn-cms small" style="font-size:0.75rem;">{{ _('Manage Hierarchy') }}</button></div>
+                <div><button data-click="openHierarchyModal" class="btn-cms small">{{ _('Manage Hierarchy') }}</button></div>
             </span>
         </div>
         {% endif %}
@@ -186,6 +235,91 @@
     </div>
 </div>
 
+{# ─── Findings (full width) ──────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+    <div class="card-header">
+        <h2>{{ _('Findings (%(count)s)', count=findings|length) }}</h2>
+        <div style="display:flex;gap:0.4rem;align-items:center;">
+            <button data-click="openTimeline" class="btn-cms small bg-purple">{{ _('Timeline') }}</button>
+            <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small teal">{{ _('📋 Report') }}</a>
+            <a href="{{ url_for('cms.case_report_pdf', case_id=case.id) }}" class="btn-cms small danger">{{ _('📄 PDF') }}</a>
+        </div>
+    </div>
+    
+    {% if findings %}
+    <div style="padding:0.5rem 0.75rem;display:flex;flex-wrap:wrap;gap:0.35rem;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);">
+        <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">{{ _('Filter') }}:</span>
+        <input type="text" id="filterTitle" placeholder="{{ _('Title') }}" data-input="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;width:120px;">
+        <input type="text" id="filterSubject" placeholder="{{ _('Subject') }}" data-input="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;width:100px;">
+        <select id="filterSource" data-change="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;">
+            <option value="">{{ _('Source') }}</option>
+            <option value="osint">{{ _('OSINT') }}</option>
+            <option value="manual">{{ _('Manual') }}</option>
+            <option value="document">{{ _('Document') }}</option>
+        </select>
+        <button data-click="clearFindingFilters" class="btn-cms gray small">{{ _('Clear') }}</button>
+        <span id="findingCount" style="margin-left:auto;font-size:0.8rem;color:var(--text-muted);"></span>
+    </div>
+    <table id="findingsTable" class="data-table">
+        <thead>
+            <tr><th>{{ _('Title') }}</th><th>{{ _('Subject') }}</th><th>{{ _('Source') }}</th><th>{{ _('Added By') }}</th><th>{{ _('Date') }}</th></tr>
+        </thead>
+        <tbody>
+            {% for finding in findings %}
+            <tr data-title="{{ finding.title|lower }}" data-subject="{{ finding.subject.name|lower if finding.subject else '' }}" data-source="{{ finding.source_type|lower }}" data-addedby="{{ finding.author.full_name|lower if finding.author else '' }}" data-date="{{ finding.created_at.strftime('%Y-%m-%d') if finding.created_at else '' }}">
+                <td>
+                    {% if finding.source_url %}
+                    <a href="#" data-click="openCaptureFromFinding" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.title|replace("'", "\\'") }}" style="color:#3b82f6;text-decoration:none;">
+                        {{ finding.title }}
+                        <span style="font-size:0.75rem;color:#8b5cf6;">📸</span>
+                    </a>
+                    {% else %}
+                    {{ finding.title }}
+                    {% endif %}
+                    {% if finding.source_url and finding.subject_id %}
+                    <br>
+                    <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" 
+                            class="btn-cms small purple" style="margin-top:4px;">
+                        {{ _('🔍 Extract ID') }}
+                    </button>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if finding.subject_id %}
+                    <a href="{{ url_for('cms.view_subject', subject_id=finding.subject_id) }}">
+                        {{ finding.subject.name if finding.subject else _('Unknown') }}
+                    </a>
+                    {% else %}
+                    <span style="color:#999;">-</span>
+                    {% endif %}
+                </td>
+                <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span></td>
+                <td>{{ finding.author.full_name if finding.author else _('Unknown') }}</td>
+                <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>{{ _('No findings yet.') }}</p>
+    </div>
+    {% endif %}
+    
+    {% if findings_pagination and findings_pagination.pages > 1 %}
+    <div style="padding:0.6rem;display:flex;justify-content:center;gap:0.5rem;font-size:0.8rem;">
+        {% if findings_pagination.has_prev %}
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('← Previous') }}</a>
+        {% endif %}
+        <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">{{ _('Page %(page)s of %(pages)s', page=findings_pagination.page, pages=findings_pagination.pages) }}</span>
+        {% if findings_pagination.has_next %}
+        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next →') }}</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
 {# ─── Two-column layout ───────────────────────────────── #}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
 
@@ -200,7 +334,7 @@
         <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
             <button data-click="showAddSubjectForm" class="btn-cms small">{{ _('+ Add') }}</button>
             <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small bg-green">{{ _('+ New') }}</a>
-            <button data-click="openCreateFromUsernameModal" class="btn-cms small text-purple">{{ _('@ Username') }}</button>
+            <button data-click="openCreateFromUsernameModal" class="btn-cms small purple">{{ _('@ Username') }}</button>
             <button data-click="openOsintModal" class="btn-cms small bg-purple">{{ _('OSINT') }}</button>
         </div>
         {% endif %}
@@ -247,11 +381,11 @@
                     </div>
                 </td>
                 <td>
-                    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms small" style="background:#7c3aed;color:white;text-decoration:none;">{{ _('View') }}</a>
+                    <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms small purple">{{ _('View') }}</a>
                     {% if case.status not in ['closed', 'archived'] %}
                     <form action="{{ url_for('cms.remove_subject_from_case', case_id=case.id, subject_id=subject.id) }}" method="POST" style="display:inline;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-cms small danger" data-confirm="{{ _('Remove %(name)s from this case?', name=subject.name) }}" style="background:#dc2626;color:white;">{{ _('Remove') }}</button>
+                        <button type="submit" class="btn-cms small danger" data-confirm="{{ _('Remove %(name)s from this case?', name=subject.name) }}">{{ _('Remove') }}</button>
                     </form>
                     {% endif %}
                 </td>
@@ -267,87 +401,44 @@
     {% endif %}
 </div>
 
-{# ─── Findings ───────────────────────────────────────── #}
+{# ─── Reminders ─────────────────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
     <div class="card-header">
-        <h2>{{ _('Findings (%(count)s)', count=findings|length) }}</h2>
-        <div style="display:flex;gap:0.4rem;align-items:center;">
-            <button data-click="openTimeline" class="btn-cms small bg-purple">{{ _('Timeline') }}</button>
-            <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small" style="background:#0e7490;text-decoration:none;">{{ _('📋 Report') }}</a>
-            <a href="{{ url_for('cms.case_report_pdf', case_id=case.id) }}" class="btn-cms small" style="background:#dc2626;text-decoration:none;">{{ _('📄 PDF') }}</a>
-        </div>
+        <h2>{{ _('⏰ Reminders (%(count)s)', count=case_reminders|length) }}</h2>
+        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn-cms small bg-green">{{ _('+ Add Reminder') }}</a>
     </div>
     
-    {% if findings %}
-    <div style="padding:0.5rem 0.75rem;display:flex;flex-wrap:wrap;gap:0.35rem;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);">
-        <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">{{ _('Filter') }}:</span>
-        <input type="text" id="filterTitle" placeholder="{{ _('Title') }}" data-input="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;width:120px;">
-        <input type="text" id="filterSubject" placeholder="{{ _('Subject') }}" data-input="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;width:100px;">
-        <select id="filterSource" data-change="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;">
-            <option value="">{{ _('Source') }}</option>
-            <option value="osint">{{ _('OSINT') }}</option>
-            <option value="manual">{{ _('Manual') }}</option>
-            <option value="document">{{ _('Document') }}</option>
-        </select>
-        <button data-click="clearFindingFilters" class="btn-cms gray small" style="font-size:0.72rem;">{{ _('Clear') }}</button>
-        <span id="findingCount" style="margin-left:auto;font-size:0.8rem;color:var(--text-muted);"></span>
+    {% if case_reminders %}
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        {% for reminder in case_reminders %}
+        <div style="padding: 0.75rem; background: {% if reminder.is_completed %}#f3f4f6{% elif reminder.is_overdue %}#fee2e2{% else %}#dbeafe{% endif %}; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>{{ reminder.title }}</strong>
+                <div style="font-size: 0.8rem; color: #666;">
+                    {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else _('No date') }}
+                    {% if reminder.is_completed %} - {{ _('Completed') }}{% elif reminder.is_overdue %} - {{ _('OVERDUE') }}{% endif %}
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.25rem;">
+                {% if not reminder.is_completed %}
+<form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-icon success" title="{{ _('Complete') }}">✓</button>
+</form>
+
+<form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" class="inline" data-confirm="{{ _('Delete this reminder?') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn-icon danger" title="{{ _('Delete') }}">🗑️</button>
+</form>
+{% endif %}
+            </div>
+        </div>
+        {% endfor %}
     </div>
-    <table id="findingsTable" class="data-table">
-        <thead>
-            <tr><th>{{ _('Title') }}</th><th>{{ _('Subject') }}</th><th>{{ _('Source') }}</th><th>{{ _('Added By') }}</th><th>{{ _('Date') }}</th></tr>
-        </thead>
-        <tbody>
-            {% for finding in findings %}
-            <tr data-title="{{ finding.title|lower }}" data-subject="{{ finding.subject.name|lower if finding.subject else '' }}" data-source="{{ finding.source_type|lower }}" data-addedby="{{ finding.author.full_name|lower if finding.author else '' }}" data-date="{{ finding.created_at.strftime('%Y-%m-%d') if finding.created_at else '' }}">
-                <td>
-                    {% if finding.source_url %}
-                    <a href="#" data-click="openCaptureFromFinding" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.title|replace("'", "\\'") }}" style="color:#3b82f6;text-decoration:none;">
-                        {{ finding.title }}
-                        <span style="font-size:0.75rem;color:#8b5cf6;">📸</span>
-                    </a>
-                    {% else %}
-                    {{ finding.title }}
-                    {% endif %}
-                    {% if finding.source_url and finding.subject_id %}
-                    <br>
-                    <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" 
-                            class="btn-cms small" style="font-size:0.65rem;padding:2px 6px;background:#8b5cf6;margin-top:4px;">
-                        {{ _('🔍 Extract ID') }}
-                    </button>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if finding.subject_id %}
-                    <a href="{{ url_for('cms.view_subject', subject_id=finding.subject_id) }}">
-                        {{ finding.subject.name if finding.subject else _('Unknown') }}
-                    </a>
-                    {% else %}
-                    <span style="color:#999;">-</span>
-                    {% endif %}
-                </td>
-                <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span></td>
-                <td>{{ finding.author.full_name if finding.author else _('Unknown') }}</td>
-                <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
     {% else %}
     <div class="empty-state">
         <div class="icon">📭</div>
-        <p>{{ _('No findings yet.') }}</p>
-    </div>
-    {% endif %}
-    
-    {% if findings_pagination and findings_pagination.pages > 1 %}
-    <div style="padding:0.6rem;display:flex;justify-content:center;gap:0.5rem;font-size:0.8rem;">
-        {% if findings_pagination.has_prev %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('← Previous') }}</a>
-        {% endif %}
-        <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">{{ _('Page %(page)s of %(pages)s', page=findings_pagination.page, pages=findings_pagination.pages) }}</span>
-        {% if findings_pagination.has_next %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next →') }}</a>
-        {% endif %}
+        <p>{{ _('No reminders for this case.') }} <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}">{{ _('Add one') }}</a></p>
     </div>
     {% endif %}
 </div>
@@ -360,68 +451,73 @@
 {# ─── Comments ───────────────────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
     <div class="card-header">
-        <h2>💬 {{ _('Comments') }} <span id="commentsCount" style="font-size:0.8rem;color:var(--text-muted);"></span></h2>
-        <button data-click="loadComments" class="btn-cms small" style="font-size:0.75rem;">{{ _('↻ Refresh') }}</button>
-    </div>
-    <div style="padding:0.5rem 0.75rem;border-bottom:1px solid var(--border-color);display:flex;gap:0.4rem;">
-        <textarea id="newComment" placeholder="{{ _('Write a comment...') }}" style="flex:1;padding:0.4rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;min-height:2.4rem;" rows="1"></textarea>
-        <button data-click="addComment" class="btn-cms primary small" style="align-self:flex-end;">{{ _('Post') }}</button>
-    </div>
-    <div id="commentsList" style="padding:0.5rem;">
-        <p style="color:var(--text-muted);font-size:0.85rem;text-align:center;">{{ _('Loading comments...') }}</p>
-    </div>
-</div>
-
-{# ─── Documents ─────────────────────────────────────── #}
-<div class="card" style="margin-bottom:1rem;">
-    <div class="card-header">
-        <h2>{{ _('Documents (%(count)s)', count=documents_pagination.total if documents_pagination else documents|length) }}</h2>
+        <h2>{{ _('Comments') }} <span id="commentCount">({{ comments|length }})</span></h2>
         {% if case.status not in ['closed', 'archived'] %}
-        <button data-click="openUploadModal" class="btn-cms small bg-green">{{ _('+ Upload') }}</button>
+        <button data-click="openCommentModal" class="btn-cms small bg-blue">{{ _('+ Add Comment') }}</button>
         {% endif %}
     </div>
     
-    <div id="documentsList">
-        {% if documents %}
-        <table class="data-table">
-            <thead>
-                <tr><th>{{ _('Filename') }}</th><th>{{ _('Type') }}</th><th>{{ _('Size') }}</th><th>{{ _('Uploaded') }}</th><th></th></tr>
-            </thead>
-            <tbody>
-                {% for doc in documents %}
-                <tr>
-                    <td style="font-weight:500;">{{ doc.original_filename }}</td>
-                    <td><span class="badge badge-primary" style="font-size:0.72rem;">{{ doc.document_type or 'file' }}</span></td>
-                    <td style="color:var(--text-muted);font-size:0.85rem;">{{ (doc.file_size / 1024)|round(1) }} KB</td>
-                    <td style="color:var(--text-muted);font-size:0.85rem;">{{ doc.created_at.strftime('%Y-%m-%d') if doc.created_at else '-' }}</td>
-                    <td>
-                        <a href="/cms/documents/{{ doc.id }}/download" target="_blank" class="btn-cms gray small" style="font-size:0.72rem;">↓</a>
-                        {% if current_user.is_admin or current_user.is_senior %}
-                        <a href="#" data-click="deleteDocument" data-arg0="{{ doc.id }}" class="btn-cms gray small" style="font-size:0.72rem;">✕</a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% if documents_pagination and documents_pagination.pages > 1 %}
-        <div style="padding:0.5rem;display:flex;justify-content:center;gap:0.5rem;font-size:0.8rem;">
-            {% if documents_pagination.has_prev %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.prev_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">{{ _('← Previous') }}</a>
-            {% endif %}
-            <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">{{ _('Page %(page)s of %(pages)s', page=documents_pagination.page, pages=documents_pagination.pages) }}</span>
-            {% if documents_pagination.has_next %}
-            <a href="{{ url_for('cms.view_case', case_id=case.id, documents_page=documents_pagination.next_num, findings_page=request.args.get('findings_page', 1)) }}" class="btn-cms small">{{ _('Next →') }}</a>
-            {% endif %}
-        </div>
-        {% endif %}
-        {% else %}
-        <div class="empty-state">
-            <div class="icon">📭</div>
-            <p>{{ _('No documents uploaded.') }}</p>
-        </div>
-        {% endif %}
+    {% if current_user.is_admin %}
+    <div style="padding:0.5rem 0.75rem;background:#1e1b4b;color:#c4b5fd;font-size:0.8rem;border-bottom:1px solid #312e81;">
+        <strong>{{ _('Admin Comments') }}</strong>
     </div>
+    {% endif %}
+    
+    <div id="commentsSection" style="display:flex;flex-direction:column;gap:0.5rem;padding:0.75rem;">
+        {% for comment in comments %}
+        <div class="comment {% if comment.is_admin %}admin-comment{% endif %}" data-comment-id="{{ comment.id }}" style="padding:0.6rem;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                <strong style="font-size:0.85rem;">{{ comment.author.full_name if comment.author else _('Unknown') }}</strong>
+                <div style="display:flex;gap:0.3rem;align-items:center;">
+                    <span style="font-size:0.75rem;color:var(--text-muted);">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') if comment.created_at else '' }}</span>
+                    <button data-click="copyCommentLink" data-arg0="{{ comment.id }}" class="btn-icon" title="{{ _('Copy link to this comment') }}">🔗</button>
+                    <button data-click="deleteComment" data-arg0="{{ comment.id }}" class="btn-icon danger" title="{{ _('Delete') }}" {% if not current_user.is_admin and comment.author_id != current_user.id %}disabled{% endif %}>🗑️</button>
+                </div>
+            </div>
+            <div style="font-size:0.9rem;white-space:pre-wrap;word-break:break-word;">{{ comment.content }}</div>
+        </div>
+        {% else %}
+        <p class="text-muted" style="text-align:center;">{{ _('No comments yet.') }}</p>
+        {% endfor %}
+    </div>
+</div>
+
+{# ─── Documents ──────────────────────────────────────── #}
+<div class="card">
+    <div class="card-header">
+        <h2>{{ _('Documents (%(count)s)', count=documents|length) }}</h2>
+        <button data-click="openUploadModal" class="btn-cms small">{{ _('+ Upload') }}</button>
+    </div>
+    
+    {% if documents %}
+    <table class="data-table">
+        <thead>
+            <tr><th>{{ _('Name') }}</th><th>{{ _('Type') }}</th><th>{{ _('Classification') }}</th><th>{{ _('Actions') }}</th></tr>
+        </thead>
+        <tbody>
+            {% for doc in documents %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('cms.download_document', document_id=doc.id) }}">{{ doc.filename }}</a>
+                    {% if doc.description %}
+                    <br><span style="font-size:0.8rem;color:var(--text-muted);">{{ doc.description }}</span>
+                    {% endif %}
+                </td>
+                <td><span class="badge">{{ doc.document_type or 'other' }}</span></td>
+                <td><span class="badge badge-{{ doc.classification }}">{{ doc.classification or 'confidential' }}</span></td>
+                <td>
+                    <a href="{{ url_for('cms.download_document', document_id=doc.id) }}" class="btn-cms small teal">{{ _('⬇️') }}</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>{{ _('No documents uploaded.') }}</p>
+    </div>
+    {% endif %}
 </div>
 
 </div>{# /RIGHT COLUMN #}
@@ -454,7 +550,7 @@
         </div>
         
         <div class="mb-1">
-            <button data-click="openLinkForScreenshot" id="openLinkBtn" class="btn-cms small" style="background: #3b82f6; margin-bottom: 0.5rem;">
+            <button data-click="openLinkForScreenshot" id="openLinkBtn" class="btn-cms small bg-blue" style="margin-bottom: 0.5rem;">
                 {{ _('🔗 Open Link in New Tab') }}
             </button>
             <p style="color: #888; font-size: 0.75rem; margin: 0;">{{ _('Open the link, take a screenshot manually (Cmd+Shift+4 on Mac, Win+PrtSc on Windows), then upload below.') }}</p>
@@ -496,7 +592,7 @@
         </div>
         
         <div style="margin-top: 1rem; text-align: center;">
-            <a id="viewScreenshotLink" href="#" target="_blank" class="btn-cms small" style="background: #3b82f6;">{{ _('Open Original URL') }}</a>
+            <a id="viewScreenshotLink" href="#" target="_blank" class="btn-cms small bg-blue">{{ _('Open Original URL') }}</a>
             <button data-click="closeViewScreenshotModal" class="btn-cms small bg-gray">{{ _('Close') }}</button>
         </div>
     </div>
@@ -575,47 +671,6 @@
     </div>
 </div>
 
-<!-- Reminders Section -->
-<div class="card">
-    <div class="card-header">
-        <h2>{{ _('⏰ Reminders (%(count)s)', count=case_reminders|length) }}</h2>
-        <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}" class="btn-cms small bg-green">{{ _('+ Add Reminder') }}</a>
-    </div>
-    
-    {% if case_reminders %}
-    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        {% for reminder in case_reminders %}
-        <div style="padding: 0.75rem; background: {% if reminder.is_completed %}#f3f4f6{% elif reminder.is_overdue %}#fee2e2{% else %}#dbeafe{% endif %}; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>{{ reminder.title }}</strong>
-                <div style="font-size: 0.8rem; color: #666;">
-                    {{ reminder.reminder_date.strftime('%Y-%m-%d %H:%M') if reminder.reminder_date else _('No date') }}
-                    {% if reminder.is_completed %} - {{ _('Completed') }}{% elif reminder.is_overdue %} - {{ _('OVERDUE') }}{% endif %}
-                </div>
-            </div>
-            <div style="display: flex; gap: 0.25rem;">
-                {% if not reminder.is_completed %}
-<form method="POST" action="{{ url_for('cms.complete_reminder', reminder_id=reminder.id) }}" class="inline">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-cms small" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #22c55e;">✓</button>
-</form>
-
-<form method="POST" action="{{ url_for('cms.delete_reminder', reminder_id=reminder.id) }}" class="inline" data-confirm="{{ _('Delete this reminder?') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button type="submit" class="btn-cms small" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: #dc2626;">🗑️</button>
-</form>
-{% endif %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="icon">📭</div>
-        <p>{{ _('No reminders for this case.') }} <a href="{{ url_for('cms.create_reminder') }}?case_id={{ case.id }}">{{ _('Add one') }}</a></p>
-    </div>
-    {% endif %}
-</div>
 
 <!-- Create from Username Modal -->
 <div id="createFromUsernameModal" class="modal">
@@ -651,7 +706,7 @@
             </div>
             <div class="flex-gap mt-1">
                 <button type="submit" class="btn-cms success small">{{ _('Create Subject') }}</button>
-                <button type="button" data-click="closeCreateFromUsernameModal" class="btn-cms">{{ _('Cancel') }}</button>
+                <button type="button" data-click="closeCreateFromUsernameModal" class="btn-cms small">{{ _('Cancel') }}</button>
             </div>
         </form>
     </div>
@@ -727,8 +782,8 @@
             <div id="resultsList" style="max-height: 400px; overflow-y: auto;"></div>
             
             <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button data-click="closeOsintModal" class="btn-cms">Close</button>
-                <button data-click="saveSelectedAsSocialAccounts" class="btn-cms primary" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
+                <button data-click="closeOsintModal" class="btn-cms small">Close</button>
+                <button data-click="saveSelectedAsSocialAccounts" class="btn-cms primary small" id="saveSocialBtn" disabled>🌐 Save as Social Accounts (<span id="socialSelectedCount">0</span>)</button>
                 <button data-click="addSelectedFindings" class="btn-cms success small" id="addFindingsBtn" disabled>Add Selected to Case (<span id="selectedCount">0</span>)</button>
             </div>
         </div>
@@ -1347,11 +1402,18 @@ document.getElementById('createFromUsernameModal')?.addEventListener('click', fu
 
 // Findings Filter Functions
 function filterFindings() {
-    const titleFilter = document.getElementById('filterTitle').value.toLowerCase();
-    const subjectFilter = document.getElementById('filterSubject').value.toLowerCase();
-    const sourceFilter = document.getElementById('filterSource').value.toLowerCase();
-    const addedByFilter = document.getElementById('filterAddedBy').value.toLowerCase();
-    const dateFilter = document.getElementById('filterDate').value;
+    const titleEl = document.getElementById('filterTitle');
+    const subjectEl = document.getElementById('filterSubject');
+    const sourceEl = document.getElementById('filterSource');
+    const addedByEl = document.getElementById('filterAddedBy');
+    const dateEl = document.getElementById('filterDate');
+    if (!titleEl || !subjectEl || !sourceEl || !addedByEl || !dateEl) return;
+    
+    const titleFilter = titleEl.value.toLowerCase();
+    const subjectFilter = subjectEl.value.toLowerCase();
+    const sourceFilter = sourceEl.value.toLowerCase();
+    const addedByFilter = addedByEl.value.toLowerCase();
+    const dateFilter = dateEl.value;
     
     const rows = document.querySelectorAll('#findingsTable tbody tr');
     let visibleCount = 0;
@@ -1381,11 +1443,9 @@ function filterFindings() {
 }
 
 function clearFindingFilters() {
-    document.getElementById('filterTitle').value = '';
-    document.getElementById('filterSubject').value = '';
-    document.getElementById('filterSource').value = '';
-    document.getElementById('filterAddedBy').value = '';
-    document.getElementById('filterDate').value = '';
+    const els = ['filterTitle','filterSubject','filterSource','filterAddedBy','filterDate'].map(id => document.getElementById(id));
+    if (els.some(el => !el)) return;
+    els.forEach(el => el.value = '');
     filterFindings();
 }
 
@@ -1828,7 +1888,7 @@ function loadAvailableParents() {
             <div>
                 <strong>{{ case.parent_case.case_number }}</strong>: {{ case.parent_case.title }}
             </div>
-            <button data-click="removeParent" class="btn-cms small" style="background: #dc2626;">` + {{ _('Remove')|tojson }} + `</button>
+            <button data-click="removeParent" class="btn-cms small danger">` + {{ _('Remove')|tojson }} + `</button>
         </div>
     `;
     {% else %}
@@ -1923,12 +1983,14 @@ function loadComments() {
             if (countEl) countEl.textContent = `(${data.count})`;
         })
         .catch(() => {
-            document.getElementById('commentsList').innerHTML = '<p class="text-red">' + {{ _('Failed to load comments.')|tojson }} + '</p>';
+            const el = document.getElementById('commentsSection');
+            if (el) el.innerHTML = '<p class="text-red">' + {{ _('Failed to load comments.')|tojson }} + '</p>';
         });
 }
 
 function displayComments(comments) {
-    const container = document.getElementById('commentsList');
+    const container = document.getElementById('commentsSection');
+    if (!container) return;
     
     if (!comments || comments.length === 0) {
         container.innerHTML = '<p style="color: #888; text-align: center; padding: 1rem;">' + {{ _('No comments yet. Be the first to add one!')|tojson }} + '</p>';

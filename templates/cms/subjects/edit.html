@@ -15,7 +15,6 @@
             <option value="organization" {% if subject.subject_type == 'organization' %}selected{% endif %}>{{ _('Organization') }}</option>
             <option value="vehicle" {% if subject.subject_type == 'vehicle' %}selected{% endif %}>{{ _('Vehicle') }}</option>
             <option value="vessel" {% if subject.subject_type == 'vessel' %}selected{% endif %}>{{ _('Vessel') }}</option>
-            <option value="property" {% if subject.subject_type == 'property' %}selected{% endif %}>{{ _('Property') }}</option>
         </select>
     </div>
     
@@ -45,7 +44,7 @@
                         {{ _('Enter a license plate (kenteken) and fetch official RDW data') }}
                     </p>
                 </div>
-                <button type="button" data-click="fetchRDWData" id="fetchRdwBtn" class="btn-cms" style="background: #0ea5e9;">
+                <button type="button" data-click="fetchRDWData" id="fetchRdwBtn" class="btn-cms bg-blue">
                     {{ _('🚗 Fetch from RDW') }}
                 </button>
             </div>

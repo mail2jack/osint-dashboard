@@ -94,11 +94,11 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" name="client_email" value="{{ client.email or '' }}">
+        <input type="email" name="client_email" value="{{ client.contact_email or '' }}">
       </div>
       <div class="form-group">
         <label>Telefoon</label>
-        <input type="text" name="client_phone" value="{{ client.phone or '' }}">
+        <input type="text" name="client_phone" value="{{ client.contact_phone or '' }}">
       </div>
       <div class="form-group">
         <label>Referentie</label>
@@ -106,27 +106,43 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Straat</label>
-        <input type="text" name="client_street" value="{{ client.street or '' }}">
+        <input type="text" name="client_street" class="addr-street" value="{{ client.address_street or '' }}">
       </div>
       <div class="form-group">
         <label>Huisnummer</label>
-        <input type="text" name="client_house_number" value="{{ client.house_number or '' }}">
-      </div>
-      <div class="form-group">
-        <label>Toevoeging</label>
-        <input type="text" name="client_house_number_addition" value="{{ client.house_number_addition or '' }}">
+        <input type="text" name="client_house_number" class="addr-number" value="{{ client.address_number or '' }}">
       </div>
       <div class="form-group">
         <label>Postcode</label>
-        <input type="text" name="client_postal_code" value="{{ client.postal_code or '' }}">
+        <input type="text" name="client_postal_code" class="addr-zipcode" value="{{ client.address_postal or '' }}">
       </div>
       <div class="form-group">
         <label>Plaats</label>
-        <input type="text" name="client_city" value="{{ client.city or '' }}">
+        <input type="text" name="client_city" class="addr-town" value="{{ client.address_city or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Land</label>
+        <input type="text" name="client_country" value="{{ client.address_country or 'Nederland' }}">
+      </div>
+      <div class="form-group">
+        <label>BTW-nummer</label>
+        <input type="text" name="client_vat_number" value="{{ client.vat_number or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Bankrekening</label>
+        <input type="text" name="client_bank_account" value="{{ client.bank_account or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Contractnummer</label>
+        <input type="text" name="client_contract_number" value="{{ client.contract_number or '' }}">
+      </div>
+      <div class="form-group full-width">
+        <label>Contractinformatie</label>
+        <textarea name="client_contract_info" rows="2">{{ client.contract_info or '' }}</textarea>
       </div>
       <div class="form-group full-width">
         <label>Notities</label>
-        <textarea name="client_notes" rows="2">{{ client.notes or '' }}</textarea>
+        <textarea name="client_notes" rows="2">{{ client.financial_notes or '' }}</textarea>
       </div>
     </div>
   </div>
@@ -150,7 +166,6 @@ input:-webkit-autofill:focus {
             <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>Bedrijf</option>
             <option value="vehicle" {% if subject.subject_type == 'vehicle' %}selected{% endif %}>Voertuig</option>
             <option value="vessel" {% if subject.subject_type == 'vessel' %}selected{% endif %}>Vaartuig</option>
-            <option value="property" {% if subject.subject_type == 'property' %}selected{% endif %}>Onroerend goed</option>
             <option value="online" {% if subject.subject_type == 'online' %}selected{% endif %}>Online entiteit</option>
           </select>
         </div>
@@ -160,12 +175,16 @@ input:-webkit-autofill:focus {
             <div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subj_{{ sid }}_identification" value="{{ subject.identification_number or '' }}"></div>
             <div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_{{ sid }}_email" value="{{ subject.email or '' }}"></div>
             <div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subj_{{ sid }}_phone" value="{{ subject.phone or '' }}"></div>
-            <div class="form-group sf-person sf-company sf-property"><label>Straat</label><input type="text" name="subj_{{ sid }}_street" value="{{ subject.street or '' }}"></div>
-            <div class="form-group sf-person sf-company sf-property"><label>Huisnummer</label><input type="text" name="subj_{{ sid }}_house_number" value="{{ subject.house_number or '' }}"></div>
-            <div class="form-group sf-person sf-company sf-property"><label>Toevoeging</label><input type="text" name="subj_{{ sid }}_house_number_addition" value="{{ subject.house_number_addition or '' }}"></div>
-            <div class="form-group sf-person sf-company sf-property"><label>Postcode</label><input type="text" name="subj_{{ sid }}_postal_code" value="{{ subject.postal_code or '' }}"></div>
-            <div class="form-group sf-person sf-company sf-property"><label>Plaats</label><input type="text" name="subj_{{ sid }}_city" value="{{ subject.city or '' }}"></div>
-            <div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subj_{{ sid }}_social_accounts" value="{{ subject.social_accounts|join(', ') if subject.social_accounts else '' }}" placeholder="@gebruiker1, @gebruiker2"></div>
+            <div class="form-group sf-person"><label>Geboortedatum</label><input type="date" name="subj_{{ sid }}_date_of_birth" value="{{ subject.date_of_birth or '' }}"></div>
+            <div class="form-group sf-person"><label>Geboorteplaats</label><input type="text" name="subj_{{ sid }}_place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="Amsterdam"></div>
+            <div class="form-group sf-person"><label>Nationaliteit</label><input type="text" name="subj_{{ sid }}_nationality" value="{{ subject.nationality or '' }}" placeholder="Nederlandse"></div>
+            <div class="form-group sf-person sf-company"><label>Bankrekening</label><input type="text" name="subj_{{ sid }}_bank_account" value="{{ subject.bank_account or '' }}" placeholder="NL00 INGB 0000 0000 00"></div>
+            <div class="form-group sf-person sf-company"><label>Straat</label><input type="text" name="subj_{{ sid }}_street" class="addr-street" value="{{ subject.street or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>Huisnummer</label><input type="text" name="subj_{{ sid }}_house_number" class="addr-number" value="{{ subject.house_number or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>Toevoeging</label><input type="text" name="subj_{{ sid }}_house_number_addition" value="{{ subject.house_number_addition or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>Postcode</label><input type="text" name="subj_{{ sid }}_postal_code" class="addr-zipcode" value="{{ subject.postal_code or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>Plaats</label><input type="text" name="subj_{{ sid }}_city" class="addr-town" value="{{ subject.city or '' }}"></div>
+            <div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subj_{{ sid }}_social_accounts" value="{{ subject.workflow_social_accounts|join(', ') if subject.workflow_social_accounts else '' }}" placeholder="@gebruiker1, @gebruiker2"></div>
             <div class="form-group full-width sf-all"><label>Risicoscore (0-100)</label><input type="number" name="subj_{{ sid }}_risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100"></div>
             <div class="form-group full-width sf-all"><label>Notities</label><textarea name="subj_{{ sid }}_notes" rows="2">{{ subject.notes or '' }}</textarea></div>
           </div>
@@ -230,7 +249,6 @@ document.addEventListener('DOMContentLoaded', function() {
           '<option value="company">Bedrijf</option>' +
           '<option value="vehicle">Voertuig</option>' +
           '<option value="vessel">Vaartuig</option>' +
-          '<option value="property">Onroerend goed</option>' +
           '<option value="online">Online entiteit</option>' +
         '</select>' +
       '</div>' +
@@ -240,11 +258,15 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subj_new_' + idx + '_identification" placeholder="BSN / KvK / kenteken / IMO"></div>' +
           '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_new_' + idx + '_email" placeholder="naam@example.com"></div>' +
           '<div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Straat</label><input type="text" name="subj_new_' + idx + '_street" placeholder="Straatnaam"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Huisnummer</label><input type="text" name="subj_new_' + idx + '_house_number" placeholder="45"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Toevoeging</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="A"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Postcode</label><input type="text" name="subj_new_' + idx + '_postal_code" placeholder="1012LL"></div>' +
-          '<div class="form-group sf-person sf-company sf-property"><label>Plaats</label><input type="text" name="subj_new_' + idx + '_city" placeholder="Amsterdam"></div>' +
+          '<div class="form-group sf-person"><label>Geboortedatum</label><input type="date" name="subj_new_' + idx + '_date_of_birth"></div>' +
+          '<div class="form-group sf-person"><label>Geboorteplaats</label><input type="text" name="subj_new_' + idx + '_place_of_birth" placeholder="Amsterdam"></div>' +
+          '<div class="form-group sf-person"><label>Nationaliteit</label><input type="text" name="subj_new_' + idx + '_nationality" placeholder="Nederlandse"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Bankrekening</label><input type="text" name="subj_new_' + idx + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Straat</label><input type="text" name="subj_new_' + idx + '_street" class="addr-street" placeholder="Straatnaam"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Huisnummer</label><input type="text" name="subj_new_' + idx + '_house_number" class="addr-number" placeholder="45"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Toevoeging</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="A"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Postcode</label><input type="text" name="subj_new_' + idx + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Plaats</label><input type="text" name="subj_new_' + idx + '_city' class="addr-town" placeholder="Amsterdam"></div>' +
           '<div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subj_new_' + idx + '_social_accounts" placeholder="@gebruiker1, @gebruiker2"></div>' +
           '<div class="form-group full-width sf-all"><label>Risicoscore (0-100)</label><input type="number" name="subj_new_' + idx + '_risk_score" value="0" min="0" max="100"></div>' +
           '<div class="form-group full-width sf-all"><label>Notities</label><textarea name="subj_new_' + idx + '_notes" rows="2" placeholder="Interne notities"></textarea></div>' +

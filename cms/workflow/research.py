@@ -6,8 +6,9 @@ import threading
 import uuid
 from datetime import datetime
 
-from . import get_session, ensure_db
+from cms.models import db
 from .models import (
+    WorkflowCase,
     WorkflowResearchAction,
     WorkflowFinding,
     WorkflowScreenshot,
@@ -61,40 +62,32 @@ def _has_credits(action_type):
     return get_remaining_credits(action_type) > 0
 
 
-def register_action(action_type, label, icon, handler):
-    ACTION_REGISTRY[action_type] = {"label": label, "icon": icon, "handler": handler}
+def register_action(action_type, label, icon, handler, description=""):
+    ACTION_REGISTRY[action_type] = {
+        "label": label,
+        "icon": icon,
+        "handler": handler,
+        "description": description,
+    }
 
 
 def cancel_action(action_id):
     with _threads_lock:
         if action_id in _running_threads:
             _running_threads[action_id]["cancel"] = True
-    ensure_db()
-    session = get_session()
-    try:
-        action = session.query(WorkflowResearchAction).get(action_id)
-        if action and action.status == "running":
-            action.status = "cancelled"
-            action.completed_at = datetime.now()
-            action.result_summary = "Geannuleerd"
-            links = (
-                session.query(WorkflowActionFinding)
-                .filter_by(action_id=action_id)
-                .all()
-            )
-            if links:
-                finding_ids = [l.finding_id for l in links]
-                session.query(WorkflowFinding).filter(
-                    WorkflowFinding.id.in_(finding_ids),
-                ).delete(synchronize_session=False)
-                session.query(WorkflowActionFinding).filter_by(
-                    action_id=action_id
-                ).delete()
-            session.commit()
-    except Exception:
-        session.rollback()
-    finally:
-        session.close()
+    action = db.session.get(WorkflowResearchAction, action_id)
+    if action and action.status == "running":
+        action.status = "cancelled"
+        action.completed_at = datetime.now()
+        action.result_summary = "Geannuleerd"
+        links = WorkflowActionFinding.query.filter_by(action_id=action_id).all()
+        if links:
+            finding_ids = [l.finding_id for l in links]
+            WorkflowFinding.query.filter(
+                WorkflowFinding.id.in_(finding_ids),
+            ).delete(synchronize_session=False)
+            WorkflowActionFinding.query.filter_by(action_id=action_id).delete()
+        db.session.commit()
 
 
 def is_action_cancelled(action_id):
@@ -105,49 +98,47 @@ def is_action_cancelled(action_id):
 
 
 def run_action(action_id):
-    ensure_db()
-    session = get_session()
     try:
-        action = session.query(WorkflowResearchAction).get(action_id)
+        action = db.session.get(WorkflowResearchAction, action_id)
         if not action:
             return
 
         action.status = "running"
         action.started_at = datetime.now()
-        session.commit()
+        db.session.commit()
 
         entry = ACTION_REGISTRY.get(action.action_type)
         if not entry:
             action.status = "error"
             action.error = f"Unknown action type: {action.action_type}"
-            session.commit()
+            db.session.commit()
             return
 
-        prev_actions = (
-            session.query(WorkflowResearchAction)
-            .filter(
-                WorkflowResearchAction.case_id == action.case_id,
-                WorkflowResearchAction.action_type == action.action_type,
-                WorkflowResearchAction.id != action.id,
-                WorkflowResearchAction.status == "completed",
-            )
-            .all()
-        )
+        # Resolve who created this action for finding.created_by
+        action_creator_id = getattr(action, "created_by", None)
+        if not action_creator_id:
+            case = db.session.get(WorkflowCase, action.case_id)
+            action_creator_id = case.created_by if case else None
+
+        prev_actions = WorkflowResearchAction.query.filter(
+            WorkflowResearchAction.case_id == action.case_id,
+            WorkflowResearchAction.action_type == action.action_type,
+            WorkflowResearchAction.id != action.id,
+            WorkflowResearchAction.status == "completed",
+        ).all()
         if prev_actions:
             prev_ids = [a.id for a in prev_actions]
-            old_links = (
-                session.query(WorkflowActionFinding)
-                .filter(WorkflowActionFinding.action_id.in_(prev_ids))
-                .all()
-            )
+            old_links = WorkflowActionFinding.query.filter(
+                WorkflowActionFinding.action_id.in_(prev_ids)
+            ).all()
             old_finding_ids = list(set(link.finding_id for link in old_links))
             if old_finding_ids:
                 now = datetime.now()
-                session.query(WorkflowFinding).filter(
+                WorkflowFinding.query.filter(
                     WorkflowFinding.id.in_(old_finding_ids),
                     WorkflowFinding.archived_at.is_(None),
                 ).update({"archived_at": now}, synchronize_session=False)
-                session.commit()
+                db.session.commit()
 
         findings_data = entry["handler"](action)
 
@@ -155,28 +146,31 @@ def run_action(action_id):
             action.status = "cancelled"
             action.completed_at = datetime.now()
             action.result_summary = "Geannuleerd"
-            session.commit()
+            db.session.commit()
             return
 
         created = []
         for fd in findings_data:
+            detail_text = fd.get("detail", "")
             finding = WorkflowFinding(
                 id=str(uuid.uuid4()),
                 case_id=action.case_id,
                 title=fd["title"],
-                detail=fd.get("detail", ""),
+                content=detail_text or fd["title"],
+                detail=detail_text,
                 source_url=fd.get("source_url"),
                 source_type=fd.get("source_type", action.action_type),
                 icon=fd.get("icon", entry["icon"]),
                 verified=fd.get("verified", False),
                 raw_data=fd.get("raw_data"),
+                created_by=action_creator_id,
                 created_at=datetime.now(),
             )
-            session.add(finding)
-            session.flush()
+            db.session.add(finding)
+            db.session.flush()
 
             link = WorkflowActionFinding(action_id=action.id, finding_id=finding.id)
-            session.add(link)
+            db.session.add(link)
 
             for ss in fd.get("screenshots", []):
                 screenshot = WorkflowScreenshot(
@@ -187,25 +181,27 @@ def run_action(action_id):
                     file_path=ss.get("file_path"),
                     captured_at=datetime.now(),
                 )
-                session.add(screenshot)
+                db.session.add(screenshot)
 
             created.append(finding)
 
         action.status = "completed"
         action.completed_at = datetime.now()
         action.result_summary = f"{len(created)} bevindingen"
-        session.commit()
+        db.session.commit()
+
+        from cms.services.invoice_service import auto_invoice_action_completed
+
+        auto_invoice_action_completed(action)
 
     except Exception as e:
         logger.exception("Research action failed: %s", action_id)
-        session.rollback()
-        action = session.query(WorkflowResearchAction).get(action_id)
+        db.session.rollback()
+        action = db.session.get(WorkflowResearchAction, action_id)
         if action:
             action.status = "error"
             action.error = str(e)
-            session.commit()
-    finally:
-        session.close()
+            db.session.commit()
 
 
 def start_action_async(action_id):
@@ -262,7 +258,7 @@ def _get_api_key(key_name):
 
 def _first_subject(action):
     subs = action.case.subjects
-    return subs[0] if subs else None
+    return subs.first() if subs else None
 
 
 def _email_check(action):
@@ -363,6 +359,59 @@ def _email_check(action):
                     )
         except Exception as e:
             logger.warning("HIBP check failed: %s", e)
+
+    # — PGP keyserver check
+    try:
+        from urllib.parse import quote
+        from curl_cffi import requests as curl_requests
+
+        pgp_url = f"https://keys.openpgp.org/vks/v1/by-email/{quote(email)}"
+        pgp_resp = curl_requests.get(pgp_url, impersonate="chrome", timeout=10)
+        if pgp_resp.status_code == 200:
+            findings.append(
+                {
+                    "title": "PGP-sleutel gevonden",
+                    "detail": (
+                        f"Voor {email} is een PGP-public key gevonden op "
+                        f"keys.openpgp.org. Dit bevestigt dat de eigenaar "
+                        f"PGP-versleuteling gebruikt voor e-mailcommunicatie."
+                    ),
+                    "source_url": f"https://keys.openpgp.org/search?q={quote(email)}",
+                    "source_type": "pgp",
+                    "icon": "🔐",
+                    "verified": True,
+                    "screenshots": [
+                        {
+                            "url": None,
+                            "source_url": f"https://keys.openpgp.org/search?q={quote(email)}",
+                        }
+                    ],
+                }
+            )
+    except Exception as e:
+        logger.debug("PGP keyserver check failed for %s: %s", email, e)
+
+    # — Brave Search email context
+    brave_key = _get_api_key("brave_api_key")
+    if brave_key:
+        try:
+            from cms.services.search_service import brave_search
+
+            ctx_results = brave_search(email, api_key=brave_key)
+            for res in ctx_results[:10]:
+                findings.append(
+                    {
+                        "title": f"Vermeld op: {res.get('title', 'onbekend')[:200]}",
+                        "detail": res.get("description", "")[:300],
+                        "source_url": res.get("url"),
+                        "source_type": "email_context",
+                        "icon": "🔍",
+                        "verified": False,
+                        "screenshots": [{"url": None, "source_url": res.get("url")}],
+                    }
+                )
+        except Exception as e:
+            logger.debug("Brave email context search failed for %s: %s", email, e)
     return findings
 
 
@@ -454,12 +503,17 @@ def _address_check(action):
 
         r = requests.get(
             "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free",
-            params={"q": address_query, "rows": 5},
+            params={"q": address_query, "rows": 10},
             timeout=10,
         )
         data = r.json()
         docs = (data.get("response", {}) or {}).get("docs", [])
-        for doc in docs[:3]:
+
+        # Filter only address-level results, sorted by score descending
+        adres_docs = [d for d in docs if d.get("type") == "adres"]
+        adres_docs.sort(key=lambda d: d.get("score") or 0, reverse=True)
+
+        for doc in adres_docs[:1]:
             nummeraanduiding = doc.get("nummeraanduiding_id") or doc.get("id", "")
             bag_url = f"https://bagviewer.kadaster.nl/lvbag/bag-viewer/?searchQuery={doc.get('weergavenaam', address_query)}&objectId={nummeraanduiding}&theme=BRT+Achtergrond&zoomlevel=16"
 
@@ -896,6 +950,201 @@ def _rdw_check(action):
                 "detail": str(e),
                 "source_type": "rdw",
                 "icon": "🚗",
+                "verified": False,
+            }
+        )
+    return findings
+
+
+def _vessel_check(action):
+    findings = []
+    from cms.encryption_utils import encryptor
+
+    identifier = action.data_value if action.data_value else None
+    subject = _first_subject(action)
+
+    imo = mmsi = eni = name = None
+    if identifier:
+        cleaned = identifier.strip()
+        if re.match(r"^(IMO\s*)?\d{7}$", cleaned, re.IGNORECASE):
+            imo = re.sub(r"(?i)^IMO\s*", "", cleaned)
+        elif re.match(r"^\d{9}$", cleaned):
+            mmsi = cleaned
+        elif re.match(r"^\d{8,9}$", cleaned):
+            eni = cleaned
+        else:
+            name = cleaned
+        if subject:
+            name = name or subject.name
+    else:
+        if subject and subject.subject_type == "vessel":
+            try:
+                imo = (
+                    encryptor.decrypt(subject.imo_number)
+                    if subject.imo_number
+                    else None
+                )
+            except Exception:
+                imo = None
+            try:
+                mmsi = encryptor.decrypt(subject.mmsi) if subject.mmsi else None
+            except Exception:
+                mmsi = None
+            try:
+                eni = (
+                    encryptor.decrypt(subject.eni_number)
+                    if subject.eni_number
+                    else None
+                )
+            except Exception:
+                eni = None
+            name = subject.name
+
+            # Fallback to identification_number (workflow IMO-veld)
+            if not imo and subject.identification_number:
+                raw = subject.identification_number
+                try:
+                    raw = encryptor.decrypt(raw)
+                except Exception:
+                    pass
+                if re.match(r"^\d{7}$", raw.strip()):
+                    imo = raw.strip()
+                else:
+                    name = name or raw
+
+            # Fallback to vessel_data
+            if not any([imo, mmsi, eni]) and subject.vessel_data:
+                vd = subject.vessel_data
+                imo = imo or vd.get("imo")
+                mmsi = mmsi or vd.get("mmsi")
+                eni = eni or vd.get("eni")
+                name = name or vd.get("name")
+
+    if not any([imo, mmsi, eni, name]):
+        findings.append(
+            {
+                "title": "Geen vaartuiggegevens opgegeven",
+                "detail": "Voer een IMO, MMSI, ENI-nummer of scheepsnaam in, "
+                "of koppel eerst een vaartuig-subject aan dit onderzoek.",
+                "source_type": "vessel",
+                "icon": "🚢",
+                "verified": False,
+            }
+        )
+        return findings
+
+    try:
+        from cms.vessel_service import lookup_vessel
+
+        result = lookup_vessel(imo=imo, mmsi=mmsi, eni=eni, name=name)
+
+        if result.get("found"):
+            parts = []
+            if result.get("name"):
+                parts.append(f"Naam: {result['name']}")
+            if result.get("imo"):
+                parts.append(f"IMO: {result['imo']}")
+            if result.get("mmsi"):
+                parts.append(f"MMSI: {result['mmsi']}")
+            if result.get("eni"):
+                parts.append(f"ENI: {result['eni']}")
+            if result.get("flag"):
+                parts.append(f"Vlag: {result['flag']}")
+            if result.get("ship_type"):
+                parts.append(f"Type: {result['ship_type']}")
+            if result.get("length"):
+                parts.append(f"Lengte: {result['length']} m")
+            if result.get("beam"):
+                parts.append(f"Breedte: {result['beam']} m")
+            if result.get("year_built"):
+                parts.append(f"Bouwjaar: {result['year_built']}")
+            if result.get("callsign"):
+                parts.append(f"Roepnaam: {result['callsign']}")
+            if result.get("destination"):
+                parts.append(f"Bestemming: {result['destination']}")
+            if result.get("builder"):
+                parts.append(f"Bouwer: {result['builder']}")
+            if result.get("position"):
+                pos = result["position"]
+                lat, lon = pos.get("lat", "?"), pos.get("lon", "?")
+                map_url = (
+                    f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}&zoom=12"
+                )
+                parts.append(
+                    f"Positie: {lat}, {lon} (https://www.openstreetmap.org/?mlat={lat}&mlon={lon}&zoom=12)"
+                )
+            if result.get("position_text"):
+                from urllib.parse import quote
+
+                map_q = quote(result["position_text"])
+                parts.append(
+                    f"Positie: {result['position_text']} (https://www.google.com/maps?q={map_q})"
+                )
+            if result.get("speed"):
+                parts.append(f"Snelheid: {result['speed']} knopen")
+            if result.get("course"):
+                parts.append(f"Koers: {result['course']}°")
+            if result.get("navigation_status"):
+                parts.append(f"Status: {result['navigation_status']}")
+            if result.get("draught"):
+                parts.append(f"Diepgang: {result['draught']} m")
+            if result.get("eta"):
+                parts.append(f"ETA: {result['eta']}")
+
+            sources = result.get("sources", [])
+            if sources:
+                parts.append(f"\nBronnen: {', '.join(sources)}")
+
+            findings.append(
+                {
+                    "title": f"🚢 {result.get('name', 'Onbekend schip')}",
+                    "detail": " · ".join(parts) if parts else "Gegevens gevonden",
+                    "source_type": "vessel",
+                    "icon": "🚢",
+                    "verified": False,
+                    "raw_data": {
+                        "imo": result.get("imo"),
+                        "mmsi": result.get("mmsi"),
+                        "eni": result.get("eni"),
+                        "name": result.get("name"),
+                        "flag": result.get("flag"),
+                        "ship_type": result.get("ship_type"),
+                        "length": result.get("length"),
+                        "beam": result.get("beam"),
+                        "year_built": result.get("year_built"),
+                        "callsign": result.get("callsign"),
+                        "destination": result.get("destination"),
+                        "builder": result.get("builder"),
+                        "position": result.get("position"),
+                        "position_text": result.get("position_text"),
+                        "speed": result.get("speed"),
+                        "course": result.get("course"),
+                        "navigation_status": result.get("navigation_status"),
+                        "eta": result.get("eta"),
+                        "draught": result.get("draught"),
+                        "sources": sources,
+                        "source_data": result.get("source_data", {}),
+                    },
+                }
+            )
+        else:
+            findings.append(
+                {
+                    "title": "Geen vaartuiggegevens gevonden",
+                    "detail": "Geen maritieme bronnen hebben gegevens opgeleverd voor de opgegeven identifiers.",
+                    "source_type": "vessel",
+                    "icon": "🚢",
+                    "verified": False,
+                }
+            )
+    except Exception as e:
+        logger.exception("Vessel check failed")
+        findings.append(
+            {
+                "title": f"Vaartuig check mislukt: {e}",
+                "detail": str(e),
+                "source_type": "vessel",
+                "icon": "🚢",
                 "verified": False,
             }
         )
@@ -1949,17 +2198,218 @@ def _twitter_check(action):
     return findings
 
 
+# ─── Subdomain scan (crt.sh) ──────────────────────────────
+
+
+def _subdomain_check(action):
+    findings = []
+    domain = action.data_value if action.data_value else None
+    if not domain:
+        subject = _first_subject(action)
+        if subject and subject.email and "@" in subject.email:
+            domain = subject.email.split("@")[1]
+    if not domain:
+        return findings
+
+    try:
+        from curl_cffi import requests as curl_requests
+        from cms.constants import HEADERS
+        import time
+
+        url = f"https://crt.sh/?q=%25.{domain}&output=json"
+        headers = dict(HEADERS)
+        headers["Accept"] = "application/json"
+
+        subs = set()
+
+        # Try up to 2 times with longer timeout
+        for attempt in range(2):
+            try:
+                resp = curl_requests.get(url, headers=headers, timeout=60)
+                if resp.status_code in (502, 503, 504):
+                    time.sleep(2)
+                    continue
+                if resp.status_code == 200:
+                    for entry in resp.json():
+                        raw = entry.get("name_value", "")
+                        for name in raw.split("\n"):
+                            name = name.strip().lower()
+                            if name.startswith("*."):
+                                name = name[2:]
+                            if name.endswith(f".{domain}") or name == domain:
+                                subs.add(name)
+                    break
+            except Exception:
+                if attempt == 0:
+                    time.sleep(3)
+                    continue
+                raise
+
+        if not subs:
+            # Fallback: try certspotter API (no Cloudflare)
+            try:
+                cs_url = f"https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names&after="
+                cs_headers = {
+                    "Accept": "application/json",
+                    "User-Agent": HEADERS.get("User-Agent", "Mozilla/5.0"),
+                }
+                cs_resp = curl_requests.get(cs_url, headers=cs_headers, timeout=30)
+                if cs_resp.status_code == 200:
+                    for entry in cs_resp.json():
+                        for name in entry.get("dns_names", []):
+                            name = name.strip().lower().lstrip("*.")
+                            if name.endswith(f".{domain}") or name == domain:
+                                subs.add(name)
+            except Exception:
+                pass
+
+        sorted_subs = sorted(subs)[:50]
+        if not sorted_subs:
+            findings.append(
+                {
+                    "title": f"Geen subdomeinen gevonden voor {domain}",
+                    "detail": "Er zijn geen certificaat-transparantie logs gevonden met subdomeinen.",
+                    "source_type": "subdomain",
+                    "icon": "🌐",
+                    "verified": False,
+                }
+            )
+            return findings
+
+        findings.append(
+            {
+                "title": f"{len(sorted_subs)} subdomeinen gevonden voor {domain}",
+                "detail": "\n".join(sorted_subs[:30])
+                + ("\n… en meer" if len(sorted_subs) > 30 else ""),
+                "source_url": f"https://crt.sh/?q=%25.{domain}",
+                "source_type": "subdomain",
+                "icon": "🌐",
+                "verified": True,
+                "screenshots": [
+                    {"url": None, "source_url": f"https://crt.sh/?q=%25.{domain}"}
+                ],
+            }
+        )
+    except Exception as e:
+        findings.append(
+            {
+                "title": f"Subdomein scan error: {e}",
+                "detail": str(e),
+                "source_type": "subdomain",
+                "icon": "🌐",
+                "verified": False,
+            }
+        )
+    return findings
+
+
 # ─── Register all actions ─────────────────────────────────
-register_action("email", "E-mail check", "📧", _email_check)
-register_action("phone", "Telefoon check", "📞", _phone_check)
-register_action("address", "Adres onderzoek", "🏠", _address_check)
-register_action("social", "Social media scan", "🌐", _social_scan)
-register_action("facebook", "Facebook onderzoek", "📘", _facebook_check)
-register_action("instagram", "Instagram onderzoek", "📸", _instagram_check)
-register_action("tiktok", "TikTok onderzoek", "🎵", _tiktok_check)
-register_action("linkedin", "LinkedIn onderzoek", "💼", _linkedin_check)
-register_action("twitter", "Twitter onderzoek", "🐦", _twitter_check)
-register_action("kvk", "KvK onderzoek", "🏢", _kvk_check)
-register_action("rdw", "Voertuig check (RDW)", "🚗", _rdw_check)
-register_action("osint", "OSINT Deep Search", "🌍", _osint_deep_search)
-register_action("financial", "Financieel onderzoek", "💰", _financial_check)
+register_action(
+    "email",
+    "E-mail check",
+    "📧",
+    _email_check,
+    "Zoekt het e-mailadres op in openbare bronnen (HIBP, PGP keyservers, SpiderFoot) en controleert of het "
+    "voorkomt in datalekken, een PGP-sleutel heeft, gekoppeld is aan sociale media, "
+    "of andere online sporen (webcontext) achterlaat.",
+)
+register_action(
+    "phone",
+    "Telefoon check",
+    "📞",
+    _phone_check,
+    "Doorzoekt openbare bronnen naar het telefoonnummer: koppelingen met sociale media, bedrijfsregistraties, en eventuele signaleringen uit datalekken.",
+)
+register_action(
+    "address",
+    "Adres onderzoek",
+    "🏠",
+    _address_check,
+    "Zoekt het adres op in openbare bronnen (Kadaster, Overheid.io) om bewonershistorie, eigendomsinformatie en gerelateerde adressen te vinden.",
+)
+register_action(
+    "social",
+    "Social media scan",
+    "🌐",
+    _social_scan,
+    "Scant meerdere sociale media platforms op basis van naam of gebruikersnaam en verzamelt openbare profielen, berichten en netwerkconnecties.",
+)
+register_action(
+    "facebook",
+    "Facebook onderzoek",
+    "📘",
+    _facebook_check,
+    "Zoekt naar openbare Facebook profielen, pagina's en berichten op basis van naam. Levert profielfoto, bio en openbare interacties.",
+)
+register_action(
+    "instagram",
+    "Instagram onderzoek",
+    "📸",
+    _instagram_check,
+    "Doorzoekt Instagram op openbare profielen en berichten. Vindt gebruikersnaam, profielfoto, biografie en recente posts.",
+)
+register_action(
+    "tiktok",
+    "TikTok onderzoek",
+    "🎵",
+    _tiktok_check,
+    "Zoekt naar openbare TikTok profielen en content. Levert gebruikersnaam, avatar, bio en videogegevens. (50 credits)",
+)
+register_action(
+    "linkedin",
+    "LinkedIn onderzoek",
+    "💼",
+    _linkedin_check,
+    "Zoekt naar openbare LinkedIn profielen op naam. Vindt werkervaring, opleiding, locatie en netwerkgrootte. (50 credits)",
+)
+register_action(
+    "twitter",
+    "Twitter onderzoek",
+    "🐦",
+    _twitter_check,
+    "Doorzoekt X/Twitter naar openbare profielen en berichten. Levert gebruikersnaam, bio, volgers en recente tweets. (1000 credits)",
+)
+register_action(
+    "kvk",
+    "KvK onderzoek",
+    "🏢",
+    _kvk_check,
+    "Raadpleegt de Kamer van Koophandel (KvK) voor bedrijfsgegevens: rechtsvorm, vestigingsadres, bestuurders en jaarcijfers.",
+)
+register_action(
+    "rdw",
+    "Voertuig check (RDW)",
+    "🚗",
+    _rdw_check,
+    "Haalt voertuiginformatie op uit de RDW-databank: kenteken, merk/type, APK-historie, technische specificaties en tenaamstellingsgegevens.",
+)
+register_action(
+    "vessel",
+    "Vaartuig check",
+    "🚢",
+    _vessel_check,
+    "Doorzoekt maritieme databronnen (VesselFinder, MarinePlan, KVNR, Binnenvaart.eu, Equasis) "
+    "op IMO-nummer, MMSI, ENI of scheepsnaam. Vindt positie, technische specificaties, vlag en bouwjaar.",
+)
+register_action(
+    "osint",
+    "OSINT Deep Search",
+    "🌍",
+    _osint_deep_search,
+    "Voert een diepgaand open-source onderzoek uit via Brave Search en SpiderFoot. Doorzoekt het hele web op sporen van de persoon of entiteit.",
+)
+register_action(
+    "financial",
+    "Financieel onderzoek",
+    "💰",
+    _financial_check,
+    "Doorzoekt openbare bronnen op financiële gegevens: bedrijfsregisters, insolventies, UBO-registers, en eventuele negatieve financiële signaleringen.",
+)
+register_action(
+    "subdomain",
+    "Subdomein scan",
+    "🌐",
+    _subdomain_check,
+    "Doorzoekt Certificate Transparency logs (crt.sh) op alle subdomeinen van een domein. "
+    "Vindt interne hostnames, ontwikkelomgevingen en verborgen infrastructuur.",
+)

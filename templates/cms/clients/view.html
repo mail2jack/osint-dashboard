@@ -12,11 +12,11 @@
                 {% if active_cases_count == 0 and client.is_active %}
                 <button data-click="archiveClient" data-arg0="{{ client.id }}" class="btn-cms danger small">📁 {{ _('Archiveer') }}</button>
                 {% elif not client.is_active %}
-                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small" style="background:#059669;color:white;border-color:#059669;">↩️ {{ _('Herstellen') }}</button>
+                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small bg-green">↩️ {{ _('Herstellen') }}</button>
                 {% endif %}
                 <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-cms small">✏️ {{ _('Edit') }}</a>
-                <a href="{{ url_for('cms.invoice_list') }}?client_id={{ client.id }}" class="btn-cms small" style="background:#059669;text-decoration:none;">{{ _('📄 Facturen') }}</a>
-                <a href="{{ url_for('cms.invoice_create') }}?client_id={{ client.id }}" class="btn-cms small" style="background:#2563eb;text-decoration:none;">+ {{ _('Factuur') }}</a>
+                {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}?client_id={{ client.id }}" class="btn-cms small bg-green">{{ _('📄 Facturen') }}</a>
+                <a href="{{ url_for('cms.invoice_create') }}?client_id={{ client.id }}" class="btn-cms small bg-blue">+ {{ _('Factuur') }}</a>{% endif %}
             </div>
         </div>
     
@@ -110,7 +110,7 @@
                         </div>
                     </div>
                     <div class="btn-group" style="margin:0;">
-                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small" style="background:#1e40af;color:white;border-color:#1e40af;">🏛 {{ _('Kadaster') }}</button>
+                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">🏛 {{ _('Kadaster') }}</button>
                         <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms danger small">🚔 {{ _('Politiebureau') }}</button>
                     </div>
                 </div>

@@ -26,7 +26,7 @@
     <span id="saveStatus" style="margin-left:0.5rem;font-size:0.8rem;color:var(--text-muted);"></span>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function loadPrefs() {
     fetch('/cms/api/notifications/preferences')
         .then(function(r) { return r.json(); })
