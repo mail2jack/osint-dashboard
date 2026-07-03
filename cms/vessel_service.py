@@ -24,6 +24,8 @@ from urllib.parse import quote
 from curl_cffi import requests as curl_requests
 from bs4 import BeautifulSoup
 
+from cms.routes.utils import is_safe_url
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -84,6 +86,9 @@ def lookup_vesselfinder(
             # Name-only: use the search page URL (results require JS, but try anyway)
             url = f"https://www.vesselfinder.com/vessels?name={quote(name)}"
         jitter_sleep(domain_hint=url)
+        if not is_safe_url(url):
+            logger.warning("Blocked SSRF attempt in lookup_vesselfinder: %s", url)
+            return None
         resp = curl_requests.get(url, headers=VESSELFINDER_HEADERS, timeout=15)
 
         if resp.status_code != 200:
@@ -200,6 +205,11 @@ def lookup_vesselfinder_detailed(
             )
             page = ctx.new_page()
             try:
+                if not is_safe_url(url):
+                    logger.warning(
+                        "Blocked SSRF attempt in lookup_vesselfinder_detailed: %s", url
+                    )
+                    return None
                 page.goto(url, wait_until="domcontentloaded", timeout=20000)
 
                 # Kill cookie consent
@@ -283,6 +293,9 @@ def lookup_vesselfinder_detailed(
     except Exception as e:
         logger.warning(f"VesselFinder detailed lookup failed: {e}")
         return lookup_vesselfinder(name=name, mmsi=mmsi, imo=imo)
+
+
+def _parse_coord(s: str) -> float | None:
     """Parse '46 N' or '-12.5' style coordinate strings."""
     s = s.strip()
     direction = 1

@@ -10,6 +10,7 @@ Help content is stored as Markdown files in the help/ directory.
 import logging
 from pathlib import Path
 
+import bleach
 import markdown
 import flask
 from flask import jsonify, render_template
@@ -56,6 +57,39 @@ def _load_help(topic: str) -> tuple[str | None, str | None]:
     try:
         md_text = md_file.read_text(encoding="utf-8")
         html = markdown.markdown(md_text, extensions=["extra", "toc", "codehilite"])
+        _ALLOWED_TAGS = list(bleach.sanitizer.ALLOWED_TAGS) + [
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "pre",
+            "code",
+            "blockquote",
+            "hr",
+            "p",
+            "br",
+            "table",
+            "thead",
+            "tbody",
+            "tr",
+            "th",
+            "td",
+            "img",
+            "div",
+            "span",
+        ]
+        _ALLOWED_ATTRS = {
+            "a": ["href", "title", "rel"],
+            "img": ["src", "alt", "title"],
+            "th": ["align"],
+            "td": ["align"],
+            "code": ["class"],
+            "div": ["class"],
+            "span": ["class"],
+        }
+        html = bleach.clean(html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS)
         return html, None
     except Exception as e:
         logger.error(f"Failed to load help/{topic}.md: {e}")

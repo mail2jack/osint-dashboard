@@ -14,6 +14,7 @@ from ..models import db, Case, Screenshot, AuditLog
 from ..auth import case_access_required, case_edit_required, apply_tenant_filter
 from ..image_validation import validate_image_file
 from ..tier_limits import check_storage_limit
+from .utils import is_safe_url
 
 from .response import api_success, api_error
 
@@ -207,6 +208,8 @@ def capture_screenshot(case_id: str) -> flask.Response:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page(viewport={"width": 1280, "height": 720})
+                if not is_safe_url(url):
+                    return jsonify({"error": "Invalid or blocked URL"}), 400
                 page.goto(url, wait_until="networkidle", timeout=30000)
                 page.wait_for_timeout(2000)  # Extra wait for dynamic content
                 page.screenshot(path=filepath, full_page=False)

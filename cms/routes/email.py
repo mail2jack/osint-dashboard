@@ -83,7 +83,7 @@ def email_check() -> flask.Response:
 
     from ..models import Setting
 
-    hibp_key = os.environ.get("HIBP_API_KEY", "") or Setting.get("hibp_api_key", "")
+    hibp_key = Setting.get("hibp_api_key", "") or os.environ.get("HIBP_API_KEY", "")
     if hibp_key:
         try:
             jitter_sleep(domain_hint="https://haveibeenpwned.com")

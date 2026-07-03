@@ -82,7 +82,11 @@ def _delete_session(session_id: str) -> bool:
     # Filesystem fallback
     import os as _os
 
-    session_file = _os.path.join(_SESSION_DIR, f"session_{session_id}")
+    session_file = _os.path.normpath(
+        _os.path.join(_SESSION_DIR, f"session_{session_id}")
+    )
+    if not session_file.startswith(_os.path.normpath(_SESSION_DIR)):
+        return False
     if _os.path.exists(session_file):
         _os.remove(session_file)
         return True
@@ -112,7 +116,11 @@ def _read_session_data(session_id: str) -> dict:
     # Filesystem fallback
     import os as _os
 
-    session_file = _os.path.join(_SESSION_DIR, f"session_{session_id}")
+    session_file = _os.path.normpath(
+        _os.path.join(_SESSION_DIR, f"session_{session_id}")
+    )
+    if not session_file.startswith(_os.path.normpath(_SESSION_DIR)):
+        return {}
     try:
         if _os.path.exists(session_file):
             with open(session_file) as f:

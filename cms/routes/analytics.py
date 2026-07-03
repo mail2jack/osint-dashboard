@@ -6,7 +6,6 @@ from flask import render_template, redirect, url_for, flash, abort, request
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..auth import viewer_required
 from ..models import (
     db,
@@ -106,7 +105,6 @@ def analytics():
 @cms_bp.route("/analytics/aggregate", methods=["GET", "POST"])
 @login_required
 @viewer_required
-@csrf.exempt
 def aggregate_usage_now():
     """Super-admin: manually trigger usage aggregation."""
     if request.method == "GET":
@@ -229,7 +227,6 @@ def analytics_super():
     }
     tier_prices = {}
     for tier in ("free", "starter", "professional", "enterprise"):
-        price_id = price_mapping.get(tier) if isinstance(price_mapping, dict) else None
         tier_prices[tier] = DEFAULT_MONTHLY_PRICES.get(tier, 0)
 
     mrr = sum(tier_counts.get(tier, 0) * price for tier, price in tier_prices.items())
@@ -239,9 +236,6 @@ def analytics_super():
     sub_canceled = sub_counts.get("canceled", 0) + sub_counts.get(
         "incomplete_expired", 0
     )
-    total_sub_tenants = Tenant.query.filter(
-        Tenant.stripe_subscription_id.isnot(None)
-    ).count()
     churn_rate = (
         round(sub_canceled / (sub_active + sub_canceled) * 100, 1)
         if (sub_active + sub_canceled) > 0

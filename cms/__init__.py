@@ -161,15 +161,15 @@ def create_cms_module(app: Flask):
         init_default_settings()
 
         # Apply session timeout from settings, fallback to 8h (28800s)
+        timeout_seconds = 28800
         try:
             timeout_minutes = Setting.get("session_timeout_minutes", "480")
-            timeout_seconds = int(timeout_minutes) * 60
-            app.permanent_session_lifetime = timedelta(seconds=timeout_seconds)
-            app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
-                seconds=timeout_seconds
-            )
+            if timeout_minutes is not None:
+                timeout_seconds = int(timeout_minutes) * 60
         except Exception as e:
-            app.logger.debug(f"Session timeout note: {e}")
+            app.logger.debug(f"Session timeout fallback: {e}")
+        app.permanent_session_lifetime = timedelta(seconds=timeout_seconds)
+        app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(seconds=timeout_seconds)
 
         # Seed default service rates for auto-invoicing
         try:
@@ -253,6 +253,29 @@ def create_cms_module(app: Flask):
             app.logger.debug(f"Login log purge note: {e}")
             db.session.rollback()
 
+        # Migrate API keys from .env to Setting table (if not already set)
+        try:
+            _env_settings = {
+                "overheid_api_key": "OVERHEID_API_KEY",
+                "brave_api_key": "BRAVE_API_KEY",
+                "twochat_api_key": "TWOCHAT_API_KEY",
+                "hibp_api_key": "HIBP_API_KEY",
+                "twochat_whatsapp_number": "TWOCHAT_WHATSAPP_NUMBER",
+            }
+            for setting_name, env_var in _env_settings.items():
+                existing = Setting.get(setting_name, "")
+                if not existing:
+                    val = os.environ.get(env_var, "")
+                    if val:
+                        Setting.set(setting_name, val)
+                        app.logger.info(
+                            "Migrated %s from .env to Setting table", setting_name
+                        )
+            db.session.commit()
+        except Exception as e:
+            app.logger.debug("API key migration note: %s", e)
+            db.session.rollback()
+
         # Seed first tenant if none exists
         from .models import Tenant
 
@@ -299,9 +322,6 @@ def create_cms_module(app: Flask):
             db.session.commit()
             app.logger.warning(
                 "Default admin user created. Set a password immediately via Settings > Users or the password reset flow."
-            )
-            app.logger.warning(
-                "Default admin created — change password immediately. Username: admin."
             )
         else:
             # Ensure existing admin of the default tenant is super admin + linked

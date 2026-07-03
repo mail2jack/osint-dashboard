@@ -15,7 +15,6 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..models import db, Subject, Client
 from ..auth import senior_required
-from .. import csrf
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,6 @@ MAX_IMPORT_ROWS = 500
 
 
 @cms_bp.route("/api/subjects/import-csv", methods=["POST"])
-@csrf.exempt
 @login_required
 @senior_required
 def import_subjects_csv() -> flask.Response:
@@ -85,7 +83,6 @@ def import_subjects_csv() -> flask.Response:
 
 
 @cms_bp.route("/api/clients/import-csv", methods=["POST"])
-@csrf.exempt
 @login_required
 @senior_required
 def import_clients_csv() -> flask.Response:

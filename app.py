@@ -23,7 +23,7 @@ import threading
 import uuid as uuid_mod
 import contextlib
 
-from flask import Flask, request, g
+from flask import Flask, redirect, request, g
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -145,6 +145,13 @@ def set_tenant_context():
             _db.session.rollback()
     else:
         g.tenant_id = None
+
+
+@app.before_request
+def redirect_https():
+    """Redirect HTTP to HTTPS when behind a reverse proxy."""
+    if not app.debug and request.headers.get("X-Forwarded-Proto", "").lower() == "http":
+        return redirect(request.url.replace("http://", "https://", 1), 301)
 
 
 # Warn if SQLite is in use — RLS tenant isolation only works with PostgreSQL
@@ -300,7 +307,7 @@ if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql"):
         app.config.pop("SQLALCHEMY_ENGINE_OPTIONS", None)
 
 # Initialize CMS using create_cms_module
-from cms import create_cms_module
+from cms import create_cms_module, csrf
 
 create_cms_module(app)
 logger.info("CMS initialized successfully")
@@ -832,6 +839,18 @@ def check_overdue_invoices():
 
     db.session.commit()
     print(f"Marked {marked} invoice(s) as overdue")
+
+
+@app.route("/csp-report", methods=["POST"])
+@csrf.exempt
+def csp_report():
+    """Accept CSP violation reports."""
+    import json
+
+    report = request.get_json(silent=True)
+    if report:
+        app.logger.warning("CSP violation: %s", json.dumps(report, indent=2))
+    return "", 204
 
 
 # =============================================================================

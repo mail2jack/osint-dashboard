@@ -35,7 +35,13 @@ echo -e "${YELLOW}[1/6] Backing up database and config...${NC}"
 BACKUP_DIR="$PROJECT_DIR/backups/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
-if [ -f "$PROJECT_DIR/cms.db" ]; then
+# PostgreSQL backup (pg_dump) or SQLite fallback
+if command -v pg_dump &>/dev/null && grep -q "postgresql://" "$PROJECT_DIR/.env" 2>/dev/null; then
+    DB_URL=$(grep "^DATABASE_URL=" "$PROJECT_DIR/.env" | cut -d= -f2-)
+    if [ -n "$DB_URL" ]; then
+        pg_dump "$DB_URL" > "$BACKUP_DIR/db.sql" 2>/dev/null && echo "  ✅ PostgreSQL database backed up"
+    fi
+elif [ -f "$PROJECT_DIR/cms.db" ]; then
     cp "$PROJECT_DIR/cms.db" "$BACKUP_DIR/cms.db"
     echo "  ✅ Database backed up to $BACKUP_DIR/cms.db"
 fi
@@ -48,10 +54,11 @@ fi
 # ---------- Step 2: Git Pull ----------
 echo -e "${YELLOW}[2/6] Pulling latest code...${NC}"
 if [ -d "$PROJECT_DIR/.git" ]; then
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "saas-migration")
     git fetch origin
-    git checkout master
-    git pull origin master
-    echo -e "  ✅ Git pull complete"
+    git checkout "$CURRENT_BRANCH"
+    git pull origin "$CURRENT_BRANCH"
+    echo -e "  ✅ Git pull complete ($CURRENT_BRANCH)"
 else
     echo -e "  ${RED}Not a git repository — skipping git pull${NC}"
 fi
@@ -67,16 +74,24 @@ echo -e "  ${GREEN}Version: $CURRENT_VER → $LATEST_VER${NC}"
 
 # ---------- Step 4: Update Dependencies ----------
 echo -e "${YELLOW}[3/6] Updating Python packages...${NC}"
-if [ -f "$PROJECT_DIR/requirements.txt" ]; then
-    pip3 install -r "$PROJECT_DIR/requirements.txt" --upgrade
+VENV_DIR="$PROJECT_DIR/venv/bin"
+if [ -f "$VENV_DIR/pip" ]; then
+    $VENV_DIR/pip install -r "$PROJECT_DIR/requirements.txt" --upgrade
     echo -e "  ✅ Packages updated"
+elif [ -f "$PROJECT_DIR/requirements.txt" ]; then
+    pip3 install -r "$PROJECT_DIR/requirements.txt" --upgrade
+    echo -e "  ✅ Packages updated (system pip)"
 else
     echo -e "  ${RED}No requirements.txt found${NC}"
 fi
 
 # ---------- Step 5: DB Migrations ----------
 echo -e "${YELLOW}[4/6] Running database migrations...${NC}"
-python3 -c "from app import app; from cms.models import db; from cms.__init__ import create_cms_module; create_cms_module(app); print('✅ Migrations OK')" 2>&1 | tail -1
+PYTHON_BIN="$VENV_DIR/python3"
+if [ ! -f "$PYTHON_BIN" ]; then
+    PYTHON_BIN="python3"
+fi
+$PYTHON_BIN -c "from app import app; from cms.models import db; from cms.__init__ import create_cms_module; create_cms_module(app); print('✅ Migrations OK')" 2>&1 | tail -1
 echo -e "  ✅ Migrations applied"
 
 # ---------- Step 6: Restart Services ----------

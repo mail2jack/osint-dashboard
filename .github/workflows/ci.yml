@@ -27,9 +27,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
-          cache-dependency-path: requirements.txt
-      - run: pip install -r requirements.txt
-      - run: pip install mypy
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python3 -m mypy cms/ --ignore-missing-imports
 
   test:
@@ -40,8 +41,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
-          cache-dependency-path: requirements.txt
-      - run: pip install -r requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python3 -m pytest tests/ -v --tb=short -q
 
   integration-postgres:
@@ -65,8 +68,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
-          cache-dependency-path: requirements.txt
-      - run: pip install -r requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: >-
           DATABASE_URL="postgresql://cms_test:cms_test@postgres:5432/cms_test"
           python3 -m pytest tests/ -v --tb=short -q

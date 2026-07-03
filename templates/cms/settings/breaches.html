@@ -3,7 +3,7 @@
 {% block content %}
 <div class="settings-layout">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    <style>
+    <style nonce="{{ csp_nonce }}">
         .br-container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
         .br-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .5rem; }
         .br-header h1 { margin: 0; font-size: 1.5rem; }
@@ -50,7 +50,7 @@
                 <h1>Datalekken register</h1>
                 <p>Artikel 33-34 AVG — Meldingsplicht datalekken (72 uur)</p>
             </div>
-            <button class="btn-cms danger" onclick="openCreateModal()">+ Nieuw datalek</button>
+            <button class="btn-cms danger js-open-create">+ Nieuw datalek</button>
         </div>
 
         {% if records %}
@@ -97,12 +97,12 @@
                     </span>
                 </div>
                 <div class="br-card-actions">
-                    <button class="btn-cms blue" onclick='openEditModal({{ r.to_dict() | tojson }})'>Bewerken</button>
+                    <button class="btn-cms blue js-edit" data-record='{{ r.to_dict() | tojson }}'>Bewerken</button>
                     {% if not r.authority_notified %}
-                    <button class="btn-cms orange" onclick='markNotified("{{ r.id }}", "authority")'>Meld autoriteit</button>
+                    <button class="btn-cms orange js-notify" data-id="{{ r.id }}" data-type="authority">Meld autoriteit</button>
                     {% endif %}
                     {% if r.authority_notified and not r.subjects_notified %}
-                    <button class="btn-cms success" onclick='markNotified("{{ r.id }}", "subjects")'>Informeer betrokkenen</button>
+                    <button class="btn-cms success js-notify" data-id="{{ r.id }}" data-type="subjects">Informeer betrokkenen</button>
                     {% endif %}
                 </div>
             </div>
@@ -113,7 +113,7 @@
             <p style="font-size:2rem;margin-bottom:.5rem;">&#128737;</p>
             <p>Nog geen datalekken geregistreerd.</p>
             <p style="font-size:.85rem;">Registreer datalekken om te voldoen aan de meldplicht (Art. 33-34 AVG).</p>
-            <button class="btn-cms danger" onclick="openCreateModal()" style="margin-top:1rem;">+ Nieuw datalek</button>
+            <button class="btn-cms danger js-open-create" style="margin-top:1rem;">+ Nieuw datalek</button>
         </div>
         {% endif %}
     </div>
@@ -122,9 +122,9 @@
         <div class="modal-box">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
                 <h2 id="modalTitle" style="margin:0;">Nieuw datalek</h2>
-                <button class="btn-cms gray btn-icon" onclick="closeModal()">&times;</button>
+                <button class="btn-cms gray btn-icon js-close-modal">&times;</button>
             </div>
-            <form id="breachForm" class="br-form" onsubmit="return saveRecord(event)">
+            <form id="breachForm" class="br-form">
                 <input type="hidden" id="recordId" value="">
                 <div>
                     <label for="fieldType">Type datalek</label>
@@ -166,7 +166,7 @@
                     <textarea id="fieldActions" placeholder="Welke maatregelen zijn genomen?"></textarea>
                 </div>
                 <div class="full-width" style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem;">
-                    <button type="button" class="btn-cms gray" onclick="closeModal()">Annuleren</button>
+                    <button type="button" class="btn-cms gray js-close-modal">Annuleren</button>
                     <button type="submit" class="btn-cms success">Opslaan</button>
                 </div>
             </form>
@@ -174,7 +174,8 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
+(function() {
 var breachModal = document.getElementById('breachModal');
 
 function openCreateModal() {
@@ -215,7 +216,7 @@ function saveRecord(event) {
         status: document.getElementById('fieldStatus').value,
         remedial_actions: document.getElementById('fieldActions').value.trim(),
     };
-    if (!payload.description) { alert('Beschrijving is verplicht.'); return false; }
+    if (!payload.description) { alert('Beschrijving is verplicht.'); return; }
 
     var url = '/cms/api/breaches';
     var method = 'POST';
@@ -227,7 +228,7 @@ function saveRecord(event) {
 
     fetch(url, {
         method: method,
-        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': window.CMS.csrfToken},
         body: JSON.stringify(payload),
     })
     .then(function(r) { return r.json(); })
@@ -237,8 +238,6 @@ function saveRecord(event) {
     })
     .catch(function(err) { alert('Fout: ' + err.message); })
     .finally(function() { btn.disabled = false; btn.textContent = 'Opslaan'; });
-
-    return false;
 }
 
 function markNotified(id, type) {
@@ -250,7 +249,7 @@ function markNotified(id, type) {
 
     fetch('/cms/api/breaches/' + id, {
         method: 'PUT',
-        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': window.CMS.csrfToken},
         body: JSON.stringify(payload),
     })
     .then(function(r) { return r.json(); })
@@ -261,8 +260,28 @@ function markNotified(id, type) {
     .catch(function(err) { alert('Fout: ' + err.message); });
 }
 
+// Wire up event listeners
+document.querySelectorAll('.js-open-create').forEach(function(btn) {
+    btn.addEventListener('click', openCreateModal);
+});
+document.querySelectorAll('.js-close-modal').forEach(function(btn) {
+    btn.addEventListener('click', closeModal);
+});
+document.querySelectorAll('.js-edit').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var record = JSON.parse(this.dataset.record);
+        openEditModal(record);
+    });
+});
+document.querySelectorAll('.js-notify').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        markNotified(this.dataset.id, this.dataset.type);
+    });
+});
+document.getElementById('breachForm').addEventListener('submit', saveRecord);
 breachModal.addEventListener('click', function(e) {
     if (e.target === breachModal) closeModal();
 });
+})();
 </script>
 {% endblock %}

@@ -5,7 +5,6 @@ from datetime import datetime
 from flask import request, jsonify, Response as FlaskResponse, send_file
 from flask_login import login_required
 
-from .. import csrf
 from .app_blueprint import app_routes_bp
 from ..app_helpers import generate_results_pdf
 from cms.validation import validate, GeneratePDFSchema
@@ -103,27 +102,25 @@ phone_lookup_all = validate(PhoneLookupAllSchema)(phone_lookup_all)
 phone_lookup_all = login_required(phone_lookup_all)
 
 # Register routes
+app_routes_bp.add_url_rule("/api/phone", "phone_osint", phone_osint, methods=["POST"])
 app_routes_bp.add_url_rule(
-    "/api/phone", "phone_osint", csrf.exempt(phone_osint), methods=["POST"]
-)
-app_routes_bp.add_url_rule(
-    "/api/whatsapp", "whatsapp_lookup", csrf.exempt(whatsapp_lookup), methods=["POST"]
+    "/api/whatsapp", "whatsapp_lookup", whatsapp_lookup, methods=["POST"]
 )
 app_routes_bp.add_url_rule(
     "/api/phone/2chat",
     "check_whatsapp_2chat",
-    csrf.exempt(check_whatsapp_2chat),
+    check_whatsapp_2chat,
     methods=["POST"],
 )
 app_routes_bp.add_url_rule(
-    "/api/telegram", "telegram_lookup", csrf.exempt(telegram_lookup), methods=["POST"]
+    "/api/telegram", "telegram_lookup", telegram_lookup, methods=["POST"]
 )
 app_routes_bp.add_url_rule(
-    "/api/carrier", "carrier_lookup", csrf.exempt(carrier_lookup), methods=["POST"]
+    "/api/carrier", "carrier_lookup", carrier_lookup, methods=["POST"]
 )
 app_routes_bp.add_url_rule(
     "/api/phone-lookup",
     "phone_lookup_all",
-    csrf.exempt(phone_lookup_all),
+    phone_lookup_all,
     methods=["POST"],
 )

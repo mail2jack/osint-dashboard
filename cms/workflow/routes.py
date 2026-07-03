@@ -3,6 +3,8 @@ import os
 import uuid
 from datetime import datetime, timezone
 
+import bleach
+
 import sqlalchemy as sa
 from flask import (
     abort,
@@ -775,7 +777,43 @@ def pv_view(case_id):
 
     import markdown as md_lib
 
-    body_html = md_lib.markdown(case.pv_body or "") if case.pv_body else ""
+    _ALLOWED_TAGS = [
+        "p",
+        "br",
+        "strong",
+        "em",
+        "a",
+        "ul",
+        "ol",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "code",
+        "pre",
+        "blockquote",
+        "hr",
+        "table",
+        "thead",
+        "tbody",
+        "tr",
+        "th",
+        "td",
+        "span",
+        "div",
+    ]
+    _ALLOWED_ATTRS = {
+        "a": ["href", "title"],
+        "span": ["class"],
+        "div": ["class"],
+        "th": ["align"],
+        "td": ["align"],
+    }
+    raw_html = md_lib.markdown(case.pv_body or "") if case.pv_body else ""
+    body_html = bleach.clean(raw_html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS)
 
     return render_template(
         "cms/workflow/workflow_pv.html",

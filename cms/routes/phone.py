@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @cms_bp.route("/api/phone-lookup-stored", methods=["POST"])
-@csrf.exempt
+@api_key_required
 @login_required
 def phone_lookup_stored() -> flask.Response:
     """Return the most recent stored lookup for a phone number."""

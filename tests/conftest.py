@@ -1,12 +1,16 @@
 import os
+import secrets
+import base64
 import tempfile
 import atexit
 import pytest
 
 _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False, delete_on_close=False)
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db.name}"
-os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
-os.environ["CMS_ENCRYPTION_KEY"] = "J0k445GkNVEJEPTH1k1MSRfgpaQxK4yIsjymmfHVAOA="
+os.environ["FLASK_SECRET_KEY"] = secrets.token_hex(32)
+os.environ["CMS_ENCRYPTION_KEY"] = base64.urlsafe_b64encode(
+    secrets.token_bytes(32)
+).decode()
 
 from app import app as _app
 from cms.models import db, User, init_default_settings

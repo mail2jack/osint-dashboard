@@ -13,7 +13,6 @@ from flask import request, jsonify, render_template, redirect, url_for, flash, a
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..validation import (
     validate,
     SpiderFootScanSchema,
@@ -483,7 +482,6 @@ def spiderfoot_scan_status(scan_id: str) -> flask.Response:
 
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/refresh", methods=["POST"])
-@csrf.exempt
 @login_required
 @roles_required("admin", "senior_investigator")
 def spiderfoot_refresh_scan(scan_id: str) -> flask.Response:
@@ -522,7 +520,6 @@ def spiderfoot_refresh_scan(scan_id: str) -> flask.Response:
 
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/stop", methods=["POST"])
-@csrf.exempt
 @login_required
 @roles_required("admin", "senior_investigator")
 def spiderfoot_stop_scan(scan_id: str) -> flask.Response:
@@ -555,7 +552,6 @@ def spiderfoot_stop_scan(scan_id: str) -> flask.Response:
 
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/delete", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 def spiderfoot_delete_scan(scan_id: str) -> flask.Response:
@@ -623,7 +619,6 @@ def spiderfoot_scan_results(scan_id: str) -> flask.Response:
 
 
 @cms_bp.route("/spiderfoot/scan/<scan_id>/import", methods=["POST"])
-@csrf.exempt
 @login_required
 @roles_required("admin", "senior_investigator")
 @validate(SpiderFootImportSchema)
@@ -825,7 +820,6 @@ def spiderfoot_settings() -> str:
 
 
 @cms_bp.route("/spiderfoot/settings/test", methods=["POST"])
-@csrf.exempt
 @login_required
 @admin_required
 @validate(SpiderFootTestSchema)

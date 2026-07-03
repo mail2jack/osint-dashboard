@@ -3,7 +3,6 @@ API Key authentication for external tool access.
 """
 
 import logging
-import sys
 from functools import wraps
 
 from flask import request, jsonify, g
@@ -29,37 +28,20 @@ def api_key_required(f):
 
         api_key = request.headers.get("X-API-Key", "")
         if not api_key:
-            print(
-                f"[api_key_required] no X-API-Key header from {request.remote_addr}",
-                file=sys.stderr,
-                flush=True,
-            )
+            logger.debug("No X-API-Key header from %s", request.remote_addr)
             return jsonify(
                 {"error": "API key required. Provide X-API-Key header."}
             ), 401
 
         prefix = api_key[:8] if len(api_key) >= 8 else api_key
-        print(
-            f"[api_key_required] checking prefix={prefix} key_len={len(api_key)}",
-            file=sys.stderr,
-            flush=True,
-        )
         key_record = ApiKey.query.filter_by(key_prefix=prefix, is_active=True).first()
 
         if not key_record:
-            print(
-                f"[api_key_required] no active key for prefix={prefix}",
-                file=sys.stderr,
-                flush=True,
-            )
+            logger.debug("No active key for provided prefix")
             return jsonify({"error": "Invalid API key"}), 401
 
         if not key_record.verify_key(api_key):
-            print(
-                f"[api_key_required] hash mismatch for {key_record.name}",
-                file=sys.stderr,
-                flush=True,
-            )
+            logger.debug("API key hash mismatch")
             return jsonify({"error": "Invalid API key"}), 401
 
         key_record.last_used_at = __import__("datetime").datetime.now(
@@ -70,20 +52,10 @@ def api_key_required(f):
         g.api_user_id = key_record.user_id
         g.api_key_name = key_record.name
 
-        print(
-            f"[api_key_required] KEY OK - name={key_record.name} user={key_record.user_id}",
-            file=sys.stderr,
-            flush=True,
-        )
-
         # Log in via Flask-Login so @login_required wrappers pass
         user = db.session.get(User, key_record.user_id)
         if user:
-            print(
-                f"[api_key_required] login_user({user.username}) active={user.is_active}",
-                file=sys.stderr,
-                flush=True,
-            )
+            logger.debug("Login user via API key (active=%s)", user.is_active)
             login_user(user)
 
         return f(*args, **kwargs)

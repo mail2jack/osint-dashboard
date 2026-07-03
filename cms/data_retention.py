@@ -72,10 +72,75 @@ def purge_expired_tenants(dry_run: bool = False) -> int:
     return len(expired)
 
 
+_ALLOWED_PURGE_TABLES = {
+    "finding",
+    "subject_note",
+    "subject_relation",
+    "subject",
+    "case",
+    "client",
+    "audit_log",
+    "search_history",
+    "export",
+    "notification",
+    "document",
+    "comment",
+    "event",
+    "task",
+    "invoice",
+    "payment",
+    "subscription",
+    "workflow",
+    "workflow_step",
+    "osint_result",
+    "phone_lookup",
+    "email_lookup",
+    "screenshot",
+    "breach_record",
+    "dpa_record",
+    "user_session",
+    "user_activity",
+    "case_assignee",
+    "case_tag",
+    "phone_lookups",
+    "login_logs",
+    "notification_preferences",
+    "notifications",
+    "comments",
+    "comment_edit_history",
+    "social_accounts",
+    "financial_records",
+    "invoice_items",
+    "payments",
+    "invoices",
+    "screenshots",
+    "spiderfoot_scans",
+    "osint_searches",
+    "api_keys",
+    "reminders",
+    "documents",
+    "document_templates",
+    "findings",
+    "addresses",
+    "contacts",
+    "tenant_settings",
+    "usage_records",
+    "case_assignments",
+    "case_subjects",
+    "subjects",
+    "clients",
+    "cases",
+    "users",
+    "feature_flags",
+}
+
+
 def _purge_single_tenant(tenant: Tenant, dry_run: bool) -> None:
     """Delete all rows belonging to *tenant* in the configured order."""
     tid = tenant.id
     for table_name in _PURGE_ORDER:
+        if table_name not in _ALLOWED_PURGE_TABLES:
+            raise ValueError(f"Invalid table name: {table_name}")
         db.session.execute(
             db.text(f"DELETE FROM {table_name} WHERE tenant_id = :tid"),
             {"tid": tid},

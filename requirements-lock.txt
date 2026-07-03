@@ -9,7 +9,6 @@ Flask==3.1.3
 Jinja2==3.1.6
 Mako==1.3.10
 MarkupSafe==3.0.3
-PyPDF2==1.28.6
 PyQRCode==1.2.1
 PySocks==1.7.1
 PyYAML==6.0.3

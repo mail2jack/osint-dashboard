@@ -157,7 +157,7 @@ function submitForm(e) {
 }
 
 // Case lookup by client ID (embedded server-side)
-const _allCases = {{ cases_data_json|safe }};
+const _allCases = {{ cases_data_json|tojson }};
 
 function filterCases() {
     const clientId = document.querySelector('select[name="client_id"]').value;

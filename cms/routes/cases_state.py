@@ -6,7 +6,6 @@ from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..validation import validate, SetCaseParentSchema, TransitionCaseSchema
 from ..models import db, Case, AuditLog, CaseStatus
 from ..auth import (
@@ -23,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 @cms_bp.route("/cases/<case_id>/set-parent", methods=["POST"])
-@csrf.exempt
 @login_required
 @roles_required("admin", "senior_investigator")
 @case_edit_required

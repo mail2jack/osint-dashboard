@@ -229,6 +229,8 @@ def lookup_domain(domain):
         try:
             import subprocess
 
+            if domain.startswith("-"):
+                raise ValueError("Invalid domain name")
             whois_proc = subprocess.run(
                 ["whois", domain], capture_output=True, text=True, timeout=10
             )

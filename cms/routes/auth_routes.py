@@ -15,6 +15,8 @@ import flask
 import pyotp
 import qrcode
 
+from urllib.parse import urlparse
+
 from flask import (
     request,
     jsonify,
@@ -24,6 +26,7 @@ from flask import (
     flash,
     session,
     abort,
+    current_app,
 )
 from flask_login import (
     login_user,
@@ -233,73 +236,51 @@ def login() -> flask.Response:
             return render_template("cms/login.html")
 
         user = User.query.filter_by(email=email).first()
-
-        if (
-            user
-            and user.locked_until
-            and user.locked_until > datetime.now(timezone.utc).replace(tzinfo=None)
-        ):
-            remaining = int(
-                (
-                    user.locked_until - datetime.now(timezone.utc).replace(tzinfo=None)
-                ).total_seconds()
-                / 60
-            )
-            flash(
-                f"Account locked due to too many failed attempts. Try again in {remaining} minutes.",
-                "danger",
-            )
-            return render_template("cms/login.html")
-
-        if user and user.check_password(password):
-            user.failed_login_attempts = 0
-            user.locked_until = None
-
-            if not user.is_active:
-                flash(
-                    "Your account has been disabled. Contact an administrator.",
-                    "danger",
-                )
-                return render_template("cms/login.html")
-
-            tenant = db.session.get(Tenant, user.tenant_id)
-            if not tenant or not tenant.is_active:
-                flash(
-                    "Your organization's account has been disabled. Contact support.",
-                    "danger",
-                )
-                return render_template("cms/login.html")
-
-            AuditLog.log(
-                user_id=user.id,
-                action="password_verified",
-                entity_type="user",
-                entity_id=user.id,
-                ip_address=request.remote_addr,
-                user_agent=request.user_agent.string,
-                description=f"Password verified for {email}",
-            )
-            db.session.commit()
-
-            notify_login_success(email, request.remote_addr)
-
-            session["_2fa_user_id"] = user.id
-            session["_2fa_remember"] = remember
-            if user.totp_secret:
-                return redirect(url_for("auth.verify_2fa"))
-            return redirect(url_for("auth.setup_2fa"))
+        login_failed = True
 
         if user:
-            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
-            if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
-                from datetime import timedelta
+            is_locked = user.locked_until and user.locked_until > datetime.now(
+                timezone.utc
+            ).replace(tzinfo=None)
 
-                user.locked_until = datetime.now(timezone.utc) + timedelta(
-                    minutes=ACCOUNT_LOCKOUT_MINUTES
-                )
-                notify_account_locked(
-                    email, request.remote_addr, ACCOUNT_LOCKOUT_MINUTES
-                )
+            if not is_locked and user.check_password(password):
+                user.failed_login_attempts = 0
+                user.locked_until = None
+
+                tenant = db.session.get(Tenant, user.tenant_id)
+                if user.is_active and tenant and tenant.is_active:
+                    login_failed = False
+                    AuditLog.log(
+                        user_id=user.id,
+                        action="password_verified",
+                        entity_type="user",
+                        entity_id=user.id,
+                        ip_address=request.remote_addr,
+                        user_agent=request.user_agent.string,
+                        description=f"Password verified for {email}",
+                    )
+                    db.session.commit()
+
+                    notify_login_success(email, request.remote_addr)
+
+                    session["_2fa_user_id"] = user.id
+                    session["_2fa_remember"] = remember
+                    if user.totp_secret:
+                        return redirect(url_for("auth.verify_2fa"))
+                    return redirect(url_for("auth.setup_2fa"))
+
+            if login_failed:
+                user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+                if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
+                    from datetime import timedelta
+
+                    user.locked_until = datetime.now(timezone.utc) + timedelta(
+                        minutes=ACCOUNT_LOCKOUT_MINUTES
+                    )
+                    notify_account_locked(
+                        email, request.remote_addr, ACCOUNT_LOCKOUT_MINUTES
+                    )
+
         db.session.commit()
 
         notify_login_failed(email, request.remote_addr)
@@ -334,6 +315,7 @@ def logout() -> flask.Response:
     )
     db.session.commit()
 
+    session.clear()
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
@@ -456,6 +438,7 @@ def _complete_2fa_login(user) -> flask.Response:
     remember = session.pop("_2fa_remember", False)
     session.pop("_2fa_user_id", None)
 
+    current_app.session_interface.regenerate(session)  # prevent session fixation
     login_user(user, remember=remember)
 
     AuditLog.log(
@@ -477,8 +460,10 @@ def _complete_2fa_login(user) -> flask.Response:
     )
 
     next_page = request.args.get("next") or session.pop("_2fa_next", None)
-    if next_page and next_page.startswith("/") and not next_page.startswith("//"):
-        return redirect(next_page)
+    if next_page:
+        parsed = urlparse(next_page)
+        if not parsed.netloc and not parsed.scheme and not parsed.params:
+            return redirect(next_page)
     return redirect(url_for("cms.dashboard"))
 
 
@@ -517,6 +502,7 @@ def setup_2fa() -> flask.Response:
 
         totp = pyotp.TOTP(secret)
         if not code or not totp.verify(code, valid_window=1):
+            rate_limit_after_n(rate_key, max_attempts=3, retry_after=15)
             flash("Invalid code. Please try again.", "danger")
             return render_template(
                 "cms/2fa/setup.html",
@@ -913,6 +899,9 @@ def create_user() -> flask.Response:
                 f"User limit reached ({cur}/{maximum}). Upgrade the plan to add more users."
             )
 
+    if data.get("role") == "admin" and not current_user.is_super_admin:
+        return _error("Alleen een super-admin kan admin-gebruikers aanmaken.")
+
     user = User(
         username=data["username"],
         email=data.get("email", ""),
@@ -952,11 +941,14 @@ def create_user() -> flask.Response:
         try:
             from ..email_utils import send_password_reset_email
 
+            token = user.generate_reset_token()
+            reset_url = url_for("auth.set_password", token=token, _external=True)
+            db.session.commit()
             send_password_reset_email(
                 user.email,
                 user.username,
                 user.full_name,
-                url_for("auth.login", _external=True),
+                reset_url,
             )
         except Exception as e:
             logger.error("Failed to send password reset email to %s: %s", user.email, e)
@@ -1022,6 +1014,13 @@ def edit_user(user_id) -> flask.Response:
                 return render_template("cms/users/edit.html", user=user)
 
         if current_user.is_admin:
+            if data.get("role") == "admin" and not current_user.is_super_admin:
+                if request.is_json:
+                    return jsonify(
+                        {"error": "Alleen een super-admin kan de admin-rol toewijzen."}
+                    ), 403
+                flash("Alleen een super-admin kan de admin-rol toewijzen.", "danger")
+                return redirect(url_for("users.list_users"))
             for field in ["username", "email", "full_name", "role", "is_active"]:
                 if field in data:
                     setattr(user, field, data[field])
@@ -1114,6 +1113,7 @@ def change_password() -> flask.Response:
         description="User changed their own password",
     )
     db.session.commit()
+    current_app.session_interface.regenerate(session)
 
     if request.is_json:
         return jsonify({"message": "Password changed successfully"})
@@ -1214,16 +1214,24 @@ def accept_invite(token: str):
         return render_template("cms/accept_invite.html", valid=False)
 
     if request.method == "POST":
+        rate_key = f"accept_invite_ip:{request.remote_addr or 'unknown'}"
+        limited, _ = is_rate_limited(rate_key)
+        if limited:
+            flash("Te veel pogingen. Probeer het later opnieuw.", "danger")
+            return redirect(url_for("auth.login"))
+
         full_name = (request.form.get("full_name") or "").strip()
         password = request.form.get("password", "")
         confirm = request.form.get("confirm_password", "")
 
         if not full_name:
+            rate_limit_after_n(rate_key, max_attempts=5, retry_after=300)
             flash("Please enter your full name.", "danger")
             return render_template(
                 "cms/accept_invite.html", valid=True, inv=inv, email=inv.email
             )
         if len(password) < 8:
+            rate_limit_after_n(rate_key, max_attempts=5, retry_after=300)
             flash("Password must be at least 8 characters.", "danger")
             return render_template(
                 "cms/accept_invite.html",
@@ -1233,6 +1241,7 @@ def accept_invite(token: str):
                 full_name=full_name,
             )
         if password != confirm:
+            rate_limit_after_n(rate_key, max_attempts=5, retry_after=300)
             flash("Passwords do not match.", "danger")
             return render_template(
                 "cms/accept_invite.html",

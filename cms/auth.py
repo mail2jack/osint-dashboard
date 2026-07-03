@@ -30,6 +30,7 @@ from flask import (
 from flask_login import (
     LoginManager,
     current_user,
+    AnonymousUserMixin,
 )
 
 from .models import db, User, ApiKey, AuditLog, Case, Subject
@@ -45,7 +46,28 @@ ACCOUNT_LOCKOUT_MINUTES = 15
 # Login Manager Setup
 # =============================================================================
 
+
+class CMSAnonymousUser(AnonymousUserMixin):
+    """Custom anonymous user that gracefully handles role checks."""
+
+    def has_role(self, *roles) -> bool:
+        return False
+
+    @property
+    def is_admin(self) -> bool:
+        return False
+
+    @property
+    def is_super_admin(self) -> bool:
+        return False
+
+    @property
+    def tenant_id(self) -> str | None:
+        return None
+
+
 login_manager = LoginManager()
+login_manager.anonymous_user = CMSAnonymousUser
 
 
 @login_manager.user_loader

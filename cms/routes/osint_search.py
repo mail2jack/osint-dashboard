@@ -9,7 +9,6 @@ from flask import request, jsonify, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..validation import validate, StartOSINTSearchSchema, AddOSINTFindingsSchema
 from ..models import db, Case, Subject, AuditLog, Finding
 from ..auth import case_access_required
@@ -411,7 +410,6 @@ def get_osint_sf_results(search_id: str) -> flask.Response:
 
 
 @cms_bp.route("/cases/<case_id>/osint-search/add-findings", methods=["POST"])
-@csrf.exempt
 @login_required
 @case_access_required
 @validate(AddOSINTFindingsSchema)

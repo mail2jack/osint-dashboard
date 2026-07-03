@@ -198,7 +198,7 @@
     </div>
 </div>
 
-<script id="tenants-data" type="application/json">{{ tenants_json|safe }}</script>
+<script id="tenants-data" type="application/json">{{ tenants_json|tojson }}</script>
 <script nonce="{{ csp_nonce }}">
 function showCreateModal(btn) {
     document.getElementById('createModal').classList.add('show');

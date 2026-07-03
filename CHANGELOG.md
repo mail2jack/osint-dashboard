@@ -1,5 +1,30 @@
 # Changelog
 
+## [3.7.0] — 2026-07-02
+
+### Added
+- `README.md` and `INSTALL.md` documentation
+- `requirements-dev.txt` for test/lint tools (separate from production deps)
+- Python 3.12+ version check in `install.sh` with deadsnakes PPA auto-install
+- NodeSource 22.x setup in `install.sh` (replaces outdated Ubuntu nodejs)
+- `playwright install chromium` in `install.sh`
+- `osint-bot.service` installation (if present in `deploy/`)
+- Default password check, `FLASK_ENV`, and `DB_SSL_MODE` checks in `scripts/doctor.py`
+
+### Changed
+- `install.sh` branch: `master` → `saas-migration`
+- `update.sh` uses dynamic current branch instead of hardcoded `master`
+- Generated `.env` now includes `FLASK_ENV=production` and `DB_SSL_MODE=prefer`
+- Gunicorn timeout increased 120s → 300s for slow first boot
+- `2>/dev/null` removed from npm build commands (errors are now visible)
+- `.env.example` now includes `FLASK_ENV`, `DB_SSL_MODE`, uncommented `DATABASE_URL`
+- CI workflows use `requirements-dev.txt` for test/lint deps
+- MANUAL.md installation section updated (branch, Python 3.12+, NodeSource, Playwright, full steps)
+
+### Fixed
+- Missing `print_warning` function in `install.sh` (caused bash error on SSL failure)
+- Certbot email now prompted with validation instead of hardcoded `admin@$DOMAIN`
+
 ## [3.6.0] — 2026-06-06
 
 ### Added

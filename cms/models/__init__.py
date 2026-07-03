@@ -395,7 +395,7 @@ class User(UserMixin, db.Model):
         if now > expires:
             return False
         expected = hashlib.sha256(token.encode()).hexdigest()
-        return self.password_reset_token == expected
+        return secrets.compare_digest(self.password_reset_token, expected)
 
     def clear_reset_token(self) -> None:
         self.password_reset_token = None

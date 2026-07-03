@@ -21,7 +21,7 @@ NC='\033[0m'
 
 # Configuration
 REPO_URL="https://github.com/mail2jack/osint-dashboard.git"
-BRANCH="master"
+BRANCH="saas-migration"
 APP_DIR="/opt/osint-dashboard"
 SF_DIR="/opt/spiderfoot"
 SERVICE_NAME="osint-dashboard"
@@ -31,6 +31,7 @@ SF_SERVICE_NAME="spiderfoot"
 print_step() { echo -e "${YELLOW}[STEP]${NC} $1"; }
 print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 
 # Copy system lxml into a venv (needed on Python 3.14+ where pip can't build from source)
@@ -57,6 +58,32 @@ echo -e "${CYAN}========================================${NC}\n"
 if [[ $EUID -ne 0 ]]; then
     print_error "This script must be run as root"
     exit 1
+fi
+
+# Check Python version (must be 3.12+)
+PY_VER=$(python3 --version 2>/dev/null | grep -oP '\d+\.\d+' | head -1)
+if [[ -z "$PY_VER" ]]; then
+    print_error "Python 3 not found. This script requires Python 3.12+."
+    exit 1
+fi
+PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+if [[ "$PY_MAJOR" -lt 3 || ( "$PY_MAJOR" -eq 3 && "$PY_MINOR" -lt 12 ) ]]; then
+    print_warning "System Python is $PY_VER, but this app requires Python 3.12+."
+    print_step "Adding deadsnakes PPA for Python 3.12..."
+    if command -v add-apt-repository &>/dev/null; then
+        add-apt-repository -y ppa:deadsnakes/ppa
+        apt update -qq
+        apt install -y python3.12 python3.12-venv python3.12-dev
+        # Point python3 to 3.12
+        update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+        print_success "Python 3.12 installed via deadsnakes PPA"
+    else
+        print_error "Cannot install Python 3.12 automatically. Install deadsnakes PPA manually:"
+        print_info "  sudo add-apt-repository ppa:deadsnakes/ppa"
+        print_info "  sudo apt install python3.12 python3.12-venv python3.12-dev"
+        exit 1
+    fi
 fi
 
 # ============================================================================
@@ -104,14 +131,18 @@ apt install -y \
     software-properties-common \
     certbot \
     python3-certbot-nginx \
-    nodejs \
-    npm \
     redis-server \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
     libgdk-pixbuf2.0-0 \
     libffi-dev
 print_success "System dependencies installed"
+
+# Install recent Node.js via NodeSource (Ubuntu repos are too old)
+print_step "Installing Node.js 22.x from NodeSource..."
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt install -y nodejs
+print_success "Node.js $(node --version) installed"
 
 # ============================================================================
 # STEP 3: Create App User
@@ -160,6 +191,10 @@ pip install --upgrade setuptools wheel
 print_step "Installing Python packages from requirements.txt..."
 pip install -r requirements.txt
 
+# Install Playwright and Chromium browser for PDF/screenshot features
+print_step "Installing Playwright browsers..."
+python3 -m playwright install chromium 2>&1 || print_warning "Playwright browser install failed — PDF generation may not work"
+
 if ! "$APP_DIR/venv/bin/gunicorn" --version &>/dev/null; then
     print_error "Gunicorn installation failed!"
     exit 1
@@ -175,8 +210,8 @@ print_success "Iveras virtual environment ready with all packages"
 # ============================================================================
 print_step "Building frontend assets (npm)..."
 cd "$APP_DIR"
-npm install --production 2>/dev/null
-node build.mjs 2>/dev/null
+npm install --production 2>&1 || print_warning "npm install had warnings — check output above"
+node build.mjs 2>&1 || print_warning "Frontend build had warnings — check output above"
 chown -R osint:osint "$APP_DIR/static/dist" 2>/dev/null
 print_success "Frontend assets built"
 
@@ -261,12 +296,16 @@ SECRET_KEY=$(openssl rand -hex 32)
 CMS_ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 
 cat > "$APP_DIR/.env" << EOF
+# Environment
+FLASK_ENV=production
+
 # Flask Configuration
 FLASK_APP=app.py
 SECRET_KEY=$SECRET_KEY
 
 # Database (PostgreSQL)
 DATABASE_URL=postgresql://osint:$DB_PASSWORD@localhost:5432/osint_db
+DB_SSL_MODE=prefer
 
 # Server
 PORT=5000
@@ -376,7 +415,14 @@ if [[ ${#DOMAINS[@]} -gt 0 && -n "${DOMAINS[0]}" ]]; then
         CERTBOT_ARGS="$CERTBOT_ARGS -d $d"
     done
     FIRST_DOMAIN="${DOMAINS[0]}"
-    certbot --nginx $CERTBOT_ARGS --non-interactive --agree-tos --email "admin@$FIRST_DOMAIN" || {
+    # Prompt for a valid email (required by Let's Encrypt for expiry notices)
+    read -r -p "Enter email for Let's Encrypt notifications [admin@$FIRST_DOMAIN]: " LETSENCRYPT_EMAIL
+    LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-admin@$FIRST_DOMAIN}"
+    if [[ ! "$LETSENCRYPT_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        print_warning "Invalid email format — using admin@$FIRST_DOMAIN"
+        LETSENCRYPT_EMAIL="admin@$FIRST_DOMAIN"
+    fi
+    certbot --nginx $CERTBOT_ARGS --non-interactive --agree-tos --email "$LETSENCRYPT_EMAIL" || {
         print_warning "SSL setup failed. You can run it later:"
         print_info "  sudo certbot --nginx $CERTBOT_ARGS"
     }
@@ -448,7 +494,7 @@ User=osint
 Group=osint
 WorkingDirectory=/opt/osint-dashboard
 Environment="PATH=/opt/osint-dashboard/venv/bin"
-ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 --timeout 120 --access-logfile /var/log/osint-dashboard/access.log --error-logfile /var/log/osint-dashboard/error.log "app:app"
+ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 --timeout 300 --access-logfile /var/log/osint-dashboard/access.log --error-logfile /var/log/osint-dashboard/error.log "app:app"
 Restart=always
 RestartSec=10s
 
@@ -491,6 +537,14 @@ echo "osint ALL=(root) NOPASSWD: /usr/bin/git, /usr/bin/chown, /usr/bin/systemct
 chmod 440 /etc/sudoers.d/osint-services
 systemctl enable $SERVICE_NAME
 systemctl enable $SF_SERVICE_NAME
+
+# Install optional bot service (if present)
+if [ -f "$APP_DIR/deploy/osint-bot.service" ]; then
+    cp "$APP_DIR/deploy/osint-bot.service" /etc/systemd/system/osint-bot.service
+    chmod 644 /etc/systemd/system/osint-bot.service
+    print_info "osint-bot.service installed (enable manually: systemctl enable osint-bot)"
+fi
+
 print_success "Systemd services created"
 
 # ============================================================================

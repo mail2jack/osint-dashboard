@@ -121,6 +121,7 @@
 {% if scan.status == 'pending' or status_lower == 'running' %}
 <div class="form-actions">
     <form method="POST" action="{{ url_for('cms.spiderfoot_stop_scan', scan_id=scan.id) }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-danger" data-confirm="Stop this scan?">Stop Scan</button>
     </form>
 </div>
@@ -151,6 +152,7 @@
             <a href="{{ url_for('cms.spiderfoot_scan_results', scan_id=scan.id) }}" class="btn btn-small" target="_blank">View All JSON</a>
             {% if scan.case_id %}
             <form method="POST" action="{{ url_for('cms.spiderfoot_import_results', scan_id=scan.id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-primary btn-small" data-confirm="Import all results as findings to case {{ scan.case_id }}?">
                     Import to Case
                 </button>

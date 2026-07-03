@@ -7,10 +7,10 @@ from flask import request, jsonify, abort
 from flask_login import login_required
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Subject, Finding
 from ..auth import ensure_tenant_access
 from ..validation import validate, ExtractSocialIdSchema, UpdateSocialIdsSchema
+from .utils import is_safe_url
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,8 @@ def _extract_social_ids_from_url(url, subject=None):
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
+                if not is_safe_url(url):
+                    raise ValueError("Invalid or blocked URL")
                 page.goto(url, wait_until="networkidle", timeout=30000)
                 page.wait_for_timeout(2000)
                 html = page.content()
@@ -51,6 +53,8 @@ def _extract_social_ids_from_url(url, subject=None):
             headers = {
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
             }
+            if not is_safe_url(url):
+                raise ValueError("Invalid or blocked URL")
             jitter_sleep(domain_hint=url)
             r = curl_requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200:
@@ -64,6 +68,8 @@ def _extract_social_ids_from_url(url, subject=None):
             headers = {
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
             }
+            if not is_safe_url(url):
+                raise ValueError("Invalid or blocked URL")
             jitter_sleep(domain_hint=url)
             r = curl_requests.get(url, headers=headers, timeout=15)
             if r.status_code == 200:
@@ -150,7 +156,6 @@ def _extract_social_ids_from_url(url, subject=None):
 
 
 @cms_bp.route("/extract-social-id", methods=["POST"])
-@csrf.exempt
 @login_required
 @validate(ExtractSocialIdSchema)
 def extract_social_id() -> flask.Response:

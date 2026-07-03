@@ -5,7 +5,6 @@ from flask import request, jsonify, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, FinancialRecord, AuditLog, Case
 from ..auth import (
     senior_required,
@@ -94,7 +93,6 @@ def create_financial() -> flask.Response:
 
 
 @cms_bp.route("/financials/<record_id>/verify", methods=["POST"])
-@csrf.exempt
 @login_required
 @senior_required
 @validate(VerifyFinancialSchema)

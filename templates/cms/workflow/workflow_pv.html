@@ -63,7 +63,7 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
 
 {% if body_html %}
 <div class="pv-body">
-{{ body_html|safe }}
+{{ body_html }}
 </div>
 {% else %}
 <p style="color:#888;font-style:italic;">Nog geen PV-tekst opgesteld. <a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}">Klik hier om te bewerken</a>.</p>

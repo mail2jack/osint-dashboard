@@ -142,19 +142,19 @@ def brave_search(query, api_key, results_meta: dict | None = None) -> list:
 
 
 def _get_brave_key() -> str:
-    """Get Brave API key: env var first, then DB Setting as fallback."""
-    key = os.environ.get("BRAVE_API_KEY", "")
-    if not key:
-        try:
-            from flask import current_app
+    """Get Brave API key: DB Setting first, then env var as fallback."""
+    try:
+        from flask import current_app
 
-            with current_app.app_context():
-                from cms.models import Setting
+        with current_app.app_context():
+            from cms.models import Setting
 
-                key = Setting.get("brave_api_key", "")
-        except Exception as e:
-            logger.debug(f"_get_brave_key failed ({type(e).__name__}): {e}")
-    return key
+            key = Setting.get("brave_api_key", "")
+            if key:
+                return key
+    except Exception as e:
+        logger.debug("_get_brave_key (Setting) failed: %s", e)
+    return os.environ.get("BRAVE_API_KEY", "")
 
 
 def person_dorks_search(full_name, cancel_event: threading.Event | None = None) -> dict:

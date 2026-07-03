@@ -420,12 +420,69 @@ def check_weasyprint_deps(dry: bool) -> bool:
 
 def check_playwright(dry: bool) -> bool:
     log("Checking Playwright Chromium...", end=" ")
-    try:
+    chromium_path = Path.home() / ".cache" / "ms-playwright"
+    if chromium_path.exists() and any(chromium_path.iterdir()):
         log(OK)
         return True
-    except Exception:
-        log(FAIL + " (run: playwright install chromium)")
+    log(FAIL + " (run: playwright install chromium)")
+    return False
+
+
+def check_default_password(dry: bool) -> bool:
+    log("Checking default admin password...", end=" ")
+    env = {**os.environ}
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.strip().split("=", 1)
+                env[k] = v
+    python = VENV_PYTHON
+    code = (
+        "from app import app; from cms.models import User; "
+        "app.app_context().push(); "
+        "u = User.query.filter_by(username='admin').first(); "
+        "print('DEFAULT' if u and u.password_hash and "
+        "u.password_hash.startswith('scrypt') and "
+        "u.check_password('changeme123') else 'OK')"
+    )
+    r = run([python, "-c", code], cwd=str(APP_DIR), env=env, timeout=15)
+    if "DEFAULT" in r.stdout:
+        log(FAIL + " (admin:changeme123 — change immediately!)")
         return False
+    log(OK)
+    return True
+
+
+def check_env_flask_env(dry: bool) -> bool:
+    log("Checking FLASK_ENV in .env...", end=" ")
+    if not ENV_FILE.exists():
+        log(FAIL + " (.env not found)")
+        return False
+    content = ENV_FILE.read_text()
+    for line in content.splitlines():
+        if line.strip().startswith("FLASK_ENV="):
+            val = line.split("=", 1)[1].strip()
+            if val == "production":
+                log(OK)
+                return True
+            log(FAIL + f" (FLASK_ENV={val}, should be production)")
+            return False
+    log(FAIL + " (FLASK_ENV not set)")
+    return False
+
+
+def check_env_db_ssl_mode(dry: bool) -> bool:
+    log("Checking DB_SSL_MODE in .env...", end=" ")
+    if not ENV_FILE.exists():
+        log(SKIP + " (.env not found)")
+        return True
+    content = ENV_FILE.read_text()
+    for line in content.splitlines():
+        if line.strip().startswith("DB_SSL_MODE="):
+            log(OK)
+            return True
+    log(FAIL + " (DB_SSL_MODE not set)")
+    return False
 
 
 def check_redis(dry: bool) -> bool:
@@ -507,6 +564,9 @@ def main():
         ("Gunicorn error log", check_gunicorn_logging),
         ("weasyprint deps", check_weasyprint_deps),
         ("Playwright", check_playwright),
+        ("Default admin password", check_default_password),
+        ("FLASK_ENV=production", check_env_flask_env),
+        ("DB_SSL_MODE in .env", check_env_db_ssl_mode),
         ("Redis", check_redis),
     ]
 

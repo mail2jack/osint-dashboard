@@ -13,6 +13,7 @@
 <div class="card">
     <h3>Connection Settings</h3>
     <form method="POST" id="settingsForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label for="url">SpiderFoot Server URL</label>
             <input type="url" id="url" name="url" value="{{ settings.url }}" placeholder="http://localhost:5001" required>

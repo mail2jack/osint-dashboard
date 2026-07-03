@@ -79,10 +79,12 @@ def register_system_routes(app: Flask) -> None:
         )
 
     @app.route("/api/docs")
+    @login_required
     def api_docs() -> str:
         return render_template("cms/api_docs.html")
 
     @app.route("/api/openapi.json")
+    @login_required
     def openapi_spec() -> flask.Response:
         spec = _build_openapi_spec()
         return jsonify(spec)

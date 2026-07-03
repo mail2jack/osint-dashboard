@@ -5,7 +5,6 @@ from flask import request, jsonify
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import db, Finding, AuditLog, Case
 from ..auth import roles_required
 from ..validation import validate, CreateFindingSchema
@@ -18,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/findings/create", methods=["POST"])
 @cms_bp.route("/cases/<case_id>/findings/create", methods=["POST"])
-@csrf.exempt
 @login_required
 @roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
 @validate(CreateFindingSchema)

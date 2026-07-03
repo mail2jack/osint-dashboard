@@ -1,7 +1,7 @@
 # Iveras OSINT Case Management System - Manual
 
-**Version:** 3.4.0  
-**Last Updated:** May 2026
+**Version:** 3.6.0  
+**Last Updated:** July 2026
 
 ---
 
@@ -60,52 +60,70 @@ Iveras OSINT Case Management System combines open-source intelligence gathering 
 
 ## Installation
 
+Two methods: **one-command server install** (recommended for production) or **manual setup** (for development/macOS).
+
+> **Important:** The install script creates a dedicated `osint` system user automatically.  
+> You do **not** need to create this user yourself — just run `sudo ./install.sh` as your cloud VM user.
+
+---
+
 ### Option A: One-command Server Install (Ubuntu/Debian — recommended)
 
 ```bash
 sudo apt install -y wget
-wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/master/install.sh
+wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/saas-migration/install.sh
 chmod +x install.sh
 sudo ./install.sh
 ```
 
 The script installs everything automatically:
 
-- Python + pip + virtualenv (compatible with Python 3.14 — uses system `lxml` wheel)
-- PostgreSQL (random password generated, auto-configured)
-- Nginx reverse proxy (Iveras + SpiderFoot routes)
-- SpiderFoot (git clone + venv + digest auth + lxml pin removed for Python 3.14)
-- SSL via Let's Encrypt (optional, for one or more domains)
-- Systemd services (`osint-dashboard` and `spiderfoot`)
-- UFW firewall (SSH/HTTP/HTTPS)
-- Fail2ban (SSH + Nginx jails)
-- Health check endpoint verification
+- **Python 3.12+** — auto-installs via deadsnakes PPA if system Python is too old
+- **Node.js 22.x** — from NodeSource (Ubuntu repos are too old for esbuild)
+- **PostgreSQL** (random password generated, auto-configured)
+- **Nginx** reverse proxy (Iveras + SpiderFoot routes)
+- **SpiderFoot** (git clone + venv + digest auth)
+- **Playwright Chromium** — for PDF/screenshot generation
+- **SSL via Let's Encrypt** (optional, for one or more domains)
+- **Systemd services** (`osint-dashboard`, `spiderfoot`, optionally `osint-bot`)
+- **UFW firewall** (SSH/HTTP/HTTPS)
+- **Fail2ban** (SSH + Nginx jails)
+- **Health check** endpoint verification
 
-During installation you'll be asked for **domain name(s)** — enter one or more space-separated domains for SSL (e.g. `joost.iveras.nl joost.iveras.com`), or press Enter for IP-only access.
+#### What you'll be asked
 
-After installation, edit the API keys in `/opt/osint-dashboard/.env` and the SpiderFoot password is shown in the install output.
+1. **Domain name(s)** — Enter one or more space-separated domains for SSL (e.g. `joost.iveras.nl joost.iveras.com`), or press Enter for IP-only access.
+2. **Let's Encrypt email** — Required for certificate expiry notifications.
 
-**Update notifications** are automatically enabled — the app checks GitHub for new versions and shows a banner on the dashboard when an update is available. The one-click update button runs `git pull`, `pip install`, and restarts services.
+#### After installation
+
+1. Edit API keys in `/opt/osint-dashboard/.env`:
+   - `BRAVE_API_KEY` — for web search (free: https://brave.com/search/api/)
+   - `OVERHEID_API_KEY` — for Dutch government data (https://overheid.io)
+   - `HIBP_API_KEY` — for breach checking (https://haveibeenpwned.com/API/Key)
+   - `TWOCHAT_API_KEY` — for WhatsApp integration (https://app.2chat.io)
+2. SpiderFoot password is shown in the install output — save it.
+3. Log in at `https://your-domain.com` with `admin` / `changeme123` (change immediately).
+
+**Update notifications** are automatically enabled — a banner appears on the dashboard when a new version is available.
 
 #### Prerequisites
 
-- **Ubuntu 20.04+** or **Debian 11+** (Python 3.14 supported)
+- **Ubuntu 22.04+** or **Debian 12+**
 - Root access (sudo)
 - Ports 80/443 open (or access to the server's IP)
-- Optional: one or more domain names pointing to the server for SSL
+- Optional: domain name(s) pointing to the server for SSL
 
 #### Service Management
 
-After installation, use `start-server` to manage services:
-
 ```bash
-sudo ./start-server          # Show status (default)
-sudo ./start-server start    # Start all services
-sudo ./start-server stop     # Stop all services
-sudo ./start-server restart  # Restart all services
-sudo ./start-server logs     # Live logs voor Iveras
-sudo ./start-server logs-sf  # Live logs voor SpiderFoot
-sudo ./start-server update   # Git pull + pip install + restart
+sudo ./start-server              # Show status (default)
+sudo ./start-server start        # Start all services
+sudo ./start-server stop         # Stop all services
+sudo ./start-server restart      # Restart all services
+sudo ./start-server logs         # Live logs for Iveras
+sudo ./start-server logs-sf      # Live logs for SpiderFoot
+sudo ./start-server update       # Git pull + pip install + restart
 ```
 
 Or use systemd directly:
@@ -116,32 +134,46 @@ sudo systemctl status spiderfoot
 sudo journalctl -u osint-dashboard -f
 ```
 
+---
+
 ### Option B: Manual Setup (Development / macOS)
 
 #### Prerequisites
 
-- Python 3.9+
-- PostgreSQL (optional — SQLite used by default if `DATABASE_URL` not set)
+- Python 3.12+
+- Node.js 18+ (for frontend build)
+- PostgreSQL (optional — SQLite fallback if `DATABASE_URL` not set)
 - Git
 
 #### Steps
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/mail2jack/osint-dashboard.git
+# 1. Clone the repository (saas-migration branch)
+git clone -b saas-migration https://github.com/mail2jack/osint-dashboard.git
 cd osint-dashboard
 
 # 2. Create virtual environment
 python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
+source venv/bin/activate
 
-# 3. Install dependencies
+# 3. Install production dependencies
 pip install -r requirements.txt
 
-# 4. Copy environment file
-cp .env.example .env  # Edit .env with your API keys
+# 4. Install development dependencies (optional, for testing/linting)
+pip install -r requirements-dev.txt
 
-# 5. Run the application
+# 5. Build frontend assets
+npm install
+node build.mjs
+
+# 6. Install Playwright browsers (for PDF/screenshot features)
+playwright install chromium
+
+# 7. Copy environment file
+cp .env.example .env
+# Edit .env — at minimum set CMS_ENCRYPTION_KEY and FLASK_ENV=development
+
+# 8. Run the application
 python app.py
 ```
 
@@ -1052,4 +1084,4 @@ For issues and feature requests:
 
 ---
 
-*Iveras OSINT Case Management System v3.0.0 - April 2026*
+*Iveras OSINT Case Management System v3.6.0 — July 2026*

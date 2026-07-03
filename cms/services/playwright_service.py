@@ -3,6 +3,7 @@ import os
 import time
 from typing import Any
 
+from cms.routes.utils import is_safe_url
 from cms.services.http_utils import get_next_proxy
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,8 @@ def playwright_fetch(
             page = context.new_page()
             resp = None
             try:
+                if not is_safe_url(url):
+                    raise ValueError("Blocked URL")
                 if method == "GET":
                     resp = page.goto(
                         url, wait_until="domcontentloaded", timeout=timeout_ms
