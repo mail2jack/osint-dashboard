@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 from cms.workflow.research import (
@@ -100,16 +101,19 @@ tiktok_profile = {
 }
 
 
+_THIS_MONTH = datetime.now().strftime("%Y-%m")
+
+
 class TestCreditTracking:
     @patch("cms.models.Setting.get")
     def test_get_remaining_credits_full(self, mock_get):
-        mock_get.return_value = {"tiktok": {"2026-06": 10}}
+        mock_get.return_value = {"tiktok": {_THIS_MONTH: 10}}
         remaining = get_remaining_credits("tiktok")
         assert remaining == 40
 
     @patch("cms.models.Setting.get")
     def test_get_remaining_credits_exhausted(self, mock_get):
-        mock_get.return_value = {"tiktok": {"2026-06": 50}}
+        mock_get.return_value = {"tiktok": {_THIS_MONTH: 50}}
         remaining = get_remaining_credits("tiktok")
         assert remaining == 0
 
@@ -128,20 +132,20 @@ class TestCreditTracking:
     @patch("cms.models.Setting.get")
     @patch("cms.models.Setting.set")
     def test_use_credit_increments(self, mock_set, mock_get):
-        mock_get.return_value = {"tiktok": {"2026-06": 5}}
+        mock_get.return_value = {"tiktok": {_THIS_MONTH: 5}}
         _use_credit("tiktok")
         args, _ = mock_set.call_args
         assert args[0] == "rapidapi_credits_usage"
-        assert args[1]["tiktok"]["2026-06"] == 6
+        assert args[1]["tiktok"][_THIS_MONTH] == 6
 
     @patch("cms.models.Setting.get")
     def test_has_credits_true(self, mock_get):
-        mock_get.return_value = {"tiktok": {"2026-06": 10}}
+        mock_get.return_value = {"tiktok": {_THIS_MONTH: 10}}
         assert _has_credits("tiktok") is True
 
     @patch("cms.models.Setting.get")
     def test_has_credits_false(self, mock_get):
-        mock_get.return_value = {"tiktok": {"2026-06": 50}}
+        mock_get.return_value = {"tiktok": {_THIS_MONTH: 50}}
         assert _has_credits("tiktok") is False
 
 

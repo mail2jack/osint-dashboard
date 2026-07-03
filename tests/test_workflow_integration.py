@@ -155,6 +155,7 @@ class TestCaseCrud:
         subjs = list(case.subjects)
         assert len(subjs) == 1
         s = subjs[0]
+        s.decrypt_identifiers()
         assert s.street == "Hoofdstraat"
         assert s.house_number == "42"
         assert s.house_number_addition == "A"
@@ -305,9 +306,8 @@ class TestEmailCheckPGP:
     """_email_check adds PGP + Brave context findings."""
 
     def _make_action(self, db_session, email="test@example.com"):
-        from cms.models import User, Client, Case, Subject, ResearchAction
+        from cms.models import Client, Case, Subject, ResearchAction
 
-        admin = User.query.filter_by(username="admin").first()
         client = Client(name="PGP Client")
         db.session.add(client)
         db.session.flush()
@@ -460,9 +460,8 @@ class TestSubdomainCheck:
     """_subdomain_check queries crt.sh for subdomains."""
 
     def _make_action(self, db_session, domain="example.com"):
-        from cms.models import User, Client, Case, ResearchAction
+        from cms.models import Client, Case, ResearchAction
 
-        admin = User.query.filter_by(username="admin").first()
         client = Client(name="Sub Client")
         db.session.add(client)
         db.session.flush()
@@ -515,9 +514,8 @@ class TestSubdomainCheck:
         assert "dev.testbed.nl" in sub_findings[0]["detail"]  # wildcard stripped
 
     def test_subdomain_no_domain(self, app, db_session):
-        from cms.models import User, Client, Case, ResearchAction
+        from cms.models import Client, Case, ResearchAction
 
-        admin = User.query.filter_by(username="admin").first()
         client = Client(name="NoDom Client")
         db.session.add(client)
         db.session.flush()
@@ -547,9 +545,8 @@ class TestSubdomainCheck:
 
     def test_subdomain_from_subject_email(self, app, db_session, monkeypatch):
         """If no data_value but subject has email, extract domain from it."""
-        from cms.models import User, Client, Case, Subject, ResearchAction
+        from cms.models import Client, Case, Subject, ResearchAction
 
-        admin = User.query.filter_by(username="admin").first()
         client = Client(name="SubEmail Client")
         db.session.add(client)
         db.session.flush()
