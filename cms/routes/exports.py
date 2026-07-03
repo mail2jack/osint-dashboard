@@ -166,6 +166,9 @@ def export_subjects() -> str:
         return api_error("Unsupported format. Use csv.", 400)
 
 
+_MAX_EXPORT_ROWS = 50000
+
+
 def export_subjects_csv() -> Response:
     """Generate CSV export of all subjects."""
     output = io.StringIO()
@@ -204,7 +207,16 @@ def export_subjects_csv() -> Response:
     q = apply_tenant_filter(
         Subject.query.filter_by(is_deleted=False), Subject
     ).order_by(Subject.name)
+    row_count = 0
     for subject in q.yield_per(200):
+        row_count += 1
+        if row_count > _MAX_EXPORT_ROWS:
+            logger.warning(
+                "Subjects export truncated at %d rows by %s",
+                _MAX_EXPORT_ROWS,
+                current_user.username,
+            )
+            break
         subject.decrypt_identifiers()
         addrs = subject_addresses.get(subject.id, [])
         primary_addr = next((a for a in addrs if a.is_primary), None)
@@ -291,17 +303,25 @@ def export_clients_csv() -> Response:
     client_count = apply_tenant_filter(
         Client.query.filter_by(is_deleted=False), Client
     ).count()
-    if client_count > 5000:
+    if client_count > _MAX_EXPORT_ROWS:
         logger.warning(
-            "Large client export (%d records) triggered by %s",
-            client_count,
-            current_user.username,
+            "Client export would exceed %d rows; truncating",
+            _MAX_EXPORT_ROWS,
         )
+    row_count = 0
     for client in (
         apply_tenant_filter(Client.query.filter_by(is_deleted=False), Client)
         .order_by(Client.name)
         .yield_per(200)
     ):
+        row_count += 1
+        if row_count > _MAX_EXPORT_ROWS:
+            logger.warning(
+                "Clients export truncated at %d rows by %s",
+                _MAX_EXPORT_ROWS,
+                current_user.username,
+            )
+            break
         client.decrypt_naw()
         writer.writerow(
             [
@@ -379,11 +399,10 @@ def export_cases_csv() -> Response:
     case_count = apply_tenant_filter(
         Case.query.filter_by(is_deleted=False), Case
     ).count()
-    if case_count > 5000:
+    if case_count > _MAX_EXPORT_ROWS:
         logger.warning(
-            "Large cases export (%d records) triggered by %s",
-            case_count,
-            current_user.username,
+            "Cases export would exceed %d rows; truncating",
+            _MAX_EXPORT_ROWS,
         )
 
     tenant_case_ids = db.session.query(Case.id).filter(
@@ -407,11 +426,20 @@ def export_cases_csv() -> Response:
         ).all()
     )
 
+    row_count = 0
     for case in (
         apply_tenant_filter(Case.query.filter_by(is_deleted=False), Case)
         .order_by(Case.case_number)
         .yield_per(200)
     ):
+        row_count += 1
+        if row_count > _MAX_EXPORT_ROWS:
+            logger.warning(
+                "Cases export truncated at %d rows by %s",
+                _MAX_EXPORT_ROWS,
+                current_user.username,
+            )
+            break
         writer.writerow(
             [
                 case.case_number,

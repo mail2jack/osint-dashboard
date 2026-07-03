@@ -1014,12 +1014,20 @@ def edit_user(user_id) -> flask.Response:
                 return render_template("cms/users/edit.html", user=user)
 
         if current_user.is_admin:
-            if data.get("role") == "admin" and not current_user.is_super_admin:
+            if (
+                data.get("role") in ("admin", "owner")
+                and not current_user.is_super_admin
+            ):
                 if request.is_json:
                     return jsonify(
-                        {"error": "Alleen een super-admin kan de admin-rol toewijzen."}
+                        {
+                            "error": "Alleen een super-admin kan de admin- of owner-rol toewijzen."
+                        }
                     ), 403
-                flash("Alleen een super-admin kan de admin-rol toewijzen.", "danger")
+                flash(
+                    "Alleen een super-admin kan de admin- of owner-rol toewijzen.",
+                    "danger",
+                )
                 return redirect(url_for("users.list_users"))
             for field in ["username", "email", "full_name", "role", "is_active"]:
                 if field in data:

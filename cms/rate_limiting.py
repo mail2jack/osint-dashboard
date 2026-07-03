@@ -201,6 +201,41 @@ def rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="default"):
 
                 rate_data["count"] += 1
 
+            # Per-user limit check (only for authenticated users)
+            try:
+                from flask_login import current_user as _cu
+
+                if _cu and _cu.is_authenticated:
+                    user_key = f"user:{_cu.id}:{key_prefix}"
+                    if user_key not in _api_rate_limits:
+                        _api_rate_limits[user_key] = {
+                            "count": 0,
+                            "window_start": now,
+                        }
+                    udata = _api_rate_limits[user_key]
+                    if now - udata["window_start"] > window_seconds:
+                        udata["count"] = 0
+                        udata["window_start"] = now
+                    if udata["count"] >= max_requests:
+                        retry_after = int(
+                            window_seconds - (now - udata["window_start"])
+                        )
+                        return (
+                            flask.jsonify(
+                                {
+                                    "error": "Rate limit exceeded (per-user)",
+                                    "limit": max_requests,
+                                    "window_seconds": window_seconds,
+                                    "retry_after": max(retry_after, 1),
+                                }
+                            ),
+                            429,
+                            {"Retry-After": str(max(retry_after, 1))},
+                        )
+                    udata["count"] += 1
+            except Exception:
+                pass
+
             # Per-tenant limit check (only for authenticated users)
             try:
                 from flask_login import current_user as _cu

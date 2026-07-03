@@ -1,5 +1,9 @@
 """
 API Key authentication for external tool access.
+
+Provides:
+- ``api_key_required`` — authenticate via X-API-Key header
+- ``require_scope`` — enforce a minimum API key scope (read / write / admin)
 """
 
 import logging
@@ -16,8 +20,9 @@ logger = logging.getLogger(__name__)
 def api_key_required(f):
     """Decorator: require valid X-API-Key header.
 
-    Sets g.api_user_id / g.api_key_name on success, and logs the user in
-    via Flask-Login so that @login_required deeper in the chain works.
+    Sets g.api_user_id / g.api_key_name / g.api_key_scopes on success,
+    and logs the user in via Flask-Login so that @login_required deeper
+    in the chain works.
     """
 
     @wraps(f)
@@ -51,6 +56,7 @@ def api_key_required(f):
 
         g.api_user_id = key_record.user_id
         g.api_key_name = key_record.name
+        g.api_key_scopes = key_record.scopes or ["read"]
 
         # Log in via Flask-Login so @login_required wrappers pass
         user = db.session.get(User, key_record.user_id)
@@ -61,3 +67,49 @@ def api_key_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
+
+def require_scope(min_scope: str):
+    """Decorator: enforce a minimum API key scope.
+
+    Usage::
+
+        @api_key_required
+        @require_scope("write")
+        def my_endpoint():
+
+    Scope hierarchy: read < write < admin.
+    A key with ``admin`` scope passes any ``min_scope``.
+    Session-authenticated users (no API key) pass all scope checks.
+    """
+
+    _HIERARCHY = {"read": 0, "write": 1, "admin": 2}
+
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if min_scope not in _HIERARCHY:
+                logger.warning("Unknown scope '%s' in require_scope", min_scope)
+                return jsonify({"error": "Internal server error"}), 500
+
+            # Session-authenticated users are not subject to API key scopes
+            scopes = g.get("api_key_scopes")
+            if scopes is None:
+                return f(*args, **kwargs)
+
+            required_level = _HIERARCHY[min_scope]
+            max_level = max(_HIERARCHY.get(s, -1) for s in scopes)
+            if max_level < required_level:
+                return jsonify(
+                    {
+                        "error": "Insufficient API key scope",
+                        "required": min_scope,
+                        "actual": scopes,
+                    }
+                ), 403
+
+            return f(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

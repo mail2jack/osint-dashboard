@@ -18,7 +18,8 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
-from cms.models import db, UserRole
+from cms.models import db, UserRole, AuditLog
+from cms.auth import ensure_tenant_access
 from . import workflow_bp
 from .models import (
     WorkflowActionFinding,
@@ -106,7 +107,10 @@ SCREENSHOT_DIR = os.path.join(
 @_investigator_required
 def dashboard():
     cases = (
-        WorkflowCase.query.filter(WorkflowCase.archived_at.is_(None))
+        WorkflowCase.query.filter(
+            WorkflowCase.archived_at.is_(None),
+            WorkflowCase.tenant_id == current_user.tenant_id,
+        )
         .order_by(WorkflowCase.created_at.desc())
         .all()
     )
@@ -220,6 +224,8 @@ def case_new():
             from cms.models import Client as CmsClient
 
             src = db.session.get(CmsClient, existing_client_id)
+            if src and src.tenant_id != current_user.tenant_id:
+                src = None
             if src:
                 src.decrypt_naw()
                 client = WorkflowClient(
@@ -240,6 +246,7 @@ def case_new():
                     contract_info=src.contract_info or "",
                     financial_notes=src.financial_notes or "",
                     created_by=current_user.id,
+                    tenant_id=current_user.tenant_id,
                 )
                 # Override with any explicitly submitted values
                 override = request.form.get("client_name", "").strip()
@@ -313,6 +320,7 @@ def case_new():
                 contract_info=request.form.get("client_contract_info", ""),
                 financial_notes=request.form.get("client_notes", ""),
                 created_by=current_user.id,
+                tenant_id=current_user.tenant_id,
             )
             client.encrypt_naw()
             db.session.add(client)
@@ -333,6 +341,7 @@ def case_new():
                 risk_score=_int_field(f"{idx_str}_risk_score"),
                 notes=request.form.get(f"{idx_str}_notes", ""),
                 created_by=current_user.id,
+                tenant_id=current_user.tenant_id,
             )
             _set_address_fields(s, idx_str)
             s.encrypt_identifiers()
@@ -360,12 +369,21 @@ def case_new():
             start_date=datetime.now().date(),
             created_by=current_user.id,
             lead_investigator_id=current_user.id,
+            tenant_id=current_user.tenant_id,
         )
         db.session.add(client)
         db.session.add(case)
         for s in subjects:
             db.session.add(s)
             case.subjects.append(s)
+        AuditLog.log(
+            user_id=current_user.id,
+            action="create",
+            entity_type="case",
+            entity_id=case.id,
+            ip_address=request.remote_addr,
+            description=f"Workflow created case: {case.case_number}",
+        )
         db.session.commit()
 
         auto_invoice_case_created(case)
@@ -385,6 +403,7 @@ def case_detail(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
+    ensure_tenant_access(case)
     show_archived = request.args.get("show_archived") == "1"
     actions = (
         WorkflowResearchAction.query.filter_by(case_id=case_id)
@@ -476,6 +495,7 @@ def case_edit(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
+    ensure_tenant_access(case)
 
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     if client:
@@ -608,6 +628,14 @@ def case_edit(case_id):
             if subj and subj in case.subjects:
                 case.subjects.remove(subj)
 
+        AuditLog.log(
+            user_id=current_user.id,
+            action="update",
+            entity_type="case",
+            entity_id=case.id,
+            ip_address=request.remote_addr,
+            description=f"Workflow edited case: {case.case_number}",
+        )
         db.session.commit()
         return redirect(url_for("workflow.case_detail", case_id=case_id))
 
@@ -626,6 +654,7 @@ def run_action(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Case not found"}), 404
+    ensure_tenant_access(case)
 
     body = request.get_json(silent=True) or {}
     action_type = body.get("action_type", "")
@@ -656,6 +685,7 @@ def run_action(case_id):
         data_value=data_value,
         label=ACTION_REGISTRY[action_type]["label"],
         status="pending",
+        tenant_id=current_user.tenant_id,
     )
     db.session.add(action)
     db.session.commit()
@@ -672,6 +702,7 @@ def case_status(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Not found"}), 404
+    ensure_tenant_access(case)
 
     actions = WorkflowResearchAction.query.filter_by(case_id=case_id).all()
     findings = (
@@ -759,7 +790,16 @@ def delete_case(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Not found"}), 404
-    db.session.delete(case)
+    ensure_tenant_access(case)
+    case.soft_delete()
+    AuditLog.log(
+        user_id=current_user.id,
+        action="delete",
+        entity_type="case",
+        entity_id=case.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow soft-deleted case: {case.case_number}",
+    )
     db.session.commit()
     return jsonify({"ok": True})
 
@@ -771,6 +811,7 @@ def pv_view(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
+    ensure_tenant_access(case)
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
     findings = list(case.findings)
@@ -832,11 +873,20 @@ def pv_edit(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
+    ensure_tenant_access(case)
 
     if request.method == "POST":
         was_empty = not case.pv_body
         case.pv_body = request.form.get("pv_body", "")
         case.pv_updated_at = datetime.now()
+        AuditLog.log(
+            user_id=current_user.id,
+            action="update",
+            entity_type="case",
+            entity_id=case.id,
+            ip_address=request.remote_addr,
+            description=f"Workflow updated PV body for case: {case.case_number}",
+        )
         db.session.commit()
 
         if was_empty and case.pv_body:
@@ -856,7 +906,18 @@ def delete_finding(case_id, finding_id):
     finding = db.session.get(WorkflowFinding, finding_id)
     if not finding or finding.case_id != case_id:
         return jsonify({"error": "Not found"}), 404
-    db.session.delete(finding)
+    case = db.session.get(WorkflowCase, case_id)
+    if case:
+        ensure_tenant_access(case)
+    finding.soft_delete()
+    AuditLog.log(
+        user_id=current_user.id,
+        action="delete",
+        entity_type="finding",
+        entity_id=finding.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow soft-deleted finding: {finding.title}",
+    )
     db.session.commit()
     return jsonify({"ok": True})
 
@@ -865,6 +926,10 @@ def delete_finding(case_id, finding_id):
 @login_required
 @_investigator_required
 def batch_delete_findings(case_id):
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    ensure_tenant_access(case)
     body = request.get_json(silent=True) or {}
     ids = body.get("ids", [])
     if not ids or not isinstance(ids, list):
@@ -873,8 +938,15 @@ def batch_delete_findings(case_id):
     for fid in ids:
         finding = db.session.get(WorkflowFinding, fid)
         if finding and finding.case_id == case_id:
-            db.session.delete(finding)
+            finding.soft_delete()
             deleted += 1
+    AuditLog.log(
+        user_id=current_user.id,
+        action="bulk_delete",
+        entity_type="finding",
+        ip_address=request.remote_addr,
+        description=f"Workflow batch soft-deleted {deleted} findings in case {case_id}",
+    )
     db.session.commit()
     return jsonify({"ok": True, "deleted": deleted})
 
@@ -886,9 +958,20 @@ def verify_finding(case_id, finding_id):
     finding = db.session.get(WorkflowFinding, finding_id)
     if not finding or finding.case_id != case_id:
         return jsonify({"error": "Not found"}), 404
+    case = db.session.get(WorkflowCase, case_id)
+    if case:
+        ensure_tenant_access(case)
     body = request.get_json(silent=True) or {}
     new_val = body.get("verified", not finding.verified)
     finding.verified = new_val
+    AuditLog.log(
+        user_id=current_user.id,
+        action="verify",
+        entity_type="finding",
+        entity_id=finding.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow {'verified' if new_val else 'unverified'} finding: {finding.title}",
+    )
     db.session.commit()
     return jsonify({"ok": True, "verified": new_val})
 
@@ -902,9 +985,20 @@ def save_comment(case_id, finding_id):
     finding = db.session.get(WorkflowFinding, finding_id)
     if not finding or finding.case_id != case_id:
         return jsonify({"error": "Not found"}), 404
+    case = db.session.get(WorkflowCase, case_id)
+    if case:
+        ensure_tenant_access(case)
     body = request.get_json(silent=True) or {}
     new_comment = body.get("comment", "")
     finding.comment = new_comment
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="finding",
+        entity_id=finding.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow updated comment on finding: {finding.title}",
+    )
     db.session.commit()
     return jsonify({"ok": True, "comment": new_comment})
 
@@ -913,12 +1007,24 @@ def save_comment(case_id, finding_id):
 @login_required
 @_investigator_required
 def cancel_action_api(case_id, action_id):
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Not found"}), 404
+    ensure_tenant_access(case)
     action = db.session.get(WorkflowResearchAction, action_id)
     if not action or action.case_id != case_id:
         return jsonify({"error": "Not found"}), 404
     if action.status != "running":
         return jsonify({"error": "Action is not running"}), 400
     cancel_action(action_id)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="cancel",
+        entity_type="research_action",
+        entity_id=action_id,
+        ip_address=request.remote_addr,
+        description=f"Workflow cancelled action: {action.label}",
+    )
     return jsonify({"ok": True})
 
 
@@ -931,6 +1037,9 @@ def add_screenshot(case_id, finding_id):
     finding = db.session.get(WorkflowFinding, finding_id)
     if not finding or finding.case_id != case_id:
         return jsonify({"error": "Not found"}), 404
+    case = db.session.get(WorkflowCase, case_id)
+    if case:
+        ensure_tenant_access(case)
 
     url = ""
     source_url = ""
@@ -969,8 +1078,17 @@ def add_screenshot(case_id, finding_id):
         file_path=file_path,
         notes=notes,
         captured_at=datetime.now(),
+        tenant_id=current_user.tenant_id,
     )
     db.session.add(ss)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="create",
+        entity_type="finding_screenshot",
+        entity_id=ss.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow added screenshot to finding {finding_id}",
+    )
     db.session.commit()
     ss_data = {
         "url": ss.url,
@@ -998,8 +1116,17 @@ def archive_action(action_id):
     from cms.models import ResearchAction, Finding, ActionFinding, db
 
     action = db.session.get(ResearchAction, action_id) or abort(404)
+    ensure_tenant_access(action)
     now = datetime.now(timezone.utc)
     action.archived_at = now
+    AuditLog.log(
+        user_id=current_user.id,
+        action="archive",
+        entity_type="research_action",
+        entity_id=action.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow archived action: {action.label} (case {action.case_id})",
+    )
     finding_ids = [
         af.finding_id for af in ActionFinding.query.filter_by(action_id=action.id)
     ]
@@ -1023,6 +1150,15 @@ def restore_action(action_id):
     from cms.models import ResearchAction, Finding, ActionFinding, db
 
     action = db.session.get(ResearchAction, action_id) or abort(404)
+    ensure_tenant_access(action)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="restore",
+        entity_type="research_action",
+        entity_id=action.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow restored action: {action.label} (case {action.case_id})",
+    )
     action.archived_at = None
     finding_ids = [
         af.finding_id for af in ActionFinding.query.filter_by(action_id=action.id)
@@ -1047,7 +1183,16 @@ def archive_finding(finding_id):
     from cms.models import Finding, db
 
     finding = db.session.get(Finding, finding_id) or abort(404)
+    ensure_tenant_access(finding)
     finding.archived_at = datetime.now(timezone.utc)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="archive",
+        entity_type="finding",
+        entity_id=finding.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow archived finding: {finding.title}",
+    )
     db.session.commit()
     if request.is_json:
         return jsonify({"ok": True})
@@ -1064,7 +1209,16 @@ def restore_finding(finding_id):
     from cms.models import Finding, db
 
     finding = db.session.get(Finding, finding_id) or abort(404)
+    ensure_tenant_access(finding)
     finding.archived_at = None
+    AuditLog.log(
+        user_id=current_user.id,
+        action="restore",
+        entity_type="finding",
+        entity_id=finding.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow restored finding: {finding.title}",
+    )
     db.session.commit()
     if request.is_json:
         return jsonify({"ok": True})
@@ -1072,5 +1226,3 @@ def restore_finding(finding_id):
     return redirect(
         request.referrer or url_for("workflow.case_detail", case_id=finding.case_id)
     )
-    db.session.commit()
-    return jsonify({"ok": True})

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/api/api-keys", methods=["GET"])
 @login_required
+@admin_required
 def list_api_keys() -> flask.Response:
     keys = apply_tenant_filter(
         ApiKey.query.order_by(ApiKey.created_at.desc()), ApiKey

@@ -466,6 +466,7 @@ def edit_case(case_id: str) -> flask.Response:
 
 @cms_bp.route("/cases/<case_id>/archive", methods=["POST"])
 @login_required
+@roles_required("admin", "senior_investigator")
 def archive_case(case_id: str) -> flask.Response:
     """Archive a case and cascade to its research actions and findings."""
     case = db.session.get(Case, case_id) or abort(404)
@@ -490,6 +491,7 @@ def archive_case(case_id: str) -> flask.Response:
 
 @cms_bp.route("/cases/<case_id>/restore", methods=["POST"])
 @login_required
+@roles_required("admin", "senior_investigator")
 def restore_case(case_id: str) -> flask.Response:
     """Restore an archived case and its archived children."""
     case = db.session.get(Case, case_id) or abort(404)
