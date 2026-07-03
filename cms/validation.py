@@ -140,6 +140,7 @@ class CreateSubjectFromUsernameSchema(BaseModel):
 class ExtractSocialIdSchema(BaseModel):
     url: str = Field(min_length=1, description="URL to extract social IDs from")
     subject_id: str | None = None
+    finding_id: str | None = None
 
 
 # =============================================================================

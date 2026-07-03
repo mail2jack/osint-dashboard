@@ -6,7 +6,7 @@ import threading
 import uuid
 from datetime import datetime
 
-from cms.models import db
+from cms.models import db, SocialAccount
 from .models import (
     WorkflowCase,
     WorkflowResearchAction,
@@ -82,7 +82,7 @@ def cancel_action(action_id):
         action.result_summary = "Geannuleerd"
         links = WorkflowActionFinding.query.filter_by(action_id=action_id).all()
         if links:
-            finding_ids = [l.finding_id for l in links]
+            finding_ids = [link.finding_id for link in links]
             WorkflowFinding.query.filter(
                 WorkflowFinding.id.in_(finding_ids),
             ).delete(synchronize_session=False)
@@ -152,9 +152,11 @@ def run_action(action_id):
         created = []
         for fd in findings_data:
             detail_text = fd.get("detail", "")
+            subject_id = fd.get("subject_id")
             finding = WorkflowFinding(
                 id=str(uuid.uuid4()),
                 case_id=action.case_id,
+                subject_id=subject_id,
                 title=fd["title"],
                 content=detail_text or fd["title"],
                 detail=detail_text,
@@ -182,6 +184,25 @@ def run_action(action_id):
                     captured_at=datetime.now(),
                 )
                 db.session.add(screenshot)
+
+            sa_data = fd.get("social_account")
+            if sa_data and subject_id:
+                dedup = SocialAccount.query.filter(
+                    SocialAccount.subject_id == subject_id,
+                    SocialAccount.platform == sa_data["platform"],
+                    SocialAccount.username == sa_data["username"],
+                ).first()
+                if not dedup:
+                    db.session.add(
+                        SocialAccount(
+                            subject_id=subject_id,
+                            platform=sa_data["platform"],
+                            username=sa_data["username"],
+                            url=sa_data.get("url"),
+                            account_id=sa_data.get("account_id"),
+                            finding_id=finding.id,
+                        )
+                    )
 
             created.append(finding)
 
@@ -582,121 +603,180 @@ def _address_check(action):
 
 def _social_scan(action):
     findings = []
-    social_accounts = None
-    if action.data_value:
-        try:
-            social_accounts = json.loads(action.data_value)
-        except (json.JSONDecodeError, TypeError):
-            pass
-    if not social_accounts:
-        all_accounts = []
-        for subject in action.case.subjects or []:
-            accounts = getattr(subject, "social_accounts", None) or []
-            if accounts:
-                all_accounts.extend(accounts)
-            elif subject.name:
-                all_accounts.append(subject.name)
-        if all_accounts:
-            social_accounts = all_accounts
-
+    from cms.social_extractor import detect_platform, MAJOR_SOCIAL_PLATFORMS
     from cms.username_search import search_username, search_username_maigret
 
-    if social_accounts:
-        for acct in social_accounts:
-            username = None
-            label = None
-            if isinstance(acct, dict):
-                url = acct.get("url", "")
-                username = url.rstrip("/").split("/")[-1] if url else None
-                label = acct.get("platform", username or "onbekend")
-            elif isinstance(acct, str):
-                username = acct.strip()
-                if username.startswith("@"):
-                    username = username[1:]
-                label = username
-            if username:
-                seen_sites = set()
+    # Collect accounts with their subject context
+    accounts_with_subject = []
 
-                try:
-                    maigret_result = search_username_maigret(username)
-                    if maigret_result.get("found_count", 0) > 0:
-                        for f in maigret_result.get("findings", []):
-                            site = f.get("site") or f.get("platform", "")
-                            if f.get("exists") == True and site not in seen_sites:
-                                seen_sites.add(site)
-                                findings.append(
-                                    {
-                                        "title": f"{label}: profiel actief ({site})",
-                                        "detail": f"Gevonden via Maigret. URL: {f.get('url', '')}",
-                                        "source_url": f.get("url"),
-                                        "source_type": "social",
-                                        "icon": "🌐",
-                                        "verified": False,
-                                        "screenshots": [
-                                            {"url": None, "source_url": f.get("url")}
-                                        ],
-                                    }
-                                )
-                except Exception as e:
-                    logger.warning("Maigret search for %s failed: %s", username, e)
+    if action.data_value:
+        try:
+            raw = json.loads(action.data_value)
+            if isinstance(raw, list):
+                for item in raw:
+                    subject_id = None
+                    if isinstance(item, dict):
+                        subject_id = item.get("subject_id")
+                    accounts_with_subject.append((item, subject_id))
+        except (json.JSONDecodeError, TypeError):
+            pass
 
+    if not accounts_with_subject:
+        for subject in action.case.subjects or []:
+            sa_query = getattr(subject, "social_accounts", None)
+            if sa_query is not None:
                 try:
-                    sherlock_result = search_username(username)
-                    if sherlock_result.get("found_count", 0) > 0:
-                        for f in sherlock_result.get("findings", []):
-                            site = f.get("platform") or f.get("site", "")
-                            if f.get("exists") == True and site not in seen_sites:
-                                seen_sites.add(site)
-                                findings.append(
-                                    {
-                                        "title": f"{label}: profiel actief ({site})",
-                                        "detail": f"Gevonden via Sherlock. URL: {f.get('url', '')}",
-                                        "source_url": f.get("url"),
-                                        "source_type": "social",
-                                        "icon": "🌐",
-                                        "verified": False,
-                                        "screenshots": [
-                                            {"url": None, "source_url": f.get("url")}
-                                        ],
-                                    }
-                                )
-                except Exception as e:
-                    logger.warning("Sherlock search for %s failed: %s", username, e)
+                    count = sa_query.count()
+                except Exception:
+                    count = 0
+                if count > 0:
+                    for sa in sa_query:
+                        accounts_with_subject.append((sa, subject.id))
+            if subject.name:
+                accounts_with_subject.append((subject.name, subject.id))
+
+    if not accounts_with_subject:
+        findings.append(
+            {
+                "title": "Geen social media accounts om te scannen",
+                "detail": "Er zijn geen social media accounts opgegeven voor dit subject.",
+                "source_type": "social",
+                "icon": "🌐",
+                "verified": False,
+            }
+        )
+        return findings
+
+    for acct, subject_id in accounts_with_subject:
+        username = None
+        label = None
+        url = None
+        input_platform = None
+
+        if isinstance(acct, str):
+            username = acct.strip()
+            if username.startswith("@"):
+                username = username[1:]
+            label = username
+        else:
+            url = (
+                getattr(acct, "url", None)
+                if not isinstance(acct, dict)
+                else acct.get("url")
+            )
+            input_platform = (
+                getattr(acct, "platform", None)
+                if not isinstance(acct, dict)
+                else acct.get("platform")
+            )
+            username = (
+                getattr(acct, "username", None)
+                if not isinstance(acct, dict)
+                else acct.get("username")
+            )
+            if not username and url:
+                username = url.rstrip("/").split("/")[-1]
+            label = input_platform or username or "onbekend"
+
+        if not username:
+            continue
+
+        seen_sites = set()
+
+        try:
+            maigret_result = search_username_maigret(username)
+            if maigret_result.get("found_count", 0) > 0:
+                for f in maigret_result.get("findings", []):
+                    site = f.get("site") or f.get("platform", "")
+                    if f.get("exists") == True and site not in seen_sites:
+                        seen_sites.add(site)
+                        result_url = f.get("url", "")
+                        platform = detect_platform(result_url)
+                        finding = {
+                            "title": f"{label}: profiel actief ({site})",
+                            "detail": f"Gevonden via Maigret. URL: {result_url}",
+                            "source_url": result_url,
+                            "source_type": "social",
+                            "icon": "🌐",
+                            "verified": False,
+                            "subject_id": subject_id,
+                            "screenshots": [{"url": None, "source_url": result_url}],
+                        }
+                        if platform and platform in MAJOR_SOCIAL_PLATFORMS:
+                            finding["social_account"] = {
+                                "platform": platform,
+                                "username": username,
+                                "url": result_url,
+                            }
+                        findings.append(finding)
+        except Exception as e:
+            logger.warning("Maigret search for %s failed: %s", username, e)
+
+        try:
+            sherlock_result = search_username(username)
+            if sherlock_result.get("found_count", 0) > 0:
+                for f in sherlock_result.get("findings", []):
+                    site = f.get("platform") or f.get("site", "")
+                    if f.get("exists") == True and site not in seen_sites:
+                        seen_sites.add(site)
+                        result_url = f.get("url", "")
+                        platform = detect_platform(result_url)
+                        finding = {
+                            "title": f"{label}: profiel actief ({site})",
+                            "detail": f"Gevonden via Sherlock. URL: {result_url}",
+                            "source_url": result_url,
+                            "source_type": "social",
+                            "icon": "🌐",
+                            "verified": False,
+                            "subject_id": subject_id,
+                            "screenshots": [{"url": None, "source_url": result_url}],
+                        }
+                        if platform and platform in MAJOR_SOCIAL_PLATFORMS:
+                            finding["social_account"] = {
+                                "platform": platform,
+                                "username": username,
+                                "url": result_url,
+                            }
+                        findings.append(finding)
+        except Exception as e:
+            logger.warning("Sherlock search for %s failed: %s", username, e)
 
     if not findings:
-        if social_accounts:
-            for acct in social_accounts:
-                if isinstance(acct, dict):
-                    findings.append(
-                        {
-                            "title": f"Social media: {acct.get('platform', 'onbekend')}",
-                            "detail": f"URL: {acct.get('url', '')}",
-                            "source_url": acct.get("url"),
-                            "source_type": "social",
-                            "icon": "🌐",
-                            "verified": False,
-                        }
-                    )
-                elif isinstance(acct, str):
-                    findings.append(
-                        {
-                            "title": f"Social media: {acct}",
-                            "detail": f"Gebruikersnaam: {acct}",
-                            "source_type": "social",
-                            "icon": "🌐",
-                            "verified": False,
-                        }
-                    )
-        else:
-            findings.append(
-                {
-                    "title": "Geen social media accounts om te scannen",
-                    "detail": "Er zijn geen social media accounts opgegeven voor dit subject.",
-                    "source_type": "social",
-                    "icon": "🌐",
-                    "verified": False,
-                }
-            )
+        for acct, subject_id in accounts_with_subject:
+            if isinstance(acct, str):
+                findings.append(
+                    {
+                        "title": f"Social media: {acct}",
+                        "detail": f"Gebruikersnaam: {acct}",
+                        "source_type": "social",
+                        "icon": "🌐",
+                        "verified": False,
+                        "subject_id": subject_id,
+                    }
+                )
+            else:
+                pl = (
+                    getattr(acct, "platform", None)
+                    if not isinstance(acct, dict)
+                    else acct.get("platform", "onbekend")
+                )
+                u = (
+                    getattr(acct, "url", None)
+                    if not isinstance(acct, dict)
+                    else acct.get("url")
+                )
+                findings.append(
+                    {
+                        "title": f"Social media: {pl}",
+                        "detail": f"URL: {u}" if u else f"Platform: {pl}",
+                        "source_url": u,
+                        "source_type": "social",
+                        "icon": "🌐",
+                        "verified": False,
+                        "subject_id": subject_id,
+                    }
+                )
+
     return findings
 
 
@@ -901,11 +981,14 @@ def _rdw_check(action):
         )
         if r.status_code == 200 and r.json():
             data = dict(r.json()[0])
-            _fmt = lambda v: (
-                v.replace("-", "").replace("T", " ")[:10]
-                if v and ("-" in v or "T" in v)
-                else v
-            )
+
+            def _fmt(v):
+                return (
+                    v.replace("-", "").replace("T", " ")[:10]
+                    if v and ("-" in v or "T" in v)
+                    else v
+                )
+
             try:
                 prijs = data.get("catalogusprijs", "")
                 if prijs:
@@ -1067,9 +1150,6 @@ def _vessel_check(action):
             if result.get("position"):
                 pos = result["position"]
                 lat, lon = pos.get("lat", "?"), pos.get("lon", "?")
-                map_url = (
-                    f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}&zoom=12"
-                )
                 parts.append(
                     f"Positie: {lat}, {lon} (https://www.openstreetmap.org/?mlat={lat}&mlon={lon}&zoom=12)"
                 )
@@ -1154,28 +1234,44 @@ def _vessel_check(action):
 def _osint_deep_search(action):
     findings = []
     name = action.data_value if action.data_value else None
+    subject = _first_subject(action)
     if not name:
-        subject = _first_subject(action)
         name = getattr(subject, "name", None) if subject else None
+    subject_id = subject.id if subject else None
     if not name:
         return findings
     brave_key = _get_api_key("brave_api_key")
+    from cms.social_extractor import (
+        detect_platform,
+        extract_username,
+        MAJOR_SOCIAL_PLATFORMS,
+    )
     from cms.services.search_service import brave_search
 
     try:
         results = brave_search(name, api_key=brave_key)
         for res in results[:10]:
-            findings.append(
-                {
-                    "title": f"OSINT: {res.get('title', 'onbekend')[:200]}",
-                    "detail": res.get("description", "")[:300],
-                    "source_url": res.get("url"),
-                    "source_type": "osint",
-                    "icon": "🌍",
-                    "verified": False,
-                    "screenshots": [{"url": None, "source_url": res.get("url")}],
-                }
-            )
+            url = res.get("url") or ""
+            platform = detect_platform(url) if url else None
+            finding = {
+                "title": f"OSINT: {res.get('title', 'onbekend')[:200]}",
+                "detail": res.get("description", "")[:300],
+                "source_url": url,
+                "source_type": "osint",
+                "icon": "🌍",
+                "verified": False,
+                "subject_id": subject_id,
+                "screenshots": [{"url": None, "source_url": url}],
+            }
+            if platform and platform in MAJOR_SOCIAL_PLATFORMS:
+                username = extract_username(url, platform=platform)
+                if username:
+                    finding["social_account"] = {
+                        "platform": platform,
+                        "username": username,
+                        "url": url,
+                    }
+            findings.append(finding)
     except Exception as e:
         findings.append(
             {
@@ -1184,6 +1280,7 @@ def _osint_deep_search(action):
                 "source_type": "osint",
                 "icon": "🌍",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
     if not findings:
@@ -1192,17 +1289,27 @@ def _osint_deep_search(action):
 
             dork_results = person_dorks_search(name)
             for link in dork_results.get("search_links", [])[:10]:
-                findings.append(
-                    {
-                        "title": f"OSINT: {link.get('title', 'resultaat')[:200]}",
-                        "detail": link.get("snippet", "")[:300],
-                        "source_url": link.get("url"),
-                        "source_type": "osint",
-                        "icon": "🌍",
-                        "verified": False,
-                        "screenshots": [{"url": None, "source_url": link.get("url")}],
-                    }
-                )
+                url = link.get("url") or ""
+                platform = detect_platform(url) if url else None
+                finding = {
+                    "title": f"OSINT: {link.get('title', 'resultaat')[:200]}",
+                    "detail": link.get("snippet", "")[:300],
+                    "source_url": url,
+                    "source_type": "osint",
+                    "icon": "🌍",
+                    "verified": False,
+                    "subject_id": subject_id,
+                    "screenshots": [{"url": None, "source_url": url}],
+                }
+                if platform and platform in MAJOR_SOCIAL_PLATFORMS:
+                    username = extract_username(url, platform=platform)
+                    if username:
+                        finding["social_account"] = {
+                            "platform": platform,
+                            "username": username,
+                            "url": url,
+                        }
+                findings.append(finding)
         except Exception as e:
             logger.warning("Dork search failed: %s", e)
     return findings

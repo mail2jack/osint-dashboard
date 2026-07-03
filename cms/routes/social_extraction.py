@@ -7,7 +7,7 @@ from flask import request, jsonify, abort
 from flask_login import login_required
 
 from . import cms_bp
-from ..models import db, Subject, Finding
+from ..models import db, Subject, Finding, SocialAccount
 from ..auth import ensure_tenant_access
 from ..validation import validate, ExtractSocialIdSchema, UpdateSocialIdsSchema
 from .utils import is_safe_url
@@ -132,24 +132,53 @@ def _extract_social_ids_from_url(url, subject=None):
         extracted["source_platform"] = sl_platform or "unknown"
 
     if subject:
-        existing = subject.social_media_ids or {}
-        for key, value in extracted.items():
-            if key in ["links", "created_at", "updated_at", "fullname", "tagline"]:
-                continue
-            if key.endswith("id") or key in [
-                "facebook",
-                "vk",
-                "instagram",
-                "twitter",
-                "tiktok",
-                "linkedin",
-                "reddit",
-                "platform",
-                "username",
-                "source_platform",
-            ]:
-                existing[key] = value
-        subject.social_media_ids = existing
+        platform = sl_platform or extracted.get("source_platform")
+        account_id = next(
+            (v for k, v in extracted.items() if k.endswith("_id")),
+            None,
+        )
+        username = (
+            sl_username or extracted.get("username") or url.rstrip("/").split("/")[-1]
+        )
+        if platform and username:
+            existing_sa = SocialAccount.query.filter(
+                SocialAccount.subject_id == subject.id,
+                SocialAccount.platform == platform,
+            ).first()
+            if existing_sa:
+                if account_id:
+                    existing_sa.account_id = account_id
+                existing_sa.username = username
+                existing_sa.url = url
+            else:
+                db.session.add(
+                    SocialAccount(
+                        subject_id=subject.id,
+                        platform=platform,
+                        username=username,
+                        url=url,
+                        account_id=account_id,
+                    )
+                )
+        else:
+            existing = subject.social_media_ids or {}
+            for key, value in extracted.items():
+                if key in ["links", "created_at", "updated_at", "fullname", "tagline"]:
+                    continue
+                if key.endswith("id") or key in [
+                    "facebook",
+                    "vk",
+                    "instagram",
+                    "twitter",
+                    "tiktok",
+                    "linkedin",
+                    "reddit",
+                    "platform",
+                    "username",
+                    "source_platform",
+                ]:
+                    existing[key] = value
+            subject.social_media_ids = existing
         db.session.commit()
 
     return extracted
@@ -164,6 +193,7 @@ def extract_social_id() -> flask.Response:
 
     url = data.get("url")
     subject_id = data.get("subject_id")
+    finding_id = data.get("finding_id")
     subject = db.session.get(Subject, subject_id) if subject_id else None
     if subject:
         ensure_tenant_access(subject)
@@ -174,6 +204,19 @@ def extract_social_id() -> flask.Response:
 
     sl_platform = detect_platform(url)
     sl_username = ext_username(url, platform=sl_platform)
+
+    # Link SocialAccount to finding if finding_id was provided
+    if finding_id and subject:
+        platform = sl_platform or extracted.get("source_platform")
+        username = sl_username or extracted.get("username")
+        if platform and username:
+            sa = SocialAccount.query.filter(
+                SocialAccount.subject_id == subject.id,
+                SocialAccount.platform == platform,
+            ).first()
+            if sa and not sa.finding_id:
+                sa.finding_id = finding_id
+                db.session.commit()
 
     if not extracted and (sl_platform or sl_username):
         extracted = {}
@@ -271,11 +314,32 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
             skipped += 1
             continue
 
+        from ..social_extractor import extract_username as ext_uname
+
+        username = ext_uname(url, platform=platform)
+        if not username:
+            username = finding.title.strip()[:200] or url.split("/")[-1][:200]
+
+        account_id = None
+        for prefix in ("id=", "user_id="):
+            idx = url.find(prefix)
+            if idx != -1:
+                end = idx + len(prefix)
+                acc = ""
+                while end < len(url) and url[end].isdigit():
+                    acc += url[end]
+                    end += 1
+                if acc:
+                    account_id = acc
+                    break
+
         account = SocialAccount(
             subject_id=subject_id,
             platform=platform,
-            username=finding.title.strip()[:200] or url.split("/")[-1][:200],
+            username=username,
             url=url,
+            account_id=account_id,
+            finding_id=finding.id,
         )
         db.session.add(account)
         total_found += 1

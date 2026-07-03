@@ -23,6 +23,30 @@ _PLATFORM_ALIASES = {
     "x": "twitter",
 }
 
+MAJOR_SOCIAL_PLATFORMS = {
+    "facebook",
+    "instagram",
+    "twitter",
+    "x",
+    "tiktok",
+    "linkedin",
+    "youtube",
+    "snapchat",
+    "reddit",
+    "pinterest",
+    "telegram",
+    "whatsapp",
+    "signal",
+    "discord",
+    "twitch",
+    "tumblr",
+    "vk",
+    "wechat",
+    "threads",
+    "mastodon",
+    "bluesky",
+}
+
 
 def detect_platform(url):
     """Detect social media platform from a URL. Returns normalized platform name."""

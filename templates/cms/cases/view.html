@@ -278,7 +278,7 @@
                     {% endif %}
                     {% if finding.source_url and finding.subject_id %}
                     <br>
-                    <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" 
+                    <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" data-arg2="{{ finding.id }}"
                             class="btn-cms small purple" style="margin-top:4px;">
                         {{ _('🔍 Extract ID') }}
                     </button>
@@ -1782,7 +1782,7 @@ function viewScreenshot(btn, id, title, url) {
     document.getElementById('viewScreenshotModal').classList.add('show');
 }
 
-function extractSocialId(btn, url, subjectId) {
+function extractSocialId(btn, url, subjectId, findingId) {
     if (!confirm({{ _('Extract social media ID from this URL?')|tojson }} + '\n\n' + url + '\n\n' + {{ _('The ID will be saved to the linked subject.')|tojson }})) {
         return;
     }
@@ -1790,10 +1790,12 @@ function extractSocialId(btn, url, subjectId) {
     btn.disabled = true;
     btn.textContent = {{ _('Extracting...')|tojson }};
     
+    var payload = { url: url, subject_id: subjectId };
+    if (findingId) payload.finding_id = findingId;
     apiFetch('/cms/extract-social-id', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url, subject_id: subjectId })
+        body: JSON.stringify(payload)
     })
     .then(r => r.json())
     .then(data => {

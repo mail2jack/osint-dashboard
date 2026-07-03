@@ -101,7 +101,7 @@ def cookie_consent():
         "cookie_consent",
         consent_level,
         max_age=max_age,
-        httponly=True,
+        httponly=False,
         samesite="Lax",
         secure=request.is_secure,
     )
@@ -109,7 +109,7 @@ def cookie_consent():
         "cookie_consent_set_at",
         datetime.now(timezone.utc).isoformat(),
         max_age=max_age,
-        httponly=True,
+        httponly=False,
         samesite="Lax",
         secure=request.is_secure,
     )

@@ -548,6 +548,7 @@ document.addEventListener('input', function(e) {
     var banner = document.getElementById('cookieBanner');
     if (!banner) return;
     if (document.cookie.indexOf('cookie_consent=') !== -1) return;
+    try { if (localStorage.getItem('cookie_consent')) return; } catch(e) {}
     banner.style.display = 'block';
     banner.querySelectorAll('[data-cookie-accept]').forEach(function(btn) {
         btn.addEventListener('click', function() {

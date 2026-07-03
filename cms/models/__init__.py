@@ -2061,6 +2061,11 @@ class SocialAccount(db.Model):
     username = db.Column(db.String(200), nullable=False, index=True)
     url = db.Column(db.String(500))
     account_id = db.Column(db.String(200))
+    finding_id = db.Column(
+        db.String(36), db.ForeignKey("findings.id"), nullable=True, index=True
+    )
+
+    finding = db.relationship("Finding", foreign_keys=[finding_id])
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -2080,6 +2085,7 @@ class SocialAccount(db.Model):
             "username": self.username,
             "url": self.url,
             "account_id": self.account_id,
+            "finding_id": self.finding_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
