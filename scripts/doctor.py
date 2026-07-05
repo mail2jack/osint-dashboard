@@ -418,6 +418,31 @@ def check_weasyprint_deps(dry: bool) -> bool:
     return False
 
 
+def check_opsec(dry: bool) -> bool:
+    log("Checking OPSEC settings (Tor, stealth, audit chain)...", end=" ")
+    env = {**os.environ}
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.strip().split("=", 1)
+                env[k] = v
+    python = VENV_PYTHON
+    code = (
+        "from app import app; from cms.opsec_check import run_opsec_checks, print_results; "
+        "app.app_context().push(); "
+        "r = run_opsec_checks(verbose=False); "
+        "print('PASS' if r['pass'] else 'FAIL'); "
+        'for n, c in sorted(r[\'checks\'].items()): print(f\'  {n}: {"PASS" if c["pass"] else "FAIL"} {c["detail"][:80]}\')'
+    )
+    r = run([python, "-c", code], cwd=str(APP_DIR), env=env, timeout=30)
+    if "PASS" in r.stdout and "FAIL" not in r.stdout:
+        log(OK)
+        return True
+    log(FAIL + " (issues found — run: flask opsec:check for details)")
+    print(r.stdout[:400])
+    return False
+
+
 def check_playwright(dry: bool) -> bool:
     log("Checking Playwright Chromium...", end=" ")
     chromium_path = Path.home() / ".cache" / "ms-playwright"
@@ -563,6 +588,7 @@ def main():
         ("Backup cron", check_backup_cron),
         ("Gunicorn error log", check_gunicorn_logging),
         ("weasyprint deps", check_weasyprint_deps),
+        ("OPSEC settings", check_opsec),
         ("Playwright", check_playwright),
         ("Default admin password", check_default_password),
         ("FLASK_ENV=production", check_env_flask_env),

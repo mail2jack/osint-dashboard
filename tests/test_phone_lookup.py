@@ -33,7 +33,7 @@ class TestPhoneLookup:
         assert resp.status_code == 400
         assert "error" in data
 
-    @patch("cms.routes.phone.curl_requests.get")
+    @patch("cms.routes.phone.jittered_get")
     def test_valid_nl_number(self, mock_get, auth_client):
         """Valid NL number returns validation data (no external calls needed for validation)."""
         mock_get.return_value = MockCurlResponse(status_code=503)
@@ -46,7 +46,7 @@ class TestPhoneLookup:
         assert data.get("formatted") == "+31634407404"
         assert data.get("line_type") is not None
 
-    @patch("cms.routes.phone.curl_requests.get")
+    @patch("cms.routes.phone.jittered_get")
     def test_international_number(self, mock_get, auth_client):
         mock_get.return_value = MockCurlResponse(status_code=503)
 
@@ -57,7 +57,7 @@ class TestPhoneLookup:
         assert data.get("country_code") == "+1"
         assert data.get("formatted") == "+14155552671"
 
-    @patch("cms.routes.phone.curl_requests.get")
+    @patch("cms.routes.phone.jittered_get")
     def test_invalid_number(self, mock_get, auth_client):
         mock_get.return_value = MockCurlResponse(status_code=503)
 
@@ -65,7 +65,7 @@ class TestPhoneLookup:
         data = resp.get_json()
         assert data.get("valid") is False
 
-    @patch("cms.routes.phone.curl_requests.get")
+    @patch("cms.routes.phone.jittered_get")
     def test_normalizes_phone(self, mock_get, auth_client):
         """Test that Dutch numbers with various formats are normalized to E164."""
         mock_get.return_value = MockCurlResponse(status_code=503)
@@ -76,7 +76,7 @@ class TestPhoneLookup:
         assert data.get("valid") is True
         assert data.get("formatted", "").startswith("+31")
 
-    @patch("cms.routes.phone.curl_requests.get")
+    @patch("cms.routes.phone.jittered_get")
     def test_normalize_leading_zero(self, mock_get, auth_client):
         mock_get.return_value = MockCurlResponse(status_code=503)
 

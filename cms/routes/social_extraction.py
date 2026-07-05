@@ -1,6 +1,5 @@
 import logging
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 
 import flask
 from flask import request, jsonify, abort
@@ -36,10 +35,30 @@ def _extract_social_ids_from_url(url, subject=None):
     try:
         try:
             from playwright.sync_api import sync_playwright
+            from cms.services.playwright_stealth import (
+                stealth_for_domain,
+                apply_stealth_to_context,
+            )
 
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
+                stealth = stealth_for_domain(url)
+                launch_kwargs: dict = {"headless": True}
+                if stealth:
+                    launch_kwargs["args"] = list(stealth["launch_args"])
+                    launch_kwargs["args"].append(
+                        f"--window-size={stealth['viewport']['width']},{stealth['viewport']['height']}"
+                    )
+                browser = p.chromium.launch(**launch_kwargs)
+                context_kwargs: dict = {}
+                if stealth:
+                    context_kwargs["user_agent"] = stealth["user_agent"]
+                    context_kwargs["viewport"] = dict(stealth["viewport"])
+                    context_kwargs["locale"] = stealth["locale"]
+                    context_kwargs["timezone_id"] = stealth["timezone_id"]
+                    context_kwargs["color_scheme"] = stealth["color_scheme"]
+                page = browser.new_page(**context_kwargs)
+                if stealth:
+                    apply_stealth_to_context(page.context)
                 if not is_safe_url(url):
                     raise ValueError("Invalid or blocked URL")
                 page.goto(url, wait_until="networkidle", timeout=30000)
@@ -55,8 +74,7 @@ def _extract_social_ids_from_url(url, subject=None):
             }
             if not is_safe_url(url):
                 raise ValueError("Invalid or blocked URL")
-            jitter_sleep(domain_hint=url)
-            r = curl_requests.get(url, headers=headers, timeout=15)
+            r = jittered_get(url, headers=headers, timeout=15)
             if r.status_code == 200:
                 html = r.text
                 try:
@@ -65,21 +83,6 @@ def _extract_social_ids_from_url(url, subject=None):
                     extracted = socid_extractor.extract(html)
                 except ImportError:
                     logger.debug("socid_extractor not available")
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-            }
-            if not is_safe_url(url):
-                raise ValueError("Invalid or blocked URL")
-            jitter_sleep(domain_hint=url)
-            r = curl_requests.get(url, headers=headers, timeout=15)
-            if r.status_code == 200:
-                html = r.text
-                try:
-                    import socid_extractor
-
-                    extracted = socid_extractor.extract(html)
-                except ImportError:
-                    logger.debug("socid_extractor not available (2nd call)")
             import re
 
             fb_p = [

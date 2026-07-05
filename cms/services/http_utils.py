@@ -11,6 +11,11 @@ from curl_cffi import CurlError
 
 logger = logging.getLogger(__name__)
 
+
+class TorNotAvailableError(Exception):
+    """Raised when Tor is required but not available in strict mode."""
+
+
 _JITTER_ENABLED: bool | None = None
 _JITTER_MIN: float = 0.5
 _JITTER_MAX: float = 3.0
@@ -24,6 +29,11 @@ _PROXY_INDEX: int = 0
 _PROXY_ENABLED: bool = False
 _PROXY_LAST_CHECK: float = 0
 _proxy_lock = threading.Lock()
+
+_TOR_ENABLED: bool = False
+_TOR_PROXY: str = "socks5h://127.0.0.1:9050"
+_TOR_STRICT: bool = False
+_TOR_LAST_CHECK: float = 0
 
 _IMPROFILE_LIST = [
     "chrome124",
@@ -39,6 +49,10 @@ _IMPROFILE_LIST = [
 _IMPROFILE_INDEX: int = 0
 _IMPROFILE_ROTATION: bool = True
 _IMPROFILE_LAST_CHECK: float = 0
+
+_DOMAIN_IMPERSONATION_ENABLED: bool = True
+_DOMAIN_TO_PROFILE: dict[str, str] = {}
+_DOMAIN_IMPERSONATION_LAST_CHECK: float = 0
 
 
 def _refresh_jitter_config() -> None:
@@ -112,6 +126,37 @@ def reset_jitter_state() -> None:
         _DOMAIN_LAST_CALL.clear()
 
 
+def _refresh_tor_config() -> None:
+    global _TOR_ENABLED, _TOR_PROXY, _TOR_STRICT, _TOR_LAST_CHECK
+    now = time.time()
+    if now - _TOR_LAST_CHECK < 60:
+        return
+    _TOR_LAST_CHECK = now
+    try:
+        from flask import current_app
+
+        with current_app.app_context():
+            from cms.models import Setting
+
+            val = Setting.get("tor_enabled", "false")
+            _TOR_ENABLED = val.lower() in ("true", "1", "yes")
+            _TOR_PROXY = Setting.get("tor_proxy", "socks5h://127.0.0.1:9050").strip()
+            val = Setting.get("tor_strict_mode", "false")
+            _TOR_STRICT = val.lower() in ("true", "1", "yes")
+    except Exception:
+        _TOR_ENABLED = os.environ.get("TOR_ENABLED", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+        _TOR_PROXY = os.environ.get("TOR_PROXY", "socks5h://127.0.0.1:9050").strip()
+        _TOR_STRICT = os.environ.get("TOR_STRICT_MODE", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+
+
 def _refresh_proxy_config() -> None:
     global _PROXY_LIST, _PROXY_ENABLED, _PROXY_INDEX, _PROXY_LAST_CHECK
     now = time.time()
@@ -146,15 +191,35 @@ def _refresh_proxy_config() -> None:
         _PROXY_ENABLED = False
 
 
-def get_next_proxy() -> dict[str, str] | None:
+def get_next_proxy(identity: str | None = None) -> dict[str, str] | None:
     global _PROXY_INDEX
+    _refresh_tor_config()
     _refresh_proxy_config()
-    if not _PROXY_ENABLED or not _PROXY_LIST:
-        return None
-    with _proxy_lock:
-        proxy = _PROXY_LIST[_PROXY_INDEX % len(_PROXY_LIST)]
-        _PROXY_INDEX = (_PROXY_INDEX + 1) % len(_PROXY_LIST)
-    return {"http": proxy, "https": proxy}
+
+    # Tor heeft voorrang op proxy rotatie
+    if _TOR_ENABLED and _TOR_PROXY:
+        proxy = _TOR_PROXY
+        if identity:
+            from cms.services.identity_isolation import identity_for_proxy
+
+            proxy = identity_for_proxy(proxy, identity)
+        return {"http": proxy, "https": proxy}
+
+    # Proxy rotatie fallback
+    if _PROXY_ENABLED and _PROXY_LIST:
+        with _proxy_lock:
+            proxy = _PROXY_LIST[_PROXY_INDEX % len(_PROXY_LIST)]
+            _PROXY_INDEX = (_PROXY_INDEX + 1) % len(_PROXY_LIST)
+        return {"http": proxy, "https": proxy}
+
+    # Strict mode: weiger als Tor niet beschikbaar is
+    if _TOR_STRICT:
+        raise TorNotAvailableError(
+            "Tor strict mode enabled but Tor is not available. "
+            "Enable Tor or disable tor_strict_mode."
+        )
+
+    return None
 
 
 def reset_proxy_state() -> None:
@@ -162,6 +227,23 @@ def reset_proxy_state() -> None:
     with _proxy_lock:
         _PROXY_INDEX = 0
         _PROXY_LAST_CHECK = 0
+
+
+def is_tor_enabled() -> bool:
+    _refresh_tor_config()
+    return _TOR_ENABLED
+
+
+def get_tor_proxy() -> str | None:
+    _refresh_tor_config()
+    return _TOR_PROXY if _TOR_ENABLED else None
+
+
+def reset_tor_state() -> None:
+    global _TOR_LAST_CHECK, _TOR_ENABLED, _TOR_STRICT
+    _TOR_LAST_CHECK = 0
+    _TOR_ENABLED = False
+    _TOR_STRICT = False
 
 
 def _refresh_impersonate_config() -> None:
@@ -212,6 +294,66 @@ def next_impersonate() -> str:
     return profile
 
 
+def _extract_domain(url: str) -> str:
+    """Extract the hostname from a URL for domain-based profile mapping."""
+    try:
+        return urlparse(url).hostname or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def _refresh_domain_impersonation_config() -> None:
+    global _DOMAIN_IMPERSONATION_ENABLED, _DOMAIN_IMPERSONATION_LAST_CHECK
+    now = time.time()
+    if now - _DOMAIN_IMPERSONATION_LAST_CHECK < 120:
+        return
+    _DOMAIN_IMPERSONATION_LAST_CHECK = now
+    try:
+        from flask import current_app
+
+        with current_app.app_context():
+            from cms.models import Setting
+
+            val = Setting.get("domain_impersonation_enabled", "true")
+            _DOMAIN_IMPERSONATION_ENABLED = val.lower() in ("true", "1", "yes")
+    except Exception:
+        _DOMAIN_IMPERSONATION_ENABLED = os.environ.get(
+            "DOMAIN_IMPERSONATION_ENABLED", "true"
+        ).lower() in ("true", "1", "yes")
+
+
+def impersonate_for_domain(url: str) -> str:
+    """Return a consistent impersonation profile for a given URL's domain.
+
+    Same domain always gets the same profile, different domains get
+    different profiles. This prevents fingerprint correlation across domains
+    while appearing as a consistent browser to each domain.
+    """
+    _refresh_impersonate_config()
+    _refresh_domain_impersonation_config()
+
+    if not _DOMAIN_IMPERSONATION_ENABLED or len(_IMPROFILE_LIST) <= 1:
+        return next_impersonate()
+
+    domain = _extract_domain(url)
+    cached = _DOMAIN_TO_PROFILE.get(domain)
+    if cached:
+        return cached
+
+    idx = hash(domain) % len(_IMPROFILE_LIST)
+    profile = _IMPROFILE_LIST[idx]
+    _DOMAIN_TO_PROFILE[domain] = profile
+    return profile
+
+
+def reset_impersonation_state() -> None:
+    """Clear cached domain→profile mapping (for testing)."""
+    global _IMPROFILE_INDEX, _DOMAIN_TO_PROFILE, _DOMAIN_IMPERSONATION_LAST_CHECK
+    _IMPROFILE_INDEX = 0
+    _DOMAIN_TO_PROFILE.clear()
+    _DOMAIN_IMPERSONATION_LAST_CHECK = 0
+
+
 def _try_playwright_fallback(url: str, method: str = "GET", **kwargs: Any) -> Any:
     try:
         from cms.services.playwright_service import playwright_fetch
@@ -230,51 +372,118 @@ def _try_playwright_fallback(url: str, method: str = "GET", **kwargs: Any) -> An
     return None
 
 
+def _raise_if_tor_strict_fail(proxies: dict | None) -> None:
+    """If Tor strict mode is enabled and we were using Tor, raise TorNotAvailableError."""
+    if _TOR_STRICT and proxies and "socks5" in proxies.get("http", ""):
+        raise TorNotAvailableError(
+            "Tor strict mode enabled but Tor request failed. "
+            "Check Tor proxy or disable tor_strict_mode."
+        )
+
+
+def _record_audit(
+    url: str,
+    method: str,
+    status: int | str,
+    kwargs: dict,
+    error: str | None = None,
+) -> None:
+    try:
+        from cms.services.audit_chain import record_osint_call
+
+        record_osint_call(
+            url=url,
+            method=method,
+            status_code=status,
+            domain=_extract_domain(url),
+            profile=kwargs.get("impersonate"),
+            error=error,
+        )
+    except Exception:
+        pass
+
+
+def _get_identity() -> str | None:
+    try:
+        from cms.services.identity_isolation import get_current_identity
+
+        return get_current_identity()
+    except Exception:
+        return None
+
+
 def jittered_get(url: str, **kwargs: Any) -> curl_requests.Response:
     jitter_sleep(domain_hint=url)
-    proxies = get_next_proxy()
+    identity = _get_identity()
+    proxies = get_next_proxy(identity=identity)
     if proxies:
         kwargs.setdefault("proxies", proxies)
-    kwargs.setdefault("impersonate", next_impersonate())
+    kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        return curl_requests.get(url, **kwargs)
+        resp = curl_requests.get(url, **kwargs)
+        _record_audit(url, "GET", resp.status_code, kwargs)
+        return resp
+    except TorNotAvailableError:
+        _record_audit(url, "GET", "TOR_BLOCKED", kwargs)
+        raise
     except (CurlError, Exception) as e:
         logger.debug(f"curl_cffi GET failed for {url}: {e}")
+        _raise_if_tor_strict_fail(proxies)
         fallback = _try_playwright_fallback(url, method="GET", **kwargs)
         if fallback is not None:
+            _record_audit(url, "GET", fallback.status_code, kwargs)
             return fallback
+        _record_audit(url, "GET", "ERROR", kwargs, error=str(e))
         raise
 
 
 def jittered_post(url: str, **kwargs: Any) -> curl_requests.Response:
     jitter_sleep(domain_hint=url)
-    proxies = get_next_proxy()
+    identity = _get_identity()
+    proxies = get_next_proxy(identity=identity)
     if proxies:
         kwargs.setdefault("proxies", proxies)
-    kwargs.setdefault("impersonate", next_impersonate())
+    kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        return curl_requests.post(url, **kwargs)
+        resp = curl_requests.post(url, **kwargs)
+        _record_audit(url, "POST", resp.status_code, kwargs)
+        return resp
+    except TorNotAvailableError:
+        _record_audit(url, "POST", "TOR_BLOCKED", kwargs)
+        raise
     except (CurlError, Exception) as e:
         logger.debug(f"curl_cffi POST failed for {url}: {e}")
+        _raise_if_tor_strict_fail(proxies)
         fallback = _try_playwright_fallback(url, method="POST", **kwargs)
         if fallback is not None:
+            _record_audit(url, "POST", fallback.status_code, kwargs)
             return fallback
+        _record_audit(url, "POST", "ERROR", kwargs, error=str(e))
         raise
 
 
 def jittered_head(url: str, **kwargs: Any) -> curl_requests.Response:
     jitter_sleep(domain_hint=url)
-    proxies = get_next_proxy()
+    identity = _get_identity()
+    proxies = get_next_proxy(identity=identity)
     if proxies:
         kwargs.setdefault("proxies", proxies)
-    kwargs.setdefault("impersonate", next_impersonate())
+    kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        return curl_requests.head(url, **kwargs)
+        resp = curl_requests.head(url, **kwargs)
+        _record_audit(url, "HEAD", resp.status_code, kwargs)
+        return resp
+    except TorNotAvailableError:
+        _record_audit(url, "HEAD", "TOR_BLOCKED", kwargs)
+        raise
     except (CurlError, Exception) as e:
         logger.debug(f"curl_cffi HEAD failed for {url}: {e}")
+        _raise_if_tor_strict_fail(proxies)
         fallback = _try_playwright_fallback(url, method="HEAD", **kwargs)
         if fallback is not None:
+            _record_audit(url, "HEAD", fallback.status_code, kwargs)
             return fallback
+        _record_audit(url, "HEAD", "ERROR", kwargs, error=str(e))
         raise
 
 

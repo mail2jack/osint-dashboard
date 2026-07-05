@@ -3,9 +3,8 @@ import re
 from flask import request, jsonify
 import flask
 
-from curl_cffi import requests as curl_requests
 from curl_cffi import CurlError
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 from search_history import search_history
 
 logger = logging.getLogger(__name__)
@@ -50,10 +49,7 @@ def _whatsapp_check_internal(phone: str) -> dict:
     result = {"exists": None, "url": f"https://wa.me/{normalized}"}
     try:
         url = f"https://api.whatsapp.com/send?phone={normalized}"
-        jitter_sleep(domain_hint="https://api.whatsapp.com")
-        response = curl_requests.get(
-            url, headers=WHATSAPP_HEADERS, impersonate="chrome124", timeout=10
-        )
+        response = jittered_get(url, headers=WHATSAPP_HEADERS, timeout=10)
         text = response.text.lower()
         absence_patterns = [
             "phone number is not on whatsapp",
@@ -77,10 +73,7 @@ def _telegram_check_internal(phone: str) -> dict:
     result = {"exists": None, "url": f"https://t.me/+{normalized}"}
     try:
         tg_url = f"https://t.me/+{normalized}"
-        jitter_sleep(domain_hint="https://t.me")
-        response = curl_requests.get(
-            tg_url, headers=HEADERS, impersonate="chrome124", timeout=5
-        )
+        response = jittered_get(tg_url, headers=HEADERS, timeout=5)
         text = response.text.lower()
         if response.status_code == 400 or "join" in text or "subscribe" in text:
             result["exists"] = True
@@ -164,11 +157,9 @@ def phone_osint() -> flask.Response:
         result["normalized"] = normalized
 
         try:
-            jitter_sleep(domain_hint="https://api.whatsapp.com")
-            wa_response = curl_requests.get(
+            wa_response = jittered_get(
                 f"https://api.whatsapp.com/send?phone={normalized}",
                 headers=WHATSAPP_HEADERS,
-                impersonate="chrome124",
                 timeout=10,
             )
             wa_text = wa_response.text.lower()
@@ -196,11 +187,9 @@ def phone_osint() -> flask.Response:
 
         try:
             tg_url = f"https://t.me/+{normalized}"
-            jitter_sleep(domain_hint="https://t.me")
-            tg_response = curl_requests.get(
+            tg_response = jittered_get(
                 tg_url,
                 headers=HEADERS,
-                impersonate="chrome124",
                 timeout=5,
             )
             tg_text = tg_response.text.lower()
@@ -230,7 +219,7 @@ def phone_osint() -> flask.Response:
                 phone_e164 = result.get("formatted") or f"+{normalized}"
                 url = f"https://api.p.2chat.io/open/whatsapp/check-number/{_tcn}/{phone_e164}"
                 headers = {"X-User-API-Key": _tck, "Accept": "application/json"}
-                response = curl_requests.get(url, headers=headers, timeout=30)
+                response = jittered_get(url, headers=headers, timeout=30)
                 if response.status_code == 200:
                     data = response.json()
                     result["services"]["whatsapp_2chat"] = {
@@ -300,10 +289,7 @@ def whatsapp_lookup() -> flask.Response:
     try:
         url = f"https://api.whatsapp.com/send?phone={normalized}"
 
-        jitter_sleep(domain_hint="https://api.whatsapp.com")
-        response = curl_requests.get(
-            url, headers=WHATSAPP_HEADERS, impersonate="chrome124", timeout=10
-        )
+        response = jittered_get(url, headers=WHATSAPP_HEADERS, timeout=10)
         text = response.text.lower()
 
         result["http_status"] = response.status_code
@@ -393,7 +379,7 @@ def check_whatsapp_2chat() -> flask.Response:
 
         headers = {"X-User-API-Key": _tck, "Accept": "application/json"}
 
-        response = curl_requests.get(url, headers=headers, timeout=30)
+        response = jittered_get(url, headers=headers, timeout=30)
         data = response.json()
 
         if response.status_code == 200:
@@ -473,10 +459,7 @@ def telegram_lookup() -> flask.Response:
     try:
         url = f"https://t.me/+{normalized}"
 
-        jitter_sleep(domain_hint="https://t.me")
-        response = curl_requests.get(
-            url, headers=HEADERS, impersonate="chrome124", timeout=10
-        )
+        response = jittered_get(url, headers=HEADERS, timeout=10)
         result["http_status"] = response.status_code
         text = response.text.lower()
 

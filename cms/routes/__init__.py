@@ -4,11 +4,33 @@ Case Management System - Route Modules
 """
 
 import logging
-from flask import Blueprint
+from flask import Blueprint, request
 
 logger = logging.getLogger(__name__)
 
 cms_bp = Blueprint("cms", __name__, url_prefix="/cms")
+
+
+@cms_bp.before_request
+def _set_identity_from_case() -> None:
+    """Automatically set Tor identity isolation from case_id URL parameter."""
+    try:
+        from cms.services.identity_isolation import (
+            is_identity_isolation_enabled,
+            set_identity_for_case,
+            reset_identity,
+        )
+
+        if not is_identity_isolation_enabled():
+            return
+
+        case_id = request.view_args.get("case_id") if request.view_args else None
+        if case_id:
+            set_identity_for_case(case_id)
+        else:
+            reset_identity()
+    except Exception:
+        pass
 
 
 def register_modules() -> None:
@@ -65,6 +87,7 @@ def register_modules() -> None:
     from . import gdpr  # noqa: F401
     from . import dpa  # noqa: F401
     from . import breach  # noqa: F401
+    from . import opsec_dashboard  # noqa: F401
 
     # Background task status API
     from ..background import register_background_routes

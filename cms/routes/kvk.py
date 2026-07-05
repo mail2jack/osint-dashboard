@@ -4,7 +4,7 @@ from urllib.parse import quote
 import flask
 from flask import request, jsonify
 from flask_login import login_required
-from curl_cffi import requests as curl_requests
+from curl_cffi.requests import RequestsError
 
 from . import cms_bp
 from .. import csrf
@@ -13,7 +13,7 @@ from ..api_keys import _get_overheid_key
 from ..feature_flags import tool_enabled
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..validation import validate, OpenKVKQuerySchema
-from ..services.http_utils import jitter_sleep
+from ..services.http_utils import jittered_get
 
 from .response import api_error
 
@@ -47,8 +47,7 @@ def kvk_lookup() -> flask.Response:
         search_url = f"https://api.overheid.io/v3/openkvk?query={clean_query}&size=10"
         headers = {"Accept": "application/json", "ovio-api-key": api_key}
 
-        jitter_sleep(domain_hint=search_url)
-        response = curl_requests.get(search_url, headers=headers, timeout=15)
+        response = jittered_get(search_url, headers=headers, timeout=15)
 
         if response.status_code == 403 or response.status_code == 401:
             return api_error("🔑 Auth-fout (ongeldige sleutel)", 400)
@@ -70,14 +69,11 @@ def kvk_lookup() -> flask.Response:
             if href:
                 detail_url = f"https://api.overheid.io{href}"
                 try:
-                    jitter_sleep(domain_hint=detail_url)
-                    detail_resp = curl_requests.get(
-                        detail_url, headers=headers, timeout=10
-                    )
+                    detail_resp = jittered_get(detail_url, headers=headers, timeout=10)
                     if detail_resp.status_code == 200:
                         detail = detail_resp.json()
                         company.update(detail)
-                except curl_requests.RequestsError as e:
+                except RequestsError as e:
                     logger.debug(f"KVK detail fetch failed ({type(e).__name__}): {e}")
 
             address = company.get("bezoeklocatie") or {}
@@ -108,7 +104,7 @@ def kvk_lookup() -> flask.Response:
 
         return jsonify({"results": results, "count": len(results)})
 
-    except curl_requests.RequestsError as e:
+    except RequestsError as e:
         logger.warning(f"KVK lookup network error: {type(e).__name__}: {e}")
         return jsonify({"error": f"Netwerkfout bij KVK lookup: {e}"}), 502
     except Exception as e:

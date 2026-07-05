@@ -2638,6 +2638,75 @@ def init_default_settings() -> None:
             "value_type": "text",
             "display_order": 71,
         },
+        # Tor / OPSEC settings
+        {
+            "key": "tor_enabled",
+            "category": "opsec",
+            "value": "false",
+            "description": "Route ALL OSINT traffic through Tor (requires tor service running)",
+            "value_type": "boolean",
+            "display_order": 1,
+        },
+        {
+            "key": "tor_proxy",
+            "category": "opsec",
+            "value": "socks5h://127.0.0.1:9050",
+            "description": "Tor SOCKS5 proxy URL (use socks5h:// for remote DNS)",
+            "value_type": "text",
+            "display_order": 2,
+        },
+        {
+            "key": "tor_strict_mode",
+            "category": "opsec",
+            "value": "false",
+            "description": "Fail-closed: raise error if Tor proxy unreachable instead of falling back to direct connection",
+            "value_type": "boolean",
+            "display_order": 3,
+        },
+        {
+            "key": "tor_control_port",
+            "category": "opsec",
+            "value": "9051",
+            "description": "Tor control port (for circuit management, e.g., newnym)",
+            "value_type": "number",
+            "display_order": 4,
+        },
+        # Domain-based impersonation
+        {
+            "key": "domain_impersonation_enabled",
+            "category": "opsec",
+            "value": "true",
+            "description": "Use per-domain impersonation profiles (different domains see different browser fingerprints)",
+            "value_type": "boolean",
+            "display_order": 5,
+        },
+        # Playwright stealth
+        {
+            "key": "playwright_stealth_enabled",
+            "category": "opsec",
+            "value": "true",
+            "description": "Enable Playwright stealth mode — eviteer headless detection (UA rotation, init scripts, context overrides)",
+            "value_type": "boolean",
+            "display_order": 6,
+        },
+        # Audit hash chain
+        {
+            "key": "audit_chain_enabled",
+            "category": "opsec",
+            "value": "true",
+            "description": "OSINT audit hash chain — cryptografische chain of custody voor alle externe HTTP calls",
+            "value_type": "boolean",
+            "display_order": 7,
+        },
+        # Identity isolation
+        {
+            "key": "identity_isolation_enabled",
+            "category": "opsec",
+            "value": "false",
+            "description": "Per-onderzoek apart Tor circuit via IsolateSOCKSAuth (vereist torrc config)",
+            "value_type": "boolean",
+            "display_order": 8,
+        },
     ]
     for default in defaults:
         existing = Setting.query.filter_by(key=default["key"]).first()

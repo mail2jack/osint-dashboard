@@ -14,6 +14,7 @@ from .models import (
     WorkflowScreenshot,
     WorkflowActionFinding,
 )
+from cms.services.http_utils import jittered_get
 
 logger = logging.getLogger(__name__)
 
@@ -384,10 +385,9 @@ def _email_check(action):
     # — PGP keyserver check
     try:
         from urllib.parse import quote
-        from curl_cffi import requests as curl_requests
 
         pgp_url = f"https://keys.openpgp.org/vks/v1/by-email/{quote(email)}"
-        pgp_resp = curl_requests.get(pgp_url, impersonate="chrome", timeout=10)
+        pgp_resp = jittered_get(pgp_url, timeout=10)
         if pgp_resp.status_code == 200:
             findings.append(
                 {
@@ -832,11 +832,9 @@ def _kvk_check(action):
 
     # Fallback: scrape openkvk.nl (geen API key nodig)
     try:
-        from curl_cffi import requests as curl_requests
         import html as _html
 
-        session = curl_requests.Session(impersonate="chrome")
-        r = session.get(
+        r = jittered_get(
             "https://openkvk.nl/search",
             params={"q": query},
             headers={
@@ -1386,10 +1384,7 @@ def _facebook_check(action):
             if m:
                 username_param = m.group(1)
         try:
-            from curl_cffi import requests as curl_requests
-
-            session = curl_requests.Session(impersonate="chrome")
-            r = session.get(
+            r = jittered_get(
                 "https://facebook-scraper-api9.p.rapidapi.com/facebook/profile",
                 params={"username": username_param},
                 headers={
@@ -1441,9 +1436,6 @@ def _facebook_check(action):
 
     # ─── Scraper3 fallback ─────────────────────────────────
     try:
-        from curl_cffi import requests as curl_requests
-
-        session = curl_requests.Session(impersonate="chrome")
         headers = {
             "x-rapidapi-key": api_key,
             "x-rapidapi-host": "facebook-scraper3.p.rapidapi.com",
@@ -1451,7 +1443,7 @@ def _facebook_check(action):
         }
 
         def api_get(path, params):
-            r = session.get(
+            r = jittered_get(
                 f"https://facebook-scraper3.p.rapidapi.com{path}",
                 params=params,
                 headers=headers,
@@ -1687,9 +1679,6 @@ def _tiktok_check(action):
     is_username = "/" not in query and " " not in query and len(query) < 100
 
     try:
-        from curl_cffi import requests as curl_requests
-
-        session = curl_requests.Session(impersonate="chrome")
         headers = {
             "x-rapidapi-key": api_key,
             "x-rapidapi-host": "scraptik.p.rapidapi.com",
@@ -1697,7 +1686,7 @@ def _tiktok_check(action):
         }
 
         if is_username:
-            r = session.get(
+            r = jittered_get(
                 "https://scraptik.p.rapidapi.com/get-user",
                 params={"username": query},
                 headers=headers,
@@ -1739,7 +1728,7 @@ def _tiktok_check(action):
                 )
 
         # Name search fallback
-        r = session.get(
+        r = jittered_get(
             "https://scraptik.p.rapidapi.com/search-users",
             params={"keyword": query, "count": "5"},
             headers=headers,
@@ -1844,9 +1833,6 @@ def _instagram_check(action):
     is_username = "/" not in query and " " not in query and len(query) < 100
 
     try:
-        from curl_cffi import requests as curl_requests
-
-        session = curl_requests.Session(impersonate="chrome")
         headers = {
             "x-rapidapi-key": api_key,
             "x-rapidapi-host": "instagram-scraper-api14.p.rapidapi.com",
@@ -1854,7 +1840,7 @@ def _instagram_check(action):
         }
 
         if is_username:
-            r = session.get(
+            r = jittered_get(
                 "https://instagram-scraper-api14.p.rapidapi.com/instagram/profile",
                 params={"username": query},
                 headers=headers,
@@ -1900,7 +1886,7 @@ def _instagram_check(action):
                 )
 
         # Name search fallback
-        r = session.get(
+        r = jittered_get(
             "https://instagram-scraper-api14.p.rapidapi.com/instagram/search",
             params={"query": query},
             headers=headers,
@@ -2004,9 +1990,6 @@ def _linkedin_check(action):
     )
 
     try:
-        from curl_cffi import requests as curl_requests
-
-        session = curl_requests.Session(impersonate="chrome")
         headers = {
             "x-rapidapi-key": api_key,
             "x-rapidapi-host": "linkedin-data-api.p.rapidapi.com",
@@ -2014,7 +1997,7 @@ def _linkedin_check(action):
         }
 
         def api_get(path, params):
-            r = session.get(
+            r = jittered_get(
                 f"https://linkedin-data-api.p.rapidapi.com{path}",
                 params=params,
                 headers=headers,
@@ -2212,9 +2195,6 @@ def _twitter_check(action):
     is_username = "/" not in query and " " not in query and len(query) < 100
 
     try:
-        from curl_cffi import requests as curl_requests
-
-        session = curl_requests.Session(impersonate="chrome")
         headers = {
             "x-rapidapi-key": api_key,
             "x-rapidapi-host": "twitter-api45.p.rapidapi.com",
@@ -2222,7 +2202,7 @@ def _twitter_check(action):
         }
 
         if is_username:
-            r = session.get(
+            r = jittered_get(
                 "https://twitter-api45.p.rapidapi.com/screenname.php",
                 params={"screenname": query},
                 headers=headers,
@@ -2264,7 +2244,7 @@ def _twitter_check(action):
                 )
 
         # Search fallback
-        r = session.get(
+        r = jittered_get(
             "https://twitter-api45.p.rapidapi.com/search.php",
             params={"query": query, "type": "Popular"},
             headers=headers,
@@ -2319,7 +2299,6 @@ def _subdomain_check(action):
         return findings
 
     try:
-        from curl_cffi import requests as curl_requests
         from cms.constants import HEADERS
         import time
 
@@ -2332,7 +2311,7 @@ def _subdomain_check(action):
         # Try up to 2 times with longer timeout
         for attempt in range(2):
             try:
-                resp = curl_requests.get(url, headers=headers, timeout=60)
+                resp = jittered_get(url, headers=headers, timeout=60)
                 if resp.status_code in (502, 503, 504):
                     time.sleep(2)
                     continue
@@ -2360,7 +2339,7 @@ def _subdomain_check(action):
                     "Accept": "application/json",
                     "User-Agent": HEADERS.get("User-Agent", "Mozilla/5.0"),
                 }
-                cs_resp = curl_requests.get(cs_url, headers=cs_headers, timeout=30)
+                cs_resp = jittered_get(cs_url, headers=cs_headers, timeout=30)
                 if cs_resp.status_code == 200:
                     for entry in cs_resp.json():
                         for name in entry.get("dns_names", []):

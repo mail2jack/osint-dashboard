@@ -10,8 +10,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..models import Setting
 from ..auth import admin_required
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep, next_impersonate
+from cms.services.http_utils import jittered_get
 
 from .response import api_success, api_error
 
@@ -248,8 +247,7 @@ def check_update() -> flask.Response:
     try:
         # Fetch remote VERSION file
         ver_url = f"https://raw.githubusercontent.com/{repo}/master/VERSION"
-        jitter_sleep(domain_hint=ver_url)
-        r = curl_requests.get(ver_url, timeout=10, impersonate="chrome124")
+        r = jittered_get(ver_url, timeout=10)
         r.raise_for_status()
         latest_ver = r.text.strip()
 
@@ -258,11 +256,9 @@ def check_update() -> flask.Response:
         remote_sha = local_sha
         try:
             api_url = f"https://api.github.com/repos/{repo}/commits/master"
-            jitter_sleep(domain_hint=api_url)
-            api_r = curl_requests.get(
+            api_r = jittered_get(
                 api_url,
                 timeout=10,
-                impersonate="chrome124",
                 headers={"Accept": "application/vnd.github.v3.sha"},
             )
             if api_r.status_code == 200:
@@ -311,8 +307,7 @@ def check_update() -> flask.Response:
         if update_available:
             try:
                 cl_url = f"https://raw.githubusercontent.com/{repo}/master/CHANGELOG.md"
-                jitter_sleep(domain_hint=cl_url)
-                cl_r = curl_requests.get(cl_url, timeout=10, impersonate="chrome124")
+                cl_r = jittered_get(cl_url, timeout=10)
                 if cl_r.status_code == 200:
                     cl_text = cl_r.text
                     m = re.search(
@@ -648,13 +643,12 @@ def brave_status():
         "Accept": "application/json",
     }
     try:
-        with curl_requests.Session(
-            timeout=10.0, impersonate=next_impersonate(), headers=headers
-        ) as client:
-            resp = client.get(
-                "https://api.search.brave.com/res/v1/web/search",
-                params={"q": "test", "count": 1},
-            )
+        resp = jittered_get(
+            "https://api.search.brave.com/res/v1/web/search",
+            timeout=10.0,
+            headers=headers,
+            params={"q": "test", "count": 1},
+        )
         remaining_header = resp.headers.get("X-RateLimit-Remaining", "")
         limit_header = resp.headers.get("X-RateLimit-Limit", "")
         reset_header = resp.headers.get("X-RateLimit-Reset", "")

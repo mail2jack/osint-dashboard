@@ -151,19 +151,17 @@ class TestCreditTracking:
 
 class TestFacebookCheck:
     @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
-    @patch("curl_cffi.requests.Session")
-    def test_pullapi_success(self, mock_session_cls, mock_get_key):
-        mock_session_cls.return_value = make_mock_session(
-            MockCurlResponse(200, facebook_pull_profile)
-        )
+    @patch("cms.workflow.research.jittered_get")
+    def test_pullapi_success(self, mock_get, mock_get_key):
+        mock_get.return_value = MockCurlResponse(200, facebook_pull_profile)
         findings = _facebook_check(MockAction(data_value="jan.vandijk"))
         assert len(findings) == 1
         assert "Jan van Dijk" in findings[0]["title"]
         assert findings[0]["source_type"] == "facebook"
 
     @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
-    @patch("curl_cffi.requests.Session")
-    def test_no_api_key(self, mock_session_cls, mock_get_key):
+    @patch("cms.workflow.research.jittered_get")
+    def test_no_api_key(self, mock_get, mock_get_key):
         mock_get_key.return_value = None
         findings = _facebook_check(MockAction(data_value="jan.vandijk"))
         assert len(findings) == 1
@@ -174,11 +172,9 @@ class TestTikTokCheck:
     @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("curl_cffi.requests.Session")
-    def test_username_success(self, mock_session_cls, mock_set, mock_get, mock_key):
-        mock_session_cls.return_value = make_mock_session(
-            MockCurlResponse(200, tiktok_profile)
-        )
+    @patch("cms.workflow.research.jittered_get")
+    def test_username_success(self, mock_get, mock_set, mock_credit_get, mock_key):
+        mock_get.return_value = MockCurlResponse(200, tiktok_profile)
         findings = _tiktok_check(MockAction(data_value="janvandijk"))
         assert len(findings) == 1
         assert "Jan van Dijk" in findings[0]["title"]
@@ -189,11 +185,9 @@ class TestInstagramCheck:
     @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("curl_cffi.requests.Session")
-    def test_username_success(self, mock_session_cls, mock_set, mock_get, mock_key):
-        mock_session_cls.return_value = make_mock_session(
-            MockCurlResponse(200, instagram_pull_profile)
-        )
+    @patch("cms.workflow.research.jittered_get")
+    def test_username_success(self, mock_get, mock_set, mock_credit_get, mock_key):
+        mock_get.return_value = MockCurlResponse(200, instagram_pull_profile)
         findings = _instagram_check(MockAction(data_value="janvandijk"))
         assert len(findings) == 1
         assert "Jan van Dijk" in findings[0]["title"]
@@ -204,13 +198,9 @@ class TestLinkedInCheck:
     @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("curl_cffi.requests.Session")
-    def test_url_success(self, mock_session_cls, mock_set, mock_get, mock_key):
-        session_mock = MagicMock()
-        session_mock.get.return_value = MockCurlResponse(
-            200, {"data": linkedin_profile}
-        )
-        mock_session_cls.return_value = session_mock
+    @patch("cms.workflow.research.jittered_get")
+    def test_url_success(self, mock_get, mock_set, mock_credit_get, mock_key):
+        mock_get.return_value = MockCurlResponse(200, {"data": linkedin_profile})
         findings = _linkedin_check(
             MockAction(data_value="https://linkedin.com/in/janvandijk")
         )
@@ -225,11 +215,9 @@ class TestTwitterCheck:
     @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("curl_cffi.requests.Session")
-    def test_username_success(self, mock_session_cls, mock_set, mock_get, mock_key):
-        mock_session_cls.return_value = make_mock_session(
-            MockCurlResponse(200, twitter_profile)
-        )
+    @patch("cms.workflow.research.jittered_get")
+    def test_username_success(self, mock_get, mock_set, mock_credit_get, mock_key):
+        mock_get.return_value = MockCurlResponse(200, twitter_profile)
         findings = _twitter_check(MockAction(data_value="janvandijk"))
         assert len(findings) == 1
         assert "Jan van Dijk" in findings[0]["title"]

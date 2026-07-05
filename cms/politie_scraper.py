@@ -3,8 +3,7 @@ import json
 import logging
 from datetime import datetime
 
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 
 
 logger = logging.getLogger(__name__)
@@ -157,8 +156,7 @@ def _normalize_opsporingsbericht(doc: dict) -> dict:
 def fetch_page(page: int = 1) -> tuple[int, list[dict]]:
     url = GEZOCHT_URL if page <= 1 else f"{GEZOCHT_URL}?page={page}"
     try:
-        jitter_sleep(domain_hint=url)
-        r = curl_requests.get(url, timeout=TIMEOUT, impersonate="chrome124")
+        r = jittered_get(url, timeout=TIMEOUT)
         r.raise_for_status()
     except Exception as e:
         logger.error(f"Failed to fetch page {page}: {e}")

@@ -82,29 +82,58 @@ def playwright_fetch(
 
     try:
         from playwright.sync_api import sync_playwright
+        from cms.services.playwright_stealth import (
+            stealth_for_domain,
+            apply_stealth_to_context,
+        )
 
         with sync_playwright() as p:
+            stealth = stealth_for_domain(url)
             launch_kwargs: dict = {"headless": True, "timeout": timeout_ms}
+            if stealth:
+                launch_kwargs["args"] = list(stealth["launch_args"])
+                launch_kwargs["args"].append(
+                    f"--window-size={stealth['viewport']['width']},{stealth['viewport']['height']}"
+                )
+
+            browser = p.chromium.launch(**launch_kwargs)
+
+            context_kwargs: dict = {}
+
             proxies = get_next_proxy()
             if proxies:
                 proxy_url = proxies.get("https") or proxies.get("http") or ""
-                if proxy_url.startswith("socks5"):
-                    pass
-                else:
-                    launch_kwargs["proxy"] = {"server": proxy_url}
+                if proxy_url:
+                    context_kwargs["proxy"] = {"server": proxy_url}
 
-            browser = p.chromium.launch(**launch_kwargs)
-            context = browser.new_context(
-                user_agent=(
+            if stealth:
+                context_kwargs["user_agent"] = stealth["user_agent"]
+                context_kwargs["viewport"] = dict(stealth["viewport"])
+                context_kwargs["locale"] = stealth["locale"]
+                context_kwargs["timezone_id"] = stealth["timezone_id"]
+                context_kwargs["color_scheme"] = stealth["color_scheme"]
+                context_kwargs["device_scale_factor"] = stealth["device_scale_factor"]
+            else:
+                context_kwargs["user_agent"] = (
                     headers.get("User-Agent")
                     if headers
                     else "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
                 )
-            )
+
+            context = browser.new_context(**context_kwargs)
+
             if headers:
-                context.set_extra_http_headers(headers)
+                extra = dict(headers)
+                extra.pop("User-Agent", None)
+                extra.pop("user-agent", None)
+                if extra:
+                    context.set_extra_http_headers(extra)
 
             page = context.new_page()
+
+            if stealth:
+                apply_stealth_to_context(context)
+
             resp = None
             try:
                 if not is_safe_url(url):

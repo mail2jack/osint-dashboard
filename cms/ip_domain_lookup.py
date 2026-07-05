@@ -1,8 +1,7 @@
 import logging
 import socket
 
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 
 from cms.validators import validate_ip, validate_domain
 
@@ -30,10 +29,7 @@ def lookup_ip(ip_address):
             result["reverse_dns"] = "N/A"
 
         try:
-            jitter_sleep(domain_hint="http://ip-api.com")
-            response = curl_requests.get(
-                f"http://ip-api.com/json/{ip_address}", timeout=5
-            )
+            response = jittered_get(f"http://ip-api.com/json/{ip_address}", timeout=5)
             if response.status_code == 200:
                 data = response.json()
                 result["geolocation"] = {

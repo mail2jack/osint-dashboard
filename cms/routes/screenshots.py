@@ -204,10 +204,38 @@ def capture_screenshot(case_id: str) -> flask.Response:
         # Try to use Playwright for screenshot capture
         try:
             from playwright.sync_api import sync_playwright
+            from cms.services.playwright_stealth import (
+                stealth_for_domain,
+                apply_stealth_to_context,
+            )
 
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page(viewport={"width": 1280, "height": 720})
+                stealth = stealth_for_domain(url)
+                launch_kwargs: dict = {"headless": True}
+                if stealth:
+                    launch_kwargs["args"] = list(stealth["launch_args"])
+                    launch_kwargs["args"].append(
+                        f"--window-size={stealth['viewport']['width']},{stealth['viewport']['height']}"
+                    )
+                browser = p.chromium.launch(**launch_kwargs)
+                context_kwargs: dict = {
+                    "viewport": (
+                        dict(stealth["viewport"])
+                        if stealth
+                        else {"width": 1280, "height": 720}
+                    )
+                }
+                if stealth:
+                    context_kwargs["user_agent"] = stealth["user_agent"]
+                    context_kwargs["locale"] = stealth["locale"]
+                    context_kwargs["timezone_id"] = stealth["timezone_id"]
+                    context_kwargs["color_scheme"] = stealth["color_scheme"]
+                    context_kwargs["device_scale_factor"] = stealth[
+                        "device_scale_factor"
+                    ]
+                page = browser.new_page(**context_kwargs)
+                if stealth:
+                    apply_stealth_to_context(page.context)
                 if not is_safe_url(url):
                     return jsonify({"error": "Invalid or blocked URL"}), 400
                 page.goto(url, wait_until="networkidle", timeout=30000)

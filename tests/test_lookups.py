@@ -67,7 +67,7 @@ class TestKadasterLookup:
         resp = auth_client.post(self.URL, json={})
         assert resp.status_code == 400
 
-    @patch("cms.routes.kadaster.curl_requests.get")
+    @patch("cms.routes.kadaster.jittered_get")
     def test_happy_path(self, mock_get, auth_client):
         mock_get.return_value = MockHttpxResponse(
             status_code=200,
@@ -102,7 +102,7 @@ class TestKadasterLookup:
         assert data["bag_data"]["street"] == "Hoofdstraat"
         assert data["bag_data"]["town"] == "Amsterdam"
 
-    @patch("cms.routes.kadaster.curl_requests.get")
+    @patch("cms.routes.kadaster.jittered_get")
     def test_not_found(self, mock_get, auth_client):
         mock_get.return_value = MockHttpxResponse(
             status_code=200, json_data={"response": {"docs": []}}
@@ -123,7 +123,7 @@ class TestPolitiebureauLookup:
         resp = client.post(self.URL, json={"lat": 52.37, "lon": 4.9})
         assert resp.status_code == 401
 
-    @patch("cms.routes.politiebureau.curl_requests.get")
+    @patch("cms.routes.politiebureau.jittered_get")
     def test_happy_path(self, mock_get, auth_client):
         mock_get.return_value = MockHttpxResponse(
             status_code=200,
@@ -169,7 +169,7 @@ class TestRDWCheck:
         resp = auth_client.post(self.URL, json={})
         assert resp.status_code == 400
 
-    @patch("cms.routes.rdw.curl_requests.get")
+    @patch("cms.routes.rdw.jittered_get")
     def test_happy_path(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(
             status_code=200,
@@ -195,7 +195,7 @@ class TestRDWCheck:
         assert data.get("merk") == "VOLKSWAGEN"
         assert data.get("kenteken_display") == "22-PBR-2"
 
-    @patch("cms.routes.rdw.curl_requests.get")
+    @patch("cms.routes.rdw.jittered_get")
     def test_not_found(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(status_code=200, json_data=[])
         resp = auth_client.post(self.URL, json={"kenteken": "XX-99-YY"})
@@ -203,7 +203,7 @@ class TestRDWCheck:
         assert resp.status_code == 200
         assert data.get("found") is False
 
-    @patch("cms.routes.rdw.curl_requests.get")
+    @patch("cms.routes.rdw.jittered_get")
     def test_api_error(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(status_code=503)
         resp = auth_client.post(self.URL, json={"kenteken": "22PBR2"})
@@ -313,7 +313,7 @@ class TestCheckPolicieStatus:
     @patch("cms.routes.interpol._check_interpol_rate_limit")
     def test_status_endpoint(self, mock_rate, auth_client):
         mock_rate.return_value = 0
-        with patch("cms.routes.interpol.curl_requests.get") as mock_get:
+        with patch("cms.routes.interpol.jittered_get") as mock_get:
             mock_get.return_value = MockHttpxResponse(status_code=200, json_data={})
             resp = auth_client.get(self.URL)
             data = resp.get_json()

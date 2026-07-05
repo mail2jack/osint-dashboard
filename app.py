@@ -512,7 +512,7 @@ def _cached_count(key: str, ttl: float, factory) -> int:
 def inject_globals():
     from version import get_version
 
-    _nonce = secrets.token_hex(16)
+    _nonce = getattr(g, "csp_nonce", secrets.token_hex(16))
     g.csp_nonce = _nonce
     ctx = {
         "current_version": get_version(),
@@ -741,6 +741,10 @@ def add_security_headers(response):
         f"report-uri /csp-report"
     )
     response.headers["Content-Security-Policy"] = csp
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+    )
     # Long-lived cache for static assets
     if response.content_type and response.content_type.startswith(
         ("text/css", "application/javascript", "image/")
@@ -851,6 +855,15 @@ def csp_report():
     if report:
         app.logger.warning("CSP violation: %s", json.dumps(report, indent=2))
     return "", 204
+
+
+@app.cli.command("opsec:check")
+def opsec_check():
+    """Run OPSEC validation checks (Tor, stealth, audit chain, etc.)."""
+    from cms.opsec_check import run_opsec_checks, print_results
+
+    results = run_opsec_checks(verbose=True)
+    print_results(results)
 
 
 # =============================================================================

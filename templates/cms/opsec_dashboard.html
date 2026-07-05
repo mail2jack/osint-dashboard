@@ -1,0 +1,138 @@
+{% extends "cms/base.html" %}
+{% block title %}🔒 OPSEC Dashboard{% endblock %}
+{% block content %}
+<style>
+  .opsec-header { display:flex; justify-content:space-between; align-items:center; margin:0 0 1.5rem; flex-wrap:wrap; gap:0.5rem; }
+  .opsec-header h1 { margin:0; font-size:1.5rem; }
+  .opsec-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; }
+  .opsec-card { background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:1.25rem; }
+  .opsec-card-title { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem; }
+  .opsec-row { display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border-color); font-size:0.85rem; }
+  .opsec-row:last-child { border-bottom:none; }
+  .opsec-label { color:var(--text-secondary); }
+  .opsec-value { font-weight:600; display:flex; align-items:center; gap:0.3rem; }
+  .opsec-badge { display:inline-block; padding:0.15rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600; }
+  .opsec-badge.pass { background:#f0fdf4; color:#16a34a; }
+  .opsec-badge.fail { background:#fef2f2; color:#dc2626; }
+  .opsec-detail { font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem; word-break:break-all; }
+  .opsec-badge-xs { display:inline-block; padding:0.1rem 0.4rem; border-radius:3px; font-size:0.65rem; font-weight:600; margin:0.15rem; }
+  .opsec-badge-xs.pass { background:#f0fdf4; color:#16a34a; }
+  .opsec-badge-xs.fail { background:#fef2f2; color:#dc2626; }
+</style>
+
+<div class="opsec-header">
+  <h1>🔒 OPSEC Dashboard</h1>
+  <div style="display:flex;gap:0.5rem;">
+    <button class="btn-cms" data-click="refreshOpsec" id="opsecRefreshBtn">🔄 Verversen</button>
+  </div>
+</div>
+
+<div id="opsecOverview" class="opsec-grid">
+  <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted);">Loading OPSEC status...</div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+window.CMS = window.CMS || {};
+window.opsecData = null;
+
+function refreshOpsec() {
+  var btn = document.getElementById('opsecRefreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Loading...'; }
+  apiFetch('/cms/api/opsec/status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      window.opsecData = data;
+      renderOpsec(data);
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Verversen'; }
+    })
+    .catch(function() {
+      document.getElementById('opsecOverview').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--danger-text);">❌ Failed to load OPSEC status</div>';
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Verversen'; }
+    });
+}
+
+function renderOpsec(d) {
+  var html = '';
+
+  /* Overview: all checks */
+  html += '<div class="opsec-card" style="grid-column:1/-1;">';
+  html += '<div class="opsec-card-title">📊 OPSEC Validation</div>';
+  html += '<div style="margin-bottom:0.5rem;">Overall: <strong>' + (d.checks.pass ? '✅ PASS' : '❌ FAIL') + '</strong></div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:0.3rem;">';
+  for (var name in d.checks.checks) {
+    var check = d.checks.checks[name];
+    var cls = check.pass ? 'pass' : 'fail';
+    var icon = check.pass ? '✅' : '❌';
+    html += '<div title="' + esc(check.detail) + '" class="opsec-badge-xs ' + cls + '">' + icon + ' ' + name + '</div>';
+  }
+  html += '</div></div>';
+
+  /* Tor card */
+  html += '<div class="opsec-card">';
+  html += '<div class="opsec-card-title">🧅 Tor</div>';
+  html += '<div class="opsec-row"><span class="opsec-label">Enabled</span><span class="opsec-value">' + (d.tor.enabled ? '✅ Yes' : '⏹️ No') + '</span></div>';
+  html += '<div class="opsec-row"><span class="opsec-label">Proxy</span><span class="opsec-value" style="font-size:0.75rem;font-family:monospace;">' + esc(d.tor.proxy || '—') + '</span></div>';
+  html += '<div class="opsec-row"><span class="opsec-label">Health</span><span class="opsec-value" style="font-size:0.75rem;">' + esc(d.tor.health) + '</span></div>';
+  html += '</div>';
+
+  /* Audit chain card */
+  html += '<div class="opsec-card">';
+  html += '<div class="opsec-card-title">🔗 Audit Chain</div>';
+  html += '<div class="opsec-row"><span class="opsec-label">Enabled</span><span class="opsec-value">' + (d.audit_chain.enabled ? '✅ Yes' : '⏹️ No') + '</span></div>';
+  html += '<div class="opsec-row"><span class="opsec-label">Length</span><span class="opsec-value">' + (d.audit_chain.length || 0) + ' entries</span></div>';
+  html += '<div class="opsec-row"><span class="opsec-label">Last Hash</span><span class="opsec-value" style="font-size:0.7rem;font-family:monospace;">' + esc((d.audit_chain.last_hash || '—').slice(0, 16)) + '…</span></div>';
+  html += '<div style="margin-top:0.5rem;"><button class="btn-cms small" data-click="verifyChain">🔍 Verify Chain</button></div>';
+  html += '<div id="chainResult" style="margin-top:0.5rem;font-size:0.8rem;"></div>';
+  html += '</div>';
+
+  /* Identity isolation card */
+  html += '<div class="opsec-card">';
+  html += '<div class="opsec-card-title">🆔 Identity Isolation</div>';
+  html += '<div class="opsec-row"><span class="opsec-label">Enabled</span><span class="opsec-value">' + (d.identity_isolation.enabled ? '✅ Yes' : '⏹️ No') + '</span></div>';
+  html += '</div>';
+
+  /* Settings card */
+  var htmlSettings = '';
+  var keys = Object.keys(d.settings).sort();
+  var count = 0;
+  for (var i = 0; i < keys.length; i++) {
+    var val = d.settings[keys[i]];
+    if (val === null || val === undefined) val = '—';
+    if (val === true || val === 'true') val = '✅';
+    else if (val === false || val === 'false') val = '⏹️';
+    if (String(val).length > 36) val = String(val).slice(0, 36) + '…';
+    htmlSettings += '<div class="opsec-row" style="font-size:0.75rem;"><span class="opsec-label">' + esc(keys[i]) + '</span><span class="opsec-value" style="font-size:0.75rem;">' + esc(val) + '</span></div>';
+    count++;
+  }
+  html += '<div class="opsec-card" style="grid-column:1/-1;">';
+  html += '<div class="opsec-card-title">⚙️ Settings (' + count + ')</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.25rem;">' + htmlSettings + '</div></div>';
+
+  document.getElementById('opsecOverview').innerHTML = html;
+}
+
+window.verifyChain = function() {
+  var el = document.getElementById('chainResult');
+  if (el) el.innerHTML = '<span style="color:var(--text-muted);">Verifying chain...</span>';
+  apiFetch('/cms/api/opsec/verify-chain')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!el) return;
+      var icon = data.valid ? '✅' : '❌';
+      var cls = data.valid ? 'pass' : 'fail';
+      el.innerHTML = '<span class="opsec-badge ' + cls + '">' + icon + ' Chain ' + (data.valid ? 'valid' : 'INVALID') + ' (' + data.entries + ' entries, ' + data.errors.length + ' errors)</span>';
+      if (data.errors.length) {
+        el.innerHTML += '<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--danger-text);">' + data.errors.slice(0, 3).map(function(e) { return esc(e); }).join('<br>') + '</div>';
+      }
+    })
+    .catch(function() {
+      if (el) el.innerHTML = '<span style="color:var(--danger-text);">❌ Verification failed</span>';
+    });
+};
+
+document.addEventListener('DOMContentLoaded', refreshOpsec);
+setInterval(function() {
+  if (document.getElementById('opsecOverview')) refreshOpsec();
+}, 60000);
+</script>
+{% endblock %}

@@ -13,56 +13,23 @@ from cms.services.http_utils import jitter_sleep, get_next_proxy, next_impersona
 logger = logging.getLogger(__name__)
 _dorks_log_lock = threading.Lock()
 
-_TOR_ENABLED: bool | None = None
-_TOR_PROXY: str | None = None
-_TOR_LAST_CHECK: float = 0
-
-
-def _refresh_tor_config() -> None:
-    """Refresh Tor config cache from Settings (cached 60s)."""
-    global _TOR_ENABLED, _TOR_PROXY, _TOR_LAST_CHECK
-    now = time.time()
-    if now - _TOR_LAST_CHECK < 60:
-        return
-    _TOR_LAST_CHECK = now
-    try:
-        from flask import current_app
-
-        with current_app.app_context():
-            from cms.models import Setting
-
-            val = Setting.get("tor_enabled", "false")
-            _TOR_ENABLED = val.lower() in ("true", "1", "yes")
-            _TOR_PROXY = Setting.get("tor_proxy", "socks5://127.0.0.1:9050")
-    except Exception:
-        _TOR_ENABLED = os.environ.get("TOR_ENABLED", "false").lower() in (
-            "true",
-            "1",
-            "yes",
-        )
-        _TOR_PROXY = os.environ.get("TOR_PROXY", "socks5://127.0.0.1:9050")
-
 
 def _get_http_client(
     timeout: float = 10.0, headers: dict | None = None
 ) -> curl_requests.Session:
     """Return curl_cffi.Session with rotating browser TLS fingerprint impersonation.
 
-    Routes through Tor SOCKS5 proxy when enabled, else uses proxy rotation.
+    Routes through Tor (prioriteit) of proxy rotation via http_utils.get_next_proxy().
     """
-    _refresh_tor_config()
     kwargs: dict = {
         "timeout": timeout,
         "impersonate": next_impersonate(),
     }
     if headers:
         kwargs["headers"] = headers
-    if _TOR_ENABLED and _TOR_PROXY:
-        kwargs["proxies"] = {"http": _TOR_PROXY, "https": _TOR_PROXY}
-    else:
-        proxies = get_next_proxy()
-        if proxies:
-            kwargs["proxies"] = proxies
+    proxies = get_next_proxy()
+    if proxies:
+        kwargs["proxies"] = proxies
     return curl_requests.Session(**kwargs)
 
 

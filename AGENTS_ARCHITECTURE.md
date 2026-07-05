@@ -71,7 +71,7 @@
 ## CSRF Protection
 
 - Flask-WTF `CSRFProtect` initialized in `cms/__init__.py:25` with `csrf = CSRFProtect()`.
-- ~57 route handlers are marked `@csrf.exempt` (49 `@csrf.exempt` decorators + `csrf.exempt(func)` calls) — most are JSON API endpoints consumed by JavaScript (fetch/XHR).
+- 34 route handlers are marked `@csrf.exempt` — all JSON API endpoints consumed by JavaScript (fetch/XHR).
 - The frontend's `csrfSafeFetch()` wrapper in `static/js/base.js:1` auto-adds `X-CSRFToken` header from `<meta name="csrf-token">`.
 - Overriding `@csrf.exempt` is safe for routes that:
   - Are called exclusively via `csrfSafeFetch()` or fetch with explicit `X-CSRFToken` header.

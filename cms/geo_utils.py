@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 
 from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +67,7 @@ def _lookup_ip_api(ip: str) -> dict | None:
         }
     try:
         _rate_limit()
-        jitter_sleep(domain_hint="http://ip-api.com")
-        resp = curl_requests.get(
+        resp = jittered_get(
             f"http://ip-api.com/json/{ip}",
             params={"fields": "status,country,regionName,city,isp,lat,lon"},
             timeout=5,
@@ -82,7 +81,7 @@ def _lookup_ip_api(ip: str) -> dict | None:
             )
         else:
             logger.warning(f"ip-api.com returned {resp.status_code} for {ip}")
-    except curl_requests.RequestException as e:
+    except curl_requests.RequestsError as e:
         logger.debug(f"ip-api.com request error for {ip}: {e}")
     return None
 

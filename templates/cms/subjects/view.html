@@ -2264,6 +2264,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
     }
 
     async function phoneLookup(btn, phone) {
+        phone = String(phone);
         const resultDiv = btn.closest('.contact-row').querySelector('.phone-result');
         const origText = btn.textContent;
 
@@ -2321,6 +2322,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
     }
 
     async function phoneLookupRefresh(btn, phone) {
+        phone = String(phone);
         const resultDiv = btn.closest('.phone-result') || btn.parentElement.querySelector('.phone-result');
         const phoneBtn = btn.closest('.phone-result') ? null : null;
         btn.disabled = true;

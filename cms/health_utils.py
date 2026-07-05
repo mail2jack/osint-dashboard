@@ -2,12 +2,14 @@
 
 import logging
 
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get, is_tor_enabled
 
 from cms.models import db, Setting
 
 logger = logging.getLogger(__name__)
+
+_TOR_CHECK_TIMEOUT = 10
+_TORCHECK_URL = "https://check.torproject.org"
 
 
 def check_external_services(quick: bool = False) -> dict:
@@ -50,8 +52,7 @@ def check_external_services(quick: bool = False) -> dict:
             ("hibp", "https://haveibeenpwned.com", lambda r: r.status_code == 200),
         ]:
             try:
-                jitter_sleep(domain_hint=svc_url)
-                r = curl_requests.get(svc_url, impersonate="chrome124", timeout=5)
+                r = jittered_get(svc_url, timeout=5)
                 result[svc_name] = (
                     "ok" if svc_check(r) else f"unexpected: {r.status_code}"
                 )
@@ -62,11 +63,9 @@ def check_external_services(quick: bool = False) -> dict:
         overheid_key = Setting.get("overheid_api_key", "")
         if overheid_key:
             try:
-                jitter_sleep(domain_hint="https://api.overheid.io")
-                r = curl_requests.get(
+                r = jittered_get(
                     "https://api.overheid.io/v3/openkvk?query=test&size=1",
                     headers={"ovio-api-key": overheid_key},
-                    impersonate="chrome124",
                     timeout=5,
                 )
                 result["overheid"] = (
@@ -90,17 +89,21 @@ def check_external_services(quick: bool = False) -> dict:
         else:
             result["brave"] = "no key configured"
 
-        # Tor — requires Brave key via Tor; skip live call for same reason
-        tor_enabled = Setting.get("tor_enabled", "false").lower() in (
-            "true",
-            "1",
-            "yes",
-        )
-        if tor_enabled:
-            if brave_key:
-                result["tor"] = "ok"
-            else:
-                result["tor"] = "no_brave_key"
+        # Tor — active connection test via check.torproject.org
+        if is_tor_enabled():
+            try:
+                r = jittered_get(
+                    _TORCHECK_URL,
+                    timeout=_TOR_CHECK_TIMEOUT,
+                )
+                if "Congratulations" in r.text:
+                    result["tor"] = "ok"
+                elif r.status_code == 200:
+                    result["tor"] = "not_using_tor"
+                else:
+                    result["tor"] = f"unexpected: {r.status_code}"
+            except Exception as e:
+                result["tor"] = f"unavailable: {e}"
         else:
             result["tor"] = "disabled"
 

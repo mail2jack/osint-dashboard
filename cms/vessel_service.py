@@ -16,12 +16,11 @@ import logging
 import re
 import threading
 
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jitter_sleep, jittered_get, jittered_session
 import time
 from typing import Any
 from urllib.parse import quote
 
-from curl_cffi import requests as curl_requests
 from bs4 import BeautifulSoup
 
 from cms.routes.utils import is_safe_url
@@ -85,11 +84,10 @@ def lookup_vesselfinder(
         else:
             # Name-only: use the search page URL (results require JS, but try anyway)
             url = f"https://www.vesselfinder.com/vessels?name={quote(name)}"
-        jitter_sleep(domain_hint=url)
         if not is_safe_url(url):
             logger.warning("Blocked SSRF attempt in lookup_vesselfinder: %s", url)
             return None
-        resp = curl_requests.get(url, headers=VESSELFINDER_HEADERS, timeout=15)
+        resp = jittered_get(url, headers=VESSELFINDER_HEADERS, timeout=15)
 
         if resp.status_code != 200:
             return None
@@ -167,7 +165,7 @@ def lookup_vesselfinder(
             else url,
         }
 
-    except curl_requests.RequestException as e:
+    except Exception as e:
         logger.warning(f"VesselFinder request failed: {e}")
         return None
 
@@ -193,17 +191,37 @@ def lookup_vesselfinder_detailed(
 
     try:
         from playwright.sync_api import sync_playwright
+        from cms.services.playwright_stealth import (
+            stealth_for_domain,
+            apply_stealth_to_context,
+        )
 
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True, timeout=30000)
-            ctx = browser.new_context(
-                user_agent=(
+            stealth = stealth_for_domain(url)
+            launch_kwargs: dict = {"headless": True, "timeout": 30000}
+            if stealth:
+                launch_kwargs["args"] = list(stealth["launch_args"])
+                launch_kwargs["args"].append(
+                    f"--window-size={stealth['viewport']['width']},{stealth['viewport']['height']}"
+                )
+            browser = pw.chromium.launch(**launch_kwargs)
+            ctx_kwargs: dict = {}
+            if stealth:
+                ctx_kwargs["user_agent"] = stealth["user_agent"]
+                ctx_kwargs["viewport"] = dict(stealth["viewport"])
+                ctx_kwargs["locale"] = stealth["locale"]
+                ctx_kwargs["timezone_id"] = stealth["timezone_id"]
+                ctx_kwargs["color_scheme"] = stealth["color_scheme"]
+            else:
+                ctx_kwargs["user_agent"] = (
                     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
                     "Chrome/124.0.0.0 Safari/537.36"
                 )
-            )
+            ctx = browser.new_context(**ctx_kwargs)
             page = ctx.new_page()
+            if stealth:
+                apply_stealth_to_context(ctx)
             try:
                 if not is_safe_url(url):
                     logger.warning(
@@ -348,8 +366,7 @@ def lookup_marineplan(name: str | None = None, mmsi: str | None = None) -> dict 
     try:
         url = f"{MARINEPLAN_BASE}/ship.json"
         params = {"ship": query_param.replace(" ", ""), "source": "ANY", "key": api_key}
-        jitter_sleep(domain_hint=url)
-        resp = curl_requests.get(url, params=params, timeout=15)
+        resp = jittered_get(url, params=params, timeout=15)
 
         if resp.status_code == 404:
             logger.info(f"MarinePlan: no ship found for '{query_param}'")
@@ -393,7 +410,7 @@ def lookup_marineplan(name: str | None = None, mmsi: str | None = None) -> dict 
 
         return result
 
-    except curl_requests.RequestException as e:
+    except Exception as e:
         logger.warning(f"MarinePlan request failed: {e}")
         return None
     except (ValueError, TypeError) as e:
@@ -438,8 +455,7 @@ def lookup_kvnr(imo: str | None = None, name: str | None = None) -> dict | None:
 
     try:
         params = {"q": query.strip()}
-        jitter_sleep(domain_hint=KVNR_SEARCH_URL)
-        resp = curl_requests.get(
+        resp = jittered_get(
             KVNR_SEARCH_URL, params=params, headers=_KVNR_HEADERS, timeout=15
         )
 
@@ -473,7 +489,7 @@ def lookup_kvnr(imo: str | None = None, name: str | None = None) -> dict | None:
 
         return None
 
-    except curl_requests.RequestException as e:
+    except Exception as e:
         logger.warning(f"KVNR request failed: {e}")
         return None
 
@@ -527,8 +543,7 @@ def lookup_binnenvaart(eni: str | None = None, name: str | None = None) -> dict 
 
     try:
         params = {"s": query.strip()}
-        jitter_sleep(domain_hint=BINNENVAART_URL)
-        resp = curl_requests.get(
+        resp = jittered_get(
             BINNENVAART_URL, params=params, headers=_KVNR_HEADERS, timeout=15
         )
 
@@ -548,7 +563,7 @@ def lookup_binnenvaart(eni: str | None = None, name: str | None = None) -> dict 
 
         return None
 
-    except curl_requests.RequestException as e:
+    except Exception as e:
         logger.warning(f"Binnenvaart.eu request failed: {e}")
         return None
 
@@ -616,8 +631,7 @@ def lookup_debinnenvaart(
         return None
 
     try:
-        jitter_sleep(domain_hint=DEBINNENVAART_URL)
-        resp = curl_requests.get(
+        resp = jittered_get(
             DEBINNENVAART_URL,
             params={"schip": query.strip()},
             headers=_KVNR_HEADERS,
@@ -640,7 +654,7 @@ def lookup_debinnenvaart(
 
         return None
 
-    except curl_requests.RequestException as e:
+    except Exception as e:
         logger.warning(f"DeBinnenvaart.nl request failed: {e}")
         return None
 
@@ -872,15 +886,15 @@ def lookup_equasis(imo: str | None = None) -> dict | None:
     if not imo:
         return None
 
-    session = curl_requests.Session()
-    session.headers.update(
-        {
+    session = jittered_session(
+        timeout=15,
+        headers={
             "User-Agent": (
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/124.0.0.0 Safari/537.36"
             )
-        }
+        },
     )
 
     try:
@@ -936,7 +950,7 @@ def lookup_equasis(imo: str | None = None) -> dict | None:
 
         return result
 
-    except curl_requests.RequestException as e:
+    except Exception as e:
         logger.warning(f"Equasis request failed: {e}")
         return None
 

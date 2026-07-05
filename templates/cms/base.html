@@ -174,6 +174,7 @@
                     {% endif %}
                     {% if current_user.is_admin %}
                     <a href="{{ url_for('cms.tenant_settings') }}">🏢 {{ _('Tenant') }}</a>
+                    <a href="{{ url_for('cms.opsec_dashboard') }}">🔒 {{ _('OPSEC') }}</a>
                     <a href="{{ url_for('cms.brave_status') }}">🦁 {{ _('Brave Status') }}</a>
                     {% endif %}
                     {% if current_user.is_super_admin %}

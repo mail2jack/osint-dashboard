@@ -1,8 +1,8 @@
 import logging
 import asyncio
 import re
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
+from curl_cffi.requests import RequestsError
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -212,8 +212,7 @@ def openkvk_lookup() -> FlaskResponse:
 
         headers = {"Accept": "application/json", "ovio-api-key": api_key}
 
-        jitter_sleep(domain_hint=search_url)
-        response = curl_requests.get(search_url, headers=headers, timeout=15)
+        response = jittered_get(search_url, headers=headers, timeout=15)
 
         if response.status_code == 200:
             data = response.json()
@@ -224,14 +223,13 @@ def openkvk_lookup() -> FlaskResponse:
                 if slug:
                     detail_url = f"https://api.overheid.io{slug}"
                     try:
-                        jitter_sleep(domain_hint=detail_url)
-                        detail_resp = curl_requests.get(
+                        detail_resp = jittered_get(
                             detail_url, headers=headers, timeout=10
                         )
                         if detail_resp.status_code == 200:
                             detail = detail_resp.json()
                             company.update(detail)
-                    except curl_requests.RequestsError as e:
+                    except RequestsError as e:
                         logger.debug(
                             f"OpenKVK detail fetch failed ({type(e).__name__}): {e}"
                         )
@@ -287,7 +285,7 @@ def openkvk_lookup() -> FlaskResponse:
         else:
             result["error"] = f"API error: {response.status_code}"
 
-    except curl_requests.RequestsError as e:
+    except RequestsError as e:
         if "timeout" in str(e).lower():
             result["error"] = "Request timed out"
         else:
@@ -412,8 +410,7 @@ def hibp_check() -> FlaskResponse:
     try:
         headers = {"User-Agent": "OSINT-Dashboard", "hibp-api-key": hibp_key}
 
-        jitter_sleep(domain_hint="https://haveibeenpwned.com")
-        response = curl_requests.get(
+        response = jittered_get(
             f"https://haveibeenpwned.com/api/v3/breachedaccount/{quote(email)}?truncateResponse=false",
             headers=headers,
             timeout=15,
@@ -448,8 +445,6 @@ def hibp_check() -> FlaskResponse:
                 }
             )
 
-    except curl_requests.Timeout:
-        return jsonify({"email": email, "error": "Request timeout", "breaches": []})
     except Exception:
         logger.exception("HIBP check error")
         return jsonify(
@@ -956,10 +951,7 @@ def username_rapidapi() -> FlaskResponse:
                 "x-rapidapi-key": api_key,
                 "x-rapidapi-host": "osint-username-availability-brand-checker-api.p.rapidapi.com",
             }
-            jitter_sleep(
-                domain_hint="https://osint-username-availability-brand-checker-api.p.rapidapi.com"
-            )
-            resp = curl_requests.get(
+            resp = jittered_get(
                 f"https://osint-username-availability-brand-checker-api.p.rapidapi.com/check?username={username}",
                 headers=headers,
                 timeout=15,
@@ -994,8 +986,7 @@ def username_rapidapi() -> FlaskResponse:
 
                     def _verify(url, timeout=5):
                         try:
-                            jitter_sleep(domain_hint=url)
-                            r = curl_requests.get(
+                            r = jittered_get(
                                 url,
                                 timeout=timeout,
                                 allow_redirects=True,

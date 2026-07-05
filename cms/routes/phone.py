@@ -4,8 +4,7 @@ import copy
 import base64
 from datetime import datetime, timezone
 
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 
 import flask
 from flask import request, jsonify
@@ -23,13 +22,17 @@ from ..feature_flags import tool_enabled
 logger = logging.getLogger(__name__)
 
 
-@cms_bp.route("/api/phone-lookup-stored", methods=["POST"])
+@cms_bp.route("/api/phone-lookup-stored", methods=["GET", "POST"])
+@csrf.exempt
 @api_key_required
 @login_required
 def phone_lookup_stored() -> flask.Response:
     """Return the most recent stored lookup for a phone number."""
-    data = request.get_json(silent=True) or {}
-    phone = (data.get("phone") or "").strip()
+    if request.method == "GET":
+        phone = (request.args.get("phone") or "").strip()
+    else:
+        data = request.get_json(silent=True) or {}
+        phone = (data.get("phone") or "").strip()
     if not phone:
         return jsonify({"found": False})
     try:
@@ -168,10 +171,7 @@ def phone_lookup() -> flask.Response:
                         "x-rapidapi-key": api_key,
                         "x-rapidapi-host": "whatsapp-data1.p.rapidapi.com",
                     }
-                    jitter_sleep(domain_hint=cl_url)
-                    cl_resp = curl_requests.get(
-                        cl_url, headers=cl_headers, impersonate="chrome124", timeout=15
-                    )
+                    cl_resp = jittered_get(cl_url, headers=cl_headers, timeout=15)
                     cl_data = cl_resp.json()
                     if "isWAContact" in cl_data or "isUser" in cl_data:
                         wa_exists = cl_data.get("isWAContact") or cl_data.get("isUser")
@@ -191,12 +191,8 @@ def phone_lookup() -> flask.Response:
                         ):
                             try:
                                 pic_url = f"https://whatsapp-data1.p.rapidapi.com/picture/{normalized}"
-                                jitter_sleep(domain_hint=pic_url)
-                                pic_resp = curl_requests.get(
-                                    pic_url,
-                                    headers=cl_headers,
-                                    impersonate="chrome124",
-                                    timeout=10,
+                                pic_resp = jittered_get(
+                                    pic_url, headers=cl_headers, timeout=10
                                 )
                                 if pic_resp.status_code == 200 and pic_resp.headers.get(
                                     "content-type", ""
@@ -269,11 +265,9 @@ def phone_lookup() -> flask.Response:
             or result["services"]["whatsapp"].get("exists") is None
         ):
             try:
-                jitter_sleep(domain_hint="https://api.whatsapp.com")
-                wa_resp = curl_requests.get(
+                wa_resp = jittered_get(
                     f"https://api.whatsapp.com/send?phone={normalized}",
                     headers={"User-Agent": "Mozilla/5.0"},
-                    impersonate="chrome124",
                     timeout=10,
                 )
                 wa_text = wa_resp.text.lower()
@@ -299,11 +293,9 @@ def phone_lookup() -> flask.Response:
         ):
             try:
                 tg_url = f"https://t.me/+{normalized}"
-                jitter_sleep(domain_hint="https://t.me")
-                tg_resp = curl_requests.get(
+                tg_resp = jittered_get(
                     tg_url,
                     headers={"User-Agent": "Mozilla/5.0"},
-                    impersonate="chrome124",
                     timeout=5,
                 )
                 tg_text = tg_resp.text.lower()
@@ -336,10 +328,7 @@ def phone_lookup() -> flask.Response:
                     "country_code": "nl",
                     "phone": phone.lstrip("+").lstrip("00"),
                 }
-                jitter_sleep(domain_hint=bd_url)
-                bd_resp = curl_requests.get(
-                    bd_url, params=bd_params, impersonate="chrome124", timeout=10
-                )
+                bd_resp = jittered_get(bd_url, params=bd_params, timeout=10)
                 if bd_resp.status_code == 200:
                     bd_data = bd_resp.json().get("phone", {})
                     result["nl_info"] = {
@@ -357,7 +346,7 @@ def phone_lookup() -> flask.Response:
                     f"Phone lookup bedrijfsdata.nl failed ({type(e).__name__}): {e}"
                 )
 
-        logger.info(
+        logger.debug(
             f"Phone lookup: {phone} \u2192 valid={result['valid']}, carrier={result['carrier']}, region={result['region']}, wa={result['services'].get('whatsapp', {}).get('exists')}"
         )
         return jsonify(result), 200

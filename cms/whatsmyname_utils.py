@@ -4,8 +4,7 @@ import os
 import time
 from functools import lru_cache
 
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 
 from cms.constants import WHATSMYNAME_DATA_URL
 
@@ -79,8 +78,7 @@ def get_whatsmyname_sites():
         return cached
 
     try:
-        jitter_sleep(domain_hint=WHATSMYNAME_DATA_URL)
-        response = curl_requests.get(WHATSMYNAME_DATA_URL, timeout=30)
+        response = jittered_get(WHATSMYNAME_DATA_URL, timeout=30)
         if response.status_code == 200:
             data = response.json()
             raw_sites = data if isinstance(data, list) else data.get("sites", [])

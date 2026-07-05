@@ -1133,17 +1133,20 @@ def upload_tenant_logo():
     if not file.filename:
         return api_error("No file selected", 400)
 
-    import os as _os
+    from ..image_validation import validate_image_file
 
-    ext = _os.path.splitext(file.filename)[1].lower()
-    if ext not in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"):
-        return api_error("Unsupported file type. Use PNG, JPG, GIF, SVG or WebP.", 400)
+    is_valid, ext = validate_image_file(file)
+    if not is_valid:
+        return api_error("Invalid image file. Allowed: PNG, JPEG, GIF, WebP", 400)
+
+    import os as _os
 
     logo_dir = _os.path.join(current_app.root_path, "static", "uploads", "tenant_logos")
     _os.makedirs(logo_dir, exist_ok=True)
 
-    filename = f"tenant_{current_user.tenant_id}{ext}"
+    filename = f"tenant_{current_user.tenant_id}.{ext}"
     filepath = _os.path.join(logo_dir, filename)
+    file.seek(0)
     file.save(filepath)
 
     TenantSetting.set(
@@ -1445,7 +1448,7 @@ def tenant_export(tenant_id: str) -> flask.Response:
         logs = AuditLog.query.filter_by(tenant_id=tenant_id).all()
         zf.writestr(
             "audit_logs.json",
-            json.dumps([l.to_dict() for l in logs], indent=2, default=str),
+            json.dumps([log.to_dict() for log in logs], indent=2, default=str),
         )
 
         # Screenshots (metadata + files)

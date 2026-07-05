@@ -11,8 +11,7 @@ from ..validation import validate, PolitiebureauLookupSchema
 from ..rate_limiting import rate_limit, DEFAULT_RATE_LIMIT
 from ..api_key_auth import api_key_required
 from ..auth import ensure_tenant_access
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 
 from .response import api_error
 
@@ -66,12 +65,10 @@ def politiebureau_lookup() -> flask.Response:
             if query:
                 try:
                     pdok_url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free"
-                    jitter_sleep(domain_hint=pdok_url)
-                    r = curl_requests.get(
+                    r = jittered_get(
                         pdok_url,
                         params={"q": query, "rows": 1, "fl": "*"},
                         timeout=10,
-                        impersonate="chrome124",
                     )
                     r.raise_for_status()
                     docs = r.json().get("response", {}).get("docs", [])
@@ -100,12 +97,10 @@ def politiebureau_lookup() -> flask.Response:
         if query:
             try:
                 pdok_url = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free"
-                jitter_sleep(domain_hint=pdok_url)
-                r = curl_requests.get(
+                r = jittered_get(
                     pdok_url,
                     params={"q": query, "rows": 1, "fl": "*"},
                     timeout=10,
-                    impersonate="chrome124",
                 )
                 r.raise_for_status()
                 docs = r.json().get("response", {}).get("docs", [])
@@ -126,12 +121,10 @@ def politiebureau_lookup() -> flask.Response:
         ), 400
 
     try:
-        jitter_sleep(domain_hint="https://api.politie.nl")
-        r = curl_requests.get(
+        r = jittered_get(
             "https://api.politie.nl/politiebureaus/v1",
             params={"lat": lat, "lon": lon},
             timeout=10,
-            impersonate="chrome124",
         )
         r.raise_for_status()
         result = r.json()

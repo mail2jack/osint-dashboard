@@ -4,8 +4,7 @@ import os
 import time
 from functools import lru_cache
 
-from curl_cffi import requests as curl_requests
-from cms.services.http_utils import jitter_sleep
+from cms.services.http_utils import jittered_get
 
 from cms.constants import SHERLOCK_DATA_URL
 
@@ -44,8 +43,7 @@ def get_sherlock_sites():
         return cached
 
     try:
-        jitter_sleep(domain_hint=SHERLOCK_DATA_URL)
-        response = curl_requests.get(SHERLOCK_DATA_URL, timeout=30)
+        response = jittered_get(SHERLOCK_DATA_URL, timeout=30)
         if response.status_code == 200:
             data = response.json()
             data.pop("$schema", None)
