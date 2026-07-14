@@ -9,6 +9,8 @@ from urllib.parse import urlparse
 from curl_cffi import requests as curl_requests
 from curl_cffi import CurlError
 
+_FALLBACK_IMPROFILE = "chrome124"
+
 logger = logging.getLogger(__name__)
 
 
@@ -412,6 +414,23 @@ def _get_identity() -> str | None:
         return None
 
 
+def _impersonated_request(
+    method: str,
+    url: str,
+    kwargs: dict,
+    proxies: dict | None,
+) -> curl_requests.Response:
+    """Make a curl_cffi request; retry with fallback profile if unsupported."""
+    try:
+        resp = getattr(curl_requests, method)(url, **kwargs)
+        return resp
+    except CurlError as e:
+        if "not supported" in str(e):
+            kwargs["impersonate"] = _FALLBACK_IMPROFILE
+            return getattr(curl_requests, method)(url, **kwargs)
+        raise
+
+
 def jittered_get(url: str, **kwargs: Any) -> curl_requests.Response:
     jitter_sleep(domain_hint=url)
     identity = _get_identity()
@@ -420,7 +439,7 @@ def jittered_get(url: str, **kwargs: Any) -> curl_requests.Response:
         kwargs.setdefault("proxies", proxies)
     kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        resp = curl_requests.get(url, **kwargs)
+        resp = _impersonated_request("get", url, kwargs, proxies)
         _record_audit(url, "GET", resp.status_code, kwargs)
         return resp
     except TorNotAvailableError:
@@ -445,7 +464,7 @@ def jittered_post(url: str, **kwargs: Any) -> curl_requests.Response:
         kwargs.setdefault("proxies", proxies)
     kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        resp = curl_requests.post(url, **kwargs)
+        resp = _impersonated_request("post", url, kwargs, proxies)
         _record_audit(url, "POST", resp.status_code, kwargs)
         return resp
     except TorNotAvailableError:
@@ -470,7 +489,7 @@ def jittered_head(url: str, **kwargs: Any) -> curl_requests.Response:
         kwargs.setdefault("proxies", proxies)
     kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        resp = curl_requests.head(url, **kwargs)
+        resp = _impersonated_request("head", url, kwargs, proxies)
         _record_audit(url, "HEAD", resp.status_code, kwargs)
         return resp
     except TorNotAvailableError:
@@ -491,11 +510,19 @@ def jittered_session(
     timeout: float = 10.0, headers: dict | None = None
 ) -> curl_requests.Session:
     """Return a curl_cffi.Session with jitter + proxy + profile rotation."""
-    kwargs: dict = {"impersonate": next_impersonate(), "timeout": timeout}
+    impersonate = next_impersonate()
+    kwargs: dict = {"impersonate": impersonate, "timeout": timeout}
     proxies = get_next_proxy()
     if proxies:
         kwargs["proxies"] = proxies
-    sess = curl_requests.Session(**kwargs)
+    try:
+        sess = curl_requests.Session(**kwargs)
+    except CurlError as e:
+        if "not supported" in str(e):
+            kwargs["impersonate"] = _FALLBACK_IMPROFILE
+            sess = curl_requests.Session(**kwargs)
+        else:
+            raise
     if headers:
         sess.headers.update(headers)
     return sess
