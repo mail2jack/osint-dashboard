@@ -1615,7 +1615,7 @@ class AuditLog(db.Model):
         db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
     )
     user_id = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
-    action = db.Column(db.String(20), nullable=False, index=True)
+    action = db.Column(db.String(50), nullable=False, index=True)
 
     entity_type = db.Column(
         db.String(50), nullable=False, index=True
