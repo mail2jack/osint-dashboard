@@ -234,7 +234,7 @@ def spiderfoot_index() -> str:
 @login_required
 @roles_required("admin", "senior_investigator")
 @validate(SpiderFootScanSchema)
-def spiderfoot_scan() -> str:
+def spiderfoot_scan() -> str | flask.Response:
     """Start a new SpiderFoot scan."""
     if request.method == "GET":
         # Show scan form
@@ -282,6 +282,17 @@ def spiderfoot_scan() -> str:
         )
 
     # POST - Start scan
+    try:
+        return _start_spiderfoot_scan()
+    except Exception as e:
+        logger.exception("SpiderFoot scan start failed")
+        if request.is_json:
+            return api_error(f"Internal error: {e}", 500)
+        flash(f"Failed to start scan: {e}", "error")
+        return redirect(url_for("cms.spiderfoot_index"))
+
+
+def _start_spiderfoot_scan() -> str | flask.Response:
     data = request.validated_data
 
     from ..tier_limits import check_feature, check_concurrent_spiderfoot_scans
