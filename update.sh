@@ -81,20 +81,18 @@ echo -e "  ${GREEN}Version: $CURRENT_VER → $LATEST_VER${NC}"
 
 # ---------- Step 4: Update Dependencies ----------
 echo -e "${YELLOW}[3/6] Updating Python packages...${NC}"
-VENV_DIR="$PROJECT_DIR/venv/bin"
-if [ -f "$VENV_DIR/pip" ]; then
-    $VENV_DIR/pip install -r "$PROJECT_DIR/requirements.txt" --upgrade
-    echo -e "  ✅ Packages updated"
-elif [ -f "$PROJECT_DIR/requirements.txt" ]; then
-    pip3 install -r "$PROJECT_DIR/requirements.txt" --upgrade
-    echo -e "  ✅ Packages updated (system pip)"
-else
-    echo -e "  ${RED}No requirements.txt found${NC}"
+VENV_DIR="$PROJECT_DIR/venv"
+VENV_PIP="$VENV_DIR/bin/pip"
+if [ ! -f "$VENV_PIP" ]; then
+    echo -e "  ${YELLOW}Creating virtual environment...${NC}"
+    python3 -m venv "$VENV_DIR"
 fi
+$VENV_PIP install -r "$PROJECT_DIR/requirements.txt" --upgrade
+echo -e "  ✅ Packages updated"
 
 # ---------- Step 5: DB Migrations ----------
 echo -e "${YELLOW}[4/6] Running database migrations...${NC}"
-PYTHON_BIN="$VENV_DIR/python3"
+PYTHON_BIN="$VENV_DIR/bin/python3"
 if [ ! -f "$PYTHON_BIN" ]; then
     PYTHON_BIN="python3"
 fi
