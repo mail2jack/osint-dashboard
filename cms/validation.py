@@ -311,6 +311,7 @@ class SignupSchema(BaseModel):
     def check_confirm(cls, v: str, info) -> str:
         if v and info.data.get("password") != v:
             raise ValueError("Passwords do not match")
+        return v
 
     @field_validator("consent")
     @classmethod
