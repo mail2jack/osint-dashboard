@@ -2782,6 +2782,7 @@ class SpiderFootScan(db.Model):
     )
 
     def update_status(self, status: str, progress: int = None) -> None:
+        self.status = status
         if progress is not None:
             self.progress = progress
         if status == "running" and not self.started_at:
