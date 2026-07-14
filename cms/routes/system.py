@@ -8,6 +8,7 @@ from flask import jsonify, current_app, render_template
 from flask_login import login_required, current_user
 
 from . import cms_bp
+from .. import csrf
 from ..models import Setting
 from ..auth import admin_required
 from cms.services.http_utils import jittered_get
@@ -362,6 +363,7 @@ def check_update() -> flask.Response:
 
 
 @cms_bp.route("/admin/do-update", methods=["POST"])
+@csrf.exempt
 @login_required
 @admin_required
 def do_update() -> flask.Response:
@@ -370,13 +372,26 @@ def do_update() -> flask.Response:
     Admin only. Runs synchronously and streams status via JSON responses.
     """
     try:
+        import os as _os
         import subprocess
-        import sys
+        import sys as _sys
         from datetime import datetime
         from version import get_version
 
         current_ver = get_version()
         results = []
+
+        # Detect venv Python (preferred) vs system Python
+        venv_python = _os.path.join(
+            _os.path.dirname(current_app.root_path),
+            "venv",
+            "bin",
+            "python3",
+        )
+        if _os.path.isfile(venv_python):
+            python_bin = venv_python
+        else:
+            python_bin = _sys.executable
 
         def step(msg, cmd_list, cwd=None, env=None):
             results.append({"step": msg, "status": "running"})
@@ -449,7 +464,7 @@ def do_update() -> flask.Response:
         step(
             "Update Python packages",
             [
-                sys.executable,
+                python_bin,
                 "-m",
                 "pip",
                 "install",
@@ -469,7 +484,7 @@ def do_update() -> flask.Response:
             )
         step(
             "Apply database migrations",
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            [python_bin, "-m", "alembic", "upgrade", "head"],
             cwd=project_root,
             env=alembic_env,
         )
