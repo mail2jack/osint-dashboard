@@ -54,7 +54,14 @@ fi
 # ---------- Step 2: Git Pull ----------
 echo -e "${YELLOW}[2/6] Pulling latest code...${NC}"
 if [ -d "$PROJECT_DIR/.git" ]; then
-    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "saas-migration")
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "master")
+    # If the remote branch no longer exists, fall back to master
+    if ! git ls-remote --heads origin "$CURRENT_BRANCH" 2>/dev/null | grep -q .; then
+        echo -e "  ${YELLOW}Branch '$CURRENT_BRANCH' no longer exists on remote — switching to master${NC}"
+        CURRENT_BRANCH="master"
+        git checkout master
+    fi
+    git fetch origin
     git fetch origin
     git checkout "$CURRENT_BRANCH"
     git pull origin "$CURRENT_BRANCH"
