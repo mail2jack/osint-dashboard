@@ -292,10 +292,24 @@ def check_update() -> flask.Response:
                     )
                     logger.info(f"Stored initial commit SHA: {local_sha[:12]}")
             except Exception as e:
-                logger.debug(f"Failed to run git rev-parse ({type(e).__name__}): {e}")
+                logger.debug(
+                    f"git rev-parse failed ({type(e).__name__}): {e} — using remote SHA as baseline"
+                )
+                local_sha = remote_sha
+                Setting.set(
+                    "last_update_commit",
+                    local_sha,
+                    "Last pulled commit SHA (auto-set from remote)",
+                    "general",
+                )
 
-        current_parts = [int(x) for x in current_ver.split(".")]
-        latest_parts = [int(x) for x in latest_ver.split(".")]
+        # Strip leading 'v' or 'V' from version strings for numeric comparison
+        def _parse_ver(v: str):
+            clean = v.lstrip("vV").split("-")[0]  # "v2.0.0-alpha" → "2.0.0"
+            return [int(x) for x in clean.split(".")]
+
+        current_parts = _parse_ver(current_ver)
+        latest_parts = _parse_ver(latest_ver)
         version_update = latest_parts > current_parts
         commits_update = bool(
             remote_sha and local_sha and remote_sha != local_sha and not version_update
