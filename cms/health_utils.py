@@ -49,7 +49,11 @@ def check_external_services(quick: bool = False) -> dict:
                 "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=test&rows=1",
                 lambda r: r.status_code == 200,
             ),
-            ("hibp", "https://haveibeenpwned.com", lambda r: r.status_code == 200),
+            (
+                "hibp",
+                "https://haveibeenpwned.com",
+                lambda r: r.status_code in (200, 403),
+            ),
         ]:
             try:
                 r = jittered_get(svc_url, timeout=5)
