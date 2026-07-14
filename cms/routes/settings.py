@@ -866,7 +866,8 @@ def update_tenant(tenant_id: str) -> flask.Response:
                 return api_error("Slug already exists", 409)
             tenant.slug = slug
         if "domain" in data:
-            tenant.domain = data.get("domain", "").strip() or None
+            domain_val = data.get("domain")
+            tenant.domain = domain_val.strip() if domain_val else None
         if data.get("tier"):
             tenant.tier = data["tier"]
         tenant.updated_at = datetime.now(timezone.utc)
