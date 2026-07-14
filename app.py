@@ -742,9 +742,7 @@ def add_security_headers(response):
     )
     response.headers["Content-Security-Policy"] = csp
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = (
-        "camera=(), microphone=(), geolocation=(), interest-cohort=()"
-    )
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     # Long-lived cache for static assets
     if response.content_type and response.content_type.startswith(
         ("text/css", "application/javascript", "image/")
