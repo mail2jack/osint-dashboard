@@ -849,30 +849,38 @@ def create_tenant() -> flask.Response:
 @admin_required
 def update_tenant(tenant_id: str) -> flask.Response:
     """Update tenant name, slug, domain, or tier."""
-    if not current_user.is_super_admin:
-        abort(403)
-    tenant = db.session.get(Tenant, tenant_id) or abort(404)
-    data = request.get_json() or {}
-    name = data.get("name", "").strip()
-    slug = data.get("slug", "").strip()
-    if name:
-        tenant.name = name
-    if slug:
-        existing = Tenant.query.filter(
-            Tenant.slug == slug, Tenant.id != tenant_id
-        ).first()
-        if existing:
-            return api_error("Slug already exists", 409)
-        tenant.slug = slug
-    if "domain" in data:
-        tenant.domain = data.get("domain", "").strip() or None
-    if data.get("tier"):
-        tenant.tier = data["tier"]
-    tenant.updated_at = datetime.now(timezone.utc)
-    db.session.commit()
-    return jsonify(
-        {"message": f"Tenant '{tenant.name}' updated", "tenant": tenant.to_dict()}
-    )
+    try:
+        if not current_user.is_super_admin:
+            abort(403)
+        tenant = db.session.get(Tenant, tenant_id) or abort(404)
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        slug = data.get("slug", "").strip()
+        if name:
+            tenant.name = name
+        if slug:
+            existing = Tenant.query.filter(
+                Tenant.slug == slug, Tenant.id != tenant_id
+            ).first()
+            if existing:
+                return api_error("Slug already exists", 409)
+            tenant.slug = slug
+        if "domain" in data:
+            tenant.domain = data.get("domain", "").strip() or None
+        if data.get("tier"):
+            tenant.tier = data["tier"]
+        tenant.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return jsonify(
+            {
+                "message": f"Tenant '{tenant.name}' updated",
+                "tenant": tenant.to_dict(),
+            }
+        )
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("Failed to update tenant %s", tenant_id)
+        return api_error(str(e), 500)
 
 
 @cms_bp.route("/api/tenants/<tenant_id>", methods=["DELETE"])
@@ -881,14 +889,19 @@ def update_tenant(tenant_id: str) -> flask.Response:
 @admin_required
 def delete_tenant(tenant_id: str) -> flask.Response:
     """Delete a tenant (super admin only)."""
-    if not current_user.is_super_admin:
-        abort(403)
-    tenant = db.session.get(Tenant, tenant_id) or abort(404)
-    if not tenant:
-        return api_error("Tenant not found", 404)
-    db.session.delete(tenant)
-    db.session.commit()
-    return api_success({}, f"Tenant '{tenant.name}' deleted")
+    try:
+        if not current_user.is_super_admin:
+            abort(403)
+        tenant = db.session.get(Tenant, tenant_id) or abort(404)
+        if not tenant:
+            return api_error("Tenant not found", 404)
+        db.session.delete(tenant)
+        db.session.commit()
+        return api_success({}, f"Tenant '{tenant.name}' deleted")
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("Failed to delete tenant %s", tenant_id)
+        return api_error(str(e), 500)
 
 
 @cms_bp.route("/api/tenants/<tenant_id>/toggle", methods=["POST"])
