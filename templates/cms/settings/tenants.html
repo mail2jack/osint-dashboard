@@ -256,7 +256,7 @@ function saveTenant(btn) {
     if (slug) body.slug = slug;
     body.domain = domain || null;
     if (tier) body.tier = tier;
-    apiFetch('/api/tenants/' + id, {
+    apiFetch('{{ url_for("cms.update_tenant", tenant_id="__ID__") }}'.replace('__ID__', id), {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',

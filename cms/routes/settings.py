@@ -705,7 +705,7 @@ def list_tenants() -> str:
         "cms/settings/tenants.html",
         tenants=tenants,
         user_counts=user_counts,
-        tenants_json=json.dumps(tenants_list),
+        tenants_json=tenants_list,
     )
 
 
