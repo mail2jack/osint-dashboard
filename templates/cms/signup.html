@@ -36,7 +36,24 @@
         .login-link a:hover { text-decoration: underline; }
         .field-note { font-size: 0.8rem; color: #999; margin-top: 0.2rem; }
         .hp { display: none; }
+        .pw-wrapper { position: relative; }
+        .pw-wrapper input { padding-right: 2.5rem; }
+        .pw-toggle {
+            position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; font-size: 1.1rem;
+            padding: 0.25rem; line-height: 1; opacity: 0.5; transition: opacity 0.15s;
+        }
+        .pw-toggle:hover { opacity: 1; }
     </style>
+    <script nonce="{{ csp_nonce }}">
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('.pw-toggle');
+            if (!btn) return;
+            var input = document.getElementById(btn.dataset.toggle);
+            if (!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
+        });
+    </script>
 </head>
 <body>
     <div class="signup-container">
@@ -74,12 +91,18 @@
             </div>
             <div class="form-group">
                 <label for="password">{{ _('Password') }}</label>
-                <input type="password" name="password" id="password" required autocomplete="new-password" minlength="8">
+                <div class="pw-wrapper">
+                    <input type="password" name="password" id="password" required autocomplete="new-password" minlength="8">
+                    <button type="button" class="pw-toggle" data-toggle="password" aria-label="{{ _('Toggle password visibility') }}">👁️</button>
+                </div>
                 <div class="field-note">{{ _('At least 8 characters with uppercase, lowercase, number, and special character') }}</div>
             </div>
             <div class="form-group">
                 <label for="confirm_password">{{ _('Confirm Password') }}</label>
-                <input type="password" name="confirm_password" id="confirm_password" required autocomplete="new-password" minlength="8">
+                <div class="pw-wrapper">
+                    <input type="password" name="confirm_password" id="confirm_password" required autocomplete="new-password" minlength="8">
+                    <button type="button" class="pw-toggle" data-toggle="confirm_password" aria-label="{{ _('Toggle password visibility') }}">👁️</button>
+                </div>
             </div>
             <div class="form-group" style="margin-bottom:1.25rem;">
                 <label style="display:flex;align-items:flex-start;gap:0.5rem;font-weight:400;font-size:0.85rem;color:#555;cursor:pointer;">
