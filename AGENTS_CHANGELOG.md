@@ -295,3 +295,37 @@ System-wide announcement feature so super admin can broadcast mandatory popup me
 - `expires_at` nullable (null = never expires)
 - Modal shown on every page load until all active announcements acknowledged
 - Acknowledgment is idempotent (unique constraint on announcement_id + user_id)
+
+---
+
+## July 17 — Vervang 2Chat door eigen Baileys WhatsApp microservice
+
+### Doel
+2Chat ($31/mnd) vervangen door een zelf-gehoste opensource WhatsApp service (Baileys) voor telefoonnummercheck en WhatsApp Business profiel lookup.
+
+### Wijzigingen
+- **`wa-service/`** (NIEUW): Node.js microservice met Baileys v6.7.23
+  - `POST /api/check` — checkt of nummer op WhatsApp bestaat + business profiel (description, website, email, category, address, business hours, profile pic)
+  - `GET /api/status` — sessie status (connected/disconnected/awaiting_qr/pairing)
+  - `GET /api/qr` — QR code voor initiële koppeling
+  - `POST /api/pairing` — pairing code alternatief voor QR
+  - `POST /api/restart` — reset sessie
+  - Auto-reconnect bij disconnect, auth persistente opslag in `auth/`
+  - Ondersteunt `PAIRING_PHONE` env var voor automatische pairing
+- **`wa-service/Dockerfile`**: Node.js 20-alpine, <120MB, healthcheck
+- **`docker-compose.yml`**: `wa-service` container toegevoegd + `wa_auth` volume + `WA_SERVICE_URL` env
+- **`cms/services/phone_service.py`**: Nieuwe `_whatsapp_check_baileys()` functie — roept Node.js service aan, mapt response naar bestaand format
+- **`cms/workflow/research.py`**: `_phone_check()` gebruikt Baileys als primary, 2Chat als fallback
+- **`.env.example`**: `WA_SERVICE_URL` documentatie toegevoegd
+
+### Kostenbesparing
+- 2Chat: $31/mnd → €0/mnd (Baileys is MIT, gratis)
+- Alleen server resources (marginaal, ~50MB RAM per sessie)
+
+### Status
+- Code gecommit en gepusht (`a3de4e5`)
+- Initieel authenticeren nog niet gelukt (WhatsApp rate limiting — "later opnieuw proberen")
+- Zodra eenmalig gekoppeld, is de sessie persistent bij herstarts
+
+### Andere fixes deze sessie
+- Password toggle signup, check_confirm validator fix, auto-refresh findings, soft-delete filter, subdomain JSON error, sortering findings, checkbox overlap, telefooncheck carrier/lijntype/tijdzone
