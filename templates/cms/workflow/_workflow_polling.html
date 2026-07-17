@@ -192,6 +192,12 @@ function rdwCardHtml(data) {
   '</div>';
 }
 
+function linkify(text) {
+  if (!text) return '';
+  text = esc(text);
+  return text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+}
+
 function findingHtml(f) {
   var ssHtml = '';
   if (f.screenshots && f.screenshots.length) {
