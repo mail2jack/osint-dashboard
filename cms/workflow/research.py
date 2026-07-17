@@ -2316,7 +2316,18 @@ def _subdomain_check(action):
                     time.sleep(2)
                     continue
                 if resp.status_code == 200:
-                    for entry in resp.json():
+                    try:
+                        data = resp.json()
+                    except Exception:
+                        body_len = len(
+                            getattr(resp, "text", "")
+                            or getattr(resp, "content", b"")
+                            or ""
+                        )
+                        raise ValueError(
+                            f"crt.sh gaf geen geldige JSON terug ({body_len} bytes)"
+                        )
+                    for entry in data:
                         raw = entry.get("name_value", "")
                         for name in raw.split("\n"):
                             name = name.strip().lower()
@@ -2341,7 +2352,11 @@ def _subdomain_check(action):
                 }
                 cs_resp = jittered_get(cs_url, headers=cs_headers, timeout=30)
                 if cs_resp.status_code == 200:
-                    for entry in cs_resp.json():
+                    try:
+                        cs_data = cs_resp.json()
+                    except Exception:
+                        cs_data = []
+                    for entry in cs_data:
                         for name in entry.get("dns_names", []):
                             name = name.strip().lower().lstrip("*.")
                             if name.endswith(f".{domain}") or name == domain:
