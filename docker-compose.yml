@@ -26,6 +26,24 @@ services:
     volumes:
       - redis_data:/data
 
+  wa-service:
+    build: wa-service
+    ports:
+      - "${WA_PORT:-3001}:3001"
+    environment:
+      PORT: 3001
+      AUTH_DIR: /app/auth
+      LOG_LEVEL: ${WA_LOG_LEVEL:-info}
+    volumes:
+      - wa_auth:/app/auth
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   app:
     build: .
     ports:
@@ -36,6 +54,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       CMS_ENCRYPTION_KEY: ${CMS_ENCRYPTION_KEY:?Set CMS_ENCRYPTION_KEY in .env}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      WA_SERVICE_URL: http://wa-service:3001
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5000}
       PYTHONUNBUFFERED: 1
       LOG_FILE: /dev/null
@@ -82,3 +101,4 @@ volumes:
   pgdata:
   uploads:
   redis_data:
+  wa_auth:

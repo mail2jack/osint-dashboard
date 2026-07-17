@@ -637,3 +637,59 @@ def _get_twochat_credentials() -> tuple[str, str]:
     from cms.app_helpers import _get_twochat_credentials as _gtc
 
     return _gtc()
+
+
+def _get_wa_service_url() -> str:
+    """Get the WhatsApp (Baileys) service URL."""
+    import os
+
+    return os.environ.get("WA_SERVICE_URL", "http://localhost:3001")
+
+
+def _whatsapp_check_baileys(phone: str) -> dict:
+    """Check phone number via local Baileys (Node.js) WhatsApp service.
+
+    Returns dict with keys matching the 2Chat response format so callers
+    can be swapped transparently.
+    """
+    result = {"on_whatsapp": None, "error": None, "source": "baileys"}
+    try:
+        import requests as req
+
+        wa_url = _get_wa_service_url()
+        resp = req.post(
+            f"{wa_url}/api/check",
+            json={"phone": phone.strip()},
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            result["error"] = f"wa-service returned {resp.status_code}"
+            return result
+
+        data = resp.json()
+        if data.get("error"):
+            result["error"] = data["error"]
+            return result
+
+        result["on_whatsapp"] = data.get("exists")
+        result["jid"] = data.get("jid")
+        result["is_business"] = data.get("isBusiness", False)
+        result["profile_pic"] = data.get("profilePicUrl")
+        result["status_text"] = data.get("status")
+
+        biz = data.get("businessProfile") or {}
+        if biz:
+            result["business"] = {
+                "verified_name": None,
+                "description": biz.get("description"),
+                "website": biz.get("website", []),
+                "email": biz.get("email"),
+                "category": biz.get("category"),
+                "address": biz.get("address"),
+            }
+    except req.exceptions.ConnectionError:
+        result["error"] = "wa-service not reachable"
+    except Exception as e:
+        logger.debug(f"_whatsapp_check_baileys failed ({type(e).__name__}): {e}")
+        result["error"] = str(e)
+    return result

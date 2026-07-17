@@ -564,73 +564,129 @@ def _phone_check(action):
             }
         )
 
-    try:
-        from cms.services.phone_service import _get_twochat_credentials
+    from cms.services.phone_service import _whatsapp_check_baileys
 
-        api_key, channel_id = _get_twochat_credentials()
-        if api_key and channel_id:
-            twochat_url = (
-                f"https://api.p.2chat.io/open/whatsapp/check-number/{channel_id}/{e164}"
-            )
-            twochat_headers = {"X-User-API-Key": api_key, "Accept": "application/json"}
-            twochat_resp = jittered_get(
-                twochat_url, headers=twochat_headers, timeout=30
-            )
-            if twochat_resp.status_code == 200:
-                tc_data = twochat_resp.json()
-                on_wa = tc_data.get("on_whatsapp")
-                wa_info = tc_data.get("whatsapp_info", {}) or {}
-                biz_info = wa_info.get("business_information", {}) or {}
-                detail_lines = []
-                if on_wa is True:
-                    detail_lines.append("Status: Actief op WhatsApp (via 2Chat API)")
-                elif on_wa is False:
-                    detail_lines.append("Status: Niet actief op WhatsApp")
-                else:
-                    detail_lines.append("Status: Onbekend")
-                if wa_info.get("verified_level"):
-                    detail_lines.append(f"Verified level: {wa_info['verified_level']}")
-                if wa_info.get("status_text"):
-                    detail_lines.append(f"Status tekst: {wa_info['status_text']}")
-                if wa_info.get("number_id"):
-                    detail_lines.append(f"Nummer ID: {wa_info['number_id']}")
-                region_info = tc_data.get("number", {})
-                if region_info.get("region"):
-                    detail_lines.append(f"Regio (2Chat): {region_info['region']}")
-                if region_info.get("timezone"):
-                    detail_lines.append(
-                        f"Tijdzone (2Chat): {', '.join(region_info['timezone'])}"
-                    )
-                if biz_info.get("verified_name"):
-                    detail_lines.append(f"Bedrijfsnaam: {biz_info['verified_name']}")
-                if biz_info.get("description"):
-                    detail_lines.append(f"Beschrijving: {biz_info['description']}")
-                if biz_info.get("website"):
-                    detail_lines.append(f"Website: {', '.join(biz_info['website'])}")
-                if wa_info.get("contact_profile_pic"):
-                    detail_lines.append(
-                        f"Profielfoto: {wa_info['contact_profile_pic']}"
-                    )
-                if detail_lines:
-                    findings.append(
+    ba = _whatsapp_check_baileys(e164)
+    if ba.get("on_whatsapp") is True and not ba.get("error"):
+        detail_lines = []
+        detail_lines.append("Status: Actief op WhatsApp")
+        if ba.get("is_business"):
+            detail_lines.append("Type: Zakelijk account")
+        else:
+            detail_lines.append("Type: Persoonlijk account")
+        if ba.get("status_text"):
+            detail_lines.append(f"Status tekst: {ba['status_text']}")
+        biz = ba.get("business") or {}
+        if biz.get("description"):
+            detail_lines.append(f"Beschrijving: {biz['description']}")
+        if biz.get("website"):
+            detail_lines.append(f"Website: {', '.join(biz['website'])}")
+        if biz.get("email"):
+            detail_lines.append(f"E-mail: {biz['email']}")
+        if biz.get("category"):
+            detail_lines.append(f"Categorie: {biz['category']}")
+        if biz.get("address"):
+            detail_lines.append(f"Adres: {biz['address']}")
+        if ba.get("profile_pic"):
+            detail_lines.append(f"Profielfoto: {ba['profile_pic']}")
+        if detail_lines:
+            findings.append(
+                {
+                    "title": "WhatsApp Business gegevens"
+                    if ba.get("is_business")
+                    else "WhatsApp gegevens",
+                    "detail": "\n".join(detail_lines),
+                    "source_type": "phone",
+                    "icon": "🏢" if ba.get("is_business") else "💬",
+                    "verified": True,
+                    "screenshots": [
                         {
-                            "title": "WhatsApp Business API gegevens",
-                            "detail": "\n".join(detail_lines),
-                            "source_type": "phone",
-                            "icon": "🏢",
-                            "verified": True,
-                            "screenshots": [
-                                {
-                                    "url": wa_info.get("contact_profile_pic"),
-                                    "source_url": None,
-                                }
-                            ]
-                            if wa_info.get("contact_profile_pic")
-                            else [],
+                            "url": ba["profile_pic"],
+                            "source_url": None,
                         }
-                    )
-    except Exception:
-        pass
+                    ]
+                    if ba.get("profile_pic")
+                    else [],
+                }
+            )
+    elif ba.get("error"):
+        # fall back to 2Chat if available
+        try:
+            from cms.services.phone_service import _get_twochat_credentials
+
+            api_key, channel_id = _get_twochat_credentials()
+            if api_key and channel_id:
+                twochat_url = f"https://api.p.2chat.io/open/whatsapp/check-number/{channel_id}/{e164}"
+                twochat_headers = {
+                    "X-User-API-Key": api_key,
+                    "Accept": "application/json",
+                }
+                twochat_resp = jittered_get(
+                    twochat_url, headers=twochat_headers, timeout=30
+                )
+                if twochat_resp.status_code == 200:
+                    tc_data = twochat_resp.json()
+                    on_wa = tc_data.get("on_whatsapp")
+                    wa_info = tc_data.get("whatsapp_info", {}) or {}
+                    biz_info = wa_info.get("business_information", {}) or {}
+                    detail_lines = []
+                    if on_wa is True:
+                        detail_lines.append(
+                            "Status: Actief op WhatsApp (via 2Chat API)"
+                        )
+                    elif on_wa is False:
+                        detail_lines.append("Status: Niet actief op WhatsApp")
+                    else:
+                        detail_lines.append("Status: Onbekend")
+                    if wa_info.get("verified_level"):
+                        detail_lines.append(
+                            f"Verified level: {wa_info['verified_level']}"
+                        )
+                    if wa_info.get("status_text"):
+                        detail_lines.append(f"Status tekst: {wa_info['status_text']}")
+                    if wa_info.get("number_id"):
+                        detail_lines.append(f"Nummer ID: {wa_info['number_id']}")
+                    region_info = tc_data.get("number", {})
+                    if region_info.get("region"):
+                        detail_lines.append(f"Regio (2Chat): {region_info['region']}")
+                    if region_info.get("timezone"):
+                        detail_lines.append(
+                            f"Tijdzone (2Chat): {', '.join(region_info['timezone'])}"
+                        )
+                    if biz_info.get("verified_name"):
+                        detail_lines.append(
+                            f"Bedrijfsnaam: {biz_info['verified_name']}"
+                        )
+                    if biz_info.get("description"):
+                        detail_lines.append(f"Beschrijving: {biz_info['description']}")
+                    if biz_info.get("website"):
+                        detail_lines.append(
+                            f"Website: {', '.join(biz_info['website'])}"
+                        )
+                    if wa_info.get("contact_profile_pic"):
+                        detail_lines.append(
+                            f"Profielfoto: {wa_info['contact_profile_pic']}"
+                        )
+                    if detail_lines:
+                        findings.append(
+                            {
+                                "title": "WhatsApp Business API gegevens",
+                                "detail": "\n".join(detail_lines),
+                                "source_type": "phone",
+                                "icon": "🏢",
+                                "verified": True,
+                                "screenshots": [
+                                    {
+                                        "url": wa_info.get("contact_profile_pic"),
+                                        "source_url": None,
+                                    }
+                                ]
+                                if wa_info.get("contact_profile_pic")
+                                else [],
+                            }
+                        )
+        except Exception:
+            pass
 
     return findings
 

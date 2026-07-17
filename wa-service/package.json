@@ -1,0 +1,16 @@
+{
+  "name": "wa-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.23",
+    "@hapi/boom": "^10.0.1",
+    "express": "^4.21.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0"
+  }
+}
