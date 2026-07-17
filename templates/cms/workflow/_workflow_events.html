@@ -16,6 +16,8 @@ document.addEventListener('input', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(pollStatus, 100);
+
   document.addEventListener('click', function(e) {
     var cancelBtn = e.target.closest('[data-action="cancel-action"]');
     if (cancelBtn) {
