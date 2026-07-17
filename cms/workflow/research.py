@@ -15,6 +15,10 @@ from .models import (
     WorkflowActionFinding,
 )
 from cms.services.http_utils import jittered_get
+from cms.services.phone_service import (
+    _whatsapp_check_internal,
+    _telegram_check_internal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -444,52 +448,190 @@ def _phone_check(action):
     if not phone:
         return []
     findings = []
-    try:
-        import phonenumbers
 
+    import phonenumbers
+    from phonenumbers import geocoder, carrier as pn_carrier, timezone as pn_tz
+
+    detail_parts = []
+    enrichment = {}
+
+    try:
         parsed = phonenumbers.parse(phone, "NL")
-        if phonenumbers.is_valid_number(parsed):
-            findings.append(
-                {
-                    "title": f"Telefoonnummer {phone} is geldig",
-                    "detail": f"Land: {phonenumbers.region_code_for_number(parsed)}. "
-                    f"Type: {phonenumbers.number_type(parsed)}",
-                    "source_type": "phone",
-                    "icon": "📞",
-                    "verified": False,
-                }
+        valid = phonenumbers.is_valid_number(parsed)
+        enrichment["valid"] = valid
+        detail_parts.append(f"Geldig: {'Ja' if valid else 'Nee'}")
+
+        try:
+            region = geocoder.description_for_number(parsed, "nl")
+            if region:
+                enrichment["region"] = region
+                detail_parts.append(f"Regio: {region}")
+        except Exception:
+            pass
+
+        try:
+            carrier_name = pn_carrier.name_for_number(parsed, "nl")
+            if carrier_name:
+                enrichment["carrier"] = carrier_name
+                detail_parts.append(f"Provider: {carrier_name}")
+        except Exception:
+            pass
+
+        try:
+            line_type = pn_carrier._api_for_number(parsed).get("type", "onbekend")
+            if callable(line_type):
+                line_type = line_type(parsed)
+            enrichment["line_type"] = str(line_type)
+            type_map = {
+                0: "Vast",
+                1: "Mobiel",
+                2: "VoIP",
+                3: "Persoonlijk nummer",
+                5: "Voicemail",
+                7: "Satelliet",
+            }
+            label = (
+                type_map.get(int(line_type))
+                if str(line_type).isdigit()
+                else str(line_type)
             )
+            detail_parts.append(f"Type: {label or line_type}")
+        except Exception:
+            pass
+
+        try:
+            tz = pn_tz.time_zones_for_number(parsed)
+            if tz:
+                enrichment["timezone"] = tz[0]
+                detail_parts.append(f"Tijdzone: {tz[0]}")
+        except Exception:
+            pass
+
     except Exception:
         pass
 
-    from cms.services.phone_service import (
-        _whatsapp_check_internal,
-        _telegram_check_internal,
+    e164 = (
+        f"+{parsed.country_code}{parsed.national_number}"
+        if "parsed" in dir()
+        else phone
+    )
+
+    findings.append(
+        {
+            "title": f"Telefoonnummer {phone} — {enrichment.get('valid', True) and 'Geldig' or 'Ongeldig'}",
+            "detail": "\n".join(detail_parts)
+            if detail_parts
+            else f"Telefoonnummer: {phone}",
+            "source_type": "phone",
+            "icon": "📞",
+            "verified": bool(enrichment.get("valid")),
+        }
     )
 
     wa = _whatsapp_check_internal(phone)
-    if wa.get("exists"):
+    if wa.get("exists") is True:
         findings.append(
             {
                 "title": "WhatsApp account gevonden",
-                "detail": "Nummer gevonden op WhatsApp",
+                "detail": "Dit nummer is actief op WhatsApp.",
+                "source_url": wa.get("url"),
                 "source_type": "phone",
                 "icon": "💬",
                 "verified": False,
-                "screenshots": [{"url": None, "source_url": wa.get("url")}],
             }
         )
+    elif wa.get("exists") is False:
+        findings.append(
+            {
+                "title": "Geen WhatsApp account",
+                "detail": "Dit nummer is niet gevonden op WhatsApp.",
+                "source_type": "phone",
+                "icon": "💬",
+                "verified": False,
+            }
+        )
+
     tg = _telegram_check_internal(phone)
-    if tg.get("exists"):
+    if tg.get("exists") is True:
         findings.append(
             {
                 "title": "Telegram account gevonden",
-                "detail": "Nummer gevonden op Telegram",
+                "detail": "Dit nummer is actief op Telegram.",
+                "source_url": tg.get("url"),
                 "source_type": "phone",
                 "icon": "✈️",
                 "verified": False,
             }
         )
+
+    try:
+        from cms.services.phone_service import _get_twochat_credentials
+
+        api_key, channel_id = _get_twochat_credentials()
+        if api_key and channel_id:
+            twochat_url = (
+                f"https://api.p.2chat.io/open/whatsapp/check-number/{channel_id}/{e164}"
+            )
+            twochat_headers = {"X-User-API-Key": api_key, "Accept": "application/json"}
+            twochat_resp = jittered_get(
+                twochat_url, headers=twochat_headers, timeout=30
+            )
+            if twochat_resp.status_code == 200:
+                tc_data = twochat_resp.json()
+                on_wa = tc_data.get("on_whatsapp")
+                wa_info = tc_data.get("whatsapp_info", {}) or {}
+                biz_info = wa_info.get("business_information", {}) or {}
+                detail_lines = []
+                if on_wa is True:
+                    detail_lines.append("Status: Actief op WhatsApp (via 2Chat API)")
+                elif on_wa is False:
+                    detail_lines.append("Status: Niet actief op WhatsApp")
+                else:
+                    detail_lines.append("Status: Onbekend")
+                if wa_info.get("verified_level"):
+                    detail_lines.append(f"Verified level: {wa_info['verified_level']}")
+                if wa_info.get("status_text"):
+                    detail_lines.append(f"Status tekst: {wa_info['status_text']}")
+                if wa_info.get("number_id"):
+                    detail_lines.append(f"Nummer ID: {wa_info['number_id']}")
+                region_info = tc_data.get("number", {})
+                if region_info.get("region"):
+                    detail_lines.append(f"Regio (2Chat): {region_info['region']}")
+                if region_info.get("timezone"):
+                    detail_lines.append(
+                        f"Tijdzone (2Chat): {', '.join(region_info['timezone'])}"
+                    )
+                if biz_info.get("verified_name"):
+                    detail_lines.append(f"Bedrijfsnaam: {biz_info['verified_name']}")
+                if biz_info.get("description"):
+                    detail_lines.append(f"Beschrijving: {biz_info['description']}")
+                if biz_info.get("website"):
+                    detail_lines.append(f"Website: {', '.join(biz_info['website'])}")
+                if wa_info.get("contact_profile_pic"):
+                    detail_lines.append(
+                        f"Profielfoto: {wa_info['contact_profile_pic']}"
+                    )
+                if detail_lines:
+                    findings.append(
+                        {
+                            "title": "WhatsApp Business API gegevens",
+                            "detail": "\n".join(detail_lines),
+                            "source_type": "phone",
+                            "icon": "🏢",
+                            "verified": True,
+                            "screenshots": [
+                                {
+                                    "url": wa_info.get("contact_profile_pic"),
+                                    "source_url": None,
+                                }
+                            ]
+                            if wa_info.get("contact_profile_pic")
+                            else [],
+                        }
+                    )
+    except Exception:
+        pass
+
     return findings
 
 
