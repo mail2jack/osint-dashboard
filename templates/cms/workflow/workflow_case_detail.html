@@ -308,7 +308,7 @@ input:-webkit-autofill:focus {
       {% set rem = action_credits.get(key, 0) if action_credits else 0 %}
       {% set limits = {'tiktok': 50, 'instagram': 10, 'linkedin': 50, 'twitter': 1000} %}
       {% set limit = limits.get(key, 0) %}
-      <div class="action-btn" data-action="run-action" data-action-key="{{ key }}" data-icon="{{ info.icon }}" data-label="{{ info.label }}"{% if limit > 0 %} data-credits="{{ rem }}" data-credit-limit="{{ limit }}"{% endif %}>
+      <div class="action-btn" data-action="run-action" data-action-key="{{ key }}" data-icon="{{ info.icon }}" data-label="{{ info.label }}"{% if limit > 0 %} data-credits="{{ rem }}" data-credit-limit="{{ limit }}"{% endif %} title="{{ info.description }}">
         <div class="icon">{{ info.icon }}</div>
         <div class="label">{{ info.label }}</div>
         <div class="desc">{{ info.label }} uitvoeren{% if limit > 0 and rem <= 5 and rem > 0 %} — nog {{ rem }}/{{ limit }} credits{% elif limit > 0 and rem == 0 %} — 🚫 opgebruikt{% endif %}</div>
@@ -366,7 +366,7 @@ input:-webkit-autofill:focus {
           {% if group.findings %}
           {% set act = group.action %}
           {% set type_info = action_types.get(act.action_type, {}) %}
-           <div class="finding-group">
+           <div class="finding-group{% if act.status == 'completed' %} open{% endif %}">
              <div class="finding-group-header" data-toggle="findings-{{ aid }}">
                <span class="toggle-icon">▶</span>
                <span class="fg-icon">{{ type_info.get('icon', '📄') }}</span>

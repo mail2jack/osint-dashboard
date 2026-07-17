@@ -100,7 +100,7 @@ function pollStatus() {
           document.getElementById('actionsStatus').textContent = '❌ ' + btn.dataset.label + ' mislukt: ' + (a.error || '');
         }
       });
-      var hasRunning = data.actions.some(function(a) { return a.status === 'running'; });
+      var hasRunning = data.actions.some(function(a) { return a.status === 'running' || a.status === 'pending'; });
       if (!hasRunning) { stopPolling(); }
       updateFindings(data.findings || [], data.actions || []);
     })
@@ -284,7 +284,8 @@ function updateFindings(findings, actions) {
     if (!gf || !gf.length) return;
     var icon = '📄';
     var statusClass = a.status === 'completed' ? 'fg-done' : a.status === 'failed' ? 'fg-failed' : a.status === 'running' ? 'fg-running' : '';
-    html += '<div class="finding-group">' +
+    var openClass = a.status === 'completed' ? ' open' : '';
+    html += '<div class="finding-group' + openClass + '">' +
       '<div class="finding-group-header" data-toggle="grp-' + esc(a.id) + '">' +
         '<span class="toggle-icon">▶</span>' +
         '<span class="fg-icon">' + esc(icon) + '</span>' +
