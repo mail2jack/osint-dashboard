@@ -417,6 +417,7 @@ def case_detail(case_id):
     )
     findings = (
         WorkflowFinding.query.filter_by(case_id=case_id)
+        .filter(WorkflowFinding.is_deleted == False)
         .filter(
             WorkflowFinding.archived_at.is_(None) if not show_archived else sa.true()
         )
@@ -707,6 +708,7 @@ def case_status(case_id):
     actions = WorkflowResearchAction.query.filter_by(case_id=case_id).all()
     findings = (
         WorkflowFinding.query.filter_by(case_id=case_id)
+        .filter(WorkflowFinding.is_deleted == False)
         .filter(WorkflowFinding.archived_at.is_(None))
         .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
         .order_by(WorkflowFinding.created_at.desc())
