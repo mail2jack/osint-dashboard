@@ -365,17 +365,6 @@ def urlize_target_filter(text):
     return url_pattern.sub(make_url, text)
 
 
-@app.template_filter("result_link")
-def result_link_filter(data, type_name):
-    from urllib.parse import quote
-
-    if not data:
-        return ""
-    if type_name == "email" or type_name in ("ip", "domain"):
-        return f'<a href="/cms/search?q={quote(data)}&type=all" class="result-link">{data}</a>'
-    return str(data)
-
-
 PLATFORM_COLORS = {
     "instagram": "#E4405F",
     "facebook": "#1877F2",
