@@ -425,6 +425,12 @@ def _run_update_background(task_id: str, app):
                         env=env,
                     )
                     if _abort_check():
+                        task["results"][-1] = {
+                            "step": msg,
+                            "status": "aborted",
+                            "output": "Step geannuleerd door gebruiker",
+                        }
+                        _save()
                         return
                     if r.returncode == 0:
                         task["results"][-1] = {
@@ -459,6 +465,11 @@ def _run_update_background(task_id: str, app):
                     }
                 _save()
 
+            def _abort_return():
+                task["status"] = "aborted"
+                task["message"] = "Update geannuleerd door gebruiker"
+                _save()
+
             def _abort_check():
                 t = _read_task(task_id)
                 return t is not None and t.get("aborted", False)
@@ -474,6 +485,23 @@ def _run_update_background(task_id: str, app):
 
             if task is None:
                 logger.error("Task %s not found at start of background thread", task_id)
+                _write_task(
+                    task_id,
+                    {
+                        "task_id": task_id,
+                        "status": "error",
+                        "success": False,
+                        "message": "Task file niet gevonden bij opstarten",
+                        "results": [
+                            {
+                                "step": "Background worker",
+                                "status": "error",
+                                "output": "Task file niet gevonden",
+                            }
+                        ],
+                        "aborted": False,
+                    },
+                )
                 return
             task["status"] = "running"
             _save()
@@ -488,6 +516,7 @@ def _run_update_background(task_id: str, app):
 
             # Step 1: Full backup
             if _abort_check():
+                _abort_return()
                 return
             backup_script = os.path.join(project_root, "scripts", "backup.sh")
             if os.path.isfile(backup_script):
@@ -507,6 +536,7 @@ def _run_update_background(task_id: str, app):
                         ["cp", db_file, f"{db_file}.backup.{timestamp}"],
                     )
             if _abort_check():
+                _abort_return()
                 return
 
             # Store backup path + pre-pull SHA for rollback
@@ -547,6 +577,7 @@ def _run_update_background(task_id: str, app):
                 logger.warning("Rollback metadata error: %s", e)
 
             if _abort_check():
+                _abort_return()
                 return
 
             # Step 2: Git pull
@@ -556,6 +587,7 @@ def _run_update_background(task_id: str, app):
                 cwd=project_root,
             )
             if _abort_check():
+                _abort_return()
                 return
 
             # Step 3: pip install
@@ -573,6 +605,7 @@ def _run_update_background(task_id: str, app):
                 cwd=project_root,
             )
             if _abort_check():
+                _abort_return()
                 return
 
             # Step 4: Alembic
@@ -589,6 +622,7 @@ def _run_update_background(task_id: str, app):
                 env=alembic_env,
             )
             if _abort_check():
+                _abort_return()
                 return
 
             # Store post-pull commit SHA
@@ -640,6 +674,9 @@ def _run_update_background(task_id: str, app):
             _send_update_email(app, task, current_ver)
 
         except Exception:
+            import traceback
+
+            tb = traceback.format_exc()
             logger.exception("Background update crashed")
             task = _read_task(task_id) or {"task_id": task_id, "results": []}
             task["status"] = "error"
@@ -649,7 +686,7 @@ def _run_update_background(task_id: str, app):
                 {
                     "step": "Background worker",
                     "status": "error",
-                    "output": "Update crashed",
+                    "output": f"Update crashed: {tb[:2000]}",
                 }
             )
             _write_task(task_id, task)
@@ -803,7 +840,7 @@ def abort_update(task_id: str) -> flask.Response:
     return jsonify({"status": "aborting"})
 
 
-@cms_bp.route("/admin/rollback-update")
+@cms_bp.route("/admin/rollback-update", methods=["POST"])
 @login_required
 @admin_required
 def rollback_update() -> flask.Response:
