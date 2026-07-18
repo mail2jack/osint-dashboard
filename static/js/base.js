@@ -40,7 +40,7 @@ window.apiFetch = function(url, options) {
           clEl.innerHTML = '<strong>\U0001f4cb What\'s new:</strong><div style="margin-top:0.5rem;">' + clHtml + '</div>';
           clEl.style.display = 'block';
         }
-        document.getElementById('updateInfo').style.display = 'block';
+        document.getElementById('updateReview').style.display = 'block';
         banner.style.display = 'block';
       })
       .catch(function() {});
@@ -456,77 +456,130 @@ var _updateTaskId = null;
 
 function _updateUI(mode) {
   var title = document.getElementById('updateModalTitle');
-  var info = document.getElementById('updateInfo');
+  var review = document.getElementById('updateReview');
+  var confirm = document.getElementById('updateConfirm');
   var progress = document.getElementById('updateProgress');
   var result = document.getElementById('updateResult');
   var btn = document.getElementById('updateNowBtn');
   var laterBtn = document.getElementById('updateLaterBtn');
+  var backBtn = document.getElementById('updateBackBtn');
+  var reviewLaterBtn = document.getElementById('updateReviewLaterBtn');
+  var reviewConfirmBtn = document.getElementById('updateReviewConfirmBtn');
   var abortBtn = document.getElementById('updateAbortBtn');
   var rollbackBtn = document.getElementById('updateRollbackBtn');
   var footer = document.getElementById('updateFooterText');
+
+  function hideAll() {
+    if (review) review.style.display = 'none';
+    if (confirm) confirm.style.display = 'none';
+    if (progress) progress.style.display = 'none';
+    if (result) result.style.display = 'none';
+  }
+
   if (mode === 'running') {
     if (title) title.textContent = '\u23f3 Update wordt uitgevoerd...';
-    if (info) info.style.display = 'none';
+    hideAll();
     if (progress) progress.style.display = 'block';
-    if (result) result.style.display = 'none';
     if (btn) { btn.disabled = true; btn.style.display = 'none'; }
     if (laterBtn) laterBtn.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (reviewLaterBtn) reviewLaterBtn.style.display = 'none';
+    if (reviewConfirmBtn) reviewConfirmBtn.style.display = 'none';
     if (abortBtn) abortBtn.style.display = 'inline-block';
     if (rollbackBtn) rollbackBtn.style.display = 'none';
     if (footer) footer.textContent = 'Het systeem wordt geüpdatet. Even geduld...';
   } else if (mode === 'done') {
     if (title) title.textContent = '\u2705 Update voltooid';
-    if (progress) progress.style.display = 'none';
+    hideAll();
     if (result) result.style.display = 'block';
     if (btn) { btn.disabled = true; btn.style.display = 'none'; }
     if (laterBtn) laterBtn.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (reviewLaterBtn) reviewLaterBtn.style.display = 'none';
+    if (reviewConfirmBtn) reviewConfirmBtn.style.display = 'none';
     if (abortBtn) abortBtn.style.display = 'none';
     if (rollbackBtn) rollbackBtn.style.display = 'none';
   } else if (mode === 'restarting') {
     if (title) title.textContent = '\u23f3 Server wordt herstart...';
+    hideAll();
     if (progress) progress.style.display = 'block';
-    if (result) result.style.display = 'none';
     if (btn) { btn.disabled = true; btn.style.display = 'none'; }
     if (laterBtn) laterBtn.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (reviewLaterBtn) reviewLaterBtn.style.display = 'none';
+    if (reviewConfirmBtn) reviewConfirmBtn.style.display = 'none';
     if (abortBtn) abortBtn.style.display = 'none';
     if (rollbackBtn) rollbackBtn.style.display = 'none';
     if (footer) footer.textContent = 'De server wordt herstart. Even geduld... de pagina wordt zo herladen.';
   } else if (mode === 'error') {
     if (title) title.textContent = '\u274c Update mislukt';
-    if (progress) progress.style.display = 'none';
+    hideAll();
     if (result) result.style.display = 'block';
+    if (confirm) confirm.style.display = 'block';
     if (btn) { btn.disabled = false; btn.style.display = 'inline-block'; btn.textContent = '\u2b06 Opnieuw proberen'; }
     if (laterBtn) laterBtn.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (reviewLaterBtn) reviewLaterBtn.style.display = 'none';
+    if (reviewConfirmBtn) reviewConfirmBtn.style.display = 'none';
     if (abortBtn) abortBtn.style.display = 'none';
     if (rollbackBtn) rollbackBtn.style.display = 'inline-block';
+    if (footer) footer.style.display = 'block';
   } else if (mode === 'rolling') {
     if (title) title.textContent = '\u23f3 Rollback bezig...';
-    if (info) info.style.display = 'none';
+    hideAll();
     if (progress) { progress.style.display = 'block'; }
     if (result) result.style.display = 'none';
     if (btn) { btn.disabled = true; btn.style.display = 'none'; }
     if (laterBtn) laterBtn.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (reviewLaterBtn) reviewLaterBtn.style.display = 'none';
+    if (reviewConfirmBtn) reviewConfirmBtn.style.display = 'none';
     if (abortBtn) abortBtn.style.display = 'none';
     if (rollbackBtn) { rollbackBtn.disabled = true; rollbackBtn.style.display = 'inline-block'; }
     if (footer) footer.textContent = 'Systeem wordt teruggedraaid naar de vorige staat... Even geduld.';
   } else if (mode === 'aborted') {
     if (title) title.textContent = '\u26a0 Update geannuleerd';
-    if (progress) progress.style.display = 'none';
+    hideAll();
     if (result) result.style.display = 'block';
+    if (confirm) confirm.style.display = 'block';
     if (btn) { btn.disabled = false; btn.style.display = 'inline-block'; btn.textContent = '\u2b06 Opnieuw proberen'; }
-    if (laterBtn) laterBtn.style.display = 'inline-block';
+    if (laterBtn) laterBtn.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (reviewLaterBtn) reviewLaterBtn.style.display = 'none';
+    if (reviewConfirmBtn) reviewConfirmBtn.style.display = 'none';
     if (abortBtn) abortBtn.style.display = 'none';
     if (rollbackBtn) rollbackBtn.style.display = 'none';
+    if (footer) footer.style.display = 'block';
   } else {
+    // Default: show review step
     if (title) title.textContent = '\u2b06 Update Available';
-    if (info) info.style.display = 'block';
+    if (review) review.style.display = 'block';
+    if (confirm) confirm.style.display = 'none';
     if (progress) progress.style.display = 'none';
     if (result) result.style.display = 'none';
-    if (btn) { btn.disabled = false; btn.style.display = 'inline-block'; btn.textContent = '\u2b06 Update Now'; }
-    if (laterBtn) laterBtn.style.display = 'inline-block';
+    if (btn) { btn.disabled = false; btn.style.display = 'none'; }
+    if (laterBtn) laterBtn.style.display = 'none';
+    if (backBtn) backBtn.style.display = 'none';
+    if (reviewLaterBtn) reviewLaterBtn.style.display = 'inline-block';
+    if (reviewConfirmBtn) { reviewConfirmBtn.disabled = false; reviewConfirmBtn.style.display = 'inline-block'; }
     if (abortBtn) abortBtn.style.display = 'none';
     if (rollbackBtn) rollbackBtn.style.display = 'none';
+    if (footer) footer.style.display = 'none';
   }
+}
+
+function confirmUpdate() {
+  var review = document.getElementById('updateReview');
+  var confirm = document.getElementById('updateConfirm');
+  if (review) review.style.display = 'none';
+  if (confirm) confirm.style.display = 'block';
+}
+
+function backToReview() {
+  var review = document.getElementById('updateReview');
+  var confirm = document.getElementById('updateConfirm');
+  if (review) review.style.display = 'block';
+  if (confirm) confirm.style.display = 'none';
 }
 
 function _renderSteps(container, results) {

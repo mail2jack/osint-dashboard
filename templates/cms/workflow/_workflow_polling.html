@@ -6,7 +6,7 @@ function startTimer() {
     if (!btn) { clearInterval(timerInterval); timerInterval = null; return; }
     var sec = Math.floor((Date.now() - parseInt(btn.dataset.runningSince || Date.now())) / 1000);
     var m = Math.floor(sec / 60), s = sec % 60;
-    document.getElementById('actionsStatus').textContent = '⏳ ' + btn.dataset.label + ' loopt ' + m + 'm' + (s < 10 ? '0' : '') + s;
+    document.getElementById('actionsStatus').textContent = '⏳ ' + btn.dataset.label + ' running ' + m + 'm' + (s < 10 ? '0' : '') + s;
   }, 1000);
 }
 function stopTimer() {
@@ -32,18 +32,18 @@ function runAction(actionType, dataValue) {
     if (data.error) {
       btn.classList.remove('running');
       btn.classList.add('failed');
-      document.getElementById('actionsStatus').textContent = '❌ ' + btn.dataset.label + ' mislukt: ' + data.error;
+      document.getElementById('actionsStatus').textContent = '❌ ' + btn.dataset.label + ' failed: ' + data.error;
       return;
     }
     btn.dataset.actionId = data.id;
-    document.getElementById('actionsStatus').textContent = '⏳ ' + btn.dataset.label + ' wordt verwerkt...';
+    document.getElementById('actionsStatus').textContent = '⏳ ' + btn.dataset.label + ' processing...';
     if (!pollTimer) startPolling();
     setTimeout(pollStatus, 300);
   })
   .catch(err => {
     btn.classList.remove('running');
     btn.classList.add('failed');
-    document.getElementById('actionsStatus').textContent = '❌ Netwerkfout: ' + err.message;
+    document.getElementById('actionsStatus').textContent = '❌ Network error: ' + err.message;
   });
 }
 
@@ -79,7 +79,7 @@ function pollStatus() {
           var cb = btn.querySelector('.action-cancel');
           if (cb) cb.style.display = 'none';
           stopTimer();
-          document.getElementById('actionsStatus').textContent = '⏹️ ' + btn.dataset.label + ' geannuleerd';
+          document.getElementById('actionsStatus').textContent = '⏹️ ' + btn.dataset.label + ' cancelled';
         }
         if (a.status === 'completed' && btn.classList.contains('running')) {
           btn.classList.remove('running');
@@ -88,7 +88,7 @@ function pollStatus() {
           var cb = btn.querySelector('.action-cancel');
           if (cb) cb.style.display = 'none';
           stopTimer();
-          document.getElementById('actionsStatus').textContent = '✅ ' + btn.dataset.label + ' voltooid — ' + (a.result_summary || '');
+          document.getElementById('actionsStatus').textContent = '✅ ' + btn.dataset.label + ' completed — ' + (a.result_summary || '');
           if (CREDIT_LIMITS.hasOwnProperty(a.action_type)) updateCredits(a.action_type);
         }
         if (a.status === 'failed' && btn.classList.contains('running')) {
@@ -98,7 +98,7 @@ function pollStatus() {
           var cb = btn.querySelector('.action-cancel');
           if (cb) cb.style.display = 'none';
           stopTimer();
-          document.getElementById('actionsStatus').textContent = '❌ ' + btn.dataset.label + ' mislukt: ' + (a.error || '');
+          document.getElementById('actionsStatus').textContent = '❌ ' + btn.dataset.label + ' failed: ' + (a.error || '');
         }
       });
       var hasRunning = data.actions.some(function(a) { return a.status === 'running' || a.status === 'pending'; });
@@ -125,46 +125,46 @@ function rdwCardHtml(data) {
   var soort = v('voertuigsoort') || '';
   var inr = v('inrichting') || '';
 
-  var dating = row('Eerste toelating', fmtDate(v('datum_eerste_toelating')))
-    + row('Tenaamstelling', fmtDate(v('datum_tenaamstelling')))
-    + row('APK vervaldatum', fmtDate(v('vervaldatum_apk')));
+  var dating = row('First registration', fmtDate(v('datum_eerste_toelating')))
+    + row('Registration date', fmtDate(v('datum_tenaamstelling')))
+    + row('APK expiry date', fmtDate(v('vervaldatum_apk')));
 
-  var tech = row('Vermogen', v('vermogen_massario'), 'kW')
-    + row('Brandstof', v('brandstof_omschrijving'))
-    + row('Emissiecode', v('emissiecode'))
-    + row('Milieuklasse', v('milieuklasse_eg_goedkeuring'))
-    + row('Max. snelheid', v('maximale_constructiesnelheid'), 'km/h')
-    + row('Europese categorie', v('europese_voertuigcategorie'))
-    + row('Soort', soort)
-    + row('Inrichting', inr);
+  var tech = row('Power', v('vermogen_massario'), 'kW')
+    + row('Fuel', v('brandstof_omschrijving'))
+    + row('Emission code', v('emissiecode'))
+    + row('Emission class', v('milieuklasse_eg_goedkeuring'))
+    + row('Max. speed', v('maximale_constructiesnelheid'), 'km/h')
+    + row('European category', v('europese_voertuigcategorie'))
+    + row('Type', soort)
+    + row('Configuration', inr);
 
-  var dims = row('Lengte', v('lengte'), 'mm')
-    + row('Breedte', v('breedte'), 'mm')
-    + row('Wielbasis', v('wielbasis'), 'mm')
-    + row('Ledig gewicht', v('massa_ledig_voertuig'), 'kg')
-    + row('Rijklaar gewicht', v('massa_rijklaar'), 'kg')
-    + row('Max. toegestaan', v('maximale_massa_toegestaan'), 'kg')
-    + row('Max. constructie', v('maximale_massa_constructie'), 'kg')
-    + row('Laadvermogen', v('laadvermogen'), 'kg')
-    + row('Aanhanger geremd', v('maximum_massa_aanhangwagen_geremd'), 'kg')
-    + row('Aanhanger ongeremd', v('maximum_massa_aanhangwagen_ongeremd'), 'kg')
-    + row('Technische max. massa', v('technische_max_massa_voertuig'), 'kg');
+  var dims = row('Length', v('lengte'), 'mm')
+    + row('Width', v('breedte'), 'mm')
+    + row('Wheelbase', v('wielbasis'), 'mm')
+    + row('Curb weight', v('massa_ledig_voertuig'), 'kg')
+    + row('Kerb weight', v('massa_rijklaar'), 'kg')
+    + row('Max. permitted', v('maximale_massa_toegestaan'), 'kg')
+    + row('Max. design mass', v('maximale_massa_constructie'), 'kg')
+    + row('Payload', v('laadvermogen'), 'kg')
+    + row('Trailer braked', v('maximum_massa_aanhangwagen_geremd'), 'kg')
+    + row('Trailer unbraked', v('maximum_massa_aanhangwagen_ongeremd'), 'kg')
+    + row('Technical max. mass', v('technische_max_massa_voertuig'), 'kg');
 
-  var kleur = row('Kleur', v('eerste_kleur'))
-    + row('Tweede kleur', v('tweede_kleur'));
+  var kleur = row('Color', v('eerste_kleur'))
+    + row('Second color', v('tweede_kleur'));
 
-  var cap = row('Zitplaatsen', v('aantal_zitplaatsen'))
-    + row('Deuren', v('aantal_deuren'))
-    + row('Wielen', v('aantal_wielen'))
-    + row('Staplaatsen', v('aantal_staplaatsen'));
+  var cap = row('Seats', v('aantal_zitplaatsen'))
+    + row('Doors', v('aantal_deuren'))
+    + row('Wheels', v('aantal_wielen'))
+    + row('Standing places', v('aantal_staplaatsen'));
 
-  var overig = row('Catalogusprijs', v('_prijs_eur') || (v('catalogusprijs') ? '€ ' + v('catalogusprijs') : null))
+  var overig = row('List price', v('_prijs_eur') || (v('catalogusprijs') ? '€ ' + v('catalogusprijs') : null))
     + row('Export', v('export_indicator'))
-    + row('Terugroepactie', v('openstaande_terugroepactie_indicator'))
-    + row('Zuinigheidslabel', v('zuinigheidslabel'))
-    + row('Gasinstallatie', v('type_gasinstallatie'))
-    + row('Soort gasinstallatie', v('soort_gasinstallatie'))
-    + row('Plaats chassisnummer', v('plaats_chassisnummer'));
+    + row('Recall', v('openstaande_terugroepactie_indicator'))
+    + row('Energy label', v('zuinigheidslabel'))
+    + row('Gas installation', v('type_gasinstallatie'))
+    + row('Gas installation type', v('soort_gasinstallatie'))
+    + row('Chassis number location', v('plaats_chassisnummer'));
 
   var sub = soort;
   if (inr) sub += ' · ' + inr;
@@ -180,13 +180,13 @@ function rdwCardHtml(data) {
   return '<div class="rdw-card">' +
     '<div class="rdw-header"><div class="rdw-header-left"><div class="rdw-make">' + esc(make) + '</div><div class="rdw-sub">' + esc(sub) + '</div></div><div class="rdw-plate">' + esc(plate) + '</div></div>' +
     '<div class="rdw-body">' +
-      section('📅', 'Datering', dating) +
-      section('⚙️', 'Technisch', tech) +
-      section('📐', 'Afmetingen & Gewicht', dims) +
-      section('🎨', 'Kleur', kleur) +
-      section('👥', 'Capaciteit', cap) +
-      section('💰', 'Overig', overig) +
-      '<button type="button" class="rdw-raw-toggle">📊 Toon alle ruwe RDW-data</button>' +
+      section('📅', 'Dates', dating) +
+      section('⚙️', 'Technical', tech) +
+      section('📐', 'Dimensions & Weight', dims) +
+      section('🎨', 'Color', kleur) +
+      section('👥', 'Capacity', cap) +
+      section('💰', 'Other', overig) +
+      '<button type="button" class="rdw-raw-toggle">📊 Show all raw RDW data</button>' +
       '<div class="rdw-raw-table">' + rawRows + '</div>' +
     '</div>' +
   '</div>';
@@ -205,9 +205,9 @@ function findingHtml(f) {
     f.screenshots.forEach(function(ss) {
       ssHtml += '<div class="ss-row" style="margin-top:0.3rem;padding:0.3rem 0;border-bottom:1px dashed var(--border-color);">' +
         '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">';
-      if (ss.url) ssHtml += '<a href="' + esc(ss.url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ Bekijk screenshot</a>';
+      if (ss.url) ssHtml += '<a href="' + esc(ss.url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🖼️ View screenshot</a>';
       if (ss.source_url && ss.source_url !== ss.url) ssHtml += '<a href="' + esc(ss.source_url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;">🌐 Open website</a>';
-      ssHtml += '<span style="font-size:0.72rem;color:var(--text-muted);">' + (ss.captured_at ? new Date(ss.captured_at).toLocaleString('nl-NL') : '-') + '</span>';
+      ssHtml += '<span style="font-size:0.72rem;color:var(--text-muted);">' + (ss.captured_at ? new Date(ss.captured_at).toLocaleString('en-GB') : '-') + '</span>';
       ssHtml += '</div>';
       if (ss.url) ssHtml += '<div style="margin-top:0.3rem;"><a href="' + esc(ss.url) + '" target="_blank" rel="noopener"><img src="' + esc(ss.url) + '" alt="Screenshot" style="max-width:100%;max-height:200px;border-radius:4px;border:1px solid var(--border-color);object-fit:contain;background:#f0f0f0;" loading="lazy"></a></div>';
       if (ss.notes) ssHtml += '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.15rem;">' + esc(ss.notes) + '</div>';
@@ -216,7 +216,7 @@ function findingHtml(f) {
     ssHtml += '</div>';
   }
 
-  var dateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('nl-NL', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  var dateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
   var confClass = f.confidence_level === 'high' || f.confidence_level === 'verified' ? 'badge-status-success' : f.confidence_level === 'medium' ? 'badge-status-warning' : 'badge-status-default';
 
   return '<div class="finding-item" data-finding-id="' + esc(f.id) + '">' +
@@ -234,24 +234,24 @@ function findingHtml(f) {
     (f.raw_data ? rdwCardHtml(f.raw_data) : '') +
     ssHtml +
     '<div style="margin-top:0.4rem;">' +
-      '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="Notitie / opmerking..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +
+      '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="Note / comment..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +
     '</div>' +
     '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">' +
-      '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="' + (f.verified ? 'true' : 'false') + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? '✅ Geverifieerd' : '⏳ Nog te verifiëren') + '</button>' +
+      '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="' + (f.verified ? 'true' : 'false') + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? '✅ Verified' : '⏳ Pending verification') + '</button>' +
       '<button type="button" data-action="add-screenshot-btn" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + Screenshot</button>' +
     '</div>' +
     '<div class="ss-upload-form" data-finding-id="' + esc(f.id) + '" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">' +
       '<div style="display:flex;flex-direction:column;gap:0.3rem;">' +
         '<input type="file" class="ss-file-input" accept="image/*" style="font-size:0.78rem;">' +
-        '<input type="text" class="ss-source-input" placeholder="Bron URL (optioneel, website waar screenshot van is)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
-        '<input type="text" class="ss-notes-input" placeholder="Notitie (optioneel)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
+        '<input type="text" class="ss-source-input" placeholder="Source URL (optional, website the screenshot is from)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
+        '<input type="text" class="ss-notes-input" placeholder="Note (optional)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
         '<div style="display:flex;gap:0.3rem;">' +
-          '<button type="button" data-action="save-screenshot" data-finding-id="' + esc(f.id) + '" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Opslaan</button>' +
-          '<button type="button" data-action="cancel-screenshot" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Annuleren</button>' +
+          '<button type="button" data-action="save-screenshot" data-finding-id="' + esc(f.id) + '" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Save</button>' +
+          '<button type="button" data-action="cancel-screenshot" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">Cancel</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
-    '<button type="button" class="finding-delete" data-action="delete-finding" data-finding-id="' + esc(f.id) + '" title="Verwijderen">&times;</button>' +
+    '<button type="button" class="finding-delete" data-action="delete-finding" data-finding-id="' + esc(f.id) + '" title="Delete">&times;</button>' +
   '</div>';
 }
 
@@ -261,11 +261,11 @@ function updateFindings(findings, actions) {
   const totalEl = document.getElementById('totalFindings');
   if (!container) return;
 
-  countEl.textContent = findings.length + ' bevindingen';
-  if (totalEl) totalEl.innerHTML = '📋 ' + findings.length + ' bevindingen';
+  countEl.textContent = findings.length + ' findings';
+  if (totalEl) totalEl.innerHTML = '📋 ' + findings.length + ' findings';
 
   if (findings.length === 0) {
-    container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Voer onderzoeksacties uit in Stap 3 om bevindingen te genereren.</p></div>';
+    container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Run investigation actions in Step 3 to generate findings.</p></div>';
     return;
   }
 
@@ -303,7 +303,7 @@ function updateFindings(findings, actions) {
         '<span class="fg-label">' + esc(a.label || a.action_type) + '</span>' +
         '<span class="fg-status ' + statusClass + '">' + esc(a.status) + '</span>' +
         '<span class="fg-count">' + gf.length + '</span>' +
-        (a.completed_at ? '<span class="fg-time">' + new Date(a.completed_at).toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'}) + '</span>' : '') +
+        (a.completed_at ? '<span class="fg-time">' + new Date(a.completed_at).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'}) + '</span>' : '') +
       '</div>' +
       '<div class="finding-group-body" id="grp-' + esc(a.id) + '">' +
         gf.map(function(f) { return findingHtml(f); }).join('') +
@@ -316,7 +316,7 @@ function updateFindings(findings, actions) {
       '<div class="finding-group-header" data-toggle="grp-ungrouped">' +
         '<span class="toggle-icon">▶</span>' +
         '<span class="fg-icon">📋</span>' +
-        '<span class="fg-label">Overige bevindingen</span>' +
+        '<span class="fg-label">Other findings</span>' +
         '<span class="fg-count">' + ungrouped.length + '</span>' +
       '</div>' +
       '<div class="finding-group-body" id="grp-ungrouped">' +

@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     setFieldValue('client_city', (c.address && c.address.city) || '');
     setFieldValue('client_postal_code', (c.address && c.address.postal) || '');
-    setFieldValue('client_country', (c.address && c.address.country) || 'Nederland');
+    setFieldValue('client_country', (c.address && c.address.country) || 'Netherlands');
     setFieldValue('client_vat_number', c.vat_number || '');
     setFieldValue('client_bank_account', c.bank_account || '');
     setFieldValue('client_contract_number', c.contract_number || '');
@@ -442,8 +442,8 @@ document.addEventListener('DOMContentLoaded', function() {
       var prompt = document.createElement('div');
       prompt.id = 'empty-fields-prompt';
       prompt.style.cssText = 'margin-top:0.75rem;padding:0.75rem;background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;font-size:0.8rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;';
-      prompt.innerHTML = '<span style="color:#92400e;">⚠️ Sommige velden zijn leeg. Wil je deze alsnog invullen of overslaan?</span>' +
-        '<button type="button" id="dismiss-empty-fields" class="btn-cms small orange">Overslaan, zo is goed</button>';
+      prompt.innerHTML = '<span style="color:#92400e;">⚠️ Some fields are empty. Would you like to fill them in or skip?</span>' +
+        '<button type="button" id="dismiss-empty-fields" class="btn-cms small orange">Skip, that\'s fine</button>';
       lookupWrap.insertBefore(prompt, lookupWrap.firstChild);
       document.getElementById('dismiss-empty-fields').addEventListener('click', function() {
         fields.forEach(function(f) {

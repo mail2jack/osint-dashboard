@@ -17,9 +17,9 @@ function updateCredits(actionType) {
   }
   var desc = btn.querySelector('.desc');
   if (desc && rem === 0) {
-    desc.textContent = btn.dataset.label + ' uitvoeren — 🚫 opgebruikt';
+    desc.textContent = btn.dataset.label + ' run — 🚫 exhausted';
   } else if (desc && rem <= 5) {
-    desc.textContent = btn.dataset.label + ' uitvoeren — nog ' + rem + '/' + CREDIT_LIMITS[actionType] + ' credits';
+    desc.textContent = btn.dataset.label + ' run — ' + rem + '/' + CREDIT_LIMITS[actionType] + ' credits';
   }
 }
 

@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var parentBtn = cancelBtn.closest('.action-btn');
       var aid = parentBtn ? parentBtn.dataset.actionId : null;
       if (!aid) return;
-      if (!confirm('Weet je zeker dat je deze actie wilt annuleren?')) return;
+      if (!confirm('Are you sure you want to cancel this action?')) return;
       fetch('/cms/workflow/api/case/' + CASE_ID + '/actions/' + encodeURIComponent(aid) + '/cancel', {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'},
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (del) {
       e.preventDefault();
       var fid = del.getAttribute('data-finding-id');
-      if (!confirm('Deze bevinding verwijderen?')) return;
+      if (!confirm('Delete this finding?')) return;
       fetch('/cms/workflow/api/case/' + CASE_ID + '/findings/' + fid + '/delete', {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token() }}'},
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var hidden = table.classList.contains('rdw-raw-open') || table.style.display === 'block';
         table.classList.toggle('rdw-raw-open');
         table.style.display = hidden ? 'none' : 'block';
-        rdwToggle.textContent = hidden ? '📊 Toon alle ruwe RDW-data' : '📊 Verberg alle ruwe RDW-data';
+        rdwToggle.textContent = hidden ? '📊 Show all raw RDW data' : '📊 Hide all raw RDW data';
       }
       return;
     }
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
       ids.push(cb.getAttribute('data-finding-id'));
     });
     if (!ids.length) return;
-    if (!confirm(ids.length + ' bevinding(en) verwijderen?')) return;
+    if (!confirm('Delete ' + ids.length + ' finding(s)?')) return;
     var csrf = '{{ csrf_token() }}';
     fetch('/cms/workflow/api/case/' + CASE_ID + '/findings/batch-delete', {
       method: 'POST',

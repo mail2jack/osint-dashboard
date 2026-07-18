@@ -46,7 +46,7 @@ input:-webkit-autofill:focus {
         {% set ac = action_counts.get(case.id, {}) %}
         Actions: {{ ac.get('completed', 0) }}/{{ ac.get('total', 0) }} completed
         {% if ac.get('running', 0) > 0 %}<span style="color:#3b82f6;"> · ⏳ {{ ac.get('running', 0) }} running</span>{% endif %}
-        · Aangemaakt {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
+        · Created {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
       </div>
     </div>
     <div class="wf-actions">

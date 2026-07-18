@@ -1,5 +1,36 @@
 # Changelog
 
+## [3.7.1] — 2026-07-18
+
+### Fixed
+- Instagram email check false positives (direct Instagram probe i.p.v. imginn.com)
+- WhatsApp interne presence check (default `exists = True` → pattern-based)
+- Telegram interne presence check (status 400/200 → absence/presence patterns)
+- ScrapTik API response structuur (data→user, uniqueId→unique_id, etc.)
+- PV regenerate overschrijft niet langer hele body (alleen findings-samenvatting via markers)
+- Settings OPSEC/Tor save-knop zat in verkeerde `<form>` (dubbel form#settingsForm)
+- `_check_tor_config()` was destructief (zette tor_enabled hard op false)
+
+### Changed
+- **Update flow naar async** (background thread + polling) — voorkomt 504 door nginx timeout
+- PV body HTML escaping gefixt (`{{ body_html|safe }}`)
+- OPSEC dashboard toont nu effectieve runtime-waarden i.p.v. `—` voor settings zonder DB row
+- PATH fix voor backup scripts onder systeemd (dirname/date找不到)
+- Changelog/footer link fix voor version.py
+- Async update: PermissionError op chmod afgevangen, Task None op startup schrijft error state,
+  abort edge cases afgevangen, exception traceback in error output, JSON errors voor `/cms/admin/` endpoints
+- VERSION bumped naar 3.7.1
+
+### Added
+- PV screenshot thumbnails (max 240x120, klikbaar)
+- Archief-filter (gearchiveerde findings/actions hidden by default)
+- "📝 Handmatige invoer" ResearchAction (`manual_entry` actietype)
+- API endpoint `POST /api/case/<case_id>/manual-finding`
+- Rollback endpoint (`POST /admin/rollback-update`)
+- Update UI modal met dynamische knoppen (Afbreken/Rollback/Opnieuw), 7 UI modes
+- Markdown cheat sheet in PV-editor
+- `"opsec"` categorie in Settings sidebar (Tor settings nu bewerkbaar)
+
 ## [3.7.0] — 2026-07-02
 
 ### Added
