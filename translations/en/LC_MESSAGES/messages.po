@@ -4403,6 +4403,18 @@ msgstr ""
 msgid "Statistics"
 msgstr ""
 
+#: templates/cms/settings/index.html:600
+msgid "Updates"
+msgstr ""
+
+#: templates/cms/settings/index.html:601
+msgid "Check if a new version or bugfixes are available on GitHub."
+msgstr ""
+
+#: templates/cms/settings/index.html:604
+msgid "Check for Updates"
+msgstr ""
+
 #~ msgid "Back"
 #~ msgstr "Back"
 

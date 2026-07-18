@@ -4194,6 +4194,18 @@ msgstr "Zoeken in dossiers"
 msgid "Statistics"
 msgstr "Statistieken"
 
+#: templates/cms/settings/index.html:600
+msgid "Updates"
+msgstr "Updates"
+
+#: templates/cms/settings/index.html:601
+msgid "Check if a new version or bugfixes are available on GitHub."
+msgstr "Controleer of er een nieuwe versie of bugfixes beschikbaar zijn op GitHub."
+
+#: templates/cms/settings/index.html:604
+msgid "Check for Updates"
+msgstr "Controleren op updates"
+
 #~ msgid "Confirm"
 #~ msgstr "Bevestigen"
 

@@ -237,13 +237,14 @@ def check_update() -> flask.Response:
             }
         )
 
-    # In-memory cache on the app
+    # In-memory cache on the app (bypass with ?force=1)
     cache_key = "_update_check_cache"
     cache = current_app.config.get(cache_key, {})
     now = time.time()
 
-    if cache.get("cached_at") and (now - cache["cached_at"]) < 3600:
-        return jsonify(cache["data"])
+    if not flask.request.args.get("force"):
+        if cache.get("cached_at") and (now - cache["cached_at"]) < 3600:
+            return jsonify(cache["data"])
 
     try:
         # Fetch remote VERSION file

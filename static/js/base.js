@@ -747,3 +747,46 @@ function rollbackUpdate() {
       result.innerHTML = '<div style="padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">\u274c Rollback error: ' + esc(err.message) + '</div>';
     });
 }
+
+function checkForUpdates() {
+  var statusEl = document.getElementById('updateCheckStatus');
+  if (!statusEl) return;
+  statusEl.textContent = '\u23f3 Checking...';
+  fetch('/cms/api/check-update?force=1', { headers: { 'Accept': 'application/json' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.update_available) {
+        statusEl.innerHTML = '\u2705 <strong>' + (data.version_update ? 'Update ' + data.current_version + ' \u2192 ' + data.latest_version : 'New commits') + '</strong> \u2014 <a href="#" onclick="showUpdateModal();return false;" style="color:var(--link-color);">' + (data.version_update ? 'Click to update' : 'Click to update') + '</a>';
+        var banner = document.getElementById('updateBanner');
+        var text = document.getElementById('updateBannerText');
+        if (banner && text) {
+          text.textContent = data.version_update ? 'Update ' + data.current_version + ' \u2192 ' + data.latest_version + ' available.' : 'New commits available.';
+          banner.style.display = 'block';
+        }
+        if (data.changelog) {
+          var clEl = document.getElementById('updateChangelog');
+          if (clEl) {
+            var lines = data.changelog.split('\n').filter(Boolean);
+            var clHtml = lines.map(function(l) {
+              if (l.startsWith('### ')) return '<b>' + l.slice(4) + '</b>';
+              if (l.startsWith('- ')) return '\u2022 ' + l.slice(2);
+              if (l.startsWith('## ')) return '<b style="font-size:1.1rem;">' + l.replace(/[\[\]]/g,'') + '</b>';
+              return l;
+            }).join('<br>');
+            clEl.innerHTML = '<strong>\U0001f4cb What\'s new:</strong><div style="margin-top:0.5rem;">' + clHtml + '</div>';
+            clEl.style.display = 'block';
+          }
+        }
+        document.getElementById('updCurrent').textContent = data.current_version;
+        document.getElementById('updLatest').textContent = data.version_update ? data.latest_version : data.current_version + ' (+commits)';
+        document.getElementById('updateReview').style.display = 'block';
+      } else if (data.check_enabled === false) {
+        statusEl.innerHTML = '\u26a0\ufe0f ' + (data.message || 'Update checking not configured. Set update_check_repo in settings.');
+      } else {
+        statusEl.textContent = '\u2705 Up to date \u2014 ' + data.current_version;
+      }
+    })
+    .catch(function(err) {
+      statusEl.innerHTML = '\u274c Error: ' + (err.message || 'check failed');
+    });
+}

@@ -605,6 +605,18 @@
             </div>
         {% endif %}
         </form>
+        {% if active_category == 'general' %}
+            <hr style="margin:2rem 0;border:none;border-top:1px solid var(--border-color);">
+            <div>
+                <h3>🔄 {{ _('Updates') }}</h3>
+                <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">{{ _('Check if a new version or bugfixes are available on GitHub.') }}</p>
+                <button type="button" data-click="checkForUpdates" class="btn-cms primary">
+                    🔍 {{ _('Check for Updates') }}
+                </button>
+                <span id="updateCheckStatus" style="margin-left:1rem;font-size:0.9rem;"></span>
+            </div>
+        {% endif %}
+
         {% if plan_info %}
             <div class="plan-info">
                 <div class="plan-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border-color);">
