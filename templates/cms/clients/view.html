@@ -15,7 +15,7 @@
                 <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small bg-green">↩️ {{ _('Herstellen') }}</button>
                 {% endif %}
                 <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-cms small">✏️ {{ _('Edit') }}</a>
-                {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}?client_id={{ client.id }}" class="btn-cms small bg-green">{{ _('📄 Facturen') }}</a>
+                {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}?client_id={{ client.id }}" class="btn-cms small bg-green">{{ _('📄 Invoices') }}</a>
                 <a href="{{ url_for('cms.invoice_create') }}?client_id={{ client.id }}" class="btn-cms small bg-blue">+ {{ _('Factuur') }}</a>{% endif %}
             </div>
         </div>

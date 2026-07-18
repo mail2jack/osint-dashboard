@@ -4378,6 +4378,23 @@ msgstr ""
 #~ msgid "Confirm"
 #~ msgstr "Confirm"
 
+#: templates/cms/base.html:42
+msgid "Invoices"
+msgstr ""
+
+#: templates/cms/base.html:66
+msgid "Investigations"
+msgstr ""
+
+#: templates/cms/invoicing/list.html:6
+msgid "Invoices"
+msgstr ""
+
+#: templates/cms/clients/view.html:88
+#, fuzzy
+msgid "\U0001f4c4 Invoices"
+msgstr ""
+
 #~ msgid "Back"
 #~ msgstr "Back"
 

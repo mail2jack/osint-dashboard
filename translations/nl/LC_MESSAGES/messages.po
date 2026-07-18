@@ -4169,6 +4169,23 @@ msgstr "over"
 #~ msgid "Are you sure?"
 #~ msgstr "Weet u het zeker?"
 
+#: templates/cms/base.html:42
+msgid "Invoices"
+msgstr "Facturen"
+
+#: templates/cms/base.html:66
+msgid "Investigations"
+msgstr "Onderzoeken"
+
+#: templates/cms/invoicing/list.html:6
+msgid "Invoices"
+msgstr "Facturen"
+
+#: templates/cms/clients/view.html:88
+#, fuzzy
+msgid "\U0001f4c4 Invoices"
+msgstr "\U0001f4c4 Facturen"
+
 #~ msgid "Confirm"
 #~ msgstr "Bevestigen"
 

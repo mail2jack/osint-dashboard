@@ -157,10 +157,10 @@
                 {% endif %}
               </div>
             </div>
-            {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}">{{ _('Facturen') }}</a>{% endif %}
+            {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}">{{ _('Invoices') }}</a>{% endif %}
             <a href="{{ url_for('cms.search') }}">{{ _('Search') }}</a>
                 {% if current_user.has_role('investigator', 'senior_investigator', 'admin') %}
-                <a href="{{ url_for('workflow.dashboard') }}">🔬 {{ _('Onderzoeken') }}</a>
+                <a href="{{ url_for('workflow.dashboard') }}">🔬 {{ _('Investigations') }}</a>
                 {% endif %}
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>

@@ -1,10 +1,10 @@
 {% extends "cms/base.html" %}
-{% block title %}{{ _('Facturen') }}{% endblock %}
+{% block title %}{{ _('Invoices') }}{% endblock %}
 {% block content %}
 
 <div class="card">
     <div class="card-header">
-        <h2>{{ _('Facturen') }}</h2>
+        <h2>{{ _('Invoices') }}</h2>
         <div style="display:flex;gap:0.5rem;align-items:center;">
             <a href="{{ url_for('cms.invoice_create') }}" class="btn-cms small bg-green">{{ _('+ Nieuwe factuur') }}</a>
             <a href="{{ url_for('cms.credit_note_list') }}" class="btn-cms small orange">{{ _('Credit Notes') }}</a>
