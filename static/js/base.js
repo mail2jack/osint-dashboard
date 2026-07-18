@@ -466,8 +466,13 @@ function runUpdate() {
   progress.style.display = 'block';
   steps.innerHTML = '<div style="color:#666;">Starting update...</div>';
 
-  apiFetch(C.doUpdateUrl || '/cms/admin/do-update', { method: 'POST' })
-    .then(function(r) { return r.json(); })
+  apiFetch(C.doUpdateUrl || '/cms/admin/do-update', { method: 'POST', headers: { 'Accept': 'application/json' } })
+    .then(function(r) {
+      if (!r.ok && !r.headers.get('content-type')?.includes('json')) {
+        throw new Error('Server returned ' + r.status + ' — mogelijk sessie verlopen? Ververs de pagina en probeer opnieuw.');
+      }
+      return r.json();
+    })
     .then(function(data) {
       progress.style.display = 'none';
       result.style.display = 'block';
