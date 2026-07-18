@@ -32,6 +32,43 @@ def _get_cached_opsec_checks() -> dict:
     return fresh
 
 
+_OPSEC_KEYS = [
+    "jitter_enabled",
+    "jitter_min",
+    "jitter_max",
+    "proxy_rotation_enabled",
+    "proxy_list",
+    "impersonate_rotation_enabled",
+    "impersonate_profiles",
+    "domain_impersonation_enabled",
+    "playwright_fallback_enabled",
+    "playwright_stealth_enabled",
+    "audit_chain_enabled",
+    "identity_isolation_enabled",
+    "tor_enabled",
+    "tor_proxy",
+    "tor_strict_mode",
+]
+
+_OPSEC_DEFAULTS: dict[str, str | None] = {
+    "jitter_enabled": "true",
+    "jitter_min": "0.3",
+    "jitter_max": "2.0",
+    "proxy_rotation_enabled": "false",
+    "proxy_list": None,  # None = leeg/niet geconfigureerd → toont "—"
+    "impersonate_rotation_enabled": "true",
+    "impersonate_profiles": None,
+    "domain_impersonation_enabled": "false",
+    "playwright_fallback_enabled": "false",
+    "playwright_stealth_enabled": "false",
+    "audit_chain_enabled": "false",
+    "identity_isolation_enabled": "false",
+    "tor_enabled": "false",
+    "tor_proxy": "socks5h://127.0.0.1:9050",
+    "tor_strict_mode": "false",
+}
+
+
 @cms_bp.route("/admin/opsec-dashboard")
 @login_required
 @admin_required
@@ -39,24 +76,9 @@ def opsec_dashboard():
     """OPSEC Dashboard — status of all security layers."""
     checks = _get_cached_opsec_checks()
     settings_list = []
-    for key in [
-        "jitter_enabled",
-        "jitter_min",
-        "jitter_max",
-        "proxy_rotation_enabled",
-        "proxy_list",
-        "impersonate_rotation_enabled",
-        "impersonate_profiles",
-        "domain_impersonation_enabled",
-        "playwright_fallback_enabled",
-        "playwright_stealth_enabled",
-        "audit_chain_enabled",
-        "identity_isolation_enabled",
-        "tor_enabled",
-        "tor_proxy",
-        "tor_strict_mode",
-    ]:
-        settings_list.append({"key": key, "value": Setting.get(key)})
+    for key in _OPSEC_KEYS:
+        default = _OPSEC_DEFAULTS.get(key)
+        settings_list.append({"key": key, "value": Setting.get(key, default)})
     return render_template(
         "cms/opsec_dashboard.html",
         checks=checks,
@@ -78,24 +100,9 @@ def opsec_status_api():
     )
 
     settings = {}
-    for key in [
-        "jitter_enabled",
-        "jitter_min",
-        "jitter_max",
-        "proxy_rotation_enabled",
-        "proxy_list",
-        "impersonate_rotation_enabled",
-        "impersonate_profiles",
-        "domain_impersonation_enabled",
-        "playwright_fallback_enabled",
-        "playwright_stealth_enabled",
-        "audit_chain_enabled",
-        "identity_isolation_enabled",
-        "tor_enabled",
-        "tor_proxy",
-        "tor_strict_mode",
-    ]:
-        settings[key] = Setting.get(key)
+    for key in _OPSEC_KEYS:
+        default = _OPSEC_DEFAULTS.get(key)
+        settings[key] = Setting.get(key, default)
 
     return jsonify(
         {
@@ -106,7 +113,7 @@ def opsec_status_api():
                 "health": tor_health,
             },
             "audit_chain": {
-                "enabled": Setting.get("audit_chain_enabled") == "true",
+                "enabled": Setting.get("audit_chain_enabled", "false") == "true",
                 "length": chain.get("length", 0),
                 "last_hash": chain.get("last_hash"),
             },

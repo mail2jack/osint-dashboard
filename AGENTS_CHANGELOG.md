@@ -356,3 +356,14 @@ System-wide announcement feature so super admin can broadcast mandatory popup me
 - Gepusht naar `master` (`5111d32`)
 - Productie geüpdatet via `git pull && systemctl restart`
 - Geen 504 meer mogelijk (nginx ziet alleen korte requests)
+
+### Fixes na async rewrite
+- **Rollback 405**: route accepteert nu `POST`
+- **PermissionError on chmod**: `backup.sh` owned by root → try/except
+- **PATH in subprocess**: `dirname`/`date` not found → `export PATH` in scripts + `_full_env()` helper
+- **Abort status stuck**: main-flow checks schrijven nu `status="aborted"` + `_save()`
+- **Exception zichtbaar**: traceback wordt getoond in error output i.p.v. "Update crashed"
+- **Version bump**: `3.7.1` in `version.py` + changelog entry
+
+### Laatste commit
+- `5186c4c` — alles lokaal, GitHub en productie in sync
