@@ -489,9 +489,15 @@ def do_update() -> flask.Response:
             env=alembic_env,
         )
 
-        # Step 5: Restart (async — response must be sent before process kill)
+        # Step 5: Restart (delayed by 3s so the JSON response reaches the client
+        # before systemctl kills the gunicorn worker)
         restart_proc = subprocess.Popen(
-            ["/usr/bin/sudo", "/usr/bin/systemctl", "restart", "osint-dashboard"],
+            [
+                "/usr/bin/sudo",
+                "/bin/sh",
+                "-c",
+                "sleep 3 && /usr/bin/systemctl restart osint-dashboard",
+            ],
             cwd=project_root,
             start_new_session=True,
             stdout=subprocess.DEVNULL,
@@ -504,7 +510,7 @@ def do_update() -> flask.Response:
                 "output": f"Restart initiated (PID {restart_proc.pid})",
             }
         )
-        logger.info(f"Restart initiated (PID {restart_proc.pid})")
+        logger.info(f"Restart scheduled in 3s (PID {restart_proc.pid})")
 
         success = all(r["status"] == "ok" for r in results)
 
