@@ -253,8 +253,7 @@ def check_update() -> flask.Response:
         latest_ver = r.text.strip()
 
         # Fetch remote HEAD commit SHA via GitHub API
-        local_sha = Setting.get("last_update_commit", "")
-        remote_sha = local_sha
+        remote_sha = ""
         try:
             api_url = f"https://api.github.com/repos/{repo}/commits/master"
             api_r = jittered_get(
@@ -269,40 +268,43 @@ def check_update() -> flask.Response:
                 f"Failed to fetch remote SHA from GitHub ({type(e).__name__}): {e}"
             )
 
-        # If no stored local SHA, try to get it from the git repo and store it now
-        if not local_sha and remote_sha:
+        # Get local HEAD SHA directly from git (authoritative), fall back to DB
+        local_sha = ""
+        try:
             import subprocess as sp
             import shutil
 
-            try:
-                git_path = shutil.which("git") or "/usr/bin/git"
-                r = sp.run(
-                    [git_path, "rev-parse", "HEAD"],
-                    capture_output=True,
-                    text=True,
-                    cwd=current_app.root_path,
-                    timeout=10,
-                )
-                if r.returncode == 0:
-                    local_sha = r.stdout.strip()
+            git_path = shutil.which("git") or "/usr/bin/git"
+            r = sp.run(
+                [git_path, "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                cwd=current_app.root_path,
+                timeout=10,
+            )
+            if r.returncode == 0:
+                local_sha = r.stdout.strip()
+        except Exception:
+            pass
+
+        if not local_sha:
+            local_sha = Setting.get("last_update_commit", "")
+
+        # Update DB setting so update runner has a baseline
+        if local_sha and remote_sha:
+            stored = Setting.get("last_update_commit", "")
+            if stored != local_sha:
+                try:
                     Setting.set(
                         "last_update_commit",
                         local_sha,
                         "Last pulled commit SHA (auto-updated)",
                         "general",
                     )
-                    logger.info(f"Stored initial commit SHA: {local_sha[:12]}")
-            except Exception as e:
-                logger.debug(
-                    f"git rev-parse failed ({type(e).__name__}): {e} — using remote SHA as baseline"
-                )
-                local_sha = remote_sha
-                Setting.set(
-                    "last_update_commit",
-                    local_sha,
-                    "Last pulled commit SHA (auto-set from remote)",
-                    "general",
-                )
+                except Exception:
+                    pass
+        if not remote_sha and local_sha:
+            remote_sha = local_sha
 
         # Strip leading 'v' or 'V' from version strings for numeric comparison
         def _parse_ver(v: str):
