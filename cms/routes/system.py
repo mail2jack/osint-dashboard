@@ -1,3 +1,4 @@
+import json as _json
 import logging
 import os
 import re
@@ -8,7 +9,6 @@ from flask import jsonify, current_app, render_template
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import Setting
 from ..auth import admin_required
 from cms.services.http_utils import jittered_get
@@ -362,277 +362,342 @@ def check_update() -> flask.Response:
         )
 
 
-@cms_bp.route("/admin/do-update", methods=["POST"])
-@csrf.exempt
-@login_required
-@admin_required
-def do_update() -> flask.Response:
-    """
-    Run update: backup, git pull, pip upgrade, restart services.
-    Admin only. Runs synchronously and streams status via JSON responses.
-    """
+# -------------------------------------------------------------------
+# Async update: in-memory / file-based task tracking
+# -------------------------------------------------------------------
+_UPDATE_TASKS_DIR = "/tmp/iveras_update_tasks"
+
+
+def _ensure_task_dir():
+    if not os.path.isdir(_UPDATE_TASKS_DIR):
+        os.makedirs(_UPDATE_TASKS_DIR, exist_ok=True)
+
+
+def _task_file_path(task_id: str) -> str:
+    return os.path.join(_UPDATE_TASKS_DIR, f"{task_id}.json")
+
+
+def _write_task(task_id: str, data: dict):
+    _ensure_task_dir()
+    tmp = _task_file_path(task_id) + ".tmp"
     try:
-        import os as _os
-        import subprocess
-        import sys as _sys
-        from datetime import datetime
-        from version import get_version
-
-        current_ver = get_version()
-        results = []
-
-        # Detect venv Python (preferred) vs system Python
-        venv_python = _os.path.join(
-            _os.path.dirname(current_app.root_path),
-            "venv",
-            "bin",
-            "python3",
-        )
-        if _os.path.isfile(venv_python):
-            python_bin = venv_python
-        else:
-            python_bin = _sys.executable
-
-        def step(msg, cmd_list, cwd=None, env=None):
-            results.append({"step": msg, "status": "running"})
-            try:
-                r = subprocess.run(
-                    cmd_list,
-                    capture_output=True,
-                    text=True,
-                    cwd=cwd or current_app.root_path,
-                    timeout=120,
-                    env=env,
-                )
-                if r.returncode == 0:
-                    results[-1] = {
-                        "step": msg,
-                        "status": "ok",
-                        "output": r.stdout.strip(),
-                    }
-                elif r.returncode < 0 and "restart" in msg.lower():
-                    results[-1] = {
-                        "step": msg,
-                        "status": "ok",
-                        "output": "Service restarted (process killed by signal, expected)",
-                    }
-                else:
-                    output = (
-                        r.stderr.strip()
-                        or r.stdout.strip()
-                        or f"Command failed (exit code {r.returncode})"
-                    )
-                    results[-1] = {"step": msg, "status": "error", "output": output}
-                    logger.error(f"Update step failed: {msg}\n{output}")
-            except Exception:
-                logger.exception("Update step exception: %s", msg)
-                results[-1] = {"step": msg, "status": "error", "output": "Step failed"}
-
-        project_root = current_app.root_path
-
-        # Step 1: Full backup via scripts/backup.sh
-        import os as _os
-
-        db_path = current_app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db")
-        backup_script = _os.path.join(project_root, "scripts", "backup.sh")
-        if _os.path.isfile(backup_script):
-            _os.chmod(backup_script, 0o755)
-            step(
-                "Full backup",
-                [backup_script, _os.path.join(project_root, "backups")],
-                cwd=project_root,
-            )
-        else:
-            # Fallback: SQLite-only cp
-            if db_path.startswith("sqlite"):
-                db_file = db_path.replace("sqlite:///", "")
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                step(
-                    "Backup database", ["cp", db_file, f"{db_file}.backup.{timestamp}"]
-                )
-
-        # Store backup file path for rollback
-        latest_backup = None
-        backup_dir = _os.path.join(project_root, "backups")
-        if _os.path.isdir(backup_dir):
-            backups = sorted(
-                _os.path.join(backup_dir, f)
-                for f in _os.listdir(backup_dir)
-                if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
-            )
-            if backups:
-                latest_backup = backups[-1]
-        elif db_path.startswith("sqlite"):
-            db_file = db_path.replace("sqlite:///", "")
-            backup_candidates = sorted(
-                f
-                for f in _os.listdir(_os.path.dirname(db_file) or ".")
-                if f.startswith(_os.path.basename(db_file) + ".backup.")
-            )
-            if backup_candidates:
-                latest_backup = _os.path.join(
-                    _os.path.dirname(db_file) or ".", backup_candidates[-1]
-                )
-        if latest_backup:
-            Setting.set(
-                "last_backup_path",
-                latest_backup,
-                "Path to the backup taken before last update (for rollback)",
-                "general",
-            )
-            logger.info("Stored backup path for rollback: %s", latest_backup)
-
-        # Store pre-pull commit SHA for rollback
+        with open(tmp, "w") as f:
+            _json.dump(data, f)
+        os.rename(tmp, _task_file_path(task_id))
+    except Exception:
         try:
-            pre_sha_result = subprocess.run(
-                ["/usr/bin/git", "rev-parse", "HEAD"],
-                capture_output=True,
-                text=True,
-                cwd=project_root,
-                timeout=15,
+            os.remove(tmp)
+        except Exception:
+            pass
+
+
+def _read_task(task_id: str) -> dict | None:
+    try:
+        with open(_task_file_path(task_id)) as f:
+            return _json.load(f)
+    except (FileNotFoundError, _json.JSONDecodeError, OSError):
+        return None
+
+
+def _run_update_background(task_id: str, app):
+    """Background thread: runs update steps, writes progress to task file."""
+    import subprocess
+    import sys
+    from datetime import datetime
+    from version import get_version
+
+    with app.app_context():
+        try:
+
+            def _save():
+                _write_task(task_id, task)
+
+            def _step(msg, cmd_list, cwd=None, env=None):
+                task["results"].append({"step": msg, "status": "running"})
+                _save()
+                try:
+                    r = subprocess.run(
+                        cmd_list,
+                        capture_output=True,
+                        text=True,
+                        cwd=cwd or app.root_path,
+                        timeout=300,
+                        env=env,
+                    )
+                    if _is_aborted():
+                        return
+                    if r.returncode == 0:
+                        task["results"][-1] = {
+                            "step": msg,
+                            "status": "ok",
+                            "output": r.stdout.strip(),
+                        }
+                    elif r.returncode < 0 and "restart" in msg.lower():
+                        task["results"][-1] = {
+                            "step": msg,
+                            "status": "ok",
+                            "output": "Service restarted (process killed by signal, expected)",
+                        }
+                    else:
+                        output = (
+                            r.stderr.strip()
+                            or r.stdout.strip()
+                            or f"Command failed (exit code {r.returncode})"
+                        )
+                        task["results"][-1] = {
+                            "step": msg,
+                            "status": "error",
+                            "output": output,
+                        }
+                        logger.error("Update step failed: %s\n%s", msg, output)
+                except Exception:
+                    logger.exception("Update step exception: %s", msg)
+                    task["results"][-1] = {
+                        "step": msg,
+                        "status": "error",
+                        "output": "Step failed",
+                    }
+                _save()
+
+            def _is_aborted():
+                t = _read_task(task_id)
+                return t is not None and t.get("aborted", False)
+
+            task = _read_task(task_id)
+            if task is None:
+                logger.error("Task %s not found at start of background thread", task_id)
+                return
+            task["status"] = "running"
+            _save()
+
+            project_root = app.root_path
+            current_ver = get_version()
+            venv_python = os.path.join(
+                os.path.dirname(app.root_path), "venv", "bin", "python3"
             )
-            if pre_sha_result.returncode == 0:
-                pre_pull_sha = pre_sha_result.stdout.strip()
-                Setting.set(
-                    "pre_update_commit",
-                    pre_pull_sha,
-                    "Commit SHA before last update (for rollback)",
-                    "general",
+            python_bin = venv_python if os.path.isfile(venv_python) else sys.executable
+            db_path = app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db")
+
+            # Step 1: Full backup
+            if _is_aborted():
+                return
+            backup_script = os.path.join(project_root, "scripts", "backup.sh")
+            if os.path.isfile(backup_script):
+                os.chmod(backup_script, 0o755)
+                _step(
+                    "Full backup",
+                    [backup_script, os.path.join(project_root, "backups")],
+                    cwd=project_root,
                 )
-                logger.info("Stored pre-update commit: %s", pre_pull_sha[:12])
-        except Exception as e:
-            logger.warning("Failed to store pre-pull commit: %s", e)
+            else:
+                if db_path.startswith("sqlite"):
+                    db_file = db_path.replace("sqlite:///", "")
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    _step(
+                        "Backup database",
+                        ["cp", db_file, f"{db_file}.backup.{timestamp}"],
+                    )
+            if _is_aborted():
+                return
 
-        # Step 2: Git pull (via sudo — Flask runs as osint, .git/ may be root-owned)
-        # sudoers allows /usr/bin/git, NOT /usr/local/bin/git (Homebrew)
-        sudo_git = "/usr/bin/git"
-        step(
-            "Pull latest code",
-            ["/usr/bin/sudo", sudo_git, "pull", "origin", "master"],
-            cwd=project_root,
-        )
-
-        # Step 3: Install dependencies
-        step(
-            "Update Python packages",
-            [
-                python_bin,
-                "-m",
-                "pip",
-                "install",
-                "-r",
-                "requirements.txt",
-                "--upgrade",
-            ],
-            cwd=project_root,
-        )
-
-        # Step 4: Apply Alembic migrations
-        alembic_env = {**_os.environ}
-        alembic_env["DATABASE_URL"] = db_path
-        if "CMS_ENCRYPTION_KEY" not in alembic_env:
-            alembic_env["CMS_ENCRYPTION_KEY"] = current_app.config.get(
-                "CMS_ENCRYPTION_KEY", ""
-            )
-        step(
-            "Apply database migrations",
-            [python_bin, "-m", "alembic", "upgrade", "head"],
-            cwd=project_root,
-            env=alembic_env,
-        )
-
-        # Step 5: Restart (delayed by 3s so the JSON response reaches the client
-        # before systemctl kills the gunicorn worker)
-        restart_proc = subprocess.Popen(
-            [
-                "/usr/bin/sudo",
-                "/bin/sh",
-                "-c",
-                "sleep 3 && /usr/bin/systemctl restart osint-dashboard",
-            ],
-            cwd=project_root,
-            start_new_session=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        results.append(
-            {
-                "step": "Restart services",
-                "status": "ok",
-                "output": f"Restart initiated (PID {restart_proc.pid})",
-            }
-        )
-        logger.info(f"Restart scheduled in 3s (PID {restart_proc.pid})")
-
-        success = all(r["status"] == "ok" for r in results)
-
-        # Store local HEAD SHA after pull
-        pull_ok = any(
-            r["step"] == "Pull latest code" and r["status"] == "ok" for r in results
-        )
-        if pull_ok:
+            # Store backup path + pre-pull SHA for rollback
             try:
-                import subprocess as sp
-
-                sha_result = sp.run(
+                latest_backup = None
+                backup_dir = os.path.join(project_root, "backups")
+                if os.path.isdir(backup_dir):
+                    backups_ = sorted(
+                        os.path.join(backup_dir, f)
+                        for f in os.listdir(backup_dir)
+                        if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
+                    )
+                    if backups_:
+                        latest_backup = backups_[-1]
+                elif db_path.startswith("sqlite"):
+                    db_file = db_path.replace("sqlite:///", "")
+                    bc = sorted(
+                        f
+                        for f in os.listdir(os.path.dirname(db_file) or ".")
+                        if f.startswith(os.path.basename(db_file) + ".backup.")
+                    )
+                    if bc:
+                        latest_backup = os.path.join(
+                            os.path.dirname(db_file) or ".", bc[-1]
+                        )
+                if latest_backup:
+                    _cfg_set("last_backup_path", latest_backup)
+                pre_sha_r = subprocess.run(
                     ["/usr/bin/git", "rev-parse", "HEAD"],
                     capture_output=True,
                     text=True,
                     cwd=project_root,
                     timeout=15,
                 )
-                if sha_result.returncode == 0:
-                    head_sha = sha_result.stdout.strip()
-                    Setting.set(
-                        "last_update_commit",
-                        head_sha,
-                        "Last pulled commit SHA (auto-updated)",
-                        "general",
-                    )
-                    logger.info(f"Stored last update commit: {head_sha[:12]}")
+                if pre_sha_r.returncode == 0:
+                    _cfg_set("pre_update_commit", pre_sha_r.stdout.strip())
             except Exception as e:
-                logger.warning(f"Failed to store commit SHA ({type(e).__name__}): {e}")
+                logger.warning("Rollback metadata error: %s", e)
 
-        # Send notification email to all superadmins
-        try:
-            from ..email_utils import send_email, is_smtp_configured
-            from ..models import User
+            if _is_aborted():
+                return
 
+            # Step 2: Git pull
+            _step(
+                "Pull latest code",
+                ["/usr/bin/sudo", "/usr/bin/git", "pull", "origin", "master"],
+                cwd=project_root,
+            )
+            if _is_aborted():
+                return
+
+            # Step 3: pip install
+            _step(
+                "Update Python packages",
+                [
+                    python_bin,
+                    "-m",
+                    "pip",
+                    "install",
+                    "-r",
+                    "requirements.txt",
+                    "--upgrade",
+                ],
+                cwd=project_root,
+            )
+            if _is_aborted():
+                return
+
+            # Step 4: Alembic
+            alembic_env = {**os.environ}
+            alembic_env["DATABASE_URL"] = db_path
+            if "CMS_ENCRYPTION_KEY" not in alembic_env:
+                alembic_env["CMS_ENCRYPTION_KEY"] = app.config.get(
+                    "CMS_ENCRYPTION_KEY", ""
+                )
+            _step(
+                "Apply database migrations",
+                [python_bin, "-m", "alembic", "upgrade", "head"],
+                cwd=project_root,
+                env=alembic_env,
+            )
+            if _is_aborted():
+                return
+
+            # Store post-pull commit SHA
+            try:
+                sha_r = subprocess.run(
+                    ["/usr/bin/git", "rev-parse", "HEAD"],
+                    capture_output=True,
+                    text=True,
+                    cwd=project_root,
+                    timeout=15,
+                )
+                if sha_r.returncode == 0:
+                    _cfg_set("last_update_commit", sha_r.stdout.strip())
+            except Exception:
+                pass
+
+            # Step 5: Restart — set status to restarting so frontend knows
+            task["status"] = "restarting"
+            _save()
+            subprocess.Popen(
+                [
+                    "/usr/bin/sudo",
+                    "/bin/sh",
+                    "-c",
+                    "sleep 3 && /usr/bin/systemctl restart osint-dashboard",
+                ],
+                cwd=project_root,
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            task["results"].append(
+                {
+                    "step": "Restart services",
+                    "status": "ok",
+                    "output": "Restart initiated (server will reload shortly)",
+                }
+            )
+            task["success"] = all(r["status"] == "ok" for r in task["results"])
+            task["message"] = (
+                "Update completed successfully"
+                if task["success"]
+                else "Update had errors"
+            )
+            task["status"] = "done"
+            _save()
+
+            # Send notification email (best effort)
+            _send_update_email(app, task, current_ver)
+
+        except Exception:
+            logger.exception("Background update crashed")
+            task = _read_task(task_id) or {"task_id": task_id, "results": []}
+            task["status"] = "error"
+            task["success"] = False
+            task["message"] = "Update crashed with an unexpected error"
+            task["results"].append(
+                {
+                    "step": "Background worker",
+                    "status": "error",
+                    "output": "Update crashed",
+                }
+            )
+            _write_task(task_id, task)
+
+
+def _cfg_set(key: str, value: str):
+    try:
+        Setting.set(key, value, "", "general")
+    except Exception:
+        pass
+
+
+def _send_update_email(app, task: dict, current_ver: str):
+    """Best-effort notification email after update completes."""
+    try:
+        from ..email_utils import send_email, is_smtp_configured
+        from ..models import User
+        from datetime import datetime
+
+        with app.app_context():
             superadmins = User.query.filter_by(is_super_admin=True).all()
-            if superadmins and is_smtp_configured():
-                backup_dir = _os.path.join(project_root, "backups")
-                latest = None
-                if _os.path.isdir(backup_dir):
-                    files = sorted(
-                        _os.path.join(backup_dir, f)
-                        for f in _os.listdir(backup_dir)
-                        if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
-                    )
-                    if files:
-                        latest = files[-1]
-
-                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                status_icon = "✅" if success else "❌"
-                status_text = "geslaagd" if success else "mislukt"
-                subject = f"{status_icon} Iveras update {status_text} — {now_str}"
-
-                steps_html = ""
-                for r in results:
-                    s = r["status"]
-                    icon = "✅" if s == "ok" else "❌" if s == "error" else "⏳"
-                    out = (r.get("output") or "")[:200]
-                    steps_html += f"<tr><td style='padding:6px 12px;border-bottom:1px solid #eee;'>{icon}</td><td style='padding:6px 12px;border-bottom:1px solid #eee;'>{r['step']}</td><td style='padding:6px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:0.85rem;'>{out}</td></tr>"
-
-                backup_info = ""
-                if latest:
-                    backup_info = f"""
-                    <tr><td style='padding:6px 12px;font-weight:600;'>Backup bestand</td><td style='padding:6px 12px;font-family:monospace;font-size:0.85rem;'>{latest}</td></tr>
-                    <tr><td style='padding:6px 12px;font-weight:600;'>Backup key</td><td style='padding:6px 12px;font-family:monospace;font-size:0.85rem;'>{_os.path.join(backup_dir, "backup-key.gpg")}</td></tr>
-                    """
-                else:
-                    backup_info = "<tr><td style='padding:6px 12px;' colspan='2'>⚠️ Geen backup gevonden (backup script mogelijk niet uitgevoerd)</td></tr>"
-
-                body_html = f"""<html><body style="font-family:sans-serif;padding:2rem;max-width:700px;">
+            if not superadmins or not is_smtp_configured():
+                return
+            results = task.get("results", [])
+            success = task.get("success", False)
+            project_root = app.root_path
+            backup_dir = os.path.join(project_root, "backups")
+            latest = None
+            if os.path.isdir(backup_dir):
+                files = sorted(
+                    os.path.join(backup_dir, f)
+                    for f in os.listdir(backup_dir)
+                    if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
+                )
+                if files:
+                    latest = files[-1]
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            status_icon = "✅" if success else "❌"
+            status_text = "geslaagd" if success else "mislukt"
+            subject = f"{status_icon} Iveras update {status_text} — {now_str}"
+            steps_html = ""
+            for r in results:
+                s = r["status"]
+                icon = "✅" if s == "ok" else "❌" if s == "error" else "⏳"
+                out = (r.get("output") or "")[:200]
+                steps_html += (
+                    f"<tr><td style='padding:6px 12px;border-bottom:1px solid #eee;'>{icon}</td>"
+                    f"<td style='padding:6px 12px;border-bottom:1px solid #eee;'>{r['step']}</td>"
+                    f"<td style='padding:6px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:0.85rem;'>{out}</td></tr>"
+                )
+            backup_info = ""
+            if latest:
+                backup_info = f"""
+                <tr><td style='padding:6px 12px;font-weight:600;'>Backup bestand</td><td style='padding:6px 12px;font-family:monospace;font-size:0.85rem;'>{latest}</td></tr>
+                <tr><td style='padding:6px 12px;font-weight:600;'>Backup key</td><td style='padding:6px 12px;font-family:monospace;font-size:0.85rem;'>{os.path.join(backup_dir, "backup-key.gpg")}</td></tr>
+                """
+            body_html = f"""<html><body style="font-family:sans-serif;padding:2rem;max-width:700px;">
 <h2>{status_icon} Iveras update {status_text}</h2>
 <p>Er is een update uitgevoerd via de web interface.</p>
 <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
@@ -641,76 +706,92 @@ def do_update() -> flask.Response:
 <tr><td style="padding:6px 12px;font-weight:600;">Versie</td><td style="padding:6px 12px;">{current_ver}</td></tr>
 {backup_info}
 </table>
-
 <h3>Stappen</h3>
 <table style="width:100%;border-collapse:collapse;">{steps_html}</table>
-
 <h3>Herstel bij problemen</h3>
-<p style="background:#fff3cd;border:1px solid #ffc107;padding:1rem;border-radius:6px;">
-SSH naar de server en gebruik:
-</p>
-<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.85rem;">
-# Bekijk beschikbare backups
-./scripts/restore.sh --list
-
-# Herstel de laatste backup (vraagt bevestiging)
-./scripts/restore.sh
-
-# Na herstel de service herstarten
-sudo systemctl restart osint-dashboard
-</pre>
-<p style="color:#666;font-size:0.85rem;">Dit bericht is automatisch gegenereerd door Iveras CMS.</p>
+<pre style="background:#f5f5f5;padding:1rem;border-radius:6px;font-size:0.85rem;">./scripts/restore.sh --list && ./scripts/restore.sh</pre>
 </body></html>"""
-
-                body_text = f"Iveras update {status_text} — {now_str}\n\n"
-                body_text += f"Versie: {current_ver}\n"
-                if latest:
-                    body_text += f"Backup: {latest}\n"
-                body_text += "\nStappen:\n"
-                for r in results:
-                    body_text += (
-                        f"  {'OK' if r['status'] == 'ok' else 'FAIL'} {r['step']}\n"
-                    )
+            body_text = (
+                f"Iveras update {status_text} — {now_str}\nVersie: {current_ver}\n"
+            )
+            for r in results:
                 body_text += (
-                    "\nHerstel: SSH naar server en draai ./scripts/restore.sh\n"
+                    f"  {'OK' if r['status'] == 'ok' else 'FAIL'} {r['step']}\n"
                 )
-
-                for admin in superadmins:
-                    try:
-                        send_email(admin.email, subject, body_html, body_text)
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to email update notification to {admin.email}: {e}"
-                        )
-        except Exception as e:
-            logger.warning(f"Failed to send update notification email: {e}")
-
-        return jsonify(
-            {
-                "success": success,
-                "current_version": current_ver,
-                "results": results,
-                "message": "Update completed successfully"
-                if success
-                else "Update had errors, check results",
-            }
-        ), 200 if success else 500
+            for admin in superadmins:
+                try:
+                    send_email(admin.email, subject, body_html, body_text)
+                except Exception:
+                    pass
     except Exception:
-        logger.exception("do_update crashed")
-        return jsonify(
-            {
-                "success": False,
-                "current_version": "unknown",
-                "results": [
-                    {
-                        "step": "Update crashed",
-                        "status": "error",
-                        "output": "Update crashed",
-                    }
-                ],
-                "message": "Update crashed with an unexpected error",
-            }
-        ), 500
+        pass
+
+
+@cms_bp.route("/admin/do-update", methods=["POST"])
+@login_required
+@admin_required
+def do_update() -> flask.Response:
+    """
+    Start update in background thread. Returns task_id for polling.
+    """
+    import uuid
+
+    task_id = uuid.uuid4().hex[:16]
+    task = {
+        "task_id": task_id,
+        "status": "starting",
+        "success": False,
+        "message": "",
+        "results": [],
+        "aborted": False,
+    }
+    _write_task(task_id, task)
+
+    import threading
+
+    t = threading.Thread(
+        target=_run_update_background,
+        args=(task_id, current_app._get_current_object()),
+        daemon=True,
+    )
+    t.start()
+
+    return jsonify({"task_id": task_id}), 202
+
+
+@cms_bp.route("/admin/update-status/<task_id>")
+@login_required
+@admin_required
+def update_status(task_id: str) -> flask.Response:
+    """Polling endpoint — returns current task state."""
+    task = _read_task(task_id)
+    if task is None:
+        return jsonify({"status": "not_found", "message": "Task not found"}), 404
+    return jsonify(
+        {
+            "task_id": task["task_id"],
+            "status": task["status"],
+            "success": task.get("success", False),
+            "message": task.get("message", ""),
+            "results": task.get("results", []),
+            "aborted": task.get("aborted", False),
+        }
+    )
+
+
+@cms_bp.route("/admin/abort-update/<task_id>", methods=["POST"])
+@login_required
+@admin_required
+def abort_update(task_id: str) -> flask.Response:
+    """Set abort flag — background thread will stop after current step."""
+    task = _read_task(task_id)
+    if task is None:
+        return jsonify({"status": "not_found"}), 404
+    task["aborted"] = True
+    if task["status"] in ("running", "starting"):
+        task["status"] = "aborting"
+    _write_task(task_id, task)
+    return jsonify({"status": "aborting"})
 
 
 @cms_bp.route("/admin/rollback-update")

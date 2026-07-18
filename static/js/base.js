@@ -451,6 +451,9 @@ document.addEventListener('input', function(e) {
 });
 
 // Update runner (admin-only, called from data-click)
+var _updatePollTimer = null;
+var _updateTaskId = null;
+
 function _updateUI(mode) {
   var title = document.getElementById('updateModalTitle');
   var info = document.getElementById('updateInfo');
@@ -479,6 +482,15 @@ function _updateUI(mode) {
     if (laterBtn) laterBtn.style.display = 'none';
     if (abortBtn) abortBtn.style.display = 'none';
     if (rollbackBtn) rollbackBtn.style.display = 'none';
+  } else if (mode === 'restarting') {
+    if (title) title.textContent = '\u23f3 Server wordt herstart...';
+    if (progress) progress.style.display = 'block';
+    if (result) result.style.display = 'none';
+    if (btn) { btn.disabled = true; btn.style.display = 'none'; }
+    if (laterBtn) laterBtn.style.display = 'none';
+    if (abortBtn) abortBtn.style.display = 'none';
+    if (rollbackBtn) rollbackBtn.style.display = 'none';
+    if (footer) footer.textContent = 'De server wordt herstart. Even geduld... de pagina wordt zo herladen.';
   } else if (mode === 'error') {
     if (title) title.textContent = '\u274c Update mislukt';
     if (progress) progress.style.display = 'none';
@@ -497,6 +509,14 @@ function _updateUI(mode) {
     if (abortBtn) abortBtn.style.display = 'none';
     if (rollbackBtn) { rollbackBtn.disabled = true; rollbackBtn.style.display = 'inline-block'; }
     if (footer) footer.textContent = 'Systeem wordt teruggedraaid naar de vorige staat... Even geduld.';
+  } else if (mode === 'aborted') {
+    if (title) title.textContent = '\u26a0 Update geannuleerd';
+    if (progress) progress.style.display = 'none';
+    if (result) result.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.style.display = 'inline-block'; btn.textContent = '\u2b06 Opnieuw proberen'; }
+    if (laterBtn) laterBtn.style.display = 'inline-block';
+    if (abortBtn) abortBtn.style.display = 'none';
+    if (rollbackBtn) rollbackBtn.style.display = 'none';
   } else {
     if (title) title.textContent = '\u2b06 Update Available';
     if (info) info.style.display = 'block';
@@ -509,6 +529,94 @@ function _updateUI(mode) {
   }
 }
 
+function _renderSteps(container, results) {
+  var html = '';
+  (results || []).forEach(function(r) {
+    var icon = r.status === 'ok' ? '\u2705' : r.status === 'error' ? '\u274c' : '\u23f3';
+    var isErr = r.status === 'error';
+    var outputColor = isErr ? 'var(--danger-text)' : 'var(--text-secondary)';
+    var outputBg = isErr ? 'var(--danger-bg)' : 'transparent';
+    html += '<div style="margin-bottom:0.5rem;">' + icon + ' <strong>' + esc(r.step) + '</strong>';
+    if (r.output) {
+      html += '<br><pre style="margin:0.25rem 0 0 0;padding:0.5rem;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;background:' + outputBg + ';color:' + outputColor + ';border-radius:4px;border:1px solid ' + (isErr ? 'var(--danger-text)' : 'var(--border-color)') + ';">' + esc(r.output) + '</pre>';
+    }
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function _pollUpdate(taskId) {
+  var C = window.CMS || {};
+  var statusUrl = (C.updateStatusUrl || '/cms/admin/update-status/') + taskId;
+  var result = document.getElementById('updateResult');
+  var steps = document.getElementById('updateSteps');
+
+  _updatePollTimer = setInterval(function() {
+    if (_updateTaskId !== taskId) { _stopPoll(); return; }
+    apiFetch(statusUrl, { method: 'GET', headers: { 'Accept': 'application/json' } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (_updateTaskId !== taskId) return;
+        if (data.status === 'running' || data.status === 'starting') {
+          _renderSteps(steps, data.results);
+        } else if (data.status === 'restarting') {
+          _renderSteps(steps, data.results);
+          _updateUI('restarting');
+          setTimeout(function() { location.reload(); }, 4000);
+        } else if (data.status === 'done') {
+          _stopPoll();
+          _renderSteps(steps, data.results);
+          if (data.success) {
+            _updateUI('done');
+            result.innerHTML = '<div style="margin-top:1rem;padding:0.75rem;background:var(--success-bg);border-radius:6px;color:var(--success-text);">\u2705 ' + esc(data.message) + '</div>';
+            setTimeout(function() { location.reload(); }, 3000);
+          } else {
+            _showUpdateError(result, data);
+          }
+        } else if (data.status === 'error') {
+          _stopPoll();
+          _renderSteps(steps, data.results);
+          _showUpdateError(result, data);
+        } else if (data.status === 'aborting' || data.aborted) {
+          _stopPoll();
+          _updateUI('aborted');
+          result.innerHTML = '<div style="padding:0.75rem;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;color:#92400e;">\u26a0\ufe0f Update geannuleerd.</div>';
+        }
+      })
+      .catch(function(err) {
+        // Connection errors during restart are expected — keep polling
+        console.warn('Poll error (may be restarting):', err.message);
+      });
+  }, 2000);
+}
+
+function _showUpdateError(resultContainer, data) {
+  _updateUI('error');
+  var errors = [];
+  var html = '';
+  (data.results || []).forEach(function(r) {
+    if (r.status === 'error') errors.push(r.step + ': ' + (r.output || '(geen foutmelding)'));
+  });
+  var errorCount = errors.length;
+  html += '<div style="margin-top:1rem;padding:0.75rem;background:#fef2f2;border:2px solid #dc2626;border-radius:6px;color:#991b1b;">\u274c <strong>Update had errors' + (errorCount ? ' (' + errorCount + ' ' + (errorCount === 1 ? 'fout' : 'fouten') + ')' : '') + '.</strong></div>';
+  if (errors.length) {
+    html += '<div style="margin-top:0.5rem;">';
+    errors.forEach(function(e) {
+      html += '<pre style="margin:0.25rem 0;padding:0.5rem;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;color:#991b1b;">\u274c ' + esc(e) + '</pre>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="margin-top:0.5rem;padding:0.75rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;color:#991b1b;">\u26a0\ufe0f Geen gedetailleerde foutmelding beschikbaar.</div>';
+  }
+  resultContainer.innerHTML = html;
+}
+
+function _stopPoll() {
+  if (_updatePollTimer) { clearInterval(_updatePollTimer); _updatePollTimer = null; }
+  _updateTaskId = null;
+  window.__updateTaskId = null;
+}
+
 function runUpdate() {
   var C = window.CMS || {};
   var result = document.getElementById('updateResult');
@@ -518,17 +626,7 @@ function runUpdate() {
   _updateUI('running');
   steps.innerHTML = '<div style="color:#666;">Update wordt gestart...</div>';
 
-  var currentAbort = null;
-
-  var abortController = new AbortController();
-  currentAbort = abortController;
-  window.__updateAbort = abortController;
-
-  apiFetch(C.doUpdateUrl || '/cms/admin/do-update', {
-    method: 'POST',
-    headers: { 'Accept': 'application/json' },
-    signal: abortController.signal
-  })
+  apiFetch(C.doUpdateUrl || '/cms/admin/do-update', { method: 'POST', headers: { 'Accept': 'application/json' } })
     .then(function(r) {
       if (!r.ok && !r.headers.get('content-type')?.includes('json')) {
         throw new Error('Server returned ' + r.status + ' — mogelijk sessie verlopen? Ververs de pagina en probeer opnieuw.');
@@ -536,65 +634,26 @@ function runUpdate() {
       return r.json();
     })
     .then(function(data) {
-      window.__updateAbort = null;
-      var html = '';
-      var errors = [];
-      (data.results || []).forEach(function(r) {
-        var icon = r.status === 'ok' ? '\u2705' : r.status === 'error' ? '\u274c' : '\u23f3';
-        var isErr = r.status === 'error';
-        var outputColor = isErr ? 'var(--danger-text)' : 'var(--text-secondary)';
-        var outputBg = isErr ? 'var(--danger-bg)' : 'transparent';
-        if (isErr) errors.push(r.step + ': ' + (r.output || '(geen foutmelding)'));
-        html += '<div style="margin-bottom:0.5rem;">' + icon + ' <strong>' + r.step + '</strong>';
-        if (r.output) {
-          html += '<br><pre style="margin:0.25rem 0 0 0;padding:0.5rem;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;background:' + outputBg + ';color:' + outputColor + ';border-radius:4px;border:1px solid ' + (isErr ? 'var(--danger-text)' : 'var(--border-color)') + ';">' + esc(r.output) + '</pre>';
-        }
-        html += '</div>';
-      });
-      if (data.success) {
-        html += '<div style="margin-top:1rem;padding:0.75rem;background:var(--success-bg);border-radius:6px;color:var(--success-text);">\u2705 ' + data.message + '</div>';
-        _updateUI('done');
-        result.innerHTML = html;
-        setTimeout(function() { location.reload(); }, 3000);
-      } else {
-        _updateUI('error');
-        var errorCount = errors.length;
-        html += '<div style="margin-top:1rem;padding:0.75rem;background:#fef2f2;border:2px solid #dc2626;border-radius:6px;color:#991b1b;">\u274c <strong>Update had errors' + (errorCount ? ' (' + errorCount + ' ' + (errorCount === 1 ? 'fout' : 'fouten') + ')' : '') + '.</strong></div>';
-        if (errors.length) {
-          html += '<div style="margin-top:0.5rem;">';
-          errors.forEach(function(e) {
-            html += '<pre style="margin:0.25rem 0;padding:0.5rem;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;color:#991b1b;">\u274c ' + esc(e) + '</pre>';
-          });
-          html += '</div>';
-        } else {
-          html += '<div style="margin-top:0.5rem;padding:0.75rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;color:#991b1b;">\u26a0\ufe0f Geen gedetailleerde foutmelding beschikbaar.</div>';
-        }
-      }
-      result.innerHTML = html;
+      if (!data.task_id) throw new Error('Geen task_id ontvangen');
+      _updateTaskId = data.task_id;
+      window.__updateTaskId = data.task_id;
+      _pollUpdate(data.task_id);
     })
     .catch(function(err) {
-      window.__updateAbort = null;
-      if (err.name === 'AbortError') {
-        _updateUI('idle');
-        result.style.display = 'block';
-        result.innerHTML = '<div style="padding:0.75rem;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;color:#92400e;">\u26a0\ufe0f Update geannuleerd.</div>';
-        return;
-      }
       _updateUI('error');
+      result.style.display = 'block';
       result.innerHTML = '<div style="padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">\u274c Error: ' + esc(err.message) + '</div>';
     });
 }
 
 function cancelUpdate() {
-  var ac = window.__updateAbort;
-  if (ac) {
-    ac.abort();
-    window.__updateAbort = null;
-  }
+  var tid = _updateTaskId || window.__updateTaskId;
+  if (!tid) return;
+  var C = window.CMS || {};
+  var abortUrl = (C.abortUpdateUrl || '/cms/admin/abort-update/') + tid;
   var steps = document.getElementById('updateSteps');
   if (steps) steps.innerHTML = '<div style="color:#92400e;">\u26a0\ufe0f Annuleren... bezig met stoppen van de update.</div>';
-  var progress = document.getElementById('updateProgress');
-  if (progress) progress.style.display = 'block';
+  apiFetch(abortUrl, { method: 'POST', headers: { 'Accept': 'application/json' } }).catch(function() {});
 }
 
 function rollbackUpdate() {
