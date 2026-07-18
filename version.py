@@ -18,7 +18,7 @@ Git integration (optional):
 
 from datetime import datetime
 
-VERSION = (3, 7, 0)
+VERSION = (3, 7, 1)
 VERSION_STRING = ".".join(map(str, VERSION))
 VERSION_NAME = "Iveras OSINT"
 
@@ -58,6 +58,11 @@ CHANGELOG = {
         5,
         0,
     ): "WhatsApp/Telegram presence check, E164 phone normalization, Comments refactor, OSINT URL dedup, dark mode fixes",
+    (
+        3,
+        7,
+        1,
+    ): "Async update (background thread + polling), Afbreken/Rollback knoppen, PATH fix voor backup scripts, bugfixes",
 }
 
 
