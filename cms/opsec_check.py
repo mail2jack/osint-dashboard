@@ -44,13 +44,14 @@ def _check_tor_config() -> dict[str, Any]:
         )
         from cms.models import Setting
 
+        original = Setting.get("tor_enabled", "false")
         reset_tor_state()
 
-        # Check that setting actually persists
         Setting.set("tor_enabled", "true")
         reset_tor_state()
         enabled_after = is_tor_enabled()
-        Setting.set("tor_enabled", "false")
+
+        Setting.set("tor_enabled", original)
         reset_tor_state()
 
         if enabled_after:

@@ -6,7 +6,7 @@ function showActionPicker(actionType) {
   const label = btn.dataset.label;
   const items = buildPickerItems(actionType);
   if (items.length === 0) {
-    if (actionType === 'subdomain') {
+    if (actionType === 'subdomain' || actionType === 'manual_entry') {
       showEditConfirm(actionType, '');
       return;
     }
@@ -70,7 +70,7 @@ function showActionPicker(actionType) {
       if (isNaN(idx)) return;
       overlay.remove();
       var val = items[parseInt(el.dataset.idx)].value;
-      if (actionType === 'facebook' || actionType === 'tiktok' || actionType === 'instagram' || actionType === 'linkedin' || actionType === 'twitter' || actionType === 'vessel' || actionType === 'subdomain' || actionType === 'osint') {
+      if (actionType === 'facebook' || actionType === 'tiktok' || actionType === 'instagram' || actionType === 'linkedin' || actionType === 'twitter' || actionType === 'vessel' || actionType === 'subdomain' || actionType === 'osint' || actionType === 'manual_entry') {
         showEditConfirm(actionType, val);
       } else {
         runAction(actionType, val);
@@ -94,6 +94,29 @@ function showEditConfirm(actionType, currentValue) {
   else if (actionType === 'twitter') desc = 'Zoek op X/Twitter gebruikersnaam of naam:';
   else if (actionType === 'subdomain') desc = 'Voer een domeinnaam in (bijv. example.nl):';
   else if (actionType === 'osint') desc = 'Voer een naam of zoekterm in voor het deep search onderzoek:';
+
+  var isManual = actionType === 'manual_entry';
+
+  var bodyHtml;
+  if (isManual) {
+    bodyHtml =
+      '<p style="margin-bottom:0.8rem;color:var(--text-muted);font-size:0.85rem;">Voeg een handmatige bevinding toe:</p>' +
+      '<input id="manual-title" type="text" placeholder="Titel" style="width:100%;padding:0.5rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-bottom:0.6rem;box-sizing:border-box;" autofocus />' +
+      '<textarea id="manual-content" placeholder="Omschrijving (optioneel)" rows="4" style="width:100%;padding:0.5rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-bottom:1rem;box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>' +
+      '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
+        '<button class="action-btn" data-action="cancel-edit" style="background:var(--border-color);color:var(--text-primary);">Annuleren</button>' +
+        '<button class="action-btn" data-action="confirm-manual" style="background:#1877f2;color:#fff;font-weight:600;">Toevoegen</button>' +
+      '</div>';
+  } else {
+    bodyHtml =
+      '<p style="margin-bottom:0.8rem;color:var(--text-muted);font-size:0.85rem;">' + desc + '</p>' +
+      '<input id="edit-value" type="text" value="' + esc(currentValue) + '" style="width:100%;padding:0.5rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-bottom:1rem;box-sizing:border-box;" autofocus />' +
+      '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
+        '<button class="action-btn" data-action="cancel-edit" style="background:var(--border-color);color:var(--text-primary);">Annuleren</button>' +
+        '<button class="action-btn" data-action="confirm-edit" style="background:#1877f2;color:#fff;font-weight:600;">Bevestig en start</button>' +
+      '</div>';
+  }
+
   const overlay = document.createElement('div');
   overlay.className = 'picker-overlay';
   overlay.innerHTML =
@@ -102,33 +125,52 @@ function showEditConfirm(actionType, currentValue) {
         '<h3>' + (btn ? btn.dataset.icon : '') + ' ' + esc(label) + '</h3>' +
         '<button class="picker-close" data-action="close-edit">&times;</button>' +
       '</div>' +
-      '<div class="picker-body">' +
-        '<p style="margin-bottom:0.8rem;color:var(--text-muted);font-size:0.85rem;">' + desc + '</p>' +
-        '<input id="edit-value" type="text" value="' + esc(currentValue) + '" style="width:100%;padding:0.5rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-bottom:1rem;box-sizing:border-box;" autofocus />' +
-        '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
-          '<button class="action-btn" data-action="cancel-edit" style="background:var(--border-color);color:var(--text-primary);">Annuleren</button>' +
-          '<button class="action-btn" data-action="confirm-edit" style="background:#1877f2;color:#fff;font-weight:600;">Bevestig en start</button>' +
-        '</div>' +
-      '</div>' +
+      '<div class="picker-body">' + bodyHtml + '</div>' +
     '</div>';
   document.body.appendChild(overlay);
 
-  var input = overlay.querySelector('#edit-value');
-  input.focus();
-  input.setSelectionRange(0, input.value.length);
+  if (isManual) {
+    var titleInput = overlay.querySelector('#manual-title');
+    var contentInput = overlay.querySelector('#manual-content');
+    titleInput.focus();
+    overlay.querySelector('[data-action="confirm-manual"]').onclick = function() {
+      var t = titleInput.value.trim();
+      if (!t) { titleInput.focus(); return; }
+      overlay.remove();
+      fetch('/cms/workflow/api/case/' + CASE_ID + '/manual-finding', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify({ title: t, content: contentInput.value.trim() }),
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        pollStatus();
+      });
+    };
+    titleInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && titleInput.value.trim()) {
+        overlay.querySelector('[data-action="confirm-manual"]').click();
+      }
+    });
+  } else {
+    var input = overlay.querySelector('#edit-value');
+    input.focus();
+    input.setSelectionRange(0, input.value.length);
+    overlay.querySelector('[data-action="confirm-edit"]').onclick = function() {
+      overlay.remove();
+      runAction(actionType, input.value.trim() || currentValue);
+    };
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        overlay.remove();
+        runAction(actionType, input.value.trim() || currentValue);
+      }
+    });
+  }
 
   overlay.querySelector('[data-action="close-edit"]').onclick = function() { overlay.remove(); };
   overlay.querySelector('[data-action="cancel-edit"]').onclick = function() { overlay.remove(); };
-  overlay.querySelector('[data-action="confirm-edit"]').onclick = function() {
-    overlay.remove();
-    runAction(actionType, input.value.trim() || currentValue);
-  };
-  input.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      overlay.remove();
-      runAction(actionType, input.value.trim() || currentValue);
-    }
-  });
 }
 
 function buildPickerItems(actionType) {

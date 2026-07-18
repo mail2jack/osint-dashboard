@@ -595,6 +595,15 @@
             </div>
             {% endif %}
             {% endfor %}
+        {% if not plan_info and settings_list %}
+            <div class="action-buttons">
+                <button type="button" data-click="resetAllSettings" class="btn-cms gray">
+                    {{ _('Reset All') }}
+                </button>
+                <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
+                <div class="save-status" id="saveStatus"></div>
+            </div>
+        {% endif %}
         </form>
         {% if plan_info %}
             <div class="plan-info">
@@ -754,16 +763,6 @@
                 </div>
                 {% endif %}
             </div>
-            {% elif settings_list %}
-        <form id="settingsForm"{% if is_platform_cat %} data-platform-settings="true"{% endif %}>
-            <div class="action-buttons">
-                <button type="button" data-click="resetAllSettings" class="btn-cms gray">
-                    {{ _('Reset All') }}
-                </button>
-                <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
-                <div class="save-status" id="saveStatus"></div>
-            </div>
-        </form>
             {% else %}
             <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
                 {{ _('No settings in this category.') }}

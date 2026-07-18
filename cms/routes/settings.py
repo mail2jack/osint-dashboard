@@ -64,6 +64,7 @@ def settings() -> str:
         "security": {"name": "🔒 Security", "icon": "🔒", "group": "system"},
         "appearance": {"name": "🎨 Appearance", "icon": "🎨", "group": "system"},
         "feature_flags": {"name": "🚩 Feature Flags", "icon": "🚩", "group": "system"},
+        "opsec": {"name": "🧅 OPSEC / Tor", "icon": "🧅", "group": "system"},
         "plan": {"name": "📋 Plan & Limits", "icon": "📋", "group": "system"},
     }
 

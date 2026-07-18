@@ -230,6 +230,36 @@ def run_action(action_id):
             db.session.commit()
 
 
+def link_finding_to_manual_action(finding_id, case_id, user_id):
+    """Link a manually created finding to a 'Handmatige invoer' action for the case."""
+    action = WorkflowResearchAction.query.filter_by(
+        case_id=case_id,
+        action_type="manual_entry",
+    ).first()
+    if not action:
+        action = WorkflowResearchAction(
+            id=str(uuid.uuid4()),
+            case_id=case_id,
+            action_type="manual_entry",
+            data_value="",
+            label="Handmatige invoer",
+            status="completed",
+            started_at=datetime.now(),
+            completed_at=datetime.now(),
+            result_summary="",
+            created_by=user_id,
+        )
+        db.session.add(action)
+        db.session.flush()
+
+    existing = WorkflowActionFinding.query.filter_by(
+        action_id=action.id, finding_id=finding_id
+    ).first()
+    if not existing:
+        link = WorkflowActionFinding(action_id=action.id, finding_id=finding_id)
+        db.session.add(link)
+
+
 def start_action_async(action_id):
     from flask import current_app
 
@@ -1892,11 +1922,13 @@ def _tiktok_check(action):
             )
             if r.status_code == 200:
                 body = r.json()
-                data = body.get("data") if isinstance(body, dict) else body
+                data = body.get("user") if isinstance(body, dict) else body
                 if data and data.get("nickname"):
                     _use_credit("tiktok")
-                    name = data.get("nickname", "") or data.get("uniqueId", "") or query
-                    url = f"https://www.tiktok.com/@{data.get('uniqueId', query)}"
+                    name = (
+                        data.get("nickname", "") or data.get("unique_id", "") or query
+                    )
+                    url = f"https://www.tiktok.com/@{data.get('unique_id', query)}"
                     detail_parts = []
                     if data.get("signature"):
                         bp = (
@@ -1905,12 +1937,34 @@ def _tiktok_check(action):
                             else data["signature"]
                         )
                         detail_parts.append(f"📝 {bp}")
-                    if data.get("followerCount") is not None:
-                        detail_parts.append(f"👥 {data['followerCount']:,} volgers")
-                    if data.get("followingCount") is not None:
-                        detail_parts.append(f"↗ {data['followingCount']:,} volgend")
-                    if data.get("verified"):
+                    if data.get("follower_count") is not None:
+                        detail_parts.append(f"👥 {data['follower_count']:,} volgers")
+                    if data.get("following_count") is not None:
+                        detail_parts.append(f"↗ {data['following_count']:,} volgend")
+                    if data.get("verification_type") or data.get("verified"):
                         detail_parts.append("✅ Geverifieerd")
+
+                    # secondary check: verify TikTok profile page is reachable
+                    try:
+                        from cms.constants import HEADERS as tiktok_headers
+
+                        vr = jittered_get(url, headers=tiktok_headers, timeout=8)
+                        vt = vr.text.lower()
+                        if any(
+                            p in vt
+                            for p in [
+                                "kan dit account niet vinden",
+                                "couldn't find this account",
+                                "this account doesn't exist",
+                                "this page could not be found",
+                            ]
+                        ):
+                            detail_parts.append(
+                                "⚠️ Niet direct bereikbaar via TikTok-link"
+                            )
+                    except Exception:
+                        pass
+
                     add_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code == 429:
@@ -1935,24 +1989,23 @@ def _tiktok_check(action):
         if r.status_code == 200:
             _use_credit("tiktok")
             body = r.json()
-            items = body.get("data") if isinstance(body, dict) else body
-            if isinstance(items, dict):
-                items = items.get("users") or items.get("results") or [items]
+            items = body.get("user_list") if isinstance(body, dict) else body
             if isinstance(items, list):
                 for item in items[:5]:
                     if not isinstance(item, dict):
                         continue
+                    info = item.get("user_info") or item
                     name = (
-                        item.get("nickname")
-                        or item.get("uniqueId")
-                        or item.get("username")
+                        info.get("nickname")
+                        or info.get("unique_id")
+                        or info.get("username")
                         or ""
                     )
-                    uid = item.get("uniqueId") or item.get("username") or ""
+                    uid = info.get("unique_id") or info.get("username") or ""
                     if not name:
                         continue
                     url = f"https://www.tiktok.com/@{uid}" if uid else ""
-                    bio = item.get("signature") or ""
+                    bio = info.get("signature") or ""
                     detail = (
                         f"📝 {bio[:120]}{'…' if len(bio) > 120 else ''}" if bio else ""
                     )
@@ -2711,4 +2764,12 @@ register_action(
     _subdomain_check,
     "Doorzoekt Certificate Transparency logs (crt.sh) op alle subdomeinen van een domein. "
     "Vindt interne hostnames, ontwikkelomgevingen en verborgen infrastructuur.",
+)
+
+register_action(
+    "manual_entry",
+    "Handmatige invoer",
+    "📝",
+    lambda action: [],
+    "Handmatig aangemaakte bevindingen door de onderzoeker.",
 )

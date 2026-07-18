@@ -101,8 +101,14 @@ EMAIL_FALSE_POSITIVE_PATTERNS = re.compile(
     r"profile not found|account not found|page not found|404|"
     r"invalid user|user invalid|user does not|username not|"
     r"sign up|create account|log in|login|"
-    r"this (page|profile|account) (is|has been|was) (not|removed|deleted)|"
-    r"the (requested|specified) (user|account|profile) (could not|cannot) be found"
+    r"this (page|profile|account) (is|isn\'t|is not|has been|was) (not|removed|deleted|available)|"
+    r"(this page|these profiles?) (contain no|has no|have no) (results|posts?|content)|"
+    r"deze (pagina|profiel|account) is niet (beschikbaar|gevonden)|"
+    r"the (requested|specified) (user|account|profile) (could not|cannot) be found|"
+    r"(pagina|profiel|account) is niet (beschikbaar|gevonden)|"
+    r"this page (doesn\'t|does not) exist|"
+    r"(page|profile|account) (removed|deleted|not available)|"
+    r"sorry, this page|the link may be broken|page could not be found"
     r")\b",
     re.I,
 )
@@ -116,8 +122,13 @@ async def check_email_site(client, site_name, site_info, email):
         "rateLimit": False,
         "status": "checking",
     }
-    url = interpolate_string(site_info.get("url", ""), email)
-    finding["url"] = url
+    probe_url = site_info.get("urlProbe") or site_info.get("url", "")
+    if "@" in email and "{}" in probe_url and "?" not in probe_url.split("{}")[0]:
+        username = email.split("@")[0]
+    else:
+        username = email
+    url = interpolate_string(probe_url, username)
+    finding["url"] = interpolate_string(site_info.get("url", ""), username)
     try:
         response = await client.get(url, headers=HEADERS, timeout=15)
         finding["http_status"] = response.status_code
@@ -134,7 +145,7 @@ async def check_email_site(client, site_name, site_info, email):
 
         if (
             EMAIL_FALSE_POSITIVE_PATTERNS.search(text_lower)
-            and len(response_text) < 2000
+            and len(response_text) < 10000
         ):
             finding["exists"] = False
             finding["status"] = "not_found"

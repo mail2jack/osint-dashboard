@@ -34,8 +34,18 @@ hr{border:none;border-top:1px solid #222;margin:18pt 0}
 
 <div class="pv-actions print-hide">
   <a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}" class="btn-cms gray" style="margin-right:8px;">✏️ Bewerken</a>
+  <form method="POST" action="{{ url_for('workflow.pv_regenerate', case_id=case.id) }}" style="display:inline;margin-right:8px;" onsubmit="return confirm('Dit overschrijft de huidige PV-tekst met een automatisch gegenereerd overzicht van alle bevindingen. Weet u het zeker?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn-cms" style="background:#9333ea;">🔄 Herregenereren</button>
+  </form>
   <button class="btn-cms" id="pvPrintBtn">🖨️ Print / PDF</button>
 </div>
+
+{% if case.pv_updated_at %}
+<p class="print-hide" style="font-size:10pt;color:#888;text-align:right;margin-bottom:12pt;">
+  Laatst bijgewerkt: {{ case.pv_updated_at.strftime('%d-%m-%Y %H:%M') }}
+</p>
+{% endif %}
 
 <script nonce="{{ csp_nonce }}">
 document.getElementById('pvPrintBtn').addEventListener('click', function() {
@@ -63,7 +73,7 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
 
 {% if body_html %}
 <div class="pv-body">
-{{ body_html }}
+{{ body_html|safe }}
 </div>
 {% else %}
 <p style="color:#888;font-style:italic;">Nog geen PV-tekst opgesteld. <a href="{{ url_for('workflow.pv_edit', case_id=case.id) }}">Klik hier om te bewerken</a>.</p>
@@ -85,7 +95,25 @@ document.getElementById('pvPrintBtn').addEventListener('click', function() {
     {% for f in findings %}
     <tr>
       <td>{{ loop.index }}.</td>
-      <td>{{ f.title }}{% if f.detail %}<br><span style="font-size:10pt;color:#555;">{{ f.detail }}</span>{% endif %}</td>
+      <td>
+        {{ f.title }}{% if f.detail %}<br><span style="font-size:10pt;color:#555;">{{ f.detail }}</span>{% endif %}
+        {% if f.finding_screenshots %}
+        <br>
+        {% for ss in f.finding_screenshots %}
+        <div style="margin-top:4pt;">
+          <a href="{{ ss.url }}" target="_blank" rel="noopener" style="display:inline-block;border:1px solid #ccc;border-radius:3pt;overflow:hidden;text-decoration:none;">
+            <img src="{{ ss.url }}" alt="Screenshot" style="max-width:240px;max-height:120px;display:block;object-fit:cover;" loading="lazy">
+          </a>
+          {% if ss.source_url and ss.source_url != ss.url %}
+          <span style="font-size:9pt;color:#555;">(<a href="{{ ss.source_url }}" style="color:#2563eb;">bron</a>)</span>
+          {% endif %}
+          {% if ss.notes %}
+          <span style="font-size:9pt;color:#555;">{{ ss.notes }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+      </td>
       <td>{{ f.source_type or '—' }}</td>
       <td>{{ f.created_at.strftime('%d-%m-%Y') if f.created_at else '—' }}</td>
     </tr>

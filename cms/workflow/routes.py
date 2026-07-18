@@ -696,6 +696,52 @@ def run_action(case_id):
     return jsonify({"id": action_id, "status": "started"})
 
 
+@workflow_bp.route("/api/case/<case_id>/manual-finding", methods=["POST"])
+@login_required
+@_investigator_required
+def create_manual_finding(case_id):
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    ensure_tenant_access(case)
+
+    body = request.get_json(silent=True) or {}
+    title = (body.get("title") or "").strip()
+    content = (body.get("content") or "").strip()
+
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+
+    from cms.workflow.research import link_finding_to_manual_action
+
+    finding = WorkflowFinding(
+        id=str(uuid.uuid4()),
+        case_id=case_id,
+        title=title,
+        content=content or title,
+        detail=content,
+        source_type="manual",
+        created_by=current_user.id,
+    )
+    db.session.add(finding)
+    db.session.flush()
+
+    link_finding_to_manual_action(finding.id, case_id, current_user.id)
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="create",
+        entity_type="finding",
+        entity_id=finding.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Manual finding via workflow: {finding.title}",
+    )
+    db.session.commit()
+
+    return jsonify({"ok": True, "finding_id": finding.id})
+
+
 @workflow_bp.route("/api/case/<case_id>/status")
 @login_required
 @_investigator_required
@@ -816,7 +862,12 @@ def pv_view(case_id):
     ensure_tenant_access(case)
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
-    findings = list(case.findings)
+    findings = (
+        case.findings.filter_by(is_deleted=False, archived_at=None)
+        .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
+        .order_by(WorkflowFinding.created_at)
+        .all()
+    )
 
     import markdown as md_lib
 
@@ -866,6 +917,75 @@ def pv_view(case_id):
         findings=findings,
         body_html=body_html,
     )
+
+
+@workflow_bp.route("/case/<case_id>/pv/regenerate", methods=["POST"])
+@login_required
+@_investigator_required
+def pv_regenerate(case_id):
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        abort(404)
+    ensure_tenant_access(case)
+
+    findings = (
+        case.findings.filter_by(is_deleted=False, archived_at=None)
+        .order_by(WorkflowFinding.created_at)
+        .all()
+    )
+
+    if findings:
+        type_map = {}
+        for f in findings:
+            st = f.source_type or "onbekend"
+            type_map[st] = type_map.get(st, 0) + 1
+        summary = ", ".join(
+            f"{c}x {t}" for t, c in sorted(type_map.items(), key=lambda x: -x[1])
+        )
+        summary_lines = [
+            f"In totaal zijn er **{len(findings)} bevinding(en)** vastgelegd "
+            f"voor deze zaak ({summary}).",
+            "",
+            "De volledige lijst met bevindingen is opgenomen in de tabel "
+            "'Bevindingen' hieronder.",
+        ]
+    else:
+        summary_lines = [
+            "Er zijn nog geen bevindingen vastgelegd voor deze zaak.",
+        ]
+
+    new_summary = (
+        "<!-- pv-summary -->\n" + "\n".join(summary_lines) + "\n<!-- /pv-summary -->"
+    )
+
+    if "<!-- pv-summary -->" in (case.pv_body or ""):
+        import re
+
+        case.pv_body = re.sub(
+            r"<!-- pv-summary -->.*?<!-- /pv-summary -->",
+            new_summary,
+            case.pv_body,
+            count=1,
+            flags=re.DOTALL,
+        )
+    else:
+        case.pv_body = (case.pv_body or "").rstrip() + "\n\n" + new_summary + "\n"
+    case.pv_updated_at = datetime.now()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="case",
+        entity_id=case.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow regenerated PV from findings for case: {case.case_number}",
+    )
+    db.session.commit()
+
+    flash(
+        "Proces-verbaal is hergenereerd op basis van de huidige bevindingen.", "success"
+    )
+    return redirect(url_for("workflow.pv_view", case_id=case_id))
 
 
 @workflow_bp.route("/case/<case_id>/pv/edit", methods=["GET", "POST"])

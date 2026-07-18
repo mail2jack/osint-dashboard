@@ -90,13 +90,13 @@ twitter_profile = {
 }
 
 tiktok_profile = {
-    "data": {
+    "user": {
         "nickname": "Jan van Dijk",
-        "uniqueId": "janvandijk",
+        "unique_id": "janvandijk",
         "signature": "Content creator",
-        "followerCount": 6789,
-        "followingCount": 234,
-        "verified": True,
+        "follower_count": 6789,
+        "following_count": 234,
+        "verification_type": 1,
     }
 }
 

@@ -51,16 +51,26 @@ def _whatsapp_check_internal(phone: str) -> dict:
         url = f"https://api.whatsapp.com/send?phone={normalized}"
         response = jittered_get(url, headers=WHATSAPP_HEADERS, timeout=10)
         text = response.text.lower()
+
         absence_patterns = [
             "phone number is not on whatsapp",
             "is unavailable",
             "cannot send messages to this number",
             "invalid phone number",
             "check the number",
+            "niet op whatsapp",
+            "staat niet op",
         ]
+        presence_patterns = [
+            f"wa.me/{normalized}",
+            f"send?phone={normalized}",
+            "action-button",
+            "continue to chat",
+        ]
+
         if any(pattern in text for pattern in absence_patterns):
             result["exists"] = False
-        else:
+        elif any(pattern in text for pattern in presence_patterns):
             result["exists"] = True
     except Exception as e:
         logger.debug(f"Internal WhatsApp check failed ({type(e).__name__}): {e}")
@@ -75,10 +85,25 @@ def _telegram_check_internal(phone: str) -> dict:
         tg_url = f"https://t.me/+{normalized}"
         response = jittered_get(tg_url, headers=HEADERS, timeout=5)
         text = response.text.lower()
-        if response.status_code == 400 or "join" in text or "subscribe" in text:
-            result["exists"] = True
-        elif response.status_code == 200:
+
+        absence_patterns = [
+            "doesn't appear to exist",
+            "does not appear to exist",
+            "no account found",
+            "user not found",
+            "could not be found",
+        ]
+        presence_patterns = [
+            "join",
+            "subscribe",
+            "send message",
+            "sendphoto",
+        ]
+
+        if any(pattern in text for pattern in absence_patterns):
             result["exists"] = False
+        elif any(pattern in text for pattern in presence_patterns):
+            result["exists"] = True
     except Exception as e:
         logger.debug(f"Internal Telegram check failed ({type(e).__name__}): {e}")
     return result

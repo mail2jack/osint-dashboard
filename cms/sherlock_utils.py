@@ -47,6 +47,12 @@ def get_sherlock_sites():
         if response.status_code == 200:
             data = response.json()
             data.pop("$schema", None)
+
+            # Override unreliable probes
+            if "Instagram" in data:
+                data["Instagram"]["urlProbe"] = data["Instagram"]["url"]
+                data["Instagram"]["errorType"] = "message"
+
             if data:
                 _save_cache(data)
             return data
@@ -54,7 +60,7 @@ def get_sherlock_sites():
         logger.error(
             f"Failed to fetch Sherlock sites ({type(e).__name__}): {e}", exc_info=True
         )
-    return {}
+        return {}
 
 
 __all__ = ["get_sherlock_sites"]

@@ -42,6 +42,7 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 1.5rem;">
     <h1 style="margin:0;">🔭 {{ _('Super Admin Overview') }}</h1>
     <form method="POST" action="{{ url_for('cms.aggregate_usage_now') }}" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-cms" style="font-size:0.8rem;">{{ _('Aggregate Now') }}</button>
     </form>
 </div>

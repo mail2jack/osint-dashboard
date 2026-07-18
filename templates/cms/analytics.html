@@ -161,6 +161,7 @@
     <p>{{ _('Run the daily aggregation or wait for the first cron run.') }}</p>
     {% if current_user.is_super_admin %}
     <form method="POST" action="{{ url_for('cms.aggregate_usage_now') }}" style="margin-top:1rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-cms">{{ _('Aggregate Now') }}</button>
     </form>
     {% endif %}

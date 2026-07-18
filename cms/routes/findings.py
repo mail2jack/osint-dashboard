@@ -8,6 +8,7 @@ from . import cms_bp
 from ..models import db, Finding, AuditLog, Case
 from ..auth import roles_required
 from ..validation import validate, CreateFindingSchema
+from ..workflow.research import link_finding_to_manual_action
 
 from .response import api_error
 from ..tier_limits import check_resource_limit
@@ -57,6 +58,9 @@ def create_finding() -> flask.Response:
     )
 
     db.session.add(finding)
+    db.session.flush()
+
+    link_finding_to_manual_action(finding.id, finding.case_id, current_user.id)
 
     AuditLog.log(
         user_id=current_user.id,
