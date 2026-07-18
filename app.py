@@ -353,7 +353,9 @@ register_metrics_route(app)
 def urlize_target_filter(text):
     if not text:
         return ""
-    text = str(text)
+    from html import escape
+
+    text = escape(str(text))
     url_pattern = re.compile(r'(https?:\/\/[^\s<>"\'(){}|\\^`\[\]]+)')
 
     def make_url(m):

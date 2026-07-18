@@ -963,7 +963,7 @@ def rollback_update() -> flask.Response:
 
         # Step 3: Git reset to pre-pull commit
         pre_sha = Setting.get("pre_update_commit")
-        if pre_sha:
+        if pre_sha and re.match(r"^[0-9a-f]{40}$", pre_sha):
             step(
                 "Git reset naar vorige commit",
                 ["/usr/bin/sudo", "/usr/bin/git", "reset", "--hard", pre_sha],

@@ -35,7 +35,14 @@ def _ensure_api_key(app):
 
     from .models import db, ApiKey, User
 
-    secret = app.config.get("SECRET_KEY", "dev-fallback-key")
+    import secrets
+
+    secret = app.config.get("SECRET_KEY")
+    if not secret:
+        secret = secrets.token_hex(16)
+        logger.warning(
+            "SECRET_KEY not set — using ephemeral random key for Telegram bot"
+        )
     raw = (
         "osint_tg_"
         + hashlib.sha256((secret + ":telegram-bot-internal").encode()).hexdigest()[:32]

@@ -18,7 +18,6 @@ from flask import (
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from .. import csrf
 from ..models import (
     db,
     Setting,
@@ -845,7 +844,6 @@ def create_tenant() -> flask.Response:
 
 
 @cms_bp.route("/api/tenants/<tenant_id>", methods=["PUT"])
-@csrf.exempt
 @login_required
 @admin_required
 def update_tenant(tenant_id: str) -> flask.Response:
@@ -886,7 +884,6 @@ def update_tenant(tenant_id: str) -> flask.Response:
 
 
 @cms_bp.route("/api/tenants/<tenant_id>", methods=["DELETE"])
-@csrf.exempt
 @login_required
 @admin_required
 def delete_tenant(tenant_id: str) -> flask.Response:

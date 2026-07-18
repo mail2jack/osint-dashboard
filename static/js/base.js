@@ -32,10 +32,10 @@ window.apiFetch = function(url, options) {
           var clEl = document.getElementById('updateChangelog');
           var lines = data.changelog.split('\n').filter(Boolean);
           var clHtml = lines.map(function(l) {
-            if (l.startsWith('### ')) return '<b>' + l.slice(4) + '</b>';
-            if (l.startsWith('- ')) return '\u2022 ' + l.slice(2);
-            if (l.startsWith('## ')) return '<b style="font-size:1.1rem;">' + l.replace(/[\[\]]/g,'') + '</b>';
-            return l;
+            if (l.startsWith('### ')) return '<b>' + esc(l.slice(4)) + '</b>';
+            if (l.startsWith('- ')) return '\u2022 ' + esc(l.slice(2));
+            if (l.startsWith('## ')) return '<b style="font-size:1.1rem;">' + esc(l.replace(/[\[\]]/g,'')) + '</b>';
+            return esc(l);
           }).join('<br>');
           clEl.innerHTML = '<strong>\U0001f4cb What\'s new:</strong><div style="margin-top:0.5rem;">' + clHtml + '</div>';
           clEl.style.display = 'block';
@@ -151,7 +151,7 @@ window.apiFetch = function(url, options) {
             var safeId = String(n.id).replace(/"/g, '&quot;');
             var safeLink = String(n.link || '').replace(/"/g, '&quot;');
             h += '<div class="notif-item' + (n.is_read ? '' : ' unread') + '" data-click="clickNotificationBtn" data-arg0="' + safeId + '" data-arg1="' + safeLink + '">';
-            h += '<div>' + n.message + '</div>';
+            h += '<div>' + esc(n.message) + '</div>';
             h += '<div class="notif-time">' + new Date(n.created_at).toLocaleString() + '</div></div>';
           });
         }
@@ -351,7 +351,7 @@ function showToast(message, type, duration) {
   var toast = document.createElement('div');
   toast.className = 'toast toast-' + type;
   var icons = { success: '\u2705', error: '\u274c', warning: '\u26a0\ufe0f', info: '\u2139\ufe0f' };
-  toast.innerHTML = '<span>' + (icons[type] || '\u2139\ufe0f') + '</span><span>' + message + '</span>';
+  toast.innerHTML = '<span>' + (icons[type] || '\u2139\ufe0f') + '</span><span>' + esc(message) + '</span>';
   toast.addEventListener('click', function() { if (toast.parentNode) toast.parentNode.removeChild(toast); });
   container.appendChild(toast);
   setTimeout(function() {
@@ -768,10 +768,10 @@ function checkForUpdates() {
           if (clEl) {
             var lines = data.changelog.split('\n').filter(Boolean);
             var clHtml = lines.map(function(l) {
-              if (l.startsWith('### ')) return '<b>' + l.slice(4) + '</b>';
-              if (l.startsWith('- ')) return '\u2022 ' + l.slice(2);
-              if (l.startsWith('## ')) return '<b style="font-size:1.1rem;">' + l.replace(/[\[\]]/g,'') + '</b>';
-              return l;
+              if (l.startsWith('### ')) return '<b>' + esc(l.slice(4)) + '</b>';
+              if (l.startsWith('- ')) return '\u2022 ' + esc(l.slice(2));
+              if (l.startsWith('## ')) return '<b style="font-size:1.1rem;">' + esc(l.replace(/[\[\]]/g,'')) + '</b>';
+              return esc(l);
             }).join('<br>');
             clEl.innerHTML = '<strong>\U0001f4cb What\'s new:</strong><div style="margin-top:0.5rem;">' + clHtml + '</div>';
             clEl.style.display = 'block';
