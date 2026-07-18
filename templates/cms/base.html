@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ current_locale or 'nl' }}">
+<html lang="{{ current_locale or 'en' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -377,7 +377,7 @@
 window.CMS = {
     csrfToken: '{{ csrf_token() }}',
     isAdmin: {{ "true" if current_user.is_authenticated and current_user.is_admin else "false" }},
-    locale: '{{ current_locale }}' || 'nl',
+    locale: '{{ current_locale }}' || 'en',
     sfHealth: '{{ spiderfoot_health|tojson }}'.replace(/^"|"$/g, '') || '',
     loginAnomalyCount: {{ login_anomaly_count|tojson }},
     notificationCount: {{ notification_count|tojson }},

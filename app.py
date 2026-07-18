@@ -321,7 +321,7 @@ app.register_blueprint(stripe_bp)
 from cms.i18n import init_i18n
 
 init_i18n(app)
-logger.info("i18n initialized (NL default, EN fallback)")
+logger.info("i18n initialized (EN default, NL optional)")
 
 # Sentry fallback: check Setting table if no env var was set
 if not _sentry_dsn:
