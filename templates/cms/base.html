@@ -254,7 +254,7 @@
     <div id="updateModal" class="modal">
         <div class="modal-content" style="max-width:500px;">
             <div class="modal-header">
-                <h2>⬆️ Update Available</h2>
+                <h2 id="updateModalTitle">⬆️ Update Available</h2>
                 <span class="close" data-click="closeParentModal">&times;</span>
             </div>
             <div id="updateInfo">
@@ -263,14 +263,19 @@
                 <div id="updateChangelog" style="margin-top:0.75rem;padding:0.75rem;background:var(--bg-card,#f9fafb);border-radius:6px;font-size:0.85rem;max-height:200px;overflow-y:auto;display:none;"></div>
             </div>
             <div id="updateProgress" style="display:none;">
-                <div id="updateSteps"></div>
+                <div id="updateSteps" style="padding:0.5rem 0;"></div>
+                <div style="margin-top:0.75rem;padding:0.75rem;background:#1e3a5f;color:#93c5fd;border-radius:6px;font-size:0.85rem;text-align:center;">
+                    ⏳ Update wordt uitgevoerd... Een ogenblik geduld.
+                </div>
             </div>
             <div id="updateResult" style="display:none;"></div>
-            <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+            <div id="updateActions" style="margin-top:1rem;display:flex;gap:0.5rem;">
                 <button id="updateNowBtn" data-click="runUpdate" class="btn-cms small bg-green">⬆️ Update Now</button>
-                <button data-click="closeParentModal" class="btn-cms small bg-gray">Later</button>
+                <button id="updateLaterBtn" data-click="closeParentModal" class="btn-cms small bg-gray">Later</button>
+                <button id="updateAbortBtn" data-click="cancelUpdate" class="btn-cms small danger" style="display:none;">✕ Afbreken</button>
+                <button id="updateRollbackBtn" data-click="rollbackUpdate" class="btn-cms small danger" style="display:none;">↩ Rollback</button>
             </div>
-            <p style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted);">
+            <p id="updateFooterText" style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted);">
                 The update runs git pull, pip install, and restarts services. Database is backed up first.
             </p>
         </div>
@@ -381,6 +386,7 @@ window.CMS = {
     notificationReadUrl: '{{ url_for("cms.mark_notification_read", notif_id="__ID__") }}',
     notificationReadAllUrl: '{{ url_for("cms.mark_all_notifications_read") }}',
     doUpdateUrl: '/cms/admin/do-update',
+    rollbackUrl: '/cms/admin/rollback-update',
     noNotificationsText: '{{ _("No notifications") }}',
 };
 </script>

@@ -451,22 +451,84 @@ document.addEventListener('input', function(e) {
 });
 
 // Update runner (admin-only, called from data-click)
+function _updateUI(mode) {
+  var title = document.getElementById('updateModalTitle');
+  var info = document.getElementById('updateInfo');
+  var progress = document.getElementById('updateProgress');
+  var result = document.getElementById('updateResult');
+  var btn = document.getElementById('updateNowBtn');
+  var laterBtn = document.getElementById('updateLaterBtn');
+  var abortBtn = document.getElementById('updateAbortBtn');
+  var rollbackBtn = document.getElementById('updateRollbackBtn');
+  var footer = document.getElementById('updateFooterText');
+  if (mode === 'running') {
+    if (title) title.textContent = '\u23f3 Update wordt uitgevoerd...';
+    if (info) info.style.display = 'none';
+    if (progress) progress.style.display = 'block';
+    if (result) result.style.display = 'none';
+    if (btn) { btn.disabled = true; btn.style.display = 'none'; }
+    if (laterBtn) laterBtn.style.display = 'none';
+    if (abortBtn) abortBtn.style.display = 'inline-block';
+    if (rollbackBtn) rollbackBtn.style.display = 'none';
+    if (footer) footer.textContent = 'Het systeem wordt geüpdatet. Even geduld...';
+  } else if (mode === 'done') {
+    if (title) title.textContent = '\u2705 Update voltooid';
+    if (progress) progress.style.display = 'none';
+    if (result) result.style.display = 'block';
+    if (btn) { btn.disabled = true; btn.style.display = 'none'; }
+    if (laterBtn) laterBtn.style.display = 'none';
+    if (abortBtn) abortBtn.style.display = 'none';
+    if (rollbackBtn) rollbackBtn.style.display = 'none';
+  } else if (mode === 'error') {
+    if (title) title.textContent = '\u274c Update mislukt';
+    if (progress) progress.style.display = 'none';
+    if (result) result.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.style.display = 'inline-block'; btn.textContent = '\u2b06 Opnieuw proberen'; }
+    if (laterBtn) laterBtn.style.display = 'none';
+    if (abortBtn) abortBtn.style.display = 'none';
+    if (rollbackBtn) rollbackBtn.style.display = 'inline-block';
+  } else if (mode === 'rolling') {
+    if (title) title.textContent = '\u23f3 Rollback bezig...';
+    if (info) info.style.display = 'none';
+    if (progress) { progress.style.display = 'block'; }
+    if (result) result.style.display = 'none';
+    if (btn) { btn.disabled = true; btn.style.display = 'none'; }
+    if (laterBtn) laterBtn.style.display = 'none';
+    if (abortBtn) abortBtn.style.display = 'none';
+    if (rollbackBtn) { rollbackBtn.disabled = true; rollbackBtn.style.display = 'inline-block'; }
+    if (footer) footer.textContent = 'Systeem wordt teruggedraaid naar de vorige staat... Even geduld.';
+  } else {
+    if (title) title.textContent = '\u2b06 Update Available';
+    if (info) info.style.display = 'block';
+    if (progress) progress.style.display = 'none';
+    if (result) result.style.display = 'none';
+    if (btn) { btn.disabled = false; btn.style.display = 'inline-block'; btn.textContent = '\u2b06 Update Now'; }
+    if (laterBtn) laterBtn.style.display = 'inline-block';
+    if (abortBtn) abortBtn.style.display = 'none';
+    if (rollbackBtn) rollbackBtn.style.display = 'none';
+  }
+}
+
 function runUpdate() {
   var C = window.CMS || {};
-  var btn = document.getElementById('updateNowBtn');
-  var progress = document.getElementById('updateProgress');
-  var steps = document.getElementById('updateSteps');
   var result = document.getElementById('updateResult');
-  var info = document.getElementById('updateInfo');
+  var steps = document.getElementById('updateSteps');
 
-  if (!btn || !progress || !steps || !result) return;
-  btn.disabled = true;
-  btn.textContent = '\u23f3 Running...';
-  if (info) info.style.display = 'none';
-  progress.style.display = 'block';
-  steps.innerHTML = '<div style="color:#666;">Starting update...</div>';
+  if (!result || !steps) return;
+  _updateUI('running');
+  steps.innerHTML = '<div style="color:#666;">Update wordt gestart...</div>';
 
-  apiFetch(C.doUpdateUrl || '/cms/admin/do-update', { method: 'POST', headers: { 'Accept': 'application/json' } })
+  var currentAbort = null;
+
+  var abortController = new AbortController();
+  currentAbort = abortController;
+  window.__updateAbort = abortController;
+
+  apiFetch(C.doUpdateUrl || '/cms/admin/do-update', {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+    signal: abortController.signal
+  })
     .then(function(r) {
       if (!r.ok && !r.headers.get('content-type')?.includes('json')) {
         throw new Error('Server returned ' + r.status + ' — mogelijk sessie verlopen? Ververs de pagina en probeer opnieuw.');
@@ -474,8 +536,7 @@ function runUpdate() {
       return r.json();
     })
     .then(function(data) {
-      progress.style.display = 'none';
-      result.style.display = 'block';
+      window.__updateAbort = null;
       var html = '';
       var errors = [];
       (data.results || []).forEach(function(r) {
@@ -492,8 +553,11 @@ function runUpdate() {
       });
       if (data.success) {
         html += '<div style="margin-top:1rem;padding:0.75rem;background:var(--success-bg);border-radius:6px;color:var(--success-text);">\u2705 ' + data.message + '</div>';
+        _updateUI('done');
+        result.innerHTML = html;
         setTimeout(function() { location.reload(); }, 3000);
       } else {
+        _updateUI('error');
         var errorCount = errors.length;
         html += '<div style="margin-top:1rem;padding:0.75rem;background:#fef2f2;border:2px solid #dc2626;border-radius:6px;color:#991b1b;">\u274c <strong>Update had errors' + (errorCount ? ' (' + errorCount + ' ' + (errorCount === 1 ? 'fout' : 'fouten') + ')' : '') + '.</strong></div>';
         if (errors.length) {
@@ -505,16 +569,69 @@ function runUpdate() {
         } else {
           html += '<div style="margin-top:0.5rem;padding:0.75rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;color:#991b1b;">\u26a0\ufe0f Geen gedetailleerde foutmelding beschikbaar.</div>';
         }
-        btn.disabled = false;
-        btn.textContent = '\u2b06 Retry';
       }
       result.innerHTML = html;
     })
     .catch(function(err) {
-      progress.style.display = 'none';
-      result.style.display = 'block';
+      window.__updateAbort = null;
+      if (err.name === 'AbortError') {
+        _updateUI('idle');
+        result.style.display = 'block';
+        result.innerHTML = '<div style="padding:0.75rem;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;color:#92400e;">\u26a0\ufe0f Update geannuleerd.</div>';
+        return;
+      }
+      _updateUI('error');
       result.innerHTML = '<div style="padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">\u274c Error: ' + esc(err.message) + '</div>';
-      btn.disabled = false;
-      btn.textContent = '\u2b06 Retry';
+    });
+}
+
+function cancelUpdate() {
+  var ac = window.__updateAbort;
+  if (ac) {
+    ac.abort();
+    window.__updateAbort = null;
+  }
+  var steps = document.getElementById('updateSteps');
+  if (steps) steps.innerHTML = '<div style="color:#92400e;">\u26a0\ufe0f Annuleren... bezig met stoppen van de update.</div>';
+  var progress = document.getElementById('updateProgress');
+  if (progress) progress.style.display = 'block';
+}
+
+function rollbackUpdate() {
+  var C = window.CMS || {};
+  var result = document.getElementById('updateResult');
+  var steps = document.getElementById('updateSteps');
+
+  if (!result || !steps) return;
+  _updateUI('rolling');
+  steps.innerHTML = '<div style="color:#666;">Backup wordt teruggedraaid...</div>';
+
+  apiFetch(C.rollbackUrl || '/cms/admin/rollback-update', { method: 'POST', headers: { 'Accept': 'application/json' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var html = '';
+      (data.results || []).forEach(function(r) {
+        var icon = r.status === 'ok' ? '\u2705' : r.status === 'error' ? '\u274c' : '\u23f3';
+        html += '<div style="margin-bottom:0.5rem;">' + icon + ' <strong>' + r.step + '</strong>';
+        if (r.output) {
+          html += '<br><pre style="margin:0.25rem 0 0 0;padding:0.5rem;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;background:' + (r.status === 'error' ? '#fef2f2' : 'transparent') + ';border-radius:4px;">' + esc(r.output) + '</pre>';
+        }
+        html += '</div>';
+      });
+      if (data.success) {
+        html += '<div style="margin-top:1rem;padding:0.75rem;background:var(--success-bg);border-radius:6px;color:var(--success-text);">\u2705 ' + data.message + '</div>';
+        html += '<p style="margin-top:0.5rem;font-size:0.85rem;">\u23f3 Pagina wordt herladen...</p>';
+        _updateUI('done');
+        result.innerHTML = html;
+        setTimeout(function() { location.reload(); }, 2500);
+      } else {
+        _updateUI('error');
+        html += '<div style="margin-top:1rem;padding:0.75rem;background:#fef2f2;border:2px solid #dc2626;border-radius:6px;color:#991b1b;">\u274c Rollback mislukt. Neem contact op met de beheerder.</div>';
+        result.innerHTML = html;
+      }
+    })
+    .catch(function(err) {
+      _updateUI('error');
+      result.innerHTML = '<div style="padding:0.75rem;background:var(--danger-bg);border-radius:6px;color:var(--danger-text);">\u274c Rollback error: ' + esc(err.message) + '</div>';
     });
 }

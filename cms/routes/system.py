@@ -451,6 +451,58 @@ def do_update() -> flask.Response:
                     "Backup database", ["cp", db_file, f"{db_file}.backup.{timestamp}"]
                 )
 
+        # Store backup file path for rollback
+        latest_backup = None
+        backup_dir = _os.path.join(project_root, "backups")
+        if _os.path.isdir(backup_dir):
+            backups = sorted(
+                _os.path.join(backup_dir, f)
+                for f in _os.listdir(backup_dir)
+                if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
+            )
+            if backups:
+                latest_backup = backups[-1]
+        elif db_path.startswith("sqlite"):
+            db_file = db_path.replace("sqlite:///", "")
+            backup_candidates = sorted(
+                f
+                for f in _os.listdir(_os.path.dirname(db_file) or ".")
+                if f.startswith(_os.path.basename(db_file) + ".backup.")
+            )
+            if backup_candidates:
+                latest_backup = _os.path.join(
+                    _os.path.dirname(db_file) or ".", backup_candidates[-1]
+                )
+        if latest_backup:
+            Setting.set(
+                "last_backup_path",
+                latest_backup,
+                "Path to the backup taken before last update (for rollback)",
+                "general",
+            )
+            logger.info("Stored backup path for rollback: %s", latest_backup)
+
+        # Store pre-pull commit SHA for rollback
+        try:
+            pre_sha_result = subprocess.run(
+                ["/usr/bin/git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                cwd=project_root,
+                timeout=15,
+            )
+            if pre_sha_result.returncode == 0:
+                pre_pull_sha = pre_sha_result.stdout.strip()
+                Setting.set(
+                    "pre_update_commit",
+                    pre_pull_sha,
+                    "Commit SHA before last update (for rollback)",
+                    "general",
+                )
+                logger.info("Stored pre-update commit: %s", pre_pull_sha[:12])
+        except Exception as e:
+            logger.warning("Failed to store pre-pull commit: %s", e)
+
         # Step 2: Git pull (via sudo — Flask runs as osint, .git/ may be root-owned)
         # sudoers allows /usr/bin/git, NOT /usr/local/bin/git (Homebrew)
         sudo_git = "/usr/bin/git"
@@ -657,6 +709,203 @@ sudo systemctl restart osint-dashboard
                     }
                 ],
                 "message": "Update crashed with an unexpected error",
+            }
+        ), 500
+
+
+@cms_bp.route("/admin/rollback-update")
+@login_required
+@admin_required
+def rollback_update() -> flask.Response:
+    """
+    Rollback the last update: restore backup + git reset --hard to pre-pull commit.
+    Admin only.
+    """
+    try:
+        import os as _os
+        import subprocess
+
+        project_root = current_app.root_path
+        results = []
+
+        def step(msg, cmd_list, cwd=None, env=None):
+            results.append({"step": msg, "status": "running"})
+            try:
+                r = subprocess.run(
+                    cmd_list,
+                    capture_output=True,
+                    text=True,
+                    cwd=cwd or project_root,
+                    timeout=120,
+                    env=env,
+                )
+                if r.returncode == 0:
+                    results[-1] = {
+                        "step": msg,
+                        "status": "ok",
+                        "output": r.stdout.strip(),
+                    }
+                else:
+                    output = (
+                        r.stderr.strip()
+                        or r.stdout.strip()
+                        or f"Exit code {r.returncode}"
+                    )
+                    results[-1] = {"step": msg, "status": "error", "output": output}
+                    logger.error("Rollback step failed: %s\n%s", msg, output)
+            except Exception:
+                logger.exception("Rollback step exception: %s", msg)
+                results[-1] = {"step": msg, "status": "error", "output": "Step failed"}
+
+        # Step 1: Find backup
+        backup_path = Setting.get("last_backup_path")
+        if not backup_path or not _os.path.isfile(backup_path):
+            # Fallback: probeer de meest recente backup te vinden
+            backup_dir = _os.path.join(project_root, "backups")
+            if _os.path.isdir(backup_dir):
+                files = sorted(
+                    _os.path.join(backup_dir, f)
+                    for f in _os.listdir(backup_dir)
+                    if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
+                )
+                if files:
+                    backup_path = files[-1]
+            if not backup_path or not _os.path.isfile(backup_path):
+                # Probeer SQLite fallback
+                db_path = current_app.config.get(
+                    "SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db"
+                )
+                if db_path.startswith("sqlite"):
+                    db_file = db_path.replace("sqlite:///", "")
+                    backup_candidates = sorted(
+                        f
+                        for f in _os.listdir(_os.path.dirname(db_file) or ".")
+                        if f.startswith(_os.path.basename(db_file) + ".backup.")
+                    )
+                    if backup_candidates:
+                        backup_path = _os.path.join(
+                            _os.path.dirname(db_file) or ".", backup_candidates[-1]
+                        )
+
+        if not backup_path or not _os.path.isfile(backup_path):
+            return jsonify(
+                {
+                    "success": False,
+                    "results": [
+                        {
+                            "step": "Backup zoeken",
+                            "status": "error",
+                            "output": "Geen backup gevonden. Rollback niet mogelijk.",
+                        }
+                    ],
+                    "message": "Geen backup gevonden",
+                }
+            ), 500
+
+        # Step 2: Restore from backup
+        restore_script = _os.path.join(project_root, "scripts", "restore.sh")
+        if _os.path.isfile(restore_script):
+            _os.chmod(restore_script, 0o755)
+            step(
+                "Database herstellen",
+                [
+                    restore_script,
+                    "--backup",
+                    backup_path,
+                    "--key",
+                    _os.path.join(_os.path.dirname(backup_path), "backup-key.gpg"),
+                ],
+                cwd=project_root,
+            )
+        elif backup_path.endswith(".db.backup."):
+            # SQLite fallback restore
+            db_path = current_app.config.get(
+                "SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db"
+            )
+            db_file = db_path.replace("sqlite:///", "")
+            step("Database herstellen", ["cp", backup_path, db_file])
+
+        # Step 3: Git reset to pre-pull commit
+        pre_sha = Setting.get("pre_update_commit")
+        if pre_sha:
+            step(
+                "Git reset naar vorige commit",
+                ["/usr/bin/sudo", "/usr/bin/git", "reset", "--hard", pre_sha],
+                cwd=project_root,
+            )
+        else:
+            # Fallback: gebruik ORIG_HEAD
+            step(
+                "Git reset naar ORIG_HEAD",
+                ["/usr/bin/sudo", "/usr/bin/git", "reset", "--hard", "ORIG_HEAD"],
+                cwd=project_root,
+            )
+
+        # Step 4: Restart services (delayed)
+        restart_proc = subprocess.Popen(
+            [
+                "/usr/bin/sudo",
+                "/bin/sh",
+                "-c",
+                "sleep 3 && /usr/bin/systemctl restart osint-dashboard",
+            ],
+            cwd=project_root,
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        results.append(
+            {
+                "step": "Restart services",
+                "status": "ok",
+                "output": f"Restart initiated (PID {restart_proc.pid})",
+            }
+        )
+        logger.info("Rollback restart scheduled in 3s (PID %s)", restart_proc.pid)
+
+        success = all(r["status"] == "ok" for r in results)
+
+        # Clean up rollback settings
+        try:
+            from ..models import db as _db
+
+            s = Setting.query.filter_by(key="pre_update_commit").first()
+            if s:
+                _db.session.delete(s)
+                _db.session.commit()
+            s = Setting.query.filter_by(key="last_backup_path").first()
+            if s:
+                _db.session.delete(s)
+                _db.session.commit()
+        except Exception:
+            try:
+                _db.session.rollback()
+            except Exception:
+                pass
+
+        return jsonify(
+            {
+                "success": success,
+                "results": results,
+                "message": "Rollback completed successfully"
+                if success
+                else "Rollback had errors",
+            }
+        ), 200 if success else 500
+
+    except Exception:
+        logger.exception("rollback_update crashed")
+        return jsonify(
+            {
+                "success": False,
+                "results": [
+                    {
+                        "step": "Rollback crashed",
+                        "status": "error",
+                        "output": "Rollback crashed",
+                    }
+                ],
+                "message": "Rollback crashed",
             }
         ), 500
 
