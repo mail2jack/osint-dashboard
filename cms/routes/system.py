@@ -520,7 +520,10 @@ def _run_update_background(task_id: str, app):
                 return
             backup_script = os.path.join(project_root, "scripts", "backup.sh")
             if os.path.isfile(backup_script):
-                os.chmod(backup_script, 0o755)
+                try:
+                    os.chmod(backup_script, 0o755)
+                except PermissionError:
+                    logger.warning("Could not chmod backup.sh (not fatal)")
                 _step(
                     "Full backup",
                     [backup_script, os.path.join(project_root, "backups")],
@@ -932,7 +935,10 @@ def rollback_update() -> flask.Response:
         # Step 2: Restore from backup
         restore_script = _os.path.join(project_root, "scripts", "restore.sh")
         if _os.path.isfile(restore_script):
-            _os.chmod(restore_script, 0o755)
+            try:
+                _os.chmod(restore_script, 0o755)
+            except PermissionError:
+                logger.warning("Could not chmod restore.sh (not fatal)")
             step(
                 "Database herstellen",
                 [
