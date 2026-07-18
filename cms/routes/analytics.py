@@ -84,7 +84,9 @@ def analytics():
 
             tier_limits = get_tier_limits(tenant.tier)
         except Exception:
-            pass
+            logger.debug(
+                "Could not load tier limits for tenant %s", tenant.id, exc_info=True
+            )
 
     latest = {}
     for r in days_30:

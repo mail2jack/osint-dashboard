@@ -702,7 +702,7 @@ def _cfg_set(key: str, value: str):
     try:
         Setting.set(key, value, "", "general")
     except Exception:
-        pass
+        logger.warning("Failed to persist setting %s", key, exc_info=True)
 
 
 def _send_update_email(app, task: dict, current_ver: str):

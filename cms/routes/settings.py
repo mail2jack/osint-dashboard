@@ -1430,7 +1430,11 @@ def tenant_export(tenant_id: str) -> flask.Response:
             try:
                 s.decrypt_identifiers()
             except Exception:
-                pass
+                logger.warning(
+                    "Failed to decrypt identifiers for subject %s during export",
+                    s.id,
+                    exc_info=True,
+                )
         zf.writestr(
             "subjects.json",
             json.dumps([s.to_dict() for s in subjects], indent=2, default=str),

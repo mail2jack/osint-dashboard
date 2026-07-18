@@ -234,7 +234,7 @@ def rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="default"):
                         )
                     udata["count"] += 1
             except Exception:
-                pass
+                logger.debug("Rate limit counter skipped: %s", exc_info=True)
 
             # Per-tenant limit check (only for authenticated users)
             try:
@@ -272,7 +272,7 @@ def rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="default"):
                             )
                         tdata["count"] += 1
             except Exception:
-                pass  # Not authenticated or no app context — skip tenant check
+                logger.debug("Tenant rate limit counter skipped", exc_info=True)
 
             response = f(*args, **kwargs)
 

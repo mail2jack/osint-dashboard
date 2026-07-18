@@ -402,7 +402,7 @@ def _record_audit(
             error=error,
         )
     except Exception:
-        pass
+        logger.debug("Audit chain recording failed", exc_info=True)
 
 
 def _get_identity() -> str | None:

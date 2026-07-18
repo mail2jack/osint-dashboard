@@ -60,7 +60,9 @@ def _use_credit(action_type):
             usage[action_type][month] = usage[action_type].get(month, 0) + 1
             Setting.set("rapidapi_credits_usage", usage)
         except Exception:
-            pass
+            logger.warning(
+                "Failed to record credit usage for %s", action_type, exc_info=True
+            )
 
 
 def _has_credits(action_type):
@@ -716,7 +718,7 @@ def _phone_check(action):
                             }
                         )
         except Exception:
-            pass
+            logger.debug("WhatsApp info check failed for %s", phone, exc_info=True)
 
     return findings
 
@@ -1315,7 +1317,12 @@ def _vessel_check(action):
                 try:
                     raw = encryptor.decrypt(raw)
                 except Exception:
-                    pass
+                    logger.warning(
+                        "Failed to decrypt identification_number for subject %s",
+                        subject.id,
+                        exc_info=True,
+                    )
+                    raw = ""
                 if re.match(r"^\d{7}$", raw.strip()):
                     imo = raw.strip()
                 else:

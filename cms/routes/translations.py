@@ -266,7 +266,7 @@ def manual_fix():
             timeout=30,
         )
     except Exception:
-        pass
+        logger.warning("pybabel compile failed", exc_info=True)
 
     return jsonify({"ok": True})
 
@@ -385,7 +385,7 @@ def auto_fix():
             timeout=30,
         )
     except Exception:
-        pass
+        logger.warning("pybabel compile failed in auto_fix", exc_info=True)
 
     fixed = [r["msgid"] for r in results if r["status"] == "fixed"]
 
