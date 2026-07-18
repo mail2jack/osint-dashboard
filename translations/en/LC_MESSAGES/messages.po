@@ -4395,6 +4395,14 @@ msgstr ""
 msgid "\U0001f4c4 Invoices"
 msgstr ""
 
+#: templates/cms/dashboard.html:128
+msgid "Search cases"
+msgstr ""
+
+#: templates/cms/dashboard.html:144
+msgid "Statistics"
+msgstr ""
+
 #~ msgid "Back"
 #~ msgstr "Back"
 

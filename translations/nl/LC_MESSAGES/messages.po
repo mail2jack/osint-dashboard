@@ -4186,6 +4186,14 @@ msgstr "Facturen"
 msgid "\U0001f4c4 Invoices"
 msgstr "\U0001f4c4 Facturen"
 
+#: templates/cms/dashboard.html:128
+msgid "Search cases"
+msgstr "Zoeken in dossiers"
+
+#: templates/cms/dashboard.html:144
+msgid "Statistics"
+msgstr "Statistieken"
+
 #~ msgid "Confirm"
 #~ msgstr "Bevestigen"
 

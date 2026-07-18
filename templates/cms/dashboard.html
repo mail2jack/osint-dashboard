@@ -125,7 +125,7 @@
 </style>
 
 <div class="search-hero">
-    <h1>🔍 Zoeken in dossiers</h1>
+    <h1>🔍 {{ _('Search cases') }}</h1>
     <p>{{ _('Search cases, subjects, clients, findings, and documents') }}</p>
     <form class="search-box" action="{{ url_for('cms.dashboard') }}" method="GET">
         <span class="search-icon">🔎</span>
@@ -141,7 +141,7 @@
         <a href="{{ url_for('cms.export_cases') }}">📥 {{ _('Export') }}</a>
         {% if current_user.is_admin %}
         <a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>
-        <a href="{{ url_for('cms.statistics') }}">📊 Statistieken</a>
+        <a href="{{ url_for('cms.statistics') }}">📊 {{ _('Statistics') }}</a>
         {% endif %}
     </div>
 </div>
