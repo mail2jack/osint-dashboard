@@ -1,5 +1,5 @@
 {% extends "cms/base.html" %}
-{% block title %}Workflow — {{ case.case_number }} bewerken{% endblock %}
+{% block title %}Workflow — {{ case.case_number }} — Edit{% endblock %}
 {% block content %}
 <style>
 .super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -36,9 +36,9 @@ input:-webkit-autofill:focus {
 
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
   <div>
-    <h1 style="margin:0;font-size:1.1rem;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ case.case_number }} — Bewerken</h1>
+    <h1 style="margin:0;font-size:1.1rem;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> {{ case.case_number }} — Edit</h1>
   </div>
-  <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small">← Terug naar zaak</a>
+  <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms small">← Back to case</a>
 </div>
 
 <form method="POST">
@@ -47,49 +47,49 @@ input:-webkit-autofill:focus {
   <input type="hidden" name="removed_subject_ids" id="removed_subject_ids" value="[]">
 
   <div class="form-section">
-    <h2>📋 Zaakgegevens</h2>
+    <h2>📋 Case details</h2>
     <div class="form-grid">
       <div class="form-group">
-        <label>Zaaknummer</label>
+        <label>Case number</label>
         <input type="text" name="case_number" value="{{ case.case_number or '' }}">
       </div>
       <div class="form-group">
-        <label>Titel *</label>
+        <label>Title *</label>
         <input type="text" name="title" required value="{{ case.title or '' }}">
       </div>
       <div class="form-group">
-        <label>Prioriteit</label>
+        <label>Priority</label>
         <select name="priority">
-          <option value="low" {% if case.priority == 'low' %}selected{% endif %}>Laag</option>
-          <option value="medium" {% if case.priority == 'medium' or not case.priority %}selected{% endif %}>Normaal</option>
-          <option value="high" {% if case.priority == 'high' %}selected{% endif %}>Hoog</option>
-          <option value="critical" {% if case.priority == 'critical' %}selected{% endif %}>Kritiek</option>
+          <option value="low" {% if case.priority == 'low' %}selected{% endif %}>Low</option>
+          <option value="medium" {% if case.priority == 'medium' or not case.priority %}selected{% endif %}>Normal</option>
+          <option value="high" {% if case.priority == 'high' %}selected{% endif %}>High</option>
+          <option value="critical" {% if case.priority == 'critical' %}selected{% endif %}>Critical</option>
         </select>
       </div>
       <div class="form-group">
         <label>Status</label>
         <select name="status">
           <option value="open" {% if case.status == 'open' %}selected{% endif %}>Open</option>
-          <option value="in_progress" {% if case.status == 'in_progress' %}selected{% endif %}>In behandeling</option>
-          <option value="closed" {% if case.status == 'closed' %}selected{% endif %}>Afgesloten</option>
+          <option value="in_progress" {% if case.status == 'in_progress' %}selected{% endif %}>In progress</option>
+          <option value="closed" {% if case.status == 'closed' %}selected{% endif %}>Closed</option>
         </select>
       </div>
       <div class="form-group full-width">
-        <label>Omschrijving</label>
+        <label>Description</label>
         <textarea name="description" rows="2">{{ case.description or '' }}</textarea>
       </div>
     </div>
   </div>
 
   <div class="form-section">
-    <h2>🧑 Opdrachtgever</h2>
+    <h2>🧑 Client</h2>
     <div class="form-grid">
       <div class="form-group">
-        <label>Bedrijfsnaam *</label>
+        <label>Company name *</label>
         <input type="text" name="client_name" required value="{{ client.name if client else '' }}">
       </div>
       <div class="form-group">
-        <label>Contactpersoon</label>
+        <label>Contact person</label>
         <input type="text" name="client_contact" value="{{ client.contact_person or '' }}">
       </div>
       <div class="form-group">
@@ -97,107 +97,107 @@ input:-webkit-autofill:focus {
         <input type="email" name="client_email" value="{{ client.contact_email or '' }}">
       </div>
       <div class="form-group">
-        <label>Telefoon</label>
+        <label>Phone</label>
         <input type="text" name="client_phone" value="{{ client.contact_phone or '' }}">
       </div>
       <div class="form-group">
-        <label>Referentie</label>
+        <label>Reference</label>
         <input type="text" name="reference" value="{{ client.reference or '' }}">
       </div>
       <div class="form-group">
-        <label>Straat</label>
+        <label>Street</label>
         <input type="text" name="client_street" class="addr-street" value="{{ client.address_street or '' }}">
       </div>
       <div class="form-group">
-        <label>Huisnummer</label>
+        <label>House number</label>
         <input type="text" name="client_house_number" class="addr-number" value="{{ client.address_number or '' }}">
       </div>
       <div class="form-group">
-        <label>Postcode</label>
+        <label>Postal code</label>
         <input type="text" name="client_postal_code" class="addr-zipcode" value="{{ client.address_postal or '' }}">
       </div>
       <div class="form-group">
-        <label>Plaats</label>
+        <label>City</label>
         <input type="text" name="client_city" class="addr-town" value="{{ client.address_city or '' }}">
       </div>
       <div class="form-group">
-        <label>Land</label>
-        <input type="text" name="client_country" value="{{ client.address_country or 'Nederland' }}">
+        <label>Country</label>
+        <input type="text" name="client_country" value="{{ client.address_country or 'Netherlands' }}">
       </div>
       <div class="form-group">
-        <label>BTW-nummer</label>
+        <label>VAT number</label>
         <input type="text" name="client_vat_number" value="{{ client.vat_number or '' }}">
       </div>
       <div class="form-group">
-        <label>Bankrekening</label>
+        <label>Bank account</label>
         <input type="text" name="client_bank_account" value="{{ client.bank_account or '' }}">
       </div>
       <div class="form-group">
-        <label>Contractnummer</label>
+        <label>Contract number</label>
         <input type="text" name="client_contract_number" value="{{ client.contract_number or '' }}">
       </div>
       <div class="form-group full-width">
-        <label>Contractinformatie</label>
+        <label>Contract info</label>
         <textarea name="client_contract_info" rows="2">{{ client.contract_info or '' }}</textarea>
       </div>
       <div class="form-group full-width">
-        <label>Notities</label>
+        <label>Notes</label>
         <textarea name="client_notes" rows="2">{{ client.financial_notes or '' }}</textarea>
       </div>
     </div>
   </div>
 
   <div class="form-section" id="subjects-section">
-    <h2 style="margin:0 0 1rem 0;">🎯 Betrokkenen</h2>
+    <h2 style="margin:0 0 1rem 0;">🎯 Subjects</h2>
     <div id="subjects-container">
       {% for subject in subjects %}
       {% set sid = subject.id %}
       <div class="subject-block" data-subject-id="{{ sid }}">
         {% if not loop.first %}<hr style="border:none;border-top:1px solid var(--border-color);margin:1rem 0;">{% endif %}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-          <strong style="font-size:0.85rem;">Betrokkene {{ loop.index }}</strong>
-          <button type="button" class="btn-cms small" data-action="remove-subject" data-sid="{{ sid }}" style="color:#ef4444;">Verwijderen</button>
+          <strong style="font-size:0.85rem;">Subject {{ loop.index }}</strong>
+          <button type="button" class="btn-cms small" data-action="remove-subject" data-sid="{{ sid }}" style="color:#ef4444;">Remove</button>
         </div>
         <div class="subject-type-row">
-          <label>Type betrokkene</label>
+          <label>Subject type</label>
           <select name="subj_{{ sid }}_type" data-action="update-fields" required>
-            <option value="">— Selecteer type —</option>
-            <option value="person" {% if subject.subject_type == 'person' %}selected{% endif %}>Persoon</option>
-            <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>Bedrijf</option>
-            <option value="vehicle" {% if subject.subject_type == 'vehicle' %}selected{% endif %}>Voertuig</option>
-            <option value="vessel" {% if subject.subject_type == 'vessel' %}selected{% endif %}>Vaartuig</option>
-            <option value="online" {% if subject.subject_type == 'online' %}selected{% endif %}>Online entiteit</option>
+            <option value="">— Select type —</option>
+            <option value="person" {% if subject.subject_type == 'person' %}selected{% endif %}>Person</option>
+            <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>Company</option>
+            <option value="vehicle" {% if subject.subject_type == 'vehicle' %}selected{% endif %}>Vehicle</option>
+            <option value="vessel" {% if subject.subject_type == 'vessel' %}selected{% endif %}>Vessel</option>
+            <option value="online" {% if subject.subject_type == 'online' %}selected{% endif %}>Online entity</option>
           </select>
         </div>
         <div class="subject-fields">
           <div class="form-grid">
-            <div class="form-group sf-all"><label>Naam *</label><input type="text" name="subj_{{ sid }}_name" value="{{ subject.name or '' }}"></div>
-            <div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subj_{{ sid }}_identification" value="{{ subject.identification_number or '' }}"></div>
+            <div class="form-group sf-all"><label>Name *</label><input type="text" name="subj_{{ sid }}_name" value="{{ subject.name or '' }}"></div>
+            <div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>ID Number</label><input type="text" name="subj_{{ sid }}_identification" value="{{ subject.identification_number or '' }}"></div>
             <div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_{{ sid }}_email" value="{{ subject.email or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subj_{{ sid }}_phone" value="{{ subject.phone or '' }}"></div>
-            <div class="form-group sf-person"><label>Geboortedatum</label><input type="date" name="subj_{{ sid }}_date_of_birth" value="{{ subject.date_of_birth or '' }}"></div>
-            <div class="form-group sf-person"><label>Geboorteplaats</label><input type="text" name="subj_{{ sid }}_place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="Amsterdam"></div>
-            <div class="form-group sf-person"><label>Nationaliteit</label><input type="text" name="subj_{{ sid }}_nationality" value="{{ subject.nationality or '' }}" placeholder="Nederlandse"></div>
-            <div class="form-group sf-person sf-company"><label>Bankrekening</label><input type="text" name="subj_{{ sid }}_bank_account" value="{{ subject.bank_account or '' }}" placeholder="NL00 INGB 0000 0000 00"></div>
-            <div class="form-group sf-person sf-company"><label>Straat</label><input type="text" name="subj_{{ sid }}_street" class="addr-street" value="{{ subject.street or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>Huisnummer</label><input type="text" name="subj_{{ sid }}_house_number" class="addr-number" value="{{ subject.house_number or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>Toevoeging</label><input type="text" name="subj_{{ sid }}_house_number_addition" value="{{ subject.house_number_addition or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>Postcode</label><input type="text" name="subj_{{ sid }}_postal_code" class="addr-zipcode" value="{{ subject.postal_code or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>Plaats</label><input type="text" name="subj_{{ sid }}_city" class="addr-town" value="{{ subject.city or '' }}"></div>
-            <div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subj_{{ sid }}_social_accounts" value="{{ subject.workflow_social_accounts|join(', ') if subject.workflow_social_accounts else '' }}" placeholder="@gebruiker1, @gebruiker2"></div>
-            <div class="form-group full-width sf-all"><label>Risicoscore (0-100)</label><input type="number" name="subj_{{ sid }}_risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100"></div>
-            <div class="form-group full-width sf-all"><label>Notities</label><textarea name="subj_{{ sid }}_notes" rows="2">{{ subject.notes or '' }}</textarea></div>
+            <div class="form-group sf-person sf-company"><label>Phone</label><input type="text" name="subj_{{ sid }}_phone" value="{{ subject.phone or '' }}"></div>
+            <div class="form-group sf-person"><label>Date of birth</label><input type="date" name="subj_{{ sid }}_date_of_birth" value="{{ subject.date_of_birth or '' }}"></div>
+            <div class="form-group sf-person"><label>Place of birth</label><input type="text" name="subj_{{ sid }}_place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="Amsterdam"></div>
+            <div class="form-group sf-person"><label>Nationality</label><input type="text" name="subj_{{ sid }}_nationality" value="{{ subject.nationality or '' }}" placeholder="Dutch"></div>
+            <div class="form-group sf-person sf-company"><label>Bank account</label><input type="text" name="subj_{{ sid }}_bank_account" value="{{ subject.bank_account or '' }}" placeholder="NL00 INGB 0000 0000 00"></div>
+            <div class="form-group sf-person sf-company"><label>Street</label><input type="text" name="subj_{{ sid }}_street" class="addr-street" value="{{ subject.street or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>House number</label><input type="text" name="subj_{{ sid }}_house_number" class="addr-number" value="{{ subject.house_number or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>Addition</label><input type="text" name="subj_{{ sid }}_house_number_addition" value="{{ subject.house_number_addition or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>Postal code</label><input type="text" name="subj_{{ sid }}_postal_code" class="addr-zipcode" value="{{ subject.postal_code or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>City</label><input type="text" name="subj_{{ sid }}_city" class="addr-town" value="{{ subject.city or '' }}"></div>
+            <div class="form-group full-width sf-person sf-online"><label>Social accounts</label><input type="text" name="subj_{{ sid }}_social_accounts" value="{{ subject.workflow_social_accounts|join(', ') if subject.workflow_social_accounts else '' }}" placeholder="@username1, @username2"></div>
+            <div class="form-group full-width sf-all"><label>Risk score (0-100)</label><input type="number" name="subj_{{ sid }}_risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100"></div>
+            <div class="form-group full-width sf-all"><label>Notes</label><textarea name="subj_{{ sid }}_notes" rows="2">{{ subject.notes or '' }}</textarea></div>
           </div>
         </div>
       </div>
       {% endfor %}
     </div>
-    <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Betrokkene</button>
+    <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Subject</button>
   </div>
 
   <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">Annuleren</a>
-    <button type="submit" class="btn-cms primary">Wijzigingen opslaan →</button>
+    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">Cancel</a>
+    <button type="submit" class="btn-cms primary">Save changes →</button>
   </div>
 </form>
 
@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function removeExistingSubject(sid, blockEl) {
-    if (!confirm('Deze betrokkene ontkoppelen van de zaak?')) return;
+    if (!confirm('Unlink this subject from the case?')) return;
     var removed = document.getElementById('removed_subject_ids');
     var arr = JSON.parse(removed.value || '[]');
     arr.push(sid);
@@ -238,38 +238,38 @@ document.addEventListener('DOMContentLoaded', function() {
     div.className = 'subject-block';
     div.innerHTML = sep +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
-        '<strong style="font-size:0.85rem;">Betrokkene ' + (idx + 1) + '</strong>' +
-        '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Verwijderen</button>' +
+        '<strong style="font-size:0.85rem;">Subject ' + (idx + 1) + '</strong>' +
+        '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Remove</button>' +
       '</div>' +
       '<div class="subject-type-row">' +
-        '<label>Type betrokkene</label>' +
+        '<label>Subject type</label>' +
         '<select name="subj_new_' + idx + '_type" data-action="update-fields" required>' +
-          '<option value="">— Selecteer type —</option>' +
-          '<option value="person">Persoon</option>' +
-          '<option value="company">Bedrijf</option>' +
-          '<option value="vehicle">Voertuig</option>' +
-          '<option value="vessel">Vaartuig</option>' +
-          '<option value="online">Online entiteit</option>' +
+          '<option value="">— Select type —</option>' +
+          '<option value="person">Person</option>' +
+          '<option value="company">Company</option>' +
+          '<option value="vehicle">Vehicle</option>' +
+          '<option value="vessel">Vessel</option>' +
+          '<option value="online">Online entity</option>' +
         '</select>' +
       '</div>' +
       '<div class="subject-fields sf-hidden">' +
         '<div class="form-grid">' +
-          '<div class="form-group sf-all"><label>Naam *</label><input type="text" name="subj_new_' + idx + '_name" placeholder="Volledige naam / benaming"></div>' +
-          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subj_new_' + idx + '_identification" placeholder="BSN / KvK / kenteken / IMO"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_new_' + idx + '_email" placeholder="naam@example.com"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678"></div>' +
-          '<div class="form-group sf-person"><label>Geboortedatum</label><input type="date" name="subj_new_' + idx + '_date_of_birth"></div>' +
-          '<div class="form-group sf-person"><label>Geboorteplaats</label><input type="text" name="subj_new_' + idx + '_place_of_birth" placeholder="Amsterdam"></div>' +
-          '<div class="form-group sf-person"><label>Nationaliteit</label><input type="text" name="subj_new_' + idx + '_nationality" placeholder="Nederlandse"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Bankrekening</label><input type="text" name="subj_new_' + idx + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Straat</label><input type="text" name="subj_new_' + idx + '_street" class="addr-street" placeholder="Straatnaam"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Huisnummer</label><input type="text" name="subj_new_' + idx + '_house_number" class="addr-number" placeholder="45"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Toevoeging</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="A"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Postcode</label><input type="text" name="subj_new_' + idx + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Plaats</label><input type="text" name="subj_new_' + idx + '_city' class="addr-town" placeholder="Amsterdam"></div>' +
-          '<div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subj_new_' + idx + '_social_accounts" placeholder="@gebruiker1, @gebruiker2"></div>' +
-          '<div class="form-group full-width sf-all"><label>Risicoscore (0-100)</label><input type="number" name="subj_new_' + idx + '_risk_score" value="0" min="0" max="100"></div>' +
-          '<div class="form-group full-width sf-all"><label>Notities</label><textarea name="subj_new_' + idx + '_notes" rows="2" placeholder="Interne notities"></textarea></div>' +
+          '<div class="form-group sf-all"><label>Name *</label><input type="text" name="subj_new_' + idx + '_name" placeholder="Full name / designation"></div>' +
+          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>ID Number</label><input type="text" name="subj_new_' + idx + '_identification" placeholder="BSN / KvK / license plate / IMO"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_new_' + idx + '_email" placeholder="name@example.com"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Phone</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678"></div>' +
+          '<div class="form-group sf-person"><label>Date of birth</label><input type="date" name="subj_new_' + idx + '_date_of_birth"></div>' +
+          '<div class="form-group sf-person"><label>Place of birth</label><input type="text" name="subj_new_' + idx + '_place_of_birth" placeholder="Amsterdam"></div>' +
+          '<div class="form-group sf-person"><label>Nationality</label><input type="text" name="subj_new_' + idx + '_nationality" placeholder="Dutch"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Bank account</label><input type="text" name="subj_new_' + idx + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Street</label><input type="text" name="subj_new_' + idx + '_street" class="addr-street" placeholder="Street name"></div>' +
+          '<div class="form-group sf-person sf-company"><label>House number</label><input type="text" name="subj_new_' + idx + '_house_number" class="addr-number" placeholder="45"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Addition</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="A"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Postal code</label><input type="text" name="subj_new_' + idx + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
+          '<div class="form-group sf-person sf-company"><label>City</label><input type="text" name="subj_new_' + idx + '_city' class="addr-town" placeholder="Amsterdam"></div>' +
+          '<div class="form-group full-width sf-person sf-online"><label>Social accounts</label><input type="text" name="subj_new_' + idx + '_social_accounts" placeholder="@username1, @username2"></div>' +
+          '<div class="form-group full-width sf-all"><label>Risk score (0-100)</label><input type="number" name="subj_new_' + idx + '_risk_score" value="0" min="0" max="100"></div>' +
+          '<div class="form-group full-width sf-all"><label>Notes</label><textarea name="subj_new_' + idx + '_notes" rows="2" placeholder="Internal notes"></textarea></div>' +
         '</div>' +
       '</div>';
     container.parentElement.insertBefore(div, container.nextElementSibling);

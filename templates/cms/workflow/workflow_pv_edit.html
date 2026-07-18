@@ -1,32 +1,32 @@
 {% extends "cms/base.html" %}
-{% block title %}Workflow — PV Bewerken — {{ case.case_number }}{% endblock %}
+{% block title %}Workflow — Edit Report — {{ case.case_number }}{% endblock %}
 {% block content %}
 <div style="max-width:960px;margin:0 auto;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-    <h1 style="margin:0;">📄 Proces-verbaal bewerken</h1>
+    <h1 style="margin:0;">📄 Edit report</h1>
     <div style="display:flex;gap:0.5rem;">
-      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">← Terug naar PV</a>
-      <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">Naar zaak</a>
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">← Back to report</a>
+      <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">To case</a>
     </div>
   </div>
 
   <p style="color:var(--text-muted);margin-bottom:1.5rem;">
-    Schrijf de inhoud van het proces-verbaal in Markdown. 
-    <br>Case-gegevens (zaaknummer, opdrachtgever, betrokkenen, bevindingen) worden automatisch toegevoegd.
+    Write the report content in Markdown.
+    <br>Case details (case number, client, subjects, findings) are automatically added.
   </p>
 
   <details style="margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted);cursor:pointer;border:1px solid var(--border-color);border-radius:6px;padding:0.5rem 1rem;">
     <summary style="font-weight:600;">📝 Markdown cheat sheet</summary>
     <div style="padding-top:0.75rem;line-height:1.8;">
-      <code>## Titel</code> — heading<br>
-      <code>### Subtitel</code> — subheading<br>
-      <code>**vet**</code> — vet<br>
-      <code>*cursief*</code> — cursief<br>
-      <code>- item</code> — ongenummerde lijst<br>
-      <code>1. item</code> — genummerde lijst<br>
-      <code>[tekst](url)</code> — link<br>
-      <code>---</code> — horizontale lijn<br>
-      <code>> citaat</code> — citaat/blockquote<br>
+      <code>## Title</code> — heading<br>
+      <code>### Subtitle</code> — subheading<br>
+      <code>**bold**</code> — bold<br>
+      <code>*italic*</code> — italic<br>
+      <code>- item</code> — unordered list<br>
+      <code>1. item</code> — ordered list<br>
+      <code>[text](url)</code> — link<br>
+      <code>---</code> — horizontal rule<br>
+      <code>> quote</code> — blockquote<br>
     </div>
   </details>
 
@@ -36,8 +36,8 @@
       <textarea name="pv_body" rows="40" style="width:100%;font-family:monospace;font-size:0.85rem;padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary, #fafafa);">{{ case.pv_body or '' }}</textarea>
     </div>
     <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">Annuleren</a>
-      <button type="submit" class="btn-cms primary">Opslaan en bekijken →</button>
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms">Cancel</a>
+      <button type="submit" class="btn-cms primary">Save and view →</button>
     </div>
   </form>
 </div>

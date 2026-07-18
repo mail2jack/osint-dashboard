@@ -139,12 +139,12 @@ input:-webkit-autofill:focus {
 {% if brave_health == 'quota exhausted' %}
 <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:0.6rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;">
   <span style="font-size:1.1rem;">⚠️</span>
-  <span><strong>Brave Search quota overschreden</strong> — OSINT Deep Search resultaten zijn beperkt. Vernieuw je API key in <a href="{{ url_for('cms.list_api_keys') }}" style="color:#dc2626;text-decoration:underline;">Settings → API Keys</a> of er wordt DuckDuckGo als fallback gebruikt.</span>
+  <span><strong>Brave Search quota exceeded</strong> — OSINT Deep Search results are limited. Refresh your API key in <a href="{{ url_for('cms.list_api_keys') }}" style="color:#dc2626;text-decoration:underline;">Settings → API Keys</a>, or DuckDuckGo will be used as fallback.</span>
 </div>
 {% elif brave_health == 'no key configured' %}
 <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:0.6rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;">
   <span style="font-size:1.1rem;">⚙️</span>
-  <span><strong>Brave Search niet geconfigureerd</strong> — OSINT Deep Search gebruikt DuckDuckGo als fallback, maar resultaten kunnen beperkt zijn. Voeg een API key toe in <a href="{{ url_for('cms.list_api_keys') }}" style="color:#d97706;text-decoration:underline;">Settings → API Keys</a>.</span>
+  <span><strong>Brave Search not configured</strong> — OSINT Deep Search uses DuckDuckGo as fallback, but results may be limited. Add an API key in <a href="{{ url_for('cms.list_api_keys') }}" style="color:#d97706;text-decoration:underline;">Settings → API Keys</a>.</span>
 </div>
 {% endif %}
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
@@ -156,14 +156,14 @@ input:-webkit-autofill:focus {
       <span class="badge badge-priority-{{ case.priority }}">{{ case.priority }}</span>
     </div>
     <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
-      Onderzoeker: {{ case.lead_investigator }}
-      · Aangemaakt {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
+      Investigator: {{ case.lead_investigator }}
+      · Created {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
     </p>
   </div>
   <div style="display:flex;gap:0.5rem;align-items:center;">
-    <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} bevindingen</span>
-    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Bewerken</a>
-    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Proces-verbaal</a>
+    <span id="totalFindings" class="findings-counter">📋 {{ findings|length }} findings</span>
+    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" class="btn-cms small">✏️ Edit</a>
+    <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary small">📄 Report</a>
     <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
   </div>
 </div>
@@ -171,53 +171,53 @@ input:-webkit-autofill:focus {
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">1</span>
-    Opdrachtgever (Client)
-    {% if client %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Gereed ✓</span>{% endif %}
+    Client
+    {% if client %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Ready ✓</span>{% endif %}
   </div>
   <div class="workflow-step-body">
     {% if client %}
     <div class="subject-info-grid">
       <div class="subject-info-item">
-        <div class="lbl">Naam</div>
+        <div class="lbl">Name</div>
         <div class="val">{{ client.name }}</div>
       </div>
       <div class="subject-info-item">
-        <div class="lbl">Contactpersoon</div>
+        <div class="lbl">Contact person</div>
         <div class="val">{{ client.contact_person or '—' }}</div>
       </div>
       <div class="subject-info-item">
-        <div class="lbl">E-mail</div>
+        <div class="lbl">Email</div>
         <div class="val">{{ client.contact_email or '—' }}</div>
       </div>
       <div class="subject-info-item">
-        <div class="lbl">Telefoon</div>
+        <div class="lbl">Phone</div>
         <div class="val">{{ client.contact_phone or '—' }}</div>
       </div>
       {% if client.address_street or client.address_city %}
       <div class="subject-info-item" style="grid-column:1/-1;">
-        <div class="lbl">🏠 Adres</div>
+        <div class="lbl">🏠 Address</div>
         <div class="val">{{ client.address_street or '' }} {{ client.address_number or '' }}{% if client.address_postal or client.address_city %}<br>{% endif %}{{ client.address_postal or '' }} {{ client.address_city or '' }}</div>
       </div>
       {% endif %}
       {% if client.reference %}
       <div class="subject-info-item">
-        <div class="lbl">Referentie</div>
+        <div class="lbl">Reference</div>
         <div class="val">{{ client.reference }}</div>
       </div>
       {% endif %}
       {% if client.financial_notes %}
       <div class="subject-info-item" style="grid-column:1/-1;">
-        <div class="lbl">Notities</div>
+        <div class="lbl">Notes</div>
         <div class="val">{{ client.financial_notes }}</div>
       </div>
       {% endif %}
       <div class="subject-info-item">
-        <div class="lbl">Datum aanvraag</div>
+        <div class="lbl">Request date</div>
         <div class="val">{{ case.created_at.strftime('%d-%m-%Y') if case.created_at else '-' }}</div>
       </div>
     </div>
     {% else %}
-    <p style="color:var(--text-muted);">Geen opdrachtgever ingevuld</p>
+    <p style="color:var(--text-muted);">No client assigned</p>
     {% endif %}
   </div>
 </div>
@@ -225,49 +225,49 @@ input:-webkit-autofill:focus {
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">2</span>
-    Betrokkene{% if subjects|length > 1 %}n{% endif %} (Subject{% if subjects|length > 1 %}en{% endif %})
-    {% if subjects %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ subjects|length }} betrokkene{% if subjects|length > 1 %}n{% endif %} ✓</span>{% endif %}
-    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ toevoegen</a>
+    Subject{% if subjects|length != 1 %}s{% endif %}
+    {% if subjects %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ subjects|length }} subject{% if subjects|length > 1 %}s{% endif %} ✓</span>{% endif %}
+    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ add</a>
   </div>
   <div class="workflow-step-body">
     {% if subjects %}
     {% for subject in subjects %}
     <div style="margin-bottom:{% if not loop.last %}1rem{% endif %};padding-bottom:{% if not loop.last %}1rem{% endif %};border-bottom:{% if not loop.last %}1px solid var(--border-color){% endif %};">
-      <strong style="font-size:0.85rem;display:block;margin-bottom:0.5rem;">Betrokkene {{ loop.index }}</strong>
+      <strong style="font-size:0.85rem;display:block;margin-bottom:0.5rem;">Subject {{ loop.index }}</strong>
       <div class="subject-info-grid">
         <div class="subject-info-item">
-          <div class="lbl">Naam</div>
-          <div class="val">{{ subject.name }}</div>
-        </div>
-        <div class="subject-info-item">
-          <div class="lbl">Type</div>
+        <div class="lbl">Name</div>
+        <div class="val">{{ subject.name }}</div>
+      </div>
+      <div class="subject-info-item">
+        <div class="lbl">Type</div>
           <div class="val">{{ subject.subject_type }}</div>
         </div>
         {% if subject.identification_number %}
         <div class="subject-info-item">
-          <div class="lbl">Identificatienummer</div>
+          <div class="lbl">ID Number</div>
           <div class="val">{{ subject.identification_number }}</div>
         </div>
         {% endif %}
         <div class="subject-info-item">
-          <div class="lbl">Risicoscore</div>
-          <div class="val" style="color:{% if subject.risk_score > 70 %}#dc2626{% elif subject.risk_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">{{ subject.risk_score }}/100 — {% if subject.risk_score > 70 %}Hoog{% elif subject.risk_score > 30 %}Gemiddeld{% else %}Laag{% endif %}</div>
+          <div class="lbl">Risk Score</div>
+          <div class="val" style="color:{% if subject.risk_score > 70 %}#dc2626{% elif subject.risk_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">{{ subject.risk_score }}/100 — {% if subject.risk_score > 70 %}High{% elif subject.risk_score > 30 %}Medium{% else %}Low{% endif %}</div>
         </div>
         {% if subject.email %}
         <div class="subject-info-item">
-          <div class="lbl">📧 E-mail</div>
+          <div class="lbl">📧 Email</div>
           <div class="val">{{ subject.email }}</div>
         </div>
         {% endif %}
         {% if subject.phone %}
         <div class="subject-info-item">
-          <div class="lbl">📞 Telefoon</div>
+          <div class="lbl">📞 Phone</div>
           <div class="val">{{ subject.phone }}</div>
         </div>
         {% endif %}
         {% if subject.street or subject.city %}
         <div class="subject-info-item" style="grid-column:1/-1;">
-          <div class="lbl">🏠 Adres</div>
+          <div class="lbl">🏠 Address</div>
           <div class="val">{{ subject.street or '' }} {{ subject.house_number or '' }}{{ subject.house_number_addition or '' }}{% if subject.postal_code or subject.city %}<br>{% endif %}{{ subject.postal_code or '' }} {{ subject.city or '' }}</div>
         </div>
         {% endif %}
@@ -283,7 +283,7 @@ input:-webkit-autofill:focus {
         {% endif %}
         {% if subject.notes %}
         <div class="subject-info-item" style="grid-column:1/-1;">
-          <div class="lbl">Notities</div>
+          <div class="lbl">Notes</div>
           <div class="val">{{ subject.notes }}</div>
         </div>
         {% endif %}
@@ -291,7 +291,7 @@ input:-webkit-autofill:focus {
     </div>
     {% endfor %}
     {% else %}
-    <p style="color:var(--text-muted);">Geen betrokkene ingevuld</p>
+    <p style="color:var(--text-muted);">No subject assigned</p>
     {% endif %}
   </div>
 </div>
@@ -299,8 +299,8 @@ input:-webkit-autofill:focus {
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">3</span>
-    Onderzoeksacties
-    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Klik op een actie om te starten</span>
+    Investigation Actions
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Click an action to start</span>
   </div>
   <div class="workflow-step-body">
     <div class="action-grid">
@@ -311,11 +311,11 @@ input:-webkit-autofill:focus {
       <div class="action-btn" data-action="run-action" data-action-key="{{ key }}" data-icon="{{ info.icon }}" data-label="{{ info.label }}"{% if limit > 0 %} data-credits="{{ rem }}" data-credit-limit="{{ limit }}"{% endif %} title="{{ info.description }}">
         <div class="icon">{{ info.icon }}</div>
         <div class="label">{{ info.label }}</div>
-        <div class="desc">{{ info.label }} uitvoeren{% if limit > 0 and rem <= 5 and rem > 0 %} — nog {{ rem }}/{{ limit }} credits{% elif limit > 0 and rem == 0 %} — 🚫 opgebruikt{% endif %}</div>
+        <div class="desc">{{ info.label }} run{% if limit > 0 and rem <= 5 and rem > 0 %} — {{ rem }}/{{ limit }} credits left{% elif limit > 0 and rem == 0 %} — 🚫 exhausted{% endif %}</div>
         {% if limit > 0 %}
         <span class="credit-badge" style="position:absolute;top:-4px;right:-4px;background:{% if rem == 0 %}#ef4444{% elif rem <= 5 %}#f59e0b{% else %}#22c55e{% endif %};color:#fff;font-size:0.65rem;font-weight:700;padding:1px 5px;border-radius:8px;line-height:1.4;">{{ rem }}/{{ limit }}</span>
         {% endif %}
-        <button type="button" class="action-cancel" data-action="cancel-action" data-action-key="{{ key }}" title="Annuleren" style="display:none;">✕</button>
+        <button type="button" class="action-cancel" data-action="cancel-action" data-action-key="{{ key }}" title="Cancel" style="display:none;">✕</button>
       </div>
       {% endfor %}
     </div>
@@ -325,17 +325,17 @@ input:-webkit-autofill:focus {
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">4</span>
-    Bevindingen (Findings)
-    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ findings|length }} bevindingen</span>
+    Findings
+    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ findings|length }} findings</span>
     <span id="findingsToggleAll" style="font-size:0.78rem;margin-left:0.5rem;">
-      <button type="button" id="collapseAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬛ Alles dicht</button>
-      <button type="button" id="expandAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬜ Alles open</button>
+      <button type="button" id="collapseAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬛ Collapse all</button>
+      <button type="button" id="expandAllGroups" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;font-size:0.72rem;color:var(--text-muted);">⬜ Expand all</button>
     </span>
     <span id="findingsBatchActions" style="display:none;font-size:0.78rem;margin-left:0.75rem;">
       <input type="checkbox" id="selectAllFindings" title="Alles selecteren">
-      <button type="button" id="deleteSelectedFindings" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-left:0.3rem;">Verwijder geselecteerd</button>
+      <button type="button" id="deleteSelectedFindings" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;margin-left:0.3rem;">Delete selected</button>
     </span>
-    <a href="?show_archived={{ '0' if show_archived else '1' }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Toon actieve' if show_archived else '📂 Toon gearchiveerde' }}</a>
+    <a href="?show_archived={{ '0' if show_archived else '1' }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Show active' if show_archived else '📂 Show archived' }}</a>
   </div>
   <div class="workflow-step-body">
     <div id="findingsContainer">
@@ -379,12 +379,12 @@ input:-webkit-autofill:focus {
                {% if act.archived_at %}
                <form method="POST" action="{{ url_for('workflow.restore_action', action_id=act.id) }}" style="display:inline;margin-left:auto;">
                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                 <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Herstel</button>
-               </form>
-               {% elif act.status == 'completed' %}
-               <form method="POST" action="{{ url_for('workflow.archive_action', action_id=act.id) }}" style="display:inline;margin-left:auto;">
-                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                 <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Archiveer</button>
+                  <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Restore</button>
+                </form>
+                {% elif act.status == 'completed' %}
+                <form method="POST" action="{{ url_for('workflow.archive_action', action_id=act.id) }}" style="display:inline;margin-left:auto;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Archive</button>
                </form>
                {% endif %}
             </div>
@@ -402,7 +402,7 @@ input:-webkit-autofill:focus {
           <div class="finding-group-header" data-toggle="findings-ungrouped">
             <span class="toggle-icon">▶</span>
             <span class="fg-icon">📋</span>
-            <span class="fg-label">Overige bevindingen</span>
+            <span class="fg-label">Other findings</span>
             <span class="fg-count">{{ ungrouped|length }}</span>
           </div>
           <div class="finding-group-body" id="findings-ungrouped">
@@ -417,8 +417,8 @@ input:-webkit-autofill:focus {
       {% else %}
       <div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);">
         <div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div>
-        <p>Voer onderzoeksacties uit in Stap 3 om bevindingen te genereren.</p>
-        <p style="font-size:0.85rem;">Elke actie voegt realistische bevindingen toe op basis van openbare bronnen.</p>
+        <p>Run investigation actions in Step 3 to generate findings.</p>
+        <p style="font-size:0.85rem;">Each action adds realistic findings based on public sources.</p>
       </div>
       {% endif %}
     </div>
@@ -428,13 +428,13 @@ input:-webkit-autofill:focus {
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">5</span>
-    Proces-verbaal
-    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Genereer na afronding onderzoek</span>
+    Report
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Generate after completing investigation</span>
   </div>
   <div class="workflow-step-body">
     <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
-      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 Proces-verbaal bekijken</a>
-      <span style="font-size:0.85rem;color:var(--text-muted);">Alle bevindingen worden samengevoegd in een rechtsgeldig proces-verbaal</span>
+      <a href="{{ url_for('workflow.pv_view', case_id=case.id) }}" class="btn-cms primary">📄 View report</a>
+      <span style="font-size:0.85rem;color:var(--text-muted);">All findings are compiled into a legally valid report</span>
     </div>
   </div>
 </div>

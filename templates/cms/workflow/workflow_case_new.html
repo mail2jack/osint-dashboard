@@ -1,5 +1,5 @@
 {% extends "cms/base.html" %}
-{% block title %}Workflow — Nieuw onderzoek{% endblock %}
+{% block title %}Workflow — New investigation{% endblock %}
 {% block content %}
 <style>
 .super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -36,7 +36,7 @@ input:-webkit-autofill:focus {
 
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
   <div>
-    <h1 style="margin:0;font-size:1.1rem;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> Nieuw onderzoek</h1>
+    <h1 style="margin:0;font-size:1.1rem;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> New investigation</h1>
   </div>
   <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">← Dashboard</a>
 </div>
@@ -45,195 +45,195 @@ input:-webkit-autofill:focus {
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="existing_client_id" id="existingClientId" value="">
   <div class="form-section">
-    <h2>📋 Zaakgegevens</h2>
+    <h2>📋 Case details</h2>
     <div class="form-grid">
       <div class="form-group">
-        <label>Zaaknummer</label>
+        <label>Case number</label>
         <input type="text" name="case_number" value="{{ generated_case_number }}">
       </div>
       <div class="form-group">
-        <label>Titel *</label>
-        <input type="text" name="title" required placeholder="Persoonsonderzoek">
+        <label>Title *</label>
+        <input type="text" name="title" required placeholder="Person investigation">
       </div>
       <div class="form-group">
-        <label>Prioriteit</label>
+        <label>Priority</label>
         <select name="priority">
-          <option value="low">Laag</option>
-          <option value="medium" selected>Normaal</option>
-          <option value="high">Hoog</option>
-          <option value="critical">Kritiek</option>
+          <option value="low">Low</option>
+          <option value="medium" selected>Normal</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
         </select>
       </div>
       <div class="form-group">
         <label>Status</label>
         <select name="status">
           <option value="open" selected>Open</option>
-          <option value="in_progress">In behandeling</option>
-          <option value="closed">Afgesloten</option>
+          <option value="in_progress">In progress</option>
+          <option value="closed">Closed</option>
         </select>
       </div>
       <div class="form-group full-width">
-        <label>Omschrijving</label>
-        <textarea name="description" rows="2" placeholder="Korte omschrijving van het onderzoek"></textarea>
+        <label>Description</label>
+        <textarea name="description" rows="2" placeholder="Brief description of the investigation"></textarea>
       </div>
     </div>
   </div>
 
   <div class="form-section">
-    <h2>🧑 Opdrachtgever</h2>
+    <h2>🧑 Client</h2>
     <div id="client-lookup-wrap" style="position:relative;">
       <div style="margin-bottom:0.75rem;font-size:0.8rem;color:var(--text-secondary);">
-        <em>Typ een bedrijfsnaam of contactpersoon — bestaande opdrachtgevers worden voorgesteld.</em>
+        <em>Type a company name or contact person — existing clients will be suggested.</em>
       </div>
       <div id="client-suggestions" style="display:none;z-index:100;background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-bottom:0.75rem;"></div>
     <div class="form-grid">
       <div class="form-group">
-        <label>Bedrijfsnaam *</label>
-        <input type="text" name="client_name" required placeholder="Opdrachtgever B.V.">
+        <label>Company name *</label>
+        <input type="text" name="client_name" required placeholder="Client B.V.">
       </div>
       <div class="form-group">
-        <label>Contactpersoon</label>
+        <label>Contact person</label>
         <input type="text" name="client_contact" placeholder="J. Janssen">
       </div>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" name="client_email" placeholder="contact@bedrijf.nl">
+        <input type="email" name="client_email" placeholder="contact@company.nl">
       </div>
       <div class="form-group">
-        <label>Telefoon</label>
+        <label>Phone</label>
         <input type="text" name="client_phone" placeholder="+31 6 12345678">
       </div>
       <div class="form-group">
-        <label>Referentie</label>
-        <input type="text" name="reference" placeholder="Intern kenmerk">
+        <label>Reference</label>
+        <input type="text" name="reference" placeholder="Internal reference">
       </div>
       <div class="form-group">
-        <label>Straat</label>
-        <input type="text" name="client_street" class="addr-street" placeholder="Hoofdstraat">
+        <label>Street</label>
+        <input type="text" name="client_street" class="addr-street" placeholder="Main Street">
       </div>
       <div class="form-group">
-        <label>Huisnummer</label>
+        <label>House number</label>
         <input type="text" name="client_house_number" class="addr-number" placeholder="45">
       </div>
       <div class="form-group">
-        <label>Toevoeging</label>
+        <label>Addition</label>
         <input type="text" name="client_house_number_addition" placeholder="A">
       </div>
       <div class="form-group">
-        <label>Postcode</label>
+        <label>Postal code</label>
         <input type="text" name="client_postal_code" class="addr-zipcode" placeholder="1012LL">
       </div>
       <div class="form-group">
-        <label>Plaats</label>
+        <label>City</label>
         <input type="text" name="client_city" class="addr-town" placeholder="Amsterdam">
       </div>
       <div class="form-group">
-        <label>Land</label>
-        <input type="text" name="client_country" placeholder="Nederland" value="Nederland">
+        <label>Country</label>
+        <input type="text" name="client_country" placeholder="Netherlands" value="Netherlands">
       </div>
       <div class="form-group">
-        <label>BTW-nummer</label>
+        <label>VAT number</label>
         <input type="text" name="client_vat_number" placeholder="NL123456789B01">
       </div>
       <div class="form-group">
-        <label>Bankrekening</label>
+        <label>Bank account</label>
         <input type="text" name="client_bank_account" placeholder="NL00 INGB 0000 0000 00">
       </div>
       <div class="form-group">
-        <label>Contractnummer</label>
+        <label>Contract number</label>
         <input type="text" name="client_contract_number" placeholder="CON-2026-001">
       </div>
       <div class="form-group full-width">
-        <label>Contractinformatie</label>
-        <textarea name="client_contract_info" rows="2" placeholder="Bijzonderheden over het contract"></textarea>
+        <label>Contract info</label>
+        <textarea name="client_contract_info" rows="2" placeholder="Contract details"></textarea>
       </div>
       <div class="form-group full-width">
-        <label>Notities</label>
-        <textarea name="client_notes" rows="2" placeholder="Interne notities over de opdrachtgever"></textarea>
+        <label>Notes</label>
+        <textarea name="client_notes" rows="2" placeholder="Internal notes about the client"></textarea>
       </div>
     </div>
   </div>
 
   <div class="form-section" id="subjects-section">
-    <h2 style="margin:0 0 1rem 0;">🎯 Betrokkenen</h2>
+    <h2 style="margin:0 0 1rem 0;">🎯 Subjects</h2>
     <div id="subjects-container">
       <div class="subject-block" data-index="0">
         <div class="subject-type-row">
-          <label>Type betrokkene</label>
+          <label>Subject type</label>
           <select name="subject_0_type" data-action="update-fields" required>
-            <option value="person" selected>Persoon</option>
-            <option value="company">Bedrijf</option>
-            <option value="vehicle">Voertuig</option>
-            <option value="vessel">Vaartuig</option>
-            <option value="online">Online entiteit</option>
+            <option value="person" selected>Person</option>
+            <option value="company">Company</option>
+            <option value="vehicle">Vehicle</option>
+            <option value="vessel">Vessel</option>
+            <option value="online">Online entity</option>
           </select>
         </div>
         <div class="subject-fields" style="display:none">
           <div class="form-grid">
             <div class="form-group sf-all">
-              <label>Naam *</label>
-              <input type="text" name="subject_0_name" placeholder="Volledige naam / benaming">
+              <label>Name *</label>
+              <input type="text" name="subject_0_name" placeholder="Full name / designation">
             </div>
             <div class="form-group sf-person sf-company sf-vehicle sf-vessel">
-              <label>Identificatienummer</label>
-              <input type="text" name="subject_0_identification" placeholder="BSN / KvK / kenteken / IMO">
+              <label>ID Number</label>
+              <input type="text" name="subject_0_identification" placeholder="BSN / KvK / license plate / IMO">
             </div>
             <div class="form-group sf-person sf-company">
               <label>Email</label>
-              <input type="email" name="subject_0_email" placeholder="naam@example.com">
+              <input type="email" name="subject_0_email" placeholder="name@example.com">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Telefoon</label>
+              <label>Phone</label>
               <input type="text" name="subject_0_phone" placeholder="+31 6 12345678">
             </div>
             <div class="form-group sf-person">
-              <label>Geboortedatum</label>
+              <label>Date of birth</label>
               <input type="date" name="subject_0_date_of_birth">
             </div>
             <div class="form-group sf-person">
-              <label>Geboorteplaats</label>
+              <label>Place of birth</label>
               <input type="text" name="subject_0_place_of_birth" placeholder="Amsterdam">
             </div>
             <div class="form-group sf-person">
-              <label>Nationaliteit</label>
-              <input type="text" name="subject_0_nationality" placeholder="Nederlandse">
+              <label>Nationality</label>
+              <input type="text" name="subject_0_nationality" placeholder="Dutch">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Bankrekening</label>
+              <label>Bank account</label>
               <input type="text" name="subject_0_bank_account" placeholder="NL00 INGB 0000 0000 00">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Straat</label>
-              <input type="text" name="subject_0_street" class="addr-street" placeholder="Straatnaam">
+              <label>Street</label>
+              <input type="text" name="subject_0_street" class="addr-street" placeholder="Street name">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Huisnummer</label>
+              <label>House number</label>
               <input type="text" name="subject_0_house_number" class="addr-number" placeholder="45">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Toevoeging</label>
+              <label>Addition</label>
               <input type="text" name="subject_0_house_number_addition" placeholder="A">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Postcode</label>
+              <label>Postal code</label>
               <input type="text" name="subject_0_postal_code" class="addr-zipcode" placeholder="1012LL">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Plaats</label>
+              <label>City</label>
               <input type="text" name="subject_0_city" class="addr-town" placeholder="Amsterdam">
             </div>
             <div class="form-group full-width sf-person sf-online">
-              <label>Sociale accounts</label>
-              <input type="text" name="subject_0_social_accounts" placeholder="@gebruiker1, @gebruiker2">
+              <label>Social accounts</label>
+              <input type="text" name="subject_0_social_accounts" placeholder="@username1, @username2">
             </div>
             <div class="form-group full-width sf-all">
-              <label>Notities</label>
-              <textarea name="subject_0_notes" rows="2" placeholder="Interne notities"></textarea>
+              <label>Notes</label>
+              <textarea name="subject_0_notes" rows="2" placeholder="Internal notes"></textarea>
             </div>
           </div>
         </div>
       </div>
-    <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Betrokkene</button>
+    <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Subject</button>
   </div>
 
 <script nonce="{{ csp_nonce }}">
@@ -273,37 +273,37 @@ document.addEventListener('DOMContentLoaded', function() {
     div.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-color);';
     div.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
-        '<strong style="font-size:0.85rem;">Betrokkene ' + (count + 1) + '</strong>' +
-        '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Verwijderen</button>' +
+        '<strong style="font-size:0.85rem;">Subject ' + (count + 1) + '</strong>' +
+        '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Remove</button>' +
       '</div>' +
       '<div class="subject-type-row">' +
-        '<label>Type betrokkene</label>' +
+        '<label>Subject type</label>' +
         '<select name="subject_' + count + '_type" data-action="update-fields" required>' +
-          '<option value="">— Selecteer type —</option>' +
-          '<option value="person">Persoon</option>' +
-          '<option value="company">Bedrijf</option>' +
-          '<option value="vehicle">Voertuig</option>' +
-          '<option value="vessel">Vaartuig</option>' +
-          '<option value="online">Online entiteit</option>' +
+          '<option value="">— Select type —</option>' +
+          '<option value="person">Person</option>' +
+          '<option value="company">Company</option>' +
+          '<option value="vehicle">Vehicle</option>' +
+          '<option value="vessel">Vessel</option>' +
+          '<option value="online">Online entity</option>' +
         '</select>' +
       '</div>' +
       '<div class="subject-fields" style="display:none">' +
         '<div class="form-grid">' +
-          '<div class="form-group sf-all"><label>Naam *</label><input type="text" name="subject_' + count + '_name" placeholder="Volledige naam / benaming"></div>' +
-          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>Identificatienummer</label><input type="text" name="subject_' + count + '_identification" placeholder="BSN / KvK / kenteken / IMO"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subject_' + count + '_email" placeholder="naam@example.com"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Telefoon</label><input type="text" name="subject_' + count + '_phone" placeholder="+31 6 12345678"></div>' +
-          '<div class="form-group sf-person"><label>Geboortedatum</label><input type="date" name="subject_' + count + '_date_of_birth"></div>' +
-          '<div class="form-group sf-person"><label>Geboorteplaats</label><input type="text" name="subject_' + count + '_place_of_birth" placeholder="Amsterdam"></div>' +
-          '<div class="form-group sf-person"><label>Nationaliteit</label><input type="text" name="subject_' + count + '_nationality" placeholder="Nederlandse"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Bankrekening</label><input type="text" name="subject_' + count + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Straat</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="Straatnaam"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Huisnummer</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="45"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Toevoeging</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="A"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Postcode</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Plaats</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
-          '<div class="form-group full-width sf-person sf-online"><label>Sociale accounts</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="@gebruiker1, @gebruiker2"></div>' +
-          '<div class="form-group full-width sf-all"><label>Notities</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="Interne notities"></textarea></div>' +
+          '<div class="form-group sf-all"><label>Name *</label><input type="text" name="subject_' + count + '_name" placeholder="Full name / designation"></div>' +
+          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>ID Number</label><input type="text" name="subject_' + count + '_identification" placeholder="BSN / KvK / license plate / IMO"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subject_' + count + '_email" placeholder="name@example.com"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Phone</label><input type="text" name="subject_' + count + '_phone" placeholder="+31 6 12345678"></div>' +
+          '<div class="form-group sf-person"><label>Date of birth</label><input type="date" name="subject_' + count + '_date_of_birth"></div>' +
+          '<div class="form-group sf-person"><label>Place of birth</label><input type="text" name="subject_' + count + '_place_of_birth" placeholder="Amsterdam"></div>' +
+          '<div class="form-group sf-person"><label>Nationality</label><input type="text" name="subject_' + count + '_nationality" placeholder="Dutch"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Bank account</label><input type="text" name="subject_' + count + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Street</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="Street name"></div>' +
+          '<div class="form-group sf-person sf-company"><label>House number</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="45"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Addition</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="A"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Postal code</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
+          '<div class="form-group sf-person sf-company"><label>City</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
+          '<div class="form-group full-width sf-person sf-online"><label>Social accounts</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="@username1, @username2"></div>' +
+          '<div class="form-group full-width sf-all"><label>Notes</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="Internal notes"></textarea></div>' +
         '</div>' +
       '</div>';
     container.parentElement.insertBefore(div, container.nextElementSibling);
@@ -483,8 +483,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
   <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms">Annuleren</a>
-    <button type="submit" class="btn-cms primary">Onderzoek aanmaken →</button>
+    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms">Cancel</a>
+    <button type="submit" class="btn-cms primary">Create investigation →</button>
   </div>
 </form>
 {% endblock %}

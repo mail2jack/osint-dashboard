@@ -25,10 +25,10 @@ input:-webkit-autofill:focus {
 
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
   <div>
-    <h1 style="margin:0;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> Onderzoeken</h1>
+    <h1 style="margin:0;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> Investigations</h1>
     <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">&nbsp;</p>
   </div>
-  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ Nieuw onderzoek</a>
+  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ New investigation</a>
 </div>
 
 {% if cases %}
@@ -37,15 +37,15 @@ input:-webkit-autofill:focus {
     <div class="info">
       <div class="title">
         <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" style="text-decoration:none;">
-          {{ case.case_number }} — {{ case.title or 'Onbekend' }}
+          {{ case.case_number }} — {{ case.title or 'Unknown' }}
         </a>
       </div>
       <div class="meta">
         <span class="badge badge-status-{{ case.status }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ case.status }}</span>
         <span class="badge badge-priority-{{ case.priority }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ case.priority }}</span>
         {% set ac = action_counts.get(case.id, {}) %}
-        Acties: {{ ac.get('completed', 0) }}/{{ ac.get('total', 0) }} voltooid
-        {% if ac.get('running', 0) > 0 %}<span style="color:#3b82f6;"> · ⏳ {{ ac.get('running', 0) }} bezig</span>{% endif %}
+        Actions: {{ ac.get('completed', 0) }}/{{ ac.get('total', 0) }} completed
+        {% if ac.get('running', 0) > 0 %}<span style="color:#3b82f6;"> · ⏳ {{ ac.get('running', 0) }} running</span>{% endif %}
         · Aangemaakt {{ case.created_at.strftime('%d-%m-%Y %H:%M') if case.created_at else '-' }}
       </div>
     </div>
@@ -57,9 +57,9 @@ input:-webkit-autofill:focus {
 {% else %}
 <div style="text-align:center;padding:3rem;color:var(--text-muted);">
   <div style="font-size:3rem;margin-bottom:0.5rem;">🔬</div>
-  <h2>Nog geen onderzoeken</h2>
-  <p>Start een nieuw onderzoek om de workflow te testen.</p>
-  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary" style="margin-top:1rem;">+ Nieuw onderzoek</a>
+  <h2>No investigations yet</h2>
+  <p>Start a new investigation to test the workflow.</p>
+  <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary" style="margin-top:1rem;">+ New investigation</a>
 </div>
 {% endif %}
 {% endblock %}

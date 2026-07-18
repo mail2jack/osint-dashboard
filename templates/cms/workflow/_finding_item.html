@@ -148,12 +148,12 @@
     {% if f.archived_at %}
     <form method="POST" action="{{ url_for('workflow.restore_finding', finding_id=f.id) }}" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">Herstel</button>
+      <button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">Restore</button>
     </form>
     {% else %}
     <form method="POST" action="{{ url_for('workflow.archive_finding', finding_id=f.id) }}" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">Archiveer</button>
+      <button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">Archive</button>
     </form>
     {% endif %}
   </div>
