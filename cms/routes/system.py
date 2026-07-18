@@ -424,7 +424,7 @@ def _run_update_background(task_id: str, app):
                         timeout=300,
                         env=env,
                     )
-                    if _is_aborted():
+                    if _abort_check():
                         return
                     if r.returncode == 0:
                         task["results"][-1] = {
@@ -459,11 +459,19 @@ def _run_update_background(task_id: str, app):
                     }
                 _save()
 
-            def _is_aborted():
+            def _abort_check():
                 t = _read_task(task_id)
                 return t is not None and t.get("aborted", False)
 
             task = _read_task(task_id)
+
+            def _full_env():
+                env = {**os.environ}
+                env["PATH"] = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:" + env.get(
+                    "PATH", ""
+                )
+                return env
+
             if task is None:
                 logger.error("Task %s not found at start of background thread", task_id)
                 return
@@ -479,7 +487,7 @@ def _run_update_background(task_id: str, app):
             db_path = app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db")
 
             # Step 1: Full backup
-            if _is_aborted():
+            if _abort_check():
                 return
             backup_script = os.path.join(project_root, "scripts", "backup.sh")
             if os.path.isfile(backup_script):
@@ -488,6 +496,7 @@ def _run_update_background(task_id: str, app):
                     "Full backup",
                     [backup_script, os.path.join(project_root, "backups")],
                     cwd=project_root,
+                    env=_full_env(),
                 )
             else:
                 if db_path.startswith("sqlite"):
@@ -497,7 +506,7 @@ def _run_update_background(task_id: str, app):
                         "Backup database",
                         ["cp", db_file, f"{db_file}.backup.{timestamp}"],
                     )
-            if _is_aborted():
+            if _abort_check():
                 return
 
             # Store backup path + pre-pull SHA for rollback
@@ -537,7 +546,7 @@ def _run_update_background(task_id: str, app):
             except Exception as e:
                 logger.warning("Rollback metadata error: %s", e)
 
-            if _is_aborted():
+            if _abort_check():
                 return
 
             # Step 2: Git pull
@@ -546,7 +555,7 @@ def _run_update_background(task_id: str, app):
                 ["/usr/bin/sudo", "/usr/bin/git", "pull", "origin", "master"],
                 cwd=project_root,
             )
-            if _is_aborted():
+            if _abort_check():
                 return
 
             # Step 3: pip install
@@ -563,7 +572,7 @@ def _run_update_background(task_id: str, app):
                 ],
                 cwd=project_root,
             )
-            if _is_aborted():
+            if _abort_check():
                 return
 
             # Step 4: Alembic
@@ -579,7 +588,7 @@ def _run_update_background(task_id: str, app):
                 cwd=project_root,
                 env=alembic_env,
             )
-            if _is_aborted():
+            if _abort_check():
                 return
 
             # Store post-pull commit SHA

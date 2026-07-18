@@ -15,6 +15,8 @@
 
 set -euo pipefail
 
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-$SCRIPT_DIR/backups}"
 KEY_FILE="${KEY_FILE:-$BACKUP_DIR/backup-key.gpg}"

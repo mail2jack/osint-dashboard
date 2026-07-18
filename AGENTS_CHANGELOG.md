@@ -329,3 +329,30 @@ System-wide announcement feature so super admin can broadcast mandatory popup me
 
 ### Andere fixes deze sessie
 - Password toggle signup, check_confirm validator fix, auto-refresh findings, soft-delete filter, subdomain JSON error, sortering findings, checkbox overlap, telefooncheck carrier/lijntype/tijdzone
+
+---
+
+## July 18 — Update UI Overhaul: Async + Afbreken + Rollback
+
+### Doel
+504 timeout fixen door sync update → background thread + polling. Modal duidelijker maken met Afbreken/Rollback.
+
+### Wijzigingen
+- **`cms/routes/system.py`**: `do_update` herschreven naar background thread met file-based task tracking (`/tmp/iveras_update_tasks/`). Nieuwe endpoints: `GET /admin/update-status/<task_id>` (polling), `POST /admin/abort-update/<task_id>`. Rollback endpoint toegevoegd.
+- **`static/js/base.js`**: `runUpdate` gebruikt nu polling (elke 2s) i.p.v. enkele fetch. `_updateUI()` met 7 modes (idle/running/done/restarting/error/rolling/aborted). `cancelUpdate()` POST naar abort endpoint.
+- **`templates/cms/base.html`**: Modal met dynamische knoppen (Afbreken/Rollback/Opnieuw), JS config URLs voor polling + abort.
+- **`static/dist/base.min.js`**: Gebundeld
+- **VERSION**: `3.7.1` (gewijzigd in vorige sessie)
+
+### Hoe het werkt
+1. Klik ⬆️ Update Now → POST naar do-update → krijgt `task_id` terug (202)
+2. Frontend pollt elke 2s `/admin/update-status/<task_id>`
+3. Stappen worden live getoond in de modal
+4. Na laatste stap: status `"restarting"` → "Server wordt herstart..." → reload
+5. Bij fout: "↩ Rollback" verschijnt → herstelt backup + git reset
+6. "✕ Afbreken" zet `aborted` flag → thread stopt na huidige stap
+
+### Status
+- Gepusht naar `master` (`5111d32`)
+- Productie geüpdatet via `git pull && systemctl restart`
+- Geen 504 meer mogelijk (nginx ziet alleen korte requests)
