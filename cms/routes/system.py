@@ -431,7 +431,7 @@ def _run_update_background(task_id: str, app):
                         task["results"][-1] = {
                             "step": msg,
                             "status": "aborted",
-                            "output": "Step geannuleerd door gebruiker",
+                            "output": "Step cancelled by user",
                         }
                         _save()
                         return
@@ -470,7 +470,7 @@ def _run_update_background(task_id: str, app):
 
             def _abort_return():
                 task["status"] = "aborted"
-                task["message"] = "Update geannuleerd door gebruiker"
+                task["message"] = "Update cancelled by user"
                 _save()
 
             def _abort_check():
@@ -494,12 +494,12 @@ def _run_update_background(task_id: str, app):
                         "task_id": task_id,
                         "status": "error",
                         "success": False,
-                        "message": "Task file niet gevonden bij opstarten",
+                        "message": "Task file not found on startup",
                         "results": [
                             {
                                 "step": "Background worker",
                                 "status": "error",
-                                "output": "Task file niet gevonden",
+                                "output": "Task file not found",
                             }
                         ],
                         "aborted": False,
@@ -731,7 +731,7 @@ def _send_update_email(app, task: dict, current_ver: str):
                     latest = files[-1]
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             status_icon = "✅" if success else "❌"
-            status_text = "geslaagd" if success else "mislukt"
+            status_text = "succeeded" if success else "failed"
             subject = f"{status_icon} Iveras update {status_text} — {now_str}"
             steps_html = ""
             for r in results:
@@ -926,12 +926,12 @@ def rollback_update() -> flask.Response:
                     "success": False,
                     "results": [
                         {
-                            "step": "Backup zoeken",
+                            "step": "Searching for backup",
                             "status": "error",
-                            "output": "Geen backup gevonden. Rollback niet mogelijk.",
+                            "output": "No backup found. Rollback not possible.",
                         }
                     ],
-                    "message": "Geen backup gevonden",
+                    "message": "No backup found",
                 }
             ), 500
 
@@ -959,20 +959,20 @@ def rollback_update() -> flask.Response:
                 "SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db"
             )
             db_file = db_path.replace("sqlite:///", "")
-            step("Database herstellen", ["cp", backup_path, db_file])
+            step("Restore database", ["cp", backup_path, db_file])
 
         # Step 3: Git reset to pre-pull commit
         pre_sha = Setting.get("pre_update_commit")
         if pre_sha and re.match(r"^[0-9a-f]{40}$", pre_sha):
             step(
-                "Git reset naar vorige commit",
+                "Git reset to previous commit",
                 ["/usr/bin/sudo", "/usr/bin/git", "reset", "--hard", pre_sha],
                 cwd=project_root,
             )
         else:
             # Fallback: gebruik ORIG_HEAD
             step(
-                "Git reset naar ORIG_HEAD",
+                "Git reset to ORIG_HEAD",
                 ["/usr/bin/sudo", "/usr/bin/git", "reset", "--hard", "ORIG_HEAD"],
                 cwd=project_root,
             )
@@ -1181,7 +1181,7 @@ def create_announcement():
         expires_at_str = flask.request.form.get("expires_at", "").strip()
 
         if not title or not body:
-            flask.flash("Titel en bericht zijn verplicht.", "danger")
+            flask.flash("Title and message are required.", "danger")
             return render_template("cms/announcements/form.html", announcement=None)
 
         expires_at = None
@@ -1189,7 +1189,7 @@ def create_announcement():
             try:
                 expires_at = datetime.fromisoformat(expires_at_str)
             except ValueError:
-                flask.flash("Ongeldige datum/tijd.", "danger")
+                flask.flash("Invalid date/time.", "danger")
                 return render_template("cms/announcements/form.html", announcement=None)
 
         announcement = Announcement(
@@ -1201,7 +1201,7 @@ def create_announcement():
         )
         db.session.add(announcement)
         db.session.commit()
-        flask.flash("Aankondiging aangemaakt.", "success")
+        flask.flash("Announcement created.", "success")
         return flask.redirect(flask.url_for("cms.list_announcements"))
 
     return render_template("cms/announcements/form.html", announcement=None)
@@ -1223,7 +1223,7 @@ def edit_announcement(announcement_id):
         expires_at_str = flask.request.form.get("expires_at", "").strip()
 
         if not announcement.title or not announcement.body:
-            flask.flash("Titel en bericht zijn verplicht.", "danger")
+            flask.flash("Title and message are required.", "danger")
             return render_template(
                 "cms/announcements/form.html", announcement=announcement
             )
@@ -1232,7 +1232,7 @@ def edit_announcement(announcement_id):
             try:
                 announcement.expires_at = datetime.fromisoformat(expires_at_str)
             except ValueError:
-                flask.flash("Ongeldige datum/tijd.", "danger")
+                flask.flash("Invalid date/time.", "danger")
                 return render_template(
                     "cms/announcements/form.html", announcement=announcement
                 )
@@ -1240,7 +1240,7 @@ def edit_announcement(announcement_id):
             announcement.expires_at = None
 
         db.session.commit()
-        flask.flash("Aankondiging bijgewerkt.", "success")
+        flask.flash("Announcement updated.", "success")
         return flask.redirect(flask.url_for("cms.list_announcements"))
 
     return render_template("cms/announcements/form.html", announcement=announcement)
@@ -1256,7 +1256,7 @@ def toggle_announcement(announcement_id):
     announcement.is_active = not announcement.is_active
     db.session.commit()
     flask.flash(
-        f"Aankondiging {'geactiveerd' if announcement.is_active else 'gedeactiveerd'}.",
+        f"Announcement {'activated' if announcement.is_active else 'deactivated'}.",
         "success",
     )
     return flask.redirect(flask.url_for("cms.list_announcements"))
@@ -1272,7 +1272,7 @@ def delete_announcement(announcement_id):
     AnnouncementAck.query.filter_by(announcement_id=announcement.id).delete()
     db.session.delete(announcement)
     db.session.commit()
-    flask.flash("Aankondiging verwijderd.", "success")
+    flask.flash("Announcement deleted.", "success")
     return flask.redirect(flask.url_for("cms.list_announcements"))
 
 

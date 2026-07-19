@@ -1,77 +1,77 @@
 # Subjects
 
-Een **Subject** is een persoon, bedrijf of schip van interesse in een onderzoek. Subjects kunnen aan meerdere cases worden gekoppeld.
+A **Subject** is a person, company, or vessel of interest in an investigation. Subjects can be linked to multiple cases.
 
 ## Subject Types
 
 ### Person
-Een individu met persoonsgegevens. Extra functionaliteiten:
+An individual with personal data. Additional features:
 
-- **Faces** — geüploade gezichtsafbeeldingen in een gallery
-- **Social Accounts** — sociale media profielen
-- **Phone Check** — telefoonnummer verrijking
-- **Interpol Check** — zoeken in INTERPOL Red/Yellow Notices
+- **Faces** — uploaded face images in a gallery
+- **Social Accounts** — social media profiles
+- **Phone Check** — phone number enrichment
+- **Interpol Check** — search INTERPOL Red/Yellow Notices
 
 ### Company
-Een organisatie met bedrijfsgegevens.
+An organization with business data.
 
-- **KvK nummer** — Nederlandse Kamer van Koophandel registratie
-- **Address** — vestigingsadres met postcode check
+- **KvK number** — Dutch Chamber of Commerce registration
+- **Address** — registered address with postcode check
 
 ### Vessel
-Een schip met maritieme identificatie. Extra functionaliteiten:
+A vessel with maritime identification. Additional features:
 
-- **IMO nummer** — International Maritime Organization ID
+- **IMO number** — International Maritime Organization ID
 - **MMSI** — Maritime Mobile Service Identity
-- **ENI nummer** — European Vessel Identification
+- **ENI number** — European Vessel Identification
 - **🚢 Check Vessel** — unified lookup via VesselFinder, MarinePlan, KVNR, Binnenvaart.eu, Equasis
 
-## Subject Velden
+## Subject Fields
 
-| Veld | Type | Omschrijving |
-|------|------|-------------|
-| **Name** | Alle | Volledige naam |
-| **Type** | Alle | Person / Company / Vessel |
-| **Date of Birth** | Person | Geboortedatum |
-| **Phone** | Person | Telefoonnummer |
-| **License Plate** | Person | Kenteken (versleuteld opgeslagen) |
-| **ID Number** | Person | Identiteitsbewijs nummer (versleuteld) |
-| **Notes** | Alle | Interne notities (gemixt naar Comments model) |
-| **Address** | Alle | Adresgegevens (meerdere adressen mogelijk) |
-| **Contacts** | Alle | Contactpersonen (naam, email, telefoon, rol) |
+| Field | Type | Description |
+|-------|------|-------------|
+| **Name** | All | Full name |
+| **Type** | All | Person / Company / Vessel |
+| **Date of Birth** | Person | Date of birth |
+| **Phone** | Person | Phone number |
+| **License Plate** | Person | License plate (stored encrypted) |
+| **ID Number** | Person | ID document number (encrypted) |
+| **Notes** | All | Internal notes (migrated to Comments model) |
+| **Address** | All | Address data (multiple addresses possible) |
+| **Contacts** | All | Contact persons (name, email, phone, role) |
 
-## Subject Aanmaken
+## Creating a Subject
 
-1. Navigeer naar **Subjects** → **New Subject**
-2. Selecteer het **Subject Type**
-3. Vul de relevante velden in
-4. Klik **Save**
+1. Navigate to **Subjects** → **New Subject**
+2. Select the **Subject Type**
+3. Fill in the relevant fields
+4. Click **Save**
 
-## Duplicaat Detectie
+## Duplicate Detection
 
-Bij het aanmaken wordt gecontroleerd op bestaande subjects met een vergelijkbare naam. Bij een mogelijke duplicate krijg je een waarschuwing te zien.
+When creating, the system checks for existing subjects with a similar name. If a possible duplicate is found, you will see a warning.
 
-## OSINT Acties
+## OSINT Actions
 
-Elke subject detailpagina heeft actieknoppen:
+Each subject detail page has action buttons:
 
-- **📞 Check Phone** — verrijkt telefoonnummer met carrier, regio, WhatsApp/Telegram
-- **🌍 Check Interpol** — zoekt INTERPOL Red Notices (gezocht) + Yellow Notices (vermist) + politie.nl vermist/gezocht
-- **🚢 Check Vessel** (alleen Vessel type) — zoekt scheepsgegevens in meerdere maritieme databases
-- **Social Accounts** — voeg sociale media profielen toe en doorzoek ze
+- **📞 Check Phone** — enriches phone number with carrier, region, WhatsApp/Telegram
+- **🌍 Check Interpol** — searches INTERPOL Red Notices (wanted) + Yellow Notices (missing) + politie.nl missing/wanted
+- **🚢 Check Vessel** (Vessel type only) — searches vessel data across multiple maritime databases
+- **Social Accounts** — add social media profiles and search them
 
 ## Faces (Person type)
 
-Geüploade gezichtsafbeeldingen worden getoond in een gallery. Elke face kan worden gebruikt voor toekomstige biometrische matching. Upload via de **Add Face** knop op de subject detailpagina.
+Uploaded face images are shown in a gallery. Each face can be used for future biometric matching. Upload via the **Add Face** button on the subject detail page.
 
-## Adressen
+## Addresses
 
-Subjects kunnen meerdere adressen hebben. Elk adres heeft:
+Subjects can have multiple addresses. Each address has:
 
-- Straat + nummer + postcode + woonplaats
+- Street + number + postal code + city
 - 🔍 Postcode Check (BAG/PDOK)
-- 🚔 Politiebureau Lookup
+- 🚔 Police Station Lookup
 
 ## Contacts
 
-Contacts zijn gerelateerde personen (familie, collega's, etc.) met naam, email, telefoon en een omschrijving van de relatie.
+Contacts are related persons (family, colleagues, etc.) with name, email, phone, and a description of the relationship.

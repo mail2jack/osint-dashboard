@@ -1,16 +1,16 @@
 #!/bin/bash
 #
 # start-server — Iveras OSINT Dashboard service manager
-# Gebruikt systemd services (install.sh), draait als osint gebruiker.
+# Uses systemd services created by install.sh, runs as osint user.
 #
 # Usage:
-#   ./start-server start      Start alle services
-#   ./start-server stop       Stop alle services
-#   ./start-server restart    Herstart alle services
-#   ./start-server status     Toon status
+#   ./start-server start      Start all services
+#   ./start-server stop       Stop all services
+#   ./start-server restart    Restart all services
+#   ./start-server status     Show status
 #   ./start-server logs       Live logs Iveras
 #   ./start-server logs-sf    Live logs SpiderFoot
-#   ./start-server update     Git pull + herstart
+#   ./start-server update     Git pull + restart
 #
 
 set -e
@@ -29,17 +29,17 @@ err()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
 check_root() {
     if [ "$EUID" -ne 0 ]; then
-        err "Dit script moet als root (of sudo)."
+        err "This script must be run as root (or with sudo)."
         exit 1
     fi
 }
 
 cmd_start() {
     check_root
-    info "SpiderFoot starten..."
-    systemctl start "$SF_SERVICE" 2>/dev/null || warn "SpiderFoot niet geïnstalleerd"
+    info "Starting SpiderFoot..."
+    systemctl start "$SF_SERVICE" 2>/dev/null || warn "SpiderFoot not installed"
     sleep 2
-    info "Iveras dashboard starten..."
+    info "Starting Iveras dashboard..."
     systemctl start "$SERVICE"
     sleep 2
     cmd_status
@@ -47,10 +47,10 @@ cmd_start() {
 
 cmd_stop() {
     check_root
-    info "Alles stoppen..."
+    info "Stopping all services..."
     systemctl stop "$SERVICE" 2>/dev/null || true
     systemctl stop "$SF_SERVICE" 2>/dev/null || true
-    info "Gestopt."
+    info "Stopped."
 }
 
 cmd_restart() {
@@ -62,10 +62,10 @@ cmd_restart() {
 
 cmd_status() {
     echo "--- Iveras Dashboard ---"
-    systemctl status "$SERVICE" --no-pager 2>/dev/null || echo "  (niet geïnstalleerd)"
+    systemctl status "$SERVICE" --no-pager 2>/dev/null || echo "  (not installed)"
     echo ""
     echo "--- SpiderFoot ---"
-    systemctl status "$SF_SERVICE" --no-pager 2>/dev/null || echo "  (niet geïnstalleerd)"
+    systemctl status "$SF_SERVICE" --no-pager 2>/dev/null || echo "  (not installed)"
     echo ""
     echo "--- Nginx ---"
     systemctl status nginx --no-pager 2>/dev/null | head -3
@@ -74,8 +74,8 @@ cmd_status() {
     systemctl status fail2ban --no-pager 2>/dev/null | head -3
     echo ""
     echo "--- Health Check ---"
-    curl -s -o /dev/null -w "  Iveras: HTTP %{http_code}\n" http://127.0.0.1:5000/health 2>/dev/null || echo "  Iveras: NIET BEREIKBAAR"
-    curl -s -o /dev/null -w "  SpiderFoot: HTTP %{http_code}\n" http://127.0.0.1:5001 2>/dev/null || echo "  SpiderFoot: NIET BEREIKBAAR"
+    curl -s -o /dev/null -w "  Iveras: HTTP %{http_code}\n" http://127.0.0.1:5000/health 2>/dev/null || echo "  Iveras: UNREACHABLE"
+    curl -s -o /dev/null -w "  SpiderFoot: HTTP %{http_code}\n" http://127.0.0.1:5001 2>/dev/null || echo "  SpiderFoot: UNREACHABLE"
 }
 
 cmd_logs() {
@@ -88,12 +88,12 @@ cmd_logs_sf() {
 
 cmd_update() {
     check_root
-    info "Code pullen van GitHub..."
+    info "Pulling code from GitHub..."
     cd /opt/osint-dashboard
     sudo -u osint git pull
-    info "Python packages updaten..."
+    info "Updating Python packages..."
     sudo -u osint ./venv/bin/pip install -r requirements.txt -q
-    info "Herstarten..."
+    info "Restarting..."
     cmd_stop
     sleep 2
     cmd_start

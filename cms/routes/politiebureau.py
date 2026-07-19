@@ -131,7 +131,7 @@ def politiebureau_lookup() -> flask.Response:
         stations = result.get("politiebureaus", [])
         if not stations:
             return jsonify(
-                {"found": False, "message": "Geen politiebureaus gevonden in de buurt"}
+                {"found": False, "message": "No police stations found nearby"}
             ), 200
 
         s = stations[0]

@@ -245,7 +245,7 @@ def manual_fix():
     translation = data.get("translation", "").strip()
 
     if not msgid or not direction or not translation:
-        return api_error("msgid, direction en translation verplicht", 400)
+        return api_error("msgid, direction and translation required", 400)
 
     root_path = current_app.root_path
     if direction == "en→nl":
@@ -347,7 +347,7 @@ def auto_fix():
                 {
                     "msgid": msgid,
                     "status": "error",
-                    "error": "NL→EN: geen brontekst in NL .po",
+                    "error": "NL→EN: no source text in NL .po",
                 }
             )
             continue

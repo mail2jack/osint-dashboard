@@ -6,29 +6,29 @@
     <div class="card-header">
         <h2>{{ _('Invoices') }}</h2>
         <div style="display:flex;gap:0.5rem;align-items:center;">
-            <a href="{{ url_for('cms.invoice_create') }}" class="btn-cms small bg-green">{{ _('+ Nieuwe factuur') }}</a>
+            <a href="{{ url_for('cms.invoice_create') }}" class="btn-cms small bg-green">{{ _('+ New invoice') }}</a>
             <a href="{{ url_for('cms.credit_note_list') }}" class="btn-cms small orange">{{ _('Credit Notes') }}</a>
         </div>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem;padding:0.75rem 1rem;background:#f9fafb;border-bottom:1px solid #e5e7eb;">
-        <div><span style="color:#6b7280;font-size:0.75rem;">{{ _('Totaal betaald') }}</span><br><strong style="color:#059669;">€ {{ "%.2f"|format(total_paid) }}</strong></div>
-        <div><span style="color:#6b7280;font-size:0.75rem;">{{ _('Totaal openstaand') }}</span><br><strong style="color:#dc2626;">€ {{ "%.2f"|format(total_outstanding) }}</strong></div>
+        <div><span style="color:#6b7280;font-size:0.75rem;">{{ _('Total paid') }}</span><br><strong style="color:#059669;">€ {{ "%.2f"|format(total_paid) }}</strong></div>
+        <div><span style="color:#6b7280;font-size:0.75rem;">{{ _('Total outstanding') }}</span><br><strong style="color:#dc2626;">€ {{ "%.2f"|format(total_outstanding) }}</strong></div>
     </div>
 
     <div style="padding:0.75rem 1rem;display:flex;flex-wrap:wrap;gap:0.5rem;border-bottom:1px solid #e5e7eb;">
         <form method="GET" action="{{ url_for('cms.invoice_list') }}" style="display:flex;flex-wrap:wrap;gap:0.5rem;width:100%;">
-            <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Zoeken op nummer...') }}" style="padding:0.3rem 0.5rem;border:1px solid #ddd;border-radius:4px;flex:1;min-width:150px;">
+            <input type="text" name="q" value="{{ search }}" placeholder="{{ _('Search by number...') }}" style="padding:0.3rem 0.5rem;border:1px solid #ddd;border-radius:4px;flex:1;min-width:150px;">
             <select name="status" data-change="this.form.submit()" style="padding:0.3rem 0.5rem;border:1px solid #ddd;border-radius:4px;">
-                <option value="">{{ _('Alle statussen') }}</option>
+                <option value="">{{ _('All statuses') }}</option>
                 <option value="draft" {{ 'selected' if status_filter=='draft' }}>{{ _('Concept') }}</option>
-                <option value="sent" {{ 'selected' if status_filter=='sent' }}>{{ _('Verzonden') }}</option>
-                <option value="paid" {{ 'selected' if status_filter=='paid' }}>{{ _('Betaald') }}</option>
+                <option value="sent" {{ 'selected' if status_filter=='sent' }}>{{ _('Sent') }}</option>
+                <option value="paid" {{ 'selected' if status_filter=='paid' }}>{{ _('Paid') }}</option>
                 <option value="overdue" {{ 'selected' if status_filter=='overdue' }}>{{ _('Overdue') }}</option>
-                <option value="cancelled" {{ 'selected' if status_filter=='cancelled' }}>{{ _('Geannuleerd') }}</option>
+                <option value="cancelled" {{ 'selected' if status_filter=='cancelled' }}>{{ _('Cancelled') }}</option>
             </select>
             <select name="client_id" data-change="this.form.submit()" style="padding:0.3rem 0.5rem;border:1px solid #ddd;border-radius:4px;">
-                <option value="">{{ _('Alle cliënten') }}</option>
+                <option value="">{{ _('All clients') }}</option>
                 {% for c in clients %}
                 <option value="{{ c.id }}" {{ 'selected' if client_filter==c.id }}>{{ c.name }}</option>
                 {% endfor %}
@@ -40,13 +40,13 @@
     <table>
         <thead>
             <tr>
-                <th>{{ _('Nummer') }}</th>
-                <th>{{ _('Cliënt') }}</th>
-                <th>{{ _('Datum') }}</th>
-                <th>{{ _('Vervaldatum') }}</th>
-                <th>{{ _('Totaal') }}</th>
+                <th>{{ _('Number') }}</th>
+                <th>{{ _('Client') }}</th>
+                <th>{{ _('Date') }}</th>
+                <th>{{ _('Due date') }}</th>
+                <th>{{ _('Total') }}</th>
                 <th>{{ _('Status') }}</th>
-                <th>{{ _('Gemaakt door') }}</th>
+                <th>{{ _('Created by') }}</th>
                 <th></th>
             </tr>
         </thead>
@@ -73,7 +73,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:2rem;">{{ _('Geen facturen gevonden.') }}</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:2rem;">{{ _('No invoices found.') }}</td></tr>
             {% endfor %}
         </tbody>
     </table>

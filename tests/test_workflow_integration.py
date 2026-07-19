@@ -370,7 +370,7 @@ class TestEmailCheckPGP:
         findings = _email_check(action)
         pgp_findings = [f for f in findings if f.get("source_type") == "pgp"]
         assert len(pgp_findings) == 1
-        assert "PGP-sleutel gevonden" in pgp_findings[0]["title"]
+        assert "PGP key found" in pgp_findings[0]["title"]
         assert pgp_findings[0]["verified"] is True
 
     def test_pgp_404_no_finding(self, app, db_session, monkeypatch):
@@ -509,7 +509,7 @@ class TestSubdomainCheck:
         findings = _subdomain_check(action)
         sub_findings = [f for f in findings if f.get("source_type") == "subdomain"]
         assert len(sub_findings) == 1
-        assert "4 subdomeinen" in sub_findings[0]["title"]
+        assert "subdomains found" in sub_findings[0]["title"]
         assert "api.testbed.nl" in sub_findings[0]["detail"]
         assert "dev.testbed.nl" in sub_findings[0]["detail"]  # wildcard stripped
 

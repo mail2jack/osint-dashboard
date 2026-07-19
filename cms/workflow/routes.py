@@ -943,15 +943,14 @@ def pv_regenerate(case_id):
             f"{c}x {t}" for t, c in sorted(type_map.items(), key=lambda x: -x[1])
         )
         summary_lines = [
-            f"In totaal zijn er **{len(findings)} bevinding(en)** vastgelegd "
-            f"voor deze zaak ({summary}).",
+            f"A total of **{len(findings)} finding(s)** have been recorded "
+            f"for this case ({summary}).",
             "",
-            "De volledige lijst met bevindingen is opgenomen in de tabel "
-            "'Bevindingen' hieronder.",
+            "The full list of findings is included in the 'Findings' table below.",
         ]
     else:
         summary_lines = [
-            "Er zijn nog geen bevindingen vastgelegd voor deze zaak.",
+            "No findings have been recorded for this case yet.",
         ]
 
     new_summary = (
@@ -982,9 +981,7 @@ def pv_regenerate(case_id):
     )
     db.session.commit()
 
-    flash(
-        "Proces-verbaal is hergenereerd op basis van de huidige bevindingen.", "success"
-    )
+    flash("Official report has been regenerated based on current findings.", "success")
     return redirect(url_for("workflow.pv_view", case_id=case_id))
 
 
@@ -1259,7 +1256,7 @@ def archive_action(action_id):
     db.session.commit()
     if request.is_json:
         return jsonify({"ok": True})
-    flash("Actie gearchiveerd.", "info")
+    flash("Action archived.", "info")
     return redirect(
         request.referrer or url_for("workflow.case_detail", case_id=action.case_id)
     )
@@ -1292,7 +1289,7 @@ def restore_action(action_id):
     db.session.commit()
     if request.is_json:
         return jsonify({"ok": True})
-    flash("Actie hersteld.", "info")
+    flash("Action restored.", "info")
     return redirect(
         request.referrer or url_for("workflow.case_detail", case_id=action.case_id)
     )
@@ -1318,7 +1315,7 @@ def archive_finding(finding_id):
     db.session.commit()
     if request.is_json:
         return jsonify({"ok": True})
-    flash("Bevinding gearchiveerd.", "info")
+    flash("Finding archived.", "info")
     return redirect(
         request.referrer or url_for("workflow.case_detail", case_id=finding.case_id)
     )
@@ -1344,7 +1341,7 @@ def restore_finding(finding_id):
     db.session.commit()
     if request.is_json:
         return jsonify({"ok": True})
-    flash("Bevinding hersteld.", "info")
+    flash("Finding restored.", "info")
     return redirect(
         request.referrer or url_for("workflow.case_detail", case_id=finding.case_id)
     )

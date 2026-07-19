@@ -485,7 +485,7 @@ def archive_case(case_id: str) -> flask.Response:
     )
     db.session.commit()
 
-    flash(f"Case {case.case_number} is gearchiveerd.", "info")
+    flash(f"Case {case.case_number} archived.", "info")
     return redirect(url_for("cms.cases"))
 
 
@@ -510,5 +510,5 @@ def restore_case(case_id: str) -> flask.Response:
     )
     db.session.commit()
 
-    flash(f"Case {case.case_number} is hersteld.", "info")
+    flash(f"Case {case.case_number} restored.", "info")
     return redirect(url_for("cms.cases"))

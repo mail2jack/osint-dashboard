@@ -170,17 +170,17 @@ table tr:nth-child(even) td {
     <div class="meta">
         <span>{{ _('Status:') }} {{ case.status }}</span>
         {% if case.priority %}<span>{{ _('Priority:') }} {{ case.priority }}</span>{% endif %}
-        <span>{{ _('Aangemaakt:') }} {{ case.created_at.strftime('%d-%m-%Y') }}</span>
-        <span>{{ _('Rapport datum:') }} {{ now().strftime('%d-%m-%Y %H:%M') }}</span>
+        <span>{{ _('Created:') }} {{ case.created_at.strftime('%d-%m-%Y') }}</span>
+        <span>{{ _('Report date:') }} {{ now().strftime('%d-%m-%Y %H:%M') }}</span>
     </div>
-    <div class="classification">{{ _('VERTROUWELIJK') }}</div>
+    <div class="classification">{{ _('CONFIDENTIAL') }}</div>
 </section>
 
 <!-- Case Info -->
-<h2>{{ _('Dossiergegevens') }}</h2>
+<h2>{{ _('Case Details') }}</h2>
 <div class="info-grid">
     <div class="info-item">
-        <div class="label">{{ _('Dossiernummer') }}</div>
+        <div class="label">{{ _('Case number') }}</div>
         <div class="value">{{ case.case_number }}</div>
     </div>
     <div class="info-item">
@@ -195,13 +195,13 @@ table tr:nth-child(even) td {
     {% endif %}
     {% if case.priority %}
     <div class="info-item">
-        <div class="label">{{ _('Prioriteit') }}</div>
+        <div class="label">{{ _('Priority') }}</div>
         <div class="value">{{ case.priority }}</div>
     </div>
     {% endif %}
     {% if case.client %}
     <div class="info-item">
-        <div class="label">{{ _('Cliënt') }}</div>
+        <div class="label">{{ _('Client') }}</div>
         <div class="value">{{ case.client.name }}</div>
     </div>
     {% endif %}
@@ -212,31 +212,31 @@ table tr:nth-child(even) td {
     </div>
     {% endif %}
     <div class="info-item">
-        <div class="label">{{ _('Aangemaakt') }}</div>
+        <div class="label">{{ _('Created') }}</div>
         <div class="value">{{ case.created_at.strftime('%d-%m-%Y %H:%M') }}</div>
     </div>
     {% if case.actual_end_date %}
     <div class="info-item">
-        <div class="label">{{ _('Afgesloten') }}</div>
+        <div class="label">{{ _('Closed') }}</div>
         <div class="value">{{ case.actual_end_date.strftime('%d-%m-%Y') }}</div>
     </div>
     {% endif %}
 </div>
 
 {% if case.description %}
-<h3>{{ _('Omschrijving') }}</h3>
+<h3>{{ _('Description') }}</h3>
 <p style="font-size:10pt;color:#374151;">{{ case.description }}</p>
 {% endif %}
 
 <!-- Subjects -->
-<h2>{{ _('Subjecten') }}</h2>
+<h2>{{ _('Subjects') }}</h2>
 {% if subjects %}
 <table>
     <thead>
         <tr>
-            <th>{{ _('Naam') }}</th>
+            <th>{{ _('Name') }}</th>
             <th>{{ _('Type') }}</th>
-            <th>{{ _('Risico') }}</th>
+            <th>{{ _('Risk') }}</th>
             <th>{{ _('Contact') }}</th>
         </tr>
     </thead>
@@ -256,11 +256,11 @@ table tr:nth-child(even) td {
     </tbody>
 </table>
 {% else %}
-<p class="empty-state">{{ _('Geen subjecten aan dit dossier gekoppeld.') }}</p>
+<p class="empty-state">{{ _('No subjects linked to this case.') }}</p>
 {% endif %}
 
 <!-- Findings Timeline -->
-<h2 class="page-break">{{ _('Tijdlijn — Bevindingen & Notities') }}</h2>
+<h2 class="page-break">{{ _('Timeline — Findings & Notes') }}</h2>
 {% if grouped_entries %}
     {% for date_key, entries in grouped_entries|dictsort(false) %}
     <h3>{{ date_key }} <span style="font-weight:normal;color:#9ca3af;font-size:9pt;">({{ entries|length }})</span></h3>
@@ -283,7 +283,7 @@ table tr:nth-child(even) td {
     {% endfor %}
     {% endfor %}
 {% else %}
-<p class="empty-state">{{ _('Geen bevindingen of notities in dit dossier.') }}</p>
+<p class="empty-state">{{ _('No findings or notes in this case.') }}</p>
 {% endif %}
 
 </body>

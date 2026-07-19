@@ -1,90 +1,90 @@
 # SpiderFoot
 
-SpiderFoot is een open-source OSINT automation tool geïntegreerd in het dashboard voor het uitvoeren van verkenningsscans. Het verzamelt informatie over IP-adressen, domeinen, e-mailadressen, gebruikersnamen en meer uit honderden open bronnen.
+SpiderFoot is an open-source OSINT automation tool integrated into the dashboard for performing reconnaissance scans. It collects information on IP addresses, domains, email addresses, usernames, and more from hundreds of open sources.
 
-## Configuratie
+## Configuration
 
-Voordat SpiderFoot gebruikt kan worden, moet de verbinding worden ingesteld in **Settings**:
+Before SpiderFoot can be used, the connection must be set up in **Settings**:
 
-- **SpiderFoot URL** — bijv. `http://127.0.0.1:5001`
-- **Gebruikersnaam** — zoals ingesteld in `~/.spiderfoot/passwd`
-- **Wachtwoord** — het bijbehorende wachtwoord
+- **SpiderFoot URL** — e.g. `http://127.0.0.1:5001`
+- **Username** — as configured in `~/.spiderfoot/passwd`
+- **Password** — the corresponding password
 
-SpiderFoot gebruikt HTTP **Digest** authenticatie. De health status wordt elke 60 seconden gecontroleerd; bij een fout verschijnt er een rode banner bovenaan de pagina.
+SpiderFoot uses HTTP **Digest** authentication. The health status is checked every 60 seconds; on error, a red banner appears at the top of the page.
 
-## Scan Aanmaken
+## Creating a Scan
 
-1. Ga naar **SpiderFoot** → **New Scan**
-2. Vul het **Target** in (domein, IP-adres, e-mailadres, gebruikersnaam etc.)
-3. Selecteer een **Scan Type**:
-   - **All** — alle modules gebruiken (kan lang duren)
-   - **Footprint** — oppervlakkige verkenning
-   - **Investigate** — diepgaand onderzoek
-   - **Passive** — alleen passieve bronnen (geen directe connecties)
-   - **Custom** — kies zelf modules
-4. Klik **Start Scan**
+1. Go to **SpiderFoot** → **New Scan**
+2. Enter the **Target** (domain, IP address, email address, username, etc.)
+3. Select a **Scan Type**:
+   - **All** — use all modules (may take a long time)
+   - **Footprint** — surface-level reconnaissance
+   - **Investigate** — in-depth investigation
+   - **Passive** — only passive sources (no direct connections)
+   - **Custom** — choose modules yourself
+4. Click **Start Scan**
 
-## Scan Overzicht
+## Scan Overview
 
-De scan lijst toont:
+The scan list shows:
 
-- **ID** — scan identificatienummer
-- **Target** — het onderzochte object
+- **ID** — scan identification number
+- **Target** — the object being investigated
 - **Status** — RUNNING / FINISHED / ERROR / FAILED / ABORTED
-- **Results** — aantal gevonden resultaten
-- **Created** — aanmaakdatum
+- **Results** — number of results found
+- **Created** — creation date
 
-Klik op een scan om de resultaten te bekijken.
+Click on a scan to view the results.
 
-## Scan Resultaten
+## Scan Results
 
-Resultaten worden gegroepeerd per **type** en **bronmodule**:
+Results are grouped by **type** and **source module**:
 
-| Type | Voorbeelden |
-|------|-------------|
-| `SOCIAL_MEDIA` | Facebook, LinkedIn, Twitter profielen |
-| `IP_ADDRESS` | IPv4/IPv6 adressen |
-| `DOMAIN_NAME` | Gekoppelde domeinen |
-| `EMAIL_ADDRESS` | Gevonden e-mailadressen |
-| `PHONE_NUMBER` | Telefoonnummers |
-| `GEO_INFO` | Locatiegegevens |
+| Type | Examples |
+|------|----------|
+| `SOCIAL_MEDIA` | Facebook, LinkedIn, Twitter profiles |
+| `IP_ADDRESS` | IPv4/IPv6 addresses |
+| `DOMAIN_NAME` | Associated domains |
+| `EMAIL_ADDRESS` | Found email addresses |
+| `PHONE_NUMBER` | Phone numbers |
+| `GEO_INFO` | Location data |
 | `NETBLOCK` | IP ranges |
-| `WEB_CONTENT` | Webpagina inhoud |
-| `LEAKED_DATA` | Gelekte credentials |
+| `WEB_CONTENT` | Web page content |
+| `LEAKED_DATA` | Leaked credentials |
 
 ### SFURL Tags
 
-Resultaten kunnen `<SFURL>` tags bevatten in de data. Deze worden automatisch gedetecteerd en klikbaar gemaakt in de weergave.
+Results may contain `<SFURL>` tags in the data. These are automatically detected and made clickable in the display.
 
-## Resultaten Koppelen
+## Linking Results
 
-Vanuit de scan resultaten kun je:
+From the scan results you can:
 
-- 🏷️ **Add to Case** — voeg een resultaat toe als **Finding** aan een bestaande case
-- 👤 **Create Subject** — maak een nieuw subject aan van ontdekte data
+- 🏷️ **Add to Case** — add a result as a **Finding** to an existing case
+- 👤 **Create Subject** — create a new subject from discovered data
 
 ## Scan Types in Detail
 
 ### All
-Doorloopt alle beschikbare modules. Meest compleet, maar duurt het langst.
+Iterates through all available modules. Most complete, but takes the longest.
 
 ### Footprint
-Gebruikt ~30 basis modules voor een algemene verkenning van het target.
+Uses ~30 basic modules for a general reconnaissance of the target.
 
 ### Investigate
-~50 modules gericht op diepgaand onderzoek van de gevonden data.
+~50 modules focused on in-depth investigation of the found data.
 
 ### Passive
-Alleen modules die geen directe verbinding maken met het target. Gebruikt open bronnen zoals DNS, WHOIS, zoekmachines.
+Only modules that make no direct connection to the target. Uses open sources such as DNS, WHOIS, search engines.
 
-## Probleemoplossing
+## Troubleshooting
 
-**Scan blijft hangen op RUNNING**: SpiderFoot service is mogelijk vastgelopen. Herstart de service: `sudo systemctl restart spiderfoot`
+**Scan stuck on RUNNING**: SpiderFoot service may have frozen. Restart the service: `sudo systemctl restart spiderfoot`
 
-**Rode banner "SpiderFoot is unreachable"**:
-- Controleer of SpiderFoot draait: `curl http://127.0.0.1:5001`
-- Controleer de URL in Settings
-- Controleer de inloggegevens in Settings
-- Controleer of de Digest auth werkt
+**Red banner "SpiderFoot is unreachable"**:
+- Check if SpiderFoot is running: `curl http://127.0.0.1:5001`
+- Check the URL in Settings
+- Check the credentials in Settings
+- Check if Digest auth is working
 
-**Geen resultaten**: Sommige scans hebben tijd nodig. Grote scans kunnen uren duren.
+**No results**: Some scans take time. Large scans can take hours.

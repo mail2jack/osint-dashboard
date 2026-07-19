@@ -181,7 +181,7 @@ def signup() -> flask.Response:
             entity_type="user",
             entity_id=user.id,
             ip_address=request.remote_addr,
-            description="Privacybeleid en algemene voorwaarden geaccepteerd bij registratie",
+            description="Privacy policy and general terms accepted during registration",
         )
         db.session.commit()
 
@@ -464,6 +464,11 @@ def _complete_2fa_login(user) -> flask.Response:
         parsed = urlparse(next_page)
         if not parsed.netloc and not parsed.scheme and not parsed.params:
             return redirect(next_page)
+
+    from cms.routes.setup_wizard import _wizard_complete
+
+    if user.is_super_admin and not _wizard_complete():
+        return redirect(url_for("setup_wizard.wizard"))
     return redirect(url_for("cms.dashboard"))
 
 
@@ -900,7 +905,7 @@ def create_user() -> flask.Response:
             )
 
     if data.get("role") == "admin" and not current_user.is_super_admin:
-        return _error("Alleen een super-admin kan admin-gebruikers aanmaken.")
+        return _error("Only a super-admin can create admin users.")
 
     user = User(
         username=data["username"],
@@ -1021,11 +1026,11 @@ def edit_user(user_id) -> flask.Response:
                 if request.is_json:
                     return jsonify(
                         {
-                            "error": "Alleen een super-admin kan de admin- of owner-rol toewijzen."
+                            "error": "Only a super-admin can assign the admin or owner role."
                         }
                     ), 403
                 flash(
-                    "Alleen een super-admin kan de admin- of owner-rol toewijzen.",
+                    "Only a super-admin can assign the admin or owner role.",
                     "danger",
                 )
                 return redirect(url_for("users.list_users"))
@@ -1225,7 +1230,7 @@ def accept_invite(token: str):
         rate_key = f"accept_invite_ip:{request.remote_addr or 'unknown'}"
         limited, _ = is_rate_limited(rate_key)
         if limited:
-            flash("Te veel pogingen. Probeer het later opnieuw.", "danger")
+            flash("Too many attempts. Try again later.", "danger")
             return redirect(url_for("auth.login"))
 
         full_name = (request.form.get("full_name") or "").strip()

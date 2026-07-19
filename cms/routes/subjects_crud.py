@@ -687,7 +687,7 @@ def delete_subject(subject_id: str) -> flask.Response:
         extra = f" and {len(linked_cases) - 5} more" if len(linked_cases) > 5 else ""
         return jsonify(
             {
-                "error": f"Kan subject niet verwijderen: gekoppeld aan {len(linked_cases)} za(a)k(en): {case_list}{extra}"
+                "error": f"Cannot delete subject: linked to {len(linked_cases)} case(s): {case_list}{extra}"
             }
         ), 400
 
@@ -704,6 +704,6 @@ def delete_subject(subject_id: str) -> flask.Response:
     db.session.commit()
 
     if request.is_json:
-        return api_success({}, "Subject verwijderd")
-    flash(f"Subject {subject.name} is verwijderd.", "info")
+        return api_success({}, "Subject deleted")
+    flash(f"Subject {subject.name} deleted.", "info")
     return redirect(url_for("cms.subjects"))

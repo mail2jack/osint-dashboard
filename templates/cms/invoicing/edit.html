@@ -1,11 +1,11 @@
 {% extends "cms/base.html" %}
-{% block title %}{{ _('Factuur bewerken') }} {{ invoice.invoice_number }}{% endblock %}
+{% block title %}{{ _('Edit Invoice') }} {{ invoice.invoice_number }}{% endblock %}
 {% block content %}
 
 <div class="card">
     <div class="card-header">
-        <h2>{{ _('Factuur bewerken') }} — {{ invoice.invoice_number }}</h2>
-        <a href="{{ url_for('cms.invoice_view', invoice_id=invoice.id) }}" class="btn-cms small">← {{ _('Terug') }}</a>
+        <h2>{{ _('Edit Invoice') }} — {{ invoice.invoice_number }}</h2>
+        <a href="{{ url_for('cms.invoice_view', invoice_id=invoice.id) }}" class="btn-cms small">← {{ _('Back') }}</a>
     </div>
     <form method="POST" action="{{ url_for('cms.invoice_edit', invoice_id=invoice.id) }}" data-submit="submitEditForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -13,15 +13,15 @@
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding:1rem;">
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Factuurdatum') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Invoice date') }}</label>
                 <input type="date" name="issue_date" value="{{ invoice.issue_date.isoformat() }}" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
             </div>
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Vervaldatum') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Due date') }}</label>
                 <input type="date" name="due_date" value="{{ invoice.due_date.isoformat() }}" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
             </div>
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Valuta') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Currency') }}</label>
                 <select name="currency" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
                     <option value="EUR" {{ 'selected' if invoice.currency=='EUR' }}>EUR (€)</option>
                     <option value="USD" {{ 'selected' if invoice.currency=='USD' }}>USD ($)</option>
@@ -31,15 +31,15 @@
         </div>
 
         <div style="padding:0 1rem 1rem;">
-            <h3 style="margin:0 0 0.5rem;">{{ _('Factuurregels') }}</h3>
+            <h3 style="margin:0 0 0.5rem;">{{ _('Invoice items') }}</h3>
             <table id="itemsTable" style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr>
-                        <th style="text-align:left;padding:0.3rem;border-bottom:2px solid #1a1a2e;">{{ _('Omschrijving') }}</th>
-                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Aantal') }}</th>
-                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Stuksprijs') }}</th>
-                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('BTW %') }}</th>
-                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Totaal') }}</th>
+                        <th style="text-align:left;padding:0.3rem;border-bottom:2px solid #1a1a2e;">{{ _('Description') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Quantity') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Unit price') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('VAT %') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Total') }}</th>
                         <th style="width:40px;"></th>
                     </tr>
                 </thead>
@@ -56,16 +56,16 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <button type="button" data-click="addItem" class="btn-cms small" style="margin-top:0.5rem;">+ {{ _('Regel toevoegen') }}</button>
+            <button type="button" data-click="addItem" class="btn-cms small" style="margin-top:0.5rem;">+ {{ _('Add line') }}</button>
         </div>
 
         <div style="padding:0 1rem 1rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Notitie') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Note') }}</label>
                 <textarea name="notes" rows="3" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">{{ invoice.notes or '' }}</textarea>
             </div>
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Algemene voorwaarden') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Terms and Conditions') }}</label>
                 <textarea name="terms" rows="3" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">{{ invoice.terms or '' }}</textarea>
             </div>
         </div>
@@ -76,8 +76,8 @@
         </div>
 
         <div style="padding:1rem;border-top:1px solid #e5e7eb;">
-            <button type="submit" class="btn-cms bg-green">{{ _('Opslaan') }}</button>
-            <a href="{{ url_for('cms.invoice_view', invoice_id=invoice.id) }}" class="btn-cms small" style="margin-left:0.5rem;">{{ _('Annuleren') }}</a>
+            <button type="submit" class="btn-cms bg-green">{{ _('Save') }}</button>
+            <a href="{{ url_for('cms.invoice_view', invoice_id=invoice.id) }}" class="btn-cms small" style="margin-left:0.5rem;">{{ _('Cancel') }}</a>
         </div>
     </form>
 </div>

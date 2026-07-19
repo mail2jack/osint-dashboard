@@ -1,39 +1,39 @@
 # Exports
 
-Het **Export** systeem maakt het mogelijk om data uit het dashboard te exporteren voor verdere verwerking of rapportage.
+The **Export** system allows you to export data from the dashboard for further processing or reporting.
 
 ## CSV Export
 
-Findings kunnen worden geëxporteerd naar CSV-formaat. Dit is beschikbaar vanuit:
+Findings can be exported to CSV format. This is available from:
 
-- De **case detailpagina** (Reports tab → Export CSV)
-- De **search resultaten pagina**
+- The **case detail page** (Reports tab → Export CSV)
+- The **search results page**
 
-### CSV Velden
+### CSV Fields
 
-Het geëxporteerde CSV-bestand bevat:
+The exported CSV file contains:
 
-- Type (email, IP, domein, etc.)
-- Data (de gevonden waarde)
-- Bron (welke module/service)
-- Betrouwbaarheidsscore (0-100)
-- Datum
-- Case informatie
-- Subject informatie
+- Type (email, IP, domain, etc.)
+- Data (the found value)
+- Source (which module/service)
+- Confidence score (0-100)
+- Date
+- Case information
+- Subject information
 
-### Beperkingen
+### Limitations
 
-- Bij meer dan 5000 records verschijnt een waarschuwing
-- Export gebruikt `yield_per(200)` om geheugen te beperken
-- Alleen gebruikers met export-rechten kunnen exporteren
+- A warning appears when there are more than 5,000 records
+- Export uses `yield_per(200)` to limit memory usage
+- Only users with export permissions can export
 
 ## Case Reports
 
-Het **Reports** tabblad op de case detailpagina biedt:
+The **Reports** tab on the case detail page offers:
 
-- **Case Summary** — automatisch gegenereerd overzicht van de case met alle gekoppelde subjects, findings en documenten
-- **PDF Export** — indien geconfigureerd, exporteer het volledige case rapport als PDF
+- **Case Summary** — automatically generated overview of the case with all linked subjects, findings, and documents
+- **PDF Export** — if configured, export the full case report as PDF
 
 ## Audit Log Export
 
-Audit logs kunnen worden bekeken en gefilterd op de **Audit** pagina maar worden niet direct geëxporteerd (raadpleeg de database voor bulk exports).
+Audit logs can be viewed and filtered on the **Audit** page but are not directly exported (refer to the database for bulk exports).

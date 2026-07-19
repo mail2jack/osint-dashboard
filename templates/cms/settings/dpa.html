@@ -1,5 +1,5 @@
 {% extends "cms/base.html" %}
-{% block title %}DPA-register{% endblock %}
+{% block title %}DPA Register{% endblock %}
 {% block content %}
 <div class="settings-layout">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
@@ -34,22 +34,22 @@
     <div class="dpa-container">
         <div class="dpa-header">
             <div>
-                <h1>DPA-register</h1>
+                <h1>DPA Register</h1>
                 <p style="margin:.25rem 0 0;color:var(--text-muted,#64748b);font-size:.85rem;">
-                    Artikel 28 AVG — Register van verwerkers en sub-verwerkers
+                    Article 28 GDPR — Register of processors and sub-processors
                 </p>
             </div>
-            <button class="btn-cms success js-open-create">+ Nieuwe verwerker</button>
+            <button class="btn-cms success js-open-create">+ New processor</button>
         </div>
 
         {% if records %}
         <table class="dpa-table">
             <thead>
                 <tr>
-                    <th>Naam</th>
-                    <th>Doel</th>
-                    <th>Land</th>
-                    <th>Waarborg</th>
+                    <th>Name</th>
+                    <th>Purpose</th>
+                    <th>Country</th>
+                    <th>Safeguard</th>
                     <th>Contract</th>
                     <th>Status</th>
                     <th></th>
@@ -65,18 +65,18 @@
                     <td>{{ r.contract_date.strftime('%d-%m-%Y') if r.contract_date else '-' }}</td>
                     <td>
                         {% if r.status == 'active' %}
-                        <span class="badge badge-active">Actief</span>
+                        <span class="badge badge-active">Active</span>
                         {% elif r.status == 'expired' %}
-                        <span class="badge badge-expired">Verlopen</span>
+                        <span class="badge badge-expired">Expired</span>
                         {% elif r.status == 'terminated' %}
-                        <span class="badge badge-terminated">Beëindigd</span>
+                        <span class="badge badge-terminated">Terminated</span>
                         {% else %}
                         <span class="badge">{{ r.status }}</span>
                         {% endif %}
                     </td>
                     <td class="actions-cell">
-                        <button class="btn-cms blue btn-icon js-edit" data-record='{{ r.to_dict() | tojson }}' title="Bewerken">&#9998;</button>
-                        <button class="btn-cms danger btn-icon js-delete" data-id="{{ r.id }}" data-name="{{ r.name }}" title="Verwijderen">&times;</button>
+                        <button class="btn-cms blue btn-icon js-edit" data-record='{{ r.to_dict() | tojson }}' title="Edit">&#9998;</button>
+                        <button class="btn-cms danger btn-icon js-delete" data-id="{{ r.id }}" data-name="{{ r.name }}" title="Delete">&times;</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -85,9 +85,9 @@
         {% else %}
         <div class="empty-state">
             <p style="font-size:2rem;margin-bottom:.5rem;">&#128221;</p>
-            <p>Nog geen verwerkers geregistreerd.</p>
-            <p style="font-size:.85rem;">Voeg verwerkers toe om te voldoen aan Artikel 28 AVG.</p>
-            <button class="btn-cms success js-open-create" style="margin-top:1rem;">+ Nieuwe verwerker</button>
+            <p>No processors registered yet.</p>
+            <p style="font-size:.85rem;">Add processors to comply with Article 28 GDPR.</p>
+            <button class="btn-cms success js-open-create" style="margin-top:1rem;">+ New processor</button>
         </div>
         {% endif %}
     </div>
@@ -95,50 +95,50 @@
     <div class="modal-overlay" id="dpaModal">
         <div class="modal-box">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                <h2 id="modalTitle" style="margin:0;">Nieuwe verwerker</h2>
+                <h2 id="modalTitle" style="margin:0;">New processor</h2>
                 <button class="btn-cms gray btn-icon js-close-modal">&times;</button>
             </div>
             <form id="dpaForm" class="dpa-form">
                 <input type="hidden" id="recordId" value="">
                 <div>
-                    <label for="fieldName">Naam *</label>
-                    <input type="text" id="fieldName" required placeholder="Naam verwerker">
+                    <label for="fieldName">Name *</label>
+                    <input type="text" id="fieldName" required placeholder="Processor name">
                 </div>
                 <div>
                     <label for="fieldStatus">Status</label>
                     <select id="fieldStatus">
-                        <option value="active">Actief</option>
-                        <option value="expired">Verlopen</option>
-                        <option value="terminated">Beëindigd</option>
+                        <option value="active">Active</option>
+                        <option value="expired">Expired</option>
+                        <option value="terminated">Terminated</option>
                     </select>
                 </div>
                 <div class="full-width">
-                    <label for="fieldPurpose">Doel van verwerking</label>
-                    <input type="text" id="fieldPurpose" placeholder="Bijv. hosting, e-mail, analyses">
+                    <label for="fieldPurpose">Processing purpose</label>
+                    <input type="text" id="fieldPurpose" placeholder="e.g. hosting, email, analytics">
                 </div>
                 <div>
-                    <label for="fieldDataCategories">Categorieën persoonsgegevens</label>
-                    <input type="text" id="fieldDataCategories" placeholder="Bijv. naam, e-mail, IP-adres">
+                    <label for="fieldDataCategories">Personal data categories</label>
+                    <input type="text" id="fieldDataCategories" placeholder="e.g. name, email, IP address">
                 </div>
                 <div>
-                    <label for="fieldCountry">Land van verwerking</label>
-                    <input type="text" id="fieldCountry" placeholder="Bijv. Nederland, VS">
+                    <label for="fieldCountry">Processing country</label>
+                    <input type="text" id="fieldCountry" placeholder="e.g. Netherlands, US">
                 </div>
                 <div>
-                    <label for="fieldTransferSafeguard">Doorgifte waarborg</label>
+                    <label for="fieldTransferSafeguard">Transfer safeguard</label>
                     <input type="text" id="fieldTransferSafeguard" placeholder="SCC, adequacy decision, BCR">
                 </div>
                 <div>
-                    <label for="fieldContractDate">Contractdatum</label>
+                    <label for="fieldContractDate">Contract date</label>
                     <input type="date" id="fieldContractDate">
                 </div>
                 <div class="full-width">
-                    <label for="fieldNotes">Notities</label>
-                    <textarea id="fieldNotes" placeholder="Optionele notities..."></textarea>
+                    <label for="fieldNotes">Notes</label>
+                    <textarea id="fieldNotes" placeholder="Optional notes..."></textarea>
                 </div>
                 <div class="full-width" style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem;">
-                    <button type="button" class="btn-cms gray js-close-modal">Annuleren</button>
-                    <button type="submit" class="btn-cms success">Opslaan</button>
+                    <button type="button" class="btn-cms gray js-close-modal">Cancel</button>
+                    <button type="submit" class="btn-cms success">Save</button>
                 </div>
             </form>
         </div>
@@ -151,7 +151,7 @@ var dpaModal = document.getElementById('dpaModal');
 var dpaForm = document.getElementById('dpaForm');
 
 function openCreateModal() {
-    document.getElementById('modalTitle').textContent = 'Nieuwe verwerker';
+    document.getElementById('modalTitle').textContent = 'New processor';
     dpaForm.reset();
     document.getElementById('recordId').value = '';
     document.getElementById('fieldStatus').value = 'active';
@@ -159,7 +159,7 @@ function openCreateModal() {
 }
 
 function openEditModal(record) {
-    document.getElementById('modalTitle').textContent = 'Verwerker bewerken';
+    document.getElementById('modalTitle').textContent = 'Edit processor';
     document.getElementById('recordId').value = record.id;
     document.getElementById('fieldName').value = record.name || '';
     document.getElementById('fieldPurpose').value = record.purpose || '';
@@ -189,7 +189,7 @@ function saveRecord(event) {
         status: document.getElementById('fieldStatus').value,
         notes: document.getElementById('fieldNotes').value.trim(),
     };
-    if (!payload.name) { alert('Naam is verplicht.'); return; }
+    if (!payload.name) { alert('Name is required.'); return; }
 
     var url = '/cms/api/dpa';
     var method = 'POST';
@@ -197,7 +197,7 @@ function saveRecord(event) {
 
     var btn = dpaForm.querySelector('button[type="submit"]');
     btn.disabled = true;
-    btn.textContent = 'Bezig...';
+    btn.textContent = 'Saving...';
 
     fetch(url, {
         method: method,
@@ -209,12 +209,12 @@ function saveRecord(event) {
         if (data.error) { alert(data.error); return; }
         location.reload();
     })
-    .catch(function(err) { alert('Fout: ' + err.message); })
-    .finally(function() { btn.disabled = false; btn.textContent = 'Opslaan'; });
+    .catch(function(err) { alert('Error: ' + err.message); })
+    .finally(function() { btn.disabled = false; btn.textContent = 'Save'; });
 }
 
 function confirmDelete(id, name) {
-    if (!confirm('Verwerker "' + name + '" verwijderen?')) return;
+    if (!confirm('Delete processor "' + name + '"?')) return;
     fetch('/cms/api/dpa/' + id, {
         method: 'DELETE',
         headers: {'X-CSRFToken': window.CMS.csrfToken},
@@ -224,7 +224,7 @@ function confirmDelete(id, name) {
         if (data.error) { alert(data.error); return; }
         location.reload();
     })
-    .catch(function(err) { alert('Fout: ' + err.message); });
+    .catch(function(err) { alert('Error: ' + err.message); });
 }
 
 // Wire up event listeners

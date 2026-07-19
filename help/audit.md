@@ -1,36 +1,36 @@
 # Audit Log
 
-Het **Audit Log** systeem registreert alle belangrijke acties in het dashboard. Dit biedt een volledig traceerbaar overzicht van wie wat heeft gedaan en wanneer.
+The **Audit Log** system records all important actions in the dashboard. It provides a fully traceable overview of who did what and when.
 
-## Wat wordt gelogd?
+## What is logged?
 
-| Actie | Voorbeeld |
-|-------|-----------|
-| **Case aanmaken/bewerken** | Nieuwe case, statuswijziging, prioriteitswijziging |
-| **Subject aanmaken/bewerken** | Nieuw subject, gegevens wijzigen |
-| **Client aanmaken/bewerken** | Nieuwe client, adreswijziging |
-| **Finding toevoegen/bewerken** | Nieuwe OSINT-bevinding |
-| **Document uploaden** | Bestand toegevoegd aan case |
-| **Commentaar** | Opmerking geplaatst of bewerkt |
-| **Inloggen** | Gebruiker login/logout |
-| **Export** | Data geëxporteerd |
-| **SpiderFoot** | Scan gestart of resultaten gekoppeld |
-| **Instellingen wijzigen** | API keys of configuratie aangepast |
+| Action | Example |
+|--------|---------|
+| **Case create/edit** | New case, status change, priority change |
+| **Subject create/edit** | New subject, data change |
+| **Client create/edit** | New client, address change |
+| **Finding add/edit** | New OSINT finding |
+| **Document upload** | File added to case |
+| **Comment** | Comment posted or edited |
+| **Login** | User login/logout |
+| **Export** | Data exported |
+| **SpiderFoot** | Scan started or results linked |
+| **Settings change** | API keys or configuration updated |
 
-## Audit Log Bekijken
+## Viewing the Audit Log
 
-1. Ga naar **Cases** → open een case
-2. Scroll naar de **Audit Log** sectie onderaan de pagina
-3. Of gebruik de speciale audit pagina voor een globaal overzicht
+1. Go to **Cases** → open a case
+2. Scroll to the **Audit Log** section at the bottom of the page
+3. Or use the dedicated audit page for a global overview
 
-Elke entry toont:
+Each entry shows:
 
-- **Timestamp** — datum en tijd
-- **User** — welke gebruiker
-- **Action** — wat er gebeurde
-- **Details** — extra informatie (bijv. "Status changed from Open to In Progress")
-- **IP Address** — van waaruit de actie werd uitgevoerd
+- **Timestamp** — date and time
+- **User** — which user
+- **Action** — what happened
+- **Details** — additional information (e.g. "Status changed from Open to In Progress")
+- **IP Address** — where the action was performed from
 
-## Opschonen
+## Cleanup
 
-Audit logs worden automatisch opgeruimd volgens de retentieperiode die in de configuratie is ingesteld. Oude logs worden periodiek verwijderd om de database grootte te beheersen.
+Audit logs are automatically cleaned up according to the retention period configured in settings. Old logs are periodically removed to manage database size.

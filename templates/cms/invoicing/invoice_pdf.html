@@ -179,18 +179,18 @@ table.items tr:last-child td { border-bottom: 2px solid #1a1a2e; }
         <div class="company">Iveras</div>
         <div class="company-details">
             Iveras OSINT Dashboard<br>
-            {{ _('BTW:') }}/KVK: n.t.b.
+            {{ _('VAT:') }}/KVK: n.t.b.
         </div>
     </div>
     <div class="invoice-title">
-        <h1>{{ _('FACTUUR') }}</h1>
+        <h1>{{ _('INVOICE') }}</h1>
         <div class="status-badge status-{{ invoice.status }}">{{ invoice.status }}</div>
     </div>
 </div>
 
 <div class="parties">
     <div>
-        <h3>{{ _('Factuur aan') }}</h3>
+        <h3>{{ _('Bill to') }}</h3>
         <div class="value">
             {{ client.name }}<br>
             {% if client.address_street %}{{ client.address_street }} {{ client.address_number or '' }}<br>{% endif %}
@@ -199,12 +199,12 @@ table.items tr:last-child td { border-bottom: 2px solid #1a1a2e; }
         </div>
     </div>
     <div>
-        <h3>{{ _('Factuurgegevens') }}</h3>
+        <h3>{{ _('Invoice details') }}</h3>
         <div class="value">
-            <strong>{{ _('Factuurnummer:') }}</strong> {{ invoice.invoice_number }}<br>
-            <strong>{{ _('Factuurdatum:') }}</strong> {{ invoice.issue_date.strftime('%d-%m-%Y') }}<br>
-            <strong>{{ _('Vervaldatum:') }}</strong> {{ invoice.due_date.strftime('%d-%m-%Y') }}<br>
-            {% if invoice.case %}<strong>{{ _('Dossier:') }}</strong> {{ invoice.case.case_number }}{% endif %}
+            <strong>{{ _('Invoice number:') }}</strong> {{ invoice.invoice_number }}<br>
+            <strong>{{ _('Invoice date:') }}</strong> {{ invoice.issue_date.strftime('%d-%m-%Y') }}<br>
+            <strong>{{ _('Due date:') }}</strong> {{ invoice.due_date.strftime('%d-%m-%Y') }}<br>
+            {% if invoice.case %}<strong>{{ _('Case:') }}</strong> {{ invoice.case.case_number }}{% endif %}
         </div>
     </div>
 </div>
@@ -212,7 +212,7 @@ table.items tr:last-child td { border-bottom: 2px solid #1a1a2e; }
 {% if invoice.notes %}
 <div class="details">
     <div class="item">
-        <div class="label">{{ _('Notitie') }}</div>
+        <div class="label">{{ _('Note') }}</div>
         <div class="value">{{ invoice.notes }}</div>
     </div>
 </div>
@@ -221,11 +221,11 @@ table.items tr:last-child td { border-bottom: 2px solid #1a1a2e; }
 <table class="items">
     <thead>
         <tr>
-            <th style="width:50%;">{{ _('Omschrijving') }}</th>
-            <th class="right" style="width:10%;">{{ _('Aantal') }}</th>
-            <th class="right" style="width:15%;">{{ _('Stuksprijs') }}</th>
-            <th class="right" style="width:10%;">{{ _('BTW') }}</th>
-            <th class="right" style="width:15%;">{{ _('Totaal') }}</th>
+            <th style="width:50%;">{{ _('Description') }}</th>
+            <th class="right" style="width:10%;">{{ _('Quantity') }}</th>
+            <th class="right" style="width:15%;">{{ _('Unit price') }}</th>
+            <th class="right" style="width:10%;">{{ _('VAT') }}</th>
+            <th class="right" style="width:15%;">{{ _('Total') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -244,29 +244,29 @@ table.items tr:last-child td { border-bottom: 2px solid #1a1a2e; }
 <div class="totals">
     <table>
         <tr>
-            <td>{{ _('Subtotaal') }}</td>
+            <td>{{ _('Subtotal') }}</td>
             <td class="right">{{ "%.2f"|format(invoice.subtotal) }}</td>
         </tr>
         <tr>
-            <td>{{ _('BTW') }}</td>
+            <td>{{ _('VAT') }}</td>
             <td class="right">{{ "%.2f"|format(invoice.vat_amount) }}</td>
         </tr>
         <tr class="grand-total">
-            <td>{{ _('Totaal') }}</td>
+            <td>{{ _('Total') }}</td>
             <td class="right">{{ "%.2f"|format(invoice.total) }} {{ invoice.currency }}</td>
         </tr>
     </table>
 </div>
 
 {% if payments %}
-<h3 style="font-size:8pt;color:#059669;text-transform:uppercase;margin-top:0.5cm;">{{ _('Betalingen') }}</h3>
+<h3 style="font-size:8pt;color:#059669;text-transform:uppercase;margin-top:0.5cm;">{{ _('Payments') }}</h3>
 <table class="payments-table">
     <thead>
         <tr>
-            <th>{{ _('Datum') }}</th>
-            <th>{{ _('Bedrag') }}</th>
-            <th>{{ _('Methode') }}</th>
-            <th>{{ _('Referentie') }}</th>
+            <th>{{ _('Date') }}</th>
+            <th>{{ _('Amount') }}</th>
+            <th>{{ _('Method') }}</th>
+            <th>{{ _('Reference') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -283,8 +283,8 @@ table.items tr:last-child td { border-bottom: 2px solid #1a1a2e; }
 {% endif %}
 
 <div class="notes">
-    <h3>{{ _('Algemene voorwaarden') }}</h3>
-    <p>{{ invoice.terms or _('Betaling dient binnen 30 dagen na factuurdatum te zijn voldaan.') }}</p>
+    <h3>{{ _('Terms and Conditions') }}</h3>
+    <p>{{ invoice.terms or _('Payment is due within 30 days of invoice date.') }}</p>
     {% if invoice.footer %}
     <p style="margin-top:0.2cm;">{{ invoice.footer }}</p>
     {% endif %}

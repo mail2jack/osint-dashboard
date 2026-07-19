@@ -165,7 +165,7 @@ class TestFacebookCheck:
         mock_get_key.return_value = None
         findings = _facebook_check(MockAction(data_value="jan.vandijk"))
         assert len(findings) == 1
-        assert "niet beschikbaar" in findings[0]["title"].lower()
+        assert "not available" in findings[0]["title"].lower()
 
 
 class TestTikTokCheck:

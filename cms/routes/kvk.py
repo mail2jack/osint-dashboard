@@ -50,18 +50,18 @@ def kvk_lookup() -> flask.Response:
         response = jittered_get(search_url, headers=headers, timeout=15)
 
         if response.status_code == 403 or response.status_code == 401:
-            return api_error("🔑 Auth-fout (ongeldige sleutel)", 400)
+            return api_error("🔑 Auth error (invalid key)", 400)
 
         if response.status_code != 200:
             return jsonify(
-                {"error": f"Overheid.io API fout: status {response.status_code}"}
+                {"error": f"Overheid.io API error: status {response.status_code}"}
             ), 502
 
         data = response.json()
         bedrijven = data.get("_embedded", {}).get("bedrijf", [])
 
         if not bedrijven:
-            return jsonify({"results": [], "message": "Geen bedrijven gevonden"})
+            return jsonify({"results": [], "message": "No companies found"})
 
         results = []
         for company in bedrijven:
@@ -106,7 +106,7 @@ def kvk_lookup() -> flask.Response:
 
     except RequestsError as e:
         logger.warning(f"KVK lookup network error: {type(e).__name__}: {e}")
-        return jsonify({"error": f"Netwerkfout bij KVK lookup: {e}"}), 502
+        return jsonify({"error": f"Network error during KVK lookup: {e}"}), 502
     except Exception as e:
         logger.exception(f"KVK lookup unexpected error: {e}")
-        return jsonify({"error": f"Onverwachte fout: {e}"}), 500
+        return jsonify({"error": f"Unexpected error: {e}"}), 500

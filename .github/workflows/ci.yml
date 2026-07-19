@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -46,6 +46,10 @@ jobs:
             requirements-dev.txt
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python3 -m pytest tests/ -v --tb=short -q
+      - name: Security scan with bandit
+        run: bandit -c bandit.yml -r app.py cms/ -ll -f sarif || true
+      - name: Check dependency vulnerabilities
+        run: safety check -r requirements.txt --full-report || true
 
   integration-postgres:
     runs-on: ubuntu-latest

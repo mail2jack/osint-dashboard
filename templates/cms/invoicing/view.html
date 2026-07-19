@@ -1,11 +1,11 @@
 {% extends "cms/base.html" %}
-{% block title %}{{ _('Factuur') }} {{ invoice.invoice_number }}{% endblock %}
+{% block title %}{{ _('Invoice') }} {{ invoice.invoice_number }}{% endblock %}
 {% block content %}
 
 <div class="card">
     <div class="card-header">
         <div>
-            <h2 style="margin:0;">{{ _('Factuur') }} {{ invoice.invoice_number }}</h2>
+            <h2 style="margin:0;">{{ _('Invoice') }} {{ invoice.invoice_number }}</h2>
             <span style="display:inline-block;margin-top:0.25rem;padding:0.15rem 0.5rem;border-radius:3px;font-size:0.75rem;font-weight:600;
             {% if invoice.status=='draft' %}background:#f3f4f6;color:#6b7280;
             {% elif invoice.status=='sent' %}background:#dbeafe;color:#2563eb;
@@ -15,26 +15,26 @@
             {% endif %}">{{ invoice.status }}</span>
         </div>
         <div style="display:flex;gap:0.5rem;align-items:center;">
-            <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small">← {{ _('Overzicht') }}</a>
+            <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small">← {{ _('Overview') }}</a>
             <a href="{{ url_for('cms.invoice_pdf', invoice_id=invoice.id) }}" class="btn-cms small danger">{{ _('📄 PDF') }}</a>
             <a href="{{ url_for('cms.credit_note_create', invoice_id=invoice.id) }}" class="btn-cms small orange">{{ _('Credit Note') }}</a>
             {% if invoice.status == 'draft' %}
-            <a href="{{ url_for('cms.invoice_edit', invoice_id=invoice.id) }}" class="btn-cms small bg-purple">{{ _('Bewerken') }}</a>
+            <a href="{{ url_for('cms.invoice_edit', invoice_id=invoice.id) }}" class="btn-cms small bg-purple">{{ _('Edit') }}</a>
             <form method="POST" action="{{ url_for('cms.invoice_send', invoice_id=invoice.id) }}" style="display:inline;" data-submit="confirmSend">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-cms small bg-blue">{{ _('Verzenden') }}</button>
+                <button type="submit" class="btn-cms small bg-blue">{{ _('Send') }}</button>
             </form>
             {% endif %}
             {% if invoice.status in ('draft', 'sent', 'overdue') %}
-            <button data-click="markPaid" class="btn-cms small bg-green">{{ _('Betaald') }}</button>
-            <button data-click="cancelInvoice" class="btn-cms small danger">{{ _('Annuleren') }}</button>
+            <button data-click="markPaid" class="btn-cms small bg-green">{{ _('Mark Paid') }}</button>
+            <button data-click="cancelInvoice" class="btn-cms small danger">{{ _('Cancel') }}</button>
             {% endif %}
         </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding:1rem;">
         <div>
-            <h3 style="font-size:0.75rem;color:#6b7280;text-transform:uppercase;margin:0 0 0.25rem;">{{ _('Factuur aan') }}</h3>
+            <h3 style="font-size:0.75rem;color:#6b7280;text-transform:uppercase;margin:0 0 0.25rem;">{{ _('Bill to') }}</h3>
             <p style="margin:0;">
                 <strong>{{ client.name }}</strong><br>
                 {% if client.address_street %}{{ client.address_street }} {{ client.address_number or '' }}<br>{% endif %}
@@ -44,11 +44,11 @@
         </div>
         <div style="text-align:right;">
             <table style="margin-left:auto;">
-                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Factuurdatum:') }}</td><td style="font-weight:600;">{{ invoice.issue_date.strftime('%d-%m-%Y') }}</td></tr>
-                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Vervaldatum:') }}</td><td style="font-weight:600;">{{ invoice.due_date.strftime('%d-%m-%Y') }}</td></tr>
-                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Valuta:') }}</td><td>{{ invoice.currency }}</td></tr>
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Invoice date:') }}</td><td style="font-weight:600;">{{ invoice.issue_date.strftime('%d-%m-%Y') }}</td></tr>
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Due date:') }}</td><td style="font-weight:600;">{{ invoice.due_date.strftime('%d-%m-%Y') }}</td></tr>
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Currency:') }}</td><td>{{ invoice.currency }}</td></tr>
                 {% if case %}
-                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Dossier:') }}</td><td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a></td></tr>
+                <tr><td style="color:#6b7280;padding:0.1rem 0.5rem 0.1rem 0;">{{ _('Case:') }}</td><td><a href="{{ url_for('cms.view_case', case_id=case.id) }}">{{ case.case_number }}</a></td></tr>
                 {% endif %}
             </table>
         </div>
@@ -56,7 +56,7 @@
 
     {% if invoice.notes %}
     <div style="padding:0.5rem 1rem;background:#fefce8;margin:0 1rem 0.5rem;border-radius:4px;">
-        <strong style="font-size:0.75rem;color:#a16207;">{{ _('Notitie:') }}</strong>
+        <strong style="font-size:0.75rem;color:#a16207;">{{ _('Note:') }}</strong>
         <p style="margin:0.25rem 0 0;font-size:0.85rem;">{{ invoice.notes }}</p>
     </div>
     {% endif %}
@@ -64,11 +64,11 @@
     <table style="width:100%;border-collapse:collapse;">
         <thead>
             <tr>
-                <th style="text-align:left;padding:0.5rem;border-bottom:2px solid #1a1a2e;">{{ _('Omschrijving') }}</th>
-                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Aantal') }}</th>
-                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Stuksprijs') }}</th>
-                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('BTW') }}</th>
-                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Totaal') }}</th>
+                <th style="text-align:left;padding:0.5rem;border-bottom:2px solid #1a1a2e;">{{ _('Description') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Quantity') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Unit price') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('VAT') }}</th>
+                <th style="text-align:right;padding:0.5rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Total') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -86,24 +86,24 @@
 
     <div style="padding:1rem;text-align:right;">
         <table style="margin-left:auto;width:300px;">
-            <tr><td>{{ _('Subtotaal') }}</td><td style="text-align:right;">€ {{ "%.2f"|format(invoice.subtotal) }}</td></tr>
-            <tr><td>{{ _('BTW') }}</td><td style="text-align:right;">€ {{ "%.2f"|format(invoice.vat_amount) }}</td></tr>
-            <tr><td style="font-weight:700;font-size:1.1rem;padding-top:0.5rem;border-top:2px solid #1a1a2e;">{{ _('Totaal') }}</td>
+            <tr><td>{{ _('Subtotal') }}</td><td style="text-align:right;">€ {{ "%.2f"|format(invoice.subtotal) }}</td></tr>
+            <tr><td>{{ _('VAT') }}</td><td style="text-align:right;">€ {{ "%.2f"|format(invoice.vat_amount) }}</td></tr>
+            <tr><td style="font-weight:700;font-size:1.1rem;padding-top:0.5rem;border-top:2px solid #1a1a2e;">{{ _('Total') }}</td>
                 <td style="text-align:right;font-weight:700;font-size:1.1rem;padding-top:0.5rem;border-top:2px solid #1a1a2e;">€ {{ "%.2f"|format(invoice.total) }}</td></tr>
         </table>
     </div>
 
     {% if payments %}
     <div style="padding:0 1rem 1rem;">
-        <h3 style="font-size:0.85rem;color:#059669;margin:0 0 0.5rem;">{{ _('Betalingen') }}</h3>
+        <h3 style="font-size:0.85rem;color:#059669;margin:0 0 0.5rem;">{{ _('Payments') }}</h3>
         <table style="width:100%;border-collapse:collapse;">
             <thead>
                 <tr>
-                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Datum') }}</th>
-                    <th style="text-align:right;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Bedrag') }}</th>
-                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Methode') }}</th>
-                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Referentie') }}</th>
-                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Notities') }}</th>
+                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Date') }}</th>
+                    <th style="text-align:right;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Amount') }}</th>
+                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Method') }}</th>
+                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Reference') }}</th>
+                    <th style="text-align:left;padding:0.3rem;background:#059669;color:white;font-size:0.75rem;">{{ _('Notes') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -123,7 +123,7 @@
 
     {% if invoice.terms %}
     <div style="padding:0.5rem 1rem 1rem;border-top:1px solid #e5e7eb;">
-        <h3 style="font-size:0.75rem;color:#6b7280;text-transform:uppercase;margin:0 0 0.25rem;">{{ _('Algemene voorwaarden') }}</h3>
+        <h3 style="font-size:0.75rem;color:#6b7280;text-transform:uppercase;margin:0 0 0.25rem;">{{ _('Terms and Conditions') }}</h3>
         <p style="font-size:0.8rem;color:#6b7280;white-space:pre-wrap;margin:0;">{{ invoice.terms }}</p>
     </div>
     {% endif %}
@@ -132,34 +132,34 @@
 <!-- Mark Paid Modal -->
 <div id="paidModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;">
     <div style="background:white;border-radius:8px;padding:1.5rem;width:400px;max-width:90vw;">
-        <h3 style="margin:0 0 1rem;">{{ _('Betaling registreren') }}</h3>
+        <h3 style="margin:0 0 1rem;">{{ _('Register Payment') }}</h3>
         <form method="POST" action="{{ url_for('cms.invoice_mark_paid', invoice_id=invoice.id) }}" data-submit="submitPaidForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:0.75rem;">
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Betaald bedrag') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Paid amount') }}</label>
                 <input type="number" name="amount" value="{{ invoice.total }}" step="0.01" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
             </div>
             <div style="margin-bottom:0.75rem;">
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Betaaldatum') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Payment date') }}</label>
                 <input type="date" name="payment_date" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
             </div>
             <div style="margin-bottom:0.75rem;">
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Betaalmethode') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Payment method') }}</label>
                 <select name="payment_method" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
-                    <option value="transfer">{{ _('Overschrijving') }}</option>
+                    <option value="transfer">{{ _('Bank transfer') }}</option>
                     <option value="ideal">iDEAL</option>
-                    <option value="cash">{{ _('Contant') }}</option>
+                    <option value="cash">{{ _('Cash') }}</option>
                     <option value="creditcard">Creditcard</option>
-                    <option value="other">{{ _('Anders') }}</option>
+                    <option value="other">{{ _('Other') }}</option>
                 </select>
             </div>
             <div style="margin-bottom:0.75rem;">
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Referentie') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Reference') }}</label>
                 <input type="text" name="reference" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
             </div>
             <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-                <button type="button" data-click="closePaidModal" class="btn-cms small">{{ _('Annuleren') }}</button>
-                <button type="submit" class="btn-cms bg-green">{{ _('Betaald registreren') }}</button>
+                <button type="button" data-click="closePaidModal" class="btn-cms small">{{ _('Cancel') }}</button>
+                <button type="submit" class="btn-cms bg-green">{{ _('Register Payment') }}</button>
             </div>
         </form>
     </div>
@@ -196,8 +196,8 @@ function submitPaidForm(e) {
 }
 
 function cancelInvoice() {
-    if (!confirm('{{ _("Weet je zeker dat je deze factuur wilt annuleren?") }}')) return;
-    const reason = prompt('{{ _("Reden voor annuleren (optioneel):") }}') || '';
+    if (!confirm('{{ _("Are you sure you want to cancel this invoice?") }}')) return;
+    const reason = prompt('{{ _("Reason for cancellation (optional):") }}') || '';
     apiFetch('{{ url_for("cms.invoice_cancel", invoice_id=invoice.id) }}', {
         method: 'POST',
         headers: {
@@ -213,7 +213,7 @@ function cancelInvoice() {
 
 function confirmSend(e) {
     e.preventDefault();
-    if (!confirm('{{ _("Weet je zeker dat je deze factuur wilt verzenden?") }}')) return;
+    if (!confirm('{{ _("Are you sure you want to send this invoice?") }}')) return;
     const form = e.target;
     const csrf = form.querySelector('input[name="csrf_token"]').value;
     apiFetch(form.action, {

@@ -1,38 +1,38 @@
-# Algemeen
+# General
 
-Het OSINT Dashboard is een webapplicatie voor het beheren van onderzoeken (cases), het vastleggen van bevindingen (findings), en het uitvoeren van OSINT-zoekopdrachten.
+The OSINT Dashboard is a web application for managing investigations (cases), recording findings, and performing OSINT searches.
 
-## Navigatie
+## Navigation
 
-De hoofdnavigatiebalk bevat:
+The main navigation bar contains:
 
-- **Dashboard** — centrale hub met statistieken en recente activiteit
-- **Cases** — overzicht van alle onderzoeken
-- **Clients** — opdrachtgevers gekoppeld aan cases
-- **Subjects** — personen, bedrijven of schepen van interesse
-- **Search** — full-text zoeken door de hele database
-- **Reminders** — herinneringen en notificaties
-- **SpiderFoot** — OSINT-scanautomation (alleen voor senior/ admin)
-- **Settings** — applicatieconfiguratie (alleen admin)
+- **Dashboard** — central hub with statistics and recent activity
+- **Cases** — overview of all investigations
+- **Clients** — clients linked to cases
+- **Subjects** — persons, companies, or vessels of interest
+- **Search** — full-text search across the entire database
+- **Reminders** — reminders and notifications
+- **SpiderFoot** — OSINT scan automation (senior/admin only)
+- **Settings** — application configuration (admin only)
 
-## Toetsenbord sneltoetsen
+## Keyboard Shortcuts
 
-| Toets | Actie |
-|-------|-------|
-| `?` | Open context-sensitive help paneel |
-| `s` | Focus de zoekbalk (op search-pagina's) |
-| `j` / `k` | Navigeer omlaag/omhoog in lijsten |
-| `Enter` | Open geselecteerd item |
-| `Escape` | Sluit modals / help paneel |
+| Key | Action |
+|-----|--------|
+| `?` | Open context-sensitive help panel |
+| `s` | Focus the search bar (on search pages) |
+| `j` / `k` | Navigate down/up in lists |
+| `Enter` | Open selected item |
+| `Escape` | Close modals / help panel |
 
-## Thema
+## Theme
 
-Klik op het 🌙/☀️ icoon rechtsboven om te schakelen tussen dark/light mode. De keuze wordt opgeslagen in localStorage.
+Click the 🌙/☀️ icon in the top right to toggle between dark/light mode. The choice is saved in localStorage.
 
-## Sessie
+## Session
 
-De sessie verloopt na 8 uur inactiviteit. Bijgevoegde bestanden zijn beperkt tot 16 MB per upload.
+The session expires after 8 hours of inactivity. Attached files are limited to 16 MB per upload.
 
 ## Rate Limiting
 
-Om misbruik te voorkomen is er een globale limiet van 300 verzoeken per 60 seconden per IP. Voor create/edit acties geldt een strengere limiet van 30 verzoeken per 60 seconden.
+To prevent abuse, there is a global limit of 300 requests per 60 seconds per IP. For create/edit actions, a stricter limit of 30 requests per 60 seconds applies.

@@ -1,73 +1,73 @@
 # Cases
 
-Een **Case** is de centrale organisatie-eenheid van het systeem. Het groepeert subjects, findings, documenten, financiële gegevens en opmerkingen in één onderzoek.
+A **Case** is the central organizational unit of the system. It groups subjects, findings, documents, financial data, and comments into one investigation.
 
-## Case Velden
+## Case Fields
 
-| Veld | Omschrijving |
-|------|-------------|
-| **Title** | Korte beschrijvende naam van het onderzoek |
+| Field | Description |
+|-------|-------------|
+| **Title** | Short descriptive name of the investigation |
 | **Status** | Open / In Progress / On Hold / Closed / Archived |
 | **Priority** | Low / Medium / High / Critical |
-| **Client** | De opdrachtgever (verplicht) |
-| **Description** | Uitgebreide omschrijving van het onderzoek |
-| **Tags** | Labels voor categorisatie |
+| **Client** | The client (required) |
+| **Description** | Extended description of the investigation |
+| **Tags** | Labels for categorization |
 
-## Status Transities
+## Status Transitions
 
-De mogelijke statusovergangen:
+The possible status transitions:
 
-- **Open** → **In Progress** (onderzoek gestart)
-- **In Progress** → **On Hold** (wacht op informatie)
-- **In Progress** → **Closed** (afgerond)
-- **On Hold** → **In Progress** (onderzoek hervat)
-- **Closed** → **Archived** (gearchiveerd)
+- **Open** → **In Progress** (investigation started)
+- **In Progress** → **On Hold** (waiting for information)
+- **In Progress** → **Closed** (completed)
+- **On Hold** → **In Progress** (investigation resumed)
+- **Closed** → **Archived** (archived)
 
-Gebruik de **State** sectie op de case detailpagina om de status te wijzigen.
+Use the **State** section on the case detail page to change the status.
 
-## Een Case Aanmaken
+## Creating a Case
 
-1. Klik **Cases** in de header, dan **New Case**
-2. Vul de verplichte velden in (Titel, Client)
-3. Selecteer Status en Prioriteit
-4. Klik **Save**
+1. Click **Cases** in the header, then **New Case**
+2. Fill in the required fields (Title, Client)
+3. Select Status and Priority
+4. Click **Save**
 
-De case wordt aangemaakt en je wordt doorgestuurd naar de detailpagina.
+The case is created and you are redirected to the detail page.
 
-## Case Detailpagina
+## Case Detail Page
 
-De detailpagina toont verschillende secties:
+The detail page shows various sections:
 
 ### Subjects
-Gelinkte personen, bedrijven of schepen. Klik **Link Subjects** om bestaande subjects te koppelen of nieuwe aan te maken. Eén subject kan aan meerdere cases zijn gekoppeld.
+Linked persons, companies, or vessels. Click **Link Subjects** to link existing subjects or create new ones. A single subject can be linked to multiple cases.
 
 ### Findings
-OSINT-bevindingen georganiseerd per subject. Elke finding heeft een type, betrouwbaarheidsscore en bron. Findings kunnen worden toegevoegd via handmatige invoer, SpiderFoot-import, of OSINT Search.
+OSINT findings organized by subject. Each finding has a type, confidence score, and source. Findings can be added via manual entry, SpiderFoot import, or OSINT Search.
 
-### Documenten
-Geüploade bestanden en screenshots (max 16 MB per bestand). Ondersteunde formaten: PDF, afbeeldingen, Office-documenten.
+### Documents
+Uploaded files and screenshots (max 16 MB per file). Supported formats: PDF, images, Office documents.
 
-### Financiële Gegevens
-Banktransacties, facturen en betalingsregels. Elke financial record heeft een type (credit/debet), bedrag, datum en tegenpartij.
+### Financial Data
+Bank transactions, invoices, and payment records. Each financial record has a type (credit/debit), amount, date, and counterparty.
 
-### Opmerkingen
-Interne teamnotities. Opmerkingen kunnen worden bewerkt en hebben een bewerkingsgeschiedenis.
+### Comments
+Internal team notes. Comments can be edited and have an edit history.
 
 ### Audit Log
-Een compleet logboek van wie wat heeft gedaan en wanneer.
+A complete log of who did what and when.
 
-## Rapporten
+## Reports
 
-Het **Reports** tabblad biedt:
+The **Reports** tab offers:
 
-- **Case Summary** — overzicht gegenereerd uit case data
-- **CSV Export** — exporteer findings naar CSV
-- **PDF Export** — exporteer case rapport naar PDF (indien geconfigureerd)
+- **Case Summary** — overview generated from case data
+- **CSV Export** — export findings to CSV
+- **PDF Export** — export case report to PDF (if configured)
 
-## Cases Zoeken
+## Searching Cases
 
-Gebruik de zoekbalk bovenaan de cases lijst om te filteren op titel, status, client of tags.
+Use the search bar above the cases list to filter by title, status, client, or tags.
 
-## Paginering
+## Pagination
 
-Findings, documenten en financials worden getoond in pagina's van 20 stuks. Gebruik de **Previous** / **Next** knoppen om te navigeren.
+Findings, documents, and financials are displayed in pages of 20 items. Use the **Previous** / **Next** buttons to navigate.

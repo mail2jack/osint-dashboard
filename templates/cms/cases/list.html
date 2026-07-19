@@ -95,7 +95,7 @@
         </select>
         <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.82rem;white-space:nowrap;margin-left:auto;">
           <input type="checkbox" name="show_archived" value="1" {% if filters.show_archived %}checked{% endif %}>
-          {{ _('Toon gearchiveerde') }}
+          {{ _('Show archived') }}
         </label>
         <button type="submit" class="btn-cms primary">{{ _('Filter') }}</button>
         <a href="{{ url_for('cms.cases') }}" class="btn-cms gray">{{ _('Clear') }}</a>

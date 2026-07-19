@@ -125,32 +125,32 @@
   <div>
     <h1>{{ case.title }}</h1>
     <div class="meta">
-      {{ case.case_number }} · Aangemaakt {{ case.created_at }} ·
-      Gewijzigd {{ case.updated_at }}
+      {{ case.case_number }} · Created {{ case.created_at }} ·
+      Updated {{ case.updated_at }}
     </div>
   </div>
   <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
     <span class="badge badge-status-{{ case.status }}">{{ case.status }}</span>
     <span class="badge badge-priority-{{ case.priority }}">{{ case.priority }}</span>
     <a href="#" class="btn-cms small">📋 Export CSV</a>
-    <a href="#" class="btn-cms primary small">✏️ Bewerk</a>
+    <a href="#" class="btn-cms primary small">✏️ Edit</a>
   </div>
 </div>
 
 {# ─── Case Info Card ──────────────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
-  <div class="card-header"><h2>📄 Casusinformatie</h2></div>
+  <div class="card-header"><h2>📄 Case Information</h2></div>
   <div class="info-grid" style="grid-template-columns:1fr 1fr;">
-    <div class="info-row"><span class="info-label">Opdrachtgever</span><span class="info-value"><a href="#" style="font-weight:500;">{{ case.client_name }}</a></span></div>
+    <div class="info-row"><span class="info-label">Client</span><span class="info-value"><a href="#" style="font-weight:500;">{{ case.client_name }}</a></span></div>
     <div class="info-row"><span class="info-label">Lead Investigator</span><span class="info-value">{{ case.lead_investigator }}</span></div>
     <div class="info-row"><span class="info-label">Toegewezen aan</span><span class="info-value">{{ case.assigned_to }}</span></div>
-    <div class="info-row"><span class="info-label">Uiterlijke datum</span><span class="info-value">{{ case.due_date }}</span></div>
+    <div class="info-row"><span class="info-label">Due date</span><span class="info-value">{{ case.due_date }}</span></div>
     <div class="info-row" style="grid-column:1/-1;">
-      <span class="info-label">Wetsartikelen</span>
+      <span class="info-label">Criminal code articles</span>
       <span class="info-value" style="font-size:0.85rem;">{{ case.criminal_code }}</span>
     </div>
     <div class="info-row" style="grid-column:1/-1;">
-      <span class="info-label">Omschrijving</span>
+      <span class="info-label">Description</span>
       <span class="info-value">{{ case.description }}</span>
     </div>
     <div class="info-row" style="grid-column:1/-1;">
@@ -163,13 +163,13 @@
     </div>
     {% if child_cases %}
     <div class="info-row" style="grid-column:1/-1;">
-      <span class="info-label">Gerelateerde zaken</span>
+      <span class="info-label">Related cases</span>
       <span class="info-value" style="display:flex;flex-direction:column;gap:0.3rem;">
         {% for cc in child_cases %}
         <div style="display:flex;align-items:center;gap:0.5rem;">
           <a href="#" style="font-weight:500;">{{ cc.case_number }}</a>
           <span style="color:var(--text-muted);font-size:0.85rem;">{{ cc.title }}</span>
-          <span class="badge badge-status-{{ cc.status }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ cc.status }}</span>
+          <span class="badge badge-status-{{ case.status }}" style="font-size:0.7rem;padding:0.1rem 0.4rem;">{{ cc.status }}</span>
         </div>
         {% endfor %}
       </span>
@@ -187,8 +187,8 @@
 {# ─── Subjects ───────────────────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
   <div class="card-header">
-    <h2>👤 Betrokkenen ({{ subjects|length }})</h2>
-    <a href="#" class="btn-cms small">+ Koppel subject</a>
+    <h2>👤 Subjects ({{ subjects|length }})</h2>
+    <a href="#" class="btn-cms small">+ Link subject</a>
   </div>
   {% for s in subjects %}
   <div class="subject-card">
@@ -229,16 +229,16 @@
 {# ─── Findings ───────────────────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
   <div class="card-header">
-    <h2>📋 Bevindingen ({{ findings|length }})</h2>
+    <h2>📋 Findings ({{ findings|length }})</h2>
     <div style="display:flex;gap:0.4rem;">
       <a href="#" class="btn-cms purple small">⏳ Timeline</a>
-      <a href="#" class="btn-cms small">+ Nieuwe</a>
+      <a href="#" class="btn-cms small">+ New</a>
     </div>
   </div>
   <div style="padding:0.5rem 0.75rem;display:flex;flex-wrap:wrap;gap:0.35rem;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);">
-    <input type="text" placeholder="Filter op titel" style="flex:1;min-width:100px;padding:0.3rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;">
+    <input type="text" placeholder="Filter by title" style="flex:1;min-width:100px;padding:0.3rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;">
     <select style="padding:0.3rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.8rem;">
-      <option>Alle bronnen</option><option>OSINT</option><option>Document</option><option>Handmatig</option>
+      <option>All sources</option><option>OSINT</option><option>Document</option><option>Manual</option>
     </select>
     <a href="#" class="btn-cms gray small">Filter</a>
   </div>
@@ -258,9 +258,9 @@
   </div>
   {% endfor %}
   <div style="padding:0.6rem;display:flex;justify-content:center;gap:0.5rem;font-size:0.8rem;">
-    <a href="#" class="btn-cms gray small">← Vorige</a>
-    <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">Pagina 1 van 1</span>
-    <a href="#" class="btn-cms gray small">Volgende →</a>
+    <a href="#" class="btn-cms gray small">← Previous</a>
+    <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">Page 1 of 1</span>
+    <a href="#" class="btn-cms gray small">Next →</a>
   </div>
 </div>
 
@@ -273,11 +273,11 @@
 <div class="card" style="margin-bottom:1rem;">
   <div class="card-header">
     <h2>💬 Comments ({{ comments|length }})</h2>
-    <a href="#" class="btn-cms small">+ Nieuwe notitie</a>
+    <a href="#" class="btn-cms small">+ New note</a>
   </div>
   <div style="padding:0.5rem 0.75rem;border-bottom:1px solid var(--border-color);display:flex;gap:0.4rem;">
-    <textarea placeholder="Schrijf een notitie..." style="flex:1;padding:0.4rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;min-height:2.4rem;" rows="1"></textarea>
-    <button class="btn-cms primary small" style="align-self:flex-end;">Plaats</button>
+    <textarea placeholder="Write a note..." style="flex:1;padding:0.4rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;min-height:2.4rem;" rows="1"></textarea>
+    <button class="btn-cms primary small" style="align-self:flex-end;">Post</button>
   </div>
   {% for c in comments %}
   <div class="comment-bubble {% if c.is_pinned %}pinned{% endif %}">
@@ -293,17 +293,17 @@
 {# ─── Documents ─────────────────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
   <div class="card-header">
-    <h2>📎 Documenten ({{ documents|length }})</h2>
+    <h2>📎 Documents ({{ documents|length }})</h2>
     <a href="#" class="btn-cms small">+ Upload</a>
   </div>
   <table class="data-table">
     <thead>
       <tr>
-        <th>Naam</th>
-        <th>Classificatie</th>
+        <th>Name</th>
+        <th>Classification</th>
         <th>Type</th>
-        <th>Grootte</th>
-        <th>Toegevoegd door</th>
+        <th>Size</th>
+        <th>Uploaded by</th>
         <th>Datum</th>
         <th></th>
       </tr>
@@ -330,15 +330,15 @@
 {# ─── Reminders full width ───────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
   <div class="card-header">
-    <h2>⏰ Herinneringen</h2>
-    <a href="#" class="btn-cms small">+ Nieuwe</a>
+    <h2>⏰ Reminders</h2>
+    <a href="#" class="btn-cms small">+ New</a>
   </div>
   {% for r in reminders %}
   <div class="reminder-item {% if r.is_overdue %}overdue{% endif %}">
     <div>
       <strong>{{ r.title }}</strong>
       <div style="font-size:0.8rem;color:var(--text-muted);">
-        {% if r.is_overdue %}⚠️ Verlopen: {% endif %}{{ r.date }}
+        {% if r.is_overdue %}⚠️ Overdue: {% endif %}{{ r.date }}
       </div>
     </div>
     <button class="btn-cms small primary">✓</button>

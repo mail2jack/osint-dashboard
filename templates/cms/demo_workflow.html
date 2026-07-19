@@ -90,21 +90,21 @@
 </style>
 
 <div class="demo-banner">
-  ⚡ DEMO WORKFLOW — Personenonderzoek · Simulatie van volledig onderzoekstraject
-  <a href="/demo/case/kees" style="margin-left:0.5rem;">← Naar casusdetail</a>
+  ⚡ DEMO WORKFLOW — Person Investigation · Simulated full investigation track
+  <a href="/demo/case/kees" style="margin-left:0.5rem;">← To case detail</a>
 </div>
 
 {# ─── HEADER ──────────────────────────────────────────── #}
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
   <div>
-    <h1 style="margin:0;">🔍 Personenonderzoek — Workflow</h1>
+    <h1 style="margin:0;">🔍 Person Investigation — Workflow</h1>
     <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
-      Simulatie: doorloop de stappen van een onderzoek van opdracht tot proces-verbaal
+      Simulation: walk through the steps of an investigation from assignment to official report
     </p>
   </div>
   <div style="display:flex;gap:0.5rem;align-items:center;">
-    <span id="totalFindings" class="findings-counter">📋 0 bevindingen</span>
-    <a href="#" onclick="showProcesVerbaal();return false;" class="btn-cms primary small">📄 Proces-verbaal genereren</a>
+    <span id="totalFindings" class="findings-counter">📋 0 findings</span>
+    <a href="#" onclick="showProcesVerbaal();return false;" class="btn-cms primary small">📄 Generate official report</a>
   </div>
 </div>
 
@@ -112,8 +112,8 @@
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">1</span>
-    Opdrachtgever (Client)
-    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Gereed ✓</span>
+    Client
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Ready ✓</span>
   </div>
   <div class="workflow-step-body">
     <div class="subject-info-grid">
@@ -149,8 +149,8 @@
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">2</span>
-    Betrokkene(n) (Subject)
-    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Gereed ✓</span>
+    Subject(s)
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Ready ✓</span>
   </div>
   <div class="workflow-step-body">
     <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
@@ -214,25 +214,25 @@
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">3</span>
-    Onderzoeksacties
-    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Klik op een actie om te starten</span>
+    Research Actions
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;" id="actionsStatus">Click an action to start</span>
   </div>
   <div class="workflow-step-body">
     <div class="action-grid">
       <div class="action-btn" onclick="runCheck(this, 'email')" data-check="email">
         <div class="icon">📧</div>
-        <div class="label">E-mail check</div>
+        <div class="label">Email check</div>
         <div class="desc">ProtonMail + breaches</div>
       </div>
       <div class="action-btn" onclick="runCheck(this, 'phone')" data-check="phone">
         <div class="icon">📞</div>
-        <div class="label">Telefoon check</div>
-        <div class="desc">Koppeling identiteiten</div>
+        <div class="label">Phone check</div>
+        <div class="desc">Identity linking</div>
       </div>
       <div class="action-btn" onclick="runCheck(this, 'address')" data-check="address">
         <div class="icon">🏠</div>
-        <div class="label">Adres onderzoek</div>
-        <div class="desc">Kadaster + inschrijving</div>
+        <div class="label">Address investigation</div>
+        <div class="desc">Land registry + registration</div>
       </div>
       <div class="action-btn" onclick="runCheck(this, 'social')" data-check="social">
         <div class="icon">🌐</div>
@@ -241,13 +241,13 @@
       </div>
       <div class="action-btn" onclick="runCheck(this, 'kvk')" data-check="kvk">
         <div class="icon">🏢</div>
-        <div class="label">KvK onderzoek</div>
-        <div class="desc">Bedrijfsgegevens Kees Holding</div>
+        <div class="label">KvK investigation</div>
+        <div class="desc">Company data Kees Holding</div>
       </div>
       <div class="action-btn" onclick="runCheck(this, 'rdw')" data-check="rdw">
         <div class="icon">🚗</div>
-        <div class="label">Voertuig check (RDW)</div>
-        <div class="desc">Kentekenonderzoek</div>
+        <div class="label">Vehicle check (RDW)</div>
+        <div class="desc">License plate investigation</div>
       </div>
       <div class="action-btn" onclick="runCheck(this, 'osint')" data-check="osint">
         <div class="icon">🌍</div>
@@ -256,8 +256,8 @@
       </div>
       <div class="action-btn" onclick="runCheck(this, 'financial')" data-check="financial">
         <div class="icon">💰</div>
-        <div class="label">Financieel onderzoek</div>
-        <div class="desc">Rekeningen + transacties</div>
+        <div class="label">Financial investigation</div>
+        <div class="desc">Accounts + transactions</div>
       </div>
     </div>
   </div>
@@ -267,15 +267,15 @@
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">4</span>
-    Bevindingen (Findings)
-    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">0 bevindingen</span>
+    Findings
+    <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">0 findings</span>
   </div>
   <div class="workflow-step-body">
     <div id="findingsContainer">
       <div style="text-align:center;padding:2rem;color:var(--text-muted);">
         <div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div>
-        <p>Voer onderzoeksacties uit in Stap 3 om bevindingen te genereren.</p>
-        <p style="font-size:0.85rem;">Elke actie voegt bevindingen met screenshots (datum/tijd/link) toe.</p>
+        <p>Run research actions in Step 3 to generate findings.</p>
+        <p style="font-size:0.85rem;">Each action adds findings with screenshots (date/time/link).</p>
       </div>
     </div>
   </div>
@@ -285,13 +285,13 @@
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">5</span>
-    Proces-verbaal
-    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Genereer na afronding onderzoek</span>
+    Official Report (Proces-verbaal)
+    <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Generate after completing investigation</span>
   </div>
   <div class="workflow-step-body">
     <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
       <button onclick="showProcesVerbaal()" class="btn-cms primary">📄 Proces-verbaal genereren</button>
-      <span style="font-size:0.85rem;color:var(--text-muted);">Alle bevindingen worden samengevoegd in een rechtsgeldig proces-verbaal</span>
+      <span style="font-size:0.85rem;color:var(--text-muted);">All findings are merged into a legally valid official report</span>
     </div>
     <div id="pvOutput" style="display:none;"></div>
   </div>
@@ -347,7 +347,7 @@ function runCheck(btn, checkType) {
   if (btn.classList.contains('done')) return;
   
   btn.classList.add('running');
-  document.getElementById('actionsStatus').textContent = '🔄 Bezig met ' + btn.querySelector('.label').textContent + '...';
+  document.getElementById('actionsStatus').textContent = '🔄 Running ' + btn.querySelector('.label').textContent + '...';
   
   setTimeout(() => {
     btn.classList.remove('running');
@@ -360,7 +360,7 @@ function runCheck(btn, checkType) {
     });
     
     renderFindings();
-    document.getElementById('actionsStatus').textContent = '✅ ' + btn.querySelector('.label').textContent + ' voltooid — ' + findings.length + ' bevindingen';
+    document.getElementById('actionsStatus').textContent = '✅ ' + btn.querySelector('.label').textContent + ' completed — ' + findings.length + ' findings';
   }, checkType === 'osint' ? 2500 : 1500);
 }
 
@@ -369,11 +369,11 @@ function renderFindings() {
   const countEl = document.getElementById('findingsCount');
   const totalEl = document.getElementById('totalFindings');
   
-  countEl.textContent = FINDINGS_MAP.length + ' bevindingen';
-  totalEl.innerHTML = '📋 ' + FINDINGS_MAP.length + ' bevindingen';
+  countEl.textContent = FINDINGS_MAP.length + ' findings';
+  totalEl.innerHTML = '📋 ' + FINDINGS_MAP.length + ' findings';
   
   if (FINDINGS_MAP.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Voer onderzoeksacties uit in Stap 3 om bevindingen te genereren.</p></div>';
+    container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Run research actions in Step 3 to generate findings.</p></div>';
     return;
   }
   
@@ -397,7 +397,7 @@ function renderFindings() {
         '<div class="screenshot">' +
           '<div class="ss-row"><span class="ss-label">📸 Screenshot</span> <span>' + dateStr + ' om ' + timeStr + '</span></div>' +
           '<div class="ss-row"><span class="ss-label">🔗 Bron:</span> <span>' + (f.url || 'Interne bron') + '</span></div>' +
-          '<div class="ss-row"><span class="ss-label">✅ Status:</span> <span style="color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? 'Geverifieerd' : 'Nog te verifiëren') + '</span></div>' +
+          '<div class="ss-row"><span class="ss-label">✅ Status:</span> <span style="color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? 'Verified' : 'Pending verification') + '</span></div>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -413,7 +413,7 @@ function showProcesVerbaal() {
   const total = FINDINGS_MAP.length;
   
   if (total === 0) {
-    alert('Voer eerst onderzoeksacties uit om bevindingen te genereren.');
+    alert('First run research actions to generate findings.');
     return;
   }
   
@@ -422,36 +422,36 @@ function showProcesVerbaal() {
   
   let findingsHtml = '';
   FINDINGS_MAP.forEach((f, i) => {
-    findingsHtml += '<tr><td>' + (i + 1) + '.</td><td>' + esc(f.title) + '</td><td>' + esc(f.detail) + '</td><td>' + (f.url ? esc(f.url) : '—') + '</td><td>' + (f.verified ? 'Ja' : 'Nee') + '</td></tr>';
+    findingsHtml += '<tr><td>' + (i + 1) + '.</td><td>' + esc(f.title) + '</td><td>' + esc(f.detail) + '</td><td>' + (f.url ? esc(f.url) : '—') + '</td><td>' + (f.verified ? 'Yes' : 'No') + '</td></tr>';
   });
   
   pv.style.display = 'block';
   pv.innerHTML = '<div class="pv-template">' +
     '<h3>PROCES-VERBAAL</h3>' +
-    '<p><strong>Zaak:</strong> C-2026-042 — Fraudeonderzoek Kees de Vries</p>' +
-    '<p><strong>Opdrachtgever:</strong> Schadeverzekering Nederland N.V.</p>' +
-    '<p><strong>Datum opgemaakt:</strong> ' + dateStr + '</p>' +
-    '<p><strong>Opgesteld door:</strong> Lisa van Dijk, Senior Onderzoeker</p>' +
+    '<p><strong>Case:</strong> C-2026-042 — Fraud Investigation Kees de Vries</p>' +
+    '<p><strong>Client:</strong> Schadeverzekering Nederland N.V.</p>' +
+    '<p><strong>Date prepared:</strong> ' + dateStr + '</p>' +
+    '<p><strong>Prepared by:</strong> Lisa van Dijk, Senior Investigator</p>' +
     '<hr style="border:none;border-top:1px solid #ccc;margin:1rem 0;">' +
-    '<h4>1. Aanleiding</h4>' +
-    '<p>Naar aanleiding van een melding van Schadeverzekering Nederland N.V. is een onderzoek ingesteld naar Kees de Vries in verband met verzekeringsfraude en identiteitsdiefstal.</p>' +
-    '<h4>2. Onderzoeksbevindingen</h4>' +
+    '<h4>1. Reason for Investigation</h4>' +
+    '<p>Following a report from Schadeverzekering Nederland N.V., an investigation was initiated into Kees de Vries regarding insurance fraud and identity theft.</p>' +
+    '<h4>2. Investigation Findings</h4>' +
     '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">' +
-      '<thead><tr style="background:#f1f5f9;"><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">#</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Bevinding</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Detail</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Bron</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Geverifieerd</th></tr></thead>' +
+      '<thead><tr style="background:#f1f5f9;"><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">#</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Finding</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Details</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Source</th><th style="padding:0.4rem;text-align:left;border:1px solid #ddd;">Verified</th></tr></thead>' +
       '<tbody>' + findingsHtml + '</tbody>' +
     '</table>' +
-    '<h4>3. Conclusie</h4>' +
-    '<p>Er zijn ' + total + ' bevindingen geregistreerd. Geadviseerd wordt om de zaak voor te leggen aan het Openbaar Ministerie in verband met verdenking van valsheid in geschrifte (Art. 225 Sr) en oplichting (Art. 326 Sr).</p>' +
-    '<h4>4. Bijlagen</h4>' +
-    '<p>De volgende bijlagen zijn beschikbaar:</p>' +
+    '<h4>3. Conclusion</h4>' +
+    '<p>A total of ' + total + ' findings were recorded. It is recommended to submit this case to the Public Prosecution Service on suspicion of forgery (Art. 225 Dutch Criminal Code) and fraud (Art. 326 Dutch Criminal Code).</p>' +
+    '<h4>4. Appendices</h4>' +
+    '<p>The following appendices are available:</p>' +
     '<ul>' +
-      '<li>Ingescande documenten (5 stuks)</li>' +
-      '<li>Screenshots van online bronnen (' + total + ' stuks)</li>' +
-      '<li>Financieel transactieoverzicht</li>' +
-      '<li>KvK-uittreksels</li>' +
+      '<li>Scanned documents (5 items)</li>' +
+      '<li>Screenshots of online sources (' + total + ' items)</li>' +
+      '<li>Financial transaction overview</li>' +
+      '<li>Chamber of Commerce extracts</li>' +
     '</ul>' +
     '<hr style="border:none;border-top:1px solid #ccc;margin:1rem 0;">' +
-    '<p style="font-size:0.8rem;color:#666;">Digitaal ondertekend door L. van Dijk, B.Sc. · ' + dateStr + '</p>' +
+    '<p style="font-size:0.8rem;color:#666;">Digitally signed by L. van Dijk, B.Sc. · ' + dateStr + '</p>' +
   '</div>';
   
   pv.scrollIntoView({ behavior: 'smooth' });

@@ -1,10 +1,10 @@
 # Dashboard
 
-Het Dashboard is de startpagina na het inloggen. Het is nu **search-centric**: de zoekbalk staat prominent centraal voor snel zoeken in cases, subjects, clients, findings en documenten.
+The Dashboard is the home page after logging in. It is now **search-centric**: the search bar is prominently centered for quick searching across cases, subjects, clients, findings, and documents.
 
-## Zoeken
+## Search
 
-Typ een zoekterm in de centrale balk en druk op Enter — je wordt doorgestuurd naar de search pagina met resultaten. Of gebruik de quick links eronder om direct naar een sectie te navigeren.
+Type a search term in the central bar and press Enter — you are redirected to the search page with results. Or use the quick links below to navigate directly to a section.
 
 ## Quick Links
 
@@ -15,39 +15,39 @@ Typ een zoekterm in de centrale balk en druk op Enter — je wordt doorgestuurd 
 - 🏢 All Clients
 - ⏰ Reminders
 - 📥 Export
-- ⚙️ Settings (alleen admin)
-- 📊 Statistieken (alleen admin)
+- ⚙️ Settings (admin only)
+- 📊 Statistics (admin only)
 
 ## Stat Counters
 
-Een rij van 7 kaarten toont het totaal aantal:
+A row of 7 cards shows the total count of:
 
-- **Open** — cases met status Open
-- **Active** — cases met status Active
-- **Suspended** — cases met status Suspended
-- **Closed** — cases met status Closed
-- **Clients** — actieve clients
-- **Subjects** — totaal subjects
-- **Findings** — totaal findings
+- **Open** — cases with status Open
+- **Active** — cases with status Active
+- **Suspended** — cases with status Suspended
+- **Closed** — cases with status Closed
+- **Clients** — active clients
+- **Subjects** — total subjects
+- **Findings** — total findings
 
 ## My Open / Active Cases
 
-Tabel met jouw toegewezen cases (status Open of Active), gesorteerd op laatste update.
+Table with your assigned cases (status Open or Active), sorted by last update.
 
 ## OSINT Service Health
 
-Een rij van 7 service-kaarten toont de status van externe OSINT-bronnen:
+A row of 7 service cards shows the status of external OSINT sources:
 
-- **Database** — PostgreSQL verbinding
+- **Database** — PostgreSQL connection
 - **SpiderFoot** — OSINT scan engine
-- **RDW** — Nederlandse voertuigregistratie
-- **Kadaster/PDOK** — Nederlandse BAG adresdata
-- **HIBP** — Have I Been Pwned (datalekken check)
-- **Overheid.io** — Nederlandse open data API (OpenKVK KvK lookup)
+- **RDW** — Dutch vehicle registration
+- **Kadaster/PDOK** — Dutch BAG address data
+- **HIBP** — Have I Been Pwned (data breach check)
+- **Overheid.io** — Dutch open data API (OpenKVK KvK lookup)
 - **Brave Search** — web search API
 
-Groen = Online, Oranje = geen key geconfigureerd, Rood = fout. De health wordt gecheckt bij het laden van de pagina.
+Green = Online, Orange = no key configured, Red = error. Health is checked when the page loads.
 
-## Statistieken
+## Statistics
 
-Voor alle grafieken en widgets (Cases by Status, Criminal Code, Priority, Lead Investigator Workload, Recent Activity, SpiderFoot stats, Reminders, Subject Types) ga je naar **Settings → Statistieken** (`/cms/settings/statistics`). Deze pagina bevat alle voormalige dashboard-widgets.
+For all charts and widgets (Cases by Status, Criminal Code, Priority, Lead Investigator Workload, Recent Activity, SpiderFoot stats, Reminders, Subject Types) go to **Settings → Statistics** (`/cms/settings/statistics`). This page contains all former dashboard widgets.

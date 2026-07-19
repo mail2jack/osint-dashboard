@@ -210,7 +210,7 @@ print_success "Iveras virtual environment ready with all packages"
 # ============================================================================
 print_step "Building frontend assets (npm)..."
 cd "$APP_DIR"
-npm install --production 2>&1 || print_warning "npm install had warnings — check output above"
+npm install 2>&1 || print_warning "npm install had warnings — check output above"
 node build.mjs 2>&1 || print_warning "Frontend build had warnings — check output above"
 chown -R osint:osint "$APP_DIR/static/dist" 2>/dev/null
 print_success "Frontend assets built"
@@ -521,7 +521,7 @@ RestartSec=10s
 
 # Security
 NoNewPrivileges=true
-ProtectHome=off
+ProtectHome=true
 PrivateTmp=true
 
 [Install]

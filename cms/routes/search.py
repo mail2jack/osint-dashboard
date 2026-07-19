@@ -56,9 +56,9 @@ def _record_restricted(
     owners_str = ", ".join(sorted(owner_names)) if owner_names else ""
     owners_part = f" ({owners_str})" if owners_str else ""
     flask.flash(
-        f'🔍 "{query}" is gevonden maar heeft toegangsrestricties. '
-        f"Case-eigenaar{owners_part} is op de hoogte gesteld "
-        f"en zal indien nodig contact met je opnemen.",
+        f'🔍 "{query}" was found but has access restrictions. '
+        f"The case owner{owners_part} has been notified "
+        f"and will contact you if needed.",
         "warning",
     )
 

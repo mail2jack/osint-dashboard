@@ -1,11 +1,11 @@
 {% extends "cms/base.html" %}
-{% block title %}{{ _('Nieuwe factuur') }}{% endblock %}
+{% block title %}{{ _('New Invoice') }}{% endblock %}
 {% block content %}
 
 <div class="card">
     <div class="card-header">
-        <h2>{{ _('Nieuwe factuur') }}</h2>
-        <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small">← {{ _('Terug') }}</a>
+        <h2>{{ _('New Invoice') }}</h2>
+        <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small">← {{ _('Back') }}</a>
     </div>
     <form method="POST" action="{{ url_for('cms.invoice_create') }}" data-submit="submitForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -13,33 +13,33 @@
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding:1rem;">
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Cliënt *') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Client *') }}</label>
                 <select name="client_id" required style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
-                    <option value="">{{ _('Selecteer cliënt...') }}</option>
+                    <option value="">{{ _('Select client...') }}</option>
                     {% for c in clients %}
                     <option value="{{ c.id }}" {{ 'selected' if preselected==c.id }}>{{ c.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Gekoppeld dossier (optioneel)') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Linked case (optional)') }}</label>
                 <select name="case_id" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
-                    <option value="">{{ _('Geen dossier') }}</option>
+                    <option value="">{{ _('No case') }}</option>
                     {% for c in cases %}
                     <option value="{{ c.id }}" {{ 'selected' if preselected_case==c.id }}>{{ c.case_number }} — {{ c.title }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Factuurdatum *') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Invoice date *') }}</label>
                 <input type="date" name="issue_date" required style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
             </div>
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Vervaldatum *') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Due date *') }}</label>
                 <input type="date" name="due_date" required style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
             </div>
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Valuta') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Currency') }}</label>
                 <select name="currency" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">
                     <option value="EUR">EUR (€)</option>
                     <option value="USD">USD ($)</option>
@@ -49,15 +49,15 @@
         </div>
 
         <div style="padding:0 1rem 1rem;">
-            <h3 style="margin:0 0 0.5rem;">{{ _('Factuurregels') }}</h3>
+            <h3 style="margin:0 0 0.5rem;">{{ _('Invoice items') }}</h3>
             <table id="itemsTable" style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr>
-                        <th style="text-align:left;padding:0.3rem;border-bottom:2px solid #1a1a2e;">{{ _('Omschrijving') }}</th>
-                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Aantal') }}</th>
-                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Stuksprijs') }}</th>
-                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('BTW %') }}</th>
-                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Totaal') }}</th>
+                        <th style="text-align:left;padding:0.3rem;border-bottom:2px solid #1a1a2e;">{{ _('Description') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:80px;">{{ _('Quantity') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Unit price') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:60px;">{{ _('VAT %') }}</th>
+                        <th style="text-align:right;padding:0.3rem;border-bottom:2px solid #1a1a2e;width:100px;">{{ _('Total') }}</th>
                         <th style="width:40px;"></th>
                     </tr>
                 </thead>
@@ -72,17 +72,17 @@
                     </tr>
                 </tbody>
             </table>
-            <button type="button" data-click="addItem" class="btn-cms small" style="margin-top:0.5rem;">+ {{ _('Regel toevoegen') }}</button>
+            <button type="button" data-click="addItem" class="btn-cms small" style="margin-top:0.5rem;">+ {{ _('Add line') }}</button>
         </div>
 
         <div style="padding:0 1rem 1rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Notitie (wordt getoond boven factuurregels)') }}</label>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Note (shown above invoice items)') }}</label>
                 <textarea name="notes" rows="3" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;"></textarea>
             </div>
             <div>
-                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Algemene voorwaarden') }}</label>
-                <textarea name="terms" rows="3" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">{{ _('Betaling dient binnen 30 dagen na factuurdatum te zijn voldaan.') }}</textarea>
+                <label style="display:block;font-weight:500;margin-bottom:0.25rem;">{{ _('Terms and Conditions') }}</label>
+                <textarea name="terms" rows="3" style="width:100%;padding:0.4rem;border:1px solid #ddd;border-radius:4px;">{{ _('Payment is due within 30 days of invoice date.') }}</textarea>
             </div>
         </div>
 
@@ -92,8 +92,8 @@
         </div>
 
         <div style="padding:1rem;border-top:1px solid #e5e7eb;">
-            <button type="submit" class="btn-cms bg-green">{{ _('Factuur aanmaken') }}</button>
-            <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small" style="margin-left:0.5rem;">{{ _('Annuleren') }}</a>
+            <button type="submit" class="btn-cms bg-green">{{ _('Create invoice') }}</button>
+            <a href="{{ url_for('cms.invoice_list') }}" class="btn-cms small" style="margin-left:0.5rem;">{{ _('Cancel') }}</a>
         </div>
     </form>
 </div>
@@ -163,7 +163,7 @@ function filterCases() {
     const clientId = document.querySelector('select[name="client_id"]').value;
     const sel = document.querySelector('select[name="case_id"]');
     const current = sel.value;
-    sel.innerHTML = '<option value="">{{ _('Geen dossier') }}</option>';
+    sel.innerHTML = '<option value="">{{ _('No case') }}</option>';
     if (clientId && _allCases[clientId]) {
         _allCases[clientId].forEach(function(c) {
             const opt = document.createElement('option');

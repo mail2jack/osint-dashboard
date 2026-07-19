@@ -235,5 +235,5 @@ def create_finding_from_vessel() -> flask.Response:
     db.session.commit()
 
     return jsonify(
-        {"message": f"Bevinding opgeslagen: {name}", "finding": finding.to_dict()}
+        {"message": f"Finding saved: {name}", "finding": finding.to_dict()}
     ), 201

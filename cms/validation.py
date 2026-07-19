@@ -317,9 +317,7 @@ class SignupSchema(BaseModel):
     @classmethod
     def check_consent(cls, v: bool) -> bool:
         if not v:
-            raise ValueError(
-                "U moet akkoord gaan met het privacybeleid en de algemene voorwaarden"
-            )
+            raise ValueError("You must agree to the privacy policy and general terms")
         return v
         return v
 

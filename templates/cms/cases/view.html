@@ -140,18 +140,18 @@
             {% if case.archived_at %}
             <form method="POST" action="{{ url_for('cms.restore_case', case_id=case.id) }}" style="display:inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn-cms small bg-gray">{{ _('📂 Herstellen') }}</button>
+              <button type="submit" class="btn-cms small bg-gray">{{ _('📂 Restore') }}</button>
             </form>
             {% else %}
             <form method="POST" action="{{ url_for('cms.archive_case', case_id=case.id) }}" style="display:inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn-cms small bg-gray">{{ _('📁 Archiveer') }}</button>
+              <button type="submit" class="btn-cms small bg-gray">{{ _('📁 Archive') }}</button>
             </form>
             {% endif %}
             </div>
             <a href="{{ url_for('cms.export_case', case_id=case.id, format='csv') }}" class="btn-cms small">{{ _('📥 CSV') }}</a>
             <a href="{{ url_for('cms.generate_case_report', case_id=case.id) }}" class="btn-cms small bg-purple">{{ _('📄 Report') }}</a>
-            {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_create') }}?case_id={{ case.id }}&client_id={{ case.client_id }}" class="btn-cms small bg-blue">{{ _('+ Factuur') }}</a>{% endif %}
+            {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_create') }}?case_id={{ case.id }}&client_id={{ case.client_id }}" class="btn-cms small bg-blue">{{ _('+ Invoice') }}</a>{% endif %}
             <a href="{{ url_for('cms.edit_case', case_id=case.id) }}" class="btn-cms small primary">{{ _('✏️') }}</a>
         </div>
     </div>

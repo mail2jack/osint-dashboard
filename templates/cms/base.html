@@ -321,7 +321,7 @@
             v<span id="footerVersion">-</span>
             <a href="#" data-click="openChangelog" style="color:var(--text-secondary);text-decoration:none;">changelog</a>
             <span style="opacity:0.4;">|</span>
-            <a href="{{ url_for('static', filename='ALGEMENE_VOORWAARDEN_TEMPLATE.md') }}" target="_blank" style="color:var(--text-secondary);text-decoration:none;" title="Algemene Voorwaarden (niet-juridisch sjabloon)">📄 voorwaarden</a>
+            <a href="{{ url_for('static', filename='ALGEMENE_VOORWAARDEN_TEMPLATE.md') }}" target="_blank" style="color:var(--text-secondary);text-decoration:none;" title="Terms and Conditions (non-legal template)">📄 terms</a>
             <span style="opacity:0.4;">|</span>
             <a href="{{ url_for('cms.privacy_policy') }}" style="color:var(--text-secondary);text-decoration:none;" title="Privacybeleid">🔒 privacy</a>
         </span>
@@ -454,13 +454,13 @@ function toggleHealthModal() {
         if (status === 'ok' || status === 'connected') {
             color = '#10b981'; label = '✓ Online';
         } else if (status === 'disabled') {
-            color = '#9ca3af'; label = '○ Uitgeschakeld';
+            color = '#9ca3af'; label = '○ Disabled';
         } else if (status === 'no key configured') {
-            color = '#f59e0b'; label = '⚙️ Geen sleutel';
+            color = '#f59e0b'; label = '⚙️ No key';
         } else if (status === 'auth error') {
-            color = '#f97316'; label = '🔑 Auth fout';
+            color = '#f97316'; label = '🔑 Auth error';
         } else if (status === 'quota exhausted') {
-            color = '#ef4444'; label = '⚠️ Quota overschreden';
+            color = '#ef4444'; label = '⚠️ Quota exceeded';
         } else if (status.startsWith('unavailable') || status.startsWith('error')) {
             color = '#ef4444'; label = '⚠️ ' + status;
         } else {
@@ -502,12 +502,12 @@ setInterval(updateHealthLight, 300000);
     overlay.innerHTML = '<div style="background:var(--bg-card);border-radius:12px;max-width:550px;width:90%;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,0.3);border-top:5px solid ' + color + ';">' +
       '<div style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">' + esc(a.title || '') + '</div>' +
       '<div style="white-space:pre-wrap;font-size:0.9rem;color:var(--text-primary);margin-bottom:1rem;">' + esc(a.body || '') + '</div>' +
-      '<button type="button" class="btn-cms primary" data-ann-id="' + esc(a.id) + '" style="width:100%;padding:0.6rem;font-size:0.9rem;">Bevestigen</button>' +
+      '<button type="button" class="btn-cms primary" data-ann-id="' + esc(a.id) + '" style="width:100%;padding:0.6rem;font-size:0.9rem;">Confirm</button>' +
       '</div>';
     overlay.querySelector('button').addEventListener('click', function() {
       var id = this.getAttribute('data-ann-id');
       var btn = this;
-      btn.textContent = 'Bezig...';
+      btn.textContent = 'Busy...';
       btn.disabled = true;
       apiFetch('/cms/api/announcements/' + id + '/ack', {method:'POST'}).then(function() {
         showAnn(i + 1);

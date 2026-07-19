@@ -1,4 +1,3 @@
-import pytest
 import pyotp
 from cms.models import db, User
 
@@ -250,31 +249,17 @@ class TestPasswordReset:
 class TestAdmin2FAReset:
     def _fresh_admin_client(self, app):
         c = app.test_client()
-        with c.session_transaction() as sess:
-            for k in list(sess.keys()):
-                del sess[k]
         with app.app_context():
             admin = User.query.filter_by(username="admin").first()
             admin.totp_secret = None
             admin.totp_enabled = False
             db.session.commit()
-        r = c.post(
-            "/auth/login", data={"email": "admin@localhost", "password": "Test1234!"}
-        )
-        assert r.status_code == 302
-        loc = r.headers.get("Location", "")
-        if loc == "/auth/2fa/setup":
-            c.get(loc)
-            with c.session_transaction() as sess:
-                secret = sess.get("_2fa_pending_secret")
-                if secret:
-                    code = pyotp.TOTP(secret).now()
-                    c.post("/auth/2fa/setup", data={"code": code})
+            user_id = str(admin.id)
+        with c.session_transaction() as sess:
+            sess["_user_id"] = user_id
+            sess["_fresh"] = True
         return c
 
-    @pytest.mark.skip(
-        reason="Flaky: session.auth state leaks across tests in same file"
-    )
     def test_reset_other_user_2fa(self, app, db_session):
         secret = pyotp.random_base32()
         u = _create_user("resetme", "Test1234!", totp=False)
@@ -291,9 +276,6 @@ class TestAdmin2FAReset:
         assert u.totp_enabled is False
         assert u.totp_secret is None
 
-    @pytest.mark.skip(
-        reason="Flaky: session.auth state leaks across tests in same file (session_transaction bug)"
-    )
     def test_reset_nonexistent_user(self, app, db_session):
         c = self._fresh_admin_client(app)
         resp = c.post("/auth/2fa/reset/nonexistent-id")
@@ -444,30 +426,17 @@ class TestUserCreate:
 class TestUserEdit:
     def _fresh_admin_client(self, app):
         c = app.test_client()
-        with c.session_transaction() as sess:
-            for k in list(sess.keys()):
-                del sess[k]
         with app.app_context():
             admin = User.query.filter_by(username="admin").first()
             admin.totp_secret = None
             admin.totp_enabled = False
             db.session.commit()
-        r = c.post(
-            "/auth/login", data={"email": "admin@localhost", "password": "Test1234!"}
-        )
-        assert r.status_code == 302
-        if r.headers.get("Location", "") == "/auth/2fa/setup":
-            c.get(r.headers["Location"])
-            with c.session_transaction() as sess:
-                secret = sess.get("_2fa_pending_secret")
-                if secret:
-                    code = pyotp.TOTP(secret).now()
-                    c.post("/auth/2fa/setup", data={"code": code})
+            user_id = str(admin.id)
+        with c.session_transaction() as sess:
+            sess["_user_id"] = user_id
+            sess["_fresh"] = True
         return c
 
-    @pytest.mark.skip(
-        reason="Flaky: session.auth state leaks across tests in same file"
-    )
     def test_edit_own_profile(self, app, db_session):
         c = self._fresh_admin_client(app)
         admin = User.query.filter_by(username="admin").first()
@@ -476,9 +445,6 @@ class TestUserEdit:
         admin2 = User.query.filter_by(username="admin").first()
         assert admin2.full_name == "Admin Updated"
 
-    @pytest.mark.skip(
-        reason="Flaky: session.auth state leaks across tests in same file"
-    )
     def test_activate_deactivate(self, app, db_session):
         c = self._fresh_admin_client(app)
         u = _create_user("toggletest", "Test1234!")

@@ -171,11 +171,11 @@
                     <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">{{ _('Look up company data from KVK / Overheid.io') }}</p>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <input type="text" id="kvk_lookup_query" placeholder="{{ _('Bedrijfsnaam of KVK-nummer') }}"
+                    <input type="text" id="kvk_lookup_query" placeholder="{{ _('Company name or KVK number') }}"
                            style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 220px;">
                     <button type="button" data-click="kvkLookupCreate" id="fetchKvkBtn"
                             style="padding: 0.75rem 1.5rem; background: white; color: #7c3aed; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
-                        🔍 {{ _('KVK Zoeken') }}
+                        🔍 {{ _('KVK Search') }}
                     </button>
                 </div>
             </div>
@@ -185,11 +185,11 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div class="form-group">
-                <label for="registration_number">{{ _('KVK-nummer') }}</label>
+                <label for="registration_number">{{ _('KVK number') }}</label>
                 <input type="text" name="registration_number" id="registration_number" placeholder="{{ _('e.g. 30128191') }}">
             </div>
             <div class="form-group">
-                <label for="legal_form">{{ _('Rechtsvorm') }}</label>
+                <label for="legal_form">{{ _('Legal Form') }}</label>
                 <input type="text" name="legal_form" id="legal_form" placeholder="{{ _('e.g. BV, NV, Stichting') }}">
             </div>
         </div>
@@ -216,54 +216,54 @@
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div class="form-group" style="grid-column: 1 / -1;">
-                <label for="license_plate">{{ _('License Plate (Kenteken)') }}</label>
+                <label for="license_plate">{{ _('License Plate') }}</label>
                 <input type="text" name="license_plate" id="license_plate" 
                        placeholder="{{ _('e.g. AB-12-CD') }}" style="font-size: 1.1rem; font-weight: bold; text-transform: uppercase;">
             </div>
             <div class="form-group">
-                <label for="vin">{{ _('VIN (Chassisnummer)') }}</label>
+                <label for="vin">{{ _('VIN (Chassis Number)') }}</label>
                 <input type="text" name="vin" id="vin" placeholder="{{ _('17 characters') }}" maxlength="17">
             </div>
             <div class="form-group">
-                <label for="brand">{{ _('Merk (Brand)') }}</label>
+                <label for="brand">{{ _('Brand') }}</label>
                 <input type="text" name="brand" id="brand">
             </div>
             <div class="form-group">
-                <label for="handelsbenaming">{{ _('Model (Handelsbenaming)') }}</label>
+                <label for="handelsbenaming">{{ _('Model') }}</label>
                 <input type="text" name="handelsbenaming" id="handelsbenaming">
             </div>
             <div class="form-group">
-                <label for="vehicle_type">{{ _('Inrichting (Body Type)') }}</label>
+                <label for="vehicle_type">{{ _('Body Type') }}</label>
                 <input type="text" name="vehicle_type" id="vehicle_type" placeholder="{{ _('e.g. hatchback, sedan') }}">
             </div>
             <div class="form-group">
-                <label for="eerste_kleur">{{ _('Kleur (Color)') }}</label>
+                <label for="eerste_kleur">{{ _('Color') }}</label>
                 <input type="text" name="eerste_kleur" id="eerste_kleur">
             </div>
             <div class="form-group">
-                <label for="voertuigsoort">{{ _('Voertuigsoort') }}</label>
+                <label for="voertuigsoort">{{ _('Vehicle Category') }}</label>
                 <input type="text" name="voertuigsoort" id="voertuigsoort">
             </div>
             <div class="form-group">
-                <label for="aantal_deuren">{{ _('Aantal Deuren') }}</label>
+                <label for="aantal_deuren">{{ _('Doors') }}</label>
                 <input type="number" name="aantal_deuren" id="aantal_deuren">
             </div>
             <div class="form-group">
-                <label for="aantal_zitplaatsen">{{ _('Aantal Zitplaatsen') }}</label>
+                <label for="aantal_zitplaatsen">{{ _('Seats') }}</label>
                 <input type="number" name="aantal_zitplaatsen" id="aantal_zitplaatsen">
             </div>
             <div class="form-group">
-                <label for="vervaldatum_apk">{{ _('APK Vervaldatum') }}</label>
+                <label for="vervaldatum_apk">{{ _('APK Expiry') }}</label>
                 <input type="text" name="vervaldatum_apk" id="vervaldatum_apk" placeholder="{{ _('YYYYMMDD') }}">
             </div>
             <div class="form-group">
-                <label for="wam_verzekerd">{{ _('WAM Verzekerd') }}</label>
+                <label for="wam_verzekerd">{{ _('WAM Insured') }}</label>
                 <input type="text" name="wam_verzekerd" id="wam_verzekerd">
             </div>
         </div>
         
         <div class="form-group">
-            <label for="insurance_company">{{ _('Verzekeringsmaatschappij (Insurance)') }}</label>
+            <label for="insurance_company">{{ _('Insurance Company') }}</label>
             <input type="text" name="insurance_company" id="insurance_company">
         </div>
     </div>
@@ -276,7 +276,7 @@
                     <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">{{ _('Enter IMO, MMSI, ENI or ship name to look up vessel data') }}</p>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <input type="text" id="vessel_lookup_imo" placeholder="{{ _('IMO number') }}"
+                    <input type="text" id="vessel_lookup_imo" placeholder="{{ _('IMO Number') }}"
                            style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 160px;">
                     <input type="text" id="vessel_lookup_mmsi" placeholder="{{ _('MMSI') }}"
                            style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 160px;">
@@ -284,7 +284,7 @@
                            style="padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; width: 140px;">
                     <button type="button" data-click="lookupVesselCreate" id="fetchVesselBtn"
                             style="padding: 0.75rem 1.5rem; background: white; color: #0e7490; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
-                        {{ _('🔍 Zoek Schip') }}
+                        {{ _('🔍 Search Ship') }}
                     </button>
                 </div>
             </div>
@@ -293,7 +293,7 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div class="form-group">
-                <label for="imo_number">{{ _('IMO Nummer') }}</label>
+                <label for="imo_number">{{ _('IMO Number') }}</label>
                 <input type="text" name="imo_number" id="imo_number" placeholder="{{ _('e.g. 9175717') }}">
             </div>
             <div class="form-group">
@@ -301,11 +301,11 @@
                 <input type="text" name="mmsi" id="mmsi_id" placeholder="{{ _('9 digits') }}">
             </div>
             <div class="form-group">
-                <label for="eni_number">{{ _('ENI (Binnenvaart)') }}</label>
+                <label for="eni_number">{{ _('ENI (Inland Shipping)') }}</label>
                 <input type="text" name="eni_number" id="eni_number" placeholder="{{ _('7 or 8 digits') }}">
             </div>
             <div class="form-group">
-                <label for="vessel_nationality">{{ _('Vlag / Flag State') }}</label>
+                <label for="vessel_nationality">{{ _('Flag State') }}</label>
                 <input type="text" name="vessel_nationality" id="vessel_nationality" placeholder="{{ _('e.g. Netherlands') }}">
             </div>
         </div>
@@ -375,13 +375,13 @@ function kvkLookupCreate() {
     const btn = document.getElementById('fetchKvkBtn');
 
     if (!query) {
-        statusDiv.innerHTML = '<span style="color: #fca5a5;">{{ _("Voer een bedrijfsnaam of KVK-nummer in")|replace("'", "\\\\'")|safe }}</span>';
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">{{ _("Enter a company name or KVK number")|replace("'", "\\\\'")|safe }}</span>';
         return;
     }
 
     btn.disabled = true;
-    btn.textContent = '{{ _("🔍 Zoeken...")|replace("'", "\\\\'")|safe }}';
-    statusDiv.innerHTML = '<span style="color: white;">{{ _("Opzoeken bij KVK...")|replace("'", "\\\\'")|safe }}</span>';
+    btn.textContent = '{{ _("🔍 Searching...")|replace("'", "\\\\'")|safe }}';
+    statusDiv.innerHTML = '<span style="color: white;">{{ _("Looking up at KVK...")|replace("'", "\\\\'")|safe }}</span>';
     resultsDiv.style.display = 'none';
 
     apiFetch('/cms/api/kvk-lookup', {
@@ -394,18 +394,18 @@ function kvkLookupCreate() {
         if (data.error) {
             statusDiv.innerHTML = '<span style="color: #fca5a5;">⚠ ' + esc(data.error) + '</span>';
             btn.disabled = false;
-            btn.textContent = '🔍 {{ _("KVK Zoeken")|replace("'", "\\\\'")|safe }}';
+            btn.textContent = '🔍 {{ _("KVK Search")|replace("'", "\\\\'")|safe }}';
             return;
         }
 
         if (!data.results || data.results.length === 0) {
-            statusDiv.innerHTML = '<span style="color: #fcd34d;">{{ _("Geen bedrijven gevonden voor:")|replace("'", "\\\\'")|safe }} ' + esc(query) + '</span>';
+            statusDiv.innerHTML = '<span style="color: #fcd34d;">{{ _("No companies found for:")|replace("'", "\\\\'")|safe }} ' + esc(query) + '</span>';
             btn.disabled = false;
-            btn.textContent = '🔍 {{ _("KVK Zoeken")|replace("'", "\\\\'")|safe }}';
+            btn.textContent = '🔍 {{ _("KVK Search")|replace("'", "\\\\'")|safe }}';
             return;
         }
 
-        statusDiv.innerHTML = '<span style="color: #86efac;">{{ _("✅ Bedrijf gevonden — velden zijn ingevuld (bron: KVK)")|replace("'", "\\\\'")|safe }}</span>';
+        statusDiv.innerHTML = '<span style="color: #86efac;">{{ _("✅ Company found — fields have been filled in (source: KVK)")|replace("'", "\\\\'")|safe }}</span>';
         const company = data.results[0];
 
         document.getElementById('name').value = company.naam || '';
@@ -440,7 +440,7 @@ function kvkLookupCreate() {
 
         if (data.results.length > 1) {
             var html = '<div style="background:rgba(255,255,255,0.15);border-radius:6px;padding:0.5rem;margin-top:0.5rem;font-size:0.8rem;">';
-            html += '<strong>{{ _("Meer resultaten:")|replace("'", "\\\\'")|safe }}</strong><ul style="margin:0.25rem 0 0 0;padding-left:1rem;">';
+            html += '<strong>{{ _("More results:")|replace("'", "\\\\'")|safe }}</strong><ul style="margin:0.25rem 0 0 0;padding-left:1rem;">';
             for (var i = 1; i < data.results.length && i < 5; i++) {
                 var c = data.results[i];
                 html += '<li style="margin:0.15rem 0;">' + esc(c.naam || '?') + ' — ' + esc(c.kvknummer || '') + ' (' + esc(c.plaats || '') + ')</li>';
@@ -451,12 +451,12 @@ function kvkLookupCreate() {
         }
 
         btn.disabled = false;
-        btn.textContent = '🔍 {{ _("KVK Zoeken")|replace("'", "\\\\'")|safe }}';
+        btn.textContent = '🔍 {{ _("KVK Search")|replace("'", "\\\\'")|safe }}';
     })
     .catch(err => {
-        statusDiv.innerHTML = '<span style="color: #fca5a5;">{{ _("Fout:")|replace("'", "\\\\'")|safe }} ' + esc(err.message) + '</span>';
+        statusDiv.innerHTML = '<span style="color: #fca5a5;">{{ _("Error:")|replace("'", "\\\\'")|safe }} ' + esc(err.message) + '</span>';
         btn.disabled = false;
-        btn.textContent = '🔍 {{ _("KVK Zoeken")|replace("'", "\\\\'")|safe }}';
+        btn.textContent = '🔍 {{ _("KVK Search")|replace("'", "\\\\'")|safe }}';
     });
 }
 
@@ -562,14 +562,14 @@ function lookupVesselCreate() {
         if (data.error) {
             statusDiv.innerHTML = '<span style="color: #fca5a5;">{{ _("Error:")|replace("'", "\\\\'")|safe }} ' + esc(data.error) + '</span>';
             btn.disabled = false;
-            btn.textContent = '{{ _("🔍 Zoek Schip")|replace("'", "\\\\'")|safe }}';
+            btn.textContent = '{{ _("🔍 Search Ship")|replace("'", "\\\\'")|safe }}';
             return;
         }
 
         if (!data.found) {
             statusDiv.innerHTML = '<span style="color: #fcd34d;">{{ _("No vessel found")|replace("'", "\\\\'")|safe }}</span>';
             btn.disabled = false;
-            btn.textContent = '{{ _("🔍 Zoek Schip")|replace("'", "\\\\'")|safe }}';
+            btn.textContent = '{{ _("🔍 Search Ship")|replace("'", "\\\\'")|safe }}';
             return;
         }
 
@@ -582,12 +582,12 @@ function lookupVesselCreate() {
         let sources = (data.sources || []).join(', ');
         statusDiv.innerHTML = '<span style="color: #86efac;">{{ _("✅ Found:")|replace("'", "\\\\'")|safe }} ' + esc(data.name) + ' (' + esc(sources) + ')</span>';
         btn.disabled = false;
-        btn.textContent = '{{ _("🔍 Zoek Schip")|replace("'", "\\\\'")|safe }}';
+        btn.textContent = '{{ _("🔍 Search Ship")|replace("'", "\\\\'")|safe }}';
     })
     .catch(err => {
         statusDiv.innerHTML = '<span style="color: #fca5a5;">{{ _("Error:")|replace("'", "\\\\'")|safe }} ' + esc(err.message) + '</span>';
         btn.disabled = false;
-        btn.textContent = '{{ _("🔍 Zoek Schip")|replace("'", "\\\\'")|safe }}';
+        btn.textContent = '{{ _("🔍 Search Ship")|replace("'", "\\\\'")|safe }}';
     });
 }
 

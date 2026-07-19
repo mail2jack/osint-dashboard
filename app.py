@@ -446,6 +446,20 @@ def platform_color_filter(url):
     return "#666"
 
 
+@app.template_filter("result_link")
+def result_link_filter(value, group=None):
+    if not value:
+        return ""
+    from html import escape
+
+    text = escape(str(value))
+    if text.startswith(("http://", "https://")):
+        return f'<a href="{text}" target="_blank" rel="noopener">{text}</a>'
+    if "@" in text and "." in text.split("@")[-1]:
+        return f'<a href="mailto:{text}">{text}</a>'
+    return text
+
+
 @app.template_filter("redact_for_viewer")
 def redact_for_viewer_filter(value):
     """Redact sensitive values when the current user is a viewer."""

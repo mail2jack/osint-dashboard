@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>AVG-verzoek indienen — Iveras CMS</title>
+    <title>Submit DSAR — Iveras CMS</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -72,13 +72,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>📝 AVG-verzoek indienen</h1>
-        <p class="subtitle">Gebruik dit formulier om een verzoek in te dienen op basis van uw rechten onder de Algemene Verordening Gegevensbescherming (AVG/GDPR).</p>
+        <h1>📝 Submit a DSAR</h1>
+        <p class="subtitle">Use this form to submit a request based on your rights under the General Data Protection Regulation (GDPR).</p>
 
         <div class="disclaimer">
-            <strong>Let op:</strong> Wij verwerken uw verzoek binnen 30 dagen.
-            Bij complexe verzoeken kan deze termijn met maximaal 60 dagen worden verlengd.
-            Wij kunnen u vragen om uw identiteit te verifiëren voordat wij uw verzoek behandelen.
+            <strong>Note:</strong> We will process your request within 30 days.
+            For complex requests, this period may be extended by up to 60 days.
+            We may ask you to verify your identity before processing your request.
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -93,42 +93,42 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-group">
-                <label for="name">Volledige naam</label>
+                <label for="name">Full name</label>
                 <input type="text" name="name" id="name" required autocomplete="name">
             </div>
 
             <div class="form-group">
-                <label for="email">E-mailadres *</label>
+                <label for="email">Email address *</label>
                 <input type="email" name="email" id="email" required autocomplete="email">
             </div>
 
             <div class="form-group">
-                <label for="phone">Telefoonnummer (optioneel)</label>
+                <label for="phone">Phone number (optional)</label>
                 <input type="tel" name="phone" id="phone" autocomplete="tel">
             </div>
 
             <div class="form-group">
-                <label for="request_type">Type verzoek *</label>
+                <label for="request_type">Request type *</label>
                 <select name="request_type" id="request_type" required>
-                    <option value="access">Inzage (art. 15 AVG) — Alle gegevens inzien</option>
-                    <option value="rectification">Rectificatie (art. 16 AVG) — Gegevens corrigeren</option>
-                    <option value="erasure">Vergetelheid (art. 17 AVG) — Gegevens verwijderen</option>
-                    <option value="portability">Dataportabiliteit (art. 20 AVG) — Gegevens overdragen</option>
-                    <option value="restrict">Beperking (art. 18 AVG) — Verwerking beperken</option>
-                    <option value="object">Bezwaar (art. 21 AVG) — Bezwaar tegen verwerking</option>
+                    <option value="access">Access (Art. 15 GDPR) — View all data</option>
+                    <option value="rectification">Rectification (Art. 16 GDPR) — Correct data</option>
+                    <option value="erasure">Erasure (Art. 17 GDPR) — Delete data</option>
+                    <option value="portability">Data Portability (Art. 20 GDPR) — Transfer data</option>
+                    <option value="restrict">Restriction (Art. 18 GDPR) — Restrict processing</option>
+                    <option value="object">Objection (Art. 21 GDPR) — Object to processing</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="description">Toelichting</label>
-                <textarea name="description" id="description" placeholder="Beschrijf uw verzoek zo specifiek mogelijk. Bij een inzageverzoek: welke gegevens zoekt u? Bij een verwijderverzoek: om welke gegevens gaat het?"></textarea>
+                <label for="description">Description</label>
+                <textarea name="description" id="description" placeholder="Describe your request as specifically as possible. For an access request: what data are you looking for? For a deletion request: what data is involved?"></textarea>
             </div>
 
-            <button type="submit" class="btn-cms primary">Verzoek indienen</button>
+            <button type="submit" class="btn-cms primary">Submit request</button>
         </form>
 
         <div class="back-link">
-            <a href="{{ url_for('cms.privacy_policy') }}">← Terug naar Privacybeleid</a>
+            <a href="{{ url_for('cms.privacy_policy') }}">← Back to Privacy Policy</a>
         </div>
     </div>
 </body>

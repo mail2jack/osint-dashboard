@@ -1,64 +1,64 @@
-# Gebruikers & Authenticatie
+# Users & Authentication
 
-Het **Users** systeem beheert gebruikersaccounts, rollen en toegangsrechten.
+The **Users** system manages user accounts, roles, and access permissions.
 
-## Gebruikersrollen
+## User Roles
 
-| Rol | Rechten |
-|-----|---------|
-| **Admin** | Volledige toegang, inclusief settings en gebruikersbeheer |
-| **Senior Investigator** | Alle functies behalve settings en gebruikersbeheer |
-| **Investigator** | Standaard onderzoeker: cases, subjects, findings |
-| **Viewer** | Alleen lezen: kan data bekijken maar niet bewerken |
+| Role | Permissions |
+|------|-------------|
+| **Admin** | Full access, including settings and user management |
+| **Senior Investigator** | All features except settings and user management |
+| **Investigator** | Standard investigator: cases, subjects, findings |
+| **Viewer** | Read only: can view data but not edit |
 
-## Inloggen
+## Logging In
 
-1. Ga naar het inlogscherm op `/auth/login`
-2. Voer gebruikersnaam en wachtwoord in
-3. Klik **Login**
+1. Go to the login screen at `/auth/login`
+2. Enter username and password
+3. Click **Login**
 
-### Twee-Factor Authenticatie (2FA)
+### Two-Factor Authentication (2FA)
 
-Gebruikers kunnen 2FA inschakelen via een TOTP app (Google Authenticator, Authy, etc.):
+Users can enable 2FA via a TOTP app (Google Authenticator, Authy, etc.):
 
-1. Ga naar je profielpagina
-2. Klik **Enable 2FA**
-3. Scan de QR-code met je authenticator app
-4. Voer een eenmalige code in om te verifiëren
+1. Go to your profile page
+2. Click **Enable 2FA**
+3. Scan the QR code with your authenticator app
+4. Enter a one-time code to verify
 
-Een ✓ icoon naast je naam in de header geeft aan dat 2FA actief is.
+A ✓ icon next to your name in the header indicates that 2FA is active.
 
-## Wachtwoord Vergeten
+## Forgot Password
 
-1. Klik op **Forgot Password** op het inlogscherm
-2. Voer je e-mailadres in
-3. Ontvang een reset link (48 uur geldig)
-4. Klik de link en kies een nieuw wachtwoord (minimaal 8 tekens)
+1. Click **Forgot Password** on the login screen
+2. Enter your email address
+3. Receive a reset link (valid for 48 hours)
+4. Click the link and choose a new password (minimum 8 characters)
 
-Let op: wachtwoorden worden **nooit** per e-mail verstuurd.
+Note: passwords are **never** sent via email.
 
-## Gebruiker Aanmaken (Admin)
+## Creating a User (Admin)
 
-1. Ga naar **Settings** → **Users**
-2. Klik **Create User**
-3. Vul in: gebruikersnaam, e-mail, volledige naam, rol
-4. Optioneel: stuur een "Set Password" e-mail
-5. Het systeem genereert een tijdelijk wachtwoord dat alleen op het scherm wordt getoond
+1. Go to **Settings** → **Users**
+2. Click **Create User**
+3. Fill in: username, email, full name, role
+4. Optionally: send a "Set Password" email
+5. The system generates a temporary password that is only shown on screen
 
-## Profiel Bewerken
+## Editing Your Profile
 
-Klik op je naam in de header om je profiel te bekijken/bewerken:
+Click your name in the header to view/edit your profile:
 
-- Wijzig je volledige naam
-- Wijzig je e-mailadres
-- Wijzig je wachtwoord
-- Schakel 2FA in/uit
+- Change your full name
+- Change your email address
+- Change your password
+- Enable/disable 2FA
 
-## Beveiliging
+## Security
 
-- **Wachtwoordvereisten**: minimaal 8 tekens
-- **Sessie verloopt**: na 8 uur inactiviteit
-- **Rate limiting**: 30 create/edit acties per 60 seconden
-- **Failed login attempts**: account wordt tijdelijk vergrendeld na meerdere mislukte pogingen
-- **HTTP-only cookies**: sessiecookies zijn niet toegankelijk via JavaScript
-- **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, HSTS worden meegestuurd in responses
+- **Password requirements**: minimum 8 characters
+- **Session expires**: after 8 hours of inactivity
+- **Rate limiting**: 30 create/edit actions per 60 seconds
+- **Failed login attempts**: account is temporarily locked after multiple failed attempts
+- **HTTP-only cookies**: session cookies are not accessible via JavaScript
+- **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, HSTS are sent in responses

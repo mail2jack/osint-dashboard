@@ -35,9 +35,7 @@ def archive_client(client_id: str) -> flask.Response:
     ).count()
     if active_cases > 0:
         return jsonify(
-            {
-                "error": f"Kan niet archiveren: client heeft {active_cases} actieve za(a)k(en)"
-            }
+            {"error": f"Cannot archive: client has {active_cases} active case(s)"}
         ), 400
 
     client.is_active = False
@@ -52,7 +50,7 @@ def archive_client(client_id: str) -> flask.Response:
     )
     db.session.commit()
 
-    flash(f"Client {client.name} is gearchiveerd.", "info")
+    flash(f"Client {client.name} archived.", "info")
 
     if request.is_json:
         return jsonify({"success": True, "message": "Client archived"})
@@ -82,7 +80,7 @@ def restore_client(client_id: str) -> flask.Response:
     )
     db.session.commit()
 
-    flash(f"Client {client.name} is hersteld.", "info")
+    flash(f"Client {client.name} restored.", "info")
 
     if request.is_json:
         return jsonify({"success": True, "message": "Client restored"})

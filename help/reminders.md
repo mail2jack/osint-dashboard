@@ -1,48 +1,48 @@
-# Herinneringen
+# Reminders
 
-Het **Reminders** systeem helpt je om belangrijke data en taken niet te vergeten. Herinneringen kunnen aan cases of subjects worden gekoppeld.
+The **Reminders** system helps you keep track of important dates and tasks. Reminders can be linked to cases or subjects.
 
-## Herinneringen Overzicht
+## Reminders Overview
 
-De reminders pagina toont alle herinneringen gesorteerd op vervaldatum. Je kunt filteren op status (open/voltooid) en type.
+The reminders page shows all reminders sorted by due date. You can filter by status (open/completed) and type.
 
-## Een Herinnering Aanmaken
+## Creating a Reminder
 
-1. Ga naar de case of subject detailpagina
-2. Klik **Add Reminder**
-3. Vul in:
-   - **Title** — korte omschrijving
-   - **Description** — uitgebreide notities
-   - **Due Date** — vervaldatum
+1. Go to the case or subject detail page
+2. Click **Add Reminder**
+3. Fill in:
+   - **Title** — short description
+   - **Description** — extended notes
+   - **Due Date** — due date
    - **Type** — Deadline / Follow-up / Court Date / Meeting / Other
    - **Priority** — Low / Medium / High
-   - **Recurrence** (optioneel) — None / Daily / Weekly / Monthly / Yearly
+   - **Recurrence** (optional) — None / Daily / Weekly / Monthly / Yearly
 
-## Herinnering Types
+## Reminder Types
 
-| Type | Gebruik |
-|------|---------|
-| **Deadline** | Wettelijke of procestermijnen |
-| **Follow-up** | Opvolging van een actie |
-| **Court Date** | Zittingsdata |
-| **Meeting** | Afspraken met client of team |
-| **Other** | Overige |
+| Type | Use |
+|------|-----|
+| **Deadline** | Legal or procedural deadlines |
+| **Follow-up** | Follow-up on an action |
+| **Court Date** | Court dates |
+| **Meeting** | Appointments with client or team |
+| **Other** | Miscellaneous |
 
-## Herhaling (Recurrence)
+## Recurrence
 
-Herinneringen kunnen worden ingesteld als terugkerend:
+Reminders can be set as recurring:
 
-- **Daily** — elke dag
-- **Weekly** — elke week op dezelfde dag
-- **Monthly** — elke maand op dezelfde dag
-- **Yearly** — elk jaar op dezelfde datum
+- **Daily** — every day
+- **Weekly** — every week on the same day
+- **Monthly** — every month on the same day
+- **Yearly** — every year on the same date
 
-Bij het voltooien van een terugkerende herinnering wordt automatisch een nieuwe aangemaakt voor de volgende periode.
+When completing a recurring reminder, a new one is automatically created for the next period.
 
-## Herinnering Voltooien
+## Completing a Reminder
 
-Klik op de checkbox of **Mark Complete** om een herinnering af te sluiten. Voltooide herinneringen worden na 30 dagen automatisch opgeruimd.
+Click the checkbox or **Mark Complete** to close a reminder. Completed reminders are automatically cleaned up after 30 days.
 
-## Notificaties
+## Notifications
 
-Het dashboard toont op de startpagina een "Pending Reminders" kaart met herinneringen die binnen 7 dagen vervallen.
+The dashboard shows a "Pending Reminders" card on the home page with reminders due within 7 days.

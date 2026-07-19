@@ -1,5 +1,5 @@
 {% extends "cms/base.html" %}
-{% block title %}Aankondigingen{% endblock %}
+{% block title %}Announcements{% endblock %}
 {% block content %}
 <style>
   .ann-header { display:flex; justify-content:space-between; align-items:center; margin:0 0 1.5rem; }
@@ -15,8 +15,8 @@
 </style>
 
 <div class="ann-header">
-  <h1>📢 Aankondigingen</h1>
-  <a href="{{ url_for('cms.create_announcement') }}" class="btn-cms primary small">➕ Nieuwe aankondiging</a>
+  <h1>📢 Announcements</h1>
+  <a href="{{ url_for('cms.create_announcement') }}" class="btn-cms primary small">➕ New announcement</a>
 </div>
 
 {% if announcements %}
@@ -26,26 +26,26 @@
       <div>
         <strong>{{ ann.title }}</strong>
         <span class="badge {% if ann.severity == 'critical' %}badge-status-danger{% elif ann.severity == 'error' %}badge-status-danger{% elif ann.severity == 'warning' %}badge-status-warning{% else %}badge-info{% endif %}" style="margin-left:0.5rem;">{{ ann.severity }}</span>
-        {% if not ann.is_active %}<span class="badge" style="background:var(--bg-secondary);color:var(--text-muted);margin-left:0.3rem;">Gedeactiveerd</span>{% endif %}
+        {% if not ann.is_active %}<span class="badge" style="background:var(--bg-secondary);color:var(--text-muted);margin-left:0.3rem;">Deactivated</span>{% endif %}
       </div>
       <span style="font-size:0.75rem;color:var(--text-muted);">{{ ann.created_at.strftime('%d-%m-%Y %H:%M') if ann.created_at else '' }}</span>
     </div>
     <div style="margin-top:0.5rem;white-space:pre-wrap;font-size:0.88rem;">{{ ann.body }}</div>
     <div class="ann-meta">
       <span>🕐 Start: {{ ann.starts_at.strftime('%d-%m-%Y %H:%M') if ann.starts_at else '-' }}</span>
-      <span>⏳ Vervalt: {{ ann.expires_at.strftime('%d-%m-%Y %H:%M') if ann.expires_at else 'Nooit' }}</span>
-      <span>👤 Door: {{ ann.creator.full_name if ann.creator else 'Onbekend' }}</span>
-      <span>✅ Gelezen: {{ ann.acks.count() }}</span>
+      <span>⏳ Expires: {{ ann.expires_at.strftime('%d-%m-%Y %H:%M') if ann.expires_at else 'Never' }}</span>
+      <span>👤 By: {{ ann.creator.full_name if ann.creator else 'Unknown' }}</span>
+      <span>✅ Read: {{ ann.acks.count() }}</span>
     </div>
     <div class="ann-actions">
-      <a href="{{ url_for('cms.edit_announcement', announcement_id=ann.id) }}" class="btn-cms small">✏️ Bewerken</a>
+      <a href="{{ url_for('cms.edit_announcement', announcement_id=ann.id) }}" class="btn-cms small">✏️ Edit</a>
       <form method="POST" action="{{ url_for('cms.toggle_announcement', announcement_id=ann.id) }}" style="display:inline;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn-cms small">{{ '📥 Deactiveer' if ann.is_active else '📤 Activeer' }}</button>
+        <button type="submit" class="btn-cms small">{{ '📥 Deactivate' if ann.is_active else '📤 Activate' }}</button>
       </form>
-      <form method="POST" action="{{ url_for('cms.delete_announcement', announcement_id=ann.id) }}" style="display:inline;" onsubmit="return confirm('Zeker weten?');">
+      <form method="POST" action="{{ url_for('cms.delete_announcement', announcement_id=ann.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure?');">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn-cms small" style="color:#ef4444;">🗑️ Verwijderen</button>
+        <button type="submit" class="btn-cms small" style="color:#ef4444;">🗑️ Delete</button>
       </form>
     </div>
   </div>
@@ -53,7 +53,7 @@
 {% else %}
 <div class="empty-state">
   <div class="icon">📢</div>
-  <p>Nog geen aankondigingen.</p>
+  <p>No announcements yet.</p>
 </div>
 {% endif %}
 {% endblock %}

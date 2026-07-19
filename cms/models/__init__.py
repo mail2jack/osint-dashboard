@@ -2355,7 +2355,7 @@ def init_default_settings() -> None:
         {
             "key": "rapidapi_username_key",
             "category": "api_keys",
-            "description": "RapidAPI Key voor Username Check. 📍 https://rapidapi.com/ (zoek naar 'osint-username-availability-brand-checker-api')",
+            "description": "RapidAPI Key for Username Check. 📍 https://rapidapi.com/ (search for 'osint-username-availability-brand-checker-api')",
             "value_type": "password",
             "is_sensitive": True,
             "display_order": 10,
@@ -2557,7 +2557,7 @@ def init_default_settings() -> None:
             "key": "telegram_rapidapi_limit",
             "category": "api_keys",
             "value": "30",
-            "description": "Telegram155 API maandlimiet (aantal checks per maand, reset op de 1e van elke maand)",
+            "description": "Telegram155 API monthly limit (number of checks per month, resets on the 1st of each month)",
             "value_type": "number",
             "display_order": 14,
         },

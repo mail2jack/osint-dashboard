@@ -33,6 +33,25 @@ def _set_identity_from_case() -> None:
         pass
 
 
+@cms_bp.before_request
+def _redirect_to_setup_wizard() -> None:
+    """Redirect superadmins to the setup wizard if they haven't completed it."""
+    try:
+        from flask import current_app
+
+        if current_app.testing:
+            return
+
+        from cms.routes.setup_wizard import is_wizard_required
+
+        if is_wizard_required():
+            from flask import redirect, url_for
+
+            return redirect(url_for("setup_wizard.wizard"))
+    except Exception:
+        pass
+
+
 def register_modules() -> None:
     from . import dashboard  # noqa: F401
     from . import phone  # noqa: F401

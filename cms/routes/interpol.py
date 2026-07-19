@@ -85,7 +85,7 @@ def check_policie_data() -> flask.Response:
                 "wanted_persons": [],
                 "api_available": False,
                 "source": "interpol",
-                "error": f"Interpol API rate limit: wacht {wait:.0f} seconden voor volgende aanvraag",
+                "error": f"Interpol API rate limit: wait {wait:.0f} seconds before next request",
                 "retry_after": int(wait),
             }
         ), 429
@@ -452,7 +452,7 @@ def create_findings_from_interpol() -> flask.Response:
 
     return jsonify(
         {
-            "message": f"{len(created)} bevinding(en) opgeslagen",
+            "message": f"{len(created)} finding(s) saved",
             "count": len(created),
             "findings": [f.to_dict() for f in created],
         }

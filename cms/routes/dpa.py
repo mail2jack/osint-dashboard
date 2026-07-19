@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def dpa_register():
     """DPA register page — list all sub-processor records."""
     if not current_user.is_super_admin:
-        flash("Alleen beheerders hebben toegang tot het DPA-register.", "danger")
+        flash("Only administrators have access to the DPA register.", "danger")
         return redirect(url_for("cms.settings"))
 
     records = DpaRecord.query.order_by(DpaRecord.name).all()
@@ -31,7 +31,7 @@ def dpa_create():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
     if not name:
-        return jsonify({"error": "Naam is verplicht"}), 400
+        return jsonify({"error": "Name is required"}), 400
 
     record = DpaRecord(
         name=name,
@@ -57,7 +57,7 @@ def dpa_create():
         action="create",
         entity_type="dpa_record",
         entity_id=record.id,
-        description=f"DPA-register: verwerker '{name}' toegevoegd",
+        description=f"DPA register: processor '{name}' added",
     )
     db.session.commit()
 
@@ -73,7 +73,7 @@ def dpa_update(record_id):
 
     record = DpaRecord.query.get(record_id)
     if not record:
-        return jsonify({"error": "Niet gevonden"}), 404
+        return jsonify({"error": "Not found"}), 404
 
     data = request.get_json(silent=True) or {}
     old_name = record.name
@@ -107,7 +107,7 @@ def dpa_update(record_id):
         action="update",
         entity_type="dpa_record",
         entity_id=record.id,
-        description=f"DPA-register: verwerker '{old_name}' bijgewerkt",
+        description=f"DPA register: processor '{old_name}' updated",
     )
     db.session.commit()
 
@@ -123,7 +123,7 @@ def dpa_delete(record_id):
 
     record = DpaRecord.query.get(record_id)
     if not record:
-        return jsonify({"error": "Niet gevonden"}), 404
+        return jsonify({"error": "Not found"}), 404
 
     name = record.name
     db.session.delete(record)
@@ -132,7 +132,7 @@ def dpa_delete(record_id):
         action="delete",
         entity_type="dpa_record",
         entity_id=record_id,
-        description=f"DPA-register: verwerker '{name}' verwijderd",
+        description=f"DPA register: processor '{name}' deleted",
     )
     db.session.commit()
 

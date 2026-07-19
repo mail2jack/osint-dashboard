@@ -1,47 +1,47 @@
-# Financiële Gegevens
+# Financial Data
 
-Het **Financials** systeem houdt financiële transacties en gegevens bij binnen een case. Dit omvat banktransacties, facturen, betalingen en andere geldstromen.
+The **Financials** system tracks financial transactions and data within a case. This includes bank transactions, invoices, payments, and other money flows.
 
 ## Financial Records
 
-Elke financial record heeft de volgende velden:
+Each financial record has the following fields:
 
-| Veld | Omschrijving |
-|------|-------------|
-| **Type** | Credit (inkomst) of Debet (uitgave) |
-| **Amount** | Bedrag in euro's |
-| **Date** | Datum van de transactie |
-| **Description** | Omschrijving van de transactie |
-| **Counterparty** | Naam van de tegenpartij |
-| **Category** | Categorie (Salaris, Factuur, Overboeking, etc.) |
-| **Source** | Bron van de gegevens (bankafschrift, factuur, etc.) |
-| **Reference** | Referentienummer / transactie ID |
+| Field | Description |
+|-------|-------------|
+| **Type** | Credit (income) or Debit (expense) |
+| **Amount** | Amount in euros |
+| **Date** | Date of the transaction |
+| **Description** | Description of the transaction |
+| **Counterparty** | Name of the counterparty |
+| **Category** | Category (Salary, Invoice, Transfer, etc.) |
+| **Source** | Source of the data (bank statement, invoice, etc.) |
+| **Reference** | Reference number / transaction ID |
 
-## Financiële Gegevens Toevoegen
+## Adding Financial Data
 
-1. Open de case detailpagina
-2. Scroll naar de **Financials** sectie
-3. Klik **Add Financial Record**
-4. Vul de gegevens in
-5. Klik **Save**
+1. Open the case detail page
+2. Scroll to the **Financials** section
+3. Click **Add Financial Record**
+4. Fill in the details
+5. Click **Save**
 
-## Overzicht
+## Overview
 
-De financials sectie toont:
+The financials section shows:
 
-- Alle records in een tabel gesorteerd op datum
-- Totaalbedrag (som van alle credit/debet records)
-- Paginering (20 records per pagina)
+- All records in a table sorted by date
+- Total amount (sum of all credit/debit records)
+- Pagination (20 records per page)
 
-## Categorieën
+## Categories
 
-Beschikbare categorieën kunnen worden uitgebreid in de admin settings.
+Available categories can be extended in the admin settings.
 
-## Gebruik
+## Usage
 
-Financials worden typisch gebruikt voor:
+Financials are typically used for:
 
-- Het vastleggen van verdachte transacties
-- Het documenteren van betalingsstromen
-- Het bijhouden van onderzoekskosten
-- Het genereren van financieel overzicht voor rapportages
+- Recording suspicious transactions
+- Documenting payment flows
+- Tracking investigation costs
+- Generating financial overviews for reports

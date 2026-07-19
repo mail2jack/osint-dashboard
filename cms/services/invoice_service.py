@@ -25,7 +25,7 @@ from ..models import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_TERMS = (
-    "Betaling dient binnen 30 dagen na factuurdatum te zijn voldaan.\n"
+    "Payment must be made within 30 days of the invoice date.\n"
     "Bij niet-tijdige betaling zijn wij gerechtigd rente in rekening te brengen."
 )
 DEFAULT_FOOTER = "Alle rechten voorbehouden. Iveras OSINT Dashboard."
@@ -90,9 +90,9 @@ def seed_service_rates() -> None:
     if ServiceRate.query.first():
         return
     defaults = [
-        ("case_creation", "Onderzoek aanmaken", 75, 21.00),
-        ("research_action", "Zoekactie (per platform)", 15, 21.00),
-        ("pv_creation", "Proces verbaal opstellen", 150, 21.00),
+        ("case_creation", "Create investigation", 75, 21.00),
+        ("research_action", "Search action (per platform)", 15, 21.00),
+        ("pv_creation", "Draft official report", 150, 21.00),
     ]
     for stype, desc, price, vat in defaults:
         rate = ServiceRate(

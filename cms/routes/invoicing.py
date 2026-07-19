@@ -173,14 +173,14 @@ def invoice_create():
 
     schema = CreateInvoiceSchema(**request.form.to_dict())
     if not schema.client_id or not schema.issue_date or not schema.due_date:
-        flash("Client, factuurdatum en vervaldatum zijn verplicht.", "error")
+        flash("Client, invoice date and due date are required.", "error")
         return redirect(url_for("cms.invoice_create"))
 
     try:
         issue_date = date.fromisoformat(schema.issue_date)
         due_date = date.fromisoformat(schema.due_date)
     except ValueError:
-        flash("Ongeldige datumnotatie.", "error")
+        flash("Invalid date format.", "error")
         return redirect(url_for("cms.invoice_create"))
 
     invoice = Invoice(
@@ -228,7 +228,7 @@ def invoice_create():
         description=f"Created invoice {invoice.invoice_number}",
     )
     db.session.commit()
-    flash(f"Factuur {invoice.invoice_number} aangemaakt.", "success")
+    flash(f"Invoice {invoice.invoice_number} created.", "success")
     return redirect(url_for("cms.invoice_view", invoice_id=invoice.id))
 
 
@@ -274,7 +274,7 @@ def invoice_edit(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
     if invoice.status in ("paid", "cancelled"):
-        flash("Een betaalde of geannuleerde factuur kan niet worden bewerkt.", "error")
+        flash("A paid or cancelled invoice cannot be edited.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
     clients = (
@@ -299,13 +299,13 @@ def invoice_edit(invoice_id: str):
         try:
             invoice.issue_date = date.fromisoformat(schema.issue_date)
         except ValueError:
-            flash("Ongeldige factuurdatum.", "error")
+            flash("Invalid invoice date.", "error")
             return redirect(url_for("cms.invoice_edit", invoice_id=invoice_id))
     if schema.due_date:
         try:
             invoice.due_date = date.fromisoformat(schema.due_date)
         except ValueError:
-            flash("Ongeldige vervaldatum.", "error")
+            flash("Invalid due date.", "error")
             return redirect(url_for("cms.invoice_edit", invoice_id=invoice_id))
     if schema.currency:
         invoice.currency = schema.currency
@@ -347,7 +347,7 @@ def invoice_edit(invoice_id: str):
         description=f"Edited invoice {invoice.invoice_number}",
     )
     db.session.commit()
-    flash(f"Factuur {invoice.invoice_number} bijgewerkt.", "success")
+    flash(f"Invoice {invoice.invoice_number} updated.", "success")
     return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
 
@@ -364,7 +364,7 @@ def invoice_pdf(invoice_id: str):
         pdf_data = generate_invoice_pdf(invoice)
     except Exception as e:
         logger.error("PDF generation failed for invoice %s: %s", invoice_id, e)
-        flash("PDF generatie mislukt.", "error")
+        flash("PDF generation failed.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
     safe_num = invoice.invoice_number.replace("/", "-")
@@ -383,7 +383,7 @@ def invoice_send(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
     if invoice.status != "draft":
-        flash("Alleen concept-facturen kunnen worden verzonden.", "error")
+        flash("Only draft invoices can be sent.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
     invoice.mark_sent()
     AuditLog.log(
@@ -395,7 +395,7 @@ def invoice_send(invoice_id: str):
         description=f"Sent invoice {invoice.invoice_number}",
     )
     db.session.commit()
-    flash(f"Factuur {invoice.invoice_number} gemarkeerd als verzonden.", "success")
+    flash(f"Invoice {invoice.invoice_number} marked as sent.", "success")
     return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
 
@@ -407,7 +407,7 @@ def invoice_mark_paid(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
     if invoice.status in ("paid", "cancelled"):
-        flash("Factuur is al betaald of geannuleerd.", "error")
+        flash("Invoice is already paid or cancelled.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
     data = request.get_json(silent=True) or {}
@@ -445,11 +445,11 @@ def invoice_mark_paid(invoice_id: str):
 
     if data:
         flash(
-            f"Betaling geregistreerd en factuur {invoice.invoice_number} als betaald gemarkeerd.",
+            f"Payment registered and invoice {invoice.invoice_number} marked as paid.",
             "success",
         )
     else:
-        flash(f"Factuur {invoice.invoice_number} als betaald gemarkeerd.", "success")
+        flash(f"Invoice {invoice.invoice_number} marked as paid.", "success")
     return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
 
@@ -461,7 +461,7 @@ def invoice_cancel(invoice_id: str):
     invoice = db.session.get(Invoice, invoice_id) or abort(404)
     ensure_tenant_access(invoice)
     if invoice.status in ("paid", "cancelled"):
-        flash("Factuur is al betaald of geannuleerd.", "error")
+        flash("Invoice is already paid or cancelled.", "error")
         return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
     data = request.get_json(silent=True) or {}
@@ -475,7 +475,7 @@ def invoice_cancel(invoice_id: str):
         description=f"Cancelled invoice {invoice.invoice_number}",
     )
     db.session.commit()
-    flash(f"Factuur {invoice.invoice_number} geannuleerd.", "success")
+    flash(f"Invoice {invoice.invoice_number} cancelled.", "success")
     return redirect(url_for("cms.invoice_view", invoice_id=invoice_id))
 
 
@@ -496,7 +496,7 @@ def invoice_delete(invoice_id: str):
         description=f"Deleted invoice {invoice.invoice_number}",
     )
     db.session.commit()
-    flash(f"Factuur {invoice.invoice_number} verwijderd.", "success")
+    flash(f"Invoice {invoice.invoice_number} deleted.", "success")
     return redirect(url_for("cms.invoice_list"))
 
 

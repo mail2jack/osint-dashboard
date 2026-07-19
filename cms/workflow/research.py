@@ -86,7 +86,7 @@ def cancel_action(action_id):
     if action and action.status == "running":
         action.status = "cancelled"
         action.completed_at = datetime.now()
-        action.result_summary = "Geannuleerd"
+        action.result_summary = "Cancelled"
         links = WorkflowActionFinding.query.filter_by(action_id=action_id).all()
         if links:
             finding_ids = [link.finding_id for link in links]
@@ -152,7 +152,7 @@ def run_action(action_id):
         if is_action_cancelled(action_id):
             action.status = "cancelled"
             action.completed_at = datetime.now()
-            action.result_summary = "Geannuleerd"
+            action.result_summary = "Cancelled"
             db.session.commit()
             return
 
@@ -215,7 +215,7 @@ def run_action(action_id):
 
         action.status = "completed"
         action.completed_at = datetime.now()
-        action.result_summary = f"{len(created)} bevindingen"
+        action.result_summary = f"{len(created)} findings"
         db.session.commit()
 
         from cms.services.invoice_service import auto_invoice_action_completed
@@ -233,7 +233,7 @@ def run_action(action_id):
 
 
 def link_finding_to_manual_action(finding_id, case_id, user_id):
-    """Link a manually created finding to a 'Handmatige invoer' action for the case."""
+    """Link a manually created finding to a 'Manual entry' action for the case."""
     action = WorkflowResearchAction.query.filter_by(
         case_id=case_id,
         action_type="manual_entry",
@@ -244,7 +244,7 @@ def link_finding_to_manual_action(finding_id, case_id, user_id):
             case_id=case_id,
             action_type="manual_entry",
             data_value="",
-            label="Handmatige invoer",
+            label="Manual entry",
             status="completed",
             started_at=datetime.now(),
             completed_at=datetime.now(),
@@ -339,12 +339,12 @@ def _email_check(action):
         ]
         if confirmed:
             for acct in confirmed:
-                site_name = acct.get("name") or acct.get("site") or "onbekend"
+                site_name = acct.get("name") or acct.get("site") or "unknown"
                 findings.append(
                     {
-                        "title": f"Account gevonden op {site_name}",
-                        "detail": f"E-mail {email} is geregistreerd op {site_name}. "
-                        f"Status: {acct.get('status', 'onbekend')}",
+                        "title": f"Account found on {site_name}",
+                        "detail": f"Email {email} is registered on {site_name}. "
+                        f"Status: {acct.get('status', 'unknown')}",
                         "source_url": acct.get("url"),
                         "source_type": "email",
                         "icon": "📧",
@@ -355,10 +355,10 @@ def _email_check(action):
         if unverified:
             findings.append(
                 {
-                    "title": f"{len(unverified)} site(s) reageren maar account niet bevestigd",
-                    "detail": f"Voor {email} reageerden {len(unverified)} site(s) met een 200-status, "
-                    f"maar de pagina bevatte geen bevestiging van het account. "
-                    f"Dit zijn waarschijnlijk valse positieven.",
+                    "title": f"{len(unverified)} site(s) respond but account not confirmed",
+                    "detail": f"For {email}, {len(unverified)} site(s) responded with 200 status, "
+                    f"but the page contained no confirmation of the account. "
+                    f"These are likely false positives.",
                     "source_type": "email",
                     "icon": "⚠️",
                     "verified": False,
@@ -367,8 +367,8 @@ def _email_check(action):
         if not confirmed and not unverified:
             findings.append(
                 {
-                    "title": "Geen accounts gevonden via e-mail search",
-                    "detail": f"Voor {email} zijn geen geregistreerde accounts gevonden.",
+                    "title": "No accounts found via email search",
+                    "detail": f"No registered accounts found for {email}.",
                     "source_type": "email",
                     "icon": "📧",
                     "verified": False,
@@ -377,7 +377,7 @@ def _email_check(action):
     except Exception as e:
         findings.append(
             {
-                "title": f"E-mail check mislukt: {e}",
+                "title": f"Email check failed: {e}",
                 "detail": str(e),
                 "source_type": "email",
                 "icon": "📧",
@@ -399,10 +399,10 @@ def _email_check(action):
                 for breach in r.json():
                     findings.append(
                         {
-                            "title": f"Datalek: {breach['Name']}",
+                            "title": f"Data breach: {breach['Name']}",
                             "detail": f"Domain: {breach.get('Domain', '')}. "
                             f"Data: {', '.join(breach.get('DataClasses', []))}. "
-                            f"Datum: {breach.get('BreachDate', '')}",
+                            f"Date: {breach.get('BreachDate', '')}",
                             "source_url": f"https://haveibeenpwned.com/account/{email}",
                             "source_type": "hibp",
                             "icon": "🔓",
@@ -427,11 +427,11 @@ def _email_check(action):
         if pgp_resp.status_code == 200:
             findings.append(
                 {
-                    "title": "PGP-sleutel gevonden",
+                    "title": "PGP key found",
                     "detail": (
-                        f"Voor {email} is een PGP-public key gevonden op "
-                        f"keys.openpgp.org. Dit bevestigt dat de eigenaar "
-                        f"PGP-versleuteling gebruikt voor e-mailcommunicatie."
+                        f"A PGP public key was found for {email} on "
+                        f"keys.openpgp.org. This confirms that the owner "
+                        f"uses PGP encryption for email communication."
                     ),
                     "source_url": f"https://keys.openpgp.org/search?q={quote(email)}",
                     "source_type": "pgp",
@@ -458,7 +458,7 @@ def _email_check(action):
             for res in ctx_results[:10]:
                 findings.append(
                     {
-                        "title": f"Vermeld op: {res.get('title', 'onbekend')[:200]}",
+                        "title": f"Mentioned on: {res.get('title', 'unknown')[:200]}",
                         "detail": res.get("description", "")[:300],
                         "source_url": res.get("url"),
                         "source_type": "email_context",
@@ -491,13 +491,13 @@ def _phone_check(action):
         parsed = phonenumbers.parse(phone, "NL")
         valid = phonenumbers.is_valid_number(parsed)
         enrichment["valid"] = valid
-        detail_parts.append(f"Geldig: {'Ja' if valid else 'Nee'}")
+        detail_parts.append(f"Valid: {'Yes' if valid else 'No'}")
 
         try:
             region = geocoder.description_for_number(parsed, "nl")
             if region:
                 enrichment["region"] = region
-                detail_parts.append(f"Regio: {region}")
+                detail_parts.append(f"Region: {region}")
         except Exception:
             pass
 
@@ -505,22 +505,22 @@ def _phone_check(action):
             carrier_name = pn_carrier.name_for_number(parsed, "nl")
             if carrier_name:
                 enrichment["carrier"] = carrier_name
-                detail_parts.append(f"Provider: {carrier_name}")
+                detail_parts.append(f"Carrier: {carrier_name}")
         except Exception:
             pass
 
         try:
-            line_type = pn_carrier._api_for_number(parsed).get("type", "onbekend")
+            line_type = pn_carrier._api_for_number(parsed).get("type", "unknown")
             if callable(line_type):
                 line_type = line_type(parsed)
             enrichment["line_type"] = str(line_type)
             type_map = {
-                0: "Vast",
-                1: "Mobiel",
+                0: "Landline",
+                1: "Mobile",
                 2: "VoIP",
-                3: "Persoonlijk nummer",
+                3: "Personal number",
                 5: "Voicemail",
-                7: "Satelliet",
+                7: "Satellite",
             }
             label = (
                 type_map.get(int(line_type))
@@ -535,7 +535,7 @@ def _phone_check(action):
             tz = pn_tz.time_zones_for_number(parsed)
             if tz:
                 enrichment["timezone"] = tz[0]
-                detail_parts.append(f"Tijdzone: {tz[0]}")
+                detail_parts.append(f"Timezone: {tz[0]}")
         except Exception:
             pass
 
@@ -550,10 +550,10 @@ def _phone_check(action):
 
     findings.append(
         {
-            "title": f"Telefoonnummer {phone} — {enrichment.get('valid', True) and 'Geldig' or 'Ongeldig'}",
+            "title": f"Phone number {phone} — {enrichment.get('valid', True) and 'Valid' or 'Invalid'}",
             "detail": "\n".join(detail_parts)
             if detail_parts
-            else f"Telefoonnummer: {phone}",
+            else f"Phone number: {phone}",
             "source_type": "phone",
             "icon": "📞",
             "verified": bool(enrichment.get("valid")),
@@ -564,8 +564,8 @@ def _phone_check(action):
     if wa.get("exists") is True:
         findings.append(
             {
-                "title": "WhatsApp account gevonden",
-                "detail": "Dit nummer is actief op WhatsApp.",
+                "title": "WhatsApp account found",
+                "detail": "This number is active on WhatsApp.",
                 "source_url": wa.get("url"),
                 "source_type": "phone",
                 "icon": "💬",
@@ -575,8 +575,8 @@ def _phone_check(action):
     elif wa.get("exists") is False:
         findings.append(
             {
-                "title": "Geen WhatsApp account",
-                "detail": "Dit nummer is niet gevonden op WhatsApp.",
+                "title": "No WhatsApp account",
+                "detail": "This number was not found on WhatsApp.",
                 "source_type": "phone",
                 "icon": "💬",
                 "verified": False,
@@ -587,8 +587,8 @@ def _phone_check(action):
     if tg.get("exists") is True:
         findings.append(
             {
-                "title": "Telegram account gevonden",
-                "detail": "Dit nummer is actief op Telegram.",
+                "title": "Telegram account found",
+                "detail": "This number is active on Telegram.",
                 "source_url": tg.get("url"),
                 "source_type": "phone",
                 "icon": "✈️",
@@ -601,32 +601,32 @@ def _phone_check(action):
     ba = _whatsapp_check_baileys(e164)
     if ba.get("on_whatsapp") is True and not ba.get("error"):
         detail_lines = []
-        detail_lines.append("Status: Actief op WhatsApp")
+        detail_lines.append("Status: Active on WhatsApp")
         if ba.get("is_business"):
-            detail_lines.append("Type: Zakelijk account")
+            detail_lines.append("Type: Business account")
         else:
-            detail_lines.append("Type: Persoonlijk account")
+            detail_lines.append("Type: Personal account")
         if ba.get("status_text"):
-            detail_lines.append(f"Status tekst: {ba['status_text']}")
+            detail_lines.append(f"Status text: {ba['status_text']}")
         biz = ba.get("business") or {}
         if biz.get("description"):
-            detail_lines.append(f"Beschrijving: {biz['description']}")
+            detail_lines.append(f"Description: {biz['description']}")
         if biz.get("website"):
             detail_lines.append(f"Website: {', '.join(biz['website'])}")
         if biz.get("email"):
-            detail_lines.append(f"E-mail: {biz['email']}")
+            detail_lines.append(f"Email: {biz['email']}")
         if biz.get("category"):
-            detail_lines.append(f"Categorie: {biz['category']}")
+            detail_lines.append(f"Category: {biz['category']}")
         if biz.get("address"):
-            detail_lines.append(f"Adres: {biz['address']}")
+            detail_lines.append(f"Address: {biz['address']}")
         if ba.get("profile_pic"):
-            detail_lines.append(f"Profielfoto: {ba['profile_pic']}")
+            detail_lines.append(f"Profile photo: {ba['profile_pic']}")
         if detail_lines:
             findings.append(
                 {
-                    "title": "WhatsApp Business gegevens"
+                    "title": "WhatsApp Business data"
                     if ba.get("is_business")
-                    else "WhatsApp gegevens",
+                    else "WhatsApp data",
                     "detail": "\n".join(detail_lines),
                     "source_type": "phone",
                     "icon": "🏢" if ba.get("is_business") else "💬",
@@ -664,45 +664,45 @@ def _phone_check(action):
                     detail_lines = []
                     if on_wa is True:
                         detail_lines.append(
-                            "Status: Actief op WhatsApp (via 2Chat API)"
+                            "Status: Active on WhatsApp (via 2Chat API)"
                         )
                     elif on_wa is False:
-                        detail_lines.append("Status: Niet actief op WhatsApp")
+                        detail_lines.append("Status: Not active on WhatsApp")
                     else:
-                        detail_lines.append("Status: Onbekend")
+                        detail_lines.append("Status: Unknown")
                     if wa_info.get("verified_level"):
                         detail_lines.append(
                             f"Verified level: {wa_info['verified_level']}"
                         )
                     if wa_info.get("status_text"):
-                        detail_lines.append(f"Status tekst: {wa_info['status_text']}")
+                        detail_lines.append(f"Status text: {wa_info['status_text']}")
                     if wa_info.get("number_id"):
-                        detail_lines.append(f"Nummer ID: {wa_info['number_id']}")
+                        detail_lines.append(f"Number ID: {wa_info['number_id']}")
                     region_info = tc_data.get("number", {})
                     if region_info.get("region"):
-                        detail_lines.append(f"Regio (2Chat): {region_info['region']}")
+                        detail_lines.append(f"Region (2Chat): {region_info['region']}")
                     if region_info.get("timezone"):
                         detail_lines.append(
-                            f"Tijdzone (2Chat): {', '.join(region_info['timezone'])}"
+                            f"Timezone (2Chat): {', '.join(region_info['timezone'])}"
                         )
                     if biz_info.get("verified_name"):
                         detail_lines.append(
-                            f"Bedrijfsnaam: {biz_info['verified_name']}"
+                            f"Business name: {biz_info['verified_name']}"
                         )
                     if biz_info.get("description"):
-                        detail_lines.append(f"Beschrijving: {biz_info['description']}")
+                        detail_lines.append(f"Description: {biz_info['description']}")
                     if biz_info.get("website"):
                         detail_lines.append(
                             f"Website: {', '.join(biz_info['website'])}"
                         )
                     if wa_info.get("contact_profile_pic"):
                         detail_lines.append(
-                            f"Profielfoto: {wa_info['contact_profile_pic']}"
+                            f"Profile photo: {wa_info['contact_profile_pic']}"
                         )
                     if detail_lines:
                         findings.append(
                             {
-                                "title": "WhatsApp Business API gegevens",
+                                "title": "WhatsApp Business API data",
                                 "detail": "\n".join(detail_lines),
                                 "source_type": "phone",
                                 "icon": "🏢",
@@ -741,8 +741,8 @@ def _address_check(action):
     if not address_query:
         findings.append(
             {
-                "title": "Geen adresgegevens opgegeven",
-                "detail": "Voer straat, huisnummer, postcode en plaats in bij de betrokkene.",
+                "title": "No address details provided",
+                "detail": "Enter street, house number, postal code and city for the subject.",
                 "source_type": "kadaster",
                 "icon": "🏠",
                 "verified": False,
@@ -773,34 +773,34 @@ def _address_check(action):
                 hn = doc.get("huisnummer", "")
                 hnl = doc.get("huis_nlt", "")
                 hn_display = hnl if hnl else hn
-                details.append(f"Adres: {doc['straatnaam']} {hn_display}")
+                details.append(f"Address: {doc['straatnaam']} {hn_display}")
             if doc.get("postcode"):
-                details.append(f"Postcode: {doc['postcode']}")
+                details.append(f"Postal code: {doc['postcode']}")
             if doc.get("woonplaatsnaam"):
-                details.append(f"Plaats: {doc['woonplaatsnaam']}")
+                details.append(f"City: {doc['woonplaatsnaam']}")
             if doc.get("buurtnaam"):
-                details.append(f"Buurt: {doc['buurtnaam']}")
+                details.append(f"Neighborhood: {doc['buurtnaam']}")
             if doc.get("wijknaam"):
-                details.append(f"Wijk: {doc['wijknaam']}")
+                details.append(f"District: {doc['wijknaam']}")
             if doc.get("gemeentenaam"):
-                details.append(f"Gemeente: {doc['gemeentenaam']}")
+                details.append(f"Municipality: {doc['gemeentenaam']}")
             if doc.get("provincienaam"):
-                details.append(f"Provincie: {doc['provincienaam']}")
+                details.append(f"Province: {doc['provincienaam']}")
             if doc.get("gekoppeld_perceel"):
                 percelen = "; ".join(doc["gekoppeld_perceel"])
-                details.append(f"Kadastraal perceel: {percelen}")
+                details.append(f"Cadastral parcel: {percelen}")
             if doc.get("gekoppeld_appartement"):
                 apps = "; ".join(doc["gekoppeld_appartement"])
-                details.append(f"Appartementsrecht: {apps}")
+                details.append(f"Apartment right: {apps}")
             if doc.get("openbareruimtetype"):
-                details.append(f"Openbare ruimte type: {doc['openbareruimtetype']}")
+                details.append(f"Public space type: {doc['openbareruimtetype']}")
 
             findings.append(
                 {
                     "title": f"Adres: {doc.get('weergavenaam', address_query)}",
                     "detail": "\n".join(details)
                     if details
-                    else "BAG registratie gevonden.",
+                    else "BAG registration found.",
                     "source_url": bag_url,
                     "source_type": "kadaster",
                     "icon": "🏠",
@@ -811,7 +811,7 @@ def _address_check(action):
     except Exception as e:
         findings.append(
             {
-                "title": f"Adres check mislukt: {e}",
+                "title": f"Address check failed: {e}",
                 "detail": str(e),
                 "source_type": "kadaster",
                 "icon": "🏠",
@@ -822,7 +822,7 @@ def _address_check(action):
         findings.append(
             {
                 "title": f"Adres: {address_query}",
-                "detail": "Kadaster lookup gaf geen resultaten. Mogelijk niet gevonden in BAG.",
+                "detail": "Kadaster lookup returned no results. Possibly not found in BAG.",
                 "source_type": "kadaster",
                 "icon": "🏠",
                 "verified": False,
@@ -868,8 +868,8 @@ def _social_scan(action):
     if not accounts_with_subject:
         findings.append(
             {
-                "title": "Geen social media accounts om te scannen",
-                "detail": "Er zijn geen social media accounts opgegeven voor dit subject.",
+                "title": "No social media accounts to scan",
+                "detail": "No social media accounts have been provided for this subject.",
                 "source_type": "social",
                 "icon": "🌐",
                 "verified": False,
@@ -906,7 +906,7 @@ def _social_scan(action):
             )
             if not username and url:
                 username = url.rstrip("/").split("/")[-1]
-            label = input_platform or username or "onbekend"
+            label = input_platform or username or "unknown"
 
         if not username:
             continue
@@ -923,8 +923,8 @@ def _social_scan(action):
                         result_url = f.get("url", "")
                         platform = detect_platform(result_url)
                         finding = {
-                            "title": f"{label}: profiel actief ({site})",
-                            "detail": f"Gevonden via Maigret. URL: {result_url}",
+                            "title": f"{label}: profile active ({site})",
+                            "detail": f"Found via Maigret. URL: {result_url}",
                             "source_url": result_url,
                             "source_type": "social",
                             "icon": "🌐",
@@ -952,8 +952,8 @@ def _social_scan(action):
                         result_url = f.get("url", "")
                         platform = detect_platform(result_url)
                         finding = {
-                            "title": f"{label}: profiel actief ({site})",
-                            "detail": f"Gevonden via Sherlock. URL: {result_url}",
+                            "title": f"{label}: profile active ({site})",
+                            "detail": f"Found via Sherlock. URL: {result_url}",
                             "source_url": result_url,
                             "source_type": "social",
                             "icon": "🌐",
@@ -977,7 +977,7 @@ def _social_scan(action):
                 findings.append(
                     {
                         "title": f"Social media: {acct}",
-                        "detail": f"Gebruikersnaam: {acct}",
+                        "detail": f"Username: {acct}",
                         "source_type": "social",
                         "icon": "🌐",
                         "verified": False,
@@ -988,7 +988,7 @@ def _social_scan(action):
                 pl = (
                     getattr(acct, "platform", None)
                     if not isinstance(acct, dict)
-                    else acct.get("platform", "onbekend")
+                    else acct.get("platform", "unknown")
                 )
                 u = (
                     getattr(acct, "url", None)
@@ -1035,11 +1035,11 @@ def _kvk_check(action):
                 for item in data if isinstance(data, list) else data.get("data", []):
                     findings.append(
                         {
-                            "title": f"KvK: {item.get('naam', 'onbekend')}",
+                            "title": f"KvK: {item.get('naam', 'unknown')}",
                             "detail": f"KvK: {item.get('kvkNummer', '')}. "
-                            f"Adres: {item.get('straat', '')} {item.get('huisnummer', '')}, "
+                            f"Address: {item.get('straat', '')} {item.get('huisnummer', '')}, "
                             f"{item.get('postcode', '')} {item.get('plaats', '')}. "
-                            f"Rechtsvorm: {item.get('rechtsvorm', '')}",
+                            f"Legal form: {item.get('rechtsvorm', '')}",
                             "source_url": f"https://www.kvk.nl/zoeken/?q={item.get('kvkNummer', query)}",
                             "source_type": "kvk",
                             "icon": "🏢",
@@ -1077,7 +1077,7 @@ def _kvk_check(action):
         if r.status_code != 200:
             findings.append(
                 {
-                    "title": "KvK lookup openkvk.nl mislukt",
+                    "title": "KvK lookup openkvk.nl failed",
                     "detail": f"Status {r.status_code}",
                     "source_type": "kvk",
                     "icon": "🏢",
@@ -1091,7 +1091,7 @@ def _kvk_check(action):
             findings.append(
                 {
                     "title": "KvK lookup via openkvk.nl",
-                    "detail": "Geen resultaten gevonden op openkvk.nl.",
+                    "detail": "No results found on openkvk.nl.",
                     "source_type": "kvk",
                     "icon": "🏢",
                     "verified": False,
@@ -1106,7 +1106,7 @@ def _kvk_check(action):
             findings.append(
                 {
                     "title": "KvK lookup via openkvk.nl",
-                    "detail": "Geen bedrijven gevonden.",
+                    "detail": "No companies found.",
                     "source_type": "kvk",
                     "icon": "🏢",
                     "verified": False,
@@ -1123,7 +1123,7 @@ def _kvk_check(action):
             if kvk_nummer:
                 seen_kvk.add(kvk_nummer)
 
-            naam = company.get("naam", "onbekend")
+            naam = company.get("naam", "unknown")
             loc = company.get("bezoeklocatie", [{}])
             loc = loc[0] if isinstance(loc, list) and loc else loc
             straat = loc.get("straat", "") if isinstance(loc, dict) else ""
@@ -1136,7 +1136,7 @@ def _kvk_check(action):
                 handelsnamen = [h for h in handelsnamen if isinstance(h, str)]
             extra = ""
             if handelsnamen and len(handelsnamen) > 1:
-                extra = f"Handelsnamen: {', '.join(handelsnamen[:5])}."
+                extra = f"Trade names: {', '.join(handelsnamen[:5])}."
 
             detail_parts = []
             if kvk_nummer:
@@ -1170,7 +1170,7 @@ def _kvk_check(action):
     except Exception as e:
         findings.append(
             {
-                "title": "KvK lookup via openkvk.nl mislukt",
+                "title": "KvK lookup via openkvk.nl failed",
                 "detail": str(e),
                 "source_type": "kvk",
                 "icon": "🏢",
@@ -1190,8 +1190,8 @@ def _rdw_check(action):
     if not ipc:
         findings.append(
             {
-                "title": "Geen kenteken opgegeven voor RDW check",
-                "detail": "Voeg een kenteken toe aan het subject via het kentekenveld.",
+                "title": "No license plate provided for RDW check",
+                "detail": "Add a license plate to the subject via the license plate field.",
                 "source_type": "rdw",
                 "icon": "🚗",
                 "verified": False,
@@ -1225,9 +1225,9 @@ def _rdw_check(action):
                 pass
             detail_parts = []
             if data.get("kenteken"):
-                detail_parts.append(f"Kenteken: {data['kenteken']}")
+                detail_parts.append(f"License plate: {data['kenteken']}")
             if data.get("eerste_kleur"):
-                detail_parts.append(f"Kleur: {data['eerste_kleur']}")
+                detail_parts.append(f"Color: {data['eerste_kleur']}")
             if data.get("vermogen_massario"):
                 detail_parts.append(f"{data['vermogen_massario']} kW")
             if data.get("brandstof_omschrijving"):
@@ -1236,7 +1236,7 @@ def _rdw_check(action):
                 detail_parts.append(f"APK: {_fmt(data['vervaldatum_apk'])}")
             findings.append(
                 {
-                    "title": f"🚗 {data.get('merk', 'onbekend')} {data.get('handelsbenaming', '')}",
+                    "title": f"🚗 {data.get('merk', 'unknown')} {data.get('handelsbenaming', '')}",
                     "detail": " · ".join(detail_parts),
                     "source_type": "rdw",
                     "icon": "🚗",
@@ -1247,8 +1247,8 @@ def _rdw_check(action):
         else:
             findings.append(
                 {
-                    "title": f"Geen RDW gegevens voor kenteken {kenteken}",
-                    "detail": "Voertuig niet gevonden in RDW-registratie.",
+                    "title": f"No RDW data for license plate {kenteken}",
+                    "detail": "Vehicle not found in RDW registration.",
                     "source_type": "rdw",
                     "icon": "🚗",
                     "verified": False,
@@ -1257,7 +1257,7 @@ def _rdw_check(action):
     except Exception as e:
         findings.append(
             {
-                "title": f"RDW check mislukt: {e}",
+                "title": f"RDW check failed: {e}",
                 "detail": str(e),
                 "source_type": "rdw",
                 "icon": "🚗",
@@ -1339,9 +1339,9 @@ def _vessel_check(action):
     if not any([imo, mmsi, eni, name]):
         findings.append(
             {
-                "title": "Geen vaartuiggegevens opgegeven",
-                "detail": "Voer een IMO, MMSI, ENI-nummer of scheepsnaam in, "
-                "of koppel eerst een vaartuig-subject aan dit onderzoek.",
+                "title": "No vessel data provided",
+                "detail": "Enter an IMO, MMSI, ENI number or vessel name, "
+                "or link a vessel subject to this investigation first.",
                 "source_type": "vessel",
                 "icon": "🚢",
                 "verified": False,
@@ -1357,7 +1357,7 @@ def _vessel_check(action):
         if result.get("found"):
             parts = []
             if result.get("name"):
-                parts.append(f"Naam: {result['name']}")
+                parts.append(f"Name: {result['name']}")
             if result.get("imo"):
                 parts.append(f"IMO: {result['imo']}")
             if result.get("mmsi"):
@@ -1365,53 +1365,53 @@ def _vessel_check(action):
             if result.get("eni"):
                 parts.append(f"ENI: {result['eni']}")
             if result.get("flag"):
-                parts.append(f"Vlag: {result['flag']}")
+                parts.append(f"Flag: {result['flag']}")
             if result.get("ship_type"):
                 parts.append(f"Type: {result['ship_type']}")
             if result.get("length"):
-                parts.append(f"Lengte: {result['length']} m")
+                parts.append(f"Length: {result['length']} m")
             if result.get("beam"):
-                parts.append(f"Breedte: {result['beam']} m")
+                parts.append(f"Beam: {result['beam']} m")
             if result.get("year_built"):
-                parts.append(f"Bouwjaar: {result['year_built']}")
+                parts.append(f"Year built: {result['year_built']}")
             if result.get("callsign"):
-                parts.append(f"Roepnaam: {result['callsign']}")
+                parts.append(f"Callsign: {result['callsign']}")
             if result.get("destination"):
-                parts.append(f"Bestemming: {result['destination']}")
+                parts.append(f"Destination: {result['destination']}")
             if result.get("builder"):
-                parts.append(f"Bouwer: {result['builder']}")
+                parts.append(f"Builder: {result['builder']}")
             if result.get("position"):
                 pos = result["position"]
                 lat, lon = pos.get("lat", "?"), pos.get("lon", "?")
                 parts.append(
-                    f"Positie: {lat}, {lon} (https://www.openstreetmap.org/?mlat={lat}&mlon={lon}&zoom=12)"
+                    f"Position: {lat}, {lon} (https://www.openstreetmap.org/?mlat={lat}&mlon={lon}&zoom=12)"
                 )
             if result.get("position_text"):
                 from urllib.parse import quote
 
                 map_q = quote(result["position_text"])
                 parts.append(
-                    f"Positie: {result['position_text']} (https://www.google.com/maps?q={map_q})"
+                    f"Position: {result['position_text']} (https://www.google.com/maps?q={map_q})"
                 )
             if result.get("speed"):
-                parts.append(f"Snelheid: {result['speed']} knopen")
+                parts.append(f"Speed: {result['speed']} knots")
             if result.get("course"):
-                parts.append(f"Koers: {result['course']}°")
+                parts.append(f"Course: {result['course']}°")
             if result.get("navigation_status"):
                 parts.append(f"Status: {result['navigation_status']}")
             if result.get("draught"):
-                parts.append(f"Diepgang: {result['draught']} m")
+                parts.append(f"Draught: {result['draught']} m")
             if result.get("eta"):
                 parts.append(f"ETA: {result['eta']}")
 
             sources = result.get("sources", [])
             if sources:
-                parts.append(f"\nBronnen: {', '.join(sources)}")
+                parts.append(f"\nSources: {', '.join(sources)}")
 
             findings.append(
                 {
-                    "title": f"🚢 {result.get('name', 'Onbekend schip')}",
-                    "detail": " · ".join(parts) if parts else "Gegevens gevonden",
+                    "title": f"🚢 {result.get('name', 'Unknown vessel')}",
+                    "detail": " · ".join(parts) if parts else "Data found",
                     "source_type": "vessel",
                     "icon": "🚢",
                     "verified": False,
@@ -1443,8 +1443,8 @@ def _vessel_check(action):
         else:
             findings.append(
                 {
-                    "title": "Geen vaartuiggegevens gevonden",
-                    "detail": "Geen maritieme bronnen hebben gegevens opgeleverd voor de opgegeven identifiers.",
+                    "title": "No vessel data found",
+                    "detail": "No maritime sources yielded data for the provided identifiers.",
                     "source_type": "vessel",
                     "icon": "🚢",
                     "verified": False,
@@ -1454,7 +1454,7 @@ def _vessel_check(action):
         logger.exception("Vessel check failed")
         findings.append(
             {
-                "title": f"Vaartuig check mislukt: {e}",
+                "title": f"Vessel check failed: {e}",
                 "detail": str(e),
                 "source_type": "vessel",
                 "icon": "🚢",
@@ -1487,7 +1487,7 @@ def _osint_deep_search(action):
             url = res.get("url") or ""
             platform = detect_platform(url) if url else None
             finding = {
-                "title": f"OSINT: {res.get('title', 'onbekend')[:200]}",
+                "title": f"OSINT: {res.get('title', 'unknown')[:200]}",
                 "detail": res.get("description", "")[:300],
                 "source_url": url,
                 "source_type": "osint",
@@ -1525,7 +1525,7 @@ def _osint_deep_search(action):
                 url = link.get("url") or ""
                 platform = detect_platform(url) if url else None
                 finding = {
-                    "title": f"OSINT: {link.get('title', 'resultaat')[:200]}",
+                    "title": f"OSINT: {link.get('title', 'result')[:200]}",
                     "detail": link.get("snippet", "")[:300],
                     "source_url": url,
                     "source_type": "osint",
@@ -1552,10 +1552,10 @@ def _financial_check(action):
     """Placeholder — financieel onderzoek is handmatig in deze fase."""
     return [
         {
-            "title": "Financieel onderzoek — handmatige actie",
-            "detail": "Financieel onderzoek vereist handmatige aanvraag bij banken/toezichthouders. "
-            "Deze actie dient als herinnering om rekeningafschriften en transactieoverzichten "
-            "op te vragen bij de relevante instanties.",
+            "title": "Financial research — manual action",
+            "detail": "Financial research requires manual request to banks/supervisors. "
+            "This action serves as a reminder to request bank statements and transaction overviews "
+            "from the relevant institutions.",
             "source_type": "financial",
             "icon": "💰",
             "verified": False,
@@ -1569,10 +1569,10 @@ def _facebook_check(action):
     if not api_key:
         findings.append(
             {
-                "title": "Facebook check niet beschikbaar",
-                "detail": "Geen RapidAPI key geconfigureerd. "
-                "Voeg deze toe in Settings → API Keys (rapidapi_username_key). "
-                "Key verkrijgbaar via RapidAPI: facebook-scraper3",
+                "title": "Facebook check not available",
+                "detail": "No RapidAPI key configured. "
+                "Add it in Settings → API Keys (rapidapi_username_key). "
+                "Key available via RapidAPI: facebook-scraper3",
                 "source_type": "facebook",
                 "icon": "📘",
                 "verified": False,
@@ -1642,7 +1642,7 @@ def _facebook_check(action):
                     if data.get("location"):
                         detail_parts.append(f"📍 {data['location']}")
                     if data.get("follower_count") is not None:
-                        detail_parts.append(f"👥 {data['follower_count']:,} volgers")
+                        detail_parts.append(f"👥 {data['follower_count']:,} followers")
                     if data.get("bio"):
                         bp = (
                             data["bio"][:120] + "…"
@@ -1651,14 +1651,14 @@ def _facebook_check(action):
                         )
                         detail_parts.append(f"📝 {bp}")
                     if data.get("is_verified"):
-                        detail_parts.append("✅ Geverifieerd")
+                        detail_parts.append("✅ Verified")
                     add_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code in (401, 403):
                 add_finding(
-                    "PullAPI authenticatiefout",
+                    "PullAPI authentication error",
                     "",
-                    "PullAPI key heeft geen toegang (abonneer op facebook-scraper-api9 op RapidAPI). Valt terug op Scraper3.",
+                    "PullAPI key has no access (subscribe to facebook-scraper-api9 on RapidAPI). Falling back to Scraper3.",
                 )
             elif r.status_code == 429:
                 logger.warning("PullAPI rate limit — falling back to Scraper3")
@@ -1686,16 +1686,16 @@ def _facebook_check(action):
             )
             if r.status_code == 429:
                 add_finding(
-                    "Rate limit bereikt",
+                    "Rate limit reached",
                     "",
-                    "Facebook Scraper API rate limit overschreden (free plan: 100/mnd).",
+                    "Facebook Scraper API rate limit exceeded (free plan: 100/month).",
                 )
                 return None
             if r.status_code in (401, 403):
                 add_finding(
-                    "Authenticatiefout",
+                    "Authentication error",
                     "",
-                    "Facebook Scraper API key is ongeldig of verlopen.",
+                    "Facebook Scraper API key is invalid or expired.",
                 )
                 return None
             if r.status_code != 200:
@@ -1843,13 +1843,13 @@ def _facebook_check(action):
 
         if not findings:
             add_finding(
-                "Geen Facebook resultaten gevonden",
+                "No Facebook results found",
                 "",
-                f"Geen profielen of pagina's gevonden voor '{query}' via Facebook Scraper API.",
+                f"No profiles or pages found for '{query}' via Facebook Scraper API.",
             )
 
     except Exception as e:
-        add_finding("Facebook check mislukt", "", str(e))
+        add_finding("Facebook check failed", "", str(e))
 
     return findings
 
@@ -1860,10 +1860,10 @@ def _tiktok_check(action):
     if not api_key:
         findings.append(
             {
-                "title": "TikTok check niet beschikbaar",
-                "detail": "Geen RapidAPI key geconfigureerd. "
-                "Voeg deze toe in Settings → API Keys (rapidapi_username_key). "
-                "Key verkrijgbaar via RapidAPI: scraptik",
+                "title": "TikTok check not available",
+                "detail": "No RapidAPI key configured. "
+                "Add it in Settings → API Keys (rapidapi_username_key). "
+                "Key available via RapidAPI: scraptik",
                 "source_type": "tiktok",
                 "icon": "🎵",
                 "verified": False,
@@ -1875,9 +1875,9 @@ def _tiktok_check(action):
         rem = get_remaining_credits("tiktok")
         findings.append(
             {
-                "title": "TikTok credits opgebruikt",
-                "detail": f"Deze maand nog {rem} van de {CREDIT_LIMITS['tiktok']} credits over. "
-                "Volgende maand worden ze gereset.",
+                "title": "TikTok credits exhausted",
+                "detail": f"{rem} of {CREDIT_LIMITS['tiktok']} credits remaining this month. "
+                "They will reset next month.",
                 "source_type": "tiktok",
                 "icon": "🎵",
                 "verified": False,
@@ -1945,11 +1945,11 @@ def _tiktok_check(action):
                         )
                         detail_parts.append(f"📝 {bp}")
                     if data.get("follower_count") is not None:
-                        detail_parts.append(f"👥 {data['follower_count']:,} volgers")
+                        detail_parts.append(f"👥 {data['follower_count']:,} followers")
                     if data.get("following_count") is not None:
-                        detail_parts.append(f"↗ {data['following_count']:,} volgend")
+                        detail_parts.append(f"↗ {data['following_count']:,} following")
                     if data.get("verification_type") or data.get("verified"):
-                        detail_parts.append("✅ Geverifieerd")
+                        detail_parts.append("✅ Verified")
 
                     # secondary check: verify TikTok profile page is reachable
                     try:
@@ -1967,7 +1967,7 @@ def _tiktok_check(action):
                             ]
                         ):
                             detail_parts.append(
-                                "⚠️ Niet direct bereikbaar via TikTok-link"
+                                "⚠️ Not directly accessible via TikTok link"
                             )
                     except Exception:
                         pass
@@ -1978,12 +1978,12 @@ def _tiktok_check(action):
                 add_finding(
                     "TikTok rate limit",
                     "",
-                    "ScrapTik rate limit overschreden (gratis: 50/maand).",
+                    "ScrapTik rate limit exceeded (free: 50/month).",
                 )
                 return findings
             elif r.status_code in (401, 403):
                 add_finding(
-                    "TikTok authenticatiefout", "", "ScrapTik API key is ongeldig."
+                    "TikTok authentication error", "", "ScrapTik API key is invalid."
                 )
 
         # Name search fallback
@@ -2020,13 +2020,13 @@ def _tiktok_check(action):
 
         if not findings:
             add_finding(
-                "Geen TikTok resultaten gevonden",
+                "No TikTok results found",
                 "",
-                f"Geen gebruikers gevonden voor '{query}' via ScrapTik.",
+                f"No users found for '{query}' via ScrapTik.",
             )
 
     except Exception as e:
-        add_finding("TikTok check mislukt", "", str(e))
+        add_finding("TikTok check failed", "", str(e))
 
     return findings
 
@@ -2037,10 +2037,10 @@ def _instagram_check(action):
     if not api_key:
         findings.append(
             {
-                "title": "Instagram check niet beschikbaar",
-                "detail": "Geen RapidAPI key geconfigureerd. "
-                "Voeg deze toe in Settings → API Keys (rapidapi_username_key). "
-                "Key verkrijgbaar via RapidAPI: instagram-scraper-api14",
+                "title": "Instagram check not available",
+                "detail": "No RapidAPI key configured. "
+                "Add it in Settings → API Keys (rapidapi_username_key). "
+                "Key available via RapidAPI: instagram-scraper-api14",
                 "source_type": "instagram",
                 "icon": "📸",
                 "verified": False,
@@ -2052,9 +2052,9 @@ def _instagram_check(action):
         rem = get_remaining_credits("instagram")
         findings.append(
             {
-                "title": "Instagram credits opgebruikt",
-                "detail": f"Deze maand nog {rem} van de {CREDIT_LIMITS['instagram']} credits over. "
-                "Volgende maand worden ze gereset.",
+                "title": "Instagram credits exhausted",
+                "detail": f"{rem} of {CREDIT_LIMITS['instagram']} credits remaining this month. "
+                "They will reset next month.",
                 "source_type": "instagram",
                 "icon": "📸",
                 "verified": False,
@@ -2119,11 +2119,11 @@ def _instagram_check(action):
                         )
                         detail_parts.append(f"📝 {bp}")
                     if data.get("follower_count") is not None:
-                        detail_parts.append(f"👥 {data['follower_count']:,} volgers")
+                        detail_parts.append(f"👥 {data['follower_count']:,} followers")
                     if data.get("following_count") is not None:
-                        detail_parts.append(f"↗ {data['following_count']:,} volgend")
+                        detail_parts.append(f"↗ {data['following_count']:,} following")
                     if data.get("is_verified"):
-                        detail_parts.append("✅ Geverifieerd")
+                        detail_parts.append("✅ Verified")
                     if data.get("business_category"):
                         detail_parts.append(f"🏢 {data['business_category']}")
                     _use_credit("instagram")
@@ -2133,14 +2133,14 @@ def _instagram_check(action):
                 add_finding(
                     "Instagram rate limit",
                     "",
-                    "PullAPI Instagram rate limit overschreden (gratis: 10/maand).",
+                    "PullAPI Instagram rate limit exceeded (free: 10/month).",
                 )
                 return findings
             elif r.status_code in (401, 403):
                 add_finding(
-                    "Instagram authenticatiefout",
+                    "Instagram authentication error",
                     "",
-                    "PullAPI Instagram key is ongeldig.",
+                    "PullAPI Instagram key is invalid.",
                 )
 
         # Name search fallback
@@ -2174,13 +2174,13 @@ def _instagram_check(action):
 
         if not findings:
             add_finding(
-                "Geen Instagram resultaten gevonden",
+                "No Instagram results found",
                 "",
-                f"Geen profielen gevonden voor '{query}' via PullAPI Instagram.",
+                f"No profiles found for '{query}' via PullAPI Instagram.",
             )
 
     except Exception as e:
-        add_finding("Instagram check mislukt", "", str(e))
+        add_finding("Instagram check failed", "", str(e))
 
     return findings
 
@@ -2191,10 +2191,10 @@ def _linkedin_check(action):
     if not api_key:
         findings.append(
             {
-                "title": "LinkedIn check niet beschikbaar",
-                "detail": "Geen RapidAPI key geconfigureerd. "
-                "Voeg deze toe in Settings → API Keys (rapidapi_username_key). "
-                "Key verkrijgbaar via RapidAPI: linkedin-data-api",
+                "title": "LinkedIn check not available",
+                "detail": "No RapidAPI key configured. "
+                "Add it in Settings → API Keys (rapidapi_username_key). "
+                "Key available via RapidAPI: linkedin-data-api",
                 "source_type": "linkedin",
                 "icon": "💼",
                 "verified": False,
@@ -2206,9 +2206,9 @@ def _linkedin_check(action):
         rem = get_remaining_credits("linkedin")
         findings.append(
             {
-                "title": "LinkedIn credits opgebruikt",
-                "detail": f"Deze maand nog {rem} van de {CREDIT_LIMITS['linkedin']} credits over. "
-                "Volgende maand worden ze gereset.",
+                "title": "LinkedIn credits exhausted",
+                "detail": f"{rem} of {CREDIT_LIMITS['linkedin']} credits remaining this month. "
+                "They will reset next month.",
                 "source_type": "linkedin",
                 "icon": "💼",
                 "verified": False,
@@ -2265,14 +2265,14 @@ def _linkedin_check(action):
                 add_finding(
                     "LinkedIn rate limit",
                     "",
-                    "LinkedIn Data API rate limit overschreden.",
+                    "LinkedIn Data API rate limit exceeded.",
                 )
                 return None
             if r.status_code in (401, 403):
                 add_finding(
-                    "LinkedIn authenticatiefout",
+                    "LinkedIn authentication error",
                     "",
-                    "LinkedIn Data API key is ongeldig.",
+                    "LinkedIn Data API key is invalid.",
                 )
                 return None
             if r.status_code != 200:
@@ -2320,7 +2320,7 @@ def _linkedin_check(action):
                     if location:
                         detail_parts.append(f"📍 {location}")
                     if followers:
-                        detail_parts.append(f"👥 {followers} volgers")
+                        detail_parts.append(f"👥 {followers} followers")
                     if summary:
                         sp = summary[:120] + "…" if len(summary) > 120 else summary
                         detail_parts.append(f"📝 {sp}")
@@ -2343,7 +2343,7 @@ def _linkedin_check(action):
                     if location:
                         detail_parts.append(f"📍 {location}")
                     if followers:
-                        detail_parts.append(f"👥 {followers} volgers")
+                        detail_parts.append(f"👥 {followers} followers")
                     if summary:
                         sp = summary[:120] + "…" if len(summary) > 120 else summary
                         detail_parts.append(f"📝 {sp}")
@@ -2382,13 +2382,13 @@ def _linkedin_check(action):
 
         if not findings:
             add_finding(
-                "Geen LinkedIn resultaten gevonden",
+                "No LinkedIn results found",
                 "",
-                f"Geen profielen gevonden voor '{query}' via LinkedIn Data API.",
+                f"No profiles found for '{query}' via LinkedIn Data API.",
             )
 
     except Exception as e:
-        add_finding("LinkedIn check mislukt", "", str(e))
+        add_finding("LinkedIn check failed", "", str(e))
 
     return findings
 
@@ -2399,10 +2399,10 @@ def _twitter_check(action):
     if not api_key:
         findings.append(
             {
-                "title": "Twitter check niet beschikbaar",
-                "detail": "Geen RapidAPI key geconfigureerd. "
-                "Voeg deze toe in Settings → API Keys (rapidapi_username_key). "
-                "Key verkrijgbaar via RapidAPI: twitter-api45",
+                "title": "Twitter check not available",
+                "detail": "No RapidAPI key configured. "
+                "Add it in Settings → API Keys (rapidapi_username_key). "
+                "Key available via RapidAPI: twitter-api45",
                 "source_type": "twitter",
                 "icon": "🐦",
                 "verified": False,
@@ -2414,9 +2414,9 @@ def _twitter_check(action):
         rem = get_remaining_credits("twitter")
         findings.append(
             {
-                "title": "Twitter credits opgebruikt",
-                "detail": f"Deze maand nog {rem} van de {CREDIT_LIMITS['twitter']} credits over. "
-                "Volgende maand worden ze gereset.",
+                "title": "Twitter credits exhausted",
+                "detail": f"{rem} of {CREDIT_LIMITS['twitter']} credits remaining this month. "
+                "They will reset next month.",
                 "source_type": "twitter",
                 "icon": "🐦",
                 "verified": False,
@@ -2484,21 +2484,21 @@ def _twitter_check(action):
                     if body.get("location"):
                         detail_parts.append(f"📍 {body['location']}")
                     if body.get("followers_count") is not None:
-                        detail_parts.append(f"👥 {body['followers_count']:,} volgers")
+                        detail_parts.append(f"👥 {body['followers_count']:,} followers")
                     if body.get("friends_count") is not None:
-                        detail_parts.append(f"↗ {body['friends_count']:,} volgend")
+                        detail_parts.append(f"↗ {body['friends_count']:,} following")
                     if body.get("verified") or body.get("is_blue_verified"):
-                        detail_parts.append("✅ Geverifieerd")
+                        detail_parts.append("✅ Verified")
                     add_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code == 429:
                 add_finding(
-                    "Twitter rate limit", "", "Twitter API rate limit overschreden."
+                    "Twitter rate limit", "", "Twitter API rate limit exceeded."
                 )
                 return findings
             elif r.status_code in (401, 403):
                 add_finding(
-                    "Twitter authenticatiefout", "", "Twitter API key is ongeldig."
+                    "Twitter authentication error", "", "Twitter API key is invalid."
                 )
 
         # Search fallback
@@ -2532,13 +2532,13 @@ def _twitter_check(action):
 
         if not findings:
             add_finding(
-                "Geen Twitter resultaten gevonden",
+                "No Twitter results found",
                 "",
-                f"Geen gebruikers gevonden voor '{query}' via Twitter API.",
+                f"No users found for '{query}' via Twitter API.",
             )
 
     except Exception as e:
-        add_finding("Twitter check mislukt", "", str(e))
+        add_finding("Twitter check failed", "", str(e))
 
     return findings
 
@@ -2583,7 +2583,7 @@ def _subdomain_check(action):
                             or ""
                         )
                         raise ValueError(
-                            f"crt.sh gaf geen geldige JSON terug ({body_len} bytes)"
+                            f"crt.sh returned no valid JSON ({body_len} bytes)"
                         )
                     for entry in data:
                         raw = entry.get("name_value", "")
@@ -2626,8 +2626,8 @@ def _subdomain_check(action):
         if not sorted_subs:
             findings.append(
                 {
-                    "title": f"Geen subdomeinen gevonden voor {domain}",
-                    "detail": "Er zijn geen certificaat-transparantie logs gevonden met subdomeinen.",
+                    "title": f"No subdomains found for {domain}",
+                    "detail": "No certificate transparency logs with subdomains were found.",
                     "source_type": "subdomain",
                     "icon": "🌐",
                     "verified": False,
@@ -2637,9 +2637,9 @@ def _subdomain_check(action):
 
         findings.append(
             {
-                "title": f"{len(sorted_subs)} subdomeinen gevonden voor {domain}",
+                "title": f"{len(sorted_subs)} subdomains found for {domain}",
                 "detail": "\n".join(sorted_subs[:30])
-                + ("\n… en meer" if len(sorted_subs) > 30 else ""),
+                + ("\n... and more" if len(sorted_subs) > 30 else ""),
                 "source_url": f"https://crt.sh/?q=%25.{domain}",
                 "source_type": "subdomain",
                 "icon": "🌐",
@@ -2665,118 +2665,118 @@ def _subdomain_check(action):
 # ─── Register all actions ─────────────────────────────────
 register_action(
     "email",
-    "E-mail check",
+    "Email check",
     "📧",
     _email_check,
-    "Zoekt het e-mailadres op in openbare bronnen (HIBP, PGP keyservers, SpiderFoot) en controleert of het "
-    "voorkomt in datalekken, een PGP-sleutel heeft, gekoppeld is aan sociale media, "
-    "of andere online sporen (webcontext) achterlaat.",
+    "Searches the email address in public sources (HIBP, PGP keyservers, SpiderFoot) and checks whether it "
+    "appears in data breaches, has a PGP key, is linked to social media, "
+    "or leaves other online traces (web context).",
 )
 register_action(
     "phone",
-    "Telefoon check",
+    "Phone check",
     "📞",
     _phone_check,
-    "Doorzoekt openbare bronnen naar het telefoonnummer: koppelingen met sociale media, bedrijfsregistraties, en eventuele signaleringen uit datalekken.",
+    "Searches public sources for the phone number: links to social media, business registrations, and any signals from data breaches.",
 )
 register_action(
     "address",
-    "Adres onderzoek",
+    "Address research",
     "🏠",
     _address_check,
-    "Zoekt het adres op in openbare bronnen (Kadaster, Overheid.io) om bewonershistorie, eigendomsinformatie en gerelateerde adressen te vinden.",
+    "Searches the address in public sources (Kadaster, Overheid.io) to find resident history, property information, and related addresses.",
 )
 register_action(
     "social",
     "Social media scan",
     "🌐",
     _social_scan,
-    "Scant meerdere sociale media platforms op basis van naam of gebruikersnaam en verzamelt openbare profielen, berichten en netwerkconnecties.",
+    "Scans multiple social media platforms based on name or username and collects public profiles, posts, and network connections.",
 )
 register_action(
     "facebook",
-    "Facebook onderzoek",
+    "Facebook research",
     "📘",
     _facebook_check,
-    "Zoekt naar openbare Facebook profielen, pagina's en berichten op basis van naam. Levert profielfoto, bio en openbare interacties.",
+    "Searches for public Facebook profiles, pages, and posts by name. Returns profile photo, bio, and public interactions.",
 )
 register_action(
     "instagram",
-    "Instagram onderzoek",
+    "Instagram research",
     "📸",
     _instagram_check,
-    "Doorzoekt Instagram op openbare profielen en berichten. Vindt gebruikersnaam, profielfoto, biografie en recente posts.",
+    "Searches Instagram for public profiles and posts. Finds username, profile photo, biography, and recent posts.",
 )
 register_action(
     "tiktok",
-    "TikTok onderzoek",
+    "TikTok research",
     "🎵",
     _tiktok_check,
-    "Zoekt naar openbare TikTok profielen en content. Levert gebruikersnaam, avatar, bio en videogegevens. (50 credits)",
+    "Searches for public TikTok profiles and content. Returns username, avatar, bio, and video data. (50 credits)",
 )
 register_action(
     "linkedin",
-    "LinkedIn onderzoek",
+    "LinkedIn research",
     "💼",
     _linkedin_check,
-    "Zoekt naar openbare LinkedIn profielen op naam. Vindt werkervaring, opleiding, locatie en netwerkgrootte. (50 credits)",
+    "Searches for public LinkedIn profiles by name. Finds work experience, education, location, and network size. (50 credits)",
 )
 register_action(
     "twitter",
-    "Twitter onderzoek",
+    "Twitter research",
     "🐦",
     _twitter_check,
-    "Doorzoekt X/Twitter naar openbare profielen en berichten. Levert gebruikersnaam, bio, volgers en recente tweets. (1000 credits)",
+    "Searches X/Twitter for public profiles and posts. Returns username, bio, followers, and recent tweets. (1000 credits)",
 )
 register_action(
     "kvk",
-    "KvK onderzoek",
+    "KvK research",
     "🏢",
     _kvk_check,
-    "Raadpleegt de Kamer van Koophandel (KvK) voor bedrijfsgegevens: rechtsvorm, vestigingsadres, bestuurders en jaarcijfers.",
+    "Consults the Chamber of Commerce (KvK) for company data: legal form, registered address, directors, and annual figures.",
 )
 register_action(
     "rdw",
-    "Voertuig check (RDW)",
+    "Vehicle check (RDW)",
     "🚗",
     _rdw_check,
-    "Haalt voertuiginformatie op uit de RDW-databank: kenteken, merk/type, APK-historie, technische specificaties en tenaamstellingsgegevens.",
+    "Retrieves vehicle information from the RDW database: license plate, make/type, APK history, technical specifications, and registration data.",
 )
 register_action(
     "vessel",
-    "Vaartuig check",
+    "Vessel check",
     "🚢",
     _vessel_check,
-    "Doorzoekt maritieme databronnen (VesselFinder, MarinePlan, KVNR, Binnenvaart.eu, Equasis) "
-    "op IMO-nummer, MMSI, ENI of scheepsnaam. Vindt positie, technische specificaties, vlag en bouwjaar.",
+    "Searches maritime data sources (VesselFinder, MarinePlan, KVNR, Binnenvaart.eu, Equasis) "
+    "by IMO number, MMSI, ENI, or vessel name. Finds position, technical specifications, flag, and year built.",
 )
 register_action(
     "osint",
     "OSINT Deep Search",
     "🌍",
     _osint_deep_search,
-    "Voert een diepgaand open-source onderzoek uit via Brave Search en SpiderFoot. Doorzoekt het hele web op sporen van de persoon of entiteit.",
+    "Performs in-depth open-source research via Brave Search and SpiderFoot. Searches the entire web for traces of the person or entity.",
 )
 register_action(
     "financial",
-    "Financieel onderzoek",
+    "Financial research",
     "💰",
     _financial_check,
-    "Doorzoekt openbare bronnen op financiële gegevens: bedrijfsregisters, insolventies, UBO-registers, en eventuele negatieve financiële signaleringen.",
+    "Searches public sources for financial data: business registers, insolvencies, UBO registers, and any negative financial signals.",
 )
 register_action(
     "subdomain",
-    "Subdomein scan",
+    "Subdomain scan",
     "🌐",
     _subdomain_check,
-    "Doorzoekt Certificate Transparency logs (crt.sh) op alle subdomeinen van een domein. "
-    "Vindt interne hostnames, ontwikkelomgevingen en verborgen infrastructuur.",
+    "Searches Certificate Transparency logs (crt.sh) for all subdomains of a domain. "
+    "Finds internal hostnames, development environments, and hidden infrastructure.",
 )
 
 register_action(
     "manual_entry",
-    "Handmatige invoer",
+    "Manual entry",
     "📝",
     lambda action: [],
-    "Handmatig aangemaakte bevindingen door de onderzoeker.",
+    "Manually created findings by the researcher.",
 )

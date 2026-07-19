@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def breach_list():
     """Breach notification register — GDPR Articles 33-34."""
     if not current_user.is_super_admin:
-        flash("Alleen beheerders hebben toegang.", "danger")
+        flash("Only administrators have access.", "danger")
         return redirect(url_for("cms.settings"))
 
     records = BreachRecord.query.order_by(BreachRecord.detected_at.desc()).all()
@@ -32,7 +32,7 @@ def breach_create():
     data = request.get_json(silent=True) or {}
     description = (data.get("description") or "").strip()
     if not description:
-        return jsonify({"error": "Beschrijving is verplicht"}), 400
+        return jsonify({"error": "Description is required"}), 400
 
     detected_at_str = data.get("detected_at")
     detected_at = None
@@ -60,7 +60,7 @@ def breach_create():
         action="create",
         entity_type="breach_record",
         entity_id=record.id,
-        description=f"Datalek geregistreerd: {record.breach_type or 'onbekend type'}",
+        description=f"Data breach recorded: {record.breach_type or 'unknown type'}",
     )
     db.session.commit()
 
@@ -76,7 +76,7 @@ def breach_update(record_id):
 
     record = BreachRecord.query.get(record_id)
     if not record:
-        return jsonify({"error": "Niet gevonden"}), 404
+        return jsonify({"error": "Not found"}), 404
 
     data = request.get_json(silent=True) or {}
     if "status" in data:
@@ -117,7 +117,7 @@ def breach_update(record_id):
         action="update",
         entity_type="breach_record",
         entity_id=record.id,
-        description=f"Datalek bijgewerkt: {record.breach_type or ''} → status {record.status}",
+        description=f"Data breach updated: {record.breach_type or ''} → status {record.status}",
     )
     db.session.commit()
 
@@ -133,7 +133,7 @@ def breach_delete(record_id):
 
     record = BreachRecord.query.get(record_id)
     if not record:
-        return jsonify({"error": "Niet gevonden"}), 404
+        return jsonify({"error": "Not found"}), 404
 
     db.session.delete(record)
     AuditLog.log(
@@ -141,7 +141,7 @@ def breach_delete(record_id):
         action="delete",
         entity_type="breach_record",
         entity_id=record_id,
-        description="Datalek verwijderd uit register",
+        description="Data breach removed from register",
     )
     db.session.commit()
 

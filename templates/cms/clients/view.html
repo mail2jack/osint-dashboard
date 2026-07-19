@@ -6,17 +6,17 @@
     <div class="card">
         <div class="card-header">
             <h2>{{ client.name }}{% if client.is_company %} <span class="badge">{{ _('Company') }}</span>{% endif %}
-                {% if not client.is_active %}<span class="badge badge-archived">{{ _('GEARCHIVEERD') }}</span>{% endif %}
+                {% if not client.is_active %}<span class="badge badge-archived">{{ _('ARCHIVED') }}</span>{% endif %}
             </h2>
             <div class="btn-group" style="margin:0;">
                 {% if active_cases_count == 0 and client.is_active %}
-                <button data-click="archiveClient" data-arg0="{{ client.id }}" class="btn-cms danger small">📁 {{ _('Archiveer') }}</button>
+                <button data-click="archiveClient" data-arg0="{{ client.id }}" class="btn-cms danger small">📁 {{ _('Archive') }}</button>
                 {% elif not client.is_active %}
-                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small bg-green">↩️ {{ _('Herstellen') }}</button>
+                <button data-click="restoreClient" data-arg0="{{ client.id }}" class="btn-cms small bg-green">↩️ {{ _('Restore') }}</button>
                 {% endif %}
                 <a href="{{ url_for('cms.edit_client', client_id=client.id) }}" class="btn-cms small">✏️ {{ _('Edit') }}</a>
                 {% if current_user.role in ('senior_investigator','admin','owner') %}<a href="{{ url_for('cms.invoice_list') }}?client_id={{ client.id }}" class="btn-cms small bg-green">{{ _('📄 Invoices') }}</a>
-                <a href="{{ url_for('cms.invoice_create') }}?client_id={{ client.id }}" class="btn-cms small bg-blue">+ {{ _('Factuur') }}</a>{% endif %}
+                <a href="{{ url_for('cms.invoice_create') }}?client_id={{ client.id }}" class="btn-cms small bg-blue">+ {{ _('Invoice') }}</a>{% endif %}
             </div>
         </div>
     
@@ -103,15 +103,15 @@
                     <div>
                         <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
                         {% if addr.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}
-                        {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ KADASTER') }}</span>{% endif %}
+                        {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ CADASTRAL') }}</span>{% endif %}
                         <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
                             {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
                             {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
                         </div>
                     </div>
                     <div class="btn-group" style="margin:0;">
-                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">🏛 {{ _('Kadaster') }}</button>
-                        <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms danger small">🚔 {{ _('Politiebureau') }}</button>
+                        <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">🏛 {{ _('Cadastre') }}</button>
+                        <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms danger small">🚔 {{ _('Police Station') }}</button>
                     </div>
                 </div>
                 <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
@@ -226,7 +226,7 @@
     }
 
     function restoreClient(btn, clientId) {
-        if (!confirm({{ _('Weet u zeker dat u deze client wilt herstellen?')|tojson }})) return;
+        if (!confirm({{ _('Are you sure you want to restore this client?')|tojson }})) return;
         
         apiFetch('/cms/clients/' + clientId + '/restore', {
             method: 'POST',
@@ -316,7 +316,7 @@
         btn.disabled = true;
         btn.textContent = {{ _('🔍 Looking up...')|tojson }};
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Contacting politie.nl...')|tojson }} + '</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Checking politie.nl...')|tojson }} + '</span>';
 
         try {
             const resp = await apiFetch('/cms/api/politiebureau-lookup', {
@@ -342,7 +342,7 @@
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || {{ _('Politiebureau')|tojson }}) + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || {{ _('Police Station')|tojson }}) + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
             html += '<div><strong>' + {{ _('Address')|tojson }} + ':</strong> ' + esc(s.address || '-') + '</div>';
             html += '<div><strong>' + {{ _('Phone')|tojson }} + ':</strong> ' + esc(s.phone || '-') + '</div>';
@@ -511,7 +511,7 @@
         btn.disabled = true;
         btn.textContent = {{ _('🔍 Looking up...')|tojson }};
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Contacting politie.nl...')|tojson }} + '</span>';
+        resultDiv.innerHTML = '<span style="color: #666;">' + {{ _('Checking politie.nl...')|tojson }} + '</span>';
 
         try {
             const resp = await apiFetch('/cms/api/politiebureau-lookup', {
@@ -537,7 +537,7 @@
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || {{ _('Politiebureau')|tojson }}) + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || {{ _('Police Station')|tojson }}) + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
             html += '<div><strong>' + {{ _('Address')|tojson }} + ':</strong> ' + esc(s.address || '-') + '</div>';
             html += '<div><strong>' + {{ _('Phone')|tojson }} + ':</strong> ' + esc(s.phone || '-') + '</div>';

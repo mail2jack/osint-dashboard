@@ -525,7 +525,7 @@ def case_report_pdf(case_id: str) -> flask.Response:
     except Exception as e:
         logger.error("WeasyPrint PDF generation failed: %s", e)
         flask.flash(
-            "PDF generatie mislukt. Probeer de browser Print/PDF functie.", "error"
+            "PDF generation failed. Try the browser Print/PDF function.", "error"
         )
         return flask.redirect(flask.url_for("cms.case_report", case_id=case_id))
 

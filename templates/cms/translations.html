@@ -40,16 +40,16 @@
 
 <h1>🌐 Translation Review</h1>
 <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
-    <span style="color:#d1d5db;">○</span> geen status &nbsp;·&nbsp;
-    <span style="color:#ef4444;">●</span> gemarkeerd voor AI &nbsp;·&nbsp;
-    <span style="color:#eab308;">●</span> AI-fix wacht op beoordeling &nbsp;·&nbsp;
-    <span style="color:#22c55e;">✓</span> goedgekeurd
+    <span style="color:#d1d5db;">○</span> no status &nbsp;·&nbsp;
+    <span style="color:#ef4444;">●</span> marked for AI &nbsp;·&nbsp;
+    <span style="color:#eab308;">●</span> AI fix pending review &nbsp;·&nbsp;
+    <span style="color:#22c55e;">✓</span> approved
 </p>
 
 <div id="aiWarning" style="display:none;margin-bottom:1rem;padding:0.75rem 1rem;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;font-size:0.85rem;color:#991b1b;"></div>
 
 <div class="search-bar">
-    <input type="text" id="searchInput" placeholder="{{ _('Zoek in bron- of doeltekst...') }}" data-input="filterTranslations">
+    <input type="text" id="searchInput" placeholder="{{ _('Search source or target text...') }}" data-input="filterTranslations">
 </div>
 
 <div class="tab-bar" id="tabBar">
@@ -64,7 +64,7 @@
 <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
   <span style="font-size:0.8rem;color:var(--text-muted);" id="reviewSummary"></span>
   <button class="btn btn-sm" id="autoFixBtn" data-click="startAutoFix">
-    🤖 Auto-fix gemarkeerd
+    🤖 Auto-fix marked
   </button>
 </div>
 
@@ -114,9 +114,9 @@ apiFetch('/cms/api/translations/ai-status')
         if (status.openrouter && status.openrouter.reason) {
             reasons.push(status.openrouter.reason);
         }
-        warn.innerHTML = '⚠️ <strong>AI niet beschikbaar</strong><br>' +
+        warn.innerHTML = '⚠️ <strong>AI not available</strong><br>' +
             reasons.join('<br>') +
-            '<br><span style="font-size:0.8rem;">Auto-fix werkt niet tot het AI-probleem is opgelost.</span>';
+            '<br><span style="font-size:0.8rem;">Auto-fix will not work until the AI issue is resolved.</span>';
         warn.style.display = 'block';
     })
     .catch(function() {});
@@ -235,9 +235,9 @@ window.startAutoFix = function() {
     const btn = document.getElementById('autoFixBtn');
     const status = document.getElementById('autoFixStatus');
     btn.disabled = true;
-    btn.textContent = '⏳ Bezig...';
+    btn.textContent = '⏳ Busy...';
     status.style.display = 'block';
-    status.innerHTML = '⏳ AI vertaalt... (dit kan even duren)';
+    status.innerHTML = '⏳ AI translating... (this may take a while)';
 
     const enToNl = Array.from(document.querySelectorAll('#en-nl-panel .rv-flagged'))
         .map(el => el.dataset.msgid);
@@ -245,9 +245,9 @@ window.startAutoFix = function() {
         .map(el => el.dataset.msgid);
 
     if (!enToNl.length && !nlToEn.length) {
-        status.innerHTML = '❌ Geen gemarkeerde vertalingen (● rood)';
+        status.innerHTML = '❌ No marked translations (● red)';
         btn.disabled = false;
-        btn.textContent = '🤖 Auto-fix gemarkeerd';
+        btn.textContent = '🤖 Auto-fix marked';
         return;
     }
 
@@ -260,31 +260,31 @@ window.startAutoFix = function() {
         .then(data => {
             let html;
             if (data.ai_error) {
-                html = '❌ <strong>AI-fout</strong><br>' + escapeHtml(data.ai_error) +
-                    '<br><span style="font-size:0.8rem;">Los het AI-probleem op en probeer opnieuw.</span>';
+                html = '❌ <strong>AI error</strong><br>' + escapeHtml(data.ai_error) +
+                    '<br><span style="font-size:0.8rem;">Fix the AI issue and try again.</span>';
             } else if (data.fixed > 0) {
-                html = '<strong>✅ Gereed</strong><br>';
-                html += '✓ ' + data.fixed + ' vertalingen gefixt<br>';
+                html = '<strong>✅ Done</strong><br>';
+                html += '✓ ' + data.fixed + ' translations fixed<br>';
                 if (data.errors) {
-                    html += '⚠ ' + data.errors + ' fouten:<br>';
+                    html += '⚠ ' + data.errors + ' errors:<br>';
                     (data.results || []).filter(function(r) { return r.status === 'error'; }).slice(0, 5).forEach(function(e) {
                         html += '&nbsp;&nbsp;• ' + escapeHtml(e.msgid) + ': ' + escapeHtml(e.error || '') + '<br>';
                     });
                 }
             } else {
-                html = '❌ Auto-fix gefaald — alle ' + data.errors + ' vertalingen mislukt.<br>';
+                html = '❌ Auto-fix failed — all ' + data.errors + ' translations failed.<br>';
                 (data.results || []).slice(0, 3).forEach(function(e) {
                     html += '&nbsp;&nbsp;• ' + escapeHtml(e.msgid) + ': ' + escapeHtml(e.error || '') + '<br>';
                 });
             }
-            html += '<button class="btn btn-sm" style="margin-top:0.5rem;background:var(--accent-primary);color:#fff;border:none;padding:0.4rem 0.75rem;border-radius:6px;cursor:pointer;" data-click="reloadPage">🔄 Pagina herladen</button>';
+            html += '<button class="btn btn-sm" style="margin-top:0.5rem;background:var(--accent-primary);color:#fff;border:none;padding:0.4rem 0.75rem;border-radius:6px;cursor:pointer;" data-click="reloadPage">🔄 Reload page</button>';
             status.innerHTML = html;
             btn.style.display = 'none';
         })
         .catch(function(err) {
-            status.innerHTML = '❌ Fout: ' + err.message;
+            status.innerHTML = '❌ Error: ' + err.message;
             btn.disabled = false;
-            btn.textContent = '🤖 Auto-fix gemarkeerd';
+            btn.textContent = '🤖 Auto-fix marked';
         });
 };
 

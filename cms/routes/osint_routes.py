@@ -1033,9 +1033,7 @@ def username_rapidapi() -> FlaskResponse:
                 f"RapidAPI username check failed for '{username}' ({type(e).__name__}): {e}"
             )
 
-    usage_info["note"] = (
-        "Maandlimiet bereikt of API niet geconfigureerd - gebruik Sherlock"
-    )
+    usage_info["note"] = "Monthly limit reached or API not configured - use Sherlock"
     return jsonify(
         {
             "source": "sherlock",

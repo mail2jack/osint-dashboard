@@ -1,67 +1,67 @@
-# Zoeken
+# Search
 
-De **Search** pagina biedt full-text zoeken door de gehele database: cases, subjects, clients, findings, documenten en opmerkingen.
+The **Search** page provides full-text search across the entire database: cases, subjects, clients, findings, documents, and comments.
 
-## Basis Zoeken
+## Basic Search
 
-1. Typ een zoekterm in het zoekveld
-2. Resultaten worden gegroepeerd per categorie (Cases, Subjects, Clients, Findings)
-3. Klik op een resultaat om direct te navigeren
+1. Type a search term in the search field
+2. Results are grouped by category (Cases, Subjects, Clients, Findings)
+3. Click a result to navigate directly
 
-De zoekopdracht doorzoekt de volgende velden:
+The search query searches the following fields:
 
-- **Cases**: titel, omschrijving, tags
-- **Subjects**: naam, notities
-- **Clients**: naam, contactpersoon
-- **Findings**: data, type, bron
+- **Cases**: title, description, tags
+- **Subjects**: name, notes
+- **Clients**: name, contact person
+- **Findings**: data, type, source
 
 ## Full-Text Search (FTS)
 
-Als PostgreSQL wordt gebruikt, is **full-text search** beschikbaar voor relevantere resultaten:
+When PostgreSQL is used, **full-text search** is available for more relevant results:
 
-- Gebruikt PostgreSQL `tsvector` / `tsquery` met ranking
-- Ondersteunt prefix matching
-- Resultaten worden gesorteerd op relevantie
+- Uses PostgreSQL `tsvector` / `tsquery` with ranking
+- Supports prefix matching
+- Results are sorted by relevance
 
-Op SQLite wordt teruggevallen op `LIKE`-gebaseerd zoeken (langzamer, minder accuraat).
+On SQLite, falls back to `LIKE`-based search (slower, less accurate).
 
 ## OSINT Search
 
-De **OSINT Search** functionaliteit (te vinden in het Search tabblad of via het SpiderFoot menu) biedt:
+The **OSINT Search** feature (found in the Search tab or via the SpiderFoot menu) offers:
 
 ### Email Search
-Zoekt naar een e-mailadres in:
-- Have I Been Pwned (datalekken)
+Searches for an email address in:
+- Have I Been Pwned (data breaches)
 - Social media
-- Open bronnen
+- Open sources
 
 ### Username Search
-Zoekt een gebruikersnaam op honderden social media platforms via:
-- Brave Search API (indien geconfigureerd)
-- Open bronnen
+Searches a username across hundreds of social media platforms via:
+- Brave Search API (if configured)
+- Open sources
 
 ### Phone Search
-Verrijkt een telefoonnummer met:
-- Carrier informatie
-- Lijntype
-- WhatsApp/Telegram aanwezigheid
+Enriches a phone number with:
+- Carrier information
+- Line type
+- WhatsApp/Telegram presence
 
-## Zoekresultaten Exporteren
+## Exporting Search Results
 
-Resultaten kunnen worden geëxporteerd naar CSV. Bij meer dan 5000 resultaten krijg je een waarschuwing. De export gebruikt `yield_per(200)` om geheugenproblemen te voorkomen.
+Results can be exported to CSV. When there are more than 5,000 results, you get a warning. The export uses `yield_per(200)` to prevent memory issues.
 
-## Toetsenbord Navigatie
+## Keyboard Navigation
 
-Op de search resultaten pagina:
+On the search results page:
 
-- **s** — focus het zoekveld
-- **j** — selectie omlaag
-- **k** — selectie omhoog
-- **Enter** — open geselecteerd item
+- **s** — focus the search field
+- **j** — selection down
+- **k** — selection up
+- **Enter** — open selected item
 
 ## Tips
 
-- Zoeken is **hoofdletterongevoelig**
-- Gebruik specifieke termen voor betere resultaten
-- Voor FTS (PostgreSQL) worden veelvoorkomende woorden (stopwords) genegeerd
-- Je kunt zoeken op datum door de datum in het zoekveld te zetten (bijv. "2024-01")
+- Search is **case-insensitive**
+- Use specific terms for better results
+- For FTS (PostgreSQL), common words (stopwords) are ignored
+- You can search by date by entering the date in the search field (e.g. "2024-01")

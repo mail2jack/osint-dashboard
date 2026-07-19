@@ -55,9 +55,9 @@ def _check_tor_config() -> dict[str, Any]:
         reset_tor_state()
 
         if enabled_after:
-            return {"pass": True, "detail": "Tor config werkt (read/write)"}
+            return {"pass": True, "detail": "Tor config works (read/write)"}
         else:
-            return {"pass": True, "detail": "Tor config werkt, maar Tor staat uit"}
+            return {"pass": True, "detail": "Tor config works, but Tor is disabled"}
     except Exception as e:
         return {"pass": False, "detail": f"Tor config error: {e}"}
 
@@ -98,7 +98,7 @@ def _check_playwright_stealth() -> dict[str, Any]:
         scripts = get_stealth_init_scripts()
 
         if profile is None:
-            return {"pass": True, "detail": "Stealth uitgeschakeld"}
+            return {"pass": True, "detail": "Stealth disabled"}
 
         missing = []
         for key in ["launch_args", "user_agent", "viewport", "locale", "timezone_id"]:
@@ -131,7 +131,7 @@ def _check_identity_isolation() -> dict[str, Any]:
 
         enabled = is_identity_isolation_enabled()
         if not enabled:
-            return {"pass": True, "detail": "Identity isolation uitgeschakeld"}
+            return {"pass": True, "detail": "Identity isolation disabled"}
 
         result = identity_for_proxy("socks5h://127.0.0.1:9050", "case_test")
         if "case_test:@127.0.0.1" not in result:

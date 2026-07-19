@@ -1,50 +1,50 @@
 # Clients
 
-**Clients** vertegenwoordigen de organisaties of personen die onderzoeken aanvragen. Elke case is gekoppeld aan exact één client.
+**Clients** represent the organizations or persons that request investigations. Each case is linked to exactly one client.
 
-## Client Velden
+## Client Fields
 
-| Veld | Omschrijving |
-|------|-------------|
-| **Name** | Naam van de organisatie of persoon (verplicht) |
-| **Contact Person** | Naam van de contactpersoon |
-| **Email** | E-mailadres |
-| **Phone** | Telefoonnummer |
-| **Address** | Straat + nummer + postcode + woonplaats |
+| Field | Description |
+|-------|-------------|
+| **Name** | Name of the organization or person (required) |
+| **Contact Person** | Name of the contact person |
+| **Email** | Email address |
+| **Phone** | Phone number |
+| **Address** | Street + number + postal code + city |
 
-## Client Aanmaken
+## Creating a Client
 
-1. Klik **Clients** → **New Client**
-2. Vul de gegevens in
-3. Klik **Save**
+1. Click **Clients** → **New Client**
+2. Fill in the details
+3. Click **Save**
 
-Je wordt doorgestuurd naar de client detailpagina waar je alle gekoppelde cases kunt zien.
+You are redirected to the client detail page where you can see all linked cases.
 
-## Client Detailpagina
+## Client Detail Page
 
-Toont clientgegevens en een lijst van alle bijbehorende cases. Klik op een case om direct te navigeren.
+Shows client data and a list of all associated cases. Click on a case to navigate directly.
 
-## Archiveren
+## Archiving
 
-Clients kunnen worden gearchiveerd in plaats van verwijderd. Gearchiveerde clients worden verborgen in de hoofdlijst maar blijven toegankelijk via de **Show Archived** toggle.
+Clients can be archived instead of deleted. Archived clients are hidden from the main list but remain accessible via the **Show Archived** toggle.
 
-## Adres Functionaliteiten
+## Address Features
 
-Elke adreskaart heeft actieknoppen:
+Each address card has action buttons:
 
-- **🔍 Postcode Check** — roept de Nederlandse BAG (PDOK) API aan om straat + woonplaats in te vullen op basis van postcode + huisnummer
-- **🚔 Politiebureau** — vindt het dichtstbijzijnde politiebureau voor dat adres via de Politie NL API
+- **🔍 Postcode Check** — calls the Dutch BAG (PDOK) API to auto-fill street + city based on postal code + house number
+- **🚔 Police Station** — finds the nearest police station for that address via the Politie NL API
 
-## Telefoonnummer Check
+## Phone Number Check
 
-Als er een telefoonnummer is opgeslagen, verschijnt een 📞 knop. Deze verrijkt het nummer met:
+If a phone number is stored, a 📞 button appears. It enriches the number with:
 
 - Carrier (provider)
-- Lijntype (mobile, voip, landline)
-- Regio en tijdzone
-- WhatsApp aanwezigheid
-- Telegram aanwezigheid
+- Line type (mobile, voip, landline)
+- Region and timezone
+- WhatsApp presence
+- Telegram presence
 
-## Duplicaat Detectie
+## Duplicate Detection
 
-Bij het aanmaken van een client wordt automatisch gecontroleerd op soortgelijke bestaande clients om dubbele registraties te voorkomen.
+When creating a client, the system automatically checks for similar existing clients to prevent duplicate registrations.

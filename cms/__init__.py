@@ -63,6 +63,10 @@ def create_cms_module(app: Flask):
 
     app.register_blueprint(api_v1_bp)
 
+    from .routes.setup_wizard import setup_wizard_bp
+
+    app.register_blueprint(setup_wizard_bp)
+
     # Inject theme_style into all templates
     @app.context_processor
     def inject_theme():

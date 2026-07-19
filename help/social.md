@@ -1,56 +1,56 @@
 # Social Media
 
-Het **Social Accounts** systeem beheert sociale media profielen van subjects en biedt extractie functionaliteiten voor OSINT-doeleinden.
+The **Social Accounts** system manages social media profiles of subjects and provides extraction features for OSINT purposes.
 
-## Social Accounts Toevoegen
+## Adding Social Accounts
 
-1. Open de subject detailpagina
-2. Klik **Add Social Account**
-3. Selecteer het platform:
-   - Facebook, Twitter/X, LinkedIn, Instagram, YouTube, TikTok, Snapchat, Reddit, Telegram, WhatsApp, Signal, Discord, GitHub, OnlyFans, Patreon, en vele andere
-4. Vul de **username** of **profile URL** in
-5. Klik **Save**
+1. Open the subject detail page
+2. Click **Add Social Account**
+3. Select the platform:
+   - Facebook, Twitter/X, LinkedIn, Instagram, YouTube, TikTok, Snapchat, Reddit, Telegram, WhatsApp, Signal, Discord, GitHub, OnlyFans, Patreon, and many more
+4. Enter the **username** or **profile URL**
+5. Click **Save**
 
-De profiel-URL wordt automatisch gegenereerd op basis van het platform en de gebruikersnaam.
+The profile URL is automatically generated based on the platform and username.
 
-## Social Accounts Overzicht
+## Social Accounts Overview
 
-Op de subject detailpagina worden alle accounts getoond met:
+On the subject detail page, all accounts are shown with:
 
-- Platform icoon en naam
-- Gebruikersnaam
-- Klikbare profiel-URL
-- Datum van toevoeging
+- Platform icon and name
+- Username
+- Clickable profile URL
+- Date added
 
 ## Social Extraction
 
-De **Social Extraction** functionaliteit haalt extra informatie op uit sociale media profielen:
+The **Social Extraction** feature retrieves additional information from social media profiles:
 
-### Huidige Extractie Methodes
+### Current Extraction Methods
 
-- **WhatsApp** — controleert of het telefoonnummer actief is op WhatsApp via de whatsapp.checkleaked.cc API (of fallback via api.whatsapp.com)
-- **Telegram** — controleert of het telefoonnummer of de gebruikersnaam actief is op Telegram
-- **Overige platforms** — via de Brave Search API (indien geconfigureerd)
+- **WhatsApp** — checks whether the phone number is active on WhatsApp via the whatsapp.checkleaked.cc API (or fallback via api.whatsapp.com)
+- **Telegram** — checks whether the phone number or username is active on Telegram
+- **Other platforms** — via the Brave Search API (if configured)
 
 ### WhatsApp Presence
 
-WhatsApp presence check toont:
+WhatsApp presence check shows:
 
-- Of het nummer een WhatsApp-account heeft
-- Of het een business/enterprise account is
-- Geverifieerd of niet
-- Gebanned of niet
-- Lijntype (mobile, voip)
-- Profielfoto (indien beschikbaar, opgeslagen als base64)
-- Cached status en check datum
+- Whether the number has a WhatsApp account
+- Whether it is a business/enterprise account
+- Verified or not
+- Banned or not
+- Line type (mobile, voip)
+- Profile picture (if available, stored as base64)
+- Cached status and check date
 
-De resultaten worden opgeslagen in de `PhoneLookup` tabel zodanig dat ze niet opnieuw hoeven worden opgevraagd.
+The results are stored in the `PhoneLookup` table so they do not need to be queried again.
 
 ## API Keys
 
-Voor sommige social extractie functies zijn API keys nodig, configureerbaar via **Settings**:
+Some social extraction features require API keys, configurable via **Settings**:
 
-| Key | Service | Noodzakelijk voor |
-|-----|---------|-------------------|
+| Key | Service | Required for |
+|-----|---------|--------------|
 | `brave_api_key` | Brave Search | Social media search |
 | `whatsapp_checkleaked_key` | whatsapp.checkleaked.cc (RapidAPI) | WhatsApp presence check |

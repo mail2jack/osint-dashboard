@@ -1,94 +1,94 @@
 # Lookups
 
-Het dashboard biedt verschillende **lookup** functionaliteiten om data te verrijken uit externe bronnen. Deze zijn beschikbaar als actieknoppen op subject en client detailpagina's.
+The dashboard provides various **lookup** features to enrich data from external sources. These are available as action buttons on subject and client detail pages.
 
 ## 📞 Phone Lookup
 
-Verrijkt een telefoonnummer met open bronnen.
+Enriches a phone number with open sources.
 
 **Endpoint**: `POST /cms/api/phone-lookup`
 
-**Resultaten**:
-- Validatie (is het nummer geldig?)
-- Geformatteerd nummer (E164-formaat: `+31634407404`)
-- Land en regio
+**Results**:
+- Validation (is the number valid?)
+- Formatted number (E164 format: `+31634407404`)
+- Country and region
 - Carrier (provider)
-- Lijntype (mobile, landline, voip)
-- Tijdzone
-- WhatsApp aanwezigheid
-- Telegram aanwezigheid
+- Line type (mobile, landline, voip)
+- Timezone
+- WhatsApp presence
+- Telegram presence
 
-**Bronnen**: `phonenumbers` library, whatsapp.checkleaked.cc (RapidAPI), Telegram scraping
+**Sources**: `phonenumbers` library, whatsapp.checkleaked.cc (RapidAPI), Telegram scraping
 
 ## 🔍 Postcode Check (Kadaster/PDOK)
 
-Vult automatisch straat + woonplaats in op basis van Nederlandse postcode + huisnummer.
+Auto-fills street + city based on Dutch postal code + house number.
 
 **Endpoint**: `POST /cms/api/kadaster-lookup`
 
-**Werking**: Roept de PDOK BAG API aan voor adresgegevens uit de Basisregistratie Adressen en Gebouwen.
+**How it works**: Calls the PDOK BAG API for address data from the Basisregistratie Adressen en Gebouwen.
 
-**Gebruik**: Klik op de 🔍 knop naast het postcodeveld op create/edit formulieren.
+**Usage**: Click the 🔍 button next to the postal code field on create/edit forms.
 
-## 🚔 Politiebureau Lookup
+## 🚔 Police Station Lookup
 
-Vindt het dichtstbijzijnde politiebureau voor een adres.
+Finds the nearest police station for an address.
 
 **Endpoint**: `POST /cms/api/politiebureau-lookup`
 
-**Resultaten**:
-- Naam en adres van het bureau
-- Telefoonnummer
-- Openingstijden
+**Results**:
+- Name and address of the station
+- Phone number
+- Opening hours
 - OSM Maps link
-- Politie.nl pagina URL
+- Politie.nl page URL
 
-**Bron**: `api.politie.nl/politiebureaus/v1`
+**Source**: `api.politie.nl/politiebureaus/v1`
 
-## 🌍 Interpol + Politie Check
+## 🌍 Interpol + Police Check
 
-Zoekt een subject naam in INTERPOL en Nederlandse politie databases.
+Searches a subject name in INTERPOL and Dutch police databases.
 
 **Endpoint**: `POST /cms/check-policie-data`
 
-**Bronnen**:
-- **INTERPOL Red Notices** — internationaal gezochte personen
-- **INTERPOL Yellow Notices** — vermiste personen
-- **politie.nl/gezocht** — Nederlandse opsporingsberichten
-- **politie.nl/vermist** — Nederlandse vermiste personen
+**Sources**:
+- **INTERPOL Red Notices** — internationally wanted persons
+- **INTERPOL Yellow Notices** — missing persons
+- **politie.nl/gezocht** — Dutch wanted persons
+- **politie.nl/vermist** — Dutch missing persons
 
-**Rate limiting**: De INTERPOL API (Akamai) kan 403 teruggeven na veel calls. Falls back naar politie.nl scraping.
+**Rate limiting**: The INTERPOL API (Akamai) may return 403 after many calls. Falls back to politie.nl scraping.
 
 ## 🚢 Vessel Lookup
 
-Zoekt scheepsgegevens in meerdere maritieme databases.
+Searches vessel data across multiple maritime databases.
 
 **Endpoint**: `POST /cms/api/vessel-lookup`
 
-**Bronnen** (in volgorde):
-1. **VesselFinder** — gratis, zoekt op MMSI of naam
-2. **MarinePlan** — AIS data, vereist API key (`marineplan_api_key`)
-3. **KVNR Schepenzoeker** — IMO/naam, publiek
-4. **Binnenvaart.eu** — ENI/naam, publiek
-5. **Equasis** — IMO, vereist gratis account (`equasis_email` + `equasis_password`)
+**Sources** (in order):
+1. **VesselFinder** — free, searches by MMSI or name
+2. **MarinePlan** — AIS data, requires API key (`marineplan_api_key`)
+3. **KVNR Schepenzoeker** — IMO/name, public
+4. **Binnenvaart.eu** — ENI/name, public
+5. **Equasis** — IMO, requires free account (`equasis_email` + `equasis_password`)
 
-**Resultaten** (samengevoegd uit alle bronnen):
-- IMO nummer
-- MMSI nummer
-- ENI nummer
-- Scheepsnaam
-- Vlag / nationaliteit
+**Results** (merged from all sources):
+- IMO number
+- MMSI number
+- ENI number
+- Vessel name
+- Flag / nationality
 - Type
-- Bouwjaar
+- Year built
 
-**Opslaan**: Klik **Update Subject** om IMO/MMSI/ENI/flag op te slaan op het subject.
+**Saving**: Click **Update Subject** to save IMO/MMSI/ENI/flag on the subject.
 
 ## 🚗 RDW Lookup
 
-Zoekt Nederlandse voertuiggegevens op basis van kenteken.
+Searches Dutch vehicle data by license plate.
 
 **Endpoint**: `POST /cms/api/rdw-lookup`
 
-**Bron**: Nederlandse RDW (Rijksdienst voor het Wegverkeer) open data API.
+**Source**: Dutch RDW (Rijksdienst voor het Wegverkeer) open data API.
 
-**Resultaten**: Kenteken, merk, model, bouwjaar, kleur, brandstof, etc.
+**Results**: License plate, make, model, year, color, fuel type, etc.

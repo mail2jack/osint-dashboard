@@ -1,41 +1,41 @@
-# Opmerkingen
+# Comments
 
-Het **Comments** systeem biedt interne teamnotities binnen cases en subjects. Opmerkingen zijn alleen zichtbaar voor ingelogde gebruikers.
+The **Comments** system provides internal team notes within cases and subjects. Comments are only visible to logged-in users.
 
-## Een Opmerking Plaatsen
+## Posting a Comment
 
-Opmerkingen kunnen worden toegevoegd vanuit:
+Comments can be added from:
 
-- **Case detailpagina** — algemene case opmerkingen
-- **Subject detailpagina** — subject-specifieke opmerkingen
-- **Finding detail** — bevinding-specifieke notities
+- **Case detail page** — general case comments
+- **Subject detail page** — subject-specific comments
+- **Finding detail** — finding-specific notes
 
-Klik **Add Comment** of typ in het tekstveld en klik **Save**.
+Click **Add Comment** or type in the text field and click **Save**.
 
-## Opmerking Types
+## Comment Types
 
 | Type | Scope |
 |------|-------|
-| **General** | Algemene notitie |
-| **Note** (subject) | Subject notitie (gemigreerd van het oude `notes` veld) |
-| **Internal** | Interne team-opmerking |
+| **General** | General note |
+| **Note** (subject) | Subject note (migrated from the old `notes` field) |
+| **Internal** | Internal team comment |
 
-## Opmerking Bewerken
+## Editing a Comment
 
-Opmerkingen kunnen worden bewerkt:
+Comments can be edited:
 
-1. Klik op het ✏️ icoon naast de opmerking
-2. Pas de tekst aan
-3. Klik **Save**
+1. Click the ✏️ icon next to the comment
+2. Modify the text
+3. Click **Save**
 
-### Bewerkingsgeschiedenis
+### Edit History
 
-Elke bewerking wordt opgeslagen in de **Comment Edit History**. Je kunt de originele en vorige versies bekijken via de 📋 knop op de opmerking.
+Every edit is saved in the **Comment Edit History**. You can view the original and previous versions via the 📋 button on the comment.
 
-## Opmerking Verwijderen
+## Deleting a Comment
 
-Alleen de auteur of een admin kan een opmerking verwijderen. Klik op het 🗑️ icoon om te verwijderen.
+Only the author or an admin can delete a comment. Click the 🗑️ icon to delete.
 
-## Notities vs Opmerkingen
+## Notes vs Comments
 
-Het oude `notes` veld op Subjects is gemigreerd naar het Comments model. Alleen subjects zonder bestaande opmerkingen met dezelfde inhoud krijgen een comment aangemaakt tijdens de migratie (idempotent).
+The old `notes` field on Subjects has been migrated to the Comments model. Only subjects without existing comments with the same content get a comment created during migration (idempotent).

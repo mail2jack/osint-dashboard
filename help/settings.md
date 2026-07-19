@@ -1,92 +1,92 @@
-# Instellingen
+# Settings
 
-De **Settings** pagina beheert de applicatieconfiguratie. Alleen admin-gebruikers hebben toegang.
+The **Settings** page manages the application configuration. Only admin users have access.
 
-## Statistieken
+## Statistics
 
-De **📊 Statistieken** pagina (`/cms/settings/statistics`) bevat alle voormalige dashboard-widgets:
-- Cases by Status, Priority en Criminal Code (bar charts)
+The **📊 Statistics** page (`/cms/settings/statistics`) contains all former dashboard widgets:
+- Cases by Status, Priority and Criminal Code (bar charts)
 - Lead Investigator Workload
 - My Active Cases & Priority Cases
 - Reminders (overdue/upcoming)
 - Subject Types
-- SpiderFoot Scans overzicht
+- SpiderFoot Scans overview
 - Recent Activity feed
 
-Deze is bereikbaar via de Settings sidebar of via de quick links op het dashboard.
+This page is accessible via the Settings sidebar or via the quick links on the dashboard.
 
-## Algemene Instellingen
+## General Settings
 
-| Setting | Omschrijving |
+| Setting | Description |
 |---------|-------------|
-| **Application Name** | Pas de titel van het dashboard aan |
-| **Theme Style** | Klassiek of professioneel thema |
+| **Application Name** | Customize the dashboard title |
+| **Theme Style** | Classic or professional theme |
 
-## API Sleutels
+## API Keys
 
-Bewaar API-sleutels voor externe services. Deze worden in de database opgeslagen (niet in `.env`).
+Store API keys for external services. These are stored in the database (not in `.env`).
 
 ### OSINT Services
 
-| Setting | Service | Verkrijg via |
-|---------|---------|-------------|
-| `spiderfoot_url` | SpiderFoot URL | Eigen installatie |
-| `spiderfoot_username` | SpiderFoot gebruikersnaam | `~/.spiderfoot/passwd` |
-| `spiderfoot_password` | SpiderFoot wachtwoord | `~/.spiderfoot/passwd` |
+| Setting | Service | Obtain via |
+|---------|---------|------------|
+| `spiderfoot_url` | SpiderFoot URL | Self-hosted instance |
+| `spiderfoot_username` | SpiderFoot username | `~/.spiderfoot/passwd` |
+| `spiderfoot_password` | SpiderFoot password | `~/.spiderfoot/passwd` |
 | `overheid_api_key` | Overheid.io API | overheid.io |
 | `brave_api_key` | Brave Search API | brave.com/search/api |
 | `twoc` | TwoChat WhatsApp | twochat.nl |
 
-### Vessel/Schepen Lookups
+### Vessel Lookups
 
-| Setting | Service | Verkrijg via |
-|---------|---------|-------------|
+| Setting | Service | Obtain via |
+|---------|---------|------------|
 | `marineplan_api_key` | MarinePlan | marineplan.com |
-| `equasis_email` | Equasis login | equasis.org (gratis registratie) |
-| `equasis_password` | Equasis wachtwoord | equasis.org |
+| `equasis_email` | Equasis login | equasis.org (free registration) |
+| `equasis_password` | Equasis password | equasis.org |
 
 ### WhatsApp Presence
 
-| Setting | Service | Verkrijg via |
-|---------|---------|-------------|
-| `whatsapp_checkleaked_key` | whatsapp.checkleaked.cc | RapidAPI (50 req/maand gratis) |
+| Setting | Service | Obtain via |
+|---------|---------|------------|
+| `whatsapp_checkleaked_key` | whatsapp.checkleaked.cc | RapidAPI (50 req/month free) |
 
-## Update Instellingen
+## Update Settings
 
-- **Update Check Repo** — GitHub repository om op updates te checken (formaat: `owner/repo`)
-- Het dashboard checkt bij elke pagina laad of er nieuwe versies of commits beschikbaar zijn
-- Bij een update verschijnt er een blauwe banner bovenaan de pagina
-- Klik **Update Now** om de update uit te voeren (vereist sudo-rechten voor git/chown/systemctl)
+- **Update Check Repo** — GitHub repository to check for updates (format: `owner/repo`)
+- The dashboard checks on every page load whether new versions or commits are available
+- When an update is available, a blue banner appears at the top of the page
+- Click **Update Now** to perform the update (requires sudo privileges for git/chown/systemctl)
 
-## Encryptie
+## Encryption
 
-Gevoelige velden (ID-nummers, kentekens, IMO/MMSI/ENI) worden versleuteld opgeslagen met **Fernet** encryptie.
+Sensitive fields (ID numbers, license plates, IMO/MMSI/ENI) are stored encrypted with **Fernet** encryption.
 
-De encryptiesleutel wordt:
-1. Uit de `CMS_ENCRYPTION_KEY` omgevingsvariabele gelezen
-2. Of uit het `.cms_key` bestand in de projectroot
-3. Of automatisch gegenereerd bij de eerste start
+The encryption key is:
+1. Read from the `CMS_ENCRYPTION_KEY` environment variable
+2. Or from the `.cms_key` file in the project root
+3. Or automatically generated on first start
 
-## Gebruikersbeheer
+## User Management
 
-Vanuit Settings kunnen admins:
+From Settings, admins can:
 
-- Alle gebruikers bekijken
-- Nieuwe gebruikers aanmaken (stuurt een "Set Password" e-mail)
-- Gebruikersrollen wijzigen:
-  - **Admin** — volledige toegang
-  - **Senior Investigator** — alle functies behalve settings
-  - **Investigator** — standaard onderzoeker
-  - **Viewer** — alleen lezen
-- Gebruikers uitschakelen of verwijderen
-- Wachtwoord reset sturen
+- View all users
+- Create new users (sends a "Set Password" email)
+- Change user roles:
+  - **Admin** — full access
+  - **Senior Investigator** — all features except settings
+  - **Investigator** — standard investigator
+  - **Viewer** — read only
+- Disable or delete users
+- Send password reset
 
-## Wachtwoord Reset Flow
+## Password Reset Flow
 
-1. Admin maakt nieuwe gebruiker aan of klikt "Reset Password"
-2. Systeem genereert een token (48 uur geldig)
-3. Gebruiker ontvangt e-mail met reset link
-4. Gebruiker kiest een nieuw wachtwoord (minimaal 8 tekens)
-5. Token wordt eenmalig gebruikt en direct verwijderd
+1. Admin creates a new user or clicks "Reset Password"
+2. System generates a token (valid for 48 hours)
+3. User receives email with reset link
+4. User chooses a new password (minimum 8 characters)
+5. Token is used once and immediately deleted
 
-Let op: wachtwoorden worden **nooit** in e-mails meegestuurd.
+Note: passwords are **never** sent via email.

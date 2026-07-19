@@ -160,11 +160,11 @@
             {% endif %}
             {% if subject.subject_type == 'company' %}
             <div class="info-row">
-                <span class="info-label">{{ _('KVK-nummer') }}</span>
+                <span class="info-label">{{ _('KVK number') }}</span>
                 <span class="info-value">{{ subject.registration_number if subject.registration_number else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('Rechtsvorm') }}</span>
+                <span class="info-label">{{ _('Legal Form') }}</span>
                 <span class="info-value">{{ subject.legal_form if subject.legal_form else '-' }}</span>
             </div>
             {% endif %}
@@ -240,7 +240,7 @@
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
             <div class="info-row">
-                <span class="info-label">{{ _('License Plate (Kenteken)') }}</span>
+                <span class="info-label">{{ _('License Plate') }}</span>
                 <span class="info-value" style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate|redact_for_viewer if subject.license_plate else '-' }}</span>
                 {% if subject.license_plate %}
                 <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate }}" data-arg1="{{ subject.id }}" class="btn-cms small orange" style="margin-left: 0.5rem;">{{ _('🚗 Check RDW') }}</button>
@@ -249,61 +249,61 @@
                 {% endif %}
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('VIN (Chassisnummer)') }}</span>
+                <span class="info-label">{{ _('VIN (Chassis Number)') }}</span>
                 <span class="info-value">{{ subject.vin|redact_for_viewer if subject.vin else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('Merk (Brand)') }}</span>
+                <span class="info-label">{{ _('Brand') }}</span>
                 <span class="info-value">{{ subject.brand if subject.brand else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('Inrichting (Vehicle Type)') }}</span>
+                <span class="info-label">{{ _('Vehicle Type') }}</span>
                 <span class="info-value">{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('Verzekeringsmaatschappij (Insurance)') }}</span>
+                <span class="info-label">{{ _('Insurance Company') }}</span>
                 <span class="info-value">{{ subject.insurance_company if subject.insurance_company else '-' }}</span>
             </div>
             
             {% if subject.rdw_data %}
             <div style="margin-top: 1rem; padding: 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px;">
-                <h4 style="margin: 0 0 0.75rem 0; color: #0369a1;">{{ _('RDW Voertuiggegevens') }}</h4>
+                <h4 style="margin: 0 0 0.75rem 0; color: #0369a1;">{{ _('RDW Vehicle Data') }}</h4>
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
                     {% if subject.rdw_data.get('handelsbenaming') %}
-                    <div class="info-row"><span class="info-label">{{ _('Model (Handelsbenaming)') }}</span><span class="info-value">{{ subject.rdw_data.handelsbenaming }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Model') }}</span><span class="info-value">{{ subject.rdw_data.handelsbenaming }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('voertuigsoort') %}
-                    <div class="info-row"><span class="info-label">{{ _('Voertuigsoort') }}</span><span class="info-value">{{ subject.rdw_data.voertuigsoort }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Vehicle Category') }}</span><span class="info-value">{{ subject.rdw_data.voertuigsoort }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('eerste_kleur') %}
-                    <div class="info-row"><span class="info-label">{{ _('Kleur (Eerste)') }}</span><span class="info-value">{{ subject.rdw_data.eerste_kleur }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Color (Primary)') }}</span><span class="info-value">{{ subject.rdw_data.eerste_kleur }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('tweede_kleur') %}
-                    <div class="info-row"><span class="info-label">{{ _('Kleur (Tweede)') }}</span><span class="info-value">{{ subject.rdw_data.tweede_kleur }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Color (Secondary)') }}</span><span class="info-value">{{ subject.rdw_data.tweede_kleur }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_deuren') %}
-                    <div class="info-row"><span class="info-label">{{ _('Aantal Deuren') }}</span><span class="info-value">{{ subject.rdw_data.aantal_deuren }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Doors') }}</span><span class="info-value">{{ subject.rdw_data.aantal_deuren }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_zitplaatsen') %}
-                    <div class="info-row"><span class="info-label">{{ _('Aantal Zitplaatsen') }}</span><span class="info-value">{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Seats') }}</span><span class="info-value">{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('cilinderinhoud') %}
-                    <div class="info-row"><span class="info-label">{{ _('Cilinderinhoud (cc)') }}</span><span class="info-value">{{ subject.rdw_data.cilinderinhoud }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Engine Capacity (cc)') }}</span><span class="info-value">{{ subject.rdw_data.cilinderinhoud }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('aantal_cilinders') %}
-                    <div class="info-row"><span class="info-label">{{ _('Aantal Cilinders') }}</span><span class="info-value">{{ subject.rdw_data.aantal_cilinders }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Cylinders') }}</span><span class="info-value">{{ subject.rdw_data.aantal_cilinders }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('massa_ledig') %}
-                    <div class="info-row"><span class="info-label">{{ _('Massa Ledig (kg)') }}</span><span class="info-value">{{ subject.rdw_data.massa_ledig }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Curb Weight (kg)') }}</span><span class="info-value">{{ subject.rdw_data.massa_ledig }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('maximum_massa') %}
-                    <div class="info-row"><span class="info-label">{{ _('Maximum Massa (kg)') }}</span><span class="info-value">{{ subject.rdw_data.maximum_massa }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Max Weight (kg)') }}</span><span class="info-value">{{ subject.rdw_data.maximum_massa }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('vervaldatum_apk') %}
-                    <div class="info-row"><span class="info-label">{{ _('APK Vervaldatum') }}</span><span class="info-value">{{ subject.rdw_data.vervaldatum_apk }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('APK Expiry') }}</span><span class="info-value">{{ subject.rdw_data.vervaldatum_apk }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('wam_verzekerd') %}
-                    <div class="info-row"><span class="info-label">{{ _('WAM Verzekerd') }}</span>
+                    <div class="info-row"><span class="info-label">{{ _('WAM Insured') }}</span>
                         <span class="info-value" style="color: {% if subject.rdw_data.wam_verzekerd == 'Ja' %}#16a34a{% else %}#dc2626{% endif %};">
                             {{ subject.rdw_data.wam_verzekerd }}
                         </span>
@@ -313,19 +313,19 @@
                     <div class="info-row"><span class="info-label">{{ _('Taxi') }}</span><span class="info-value">{{ subject.rdw_data.taxi_indicator }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('export_indicator') %}
-                    <div class="info-row"><span class="info-label">{{ _('Geexporteerd') }}</span><span class="info-value">{{ subject.rdw_data.export_indicator }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Exported') }}</span><span class="info-value">{{ subject.rdw_data.export_indicator }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('europese_voertuigcategorie') %}
-                    <div class="info-row"><span class="info-label">{{ _('EU Categorie') }}</span><span class="info-value">{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('EU Category') }}</span><span class="info-value">{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('zuinigheidsclassificatie') %}
-                    <div class="info-row"><span class="info-label">{{ _('Zuinigheidsclassificatie') }}</span><span class="info-value">{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('Efficiency Class') }}</span><span class="info-value">{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('catalogusprijs') %}
-                    <div class="info-row"><span class="info-label">{{ _('Catalogusprijs (EUR)') }}</span><span class="info-value">€{{ subject.rdw_data.catalogusprijs }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('List Price (EUR)') }}</span><span class="info-value">€{{ subject.rdw_data.catalogusprijs }}</span></div>
                     {% endif %}
                     {% if subject.rdw_data.get('datum_eerste_toelating') %}
-                    <div class="info-row"><span class="info-label">{{ _('Datum Eerste Toelating') }}</span><span class="info-value">{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
+                    <div class="info-row"><span class="info-label">{{ _('First Registration Date') }}</span><span class="info-value">{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
                     {% endif %}
                 </div>
                 <div style="margin-top: 0.75rem;">
@@ -336,7 +336,7 @@
             {% endif %}
             {% if subject.subject_type == 'vessel' %}
             <div class="info-row">
-                <span class="info-label">{{ _('IMO Nummer') }}</span>
+                <span class="info-label">{{ _('IMO Number') }}</span>
                 <span class="info-value">{{ subject.imo_number if subject.imo_number else '-' }}</span>
             </div>
             <div class="info-row">
@@ -344,11 +344,11 @@
                 <span class="info-value">{{ subject.mmsi if subject.mmsi else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('ENI (Binnenvaart)') }}</span>
+                <span class="info-label">{{ _('ENI (Inland Shipping)') }}</span>
                 <span class="info-value">{{ subject.eni_number if subject.eni_number else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('Vlag (Flag State)') }}</span>
+                <span class="info-label">{{ _('Flag State') }}</span>
                 <span class="info-value">{{ subject.vessel_nationality if subject.vessel_nationality else '-' }}</span>
             </div>
 
@@ -382,15 +382,15 @@
                                 <div>
                                     <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
                                     {% if addr.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}
-                                    {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ KADASTER') }}</span>{% endif %}
+                                    {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ CADASTRAL') }}</span>{% endif %}
                                     <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
                                         {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
                                         {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
                                     </div>
                                 </div>
                                 <div class="btn-group m-0">
-                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">{{ _('🏛 Kadaster') }}</button>
-                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small danger">{{ _('🚔 Politiebureau') }}</button>
+                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">{{ _('🏛 Cadastre') }}</button>
+                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small danger">{{ _('🚔 Police Station') }}</button>
                                 </div>
                             </div>
                             <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
@@ -442,7 +442,7 @@
                 <option value="phone">{{ _('📞 Phone Call') }}</option>
                 <option value="email">{{ _('📧 Email') }}</option>
                 <option value="meeting">{{ _('🤝 Meeting') }}</option>
-                <option value="report">📋 {{ _('Proces-verbaal') }}</option>
+                <option value="report">📋 {{ _('Official Report') }}</option>
             </select>
             <label style="font-size:0.875rem;display:flex;align-items:center;gap:0.25rem;"><input type="checkbox" id="subjectCommentPinned"> {{ _('Pin') }}</label>
         </div>
@@ -718,7 +718,7 @@
 <!-- Findings Section -->
 <div class="card" id="findingsSection">
     <div class="card-header">
-        <h2>{{ _('📋 Bevindingen (Findings)') }}</h2>
+        <h2>{{ _('📋 Findings') }}</h2>
     </div>
     <div id="findingsList">
         {% if findings and findings|length > 0 %}
@@ -754,7 +754,7 @@
         {% else %}
         <div class="empty-state">
             <div class="icon">📭</div>
-            <p>{{ _('Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan.') }}</p>
+            <p>{{ _('No findings yet. Use 🌍 Check Interpol or 🔍 OSINT Search to save results.') }}</p>
         </div>
         {% endif %}
     </div>
@@ -1017,13 +1017,13 @@
     // RDW Vehicle Check Functions
     function checkRDWVehicle(btn, kenteken, subjectId) {
         if (!kenteken) {
-            alert('{{ _("No license plate (kenteken) available for this vehicle.")|replace("'", "\\'")|safe }}');
+            alert('{{ _("No license plate available for this vehicle.")|replace("'", "\\'")|safe }}');
             return;
         }
         
         const confirmed = confirm(
             '{{ _("Check RDW (Dutch Vehicle Authority) data for:")|replace("'", "\\'")|safe }}\n' +
-            '{{ _("Kenteken:")|replace("'", "\\'")|safe }} ' + kenteken + '\n\n' +
+            '{{ _("License plate:")|replace("'", "\\'")|safe }} ' + kenteken + '\n\n' +
             '{{ _("This will fetch official vehicle data and offer to update the subject.")|replace("'", "\\'")|safe }}'
         );
         
@@ -1048,14 +1048,14 @@
             
             // Show vehicle data and offer to update
             let message = '{{ _("RDW Data Found:")|replace("'", "\\'")|safe }}\n\n';
-            message += '{{ _("Kenteken:")|replace("'", "\\'")|safe }} ' + data.kenteken_display + '\n';
-            message += '{{ _("Merk:")|replace("'", "\\'")|safe }} ' + data.merk + '\n';
+            message += '{{ _("License plate:")|replace("'", "\\'")|safe }} ' + data.kenteken_display + '\n';
+            message += '{{ _("Brand:")|replace("'", "\\'")|safe }} ' + data.merk + '\n';
             message += '{{ _("Model:")|replace("'", "\\'")|safe }} ' + data.handelsbenaming + '\n';
             message += '{{ _("Type:")|replace("'", "\\'")|safe }} ' + data.voertuigsoort + '\n';
-            message += '{{ _("Inrichting:")|replace("'", "\\'")|safe }} ' + data.inrichting + '\n';
-            message += '{{ _("Kleur:")|replace("'", "\\'")|safe }} ' + data.kleur + '\n';
-            if (data.vervaldatum_apk) message += '{{ _("APK vervalt:")|replace("'", "\\'")|safe }} ' + data.vervaldatum_apk + '\n';
-            message += '{{ _("Verzekerd (WAM):")|replace("'", "\\'")|safe }} ' + data.wam_verzekerd + '\n';
+            message += '{{ _("Body type:")|replace("'", "\\'")|safe }} ' + data.inrichting + '\n';
+            message += '{{ _("Color:")|replace("'", "\\'")|safe }} ' + data.kleur + '\n';
+            if (data.vervaldatum_apk) message += '{{ _("APK expires:")|replace("'", "\\'")|safe }} ' + data.vervaldatum_apk + '\n';
+            message += '{{ _("Insured (WAM):")|replace("'", "\\'")|safe }} ' + data.wam_verzekerd + '\n';
             message += '\n\n{{ _("Update subject with this data?")|replace("'", "\\'")|safe }}';
             
             if (confirm(message)) {
@@ -1168,13 +1168,13 @@
                     if (p.issuing_country) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Issued by:") }} ' + esc(p.issuing_country) + '</span>';
                     if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("INTERPOL link") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="wanted" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Save as finding") }}</button>';
                     html += '</div></div>';
                 });
             }
             
             if (missing.length > 0) {
-                html += '<h4 style="margin:0 0 0.5rem 0;color:#92400e;">{{ _("Yellow Notices / Vermist (Missing)") }}</h4>';
+                html += '<h4 style="margin:0 0 0.5rem 0;color:#92400e;">{{ _("Yellow Notices / Missing Persons") }}</h4>';
                 missing.forEach((p, i) => {
                     html += '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
@@ -1187,13 +1187,13 @@
                     if (p.description) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Info:") }} ' + esc(p.description) + '</span>';
                     if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("Link") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="missing" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Save as finding") }}</button>';
                     html += '</div></div>';
                 });
             }
             
             if (opsporingen.length > 0) {
-                html += '<h4 style="margin:1rem 0 0.5rem 0;color:#1e40af;">{{ _("Opsporingsberichten (Politie.nl)") }}</h4>';
+                html += '<h4 style="margin:1rem 0 0.5rem 0;color:#1e40af;">{{ _("Wanted Notices (Politie.nl)") }}</h4>';
                 opsporingen.forEach((p, i) => {
                     html += '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">';
                     html += '<div style="display:flex;gap:0.75rem;">';
@@ -1204,11 +1204,11 @@
                     }
                     html += '<div style="flex:1;min-width:0;">';
                     html += '<strong style="color:#1e40af;">' + esc(p.title) + '</strong>';
-                    if (p.location) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Locatie:") }} ' + esc(p.location) + '</span>';
-                    if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Datum:") }} ' + esc(p.date) + '</span>';
-                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("Bekijk op politie.nl") }}</a>';
+                    if (p.location) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Location:") }} ' + esc(p.location) + '</span>';
+                    if (p.date) html += '<br><span style="color:#666;font-size:0.85rem;">{{ _("Date:") }} ' + esc(p.date) + '</span>';
+                    if (p.url) html += '<br><a href="' + esc(p.url) + '" target="_blank" style="font-size:0.8rem;color:#2563eb;">{{ _("View on politie.nl") }}</a>';
                     html += '</div>';
-                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Bewaar als bevinding") }}</button>';
+                    html += '<button data-click="saveInterpolFinding" data-arg0="opsporing" data-arg1="' + esc(i) + '" class="btn-cms small bg-green">{{ _("Save as finding") }}</button>';
                     html += '</div></div>';
                 });
             }
@@ -1236,7 +1236,7 @@
         const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
         
         if (!firstCaseId) {
-            alert('{{ _("Dit subject is niet gekoppeld aan een zaak. Koppel eerst aan een zaak om bevindingen op te slaan.")|replace("'", "\\'")|safe }}');
+            alert('{{ _("This subject is not linked to a case. Link it to a case first to save findings.")|replace("'", "\\'")|safe }}');
             return;
         }
 
@@ -1247,7 +1247,7 @@
         if (!person) return;
 
         btn.disabled = true;
-        btn.textContent = '{{ _("Bezig met opslaan...")|replace("'", "\\'")|safe }}';
+        btn.textContent = '{{ _("Saving...")|replace("'", "\\'")|safe }}';
 
         apiFetch('/cms/api/findings/from-interpol', {
             method: 'POST',
@@ -1267,14 +1267,14 @@
             return r.json();
         })
         .then(result => {
-            btn.textContent = '{{ _("Opgeslagen!")|replace("'", "\\'")|safe }}';
+            btn.textContent = '{{ _("Saved!")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
             setTimeout(() => location.reload(), 800);
         })
         .catch(err => {
-            alert('{{ _("Fout:")|replace("'", "\\'")|safe }} ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
             btn.disabled = false;
-            btn.textContent = '{{ _("Bewaar als bevinding")|replace("'", "\\'")|safe }}';
+            btn.textContent = '{{ _("Save as finding")|replace("'", "\\'")|safe }}';
         });
     }
 
@@ -1387,7 +1387,7 @@
             if (data.source_data && data.source_data.kvnr) {
                 const kv = data.source_data.kvnr;
                 html += '<div style="background:#f0fdf4;border:1px solid #16a34a;border-radius:8px;padding:1rem;margin-bottom:1rem;">';
-                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">{{ _("🇳🇱 KVNR Schepenzoeker") }}</h4>';
+                html += '<h4 style="margin:0 0 0.75rem 0;color:#16a34a;">{{ _("🇳🇱 KVNR Ship Finder") }}</h4>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;">';
                 html += '<div><strong>{{ _("Name:") }}</strong> ' + esc(kv.name || '-') + '</div>';
                 html += '<div><strong>{{ _("IMO:") }}</strong> ' + esc(kv.imo || '-') + '</div>';
@@ -1446,7 +1446,7 @@
             // Save as finding button
             const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
             if (firstCaseId) {
-html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _("📥 Bewaar als bevinding") }}</button>';
+html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _("📥 Save as finding") }}</button>';
 
                 html += ' <button data-click="updateVesselFromCheck" class="btn-cms small teal">{{ _("💾 Update vessel fields") }}</button>';
             } else {
@@ -1477,7 +1477,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         }
 
         btn.disabled = true;
-        btn.textContent = '{{ _("⏳ Bezig met opslaan...")|replace("'", "\\'")|safe }}';
+        btn.textContent = '{{ _("⏳ Saving...")|replace("'", "\\'")|safe }}';
 
         apiFetch('/cms/api/findings/from-vessel', {
             method: 'POST',
@@ -1495,14 +1495,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
             return r.json();
         })
         .then(result => {
-            btn.textContent = '{{ _("✅ Opgeslagen!")|replace("'", "\\'")|safe }}';
+            btn.textContent = '{{ _("✅ Saved!")|replace("'", "\\'")|safe }}';
             btn.style.background = '#16a34a';
             setTimeout(() => location.reload(), 800);
         })
         .catch(err => {
-            alert('{{ _("Fout:")|replace("'", "\\'")|safe }} ' + err.message);
+            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
             btn.disabled = false;
-            btn.textContent = '{{ _("📥 Bewaar als bevinding")|replace("'", "\\'")|safe }}';
+            btn.textContent = '{{ _("📥 Save as finding")|replace("'", "\\'")|safe }}';
         });
     }
 
@@ -2496,7 +2496,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         btn.disabled = true;
         btn.textContent = '{{ _("🔍 Looking up...")|replace("'", "\\'")|safe }}';
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<span class="text-muted">{{ _("Contacting politie.nl...") }}</span>';
+        resultDiv.innerHTML = '<span class="text-muted">{{ _("Checking politie.nl...") }}</span>';
 
         try {
             const resp = await apiFetch('/cms/api/politiebureau-lookup', {
@@ -2522,7 +2522,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
 
             const s = data.station;
             let html = '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:0.75rem;font-size:0.85rem;">';
-            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || '{{ _("Politiebureau")|replace("'", "\\'")|safe }}') + '</div>';
+            html += '<div style="font-weight:600;color:#991b1b;margin-bottom:0.5rem;">🚔 ' + esc(s.name || '{{ _("Police Station")|replace("'", "\\'")|safe }}') + '</div>';
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">';
             html += '<div><strong>{{ _("Address:") }}</strong> ' + esc(s.address || '-') + '</div>';
             html += '<div><strong>{{ _("Phone:") }}</strong> ' + esc(s.phone || '-') + '</div>';
@@ -2533,7 +2533,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
                 html += '<div style="grid-column:1/-1;"><a href="https://www.openstreetmap.org/?mlat=' + esc(s.location.latitude) + '&mlon=' + esc(s.location.longitude) + '&zoom=16" target="_blank">{{ _("📍 View on map") }}</a></div>';
             }
             if (s.url) {
-                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">{{ _("🔗 Politie.nl page") }}</a></div>';
+                html += '<div style="grid-column:1/-1;"><a href="' + esc(s.url) + '" target="_blank">{{ _("🔗 View on politie.nl") }}</a></div>';
             }
             html += '</div></div>';
             resultDiv.innerHTML = html;
@@ -2669,7 +2669,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
     });
 
     function confirmDeleteSubject() {
-        if (!confirm('{{ _("Weet je zeker dat je dit subject wilt verwijderen?")|replace("'", "\\'")|safe }}')) return;
+        if (!confirm('{{ _("Are you sure you want to delete this subject?")|replace("'", "\\'")|safe }}')) return;
         const btn = event.target;
         btn.disabled = true;
         btn.textContent = '...';
@@ -2716,7 +2716,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
             const data = await res.json();
 
             if (!res.ok) {
-                resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">{{ _("Fout:") }} ' + esc(data.error || res.statusText) + '</div>';
+                resultsDiv.innerHTML = '<div style="color:#dc2626;padding:0.5rem;">{{ _("Error:") }} ' + esc(data.error || res.statusText) + '</div>';
                 return;
             }
 

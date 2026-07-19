@@ -1,5 +1,5 @@
 {% extends "cms/base.html" %}
-{% block title %}AVG-verzoeken beheren{% endblock %}
+{% block title %}Manage DSAR Requests{% endblock %}
 {% block content %}
 <div class="settings-layout">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
@@ -25,19 +25,19 @@
 
     <div class="avg-container">
         <div class="avg-header">
-            <h1>AVG-verzoeken beheren</h1>
-            <p>Artikel 15-22 AVG — Inkomende verzoeken van betrokkenen</p>
+            <h1>Manage DSAR Requests</h1>
+            <p>Article 15-22 GDPR — Incoming requests from data subjects</p>
         </div>
 
         {% if requests %}
         <table class="avg-table">
             <thead>
                 <tr>
-                    <th>Datum</th>
-                    <th>Naam</th>
+                    <th>Date</th>
+                    <th>Name</th>
                     <th>Contact</th>
                     <th>Type</th>
-                    <th>Omschrijving</th>
+                    <th>Description</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
@@ -49,23 +49,23 @@
                     <td><strong>{{ r.name }}</strong></td>
                     <td><a href="mailto:{{ r.email }}">{{ r.email }}</a>{% if r.phone %}<br><small>{{ r.phone }}</small>{% endif %}</td>
                     <td>
-                        {% set labels = {"access":"Inzage","rectification":"Rectificatie","erasure":"Verwijdering","portability":"Dataportabiliteit","restrict":"Beperking","object":"Bezwaar"} %}
+                        {% set labels = {"access":"Access","rectification":"Rectification","erasure":"Erasure","portability":"Portability","restrict":"Restriction","object":"Objection"} %}
                         {{ labels.get(r.request_type, r.request_type) }}
                     </td>
                     <td class="request-detail" title="{{ r.description or '' }}">{{ r.description or '-' }}</td>
                     <td>
-                        {% set status_labels = {"received":"Ontvangen","in_progress":"In behandeling","completed":"Afgehandeld","rejected":"Afgewezen"} %}
+                        {% set status_labels = {"received":"Received","in_progress":"In Progress","completed":"Completed","rejected":"Rejected"} %}
                         <span class="badge badge-{{ r.status }}">{{ status_labels.get(r.status, r.status) }}</span>
                     </td>
                     <td>
                         <form class="status-form" data-request-id="{{ r.id }}" style="display:flex;gap:.25rem;align-items:center;">
                             <select class="status-select">
-                                <option value="received" {% if r.status == 'received' %}selected{% endif %}>Ontvangen</option>
-                                <option value="in_progress" {% if r.status == 'in_progress' %}selected{% endif %}>In behandeling</option>
-                                <option value="completed" {% if r.status == 'completed' %}selected{% endif %}>Afgehandeld</option>
-                                <option value="rejected" {% if r.status == 'rejected' %}selected{% endif %}>Afgewezen</option>
+                                <option value="received" {% if r.status == 'received' %}selected{% endif %}>Received</option>
+                                <option value="in_progress" {% if r.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                <option value="completed" {% if r.status == 'completed' %}selected{% endif %}>Completed</option>
+                                <option value="rejected" {% if r.status == 'rejected' %}selected{% endif %}>Rejected</option>
                             </select>
-                            <button type="submit" class="btn-cms blue btn-icon" title="Status bijwerken">&#10003;</button>
+                            <button type="submit" class="btn-cms blue btn-icon" title="Update status">&#10003;</button>
                         </form>
                     </td>
                 </tr>
@@ -75,8 +75,8 @@
         {% else %}
         <div class="empty-state">
             <p style="font-size:2rem;margin-bottom:.5rem;">&#128221;</p>
-            <p>Nog geen AVG-verzoeken ontvangen.</p>
-            <p style="font-size:.85rem;">Verzoeken ingediend via het <a href="{{ url_for('cms.avg_request') }}">AVG-formulier</a> verschijnen hier.</p>
+            <p>No DSAR requests received yet.</p>
+            <p style="font-size:.85rem;">Requests submitted via the <a href="{{ url_for('cms.avg_request') }}">DSAR form</a> will appear here.</p>
         </div>
         {% endif %}
     </div>
@@ -101,7 +101,7 @@ document.querySelectorAll('.status-form').forEach(function(form) {
             if (data.error) { alert(data.error); return; }
             location.reload();
         })
-        .catch(function(err) { alert('Fout: ' + err.message); })
+        .catch(function(err) { alert('Error: ' + err.message); })
         .finally(function() { btn.disabled = false; btn.innerHTML = '&#10003;'; });
     });
 });

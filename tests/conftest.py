@@ -50,10 +50,17 @@ def app():
                 full_name="Admin User",
                 role="admin",
                 is_active=True,
+                is_super_admin=True,
             )
             admin.set_password("Test1234!")
             db.session.add(admin)
         db.session.commit()
+
+        # Ensure existing admin has super_admin flag (matches production init_default_settings)
+        admin = User.query.filter_by(role="admin").first()
+        if admin and not admin.is_super_admin:
+            admin.is_super_admin = True
+            db.session.commit()
 
         yield _app
 

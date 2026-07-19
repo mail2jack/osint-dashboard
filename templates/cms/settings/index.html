@@ -405,7 +405,7 @@
         </a>
         <a href="{{ url_for('cms.avg_requests_admin') }}" class="category-item">
             <span class="icon">&#128221;</span>
-            <span>AVG-verzoeken</span>
+            <span>GDPR Requests</span>
         </a>
         {% if current_user.is_super_admin %}
         <hr class="sidebar-divider">
@@ -429,11 +429,11 @@
         </a>
         <a href="{{ url_for('cms.dpa_register') }}" class="category-item">
             <span class="icon">&#128221;</span>
-            <span>DPA-register</span>
+            <span>DPA Register</span>
         </a>
         <a href="{{ url_for('cms.breach_list') }}" class="category-item">
             <span class="icon">&#128737;</span>
-            <span>Datalekken</span>
+            <span>Data Breaches</span>
         </a>
         {% endif %}
     </div>
@@ -484,39 +484,39 @@
                         'tineye_api_key': '🖼️ TinEye API',
                         'marineplan_api_key': '🚢 MarinePlan API',
                         'equasis_email': '🚢 Equasis email',
-                        'equasis_password': '🚢 Equasis wachtwoord',
+                        'equasis_password': '🚢 Equasis password',
                         'overheid_api_key': '🇳🇱 Overheid.io API',
                         'twochat_api_key': '💬 2Chat API',
-                        'twochat_whatsapp_number': '💬 2Chat WhatsApp nummer',
+                        'twochat_whatsapp_number': '💬 2Chat WhatsApp number',
                         'rapidapi_username_key': '⚡ RapidAPI Key',
                         'telegram_rapidapi_key': '📱 Telegram155 API',
-                        'telegram_rapidapi_limit': '📱 Telegram155 maandlimiet',
+                        'telegram_rapidapi_limit': '📱 Telegram155 monthly limit',
                         'openrouter_api_key': '🤖 OpenRouter API',
                         'spiderfoot_url': '🕷️ SpiderFoot URL',
-                        'spiderfoot_username': '🕷️ SpiderFoot gebruiker',
-                        'spiderfoot_password': '🕷️ SpiderFoot wachtwoord',
+                        'spiderfoot_username': '🕷️ SpiderFoot username',
+                        'spiderfoot_password': '🕷️ SpiderFoot password',
                         'telegram_bot_token': '📱 Telegram bot token',
-                        'telegram_allowed_users': '📱 Telegram toegestane users',
-                        'telegram_enabled': '📱 Telegram bot inschakelen',
+                        'telegram_allowed_users': '📱 Telegram allowed users',
+                        'telegram_enabled': '📱 Telegram bot enable',
                         'smtp_server': '📧 SMTP server',
-                        'smtp_port': '📧 SMTP poort',
-                        'smtp_username': '📧 SMTP gebruiker',
-                        'smtp_password': '📧 SMTP wachtwoord',
-                        'smtp_from_email': '📧 Afzender email',
-                        'smtp_from_name': '📧 Afzender naam',
-                        'session_timeout_minutes': '⏱️ Sessie timeout (minuten)',
-                        'audit_log_retention_days': '📜 Audit log bewaardagen',
-                        'phone_lookup_retention_days': '📞 Telefoon lookup bewaardagen',
-                        'require_password_change': '🔐 Wachtwoord vervaldagen',
-                        'default_search_engine': '🔍 Standaard zoekmachine',
-                        'search_result_limit': '🔍 Max zoekresultaten',
-                        'enable_osint_dorks': '🔍 OSINT dorks inschakelen',
+                        'smtp_port': '📧 SMTP port',
+                        'smtp_username': '📧 SMTP username',
+                        'smtp_password': '📧 SMTP password',
+                        'smtp_from_email': '📧 Sender email',
+                        'smtp_from_name': '📧 Sender name',
+                        'session_timeout_minutes': '⏱️ Session timeout (minutes)',
+                        'audit_log_retention_days': '📜 Audit log retention days',
+                        'phone_lookup_retention_days': '📞 Phone lookup retention days',
+                        'require_password_change': '🔐 Password expiry days',
+                        'default_search_engine': '🔍 Default search engine',
+                        'search_result_limit': '🔍 Max search results',
+                        'enable_osint_dorks': '🔍 Enable OSINT dorks',
                         'update_check_repo': '🔄 Update check repo',
                         'webhook_url': '🔗 Webhook URL',
-                        'organization_name': '🏢 Organisatienaam',
+                        'organization_name': '🏢 Organization name',
                         'case_number_prefix': '📁 Case prefix',
-                        'default_risk_score': '⚠️ Standaard risicoscore',
-                        'theme_style': '🎨 Theme stijl',
+                        'default_risk_score': '⚠️ Default risk score',
+                        'theme_style': '🎨 Theme style',
 'app_logo': '🖼️ Logo',
                         'openrouter_model': '🤖 OpenRouter model',
                         'openrouter_base_url': '🤖 OpenRouter base URL',
@@ -530,7 +530,7 @@
                         'feature_phone': '📞 Phone lookup',
                         'feature_hibp': '🔐 HIBP check',
                         'feature_openkvk': '🇳🇱 OpenKVK',
-                        'feature_ai': '🤖 AI samenvatting',
+                        'feature_ai': '🤖 AI summary',
                         'feature_kadaster': '🏠 Kadaster',
                         'feature_rdw': '🚗 RDW',
                         'feature_vessel': '🚢 Vessel lookup',
@@ -539,7 +539,7 @@
                     }.get(setting.key, setting.key.replace('_', ' ').title()) %}
                     {{ display_name }}
                     {% if setting.is_sensitive %}
-                    <span class="sensitive-badge">{{ _('(sleutel)') }}</span>
+                    <span class="sensitive-badge">{{ _('(key)') }}</span>
                     {% endif %}
                 </label>
                 <p class="description">{{ setting.description or '' }}</p>
@@ -575,10 +575,10 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
                     {% if setting.value %}
-                    <span class="status-badge configured">{{ _('🟢 Geconfigureerd') }}</span>
+                    <span class="status-badge configured">{{ _('🟢 Configured') }}</span>
                     <span class="masked-value">{{ setting.get_masked_value() }}</span>
                     {% else %}
-                    <span class="status-badge not-configured">{{ _('🔴 Niet geconfigureerd') }}</span>
+                    <span class="status-badge not-configured">{{ _('🔴 Not configured') }}</span>
                     {% endif %}
                 </div>
                 
@@ -801,10 +801,10 @@
     <div class="settings-section" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
         <h3>🖼️ {{ _('Logo') }}</h3>
         <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-            {{ _('Upload een logo dat in de header wordt weergegeven in plaats van de CMS tekst.') }}
+            {{ _('Upload a logo to display in the header instead of the CMS text.') }}
         </p>
         <div id="logoPreview" style="margin-bottom: 1rem;{% if not app_logo %}display:none;{% endif %}">
-            <strong>{{ _('Huidig logo:') }}</strong><br>
+            <strong>{{ _('Current logo:') }}</strong><br>
             <img id="logoPreviewImg" src="{% if app_logo %}{{ url_for('static', filename='uploads/logo/' + app_logo) }}{% endif %}"
                  alt="Logo" style="max-height:3rem;width:auto;margin-top:0.5rem;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem;">
         </div>
@@ -813,7 +813,7 @@
                    style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; min-width: 200px; background: var(--input-bg); color: var(--text);">
             <button type="button" data-click="uploadLogo" class="btn bg-green">{{ _('Upload') }}</button>
             {% if app_logo %}
-            <button type="button" data-click="deleteLogo" class="btn-cms danger">{{ _('Verwijder') }}</button>
+            <button type="button" data-click="deleteLogo" class="btn-cms danger">{{ _('Delete') }}</button>
             {% endif %}
             <span id="logoStatus" style="font-size: 0.875rem;"></span>
         </div>
@@ -1262,7 +1262,7 @@ window.uploadLogo = async function() {
             statusEl.innerHTML = '<span style="color:#059669;">✅ {{ _('Logo geüpload') }}</span>';
             window.location.reload();
         } else {
-            statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(data.error || '{{ _('Fout')|e }}') + '</span>';
+            statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(data.error || '{{ _('Error')|e }}') + '</span>';
         }
     } catch (e) {
         statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(e.message) + '</span>';
@@ -1270,9 +1270,9 @@ window.uploadLogo = async function() {
 };
 
 window.deleteLogo = async function() {
-    if (!confirm('{{ _('Logo verwijderen?')|e }}')) return;
+    if (!confirm('{{ _('Remove logo?')|e }}')) return;
     var statusEl = document.getElementById('logoStatus');
-    statusEl.innerHTML = '<span style="color:#0ea5e9;">{{ _('Verwijderen...')|e }}</span>';
+    statusEl.innerHTML = '<span style="color:#0ea5e9;">{{ _('Deleting...')|e }}</span>';
     try {
         var r = await apiFetch('/cms/api/settings/delete-logo', {
             method: 'POST',
@@ -1280,10 +1280,10 @@ window.deleteLogo = async function() {
         });
         var data = await r.json();
         if (r.ok) {
-            statusEl.innerHTML = '<span style="color:#059669;">✅ {{ _('Verwijderd') }}</span>';
+            statusEl.innerHTML = '<span style="color:#059669;">✅ {{ _('Deleted') }}</span>';
             window.location.reload();
         } else {
-            statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(data.error || '{{ _('Fout')|e }}') + '</span>';
+            statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(data.error || '{{ _('Error')|e }}') + '</span>';
         }
     } catch (e) {
         statusEl.innerHTML = '<span style="color:#dc2626;">❌ ' + esc(e.message) + '</span>';

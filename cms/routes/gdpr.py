@@ -37,7 +37,7 @@ def avg_request():
         description = request.form.get("description", "").strip()
 
         if not email:
-            flash("E-mailadres is verplicht.", "danger")
+            flash("Email address is required.", "danger")
             return render_template("cms/avg_request.html")
 
         if request_type not in (
@@ -73,12 +73,12 @@ def avg_request():
             action="avg_request_created",
             entity_type="avg_request",
             entity_id=request_id,
-            description=f"AVG-verzoek ontvangen: {request_type} van {name} <{email}>",
+            description=f"DSAR received: {request_type} from {name} <{email}>",
         )
         db.session.commit()
 
         flash(
-            "Uw AVG-verzoek is ontvangen. Wij nemen binnen 30 dagen contact met u op.",
+            "Your DSAR has been received. We will contact you within 30 days.",
             "success",
         )
         return redirect(url_for("cms.privacy_policy"))
@@ -134,7 +134,7 @@ def _deserialize_avg_request(setting: Setting) -> dict | None:
 def avg_requests_admin():
     """Admin page to list and manage DSAR/AVG requests."""
     if not current_user.is_super_admin:
-        flash("Alleen beheerders hebben toegang.", "danger")
+        flash("Only administrators have access.", "danger")
         return redirect(url_for("cms.settings"))
 
     settings = (
@@ -163,18 +163,18 @@ def avg_request_update(request_id):
     data = request.get_json(silent=True) or {}
     new_status = data.get("status", "").strip()
     if new_status not in ("received", "in_progress", "completed", "rejected"):
-        return jsonify({"error": "Ongeldige status"}), 400
+        return jsonify({"error": "Invalid status"}), 400
 
     setting = Setting.query.filter(
         Setting.key == f"avg_request_{request_id}",
         Setting.category == "avg_requests",
     ).first()
     if not setting:
-        return jsonify({"error": "Niet gevonden"}), 404
+        return jsonify({"error": "Not found"}), 404
 
     payload = _deserialize_avg_request(setting)
     if not payload:
-        return jsonify({"error": "Kan verzoek niet lezen"}), 500
+        return jsonify({"error": "Cannot read request"}), 500
 
     old_status = payload.get("status")
     payload["status"] = new_status
@@ -187,7 +187,7 @@ def avg_request_update(request_id):
         action="update",
         entity_type="avg_request",
         entity_id=request_id,
-        description=f"AVG-verzoek {request_id}: status '{old_status}' → '{new_status}'",
+        description=f"DSAR {request_id}: status '{old_status}' → '{new_status}'",
     )
     db.session.commit()
 
