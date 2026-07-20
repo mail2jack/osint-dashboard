@@ -78,11 +78,16 @@ def _init_sentry(dsn: str) -> None:
                 FlaskIntegration(),
                 SqlalchemyIntegration(),
             ],
+            send_default_pii=True,
+            enable_logs=True,
             traces_sample_rate=float(
-                os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")
+                os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "1.0")
             ),
+            profile_session_sample_rate=float(
+                os.environ.get("SENTRY_PROFILE_SAMPLE_RATE", "1.0")
+            ),
+            profile_lifecycle=os.environ.get("SENTRY_PROFILE_LIFECYCLE", "trace"),
             environment=os.environ.get("FLASK_ENV", "development"),
-            send_default_pii=False,
         )
         logger.info("Sentry initialized (DSN: ...%s)", dsn[-12:])
     except Exception as e:
