@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/cases/<case_id>/add-subject", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @case_edit_required
 @validate(AddSubjectToCaseSchema)
 def add_subject_to_case(case_id: str) -> flask.Response:
@@ -63,7 +65,9 @@ def add_subject_to_case(case_id: str) -> flask.Response:
 @cms_bp.route("/cases/<case_id>/add-subjects-bulk", methods=["POST"])
 @login_required
 @case_access_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @case_edit_required
 @validate(BulkAddSubjectsSchema)
 def bulk_add_subjects_to_case(case_id: str) -> flask.Response:
@@ -133,7 +137,7 @@ def bulk_add_subjects_to_case(case_id: str) -> flask.Response:
 
 @cms_bp.route("/cases/<case_id>/remove-subject/<subject_id>", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @case_edit_required
 def remove_subject_from_case(case_id: str, subject_id: str) -> flask.Response:
     """Remove a subject from a case."""

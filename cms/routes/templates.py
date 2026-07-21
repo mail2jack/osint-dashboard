@@ -39,7 +39,7 @@ def list_templates() -> str:
 
 @cms_bp.route("/templates/create", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @validate(CreateTemplateSchema)
 def create_template() -> flask.Response:
     """Create a new document template."""
@@ -79,7 +79,7 @@ def create_template() -> flask.Response:
 
 @cms_bp.route("/templates/<template_id>/edit", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @validate(EditTemplateSchema)
 def edit_template(template_id: str) -> flask.Response:
     """Edit a document template."""

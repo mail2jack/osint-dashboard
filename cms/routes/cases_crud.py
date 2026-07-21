@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/api/cases/bulk-delete", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @validate(BulkDeleteSchema)
 def bulk_delete_cases() -> flask.Response:
     """Soft-delete cases in bulk."""
@@ -186,7 +186,9 @@ def cases() -> str:
 
 @cms_bp.route("/cases/create", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="create_case")
 @validate(CreateCaseSchema)
 def create_case() -> flask.Response:
@@ -466,7 +468,7 @@ def edit_case(case_id: str) -> flask.Response:
 
 @cms_bp.route("/cases/<case_id>/archive", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 def archive_case(case_id: str) -> flask.Response:
     """Archive a case and cascade to its research actions and findings."""
     case = db.session.get(Case, case_id) or abort(404)
@@ -491,7 +493,7 @@ def archive_case(case_id: str) -> flask.Response:
 
 @cms_bp.route("/cases/<case_id>/restore", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 def restore_case(case_id: str) -> flask.Response:
     """Restore an archived case and its archived children."""
     case = db.session.get(Case, case_id) or abort(404)

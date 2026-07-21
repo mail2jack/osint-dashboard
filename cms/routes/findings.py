@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 @cms_bp.route("/findings/create", methods=["POST"])
 @cms_bp.route("/cases/<case_id>/findings/create", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @validate(CreateFindingSchema)
 def create_finding() -> flask.Response:
     """Create a new finding."""

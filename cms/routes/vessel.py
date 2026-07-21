@@ -84,7 +84,7 @@ def vessel_lookup() -> flask.Response:
 @api_key_required
 @tool_enabled("vessel")
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @validate(VesselUpdateSubjectSchema)
 def update_subject_from_vessel() -> flask.Response:
     """Update subject with vessel data from lookup."""

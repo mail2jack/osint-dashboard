@@ -139,7 +139,7 @@ def check_rdw_vehicle() -> flask.Response:
 @csrf.exempt
 @api_key_required
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @validate(RDWUpdateSchema)
 def update_subject_from_rdw(subject_id: str) -> flask.Response:
     """Update vehicle subject fields with data from RDW."""

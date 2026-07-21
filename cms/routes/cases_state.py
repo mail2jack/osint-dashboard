@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/cases/<case_id>/set-parent", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @case_edit_required
 @validate(SetCaseParentSchema)
 def set_case_parent(case_id: str) -> flask.Response:

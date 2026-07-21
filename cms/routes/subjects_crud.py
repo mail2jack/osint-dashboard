@@ -32,7 +32,9 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/subjects/create", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="create_subject")
 @validate(CreateSubjectSchema)
 def create_subject() -> flask.Response:
@@ -306,7 +308,9 @@ def create_subject() -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/edit", methods=["GET", "POST"])
 @login_required
 @subject_access_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="edit_subject")
 @validate(EditSubjectSchema)
 def edit_subject(subject_id: str) -> flask.Response:
@@ -636,7 +640,7 @@ def edit_subject(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/api/subjects/bulk-delete", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @validate(BulkDeleteSchema)
 def bulk_delete_subjects() -> flask.Response:
     """Soft-delete subjects in bulk (consistent with single delete)."""
@@ -663,7 +667,7 @@ def bulk_delete_subjects() -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/delete", methods=["POST"])
 @login_required
 @subject_access_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 def delete_subject(subject_id: str) -> flask.Response:
     """Soft-delete a subject if not linked to any case."""
     subject = db.session.get(Subject, subject_id) or abort(404)

@@ -187,7 +187,9 @@ def get_subject_relationships(subject_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/add-relationship", methods=["POST"])
 @login_required
 @subject_access_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @validate(AddRelationSchema)
 def add_subject_relationship(subject_id: str) -> flask.Response:
     """Add a bidirectional relationship between two subjects."""
@@ -270,7 +272,7 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/remove-relationship", methods=["POST"])
 @login_required
 @subject_access_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 @validate(RemoveRelationSchema)
 def remove_subject_relationship(subject_id: str) -> flask.Response:
     """Remove a relationship between two subjects."""

@@ -628,7 +628,7 @@ def _generate_backup_codes(count: int = 8) -> list:
 
 @users_bp.route("/")
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 def list_users() -> str:
     """List all users with pagination and optional tenant filter."""
     page = request.args.get("page", 1, type=int)

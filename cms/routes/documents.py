@@ -154,7 +154,9 @@ def upload_case_document(case_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/upload", methods=["POST"])
 @login_required
 @subject_access_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @validate(DocumentUploadSchema)
 def upload_subject_document(subject_id: str) -> flask.Response:
     """Upload a document to a subject."""
@@ -303,7 +305,7 @@ def download_document(document_id: str) -> flask.Response:
 
 @cms_bp.route("/documents/<document_id>", methods=["DELETE"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 def delete_document(document_id: str) -> flask.Response:
     """Delete a document."""
     document = db.session.get(Document, document_id) or abort(404)

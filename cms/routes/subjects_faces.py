@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 @cms_bp.route("/subjects/<subject_id>/photo", methods=["POST"])
 @login_required
 @subject_access_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 def upload_subject_photo(subject_id: str) -> flask.Response:
     """Upload a photo for a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)
@@ -94,7 +96,9 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["POST"])
 @login_required
 @subject_access_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 @validate(SaveFaceEncodingSchema)
 def save_face_encoding(subject_id: str) -> flask.Response:
     """Save face encoding for a subject."""
@@ -123,7 +127,9 @@ def save_face_encoding(subject_id: str) -> flask.Response:
 @cms_bp.route("/subjects/<subject_id>/face-encoding", methods=["DELETE"])
 @login_required
 @subject_access_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
 def delete_face_encoding(subject_id: str) -> flask.Response:
     """Delete face encoding for a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)
