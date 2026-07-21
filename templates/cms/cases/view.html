@@ -293,7 +293,7 @@
                     <span style="color:#999;">-</span>
                     {% endif %}
                 </td>
-                <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span></td>
+                <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span>{% if finding.content_hash %} <span class="badge {% if finding.verify_integrity() %}badge-status-success{% else %}badge-status-danger{% endif %}" style="cursor:help;" title="{{ finding.content_hash }}">🔒</span>{% endif %}</td>
                 <td>{{ finding.author.full_name if finding.author else _('Unknown') }}</td>
                 <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
             </tr>

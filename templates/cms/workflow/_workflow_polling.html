@@ -226,6 +226,7 @@ function findingHtml(f) {
         '<strong>' + esc(f.title) + '</strong>' +
         '<span class="badge badge-info" style="margin-left:0.5rem;">' + esc(f.source_type || 'manual') + '</span>' +
         (f.confidence_level ? '<span class="badge ' + confClass + '" style="margin-left:0.25rem;">' + esc(f.confidence_level) + '</span>' : '') +
+        (f.content_hash ? '<span class="badge ' + (f.integrity_verified ? 'badge-status-success' : 'badge-status-danger') + '" style="margin-left:0.25rem;cursor:help;" title="' + esc(f.content_hash) + '">🔒 ' + (f.integrity_verified ? 'Intact' : 'Tampered') + '</span>' : '') +
       '</div>' +
       '<span style="color:var(--text-muted);font-size:0.75rem;">' + dateStr + '</span>' +
     '</div>' +

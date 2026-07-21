@@ -1344,6 +1344,9 @@ class Finding(db.Model):
     source_url = db.Column(db.String(500))
     source_type = db.Column(db.String(50))  # osint, interview, document, etc.
 
+    # Integrity stamp — SHA-256 hash computed at creation for chain-of-custody
+    content_hash = db.Column(db.String(64), nullable=True, index=False)
+
     # Reliability scoring (1-10)
     reliability_score = db.Column(db.Integer, default=5)
     confidence_level = db.Column(db.String(20))  # low, medium, high, verified
@@ -1385,6 +1388,62 @@ class Finding(db.Model):
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
 
+    @staticmethod
+    def _compute_content_hash(
+        title: str,
+        content: str,
+        source_url: str | None = None,
+        source_type: str | None = None,
+        raw_data: Any = None,
+        created_by: str | None = None,
+        created_at: datetime | None = None,
+    ) -> str:
+        """Compute SHA-256 integrity hash from finding fields.
+
+        The hash covers the fields that define the finding's evidential value.
+        It is computed once at creation time and never modified — any subsequent
+        change to the record invalidates the hash, proving tampering.
+        """
+        if created_at and created_at.tzinfo:
+            created_at = created_at.replace(tzinfo=None)
+        payload = json.dumps(
+            {
+                "title": title or "",
+                "content": content or "",
+                "source_url": source_url or "",
+                "source_type": source_type or "",
+                "raw_data": raw_data,
+                "created_by": created_by or "",
+                "created_at": created_at.isoformat() if created_at else "",
+            },
+            sort_keys=True,
+            default=str,
+            ensure_ascii=False,
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def compute_hash(self) -> str:
+        """Compute and return the content hash for current field values."""
+        return self._compute_content_hash(
+            title=self.title,
+            content=self.content,
+            source_url=self.source_url,
+            source_type=self.source_type,
+            raw_data=self.raw_data,
+            created_by=self.created_by,
+            created_at=self.created_at,
+        )
+
+    def verify_integrity(self) -> bool:
+        """Verify the stored hash matches the current field values.
+
+        Returns True if the finding has not been tampered with since creation.
+        Returns False if the hash is missing or does not match.
+        """
+        if not self.content_hash:
+            return False
+        return self.content_hash == self.compute_hash()
+
     def to_dict(self) -> dict:
         """Serialize finding."""
         return {
@@ -1399,6 +1458,10 @@ class Finding(db.Model):
             "confidence_level": self.confidence_level,
             "finding_type": self.finding_type,
             "tags": self.tags,
+            "content_hash": self.content_hash,
+            "integrity_verified": self.verify_integrity()
+            if self.content_hash
+            else None,
             "created_by": self.created_by,
             "author_name": self.author.full_name if self.author else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -3479,3 +3542,22 @@ for _model in _TENANT_MODELS:
 
     if hasattr(_model, "tenant_id"):
         _event.listen(_model, "before_insert", _fill_tenant_id)
+
+
+def _stamp_integrity_hash(_mapper, _connection, target):
+    """Auto-compute content_hash on Finding insert (before flush)."""
+    if not target.content_hash:
+        target.content_hash = Finding._compute_content_hash(
+            title=target.title,
+            content=target.content,
+            source_url=target.source_url,
+            source_type=target.source_type,
+            raw_data=target.raw_data,
+            created_by=target.created_by,
+            created_at=target.created_at or datetime.now(timezone.utc),
+        )
+
+
+from sqlalchemy import event as _event
+
+_event.listen(Finding, "before_insert", _stamp_integrity_hash)

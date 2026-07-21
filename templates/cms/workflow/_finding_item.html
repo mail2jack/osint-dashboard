@@ -7,6 +7,9 @@
       {% if f.confidence_level %}
       <span class="badge {% if f.confidence_level in ('high','verified') %}badge-status-success{% elif f.confidence_level == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;">{{ f.confidence_level }}</span>
       {% endif %}
+      {% if f.content_hash %}
+      <span class="badge {% if f.verify_integrity() %}badge-status-success{% else %}badge-status-danger{% endif %}" style="margin-left:0.25rem;cursor:help;" title="{{ f.content_hash }}">🔒 {{ _('Intact') if f.verify_integrity() else _('Tampered') }}</span>
+      {% endif %}
     </div>
     <span style="color:var(--text-muted);font-size:0.75rem;">{{ f.created_at.strftime('%d-%m-%Y %H:%M') if f.created_at else '' }}</span>
   </div>
