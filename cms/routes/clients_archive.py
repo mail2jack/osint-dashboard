@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/clients/<client_id>/archive", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 def archive_client(client_id: str) -> flask.Response:
     """Archive a client if no active cases exist."""
     client = db.session.get(Client, client_id) or abort(404)
@@ -59,7 +59,7 @@ def archive_client(client_id: str) -> flask.Response:
 
 @cms_bp.route("/clients/<client_id>/restore", methods=["POST"])
 @login_required
-@roles_required("admin", "senior_investigator")
+@roles_required("admin", "owner", "senior_investigator")
 def restore_client(client_id: str) -> flask.Response:
     """Restore an archived client."""
     client = db.session.get(Client, client_id) or abort(404)

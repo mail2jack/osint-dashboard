@@ -12,6 +12,7 @@ from ..validation import validate, CreateClientSchema, EditClientSchema
 from ..models import db, Client, Case, AuditLog, Contact, Address
 from ..auth import (
     roles_required,
+    staff_required,
     admin_required,
     audit_read,
     apply_tenant_filter,
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 @cms_bp.route("/clients")
 @login_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@staff_required
 def clients() -> str:
     """List all clients."""
     page = request.args.get("page", 1, type=int)
@@ -81,7 +82,7 @@ def clients() -> str:
 
 @cms_bp.route("/clients/<client_id>")
 @login_required
-@roles_required("admin", "senior_investigator", "investigator", "junior_investigator")
+@staff_required
 @audit_read("client")
 def view_client(client_id: str) -> str:
     """View client details with all associated cases."""
@@ -119,7 +120,7 @@ def view_client(client_id: str) -> str:
 
 @cms_bp.route("/clients/create", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator", "investigator")
+@roles_required("admin", "owner", "senior_investigator", "investigator")
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="create_client")
 @validate(CreateClientSchema)
 def create_client() -> flask.Response:
@@ -311,7 +312,7 @@ def create_client() -> flask.Response:
 
 @cms_bp.route("/clients/<client_id>/edit", methods=["GET", "POST"])
 @login_required
-@roles_required("admin", "senior_investigator", "investigator")
+@roles_required("admin", "owner", "senior_investigator", "investigator")
 @rate_limit(STRICT_RATE_LIMIT, key_prefix="edit_client")
 @validate(EditClientSchema)
 def edit_client(client_id: str) -> flask.Response:
