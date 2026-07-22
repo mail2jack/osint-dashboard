@@ -3519,6 +3519,8 @@ def _fill_tenant_id(mapper, connection, target):
         from flask import g as _g
 
         tid = getattr(_g, "tenant_id", None)
+        if not tid:
+            tid = getattr(_g, "_cached_tenant_id", None)
         if not tid and hasattr(target, "user_id") and target.user_id:
             try:
                 _user = db.session.get(User, target.user_id)
@@ -3534,6 +3536,12 @@ def _fill_tenant_id(mapper, connection, target):
             except Exception:
                 pass
         if tid:
+            try:
+                from flask import g as _g2
+
+                _g2._cached_tenant_id = tid
+            except RuntimeError:
+                pass
             target.tenant_id = tid
 
 

@@ -50,24 +50,29 @@ def dashboard() -> str:
         .group_by(Case.status)
         .all()
     )
-    client_query = apply_tenant_filter(
-        Client.query.filter_by(is_deleted=False, is_active=True), Client
-    )
-    subject_query = apply_tenant_filter(
-        Subject.query.filter_by(is_deleted=False), Subject
-    )
-    finding_query = apply_tenant_filter(
-        Finding.query.filter_by(is_deleted=False), Finding
-    )
-
     stats = {
         "open_cases": case_counts.get(CaseStatus.OPEN.value, 0),
         "active_cases": case_counts.get(CaseStatus.ACTIVE.value, 0),
         "suspended_cases": case_counts.get(CaseStatus.SUSPENDED.value, 0),
         "closed_cases": case_counts.get(CaseStatus.CLOSED.value, 0),
-        "total_clients": client_query.count(),
-        "total_subjects": subject_query.count(),
-        "total_findings": finding_query.count(),
+        "total_clients": apply_tenant_filter(
+            db.session.query(db.func.count(Client.id)).filter(
+                Client.is_deleted == False, Client.is_active == True
+            ),
+            Client,
+        ).scalar(),
+        "total_subjects": apply_tenant_filter(
+            db.session.query(db.func.count(Subject.id)).filter(
+                Subject.is_deleted == False
+            ),
+            Subject,
+        ).scalar(),
+        "total_findings": apply_tenant_filter(
+            db.session.query(db.func.count(Finding.id)).filter(
+                Finding.is_deleted == False
+            ),
+            Finding,
+        ).scalar(),
     }
 
     from ..models import case_assignments

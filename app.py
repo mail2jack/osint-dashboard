@@ -649,32 +649,40 @@ def inject_globals():
     ctx["current_locale"] = _get_locale()
     ctx["now"] = lambda: datetime.now(timezone.utc)
 
-    # Unacknowledged announcements for mandatory popup
+    # Unacknowledged announcements for mandatory popup (cached 30s)
     try:
         from cms.models import Announcement, AnnouncementAck, db
         from flask_login import current_user
         from datetime import datetime, timezone
 
         if current_user and current_user.is_authenticated:
-            now = datetime.now(timezone.utc)
-            announcements = (
-                Announcement.query.outerjoin(
-                    AnnouncementAck,
-                    db.and_(
-                        AnnouncementAck.announcement_id == Announcement.id,
-                        AnnouncementAck.user_id == current_user.id,
-                    ),
+
+            def _count_announcements():
+                now = datetime.now(timezone.utc)
+                return (
+                    Announcement.query.outerjoin(
+                        AnnouncementAck,
+                        db.and_(
+                            AnnouncementAck.announcement_id == Announcement.id,
+                            AnnouncementAck.user_id == current_user.id,
+                        ),
+                    )
+                    .filter(
+                        Announcement.is_active == True,
+                        Announcement.starts_at <= now,
+                        (Announcement.expires_at.is_(None))
+                        | (Announcement.expires_at > now),
+                        AnnouncementAck.id.is_(None),
+                    )
+                    .all()
                 )
-                .filter(
-                    Announcement.is_active == True,
-                    Announcement.starts_at <= now,
-                    (Announcement.expires_at.is_(None))
-                    | (Announcement.expires_at > now),
-                    AnnouncementAck.id.is_(None),
-                )
-                .all()
+
+            _announcements = _cached_count(
+                f"announcements_{current_user.id}", 30.0, _count_announcements
             )
-            ctx["unacknowledged_announcements"] = [a.to_dict() for a in announcements]
+            ctx["unacknowledged_announcements"] = (
+                [a.to_dict() for a in _announcements] if _announcements else []
+            )
         else:
             ctx["unacknowledged_announcements"] = []
     except Exception:

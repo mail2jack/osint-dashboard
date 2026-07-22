@@ -114,13 +114,27 @@ def dashboard():
         .order_by(WorkflowCase.created_at.desc())
         .all()
     )
-    action_counts = {}
-    for c in cases:
-        action_counts[c.id] = {
-            "total": len(c.research_actions),
-            "completed": sum(1 for a in c.research_actions if a.status == "completed"),
-            "running": sum(1 for a in c.research_actions if a.status == "running"),
-        }
+    case_ids = [c.id for c in cases]
+    action_counts = {
+        cid: {"total": 0, "completed": 0, "running": 0} for cid in case_ids
+    }
+    if case_ids:
+        rows = (
+            db.session.query(
+                WorkflowResearchAction.case_id,
+                WorkflowResearchAction.status,
+                db.func.count(WorkflowResearchAction.id),
+            )
+            .filter(WorkflowResearchAction.case_id.in_(case_ids))
+            .group_by(WorkflowResearchAction.case_id, WorkflowResearchAction.status)
+            .all()
+        )
+        for case_id, status, cnt in rows:
+            if status == "completed":
+                action_counts[case_id]["completed"] = cnt
+            elif status == "running":
+                action_counts[case_id]["running"] = cnt
+            action_counts[case_id]["total"] += cnt
     return render_template(
         "cms/workflow/workflow_dashboard.html",
         cases=cases,

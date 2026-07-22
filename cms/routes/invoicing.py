@@ -104,8 +104,12 @@ def invoice_list():
         ),
         Invoice,
     )
-    total_paid = sum(float(inv.total) for inv in paid_q.all())
-    total_outstanding = sum(float(inv.total) for inv in outstanding_q.all())
+    total_paid = paid_q.with_entities(
+        db.func.coalesce(db.func.sum(Invoice.total), 0)
+    ).scalar()
+    total_outstanding = outstanding_q.with_entities(
+        db.func.coalesce(db.func.sum(Invoice.total), 0)
+    ).scalar()
 
     return render_template(
         "cms/invoicing/list.html",
