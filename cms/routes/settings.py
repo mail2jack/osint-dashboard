@@ -433,6 +433,34 @@ def reset_setting_api(setting_id: str) -> flask.Response:
     return api_success({}, "Setting reset to default")
 
 
+@cms_bp.route("/api/settings/test-email", methods=["POST"])
+@login_required
+@admin_required
+def test_email():
+    """Send a test email to verify SMTP settings."""
+    data = request.get_json(silent=True) or {}
+    to_email = (data.get("email") or "").strip()
+    if not to_email:
+        return jsonify({"error": "Email address required"}), 400
+
+    from ..email_utils import send_email, is_smtp_configured
+
+    if not is_smtp_configured():
+        return jsonify(
+            {"error": "SMTP is not configured. Set it in Settings → Email."}
+        ), 400
+
+    ok = send_email(
+        to_email,
+        "Test Email — Iveras CMS",
+        "<p>Your SMTP configuration is working correctly.</p>",
+        "Your SMTP configuration is working correctly.",
+    )
+    if ok:
+        return jsonify({"message": f"Test email sent to {to_email}"})
+    return jsonify({"error": "Failed to send email. Check SMTP settings."}), 500
+
+
 @cms_bp.route("/settings/read-audit")
 @login_required
 @admin_required

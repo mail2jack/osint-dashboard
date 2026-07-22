@@ -288,7 +288,15 @@ def search_username(username):
 
 def search_username_maigret(username, progress_callback=None, max_sites=500):
     try:
-        import maigret.maigret as maigret_module
+        try:
+            import maigret.maigret as maigret_module
+        except ImportError:
+            return {
+                "username": username,
+                "platforms_checked": 0,
+                "findings": [],
+                "error": "Maigret is not installed. Run: pip install maigret",
+            }
         import logging as _logging
 
         db = get_maigret_database()

@@ -228,35 +228,43 @@ def _log_login_sync(
     is_success: bool,
     user_agent: str = "",
 ) -> None:
+    from flask import current_app
+
     from .models import db, LoginLog
 
-    geo = get_ip_geo(ip_address)
+    ctx = current_app.app_context() if current_app._get_current_object() else None
+    if ctx is None:
+        from app import app
 
-    anomaly = False
-    reason = ""
-    if is_success:
+        ctx = app.app_context()
+    with ctx:
+        geo = get_ip_geo(ip_address)
+
+        anomaly = False
+        reason = ""
+        if is_success:
+            try:
+                anomaly, reason = check_anomaly(user_id, ip_address, geo)
+            except Exception as e:
+                logger.debug(f"Anomaly check error: {e}")
+
         try:
-            anomaly, reason = check_anomaly(user_id, ip_address, geo)
+            log = LoginLog(
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent[:500] if user_agent else "",
+                country=geo.get("country", ""),
+                region=geo.get("region", ""),
+                city=geo.get("city", ""),
+                isp=geo.get("isp", ""),
+                lat=geo.get("lat", 0),
+                lon=geo.get("lon", 0),
+                is_success=is_success,
+                is_anomaly=anomaly,
+                anomaly_reason=reason if anomaly else "",
+            )
+            db.session.add(log)
+            db.session.commit()
         except Exception as e:
-            logger.debug(f"Anomaly check error: {e}")
-
-    try:
-        log = LoginLog(
-            user_id=user_id,
-            ip_address=ip_address,
-            user_agent=user_agent[:500] if user_agent else "",
-            country=geo.get("country", ""),
-            region=geo.get("region", ""),
-            city=geo.get("city", ""),
-            isp=geo.get("isp", ""),
-            lat=geo.get("lat", 0),
-            lon=geo.get("lon", 0),
-            is_success=is_success,
-            is_anomaly=anomaly,
-            anomaly_reason=reason if anomaly else "",
-        )
-        db.session.add(log)
-        db.session.commit()
-    except Exception as e:
-        logger.error(f"Failed to save LoginLog: {e}")
-        db.session.rollback()
+            logger.error(f"Failed to save LoginLog: {e}")
+            db.session.rollback()

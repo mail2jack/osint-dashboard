@@ -426,8 +426,7 @@ document.addEventListener('submit', function(e) {
   var el = e.target.closest('[data-submit]');
   if (!el) return;
   e.preventDefault();
-  // For POST forms: only trigger on explicit submit button click, not Enter key
-  if (el.method && el.method.toLowerCase() === 'post' && (!e.submitter || e.submitter.type !== 'submit')) return;
+  if (el.method && el.method.toLowerCase() === 'post' && e.submitter !== undefined && (!e.submitter || e.submitter.type !== 'submit')) return;
   var fn = window[el.dataset.submit];
   if (typeof fn === 'function') fn(e);
 });

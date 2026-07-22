@@ -2093,22 +2093,22 @@ def _instagram_check(action):
     try:
         headers = {
             "x-rapidapi-key": api_key,
-            "x-rapidapi-host": "instagram-scraper-api14.p.rapidapi.com",
+            "x-rapidapi-host": "pro-social.p.rapidapi.com",
             "Accept": "application/json",
         }
 
         if is_username:
             r = jittered_get(
-                "https://instagram-scraper-api14.p.rapidapi.com/instagram/profile",
+                "https://pro-social.p.rapidapi.com/userinfo_username/",
                 params={"username": query},
                 headers=headers,
                 timeout=15,
             )
             if r.status_code == 200:
                 body = r.json()
-                data = body.get("data") if isinstance(body, dict) else body
-                if data and data.get("full_name"):
-                    name = data.get("full_name", "")
+                data = body.get("user") if isinstance(body, dict) else body
+                if data and (data.get("full_name") or data.get("username")):
+                    name = data.get("full_name", "") or data.get("username", query)
                     url = f"https://www.instagram.com/{data.get('username', query)}/"
                     detail_parts = []
                     if data.get("biography"):
@@ -2124,8 +2124,8 @@ def _instagram_check(action):
                         detail_parts.append(f"↗ {data['following_count']:,} following")
                     if data.get("is_verified"):
                         detail_parts.append("✅ Verified")
-                    if data.get("business_category"):
-                        detail_parts.append(f"🏢 {data['business_category']}")
+                    if data.get("business_category_name"):
+                        detail_parts.append(f"🏢 {data['business_category_name']}")
                     _use_credit("instagram")
                     add_finding(name, url, " · ".join(detail_parts))
                     return findings
@@ -2133,19 +2133,19 @@ def _instagram_check(action):
                 add_finding(
                     "Instagram rate limit",
                     "",
-                    "PullAPI Instagram rate limit exceeded (free: 10/month).",
+                    "Pro Social Instagram rate limit exceeded.",
                 )
                 return findings
             elif r.status_code in (401, 403):
                 add_finding(
                     "Instagram authentication error",
                     "",
-                    "PullAPI Instagram key is invalid.",
+                    "Pro Social Instagram key is invalid.",
                 )
 
         # Name search fallback
         r = jittered_get(
-            "https://instagram-scraper-api14.p.rapidapi.com/instagram/search",
+            "https://pro-social.p.rapidapi.com/usersearch/",
             params={"query": query},
             headers=headers,
             timeout=15,
@@ -2153,13 +2153,9 @@ def _instagram_check(action):
         if r.status_code == 200:
             _use_credit("instagram")
             body = r.json()
-            data = body.get("data") if isinstance(body, dict) else body
-            if isinstance(data, dict):
-                users = data.get("users") or data.get("results") or []
-            elif isinstance(data, list):
-                users = data
-            else:
-                users = []
+            users = body.get("users", []) if isinstance(body, dict) else []
+            if isinstance(users, dict):
+                users = users.get("users") or users.get("results") or []
             for item in users[:5]:
                 if not isinstance(item, dict):
                     continue

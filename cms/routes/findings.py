@@ -1,12 +1,12 @@
 import logging
 
 import flask
-from flask import request, jsonify
+from flask import request, jsonify, redirect, url_for
 from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Finding, AuditLog, Case
-from ..auth import roles_required
+from ..auth import roles_required, case_access_required
 from ..validation import validate, CreateFindingSchema
 from ..workflow.research import link_finding_to_manual_action
 
@@ -81,3 +81,31 @@ def create_finding() -> flask.Response:
         ), 201
 
     return jsonify({"message": "Finding created", "finding": finding.to_dict()})
+
+
+@cms_bp.route("/cases/<case_id>/findings/<finding_id>/delete", methods=["POST"])
+@login_required
+@case_access_required
+@roles_required(
+    "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
+)
+def delete_finding(case_id: str, finding_id: str) -> flask.Response:
+    """Soft-delete a finding."""
+    finding = db.session.get(Finding, finding_id)
+    if not finding or finding.case_id != case_id:
+        flask.abort(404)
+
+    finding.soft_delete()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="delete",
+        entity_type="finding",
+        entity_id=finding.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Soft-deleted finding: {finding.title}",
+    )
+    db.session.commit()
+
+    return redirect(url_for("cms.view_case", case_id=case_id))

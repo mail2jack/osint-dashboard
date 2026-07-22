@@ -66,10 +66,13 @@ def send_email(to_email, subject, body_html, body_text=None) -> bool:
             if _CA_BUNDLE
             else ssl.create_default_context()
         )
+        timeout = 15
         if cfg["port"] == 465:
-            server = smtplib.SMTP_SSL(cfg["server"], cfg["port"], context=ctx)
+            server = smtplib.SMTP_SSL(
+                cfg["server"], cfg["port"], context=ctx, timeout=timeout
+            )
         else:
-            server = smtplib.SMTP(cfg["server"], cfg["port"])
+            server = smtplib.SMTP(cfg["server"], cfg["port"], timeout=timeout)
             server.starttls(context=ctx)
 
         if cfg["username"] and cfg["password"]:

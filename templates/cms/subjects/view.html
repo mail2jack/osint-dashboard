@@ -732,7 +732,15 @@
                         <span class="badge {% if finding.confidence_level == 'high' or finding.confidence_level == 'verified' %}badge-status-success{% elif finding.confidence_level == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;">{{ finding.confidence_level }}</span>
                         {% endif %}
                     </div>
-                    <span style="color:var(--text-muted);font-size:0.75rem;">{{ finding.created_at.strftime('%d-%m-%Y %H:%M') if finding.created_at else '' }}</span>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span style="color:var(--text-muted);font-size:0.75rem;">{{ finding.created_at.strftime('%d-%m-%Y %H:%M') if finding.created_at else '' }}</span>
+                        {% if finding.case_id %}
+                        <form action="{{ url_for('cms.delete_finding', case_id=finding.case_id, finding_id=finding.id) }}" method="POST" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn-icon danger" title="{{ _('Delete finding') }}" data-confirm="{{ _('Delete this finding?') }}">🗑️</button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
                 <div style="margin-top:0.5rem;color:var(--text-primary);font-size:0.875rem;white-space:pre-wrap;">{{ finding.content }}</div>
                 {% if finding.source_url %}

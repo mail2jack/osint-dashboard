@@ -59,14 +59,15 @@ facebook_pull_profile = {
 }
 
 instagram_pull_profile = {
-    "data": {
+    "status": "ok",
+    "user": {
         "full_name": "Jan van Dijk",
         "username": "janvandijk",
         "biography": "Digital creator",
         "follower_count": 1234,
         "following_count": 567,
         "is_verified": False,
-    }
+    },
 }
 
 linkedin_profile = {

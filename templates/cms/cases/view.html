@@ -262,7 +262,7 @@
     </div>
     <table id="findingsTable" class="data-table">
         <thead>
-            <tr><th>{{ _('Title') }}</th><th>{{ _('Subject') }}</th><th>{{ _('Source') }}</th><th>{{ _('Added By') }}</th><th>{{ _('Date') }}</th></tr>
+            <tr><th>{{ _('Title') }}</th><th>{{ _('Subject') }}</th><th>{{ _('Source') }}</th><th>{{ _('Added By') }}</th><th>{{ _('Date') }}</th><th></th></tr>
         </thead>
         <tbody>
             {% for finding in findings %}
@@ -296,6 +296,14 @@
                 <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span>{% if finding.content_hash %} <span class="badge {% if finding.verify_integrity() %}badge-status-success{% else %}badge-status-danger{% endif %}" style="cursor:help;" title="{{ finding.content_hash }}">🔒</span>{% endif %}</td>
                 <td>{{ finding.author.full_name if finding.author else _('Unknown') }}</td>
                 <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
+                <td>
+                    {% if case.status not in ['closed', 'archived'] %}
+                    <form action="{{ url_for('cms.delete_finding', case_id=case.id, finding_id=finding.id) }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-icon danger" title="{{ _('Delete finding') }}" data-confirm="{{ _('Delete this finding?') }}">🗑️</button>
+                    </form>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -332,10 +340,12 @@
         <h2>{{ _('Subjects (%(count)s)', count=subjects|length) }}</h2>
         {% if case.status not in ['closed', 'archived'] %}
         <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
-            <button data-click="showAddSubjectForm" class="btn-cms small">{{ _('+ Add') }}</button>
+            {% if current_user.role not in ['junior_investigator', 'investigator'] %}
+            <button type="button" data-click="showAddSubjectForm" class="btn-cms small">{{ _('+ Add') }}</button>
+            {% endif %}
             <a href="{{ url_for('cms.create_subject') }}?case_id={{ case.id }}" class="btn-cms small bg-green">{{ _('+ New') }}</a>
-            <button data-click="openCreateFromUsernameModal" class="btn-cms small purple">{{ _('@ Username') }}</button>
-            <button data-click="openOsintModal" class="btn-cms small bg-purple">{{ _('OSINT') }}</button>
+            <button type="button" data-click="openCreateFromUsernameModal" class="btn-cms small purple">{{ _('@ Username') }}</button>
+            <button type="button" data-click="openOsintModal" class="btn-cms small bg-purple">{{ _('OSINT') }}</button>
         </div>
         {% endif %}
     </div>
@@ -365,13 +375,15 @@
     {% if subjects %}
     <table class="data-table">
         <thead>
-            <tr><th>{{ _('Name') }}</th><th>{{ _('Type') }}</th><th>{{ _('Risk') }}</th><th>{{ _('Actions') }}</th></tr>
+            <tr><th>{{ _('Name') }}</th><th>{{ _('Type') }}</th><th>{{ _('City') }}</th><th>{{ _('Postal Code') }}</th><th>{{ _('Risk') }}</th><th>{{ _('Actions') }}</th></tr>
         </thead>
         <tbody>
             {% for subject in subjects %}
             <tr>
                 <td><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">{{ subject.name }}</a></td>
                 <td>{{ subject.subject_type }}</td>
+                <td>{{ subject.city or '-' }}</td>
+                <td>{{ subject.postal_code or '-' }}</td>
                 <td>
                     <div style="display:flex;align-items:center;gap:0.3rem;">
                         <span style="font-size:0.85rem;">{{ subject.risk_score }}%</span>
