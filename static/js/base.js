@@ -342,6 +342,22 @@ function normalizePostcodeInput(el) {
     el.value = v.slice(0, 4) + v.slice(4).toUpperCase();
   }
 }
+document.addEventListener('blur', function(e) {
+  var t = e.target;
+  if (t.matches && t.matches('input.addr-zipcode')) {
+    normalizePostcodeInput(t);
+  } else if (t.matches && t.matches('input.contact-value')) {
+    var entry = t.closest('.contact-entry');
+    if (entry) {
+      var typeEl = entry.querySelector('.contact-type');
+      if (typeEl && typeEl.value === 'phone') normalizePhoneInput(t);
+    }
+  } else if (t.matches && t.matches('input[name$="_phone"]')) {
+    normalizePhoneInput(t);
+  } else if (t.matches && t.matches('input[name$="_postal_code"]')) {
+    normalizePostcodeInput(t);
+  }
+}, true);
 function openHelp(topic) {
   if (typeof topic !== 'string' || !topic) topic = document.body.dataset.helpTopic || 'general';
   var title = document.getElementById('helpPanelTitle');

@@ -291,7 +291,7 @@
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
-                            <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="{{ _('1234 AB') }}" onblur="normalizePostcodeInput(this)" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Town') }}</label>
@@ -321,7 +321,7 @@
                     </div>
                     <div>
                         <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
-                        <input type="text" class="addr-zipcode" placeholder="{{ _('1234 AB') }}" onblur="normalizePostcodeInput(this)" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <input type="text" class="addr-zipcode" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
                         <label style="font-size:0.75rem;">{{ _('Town') }}</label>
@@ -357,7 +357,7 @@
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Value') }}</label>
-                            <input type="text" class="contact-value" value="{{ c.value }}" placeholder="{{ _('email@example.com or +31612345678') }}" onblur="if(this.closest('.contact-entry').querySelector('.contact-type').value==='phone')normalizePhoneInput(this)" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <input type="text" class="contact-value" value="{{ c.value }}" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                             <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
@@ -380,7 +380,7 @@
                     </div>
                     <div>
                         <label style="font-size:0.75rem;">{{ _('Value') }}</label>
-                        <input type="text" class="contact-value" placeholder="{{ _('email@example.com or +31612345678') }}" onblur="if(this.closest('.contact-entry').querySelector('.contact-type').value==='phone')normalizePhoneInput(this)" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <input type="text" class="contact-value" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                         <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">

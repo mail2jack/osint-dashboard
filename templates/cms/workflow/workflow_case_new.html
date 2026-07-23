@@ -101,7 +101,7 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Phone</label>
-        <input type="text" name="client_phone" placeholder="+31 6 12345678" onblur="normalizePhoneInput(this)">
+        <input type="text" name="client_phone" placeholder="+31 6 12345678">
       </div>
       <div class="form-group">
         <label>Reference</label>
@@ -121,7 +121,7 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Postal code</label>
-        <input type="text" name="client_postal_code" class="addr-zipcode" placeholder="1012LL" onblur="normalizePostcodeInput(this)">
+        <input type="text" name="client_postal_code" class="addr-zipcode" placeholder="1012LL">
       </div>
       <div class="form-group">
         <label>City</label>
@@ -196,7 +196,7 @@ input:-webkit-autofill:focus {
             </div>
             <div class="form-group sf-person sf-company">
               <label>{{ _('Phone') }}</label>
-              <input type="text" name="subject_0_phone" placeholder="{{ _('+31 6 12345678') }}" onblur="normalizePhoneInput(this)">
+              <input type="text" name="subject_0_phone" placeholder="{{ _('+31 6 12345678') }}">
             </div>
             <div class="form-group sf-person">
               <label>{{ _('Date of Birth') }}</label>
@@ -244,7 +244,7 @@ input:-webkit-autofill:focus {
             </div>
             <div class="form-group sf-person sf-company">
               <label>{{ _('Postcode') }}</label>
-              <input type="text" name="subject_0_postal_code" class="addr-zipcode" placeholder="{{ _('1012LL') }}" onblur="normalizePostcodeInput(this)">
+              <input type="text" name="subject_0_postal_code" class="addr-zipcode" placeholder="{{ _('1012LL') }}">
             </div>
             <div class="form-group sf-person sf-company">
               <label>{{ _('Huisnummer') }}</label>
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-person"><label>' + T.voorletters + '</label><input type="text" name="subject_' + count + '_voorletters" placeholder="' + T.jp + '"></div>' +
           '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>' + T.idNumber + '</label><input type="text" name="subject_' + count + '_identification" placeholder="' + T.bsnPlaceholder + '"></div>' +
           '<div class="form-group sf-person sf-company"><label>' + T.email + '</label><input type="email" name="subject_' + count + '_email" placeholder="' + T.emailPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.phone + '</label><input type="text" name="subject_' + count + '_phone" placeholder="' + T.phonePlaceholder + '" onblur="normalizePhoneInput(this)"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.phone + '</label><input type="text" name="subject_' + count + '_phone" placeholder="' + T.phonePlaceholder + '"></div>' +
           '<div class="form-group sf-person"><label>' + T.dateOfBirth + '</label><input type="date" name="subject_' + count + '_date_of_birth"></div>' +
           '<div class="form-group sf-person"><label>' + T.placeOfBirth + '</label><input type="text" name="subject_' + count + '_place_of_birth" placeholder="' + T.amsterdam + '"></div>' +
           '<div class="form-group sf-person"><label>' + T.nationality + '</label><input type="text" name="subject_' + count + '_nationality" placeholder="' + T.dutch + '"></div>' +
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-person"><label>' + T.reisdocumentType + '</label><select name="subject_' + count + '_reisdocument_type"><option value="">— ' + T.select + ' —</option><option value="paspoort">' + T.paspoort + '</option><option value="id_kaart">' + T.idKaart + '</option><option value="rijbewijs">' + T.rijbewijs + '</option><option value="overige">' + T.overig + '</option></select></div>' +
           '<div class="form-group sf-person"><label>' + T.reisdocumentNummer + '</label><input type="text" name="subject_' + count + '_reisdocument_nummer" placeholder="' + T.abPlaceholder + '"></div>' +
           '<div class="form-group sf-person sf-company"><label>' + T.bankAccount + '</label><input type="text" name="subject_' + count + '_bank_account" placeholder="' + T.ingbPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.postcode + '</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="' + T.zipPlaceholder + '" onblur="normalizePostcodeInput(this)"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.postcode + '</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="' + T.zipPlaceholder + '"></div>' +
           '<div class="form-group sf-person sf-company"><label>' + T.huisnummer + '</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="' + T.numberPlaceholder + '"></div>' +
           '<div class="form-group sf-person sf-company"><label>' + T.toevoeging + '</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="' + T.additionPlaceholder + '"></div>' +
           '<div class="form-group sf-person sf-company"><label>' + T.straat + '</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="' + T.streetName + '"></div>' +
