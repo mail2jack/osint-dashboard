@@ -261,22 +261,29 @@ document.addEventListener('DOMContentLoaded', function() {
       '</div>' +
       '<div class="subject-fields sf-hidden">' +
         '<div class="form-grid">' +
-          '<div class="form-group sf-all"><label>Name *</label><input type="text" name="subj_new_' + idx + '_name" placeholder="Full name / designation"></div>' +
-          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>ID Number</label><input type="text" name="subj_new_' + idx + '_identification" placeholder="BSN / KvK / license plate / IMO"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_new_' + idx + '_email" placeholder="name@example.com"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Phone</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678"></div>' +
-          '<div class="form-group sf-person"><label>Date of birth</label><input type="date" name="subj_new_' + idx + '_date_of_birth"></div>' +
-          '<div class="form-group sf-person"><label>Place of birth</label><input type="text" name="subj_new_' + idx + '_place_of_birth" placeholder="Amsterdam"></div>' +
-          '<div class="form-group sf-person"><label>Nationality</label><input type="text" name="subj_new_' + idx + '_nationality" placeholder="Dutch"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Bank account</label><input type="text" name="subj_new_' + idx + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Street</label><input type="text" name="subj_new_' + idx + '_street" class="addr-street" placeholder="Street name"></div>' +
-          '<div class="form-group sf-person sf-company"><label>House number</label><input type="text" name="subj_new_' + idx + '_house_number" class="addr-number" placeholder="45"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Addition</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="A"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Postal code</label><input type="text" name="subj_new_' + idx + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
-          '<div class="form-group sf-person sf-company"><label>City</label><input type="text" name="subj_new_' + idx + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
-          '<div class="form-group full-width sf-person sf-online"><label>Social accounts</label><input type="text" name="subj_new_' + idx + '_social_accounts" placeholder="@username1, @username2"></div>' +
+          '<div class="form-group sf-all"><label>{{ _("Achternaam") }} *</label><input type="text" name="subj_new_' + idx + '_name" placeholder="{{ _("Last name") }}"></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Tussenvoegsels") }}</label><input type="text" name="subj_new_' + idx + '_tussenvoegsels" placeholder="{{ _("van de") }}"></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Voornamen") }}</label><input type="text" name="subj_new_' + idx + '_voornamen" placeholder="{{ _("Jan Peter") }}"></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Voorletters") }}</label><input type="text" name="subj_new_' + idx + '_voorletters" placeholder="{{ _("J.P.") }}"></div>' +
+          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>{{ _("ID Number") }}</label><input type="text" name="subj_new_' + idx + '_identification" placeholder="{{ _("BSN / KvK / license plate / IMO") }}"></div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Email") }}</label><input type="email" name="subj_new_' + idx + '_email" placeholder="name@example.com"></div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Phone") }}</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678"></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Date of Birth") }}</label><input type="date" name="subj_new_' + idx + '_date_of_birth"></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Place of Birth") }}</label><input type="text" name="subj_new_' + idx + '_place_of_birth" placeholder="Amsterdam"></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Nationality") }}</label><input type="text" name="subj_new_' + idx + '_nationality" placeholder="{{ _("Dutch") }}"></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Geslacht") }}</label><select name="subj_new_' + idx + '_geslacht"><option value="">— {{ _("Select") }} —</option><option value="man">{{ _("Man") }}</option><option value="vrouw">{{ _("Vrouw") }}</option><option value="onbekend">{{ _("Onbekend") }}</option><option value="geen_opgave">{{ _("Geen opgave") }}</option></select></div>' +
+          '<div class="form-group sf-person"><label>{{ _("BSN nummer") }}</label><input type="text" name="subj_new_' + idx + '_bsn_number" placeholder="000000000"></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Reisdocument type") }}</label><select name="subj_new_' + idx + '_reisdocument_type"><option value="">— {{ _("Select") }} —</option><option value="paspoort">{{ _("Paspoort") }}</option><option value="id_kaart">{{ _("ID-kaart") }}</option><option value="rijbewijs">{{ _("Rijbewijs") }}</option><option value="overige">{{ _("Overig") }}</option></select></div>' +
+          '<div class="form-group sf-person"><label>{{ _("Reisdocument nummer") }}</label><input type="text" name="subj_new_' + idx + '_reisdocument_nummer" placeholder="{{ _("AB1234567") }}"></div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Bank Account") }}</label><input type="text" name="subj_new_' + idx + '_bank_account" placeholder="{{ _("NL00 INGB 0000 0000 00") }}"></div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Postcode") }}</label><input type="text" name="subj_new_' + idx + '_postal_code" class="addr-zipcode" placeholder="{{ _("1012LL") }}"></div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Huisnummer") }}</label><input type="text" name="subj_new_' + idx + '_house_number" class="addr-number" placeholder="{{ _("45") }}"></div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Toevoeging") }}</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="{{ _("A") }}"></div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Straat") }}</label><input type="text" name="subj_new_' + idx + '_street" class="addr-street" placeholder="{{ _("Street name") }}"></div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Plaats") }}</label><input type="text" name="subj_new_' + idx + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
+          '<div class="form-group full-width sf-person sf-online"><label>{{ _("Social accounts") }}</label><input type="text" name="subj_new_' + idx + '_social_accounts" placeholder="{{ _("@username1, @username2") }}"></div>' +
           '<div class="form-group full-width sf-all"><label>Risk score (0-100)</label><input type="number" name="subj_new_' + idx + '_risk_score" value="0" min="0" max="100"></div>' +
-          '<div class="form-group full-width sf-all"><label>Notes</label><textarea name="subj_new_' + idx + '_notes" rows="2" placeholder="Internal notes"></textarea></div>' +
+          '<div class="form-group full-width sf-all"><label>{{ _("Notes") }}</label><textarea name="subj_new_' + idx + '_notes" rows="2" placeholder="{{ _("Internal notes") }}"></textarea></div>' +
         '</div>' +
       '</div>';
     container.parentElement.insertBefore(div, container.nextElementSibling);
