@@ -223,6 +223,7 @@ def create_subject() -> flask.Response:
                     if isinstance(data["addresses_data"], str)
                     else data["addresses_data"]
                 )
+                primary_addr = None
                 for addr_data in addresses_data:
                     if addr_data.get("street") or addr_data.get("zipcode"):
                         address = Address(
@@ -236,6 +237,38 @@ def create_subject() -> flask.Response:
                         )
                         address.encrypt_fields()
                         db.session.add(address)
+                        if addr_data.get("is_primary") or not primary_addr:
+                            primary_addr = addr_data
+                # Sync primary address to legacy Subject fields for backward compat
+                if primary_addr:
+                    parts = []
+                    if primary_addr.get("street"):
+                        parts.append(primary_addr["street"])
+                    if primary_addr.get("number"):
+                        parts.append(primary_addr["number"])
+                    street_loc = " ".join(parts)
+                    pc = primary_addr.get("zipcode", "")
+                    town = primary_addr.get("town", "")
+                    subject.address = ", ".join(
+                        p for p in [street_loc, f"{pc} {town}".strip()] if p
+                    )
+                    subject.street = (
+                        encryptor.encrypt(primary_addr["street"])
+                        if primary_addr.get("street")
+                        else None
+                    )
+                    subject.house_number = (
+                        encryptor.encrypt(primary_addr["number"])
+                        if primary_addr.get("number")
+                        else None
+                    )
+                    subject.house_number_addition = (
+                        encryptor.encrypt(primary_addr.get("addition", ""))
+                        if primary_addr.get("addition")
+                        else None
+                    )
+                    subject.postal_code = encryptor.encrypt(pc) if pc else None
+                    subject.city = encryptor.encrypt(town) if town else None
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse addresses_data: {e}")
 
@@ -505,27 +538,61 @@ def edit_subject(subject_id: str) -> flask.Response:
                     if isinstance(data["addresses_data"], str)
                     else data["addresses_data"]
                 )
-                old_addresses = list(subject.addresses)
-                addr_count_before = len(old_addresses)
-                for addr in old_addresses:
-                    db.session.delete(addr)
-                for addr_data in addresses_data:
-                    if addr_data.get("street") or addr_data.get("zipcode"):
-                        address = Address(
-                            subject_id=subject.id,
-                            street=addr_data.get("street"),
-                            number=addr_data.get("number"),
-                            zipcode=addr_data.get("zipcode"),
-                            town=addr_data.get("town"),
-                            country=addr_data.get("country", "Netherlands"),
-                            is_primary=addr_data.get("is_primary", False),
+                if addresses_data:  # only replace if non-empty
+                    old_addresses = list(subject.addresses)
+                    addr_count_before = len(old_addresses)
+                    for addr in old_addresses:
+                        db.session.delete(addr)
+                    primary_addr = None
+                    for addr_data in addresses_data:
+                        if addr_data.get("street") or addr_data.get("zipcode"):
+                            address = Address(
+                                subject_id=subject.id,
+                                street=addr_data.get("street"),
+                                number=addr_data.get("number"),
+                                zipcode=addr_data.get("zipcode"),
+                                town=addr_data.get("town"),
+                                country=addr_data.get("country", "Netherlands"),
+                                is_primary=addr_data.get("is_primary", False),
+                            )
+                            address.encrypt_fields()
+                            db.session.add(address)
+                            if addr_data.get("is_primary") or not primary_addr:
+                                primary_addr = addr_data
+                    # Sync primary address to legacy Subject fields for backward compat
+                    if primary_addr:
+                        parts = []
+                        if primary_addr.get("street"):
+                            parts.append(primary_addr["street"])
+                        if primary_addr.get("number"):
+                            parts.append(primary_addr["number"])
+                        street_loc = " ".join(parts)
+                        pc = primary_addr.get("zipcode", "")
+                        town = primary_addr.get("town", "")
+                        subject.address = ", ".join(
+                            p for p in [street_loc, f"{pc} {town}".strip()] if p
                         )
-                        address.encrypt_fields()
-                        db.session.add(address)
-                changes["addresses"] = {
-                    "old": f"{addr_count_before} address(es)",
-                    "new": f"{len(addresses_data)} address(es)",
-                }
+                        subject.street = (
+                            encryptor.encrypt(primary_addr["street"])
+                            if primary_addr.get("street")
+                            else None
+                        )
+                        subject.house_number = (
+                            encryptor.encrypt(primary_addr["number"])
+                            if primary_addr.get("number")
+                            else None
+                        )
+                        subject.house_number_addition = (
+                            encryptor.encrypt(primary_addr.get("addition", ""))
+                            if primary_addr.get("addition")
+                            else None
+                        )
+                        subject.postal_code = encryptor.encrypt(pc) if pc else None
+                        subject.city = encryptor.encrypt(town) if town else None
+                    changes["addresses"] = {
+                        "old": f"{addr_count_before} address(es)",
+                        "new": f"{len(addresses_data)} address(es)",
+                    }
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse addresses_data: {e}")
 
@@ -537,58 +604,59 @@ def edit_subject(subject_id: str) -> flask.Response:
                     if isinstance(data["contacts_data"], str)
                     else data["contacts_data"]
                 )
-                old_contacts = list(subject.contacts)
-                contact_count_before = len(old_contacts)
-                for c in old_contacts:
-                    db.session.delete(c)
-                for c_data in contacts_data:
-                    if c_data.get("value"):
-                        contact = Contact(
-                            subject_id=subject.id,
-                            contact_type=c_data.get("contact_type", "email"),
-                            value=c_data.get("value"),
-                            is_primary=c_data.get("is_primary", False),
-                        )
-                        contact.encrypt_fields()
-                        db.session.add(contact)
-                        # Update legacy fields for backward compat
-                        if c_data.get("contact_type") == "email" and c_data.get(
-                            "is_primary"
-                        ):
-                            try:
-                                current = (
-                                    encryptor.decrypt(subject.email)
-                                    if subject.email
-                                    else None
-                                )
-                            except Exception:
-                                current = subject.email  # may already be plaintext
-                            if c_data.get("value") != current:
-                                subject.email = (
-                                    encryptor.encrypt(c_data.get("value"))
-                                    if c_data.get("value")
-                                    else None
-                                )
-                        elif c_data.get("contact_type") == "phone" and c_data.get(
-                            "is_primary"
-                        ):
-                            try:
-                                current = (
-                                    encryptor.decrypt(subject.phone)
-                                    if subject.phone
-                                    else None
-                                )
-                            except Exception:
-                                current = subject.phone  # may already be plaintext
-                            new_val = normalize_phone(c_data.get("value"))
-                            if new_val != current:
-                                subject.phone = (
-                                    encryptor.encrypt(new_val) if new_val else None
-                                )
-                changes["contacts"] = {
-                    "old": f"{contact_count_before} contact(s)",
-                    "new": f"{len(contacts_data)} contact(s)",
-                }
+                if contacts_data:  # only replace if non-empty
+                    old_contacts = list(subject.contacts)
+                    contact_count_before = len(old_contacts)
+                    for c in old_contacts:
+                        db.session.delete(c)
+                    for c_data in contacts_data:
+                        if c_data.get("value"):
+                            contact = Contact(
+                                subject_id=subject.id,
+                                contact_type=c_data.get("contact_type", "email"),
+                                value=c_data.get("value"),
+                                is_primary=c_data.get("is_primary", False),
+                            )
+                            contact.encrypt_fields()
+                            db.session.add(contact)
+                            # Update legacy fields for backward compat
+                            if c_data.get("contact_type") == "email" and c_data.get(
+                                "is_primary"
+                            ):
+                                try:
+                                    current = (
+                                        encryptor.decrypt(subject.email)
+                                        if subject.email
+                                        else None
+                                    )
+                                except Exception:
+                                    current = subject.email  # may already be plaintext
+                                if c_data.get("value") != current:
+                                    subject.email = (
+                                        encryptor.encrypt(c_data.get("value"))
+                                        if c_data.get("value")
+                                        else None
+                                    )
+                            elif c_data.get("contact_type") == "phone" and c_data.get(
+                                "is_primary"
+                            ):
+                                try:
+                                    current = (
+                                        encryptor.decrypt(subject.phone)
+                                        if subject.phone
+                                        else None
+                                    )
+                                except Exception:
+                                    current = subject.phone  # may already be plaintext
+                                new_val = normalize_phone(c_data.get("value"))
+                                if new_val != current:
+                                    subject.phone = (
+                                        encryptor.encrypt(new_val) if new_val else None
+                                    )
+                    changes["contacts"] = {
+                        "old": f"{contact_count_before} contact(s)",
+                        "new": f"{len(contacts_data)} contact(s)",
+                    }
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse contacts_data: {e}")
 
