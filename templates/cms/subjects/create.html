@@ -391,25 +391,25 @@ function selectType(btn, type) {
     const restrictedFields = document.getElementById('vehicle-restricted-fields');
     if (type === 'vehicle') {
         document.getElementById('kenteken_lookup').focus();
-        document.getElementById('name').value = '';
-        document.getElementById('name').required = false;
-        document.getElementById('name').placeholder = '{{ _("Vehicle name (e.g. Toyota Aygo) or leave empty")|replace("'", "\\\\'")|safe }}';
+        document.getElementById('achternaam').value = '';
+        document.getElementById('achternaam').required = false;
+        document.getElementById('achternaam').placeholder = '{{ _("Vehicle name (e.g. Toyota Aygo) or leave empty")|replace("'", "\\\\'")|safe }}';
         document.getElementById('license_plate').required = true;
         if (restrictedFields) restrictedFields.style.display = 'none';
     } else {
         if (restrictedFields) restrictedFields.style.display = 'block';
         if (type === 'vessel') {
         document.getElementById('vessel_lookup_imo').focus();
-        document.getElementById('name').required = false;
-        document.getElementById('name').placeholder = '{{ _("Ship name or leave empty to fill from lookup")|replace("'", "\\\\'")|safe }}';
+        document.getElementById('achternaam').required = false;
+        document.getElementById('achternaam').placeholder = '{{ _("Ship name or leave empty to fill from lookup")|replace("'", "\\\\'")|safe }}';
     } else if (type === 'company') {
         document.getElementById('kvk_lookup_query').focus();
-        document.getElementById('name').required = false;
-        document.getElementById('name').placeholder = '{{ _("Company name or leave empty to fill from KVK lookup")|replace("'", "\\\\'")|safe }}';
+        document.getElementById('achternaam').required = false;
+        document.getElementById('achternaam').placeholder = '{{ _("Company name or leave empty to fill from KVK lookup")|replace("'", "\\\\'")|safe }}';
     } else {
-        document.getElementById('name').required = true;
-        document.getElementById('name').placeholder = '';
-        document.getElementById('name').focus();
+        document.getElementById('achternaam').required = true;
+        document.getElementById('achternaam').placeholder = '';
+        document.getElementById('achternaam').focus();
         document.getElementById('license_plate').required = false;
     }
     }
@@ -455,7 +455,7 @@ function kvkLookupCreate() {
         statusDiv.innerHTML = '<span style="color: #86efac;">{{ _("✅ Company found — fields have been filled in (source: KVK)")|replace("'", "\\\\'")|safe }}</span>';
         const company = data.results[0];
 
-        document.getElementById('name').value = company.naam || '';
+        document.getElementById('achternaam').value = company.naam || '';
         document.getElementById('registration_number').value = company.kvknummer || '';
         document.getElementById('legal_form').value = company.rechtsvorm || '';
 
@@ -562,7 +562,7 @@ function fetchRDWData() {
             document.getElementById('handelsbenaming').value = data.handelsbenaming;
             nameValue += ' ' + data.handelsbenaming;
         }
-        document.getElementById('name').value = nameValue;
+        document.getElementById('achternaam').value = nameValue;
         if (data.inrichting) document.getElementById('vehicle_type').value = data.inrichting;
         if (data.voertuigsoort) document.getElementById('voertuigsoort').value = data.voertuigsoort;
         if (data.eerste_kleur) document.getElementById('eerste_kleur').value = data.eerste_kleur;
@@ -586,7 +586,7 @@ function lookupVesselCreate() {
     const imo = document.getElementById('vessel_lookup_imo').value.trim();
     const mmsi = document.getElementById('vessel_lookup_mmsi').value.trim();
     const eni = document.getElementById('vessel_lookup_eni').value.trim();
-    const name = document.getElementById('name').value.trim();
+    const name = document.getElementById('achternaam').value.trim();
     const statusDiv = document.getElementById('vesselLookupStatus');
     const btn = document.getElementById('fetchVesselBtn');
 
@@ -620,7 +620,7 @@ function lookupVesselCreate() {
             return;
         }
 
-        if (data.name) document.getElementById('name').value = data.name;
+        if (data.name) document.getElementById('achternaam').value = data.name;
         if (data.imo) document.getElementById('imo_number').value = data.imo;
         if (data.mmsi) document.getElementById('mmsi_id').value = data.mmsi;
         if (data.eni) document.getElementById('eni_number').value = data.eni;
@@ -662,7 +662,7 @@ document.getElementById('license_plate').addEventListener('input', function() {
 });
 
 function checkDuplicate() {
-    const name = document.getElementById('name').value.trim();
+    const name = document.getElementById('achternaam').value.trim();
     const alertEl = document.getElementById('duplicate-alert');
     
     if (duplicateTimeout) clearTimeout(duplicateTimeout);
@@ -710,7 +710,7 @@ function checkDuplicate() {
 }
 
 function validateForm() {
-    const name = document.getElementById('name').value.trim();
+    const name = document.getElementById('achternaam').value.trim();
     const subjectType = document.getElementById('subject_type').value;
     
     console.log('Validating form - name:', name, 'type:', subjectType);
