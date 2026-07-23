@@ -153,6 +153,15 @@ def create_subject() -> flask.Response:
             identification_number=data.get("identification_number"),
             bank_account=data.get("bank_account"),
             created_by=current_user.id,
+            achternaam=data.get("achternaam"),
+            voornamen=data.get("voornamen"),
+            voorletters=data.get("voorletters"),
+            tussenvoegsels=data.get("tussenvoegsels"),
+            geslacht=data.get("geslacht"),
+            nationality=data.get("nationality"),
+            bsn_number=data.get("bsn_number"),
+            reisdocument_type=data.get("reisdocument_type"),
+            reisdocument_nummer=data.get("reisdocument_nummer"),
         )
 
         if data["subject_type"] == "vehicle":
@@ -370,6 +379,19 @@ def edit_subject(subject_id: str) -> flask.Response:
         if "notes" in data:
             subject.notes = data["notes"]
 
+        # Update non-encrypted person fields
+        person_text_fields = [
+            "achternaam",
+            "voornamen",
+            "voorletters",
+            "tussenvoegsels",
+            "geslacht",
+            "reisdocument_type",
+        ]
+        for field in person_text_fields:
+            if field in data:
+                setattr(subject, field, data[field])
+
         # Update encrypted fields for persons
         encrypted_fields = [
             "date_of_birth",
@@ -380,6 +402,8 @@ def edit_subject(subject_id: str) -> flask.Response:
             "phone",
             "email",
             "bank_account",
+            "bsn_number",
+            "reisdocument_nummer",
         ]
         for field in encrypted_fields:
             if field in data:

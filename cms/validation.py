@@ -541,6 +541,16 @@ class CreateSubjectSchema(BaseModel):
     addresses_data: Any = None
     contacts_data: Any = None
     confirm_duplicate: Any = None
+    # Person fields
+    achternaam: str | None = None
+    voornamen: str | None = None
+    voorletters: str | None = None
+    tussenvoegsels: str | None = None
+    geslacht: str | None = None
+    nationality: str | None = None
+    bsn_number: str | None = None
+    reisdocument_type: str | None = None
+    reisdocument_nummer: str | None = None
     # RDW fields
     handelsbenaming: str | None = None
     voertuigsoort: str | None = None
@@ -593,6 +603,16 @@ class EditSubjectSchema(BaseModel):
     bank_account: str | None = None
     addresses_data: Any = None
     contacts_data: Any = None
+    # Person fields
+    achternaam: str | None = None
+    voornamen: str | None = None
+    voorletters: str | None = None
+    tussenvoegsels: str | None = None
+    geslacht: str | None = None
+    nationality: str | None = None
+    bsn_number: str | None = None
+    reisdocument_type: str | None = None
+    reisdocument_nummer: str | None = None
     # RDW fields
     handelsbenaming: str | None = None
     voertuigsoort: str | None = None
