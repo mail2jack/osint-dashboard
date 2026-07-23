@@ -818,6 +818,21 @@ function addContact() {
     container.appendChild(clone);
 }
 
+function computeName() {
+    var parts = [];
+    var vl = document.getElementById('voorletters');
+    var vn = document.getElementById('voornamen');
+    var tv = document.getElementById('tussenvoegsels');
+    var ac = document.getElementById('achternaam');
+    if (vl && vl.value.trim()) parts.push(vl.value.trim());
+    if (vn && vn.value.trim()) parts.push(vn.value.trim());
+    if (tv && tv.value.trim()) parts.push(tv.value.trim());
+    if (ac && ac.value.trim()) parts.push(ac.value.trim());
+    var computed = parts.join(' ');
+    var hc = document.getElementById('name-computed');
+    if (hc) hc.value = computed;
+}
+
 function handleFormSubmit(e) {
     console.log('Form submitted!');
     const form = document.getElementById('subjectForm');
@@ -825,6 +840,7 @@ function handleFormSubmit(e) {
     
     serializeAddresses();
     serializeContacts();
+    computeName();
     
     if (!validateForm()) return;
     

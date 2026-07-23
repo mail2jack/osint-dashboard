@@ -44,13 +44,27 @@ def create_subject() -> flask.Response:
         if "type_" in data:
             data["type"] = data.pop("type_")
 
-        required = ["name", "subject_type"]
+        required = ["subject_type"]
         for field in required:
             if not data.get(field):
                 if request.is_json:
                     return api_error(f"{field} is required", 400)
                 flash(f"{field} is required.", "danger")
                 return render_template("cms/subjects/create.html")
+
+        # Compute name from split fields if not provided
+        if not data.get("name"):
+            parts = []
+            for f in ("voorletters", "voornamen", "tussenvoegsels", "achternaam"):
+                if data.get(f):
+                    parts.append(data[f].strip())
+            data["name"] = " ".join(parts)
+
+        if not data.get("name"):
+            if request.is_json:
+                return api_error("name is required", 400)
+            flash("name is required.", "danger")
+            return render_template("cms/subjects/create.html")
 
         name = data["name"].strip()
 
