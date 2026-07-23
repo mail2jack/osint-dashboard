@@ -218,3 +218,16 @@ def normalize_phone(phone) -> str | None:
     if digits.startswith("0"):
         digits = "31" + digits[1:]  # assume NL
     return "+" + digits
+
+
+def normalize_postcode(postcode: str) -> str:
+    """Normalize Dutch postcode to 4 digits + 2 uppercase letters (e.g. 6537GN)."""
+    if not postcode:
+        return postcode
+    cleaned = re.sub(r"[^a-zA-Z0-9]", "", postcode.strip())
+    if len(cleaned) == 6:
+        digits = cleaned[:4]
+        letters = cleaned[4:].upper()
+        if digits.isdigit() and letters.isalpha():
+            return digits + letters
+    return postcode.strip()

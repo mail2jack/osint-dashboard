@@ -20,7 +20,7 @@ from flask_login import current_user, login_required
 
 from cms.models import db, UserRole, AuditLog
 from cms.auth import ensure_tenant_access
-from cms.routes.utils import normalize_phone
+from cms.routes.utils import normalize_phone, normalize_postcode
 from . import workflow_bp
 from .models import (
     WorkflowActionFinding,
@@ -92,7 +92,7 @@ def _set_address_fields(obj, prefix: str) -> None:
     obj.street = request.form.get(f"{prefix}_street", "")
     obj.house_number = request.form.get(f"{prefix}_house_number", "")
     obj.house_number_addition = request.form.get(f"{prefix}_house_number_addition", "")
-    obj.postal_code = request.form.get(f"{prefix}_postal_code", "")
+    obj.postal_code = normalize_postcode(request.form.get(f"{prefix}_postal_code", ""))
     obj.city = request.form.get(f"{prefix}_city", "")
 
 
@@ -290,7 +290,9 @@ def case_new():
                 override = request.form.get("client_city", "").strip()
                 if override:
                     client.address_city = override
-                override = request.form.get("client_postal_code", "").strip()
+                override = normalize_postcode(
+                    request.form.get("client_postal_code", "").strip()
+                )
                 if override:
                     client.address_postal = override
                 override = request.form.get("client_country", "").strip()
@@ -327,7 +329,9 @@ def case_new():
                     request.form.get("client_house_number_addition", ""),
                 ),
                 address_city=request.form.get("client_city", ""),
-                address_postal=request.form.get("client_postal_code", ""),
+                address_postal=normalize_postcode(
+                    request.form.get("client_postal_code", "")
+                ),
                 address_country=request.form.get("client_country", "Nederland"),
                 vat_number=request.form.get("client_vat_number", ""),
                 bank_account=request.form.get("client_bank_account", ""),
@@ -565,7 +569,9 @@ def case_edit(case_id):
                 request.form.get("client_house_number_addition", ""),
             )
             client.address_city = request.form.get("client_city", "")
-            client.address_postal = request.form.get("client_postal_code", "")
+            client.address_postal = normalize_postcode(
+                request.form.get("client_postal_code", "")
+            )
             client.address_country = request.form.get("client_country", "Nederland")
             client.vat_number = request.form.get("client_vat_number", "")
             client.bank_account = request.form.get("client_bank_account", "")
