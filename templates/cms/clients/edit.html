@@ -26,14 +26,69 @@
             </div>
             
             <div id="person-fields" style="{% if client.is_company %}display:none;{% endif %}">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div class="form-group">
+                    <label>{{ _('Achternaam') }}</label>
+                    <input type="text" name="achternaam" id="achternaam" value="{{ client.achternaam or '' }}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 0.7fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>{{ _('Voornamen') }}</label>
+                        <input type="text" name="voornamen" id="voornamen" value="{{ client.voornamen or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ _('Voorletters') }}</label>
+                        <input type="text" name="voorletters" id="voorletters" value="{{ client.voorletters or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ _('Tussenvoegsels') }}</label>
+                        <input type="text" name="tussenvoegsels" id="tussenvoegsels" value="{{ client.tussenvoegsels or '' }}">
+                    </div>
+                </div>
+                <input type="hidden" name="name" id="name-computed" value="{{ client.name or '' }}">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="geslacht">{{ _('Geslacht') }}</label>
+                        <select name="geslacht" id="geslacht" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <option value="">{{ _('-- Selecteer --') }}</option>
+                            <option value="man" {% if client.geslacht == 'man' %}selected{% endif %}>{{ _('Man') }}</option>
+                            <option value="vrouw" {% if client.geslacht == 'vrouw' %}selected{% endif %}>{{ _('Vrouw') }}</option>
+                            <option value="onbekend" {% if client.geslacht == 'onbekend' %}selected{% endif %}>{{ _('Onbekend') }}</option>
+                            <option value="geen_opgave" {% if client.geslacht == 'geen_opgave' %}selected{% endif %}>{{ _('Geen opgave') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="nationality">{{ _('Nationality') }}</label>
+                        <input type="text" name="nationality" id="nationality" value="{{ client.nationality or '' }}">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
                         <label for="date_of_birth">{{ _('Date of Birth') }}</label>
                         <input type="date" name="date_of_birth" id="date_of_birth" value="{{ client.date_of_birth or '' }}">
                     </div>
                     <div class="form-group">
                         <label for="place_of_birth">{{ _('Place of Birth') }}</label>
-                        <input type="text" name="place_of_birth" id="place_of_birth" value="{{ client.place_of_birth or '' }}" placeholder="{{ _('e.g. Amsterdam, Netherlands') }}">
+                        <input type="text" name="place_of_birth" id="place_of_birth" value="{{ client.place_of_birth or '' }}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="bsn_number">{{ _('BSN nummer') }}</label>
+                    <input type="text" name="bsn_number" id="bsn_number" value="{{ client.bsn_number or '' }}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="reisdocument_type">{{ _('Reisdocument type') }}</label>
+                        <select name="reisdocument_type" id="reisdocument_type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <option value="">{{ _('-- Selecteer --') }}</option>
+                            <option value="paspoort" {% if client.reisdocument_type == 'paspoort' %}selected{% endif %}>{{ _('Paspoort') }}</option>
+                            <option value="id-kaart" {% if client.reisdocument_type == 'id-kaart' %}selected{% endif %}>{{ _('ID-kaart') }}</option>
+                            <option value="rijbewijs" {% if client.reisdocument_type == 'rijbewijs' %}selected{% endif %}>{{ _('Rijbewijs') }}</option>
+                            <option value="overige" {% if client.reisdocument_type == 'overige' %}selected{% endif %}>{{ _('Overige') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reisdocument_nummer">{{ _('Reisdocument nummer') }}</label>
+                        <input type="text" name="reisdocument_nummer" id="reisdocument_nummer" value="{{ client.reisdocument_nummer or '' }}">
                     </div>
                 </div>
             </div>

@@ -420,10 +420,32 @@ class Client(db.Model):
     tenant_id = db.Column(
         db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
     )
-    name = db.Column(db.String(200), nullable=False, index=True)
+    name = db.Column(
+        db.String(200), nullable=False, index=True
+    )  # legacy/full name, kept for backward compat
     is_company = db.Column(db.Boolean, default=False)
+
+    # Name fields (person)
+    achternaam = db.Column(db.String(200))
+    voornamen = db.Column(db.String(300))
+    voorletters = db.Column(db.String(20))
+    tussenvoegsels = db.Column(db.String(50))
+
+    # Gender
+    geslacht = db.Column(db.String(20))  # man, vrouw, onbekend, geen_opgave
+
     date_of_birth = db.Column(db.String(500))  # Encrypted (for persons)
     place_of_birth = db.Column(db.String(500))  # Encrypted (for persons)
+    nationality = db.Column(db.String(500))  # Encrypted (for persons)
+    bsn_number = db.Column(db.String(500))  # Encrypted (BSN)
+    identification_number = db.Column(db.String(500))  # Encrypted (legacy)
+
+    # Passport / travel document
+    reisdocument_type = db.Column(
+        db.String(50)
+    )  # paspoort, id-kaart, rijbewijs, overige
+    reisdocument_nummer = db.Column(db.String(500))  # Encrypted
+
     contact_person = db.Column(db.String(500))  # Encrypted
     contact_email = db.Column(db.String(500))  # Encrypted
     contact_phone = db.Column(db.String(500))  # Encrypted
@@ -482,6 +504,10 @@ class Client(db.Model):
         "bank_account",
         "date_of_birth",
         "place_of_birth",
+        "nationality",
+        "bsn_number",
+        "identification_number",
+        "reisdocument_nummer",
     ]
 
     def encrypt_naw(self) -> None:
@@ -512,6 +538,19 @@ class Client(db.Model):
         self.deleted_at = datetime.now(timezone.utc)
         self.is_active = False
 
+    def compute_name(self) -> str:
+        """Build full display name from split name fields."""
+        parts = []
+        if self.voorletters:
+            parts.append(self.voorletters)
+        if self.voornamen:
+            parts.append(self.voornamen)
+        if self.tussenvoegsels:
+            parts.append(self.tussenvoegsels)
+        if self.achternaam:
+            parts.append(self.achternaam)
+        return " ".join(p for p in parts if p).strip() or self.name or ""
+
     def to_dict(self, decrypted: bool = True) -> dict:
         """Serialize client data."""
         if decrypted:
@@ -520,9 +559,19 @@ class Client(db.Model):
         return {
             "id": self.id,
             "name": self.name,
+            "achternaam": self.achternaam,
+            "voornamen": self.voornamen,
+            "voorletters": self.voorletters,
+            "tussenvoegsels": self.tussenvoegsels,
+            "geslacht": self.geslacht,
             "contact_person": self.contact_person,
             "contact_email": self.contact_email,
             "contact_phone": self.contact_phone,
+            "nationality": self.nationality,
+            "bsn_number": self.bsn_number,
+            "identification_number": self.identification_number,
+            "reisdocument_type": self.reisdocument_type,
+            "reisdocument_nummer": self.reisdocument_nummer,
             "address": {
                 "street": self.address_street,
                 "number": self.address_number,
@@ -782,15 +831,36 @@ class Subject(db.Model):
     tenant_id = db.Column(
         db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
     )
-    name = db.Column(db.String(300), nullable=False, index=True)
     subject_type = db.Column(db.String(20), nullable=False, index=True)
+
+    # Name fields (person)
+    achternaam = db.Column(db.String(200))
+    voornamen = db.Column(db.String(300))
+    voorletters = db.Column(db.String(20))
+    tussenvoegsels = db.Column(db.String(50))
+    name = db.Column(
+        db.String(300), nullable=False, index=True
+    )  # legacy/full name, kept for backward compat
+
+    # Gender
+    geslacht = db.Column(db.String(20))  # man, vrouw, onbekend, geen_opgave
 
     # Encrypted identifying information
     date_of_birth = db.Column(db.String(500))  # Encrypted (DOB can be sensitive)
     place_of_birth = db.Column(db.String(500))  # Encrypted
     nationality = db.Column(db.String(500))  # Encrypted
-    identification_number = db.Column(db.String(500))  # Encrypted (BSN, passport, etc.)
-    address = db.Column(db.String(500))  # Encrypted
+    bsn_number = db.Column(db.String(500))  # Encrypted (BSN)
+    identification_number = db.Column(
+        db.String(500)
+    )  # Encrypted (legacy, kept for backward compat)
+
+    # Passport / travel document
+    reisdocument_type = db.Column(
+        db.String(50)
+    )  # paspoort, id-kaart, rijbewijs, overige
+    reisdocument_nummer = db.Column(db.String(500))  # Encrypted
+
+    address = db.Column(db.String(500))  # Encrypted (combined)
     street = db.Column(db.String(500))  # Encrypted
     house_number = db.Column(db.String(500))  # Encrypted
     house_number_addition = db.Column(db.String(500))  # Encrypted
@@ -899,7 +969,9 @@ class Subject(db.Model):
         "date_of_birth",
         "place_of_birth",
         "nationality",
+        "bsn_number",
         "identification_number",
+        "reisdocument_nummer",
         "address",
         "street",
         "house_number",
@@ -943,6 +1015,19 @@ class Subject(db.Model):
         self.is_deleted = True
         self.deleted_at = datetime.now(timezone.utc)
 
+    def compute_name(self) -> str:
+        """Build full display name from split name fields."""
+        parts = []
+        if self.voorletters:
+            parts.append(self.voorletters)
+        if self.voornamen:
+            parts.append(self.voornamen)
+        if self.tussenvoegsels:
+            parts.append(self.tussenvoegsels)
+        if self.achternaam:
+            parts.append(self.achternaam)
+        return " ".join(p for p in parts if p).strip() or self.name or ""
+
     def to_dict(self, decrypted: bool = True, include_relations: bool = False) -> dict:
         """Serialize subject data."""
         if decrypted:
@@ -951,11 +1036,19 @@ class Subject(db.Model):
         result = {
             "id": self.id,
             "name": self.name,
+            "achternaam": self.achternaam,
+            "voornamen": self.voornamen,
+            "voorletters": self.voorletters,
+            "tussenvoegsels": self.tussenvoegsels,
+            "geslacht": self.geslacht,
             "subject_type": self.subject_type,
             "date_of_birth": self.date_of_birth,
             "place_of_birth": self.place_of_birth,
             "nationality": self.nationality,
+            "bsn_number": self.bsn_number,
             "identification_number": self.identification_number,
+            "reisdocument_type": self.reisdocument_type,
+            "reisdocument_nummer": self.reisdocument_nummer,
             "address": self.address,
             "phone": self.phone,
             "email": self.email,

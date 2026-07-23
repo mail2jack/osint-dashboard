@@ -30,6 +30,22 @@
             </div>
             {% endif %}
             {% if not client.is_company %}
+            {% if client.achternaam %}
+            <div class="info-row">
+                <span class="info-label">{{ _('Name') }}</span>
+                <span class="info-value">
+                    {% if client.voorletters %}{{ client.voorletters }} {% endif %}{% if client.voornamen %}{{ client.voornamen }} {% endif %}{% if client.tussenvoegsels %}{{ client.tussenvoegsels }} {% endif %}{{ client.achternaam }}
+                </span>
+            </div>
+            {% endif %}
+            <div class="info-row">
+                <span class="info-label">{{ _('Geslacht') }}</span>
+                <span class="info-value">{{ {'man':'Man','vrouw':'Vrouw','onbekend':'Onbekend','geen_opgave':'Geen opgave'}.get(client.geslacht, '-') }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ _('Nationality') }}</span>
+                <span class="info-value">{{ client.nationality if client.nationality else '-' }}</span>
+            </div>
             <div class="info-row">
                 <span class="info-label">{{ _('Date of Birth') }}</span>
                 <span class="info-value">{{ client.date_of_birth if client.date_of_birth else '-' }}</span>
@@ -38,6 +54,16 @@
                 <span class="info-label">{{ _('Place of Birth') }}</span>
                 <span class="info-value">{{ client.place_of_birth if client.place_of_birth else '-' }}</span>
             </div>
+            <div class="info-row">
+                <span class="info-label">{{ _('BSN nummer') }}</span>
+                <span class="info-value">{{ client.bsn_number|redact_for_viewer if client.bsn_number else '-' }}</span>
+            </div>
+            {% if client.reisdocument_type %}
+            <div class="info-row">
+                <span class="info-label">{{ _('Reisdocument') }}</span>
+                <span class="info-value">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overige'}.get(client.reisdocument_type, client.reisdocument_type) }}{{ ' — ' + client.reisdocument_nummer|redact_for_viewer if client.reisdocument_nummer else '' }}</span>
+            </div>
+            {% endif %}
             {% endif %}
         </div>
         {% set cl_emails = client.contacts.filter_by(contact_type='email') if client.contacts else [] %}

@@ -96,6 +96,14 @@
             <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary" style="margin-left: 0.5rem; text-decoration: none;">{{ _('✏️ Edit') }}</a>
             <button data-click="confirmDeleteSubject" class="btn-cms small danger" style="margin-left: 0.25rem;">{{ _('🗑️ Delete') }}</button>
         </h1>
+        {% if subject.subject_type == 'person' and subject.achternaam %}
+        <div style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+            {% if subject.voorletters %}{{ subject.voorletters }}{% endif %}
+            {% if subject.voornamen %}{{ subject.voornamen }}{% endif %}
+            {% if subject.tussenvoegsels %}{{ subject.tussenvoegsels }}{% endif %}
+            {% if subject.achternaam %}{{ subject.achternaam }}{% endif %}
+        </div>
+        {% endif %}
         <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             {% if subject.subject_type == 'person' %}
             {% if first_case_id %}
@@ -226,6 +234,14 @@
             {% endif %}
             {% if subject.subject_type == 'person' %}
             <div class="info-row">
+                <span class="info-label">{{ _('Geslacht') }}</span>
+                <span class="info-value">{{ {'man':'Man','vrouw':'Vrouw','onbekend':'Onbekend','geen_opgave':'Geen opgave'}.get(subject.geslacht, '-') }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ _('Nationality') }}</span>
+                <span class="info-value">{{ subject.nationality if subject.nationality else '-' }}</span>
+            </div>
+            <div class="info-row">
                 <span class="info-label">{{ _('Date of Birth') }}</span>
                 <span class="info-value">{{ subject.date_of_birth if subject.date_of_birth else '-' }}</span>
             </div>
@@ -234,9 +250,15 @@
                 <span class="info-value">{{ subject.place_of_birth if subject.place_of_birth else '-' }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">{{ _('ID/Passport Number') }}</span>
-                <span class="info-value">{{ subject.identification_number|redact_for_viewer if subject.identification_number else '-' }}</span>
+                <span class="info-label">{{ _('BSN nummer') }}</span>
+                <span class="info-value">{{ subject.bsn_number|redact_for_viewer if subject.bsn_number else '-' }}</span>
             </div>
+            {% if subject.reisdocument_type %}
+            <div class="info-row">
+                <span class="info-label">{{ _('Reisdocument') }}</span>
+                <span class="info-value">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overige'}.get(subject.reisdocument_type, subject.reisdocument_type) }}{{ ' — ' + subject.reisdocument_nummer|redact_for_viewer if subject.reisdocument_nummer else '' }}</span>
+            </div>
+            {% endif %}
             {% endif %}
             {% if subject.subject_type == 'vehicle' %}
             <div class="info-row">

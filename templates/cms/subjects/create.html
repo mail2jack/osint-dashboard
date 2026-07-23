@@ -69,26 +69,41 @@
     
     <div id="general-fields" style="display: none;">
         <div class="form-group">
-            <label for="name">{{ _('Name *') }}</label>
-            <input type="text" name="name" id="name" required value="{{ submitted_name or '' }}" data-input="checkDuplicate">
+            <label>{{ _('Achternaam') }}</label>
+            <input type="text" name="achternaam" id="achternaam" value="{{ submitted_achternaam or '' }}" data-input="checkDuplicate">
             <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
         </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 0.7fr; gap: 1rem;">
+            <div class="form-group">
+                <label>{{ _('Voornamen') }}</label>
+                <input type="text" name="voornamen" id="voornamen" value="{{ submitted_voornamen or '' }}" placeholder="{{ _('Jan Peter') }}">
+            </div>
+            <div class="form-group">
+                <label>{{ _('Voorletters') }}</label>
+                <input type="text" name="voorletters" id="voorletters" value="{{ submitted_voorletters or '' }}" placeholder="{{ _('J.P.') }}">
+            </div>
+            <div class="form-group">
+                <label>{{ _('Tussenvoegsels') }}</label>
+                <input type="text" name="tussenvoegsels" id="tussenvoegsels" value="{{ submitted_tussenvoegsels or '' }}" placeholder="{{ _('van de') }}">
+            </div>
+        </div>
+        <input type="hidden" name="name" id="name-computed" value="">
         <div class="form-group">
             <label>{{ _('Address(es)') }}</label>
             <div id="addresses-container">
                 <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
-                    <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
+                    <div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">
                         <div>
-                            <label style="font-size:0.75rem;">{{ _('Street') }}</label>
-                            <input type="text" class="addr-street" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                            <input type="text" class="addr-zipcode" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Number') }}</label>
                             <input type="text" class="addr-number" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
-                            <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
-                            <input type="text" class="addr-zipcode" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                            <input type="text" class="addr-street" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Town') }}</label>
@@ -149,6 +164,22 @@
     <div id="person-fields" style="display: none;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div class="form-group">
+                <label for="geslacht">{{ _('Geslacht') }}</label>
+                <select name="geslacht" id="geslacht" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    <option value="">{{ _('-- Selecteer --') }}</option>
+                    <option value="man">{{ _('Man') }}</option>
+                    <option value="vrouw">{{ _('Vrouw') }}</option>
+                    <option value="onbekend">{{ _('Onbekend') }}</option>
+                    <option value="geen_opgave">{{ _('Geen opgave') }}</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="nationality">{{ _('Nationality') }}</label>
+                <input type="text" name="nationality" id="nationality" placeholder="{{ _('e.g. Dutch') }}">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
                 <label for="date_of_birth">{{ _('Date of Birth') }}</label>
                 <input type="date" name="date_of_birth" id="date_of_birth">
             </div>
@@ -158,8 +189,24 @@
             </div>
         </div>
         <div class="form-group">
-            <label for="identification_number">{{ _('ID/Passport Number') }}</label>
-            <input type="text" name="identification_number" id="identification_number">
+            <label for="bsn_number">{{ _('BSN nummer') }}</label>
+            <input type="text" name="bsn_number" id="bsn_number" placeholder="{{ _('Burgerservicenummer') }}">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="reisdocument_type">{{ _('Reisdocument type') }}</label>
+                <select name="reisdocument_type" id="reisdocument_type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    <option value="">{{ _('-- Selecteer --') }}</option>
+                    <option value="paspoort">{{ _('Paspoort') }}</option>
+                    <option value="id-kaart">{{ _('ID-kaart') }}</option>
+                    <option value="rijbewijs">{{ _('Rijbewijs') }}</option>
+                    <option value="overige">{{ _('Overige') }}</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="reisdocument_nummer">{{ _('Reisdocument nummer') }}</label>
+                <input type="text" name="reisdocument_nummer" id="reisdocument_nummer">
+            </div>
         </div>
     </div>
     
