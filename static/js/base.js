@@ -322,6 +322,26 @@ function esc(str) {
   d.appendChild(document.createTextNode(str != null ? String(str) : ''));
   return d.innerHTML;
 }
+function normalizePhoneInput(el) {
+  var v = el.value.trim();
+  if (!v) return;
+  var digits = v.replace(/[^0-9+]/g, '');
+  if (digits.indexOf('+') === 0) {
+    digits = digits.replace(/\+/g, '');
+  } else if (digits.indexOf('00') === 0) {
+    digits = digits.slice(2);
+  } else if (digits.charAt(0) === '0') {
+    digits = '31' + digits.slice(1);
+  }
+  if (digits) el.value = '+' + digits;
+}
+function normalizePostcodeInput(el) {
+  var v = el.value.trim().replace(/\s+/g, '');
+  if (!v) return;
+  if (v.length === 6 && /^[0-9]{4}[a-zA-Z]{2}$/.test(v)) {
+    el.value = v.slice(0, 4) + v.slice(4).toUpperCase();
+  }
+}
 function openHelp(topic) {
   if (typeof topic !== 'string' || !topic) topic = document.body.dataset.helpTopic || 'general';
   var title = document.getElementById('helpPanelTitle');

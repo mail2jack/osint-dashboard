@@ -98,7 +98,7 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Phone</label>
-        <input type="text" name="client_phone" value="{{ client.contact_phone or '' }}">
+        <input type="text" name="client_phone" value="{{ client.contact_phone or '' }}" onblur="normalizePhoneInput(this)">
       </div>
       <div class="form-group">
         <label>Reference</label>
@@ -114,7 +114,7 @@ input:-webkit-autofill:focus {
       </div>
       <div class="form-group">
         <label>Postal code</label>
-        <input type="text" name="client_postal_code" class="addr-zipcode" value="{{ client.address_postal or '' }}">
+        <input type="text" name="client_postal_code" class="addr-zipcode" value="{{ client.address_postal or '' }}" onblur="normalizePostcodeInput(this)">
       </div>
       <div class="form-group">
         <label>City</label>
@@ -177,7 +177,7 @@ input:-webkit-autofill:focus {
             <div class="form-group sf-person"><label>{{ _('Voorletters') }}</label><input type="text" name="subj_{{ sid }}_voorletters" value="{{ subject.voorletters or '' }}" placeholder="{{ _('J.P.') }}"></div>
             <div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>{{ _('ID Number') }}</label><input type="text" name="subj_{{ sid }}_identification" value="{{ subject.identification_number or '' }}"></div>
             <div class="form-group sf-person sf-company"><label>{{ _('Email') }}</label><input type="email" name="subj_{{ sid }}_email" value="{{ subject.email or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Phone') }}</label><input type="text" name="subj_{{ sid }}_phone" value="{{ subject.phone or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>{{ _('Phone') }}</label><input type="text" name="subj_{{ sid }}_phone" value="{{ subject.phone or '' }}" onblur="normalizePhoneInput(this)"></div>
             <div class="form-group sf-person"><label>{{ _('Date of Birth') }}</label><input type="date" name="subj_{{ sid }}_date_of_birth" value="{{ subject.date_of_birth or '' }}"></div>
             <div class="form-group sf-person"><label>{{ _('Place of Birth') }}</label><input type="text" name="subj_{{ sid }}_place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="{{ _('Amsterdam') }}"></div>
             <div class="form-group sf-person"><label>{{ _('Nationality') }}</label><input type="text" name="subj_{{ sid }}_nationality" value="{{ subject.nationality or '' }}" placeholder="{{ _('Dutch') }}"></div>
@@ -186,7 +186,7 @@ input:-webkit-autofill:focus {
             <div class="form-group sf-person"><label>{{ _('Reisdocument type') }}</label><select name="subj_{{ sid }}_reisdocument_type"><option value="">— {{ _('Select') }} —</option><option value="paspoort" {% if subject.reisdocument_type == 'paspoort' %}selected{% endif %}>{{ _('Paspoort') }}</option><option value="id_kaart" {% if subject.reisdocument_type == 'id_kaart' %}selected{% endif %}>{{ _('ID-kaart') }}</option><option value="rijbewijs" {% if subject.reisdocument_type == 'rijbewijs' %}selected{% endif %}>{{ _('Rijbewijs') }}</option><option value="overige" {% if subject.reisdocument_type == 'overige' %}selected{% endif %}>{{ _('Overig') }}</option></select></div>
             <div class="form-group sf-person"><label>{{ _('Reisdocument nummer') }}</label><input type="text" name="subj_{{ sid }}_reisdocument_nummer" value="{{ subject.reisdocument_nummer or '' }}" placeholder="{{ _('AB1234567') }}"></div>
             <div class="form-group sf-person sf-company"><label>{{ _('Bank Account') }}</label><input type="text" name="subj_{{ sid }}_bank_account" value="{{ subject.bank_account or '' }}" placeholder="{{ _('NL00 INGB 0000 0000 00') }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Postcode') }}</label><input type="text" name="subj_{{ sid }}_postal_code" class="addr-zipcode" value="{{ subject.postal_code or '' }}"></div>
+            <div class="form-group sf-person sf-company"><label>{{ _('Postcode') }}</label><input type="text" name="subj_{{ sid }}_postal_code" class="addr-zipcode" value="{{ subject.postal_code or '' }}" onblur="normalizePostcodeInput(this)"></div>
             <div class="form-group sf-person sf-company"><label>{{ _('Huisnummer') }}</label><input type="text" name="subj_{{ sid }}_house_number" class="addr-number" value="{{ subject.house_number or '' }}"></div>
             <div class="form-group sf-person sf-company"><label>{{ _('Toevoeging') }}</label><input type="text" name="subj_{{ sid }}_house_number_addition" value="{{ subject.house_number_addition or '' }}"></div>
             <div class="form-group sf-person sf-company"><label>{{ _('Straat') }}</label><input type="text" name="subj_{{ sid }}_street" class="addr-street" value="{{ subject.street or '' }}"></div>
@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-all"><label>Name *</label><input type="text" name="subj_new_' + idx + '_name" placeholder="Full name / designation"></div>' +
           '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>ID Number</label><input type="text" name="subj_new_' + idx + '_identification" placeholder="BSN / KvK / license plate / IMO"></div>' +
           '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subj_new_' + idx + '_email" placeholder="name@example.com"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Phone</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Phone</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678" onblur="normalizePhoneInput(this)"></div>' +
           '<div class="form-group sf-person"><label>Date of birth</label><input type="date" name="subj_new_' + idx + '_date_of_birth"></div>' +
           '<div class="form-group sf-person"><label>Place of birth</label><input type="text" name="subj_new_' + idx + '_place_of_birth" placeholder="Amsterdam"></div>' +
           '<div class="form-group sf-person"><label>Nationality</label><input type="text" name="subj_new_' + idx + '_nationality" placeholder="Dutch"></div>' +
@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-person sf-company"><label>Street</label><input type="text" name="subj_new_' + idx + '_street" class="addr-street" placeholder="Street name"></div>' +
           '<div class="form-group sf-person sf-company"><label>House number</label><input type="text" name="subj_new_' + idx + '_house_number" class="addr-number" placeholder="45"></div>' +
           '<div class="form-group sf-person sf-company"><label>Addition</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="A"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Postal code</label><input type="text" name="subj_new_' + idx + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Postal code</label><input type="text" name="subj_new_' + idx + '_postal_code" class="addr-zipcode" placeholder="1012LL" onblur="normalizePostcodeInput(this)"></div>' +
           '<div class="form-group sf-person sf-company"><label>City</label><input type="text" name="subj_new_' + idx + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
           '<div class="form-group full-width sf-person sf-online"><label>Social accounts</label><input type="text" name="subj_new_' + idx + '_social_accounts" placeholder="@username1, @username2"></div>' +
           '<div class="form-group full-width sf-all"><label>Risk score (0-100)</label><input type="number" name="subj_new_' + idx + '_risk_score" value="0" min="0" max="100"></div>' +
