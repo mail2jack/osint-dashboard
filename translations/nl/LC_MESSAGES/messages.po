@@ -4160,6 +4160,81 @@ msgstr "Selectie toevoegen aan bevindingen"
 msgid "remaining"
 msgstr "over"
 
+msgid "Achternaam"
+msgstr "Achternaam"
+
+msgid "Tussenvoegsels"
+msgstr "Tussenvoegsels"
+
+msgid "Voornamen"
+msgstr "Voornamen"
+
+msgid "Voorletters"
+msgstr "Voorletters"
+
+msgid "Geslacht"
+msgstr "Geslacht"
+
+msgid "BSN nummer"
+msgstr "BSN nummer"
+
+msgid "Reisdocument type"
+msgstr "Reisdocument type"
+
+msgid "Reisdocument nummer"
+msgstr "Reisdocument nummer"
+
+msgid "Huisnummer"
+msgstr "Huisnummer"
+
+msgid "Toevoeging"
+msgstr "Toevoeging"
+
+msgid "Straat"
+msgstr "Straat"
+
+msgid "Plaats"
+msgstr "Plaats"
+
+msgid "Postcode"
+msgstr "Postcode"
+
+msgid "Select"
+msgstr "Selecteer"
+
+msgid "Man"
+msgstr "Man"
+
+msgid "Vrouw"
+msgstr "Vrouw"
+
+msgid "Onbekend"
+msgstr "Onbekend"
+
+msgid "Geen opgave"
+msgstr "Geen opgave"
+
+msgid "Paspoort"
+msgstr "Paspoort"
+
+msgid "ID-kaart"
+msgstr "ID-kaart"
+
+msgid "Rijbewijs"
+msgstr "Rijbewijs"
+
+msgid "Overig"
+msgstr "Overig"
+
+msgid "Naam"
+msgstr "Naam"
+
+msgid "BSN"
+msgstr "BSN"
+
+msgid "Reisdocument"
+msgstr "Reisdocument"
+
 #~ msgid "Mark all read"
 #~ msgstr "Alles gelezen"
 

@@ -171,104 +171,104 @@ input:-webkit-autofill:focus {
         <div class="subject-fields" style="display:none">
           <div class="form-grid">
             <div class="form-group sf-all">
-              <label>Achternaam *</label>
-              <input type="text" name="subject_0_name" placeholder="Last name">
+              <label>{{ _('Achternaam') }} *</label>
+              <input type="text" name="subject_0_name" placeholder="{{ _('Last name') }}">
             </div>
             <div class="form-group sf-person">
-              <label>Tussenvoegsels</label>
-              <input type="text" name="subject_0_tussenvoegsels" placeholder="de / van / van der">
+              <label>{{ _('Tussenvoegsels') }}</label>
+              <input type="text" name="subject_0_tussenvoegsels" placeholder="{{ _('van de') }}">
             </div>
             <div class="form-group sf-person">
-              <label>Voornamen</label>
-              <input type="text" name="subject_0_voornamen" placeholder="Johannes Petrus">
+              <label>{{ _('Voornamen') }}</label>
+              <input type="text" name="subject_0_voornamen" placeholder="{{ _('Jan Peter') }}">
             </div>
             <div class="form-group sf-person">
-              <label>Voorletters</label>
-              <input type="text" name="subject_0_voorletters" placeholder="J.P.">
+              <label>{{ _('Voorletters') }}</label>
+              <input type="text" name="subject_0_voorletters" placeholder="{{ _('J.P.') }}">
             </div>
             <div class="form-group sf-person sf-company sf-vehicle sf-vessel">
-              <label>ID Number</label>
-              <input type="text" name="subject_0_identification" placeholder="BSN / KvK / license plate / IMO">
+              <label>{{ _('ID Number') }}</label>
+              <input type="text" name="subject_0_identification" placeholder="{{ _('BSN / KvK / license plate / IMO') }}">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Email</label>
-              <input type="email" name="subject_0_email" placeholder="name@example.com">
+              <label>{{ _('Email') }}</label>
+              <input type="email" name="subject_0_email" placeholder="{{ _('name@example.com') }}">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Phone</label>
-              <input type="text" name="subject_0_phone" placeholder="+31 6 12345678">
+              <label>{{ _('Phone') }}</label>
+              <input type="text" name="subject_0_phone" placeholder="{{ _('+31 6 12345678') }}">
             </div>
             <div class="form-group sf-person">
-              <label>Date of birth</label>
+              <label>{{ _('Date of Birth') }}</label>
               <input type="date" name="subject_0_date_of_birth">
             </div>
             <div class="form-group sf-person">
-              <label>Place of birth</label>
-              <input type="text" name="subject_0_place_of_birth" placeholder="Amsterdam">
+              <label>{{ _('Place of Birth') }}</label>
+              <input type="text" name="subject_0_place_of_birth" placeholder="{{ _('Amsterdam') }}">
             </div>
             <div class="form-group sf-person">
-              <label>Nationality</label>
-              <input type="text" name="subject_0_nationality" placeholder="Dutch">
+              <label>{{ _('Nationality') }}</label>
+              <input type="text" name="subject_0_nationality" placeholder="{{ _('Dutch') }}">
             </div>
             <div class="form-group sf-person">
-              <label>Geslacht</label>
+              <label>{{ _('Geslacht') }}</label>
               <select name="subject_0_geslacht">
-                <option value="">— Selecteer —</option>
-                <option value="man">Man</option>
-                <option value="vrouw">Vrouw</option>
-                <option value="onbekend">Onbekend</option>
-                <option value="geen_opgave">Geen opgave</option>
+                <option value="">— {{ _('Select') }} —</option>
+                <option value="man">{{ _('Man') }}</option>
+                <option value="vrouw">{{ _('Vrouw') }}</option>
+                <option value="onbekend">{{ _('Onbekend') }}</option>
+                <option value="geen_opgave">{{ _('Geen opgave') }}</option>
               </select>
             </div>
             <div class="form-group sf-person">
-              <label>BSN-nummer</label>
-              <input type="text" name="subject_0_bsn_number" placeholder="000000000">
+              <label>{{ _('BSN nummer') }}</label>
+              <input type="text" name="subject_0_bsn_number" placeholder="{{ _('000000000') }}">
             </div>
             <div class="form-group sf-person">
-              <label>Reisdocument type</label>
+              <label>{{ _('Reisdocument type') }}</label>
               <select name="subject_0_reisdocument_type">
-                <option value="">— Selecteer —</option>
-                <option value="paspoort">Paspoort</option>
-                <option value="id_kaart">ID-kaart</option>
-                <option value="rijbewijs">Rijbewijs</option>
-                <option value="overige">Overig</option>
+                <option value="">— {{ _('Select') }} —</option>
+                <option value="paspoort">{{ _('Paspoort') }}</option>
+                <option value="id_kaart">{{ _('ID-kaart') }}</option>
+                <option value="rijbewijs">{{ _('Rijbewijs') }}</option>
+                <option value="overige">{{ _('Overig') }}</option>
               </select>
             </div>
             <div class="form-group sf-person">
-              <label>Reisdocument nummer</label>
-              <input type="text" name="subject_0_reisdocument_nummer" placeholder="AB1234567">
+              <label>{{ _('Reisdocument nummer') }}</label>
+              <input type="text" name="subject_0_reisdocument_nummer" placeholder="{{ _('AB1234567') }}">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Bank account</label>
-              <input type="text" name="subject_0_bank_account" placeholder="NL00 INGB 0000 0000 00">
+              <label>{{ _('Bank Account') }}</label>
+              <input type="text" name="subject_0_bank_account" placeholder="{{ _('NL00 INGB 0000 0000 00') }}">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Postcode</label>
-              <input type="text" name="subject_0_postal_code" class="addr-zipcode" placeholder="1012LL">
+              <label>{{ _('Postcode') }}</label>
+              <input type="text" name="subject_0_postal_code" class="addr-zipcode" placeholder="{{ _('1012LL') }}">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Huisnummer</label>
-              <input type="text" name="subject_0_house_number" class="addr-number" placeholder="45">
+              <label>{{ _('Huisnummer') }}</label>
+              <input type="text" name="subject_0_house_number" class="addr-number" placeholder="{{ _('45') }}">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Toevoeging</label>
-              <input type="text" name="subject_0_house_number_addition" placeholder="A">
+              <label>{{ _('Toevoeging') }}</label>
+              <input type="text" name="subject_0_house_number_addition" placeholder="{{ _('A') }}">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Straat</label>
-              <input type="text" name="subject_0_street" class="addr-street" placeholder="Street name">
+              <label>{{ _('Straat') }}</label>
+              <input type="text" name="subject_0_street" class="addr-street" placeholder="{{ _('Street name') }}">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Plaats</label>
-              <input type="text" name="subject_0_city" class="addr-town" placeholder="Amsterdam">
+              <label>{{ _('Plaats') }}</label>
+              <input type="text" name="subject_0_city" class="addr-town" placeholder="{{ _('Amsterdam') }}">
             </div>
             <div class="form-group full-width sf-person sf-online">
-              <label>Social accounts</label>
-              <input type="text" name="subject_0_social_accounts" placeholder="@username1, @username2">
+              <label>{{ _('Social accounts') }}</label>
+              <input type="text" name="subject_0_social_accounts" placeholder="{{ _('@username1, @username2') }}">
             </div>
             <div class="form-group full-width sf-all">
-              <label>Notes</label>
-              <textarea name="subject_0_notes" rows="2" placeholder="Internal notes"></textarea>
+              <label>{{ _('Notes') }}</label>
+              <textarea name="subject_0_notes" rows="2" placeholder="{{ _('Internal notes') }}"></textarea>
             </div>
           </div>
         </div>
@@ -277,6 +277,55 @@ input:-webkit-autofill:focus {
   </div>
 
 <script nonce="{{ csp_nonce }}">
+var T = {
+  achternaam: {{ _('Achternaam')|tojson }},
+  tussenvoegsels: {{ _('Tussenvoegsels')|tojson }},
+  voornamen: {{ _('Voornamen')|tojson }},
+  voorletters: {{ _('Voorletters')|tojson }},
+  idNumber: {{ _('ID Number')|tojson }},
+  email: {{ _('Email')|tojson }},
+  phone: {{ _('Phone')|tojson }},
+  dateOfBirth: {{ _('Date of Birth')|tojson }},
+  placeOfBirth: {{ _('Place of Birth')|tojson }},
+  nationality: {{ _('Nationality')|tojson }},
+  geslacht: {{ _('Geslacht')|tojson }},
+  select: {{ _('Select')|tojson }},
+  man: {{ _('Man')|tojson }},
+  vrouw: {{ _('Vrouw')|tojson }},
+  onbekend: {{ _('Onbekend')|tojson }},
+  geenOpgave: {{ _('Geen opgave')|tojson }},
+  bsnNummer: {{ _('BSN nummer')|tojson }},
+  reisdocumentType: {{ _('Reisdocument type')|tojson }},
+  paspoort: {{ _('Paspoort')|tojson }},
+  idKaart: {{ _('ID-kaart')|tojson }},
+  rijbewijs: {{ _('Rijbewijs')|tojson }},
+  overig: {{ _('Overig')|tojson }},
+  reisdocumentNummer: {{ _('Reisdocument nummer')|tojson }},
+  bankAccount: {{ _('Bank Account')|tojson }},
+  postcode: {{ _('Postcode')|tojson }},
+  huisnummer: {{ _('Huisnummer')|tojson }},
+  toevoeging: {{ _('Toevoeging')|tojson }},
+  straat: {{ _('Straat')|tojson }},
+  plaats: {{ _('Plaats')|tojson }},
+  socialAccounts: {{ _('Social accounts')|tojson }},
+  notes: {{ _('Notes')|tojson }},
+  streetName: {{ _('Street name')|tojson }},
+  last_name: {{ _('Last name')|tojson }},
+  van_de: {{ _('van de')|tojson }},
+  jp: {{ _('J.P.')|tojson }},
+  bsnPlaceholder: {{ _('BSN / KvK / license plate / IMO')|tojson }},
+  emailPlaceholder: {{ _('name@example.com')|tojson }},
+  phonePlaceholder: {{ _('+31 6 12345678')|tojson }},
+  amsterdam: {{ _('Amsterdam')|tojson }},
+  dutch: {{ _('Dutch')|tojson }},
+  abPlaceholder: {{ _('AB1234567')|tojson }},
+  ingbPlaceholder: {{ _('NL00 INGB 0000 0000 00')|tojson }},
+  zipPlaceholder: {{ _('1012LL')|tojson }},
+  numberPlaceholder: {{ _('45')|tojson }},
+  additionPlaceholder: {{ _('A')|tojson }},
+  socialPlaceholder: {{ _('@username1, @username2')|tojson }},
+  internalNotes: {{ _('Internal notes')|tojson }}
+};
 document.addEventListener('DOMContentLoaded', function() {
 
   // Show fields for pre-selected subject types on page load
@@ -329,28 +378,28 @@ document.addEventListener('DOMContentLoaded', function() {
       '</div>' +
       '<div class="subject-fields" style="display:none">' +
         '<div class="form-grid">' +
-          '<div class="form-group sf-all"><label>Achternaam *</label><input type="text" name="subject_' + count + '_name" placeholder="Last name"></div>' +
-          '<div class="form-group sf-person"><label>Tussenvoegsels</label><input type="text" name="subject_' + count + '_tussenvoegsels" placeholder="de / van / van der"></div>' +
-          '<div class="form-group sf-person"><label>Voornamen</label><input type="text" name="subject_' + count + '_voornamen" placeholder="Johannes Petrus"></div>' +
-          '<div class="form-group sf-person"><label>Voorletters</label><input type="text" name="subject_' + count + '_voorletters" placeholder="J.P."></div>' +
-          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>ID Number</label><input type="text" name="subject_' + count + '_identification" placeholder="BSN / KvK / license plate / IMO"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subject_' + count + '_email" placeholder="name@example.com"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Phone</label><input type="text" name="subject_' + count + '_phone" placeholder="+31 6 12345678"></div>' +
-          '<div class="form-group sf-person"><label>Date of birth</label><input type="date" name="subject_' + count + '_date_of_birth"></div>' +
-          '<div class="form-group sf-person"><label>Place of birth</label><input type="text" name="subject_' + count + '_place_of_birth" placeholder="Amsterdam"></div>' +
-          '<div class="form-group sf-person"><label>Nationality</label><input type="text" name="subject_' + count + '_nationality" placeholder="Dutch"></div>' +
-          '<div class="form-group sf-person"><label>Geslacht</label><select name="subject_' + count + '_geslacht"><option value="">— Selecteer —</option><option value="man">Man</option><option value="vrouw">Vrouw</option><option value="onbekend">Onbekend</option><option value="geen_opgave">Geen opgave</option></select></div>' +
-          '<div class="form-group sf-person"><label>BSN-nummer</label><input type="text" name="subject_' + count + '_bsn_number" placeholder="000000000"></div>' +
-          '<div class="form-group sf-person"><label>Reisdocument type</label><select name="subject_' + count + '_reisdocument_type"><option value="">— Selecteer —</option><option value="paspoort">Paspoort</option><option value="id_kaart">ID-kaart</option><option value="rijbewijs">Rijbewijs</option><option value="overige">Overig</option></select></div>' +
-          '<div class="form-group sf-person"><label>Reisdocument nummer</label><input type="text" name="subject_' + count + '_reisdocument_nummer" placeholder="AB1234567"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Bank account</label><input type="text" name="subject_' + count + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Postcode</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Huisnummer</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="45"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Toevoeging</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="A"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Straat</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="Street name"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Plaats</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
-          '<div class="form-group full-width sf-person sf-online"><label>Social accounts</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="@username1, @username2"></div>' +
-          '<div class="form-group full-width sf-all"><label>Notes</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="Internal notes"></textarea></div>' +
+          '<div class="form-group sf-all"><label>' + T.achternaam + ' *</label><input type="text" name="subject_' + count + '_name" placeholder="' + T.last_name + '"></div>' +
+          '<div class="form-group sf-person"><label>' + T.tussenvoegsels + '</label><input type="text" name="subject_' + count + '_tussenvoegsels" placeholder="' + T.van_de + '"></div>' +
+          '<div class="form-group sf-person"><label>' + T.voornamen + '</label><input type="text" name="subject_' + count + '_voornamen" placeholder="' + T.jp + '"></div>' +
+          '<div class="form-group sf-person"><label>' + T.voorletters + '</label><input type="text" name="subject_' + count + '_voorletters" placeholder="' + T.jp + '"></div>' +
+          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>' + T.idNumber + '</label><input type="text" name="subject_' + count + '_identification" placeholder="' + T.bsnPlaceholder + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.email + '</label><input type="email" name="subject_' + count + '_email" placeholder="' + T.emailPlaceholder + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.phone + '</label><input type="text" name="subject_' + count + '_phone" placeholder="' + T.phonePlaceholder + '"></div>' +
+          '<div class="form-group sf-person"><label>' + T.dateOfBirth + '</label><input type="date" name="subject_' + count + '_date_of_birth"></div>' +
+          '<div class="form-group sf-person"><label>' + T.placeOfBirth + '</label><input type="text" name="subject_' + count + '_place_of_birth" placeholder="' + T.amsterdam + '"></div>' +
+          '<div class="form-group sf-person"><label>' + T.nationality + '</label><input type="text" name="subject_' + count + '_nationality" placeholder="' + T.dutch + '"></div>' +
+          '<div class="form-group sf-person"><label>' + T.geslacht + '</label><select name="subject_' + count + '_geslacht"><option value="">— ' + T.select + ' —</option><option value="man">' + T.man + '</option><option value="vrouw">' + T.vrouw + '</option><option value="onbekend">' + T.onbekend + '</option><option value="geen_opgave">' + T.geenOpgave + '</option></select></div>' +
+          '<div class="form-group sf-person"><label>' + T.bsnNummer + '</label><input type="text" name="subject_' + count + '_bsn_number" placeholder="000000000"></div>' +
+          '<div class="form-group sf-person"><label>' + T.reisdocumentType + '</label><select name="subject_' + count + '_reisdocument_type"><option value="">— ' + T.select + ' —</option><option value="paspoort">' + T.paspoort + '</option><option value="id_kaart">' + T.idKaart + '</option><option value="rijbewijs">' + T.rijbewijs + '</option><option value="overige">' + T.overig + '</option></select></div>' +
+          '<div class="form-group sf-person"><label>' + T.reisdocumentNummer + '</label><input type="text" name="subject_' + count + '_reisdocument_nummer" placeholder="' + T.abPlaceholder + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.bankAccount + '</label><input type="text" name="subject_' + count + '_bank_account" placeholder="' + T.ingbPlaceholder + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.postcode + '</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="' + T.zipPlaceholder + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.huisnummer + '</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="' + T.numberPlaceholder + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.toevoeging + '</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="' + T.additionPlaceholder + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.straat + '</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="' + T.streetName + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.plaats + '</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="' + T.amsterdam + '"></div>' +
+          '<div class="form-group full-width sf-person sf-online"><label>' + T.socialAccounts + '</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="' + T.socialPlaceholder + '"></div>' +
+          '<div class="form-group full-width sf-all"><label>' + T.notes + '</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="' + T.internalNotes + '"></textarea></div>' +
         '</div>' +
       '</div>';
     container.parentElement.insertBefore(div, container.nextElementSibling);

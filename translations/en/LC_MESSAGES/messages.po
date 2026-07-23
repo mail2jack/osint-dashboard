@@ -4366,6 +4366,81 @@ msgstr ""
 msgid "remaining"
 msgstr ""
 
+msgid "Achternaam"
+msgstr "Last name"
+
+msgid "Tussenvoegsels"
+msgstr "Prefix"
+
+msgid "Voornamen"
+msgstr "First names"
+
+msgid "Voorletters"
+msgstr "Initials"
+
+msgid "Geslacht"
+msgstr "Gender"
+
+msgid "BSN nummer"
+msgstr "BSN number"
+
+msgid "Reisdocument type"
+msgstr "Document type"
+
+msgid "Reisdocument nummer"
+msgstr "Document number"
+
+msgid "Huisnummer"
+msgstr "House number"
+
+msgid "Toevoeging"
+msgstr "Addition"
+
+msgid "Straat"
+msgstr "Street"
+
+msgid "Plaats"
+msgstr "City"
+
+msgid "Postcode"
+msgstr "Postal code"
+
+msgid "Select"
+msgstr "Select"
+
+msgid "Man"
+msgstr "Male"
+
+msgid "Vrouw"
+msgstr "Female"
+
+msgid "Onbekend"
+msgstr "Unknown"
+
+msgid "Geen opgave"
+msgstr "Not specified"
+
+msgid "Paspoort"
+msgstr "Passport"
+
+msgid "ID-kaart"
+msgstr "ID card"
+
+msgid "Rijbewijs"
+msgstr "Driver's license"
+
+msgid "Overig"
+msgstr "Other"
+
+msgid "Naam"
+msgstr "Name"
+
+msgid "BSN"
+msgstr "BSN"
+
+msgid "Reisdocument"
+msgstr "Travel document"
+
 #~ msgid "Mark all read"
 #~ msgstr "Mark all read"
 
