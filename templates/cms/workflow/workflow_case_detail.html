@@ -236,8 +236,8 @@ input:-webkit-autofill:focus {
       <strong style="font-size:0.85rem;display:block;margin-bottom:0.5rem;">Subject {{ loop.index }}</strong>
       <div class="subject-info-grid">
         <div class="subject-info-item">
-        <div class="lbl">Name</div>
-        <div class="val">{{ subject.name }}</div>
+        <div class="lbl">Naam</div>
+        <div class="val">{{ subject.compute_name() if subject.compute_name is defined else subject.name }}</div>
       </div>
       <div class="subject-info-item">
         <div class="lbl">Type</div>
@@ -247,6 +247,24 @@ input:-webkit-autofill:focus {
         <div class="subject-info-item">
           <div class="lbl">ID Number</div>
           <div class="val">{{ subject.identification_number }}</div>
+        </div>
+        {% endif %}
+        {% if subject.geslacht %}
+        <div class="subject-info-item">
+          <div class="lbl">Geslacht</div>
+          <div class="val">{{ subject.geslacht }}</div>
+        </div>
+        {% endif %}
+        {% if subject.bsn_number %}
+        <div class="subject-info-item">
+          <div class="lbl">BSN</div>
+          <div class="val">{{ subject.bsn_number[:4] }}****{{ subject.bsn_number[-2:] }}</div>
+        </div>
+        {% endif %}
+        {% if subject.reisdocument_type %}
+        <div class="subject-info-item">
+          <div class="lbl">Reisdocument</div>
+          <div class="val">{{ subject.reisdocument_type }} {{ subject.reisdocument_nummer or '' }}</div>
         </div>
         {% endif %}
         <div class="subject-info-item">

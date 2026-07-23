@@ -171,8 +171,20 @@ input:-webkit-autofill:focus {
         <div class="subject-fields" style="display:none">
           <div class="form-grid">
             <div class="form-group sf-all">
-              <label>Name *</label>
-              <input type="text" name="subject_0_name" placeholder="Full name / designation">
+              <label>Achternaam *</label>
+              <input type="text" name="subject_0_name" placeholder="Last name">
+            </div>
+            <div class="form-group sf-person">
+              <label>Tussenvoegsels</label>
+              <input type="text" name="subject_0_tussenvoegsels" placeholder="de / van / van der">
+            </div>
+            <div class="form-group sf-person">
+              <label>Voornamen</label>
+              <input type="text" name="subject_0_voornamen" placeholder="Johannes Petrus">
+            </div>
+            <div class="form-group sf-person">
+              <label>Voorletters</label>
+              <input type="text" name="subject_0_voorletters" placeholder="J.P.">
             </div>
             <div class="form-group sf-person sf-company sf-vehicle sf-vessel">
               <label>ID Number</label>
@@ -198,28 +210,56 @@ input:-webkit-autofill:focus {
               <label>Nationality</label>
               <input type="text" name="subject_0_nationality" placeholder="Dutch">
             </div>
+            <div class="form-group sf-person">
+              <label>Geslacht</label>
+              <select name="subject_0_geslacht">
+                <option value="">— Selecteer —</option>
+                <option value="man">Man</option>
+                <option value="vrouw">Vrouw</option>
+                <option value="onbekend">Onbekend</option>
+                <option value="geen_opgave">Geen opgave</option>
+              </select>
+            </div>
+            <div class="form-group sf-person">
+              <label>BSN-nummer</label>
+              <input type="text" name="subject_0_bsn_number" placeholder="000000000">
+            </div>
+            <div class="form-group sf-person">
+              <label>Reisdocument type</label>
+              <select name="subject_0_reisdocument_type">
+                <option value="">— Selecteer —</option>
+                <option value="paspoort">Paspoort</option>
+                <option value="id_kaart">ID-kaart</option>
+                <option value="rijbewijs">Rijbewijs</option>
+                <option value="overige">Overig</option>
+              </select>
+            </div>
+            <div class="form-group sf-person">
+              <label>Reisdocument nummer</label>
+              <input type="text" name="subject_0_reisdocument_nummer" placeholder="AB1234567">
+            </div>
             <div class="form-group sf-person sf-company">
               <label>Bank account</label>
               <input type="text" name="subject_0_bank_account" placeholder="NL00 INGB 0000 0000 00">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>Street</label>
-              <input type="text" name="subject_0_street" class="addr-street" placeholder="Street name">
-            </div>
-            <div class="form-group sf-person sf-company">
-              <label>House number</label>
-              <input type="text" name="subject_0_house_number" class="addr-number" placeholder="45">
-            </div>
-            <div class="form-group sf-person sf-company">
-              <label>Addition</label>
-              <input type="text" name="subject_0_house_number_addition" placeholder="A">
-            </div>
-            <div class="form-group sf-person sf-company">
-              <label>Postal code</label>
+              <label>Postcode</label>
               <input type="text" name="subject_0_postal_code" class="addr-zipcode" placeholder="1012LL">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>City</label>
+              <label>Huisnummer</label>
+              <input type="text" name="subject_0_house_number" class="addr-number" placeholder="45">
+            </div>
+            <div class="form-group sf-person sf-company">
+              <label>Toevoeging</label>
+              <input type="text" name="subject_0_house_number_addition" placeholder="A">
+            </div>
+            <div class="form-group sf-person sf-company">
+              <label>Straat</label>
+              <input type="text" name="subject_0_street" class="addr-street" placeholder="Street name">
+            </div>
+            <div class="form-group sf-person sf-company">
+              <label>Plaats</label>
               <input type="text" name="subject_0_city" class="addr-town" placeholder="Amsterdam">
             </div>
             <div class="form-group full-width sf-person sf-online">
@@ -289,19 +329,26 @@ document.addEventListener('DOMContentLoaded', function() {
       '</div>' +
       '<div class="subject-fields" style="display:none">' +
         '<div class="form-grid">' +
-          '<div class="form-group sf-all"><label>Name *</label><input type="text" name="subject_' + count + '_name" placeholder="Full name / designation"></div>' +
+          '<div class="form-group sf-all"><label>Achternaam *</label><input type="text" name="subject_' + count + '_name" placeholder="Last name"></div>' +
+          '<div class="form-group sf-person"><label>Tussenvoegsels</label><input type="text" name="subject_' + count + '_tussenvoegsels" placeholder="de / van / van der"></div>' +
+          '<div class="form-group sf-person"><label>Voornamen</label><input type="text" name="subject_' + count + '_voornamen" placeholder="Johannes Petrus"></div>' +
+          '<div class="form-group sf-person"><label>Voorletters</label><input type="text" name="subject_' + count + '_voorletters" placeholder="J.P."></div>' +
           '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>ID Number</label><input type="text" name="subject_' + count + '_identification" placeholder="BSN / KvK / license plate / IMO"></div>' +
           '<div class="form-group sf-person sf-company"><label>Email</label><input type="email" name="subject_' + count + '_email" placeholder="name@example.com"></div>' +
           '<div class="form-group sf-person sf-company"><label>Phone</label><input type="text" name="subject_' + count + '_phone" placeholder="+31 6 12345678"></div>' +
           '<div class="form-group sf-person"><label>Date of birth</label><input type="date" name="subject_' + count + '_date_of_birth"></div>' +
           '<div class="form-group sf-person"><label>Place of birth</label><input type="text" name="subject_' + count + '_place_of_birth" placeholder="Amsterdam"></div>' +
           '<div class="form-group sf-person"><label>Nationality</label><input type="text" name="subject_' + count + '_nationality" placeholder="Dutch"></div>' +
+          '<div class="form-group sf-person"><label>Geslacht</label><select name="subject_' + count + '_geslacht"><option value="">— Selecteer —</option><option value="man">Man</option><option value="vrouw">Vrouw</option><option value="onbekend">Onbekend</option><option value="geen_opgave">Geen opgave</option></select></div>' +
+          '<div class="form-group sf-person"><label>BSN-nummer</label><input type="text" name="subject_' + count + '_bsn_number" placeholder="000000000"></div>' +
+          '<div class="form-group sf-person"><label>Reisdocument type</label><select name="subject_' + count + '_reisdocument_type"><option value="">— Selecteer —</option><option value="paspoort">Paspoort</option><option value="id_kaart">ID-kaart</option><option value="rijbewijs">Rijbewijs</option><option value="overige">Overig</option></select></div>' +
+          '<div class="form-group sf-person"><label>Reisdocument nummer</label><input type="text" name="subject_' + count + '_reisdocument_nummer" placeholder="AB1234567"></div>' +
           '<div class="form-group sf-person sf-company"><label>Bank account</label><input type="text" name="subject_' + count + '_bank_account" placeholder="NL00 INGB 0000 0000 00"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Street</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="Street name"></div>' +
-          '<div class="form-group sf-person sf-company"><label>House number</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="45"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Addition</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="A"></div>' +
-          '<div class="form-group sf-person sf-company"><label>Postal code</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
-          '<div class="form-group sf-person sf-company"><label>City</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Postcode</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="1012LL"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Huisnummer</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="45"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Toevoeging</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="A"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Straat</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="Street name"></div>' +
+          '<div class="form-group sf-person sf-company"><label>Plaats</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
           '<div class="form-group full-width sf-person sf-online"><label>Social accounts</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="@username1, @username2"></div>' +
           '<div class="form-group full-width sf-all"><label>Notes</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="Internal notes"></textarea></div>' +
         '</div>' +

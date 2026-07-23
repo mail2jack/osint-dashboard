@@ -356,6 +356,15 @@ def case_new():
                 notes=request.form.get(f"{idx_str}_notes", ""),
                 created_by=current_user.id,
                 tenant_id=current_user.tenant_id,
+                tussenvoegsels=request.form.get(f"{idx_str}_tussenvoegsels", ""),
+                voornamen=request.form.get(f"{idx_str}_voornamen", ""),
+                voorletters=request.form.get(f"{idx_str}_voorletters", ""),
+                geslacht=request.form.get(f"{idx_str}_geslacht", ""),
+                bsn_number=request.form.get(f"{idx_str}_bsn_number", ""),
+                reisdocument_type=request.form.get(f"{idx_str}_reisdocument_type", ""),
+                reisdocument_nummer=request.form.get(
+                    f"{idx_str}_reisdocument_nummer", ""
+                ),
             )
             _set_address_fields(s, idx_str)
             s.encrypt_identifiers()
@@ -602,6 +611,17 @@ def case_edit(case_id):
             subj.place_of_birth = request.form.get(f"subj_{sid}_place_of_birth", "")
             subj.nationality = request.form.get(f"subj_{sid}_nationality", "")
             subj.bank_account = request.form.get(f"subj_{sid}_bank_account", "")
+            subj.tussenvoegsels = request.form.get(f"subj_{sid}_tussenvoegsels", "")
+            subj.voornamen = request.form.get(f"subj_{sid}_voornamen", "")
+            subj.voorletters = request.form.get(f"subj_{sid}_voorletters", "")
+            subj.geslacht = request.form.get(f"subj_{sid}_geslacht", "")
+            subj.bsn_number = request.form.get(f"subj_{sid}_bsn_number", "")
+            subj.reisdocument_type = request.form.get(
+                f"subj_{sid}_reisdocument_type", ""
+            )
+            subj.reisdocument_nummer = request.form.get(
+                f"subj_{sid}_reisdocument_nummer", ""
+            )
             _set_address_fields(subj, f"subj_{sid}")
             subj.workflow_social_accounts = _social_field(f"subj_{sid}_social_accounts")
             subj.risk_score = _int_field(f"subj_{sid}_risk_score")
@@ -628,6 +648,17 @@ def case_edit(case_id):
                 risk_score=_int_field(f"subj_new_{n}_risk_score"),
                 notes=request.form.get(f"subj_new_{n}_notes", ""),
                 created_by=current_user.id,
+                tussenvoegsels=request.form.get(f"subj_new_{n}_tussenvoegsels", ""),
+                voornamen=request.form.get(f"subj_new_{n}_voornamen", ""),
+                voorletters=request.form.get(f"subj_new_{n}_voorletters", ""),
+                geslacht=request.form.get(f"subj_new_{n}_geslacht", ""),
+                bsn_number=request.form.get(f"subj_new_{n}_bsn_number", ""),
+                reisdocument_type=request.form.get(
+                    f"subj_new_{n}_reisdocument_type", ""
+                ),
+                reisdocument_nummer=request.form.get(
+                    f"subj_new_{n}_reisdocument_nummer", ""
+                ),
             )
             _set_address_fields(new_subj, f"subj_new_{n}")
             new_subj.encrypt_identifiers()
