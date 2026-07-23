@@ -63,6 +63,16 @@
     <div style="margin-bottom: 1rem; padding: 0.5rem; background: #dbeafe; border-radius: 4px;">
         {{ _('Subject will be automatically linked to this case.') }}
     </div>
+    {% elif cases %}
+    <div class="form-group" style="margin-bottom: 1rem;">
+        <label>{{ _('Link to case (optional)') }}</label>
+        <select name="case_id" style="padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;width:100%;max-width:500px;">
+            <option value="">{{ _('— No case —') }}</option>
+            {% for c in cases %}
+            <option value="{{ c.id }}">{{ c.case_number }} — {{ c.title }}</option>
+            {% endfor %}
+        </select>
+    </div>
     {% endif %}
     
     <input type="hidden" name="subject_type" id="subject_type" value="">

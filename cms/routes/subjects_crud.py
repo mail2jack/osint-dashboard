@@ -316,7 +316,13 @@ def create_subject() -> flask.Response:
 
     # Pass case_id from query param if coming from case view
     case_id = request.args.get("case_id")
-    return render_template("cms/subjects/create.html", case_id=case_id)
+    cases = []
+    if not case_id:
+        q = apply_tenant_filter(Case.query, Case)
+        cases = (
+            q.filter(Case.is_deleted == False).order_by(Case.case_number.desc()).all()
+        )
+    return render_template("cms/subjects/create.html", case_id=case_id, cases=cases)
 
 
 @cms_bp.route("/subjects/<subject_id>/edit", methods=["GET", "POST"])
