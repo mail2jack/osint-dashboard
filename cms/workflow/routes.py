@@ -20,6 +20,7 @@ from flask_login import current_user, login_required
 
 from cms.models import db, UserRole, AuditLog
 from cms.auth import ensure_tenant_access
+from cms.routes.utils import normalize_phone
 from . import workflow_bp
 from .models import (
     WorkflowActionFinding,
@@ -318,7 +319,7 @@ def case_new():
                 name=request.form.get("client_name", "Onbekend"),
                 contact_person=request.form.get("client_contact", ""),
                 contact_email=request.form.get("client_email", ""),
-                contact_phone=request.form.get("client_phone", ""),
+                contact_phone=normalize_phone(request.form.get("client_phone", "")),
                 reference=request.form.get("reference", ""),
                 address_street=request.form.get("client_street", ""),
                 address_number=_combine_address_number(
@@ -346,7 +347,7 @@ def case_new():
                 subject_type=request.form.get(f"{idx_str}_type", "person"),
                 identification_number=request.form.get(f"{idx_str}_identification", ""),
                 email=request.form.get(f"{idx_str}_email", ""),
-                phone=request.form.get(f"{idx_str}_phone", ""),
+                phone=normalize_phone(request.form.get(f"{idx_str}_phone", "")),
                 date_of_birth=request.form.get(f"{idx_str}_date_of_birth", ""),
                 place_of_birth=request.form.get(f"{idx_str}_place_of_birth", ""),
                 nationality=request.form.get(f"{idx_str}_nationality", ""),
@@ -556,7 +557,7 @@ def case_edit(case_id):
             client.name = request.form.get("client_name", client.name)
             client.contact_person = request.form.get("client_contact", "")
             client.contact_email = request.form.get("client_email", "")
-            client.contact_phone = request.form.get("client_phone", "")
+            client.contact_phone = normalize_phone(request.form.get("client_phone", ""))
             client.reference = request.form.get("reference", "")
             client.address_street = request.form.get("client_street", "")
             client.address_number = _combine_address_number(
@@ -606,7 +607,7 @@ def case_edit(case_id):
                 f"subj_{sid}_identification", ""
             )
             subj.email = request.form.get(f"subj_{sid}_email", "")
-            subj.phone = request.form.get(f"subj_{sid}_phone", "")
+            subj.phone = normalize_phone(request.form.get(f"subj_{sid}_phone", ""))
             subj.date_of_birth = request.form.get(f"subj_{sid}_date_of_birth", "")
             subj.place_of_birth = request.form.get(f"subj_{sid}_place_of_birth", "")
             subj.nationality = request.form.get(f"subj_{sid}_nationality", "")
@@ -639,7 +640,7 @@ def case_edit(case_id):
                     f"subj_new_{n}_identification", ""
                 ),
                 email=request.form.get(f"subj_new_{n}_email", ""),
-                phone=request.form.get(f"subj_new_{n}_phone", ""),
+                phone=normalize_phone(request.form.get(f"subj_new_{n}_phone", "")),
                 date_of_birth=request.form.get(f"subj_new_{n}_date_of_birth", ""),
                 place_of_birth=request.form.get(f"subj_new_{n}_place_of_birth", ""),
                 nationality=request.form.get(f"subj_new_{n}_nationality", ""),
