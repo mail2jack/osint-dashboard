@@ -602,7 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
     for (var i = 0; i < children.length; i++) {
       var el = children[i];
       if (el.classList.contains('sf-all')) {
-        el.style.display = (val === 'vehicle' || val === 'vessel') ? 'none' : '';
+        el.style.display = (val === 'vehicle' || val === 'vessel' || val === 'online') ? 'none' : '';
       } else if (el.classList.contains('sf-' + val)) {
         el.style.display = '';
       } else {
