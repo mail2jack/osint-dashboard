@@ -77,6 +77,12 @@
     
     <input type="hidden" name="subject_type" id="subject_type" value="">
     
+    <div id="online-username-field" class="form-group" style="display: none;">
+        <label>{{ _('Username') }}</label>
+        <input type="text" name="achternaam" id="achternaam" value="{{ submitted_achternaam or '' }}" data-input="checkDuplicate" placeholder="{{ _('@username') }}">
+        <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
+    </div>
+
     <div id="general-fields" style="display: none;">
         <div class="form-group">
             <label>{{ _('Achternaam') }}</label>
@@ -428,7 +434,8 @@ function selectType(btn, type) {
     document.getElementById('subjectForm').style.display = 'block';
     document.getElementById('type-selection').style.display = 'none';
     
-    document.getElementById('general-fields').style.display = 'block';
+    document.getElementById('online-username-field').style.display = type === 'online' ? 'block' : 'none';
+    document.getElementById('general-fields').style.display = type === 'online' ? 'none' : 'block';
     document.getElementById('person-fields').style.display = type === 'person' ? 'block' : 'none';
     document.getElementById('company-fields').style.display = type === 'company' ? 'block' : 'none';
     document.getElementById('vehicle-fields').style.display = type === 'vehicle' ? 'block' : 'none';
@@ -436,50 +443,34 @@ function selectType(btn, type) {
     document.getElementById('online-fields').style.display = type === 'online' ? 'block' : 'none';
     
     const restrictedFields = document.getElementById('vehicle-restricted-fields');
-    const addrGroup = document.querySelector('#general-fields .form-group:nth-of-type(2)');
-    const contactGroup = document.querySelector('#general-fields .form-group:nth-of-type(3)');
-    const generalGroups = document.querySelectorAll('#general-fields > .form-group');
     
     if (type === 'online') {
+        var onlineName = document.getElementById('achternaam');
+        onlineName.value = '';
+        onlineName.required = true;
+        onlineName.focus();
+    } else if (type === 'vehicle') {
+        document.getElementById('kenteken_lookup').focus();
         document.getElementById('achternaam').value = '';
-        document.getElementById('achternaam').required = true;
-        document.getElementById('achternaam').placeholder = '{{ _("e.g. @username")|replace("'", "\\\\'")|safe }}';
-        document.getElementById('achternaam').focus();
+        document.getElementById('achternaam').required = false;
+        document.getElementById('achternaam').placeholder = '{{ _("Vehicle name (e.g. Toyota Aygo) or leave empty")|replace("'", "\\\\'")|safe }}';
+        document.getElementById('license_plate').required = true;
         if (restrictedFields) restrictedFields.style.display = 'none';
-        generalGroups.forEach(function(g) {
-            var label = g.querySelector('label');
-            if (label) {
-                var text = label.textContent.toLowerCase();
-                if (text.includes('address') || text.includes('contact') || text.includes('risk') || text.includes('bank') || text.includes('note')) {
-                    g.style.display = 'none';
-                }
-            }
-        });
     } else {
-        generalGroups.forEach(function(g) { g.style.display = ''; });
-        if (type === 'vehicle') {
-            document.getElementById('kenteken_lookup').focus();
-            document.getElementById('achternaam').value = '';
+        if (restrictedFields) restrictedFields.style.display = 'block';
+        if (type === 'vessel') {
+            document.getElementById('vessel_lookup_imo').focus();
             document.getElementById('achternaam').required = false;
-            document.getElementById('achternaam').placeholder = '{{ _("Vehicle name (e.g. Toyota Aygo) or leave empty")|replace("'", "\\\\'")|safe }}';
-            document.getElementById('license_plate').required = true;
-            if (restrictedFields) restrictedFields.style.display = 'none';
+            document.getElementById('achternaam').placeholder = '{{ _("Ship name or leave empty to fill from lookup")|replace("'", "\\\\'")|safe }}';
+        } else if (type === 'company') {
+            document.getElementById('kvk_lookup_query').focus();
+            document.getElementById('achternaam').required = false;
+            document.getElementById('achternaam').placeholder = '{{ _("Company name or leave empty to fill from KVK lookup")|replace("'", "\\\\'")|safe }}';
         } else {
-            if (restrictedFields) restrictedFields.style.display = 'block';
-            if (type === 'vessel') {
-                document.getElementById('vessel_lookup_imo').focus();
-                document.getElementById('achternaam').required = false;
-                document.getElementById('achternaam').placeholder = '{{ _("Ship name or leave empty to fill from lookup")|replace("'", "\\\\'")|safe }}';
-            } else if (type === 'company') {
-                document.getElementById('kvk_lookup_query').focus();
-                document.getElementById('achternaam').required = false;
-                document.getElementById('achternaam').placeholder = '{{ _("Company name or leave empty to fill from KVK lookup")|replace("'", "\\\\'")|safe }}';
-            } else {
-                document.getElementById('achternaam').required = true;
-                document.getElementById('achternaam').placeholder = '';
-                document.getElementById('achternaam').focus();
-                document.getElementById('license_plate').required = false;
-            }
+            document.getElementById('achternaam').required = true;
+            document.getElementById('achternaam').placeholder = '';
+            document.getElementById('achternaam').focus();
+            document.getElementById('license_plate').required = false;
         }
     }
 }
