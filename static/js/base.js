@@ -803,6 +803,28 @@ function rollbackUpdate() {
     });
 }
 
+// ─── Unsaved changes warning ───
+(function() {
+  var _formDirty = false;
+
+  function markDirty() { _formDirty = true; }
+  function clearDirty() { _formDirty = false; }
+
+  document.addEventListener('input', function(e) {
+    if (e.target.closest('form')) markDirty();
+  });
+  document.addEventListener('change', function(e) {
+    if (e.target.closest('form')) markDirty();
+  });
+  document.addEventListener('submit', function() { clearDirty(); });
+
+  window.addEventListener('beforeunload', function(e) {
+    if (!_formDirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+})();
+
 function checkForUpdates() {
   var statusEl = document.getElementById('updateCheckStatus');
   if (!statusEl) return;

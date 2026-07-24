@@ -2,7 +2,7 @@
 <html lang="{{ current_locale or 'en' }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#1a1a2e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -53,6 +53,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cms-professional.css') }}?v={{ g.css_version }}">
     {% endif %}
     <style nonce="{{ csp_nonce }}">
+        /* ─── Button spinner animation ─── */
+        .btn-spinner { display: inline-block; vertical-align: middle; margin-right: 0.4rem; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; width: 14px; height: 14px; animation: btn-spin 0.6s linear infinite; }
+        @keyframes btn-spin { to { transform: rotate(360deg); } }
         /* ─── Global button color classes ─── */
         .bg-green       { background: #059669; color: #fff; }
         .bg-purple      { background: #7c3aed; color: #fff; }
@@ -133,6 +136,14 @@
         <div class="app-loader-text">Loading OSINT...</div>
         <div class="app-loader-spinner"></div>
     </div>
+    <script nonce="{{ csp_nonce }}">
+    (function() {
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            var el = document.getElementById('appLoader');
+            if (el) el.style.display = 'none';
+        }
+    })();
+    </script>
     <div class="header">
         <div>
             {% if app_logo %}
@@ -295,8 +306,23 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    <div class="alert alert-{{ category }}" style="position:relative;padding-right:2rem;">
+                        {{ message }}
+                        <button onclick="this.parentElement.style.transition='opacity 0.3s,transform 0.3s';this.parentElement.style.opacity='0';this.parentElement.style.transform='translateY(-8px)';setTimeout(function(){this.parentElement.remove()}.bind(this),300);" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:inherit;opacity:0.7;line-height:1;" title="{{ _('Dismiss') }}">&times;</button>
+                    </div>
                 {% endfor %}
+                <script nonce="{{ csp_nonce }}">
+                (function() {
+                    document.querySelectorAll('.alert').forEach(function(el) {
+                        setTimeout(function() {
+                            el.style.transition = 'opacity 0.3s, transform 0.3s';
+                            el.style.opacity = '0';
+                            el.style.transform = 'translateY(-8px)';
+                            setTimeout(function() { el.remove(); }, 300);
+                        }, 5000);
+                    });
+                })();
+                </script>
             {% endif %}
         {% endwith %}
         
@@ -314,10 +340,11 @@
             </span>
             {% endif %}
         </span>
-        <span class="kh-center">
+        <span class="kh-center" style="display:none;" id="keyboardHints">
             <kbd>s</kbd> Search &nbsp; <kbd>j</kbd>/<kbd>k</kbd> Navigate &nbsp; <kbd>Enter</kbd> View &nbsp; <kbd>?</kbd> Help
         </span>
         <span class="kh-right">
+            <button onclick="var h=document.getElementById('keyboardHints');h.style.display=h.style.display==='none'?'inline':'none';" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:1rem;padding:0.1rem 0.4rem;vertical-align:middle;" title="{{ _('Keyboard shortcuts') }}">⌨</button>
             v<span id="footerVersion">-</span>
             <a href="#" data-click="openChangelog" style="color:var(--text-secondary);text-decoration:none;">changelog</a>
             <span style="opacity:0.4;">|</span>
@@ -367,12 +394,12 @@
     <div id="cookieBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg-card,#1e1e2e);color:var(--text-primary,#e0e0e0);padding:1rem 1.5rem;box-shadow:0 -4px 20px rgba(0,0,0,0.3);z-index:9999;border-top:1px solid var(--border-color,#333);">
         <div style="max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
             <div style="font-size:0.85rem;line-height:1.5;flex:1;min-width:200px;">
-                Deze site gebruikt alleen functionele cookies voor sessiebeheer.
-                <a href="{{ url_for('cms.privacy_policy') }}" style="color:var(--accent,#6ee7b7);text-decoration:underline;">Privacybeleid</a>
+                {{ _('Deze site gebruikt alleen functionele cookies voor sessiebeheer.') }}
+                <a href="{{ url_for('cms.privacy_policy') }}" style="color:var(--accent,#6ee7b7);text-decoration:underline;">{{ _('Privacybeleid') }}</a>
             </div>
             <div style="display:flex;gap:0.5rem;flex-shrink:0;">
-                <button type="button" data-cookie-accept="necessary" class="btn-cms primary" style="padding:0.4rem 1rem;font-size:0.85rem;">Alleen noodzakelijk</button>
-                <button type="button" data-cookie-accept="all" class="btn-cms primary" style="padding:0.4rem 1rem;font-size:0.85rem;">Akkoord</button>
+                <button type="button" data-cookie-accept="necessary" class="btn-cms primary" style="padding:0.4rem 1rem;font-size:0.85rem;">{{ _('Alleen noodzakelijk') }}</button>
+                <button type="button" data-cookie-accept="all" class="btn-cms primary" style="padding:0.4rem 1rem;font-size:0.85rem;">{{ _('Akkoord') }}</button>
             </div>
         </div>
     </div>
@@ -400,6 +427,7 @@ window.CMS = {
     updateStatusUrl: '/cms/admin/update-status/',
     abortUpdateUrl: '/cms/admin/abort-update/',
     noNotificationsText: '{{ _("No notifications") }}',
+    noStatusText: '{{ _("Geen status beschikbaar") }}',
 };
 </script>
 <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='dist/base.min.js' if g.use_bundle else 'js/base.js') }}?v={{ g.css_version }}"></script>
@@ -436,7 +464,7 @@ function toggleHealthModal() {
     var body = document.getElementById('healthModalBody');
     var data = document.getElementById('healthTrafficLight')._healthData;
     if (!data) {
-        body.innerHTML = '<div class="health-loading">Geen status beschikbaar</div>';
+        body.innerHTML = '<div class="health-loading">' + esc(window.CMS.noStatusText || 'No status available') + '</div>';
         return;
     }
     var html = '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
