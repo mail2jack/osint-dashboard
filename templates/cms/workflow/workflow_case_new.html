@@ -379,14 +379,18 @@ input:-webkit-autofill:focus {
                 <input type="text" name="subject_0_handelsbenaming" data-idx="0">
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
               <div class="form-group">
-                <label>{{ _('Body Type') }}</label>
+                <label>{{ _('Body Type (Inrichting)') }}</label>
                 <input type="text" name="subject_0_vehicle_type" data-idx="0">
               </div>
               <div class="form-group">
-                <label>{{ _('Color') }}</label>
+                <label>{{ _('Color (Eerste kleur)') }}</label>
                 <input type="text" name="subject_0_eerste_kleur" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('2nd Color') }}</label>
+                <input type="text" name="subject_0_tweede_kleur" data-idx="0">
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
@@ -405,13 +409,103 @@ input:-webkit-autofill:focus {
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
               <div class="form-group">
+                <label>{{ _('Type') }}</label>
+                <input type="text" name="subject_0_rdw_type" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Variant') }}</label>
+                <input type="text" name="subject_0_variant" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Execution (Uitvoering)') }}</label>
+                <input type="text" name="subject_0_uitvoering" data-idx="0">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Engine (cc)') }}</label>
+                <input type="text" name="subject_0_cilinderinhoud" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Cylinders') }}</label>
+                <input type="number" name="subject_0_aantal_cilinders" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Engine Power (kW)') }}</label>
+                <input type="text" name="subject_0_vermogen" data-idx="0">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Empty Weight (kg)') }}</label>
+                <input type="text" name="subject_0_massa_ledig" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Max Weight (kg)') }}</label>
+                <input type="text" name="subject_0_maximum_massa" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Wheelbase (mm)') }}</label>
+                <input type="text" name="subject_0_wielbasis" data-idx="0">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('First Registration') }}</label>
+                <input type="text" name="subject_0_datum_eerste_toelating" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Registration Date') }}</label>
+                <input type="text" name="subject_0_datum_tenaamstelling" data-idx="0">
+              </div>
+              <div class="form-group">
                 <label>{{ _('APK Expiry') }}</label>
                 <input type="text" name="subject_0_vervaldatum_apk" data-idx="0">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('EU Category') }}</label>
+                <input type="text" name="subject_0_europese_voertuigcategorie" data-idx="0">
               </div>
               <div class="form-group">
                 <label>{{ _('WAM Insured') }}</label>
                 <input type="text" name="subject_0_wam_verzekerd" data-idx="0">
               </div>
+              <div class="form-group">
+                <label>{{ _('Catalog Price (EUR)') }}</label>
+                <input type="text" name="subject_0_catalogusprijs" data-idx="0">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('BPM (EUR)') }}</label>
+                <input type="text" name="subject_0_bruto_bpm" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Fuel Class') }}</label>
+                <input type="text" name="subject_0_zuinigheidsclassificatie" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Type Approval No.') }}</label>
+                <input type="text" name="subject_0_typegoedkeuringsnummer" data-idx="0">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Taxi') }}</label>
+                <input type="text" name="subject_0_taxi_indicator" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Export') }}</label>
+                <input type="text" name="subject_0_export_indicator" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Recall Action') }}</label>
+                <input type="text" name="subject_0_openstaande_terugroepactie" data-idx="0">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
               <div class="form-group">
                 <label>{{ _('Insurance Company') }}</label>
                 <input type="text" name="subject_0_insurance_company" data-idx="0">
@@ -539,6 +633,26 @@ var T = {
   apkExpiry: {{ _('APK Expiry')|tojson }},
   wamInsured: {{ _('WAM Insured')|tojson }},
   insuranceCompany: {{ _('Insurance Company')|tojson }},
+  secondColor: {{ _('2nd Color')|tojson }},
+  typeLabel: {{ _('Type')|tojson }},
+  variant: {{ _('Variant')|tojson }},
+  uitvoering: {{ _('Execution (Uitvoering)')|tojson }},
+  engineCc: {{ _('Engine (cc)')|tojson }},
+  cylinders: {{ _('Cylinders')|tojson }},
+  enginePower: {{ _('Engine Power (kW)')|tojson }},
+  emptyWeight: {{ _('Empty Weight (kg)')|tojson }},
+  maxWeight: {{ _('Max Weight (kg)')|tojson }},
+  wheelbase: {{ _('Wheelbase (mm)')|tojson }},
+  firstRegistration: {{ _('First Registration')|tojson }},
+  registrationDate: {{ _('Registration Date')|tojson }},
+  euCategory: {{ _('EU Category')|tojson }},
+  catalogPrice: {{ _('Catalog Price (EUR)')|tojson }},
+  bpm: {{ _('BPM (EUR)')|tojson }},
+  fuelClass: {{ _('Fuel Class')|tojson }},
+  typeApproval: {{ _('Type Approval No.')|tojson }},
+  taxi: {{ _('Taxi')|tojson }},
+  export: {{ _('Export')|tojson }},
+  recallAction: {{ _('Recall Action')|tojson }},
   vesselTitle: {{ _('Vessel Information')|tojson }},
   vesselSubtitle: {{ _('Look up vessel data')|tojson }},
   vesselSearch: {{ _('Search Ship')|tojson }},
@@ -632,7 +746,7 @@ document.addEventListener('DOMContentLoaded', function() {
     for (var i = 0; i < children.length; i++) {
       var el = children[i];
       if (el.classList.contains('sf-all')) {
-        el.style.display = '';
+        el.style.display = (val === 'vehicle' || val === 'vessel') ? 'none' : '';
       } else if (el.classList.contains('sf-' + val)) {
         el.style.display = '';
       } else {
@@ -641,18 +755,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  var _newSubjectIdx = 1;
   function addSubject() {
     var container = document.getElementById('subjects-container');
-    var count = container.children.length;
     var div = document.createElement('div');
     div.className = 'subject-block';
     div.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-color);';
-    var i = count;
+    var i = _newSubjectIdx++;
     var adrHtml = addressRowHtml(i, 0);
     var conHtml = contactRowHtml(i, 0);
     div.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
-        '<strong style="font-size:0.85rem;">Subject ' + (count + 1) + '</strong>' +
+        '<strong style="font-size:0.85rem;">Subject ' + (i + 1) + '</strong>' +
         '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Remove</button>' +
       '</div>' +
       '<div class="subject-type-row">' +
@@ -735,17 +849,43 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
             '<div class="form-group"><label>' + T.brand + '</label><input type="text" name="subject_' + i + '_brand" data-idx="' + i + '"></div>' +
             '<div class="form-group"><label>' + T.model + '</label><input type="text" name="subject_' + i + '_handelsbenaming" data-idx="' + i + '"></div></div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
             '<div class="form-group"><label>' + T.bodyType + '</label><input type="text" name="subject_' + i + '_vehicle_type" data-idx="' + i + '"></div>' +
-            '<div class="form-group"><label>' + T.color + '</label><input type="text" name="subject_' + i + '_eerste_kleur" data-idx="' + i + '"></div></div>' +
+            '<div class="form-group"><label>' + T.color + '</label><input type="text" name="subject_' + i + '_eerste_kleur" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.secondColor + '</label><input type="text" name="subject_' + i + '_tweede_kleur" data-idx="' + i + '"></div></div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
             '<div class="form-group"><label>' + T.vehicleCategory + '</label><input type="text" name="subject_' + i + '_voertuigsoort" data-idx="' + i + '"></div>' +
             '<div class="form-group"><label>' + T.doors + '</label><input type="number" name="subject_' + i + '_aantal_deuren" data-idx="' + i + '"></div>' +
             '<div class="form-group"><label>' + T.seats + '</label><input type="number" name="subject_' + i + '_aantal_zitplaatsen" data-idx="' + i + '"></div></div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
-            '<div class="form-group"><label>' + T.apkExpiry + '</label><input type="text" name="subject_' + i + '_vervaldatum_apk" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.typeLabel + '</label><input type="text" name="subject_' + i + '_rdw_type" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.variant + '</label><input type="text" name="subject_' + i + '_variant" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.uitvoering + '</label><input type="text" name="subject_' + i + '_uitvoering" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.engineCc + '</label><input type="text" name="subject_' + i + '_cilinderinhoud" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.cylinders + '</label><input type="number" name="subject_' + i + '_aantal_cilinders" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.enginePower + '</label><input type="text" name="subject_' + i + '_vermogen" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.emptyWeight + '</label><input type="text" name="subject_' + i + '_massa_ledig" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.maxWeight + '</label><input type="text" name="subject_' + i + '_maximum_massa" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.wheelbase + '</label><input type="text" name="subject_' + i + '_wielbasis" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.firstRegistration + '</label><input type="text" name="subject_' + i + '_datum_eerste_toelating" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.registrationDate + '</label><input type="text" name="subject_' + i + '_datum_tenaamstelling" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.apkExpiry + '</label><input type="text" name="subject_' + i + '_vervaldatum_apk" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.euCategory + '</label><input type="text" name="subject_' + i + '_europese_voertuigcategorie" data-idx="' + i + '"></div>' +
             '<div class="form-group"><label>' + T.wamInsured + '</label><input type="text" name="subject_' + i + '_wam_verzekerd" data-idx="' + i + '"></div>' +
-            '<div class="form-group"><label>' + T.insuranceCompany + '</label><input type="text" name="subject_' + i + '_insurance_company" data-idx="' + i + '"></div></div>' +
+            '<div class="form-group"><label>' + T.catalogPrice + '</label><input type="text" name="subject_' + i + '_catalogusprijs" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.bpm + '</label><input type="text" name="subject_' + i + '_bruto_bpm" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.fuelClass + '</label><input type="text" name="subject_' + i + '_zuinigheidsclassificatie" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.typeApproval + '</label><input type="text" name="subject_' + i + '_typegoedkeuringsnummer" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.taxi + '</label><input type="text" name="subject_' + i + '_taxi_indicator" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.export + '</label><input type="text" name="subject_' + i + '_export_indicator" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.recallAction + '</label><input type="text" name="subject_' + i + '_openstaande_terugroepactie" data-idx="' + i + '"></div></div>' +
+          '<div class="form-group"><label>' + T.insuranceCompany + '</label><input type="text" name="subject_' + i + '_insurance_company" data-idx="' + i + '"></div>' +
         '</div>' +
         '<div class="sf-vessel" style="display:none;">' +
           '<div style="background:linear-gradient(135deg,#0369a1 0%,#075985 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
