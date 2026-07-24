@@ -575,6 +575,9 @@ class CreateSubjectSchema(BaseModel):
     uitvoering: str | None = None
     typegoedkeuringsnummer: str | None = None
     wielbasis: str | None = None
+    # Online entity fields
+    online_platform: str | None = None
+    online_profile_url: str | None = None
 
 
 class EditSubjectSchema(BaseModel):

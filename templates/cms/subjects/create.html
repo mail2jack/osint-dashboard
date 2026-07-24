@@ -377,6 +377,38 @@
             </p>
         </div>
     </div>
+
+    <div id="online-fields" style="display: none;">
+        <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 0.25rem 0;">🌐 {{ _('Online Entity') }}</h3>
+            <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">{{ _('Username and platform for social media / online accounts') }}</p>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group">
+                <label for="online_platform">{{ _('Platform') }}</label>
+                <select name="online_platform" id="online_platform" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    <option value="twitter">{{ _('Twitter/X') }}</option>
+                    <option value="instagram">{{ _('Instagram') }}</option>
+                    <option value="facebook">{{ _('Facebook') }}</option>
+                    <option value="linkedin">{{ _('LinkedIn') }}</option>
+                    <option value="tiktok">{{ _('TikTok') }}</option>
+                    <option value="reddit">{{ _('Reddit') }}</option>
+                    <option value="youtube">{{ _('YouTube') }}</option>
+                    <option value="github">{{ _('GitHub') }}</option>
+                    <option value="telegram">{{ _('Telegram') }}</option>
+                    <option value="signal">{{ _('Signal') }}</option>
+                    <option value="discord">{{ _('Discord') }}</option>
+                    <option value="snapchat">{{ _('Snapchat') }}</option>
+                    <option value="pinterest">{{ _('Pinterest') }}</option>
+                    <option value="other">{{ _('Other') }}</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="online_profile_url">{{ _('Profile URL (optional)') }}</label>
+                <input type="url" name="online_profile_url" id="online_profile_url" placeholder="{{ _('https://...') }}">
+            </div>
+        </div>
+    </div>
     
     <button type="submit" class="btn-cms primary">{{ _('Create Subject') }}</button>
     <button type="button" data-click="resetForm" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Back') }}</button>
@@ -401,31 +433,54 @@ function selectType(btn, type) {
     document.getElementById('company-fields').style.display = type === 'company' ? 'block' : 'none';
     document.getElementById('vehicle-fields').style.display = type === 'vehicle' ? 'block' : 'none';
     document.getElementById('vessel-fields').style.display = type === 'vessel' ? 'block' : 'none';
+    document.getElementById('online-fields').style.display = type === 'online' ? 'block' : 'none';
     
     const restrictedFields = document.getElementById('vehicle-restricted-fields');
-    if (type === 'vehicle') {
-        document.getElementById('kenteken_lookup').focus();
+    const addrGroup = document.querySelector('#general-fields .form-group:nth-of-type(2)');
+    const contactGroup = document.querySelector('#general-fields .form-group:nth-of-type(3)');
+    const generalGroups = document.querySelectorAll('#general-fields > .form-group');
+    
+    if (type === 'online') {
         document.getElementById('achternaam').value = '';
-        document.getElementById('achternaam').required = false;
-        document.getElementById('achternaam').placeholder = '{{ _("Vehicle name (e.g. Toyota Aygo) or leave empty")|replace("'", "\\\\'")|safe }}';
-        document.getElementById('license_plate').required = true;
-        if (restrictedFields) restrictedFields.style.display = 'none';
-    } else {
-        if (restrictedFields) restrictedFields.style.display = 'block';
-        if (type === 'vessel') {
-        document.getElementById('vessel_lookup_imo').focus();
-        document.getElementById('achternaam').required = false;
-        document.getElementById('achternaam').placeholder = '{{ _("Ship name or leave empty to fill from lookup")|replace("'", "\\\\'")|safe }}';
-    } else if (type === 'company') {
-        document.getElementById('kvk_lookup_query').focus();
-        document.getElementById('achternaam').required = false;
-        document.getElementById('achternaam').placeholder = '{{ _("Company name or leave empty to fill from KVK lookup")|replace("'", "\\\\'")|safe }}';
-    } else {
         document.getElementById('achternaam').required = true;
-        document.getElementById('achternaam').placeholder = '';
+        document.getElementById('achternaam').placeholder = '{{ _("e.g. @username")|replace("'", "\\\\'")|safe }}';
         document.getElementById('achternaam').focus();
-        document.getElementById('license_plate').required = false;
-    }
+        if (restrictedFields) restrictedFields.style.display = 'none';
+        generalGroups.forEach(function(g) {
+            var label = g.querySelector('label');
+            if (label) {
+                var text = label.textContent.toLowerCase();
+                if (text.includes('address') || text.includes('contact') || text.includes('risk') || text.includes('bank') || text.includes('note')) {
+                    g.style.display = 'none';
+                }
+            }
+        });
+    } else {
+        generalGroups.forEach(function(g) { g.style.display = ''; });
+        if (type === 'vehicle') {
+            document.getElementById('kenteken_lookup').focus();
+            document.getElementById('achternaam').value = '';
+            document.getElementById('achternaam').required = false;
+            document.getElementById('achternaam').placeholder = '{{ _("Vehicle name (e.g. Toyota Aygo) or leave empty")|replace("'", "\\\\'")|safe }}';
+            document.getElementById('license_plate').required = true;
+            if (restrictedFields) restrictedFields.style.display = 'none';
+        } else {
+            if (restrictedFields) restrictedFields.style.display = 'block';
+            if (type === 'vessel') {
+                document.getElementById('vessel_lookup_imo').focus();
+                document.getElementById('achternaam').required = false;
+                document.getElementById('achternaam').placeholder = '{{ _("Ship name or leave empty to fill from lookup")|replace("'", "\\\\'")|safe }}';
+            } else if (type === 'company') {
+                document.getElementById('kvk_lookup_query').focus();
+                document.getElementById('achternaam').required = false;
+                document.getElementById('achternaam').placeholder = '{{ _("Company name or leave empty to fill from KVK lookup")|replace("'", "\\\\'")|safe }}';
+            } else {
+                document.getElementById('achternaam').required = true;
+                document.getElementById('achternaam').placeholder = '';
+                document.getElementById('achternaam').focus();
+                document.getElementById('license_plate').required = false;
+            }
+        }
     }
 }
 

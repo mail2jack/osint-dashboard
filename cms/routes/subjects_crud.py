@@ -326,6 +326,22 @@ def create_subject() -> flask.Response:
                 ensure_tenant_access(case)
                 case.subjects.append(subject)
 
+        # Create social account for online entities
+        if data["subject_type"] == "online" and data.get("online_platform"):
+            from ..models import SocialAccount
+
+            platform = data["online_platform"].strip().lower()
+            username = name.lstrip("@")
+            profile_url = (data.get("online_profile_url") or "").strip()
+            sa = SocialAccount(
+                tenant_id=current_user.tenant_id,
+                subject_id=subject.id,
+                platform=platform,
+                username=username,
+                url=profile_url,
+            )
+            db.session.add(sa)
+
         AuditLog.log(
             user_id=current_user.id,
             action="create",
