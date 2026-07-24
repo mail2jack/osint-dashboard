@@ -1,5 +1,12 @@
 {% extends "cms/base.html" %}
 {% block content %}
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('cms.subjects') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Subjects') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <span style="color:var(--text-primary);">{{ _('New') }}</span>
+</nav>
 <h2 style="margin-bottom: 1rem;">{{ _('Create New Subject') }}</h2>
 
 <div id="type-selection" style="margin-bottom: 2rem;">
@@ -79,8 +86,8 @@
     
     <div id="online-username-field" class="form-group" style="display: none;">
         <label>{{ _('Username') }}</label>
-        <input type="text" name="achternaam" id="achternaam" value="{{ submitted_achternaam or '' }}" data-input="checkDuplicate" placeholder="{{ _('@username') }}">
-        <div id="duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
+        <input type="text" name="achternaam" id="online_username" value="{{ submitted_achternaam or '' }}" data-input="checkDuplicate" placeholder="{{ _('@username') }}">
+        <div id="online-duplicate-alert" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px; font-size: 0.875rem;"></div>
     </div>
 
     <div id="general-fields" style="display: none;">
@@ -445,7 +452,7 @@ function selectType(btn, type) {
     const restrictedFields = document.getElementById('vehicle-restricted-fields');
     
     if (type === 'online') {
-        var onlineName = document.getElementById('achternaam');
+        var onlineName = document.getElementById('online_username');
         onlineName.value = '';
         onlineName.required = true;
         onlineName.focus();
@@ -722,8 +729,9 @@ document.getElementById('license_plate').addEventListener('input', function() {
 });
 
 function checkDuplicate() {
-    const name = document.getElementById('achternaam').value.trim();
-    const alertEl = document.getElementById('duplicate-alert');
+    var nameInput = selectedType === 'online' ? document.getElementById('online_username') : document.getElementById('achternaam');
+    var alertEl = selectedType === 'online' ? document.getElementById('online-duplicate-alert') : document.getElementById('duplicate-alert');
+    const name = nameInput ? nameInput.value.trim() : '';
     
     if (duplicateTimeout) clearTimeout(duplicateTimeout);
     if (!name || name.length < 2 || selectedType === 'vehicle') {
@@ -732,15 +740,12 @@ function checkDuplicate() {
     }
     
     duplicateTimeout = setTimeout(() => {
-        console.log('Checking duplicate for:', name);
         apiFetch(`/cms/api/check-duplicate?name=${encodeURIComponent(name)}&type=subject`)
             .then(r => {
-                console.log('Check duplicate response status:', r.status);
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
             })
             .then(data => {
-                console.log('Check duplicate data:', data);
                 if (!alertEl) return;
                 
                 if (data.exact) {
@@ -770,13 +775,16 @@ function checkDuplicate() {
 }
 
 function validateForm() {
-    const name = document.getElementById('achternaam').value.trim();
-    const subjectType = document.getElementById('subject_type').value;
-    
-    console.log('Validating form - name:', name, 'type:', subjectType);
+    var nameInput = selectedType === 'online' ? document.getElementById('online_username') : document.getElementById('achternaam');
+    var name = nameInput ? nameInput.value.trim() : '';
+    var subjectType = document.getElementById('subject_type').value;
     
     if (!name && subjectType !== 'vehicle' && subjectType !== 'vessel') {
-        alert('{{ _("Please enter a name")|replace("'", "\\\\'")|safe }}');
+        if (nameInput) {
+            nameInput.style.borderColor = '#ef4444';
+            nameInput.focus();
+            setTimeout(function() { nameInput.style.borderColor = ''; }, 3000);
+        }
         return false;
     }
     
@@ -809,7 +817,15 @@ function postcodeCheck(btn) {
     const number = entry.querySelector('.addr-number').value.trim();
 
     if (!zipcode || !number) {
-        alert('{{ _("Enter zipcode and house number first")|replace("'", "\\\\'")|safe }}');
+        var statusEl = entry.querySelector('.addr-status');
+        if (!statusEl) {
+            statusEl = document.createElement('div');
+            statusEl.className = 'addr-status';
+            statusEl.style.cssText = 'color:#ef4444;font-size:0.8rem;margin-top:0.25rem;';
+            entry.appendChild(statusEl);
+        }
+        statusEl.textContent = '{{ _("Enter zipcode and house number first") }}';
+        setTimeout(function() { statusEl.textContent = ''; }, 3000);
         return;
     }
 
@@ -894,7 +910,6 @@ function computeName() {
 }
 
 function handleFormSubmit(e) {
-    console.log('Form submitted!');
     const form = document.getElementById('subjectForm');
     const submitBtn = form.querySelector('button[type="submit"]');
     
@@ -906,7 +921,7 @@ function handleFormSubmit(e) {
     
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.textContent = '{{ _("Creating...")|replace("'", "\\\\'")|safe }}';
+        submitBtn.innerHTML = '<span class="btn-spinner"></span>{{ _("Creating...")|replace("'", "\\\\'")|safe }}';
     }
     
     e.target.submit();
