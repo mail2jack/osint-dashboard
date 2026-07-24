@@ -1449,7 +1449,7 @@ def tenant_export(tenant_id: str) -> flask.Response:
         cases = Case.query.filter_by(tenant_id=tenant_id).all()
         zf.writestr(
             "cases.json",
-            json.dumps([c.to_dict() for c in cases], indent=2, default=str),
+            json.dumps(Case.batch_to_dict(cases), indent=2, default=str),
         )
 
         # Subjects

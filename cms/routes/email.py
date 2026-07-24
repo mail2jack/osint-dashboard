@@ -2,9 +2,10 @@ import logging
 import re
 import socket
 import os
+import concurrent.futures
 
 import flask
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from flask_login import login_required
 
 from . import cms_bp
@@ -16,17 +17,32 @@ from cms.services.http_utils import jittered_get
 
 logger = logging.getLogger(__name__)
 
+_DISPOSABLE_DOMAINS = {
+    "mailinator.com",
+    "guerrillamail.com",
+    "tempmail.com",
+    "throwaway.email",
+    "yopmail.com",
+    "sharklasers.com",
+    "trashmail.com",
+    "10minutemail.com",
+    "mailnator.com",
+    "temp-mail.org",
+    "getairmail.com",
+    "tempinbox.com",
+    "spamgourmet.com",
+    "mailexpire.com",
+    "maildrop.cc",
+    "burnermail.io",
+    "inboxbear.com",
+    "discard.email",
+    "mintemail.com",
+    "mailforspam.com",
+}
 
-@cms_bp.route("/api/email-check", methods=["POST"])
-@csrf.exempt
-@api_key_required
-@login_required
-@rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="email_check")
-@validate(EmailCheckSchema)
-def email_check() -> flask.Response:
-    """Validate an email address and check for known breaches."""
-    email = request.validated_data["email"].strip().lower()
 
+def _email_check_sync(email: str) -> dict:
+    """Perform the full email check (HIBP, MX, disposable, emailrep) synchronously."""
     result = {
         "email": email,
         "valid_format": False,
@@ -43,35 +59,13 @@ def email_check() -> flask.Response:
     pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"
     if not re.match(pattern, email):
         result["error"] = "Invalid email format"
-        return jsonify(result), 200
+        return result
 
     result["valid_format"] = True
     domain = email.split("@")[1]
     result["domain"] = domain
 
-    disposable_domains = {
-        "mailinator.com",
-        "guerrillamail.com",
-        "tempmail.com",
-        "throwaway.email",
-        "yopmail.com",
-        "sharklasers.com",
-        "trashmail.com",
-        "10minutemail.com",
-        "mailnator.com",
-        "temp-mail.org",
-        "getairmail.com",
-        "tempinbox.com",
-        "spamgourmet.com",
-        "mailexpire.com",
-        "maildrop.cc",
-        "burnermail.io",
-        "inboxbear.com",
-        "discard.email",
-        "mintemail.com",
-        "mailforspam.com",
-    }
-    if domain.lower() in disposable_domains:
+    if domain.lower() in _DISPOSABLE_DOMAINS:
         result["disposable"] = True
 
     try:
@@ -112,7 +106,8 @@ def email_check() -> flask.Response:
                 result["hibp_found"] = False
                 logger.warning("HIBP API key rejected")
         except Exception as e:
-            logger.warning(f"HIBP lookup failed ({type(e).__name__}): {e}")
+            logger.debug(f"HIBP check failed ({type(e).__name__}): {e}")
+            result["error"] = f"HIBP check failed: {type(e).__name__}"
 
     try:
         eresp = jittered_get(
@@ -123,7 +118,7 @@ def email_check() -> flask.Response:
         if eresp.status_code == 200:
             result["emailrep"] = eresp.json()
     except Exception as e:
-        logger.warning(f"EmailRep lookup failed ({type(e).__name__}): {e}")
+        logger.debug(f"EmailRep lookup failed ({type(e).__name__}): {e}")
 
     result["search_links"] = [
         {
@@ -135,6 +130,33 @@ def email_check() -> flask.Response:
         {"label": "Dehashed", "url": f"https://dehashed.com/search?query={email}"},
         {"label": "Google", "url": f"https://www.google.com/search?q={email}"},
     ]
+    return result
+
+
+@cms_bp.route("/api/email-check", methods=["POST"])
+@csrf.exempt
+@api_key_required
+@login_required
+@rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="email_check")
+@validate(EmailCheckSchema)
+def email_check() -> flask.Response:
+    """Validate an email address and check for known breaches."""
+    email = request.validated_data["email"].strip().lower()
+    app = current_app._get_current_object()
+
+    def _run():
+        with app.app_context():
+            return _email_check_sync(email)
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_run)
+            result = future.result(timeout=25)
+    except concurrent.futures.TimeoutError:
+        return jsonify({"error": "Email check timed out, try again later"}), 504
+    except Exception as e:
+        logger.warning(f"Email check failed ({type(e).__name__}): {e}")
+        return jsonify({"error": f"Email check failed: {type(e).__name__}"}), 500
 
     logger.debug(
         f"Email check: {email} -> valid={result['valid_format']}, mx={result['has_mx']}, hibp={result['hibp_found']}"

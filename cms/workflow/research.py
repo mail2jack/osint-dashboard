@@ -319,6 +319,81 @@ def _first_subject(action):
     return subs.first() if subs else None
 
 
+def _site_dork_search(platform_domain, query, subject_id=None, icon="🔍"):
+    """Search for a person on a specific platform using site: dorks.
+
+    Phase 1: Brave Search API (if key available)
+    Phase 2: DDG fallback (if Brave returned nothing)
+
+    Returns list of finding dicts with social_account when username is extractable.
+    """
+    from cms.social_extractor import (
+        detect_platform,
+        extract_username,
+        MAJOR_SOCIAL_PLATFORMS,
+    )
+    from cms.services.search_service import brave_search, ddg_single_query
+
+    findings = []
+    dork = f'"{query}" site:{platform_domain}'
+
+    # Phase 1: Brave Search
+    brave_key = _get_api_key("brave_api_key")
+    results = []
+    if brave_key:
+        try:
+            results = brave_search(dork, api_key=brave_key)
+        except Exception as e:
+            logger.debug("Brave dork search failed for %s: %s", platform_domain, e)
+
+    # Phase 2: DDG fallback
+    if not results:
+        try:
+            ddg_raw = ddg_single_query(dork, max_results=8)
+            results = [
+                {
+                    "url": r["url"],
+                    "title": r.get("title", ""),
+                    "description": r.get("description", ""),
+                }
+                for r in ddg_raw
+            ]
+        except Exception as e:
+            logger.debug("DDG dork search failed for %s: %s", platform_domain, e)
+
+    seen_urls = set()
+    for res in results[:8]:
+        url = res.get("url", "")
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        username = extract_username(url)
+        platform = detect_platform(url)
+
+        finding = {
+            "title": f"Search: {res.get('title', url)[:200]}",
+            "detail": res.get("description", "")[:300] or url,
+            "source_url": url,
+            "source_type": platform_domain.split(".")[0],
+            "icon": icon,
+            "verified": False,
+            "subject_id": subject_id,
+            "screenshots": [{"url": None, "source_url": url}],
+        }
+
+        if username and platform and platform in MAJOR_SOCIAL_PLATFORMS:
+            finding["social_account"] = {
+                "platform": platform,
+                "username": username,
+                "url": url,
+            }
+
+        findings.append(finding)
+
+    return findings
+
+
 def _email_check(action):
     email = action.data_value if action.data_value else None
     if not email:
@@ -388,9 +463,7 @@ def _email_check(action):
     hibp_key = _get_api_key("hibp_api_key")
     if hibp_key:
         try:
-            import requests
-
-            r = requests.get(
+            r = jittered_get(
                 f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}",
                 headers={"hibp-api-key": hibp_key, "user-agent": "Iveras-Workflow"},
                 timeout=15,
@@ -750,9 +823,7 @@ def _address_check(action):
         )
         return findings
     try:
-        import requests
-
-        r = requests.get(
+        r = jittered_get(
             "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free",
             params={"q": address_query, "rows": 10},
             timeout=10,
@@ -1022,9 +1093,7 @@ def _kvk_check(action):
     api_key = _get_api_key("overheid_api_key")
     if api_key:
         try:
-            import requests
-
-            r = requests.get(
+            r = jittered_get(
                 "https://api.overheid.io/openkvk/zoeken",
                 params={"q": query, "rows": 5},
                 headers={"ovio-api-key": api_key},
@@ -1199,10 +1268,8 @@ def _rdw_check(action):
         )
         return findings
     try:
-        import requests
-
         kenteken = ipc.replace("-", "").replace(" ", "").upper()
-        r = requests.get(
+        r = jittered_get(
             "https://opendata.rdw.nl/resource/m9d7-ebf2.json",
             params={"kenteken": kenteken},
             timeout=15,
@@ -1566,30 +1633,38 @@ def _financial_check(action):
 def _facebook_check(action):
     findings = []
     api_key = _get_api_key("rapidapi_username_key")
-    if not api_key:
-        findings.append(
-            {
-                "title": "Facebook check not available",
-                "detail": "No RapidAPI key configured. "
-                "Add it in Settings → API Keys (rapidapi_username_key). "
-                "Key available via RapidAPI: facebook-scraper3",
-                "source_type": "facebook",
-                "icon": "📘",
-                "verified": False,
-            }
-        )
-        return findings
 
     query = action.data_value if action.data_value else None
+    subject = _first_subject(action)
     if not query:
-        subject = _first_subject(action)
         query = subject.name if subject else ""
     if not query:
         return findings
 
-    seen_urls = set()
+    subject_id = subject.id if subject else None
+    name_for_dork = subject.name if subject else query
 
-    def add_finding(name, url, detail=""):
+    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
+    dork_findings = _site_dork_search(
+        "facebook.com", name_for_dork, subject_id, icon="📘"
+    )
+    seen_urls = set()
+    for f in dork_findings:
+        url = f.get("source_url")
+        if url:
+            seen_urls.add(url)
+    findings.extend(dork_findings)
+
+    # ─── Phase 2: API enrichment (only if key available) ────
+    if not api_key:
+        return findings
+
+    is_url = query.startswith("http://") or query.startswith("https://")
+    is_username = (
+        not is_url and "/" not in query and " " not in query and len(query) < 100
+    )
+
+    def add_api_finding(name, url, detail=""):
         if url and url in seen_urls:
             return
         if url:
@@ -1605,11 +1680,6 @@ def _facebook_check(action):
                 "screenshots": [{"url": None, "source_url": url}] if url else [],
             }
         )
-
-    is_url = query.startswith("http://") or query.startswith("https://")
-    is_username = (
-        not is_url and "/" not in query and " " not in query and len(query) < 100
-    )
 
     # ─── PullAPI (primary for URL/username) ────────────────
     if is_url or is_username:
@@ -1652,14 +1722,10 @@ def _facebook_check(action):
                         detail_parts.append(f"📝 {bp}")
                     if data.get("is_verified"):
                         detail_parts.append("✅ Verified")
-                    add_finding(name, url, " · ".join(detail_parts))
+                    add_api_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code in (401, 403):
-                add_finding(
-                    "PullAPI authentication error",
-                    "",
-                    "PullAPI key has no access (subscribe to facebook-scraper-api9 on RapidAPI). Falling back to Scraper3.",
-                )
+                logger.warning("PullAPI auth error — falling back to Scraper3")
             elif r.status_code == 429:
                 logger.warning("PullAPI rate limit — falling back to Scraper3")
             else:
@@ -1684,19 +1750,7 @@ def _facebook_check(action):
                 headers=headers,
                 timeout=15,
             )
-            if r.status_code == 429:
-                add_finding(
-                    "Rate limit reached",
-                    "",
-                    "Facebook Scraper API rate limit exceeded (free plan: 100/month).",
-                )
-                return None
-            if r.status_code in (401, 403):
-                add_finding(
-                    "Authentication error",
-                    "",
-                    "Facebook Scraper API key is invalid or expired.",
-                )
+            if r.status_code in (401, 403, 429):
                 return None
             if r.status_code != 200:
                 return None
@@ -1761,7 +1815,7 @@ def _facebook_check(action):
                     bp = bio[:120] + "…" if len(bio) > 120 else bio
                     detail_parts.append(f"📝 {bp}")
                 detail = " · ".join(detail_parts)
-                add_finding(name, url, detail)
+                add_api_finding(name, url, detail)
 
         if is_url:
             for ep in ["/profile/details_url", "/page/details"]:
@@ -1796,7 +1850,7 @@ def _facebook_check(action):
                         detail_parts.append(
                             f"📝 {bio[:120]}{'…' if len(bio) > 120 else ''}"
                         )
-                    add_finding(name or query, url, " · ".join(detail_parts))
+                    add_api_finding(name or query, url, " · ".join(detail_parts))
                     break
 
         elif is_username:
@@ -1826,7 +1880,7 @@ def _facebook_check(action):
                     detail_parts.append(
                         f"📝 {bio[:120]}{'…' if len(bio) > 120 else ''}"
                     )
-                add_finding(name or query, fb_url, " · ".join(detail_parts))
+                add_api_finding(name or query, fb_url, " · ".join(detail_parts))
             else:
                 process_profile(
                     api_get("/search/people", {"query": query, "country": "NL"})
@@ -1841,15 +1895,8 @@ def _facebook_check(action):
                 if data:
                     process_profile(data)
 
-        if not findings:
-            add_finding(
-                "No Facebook results found",
-                "",
-                f"No profiles or pages found for '{query}' via Facebook Scraper API.",
-            )
-
     except Exception as e:
-        add_finding("Facebook check failed", "", str(e))
+        logger.warning("Facebook API check failed: %s", e)
 
     return findings
 
@@ -1857,44 +1904,33 @@ def _facebook_check(action):
 def _tiktok_check(action):
     findings = []
     api_key = _get_api_key("rapidapi_username_key")
-    if not api_key:
-        findings.append(
-            {
-                "title": "TikTok check not available",
-                "detail": "No RapidAPI key configured. "
-                "Add it in Settings → API Keys (rapidapi_username_key). "
-                "Key available via RapidAPI: scraptik",
-                "source_type": "tiktok",
-                "icon": "🎵",
-                "verified": False,
-            }
-        )
-        return findings
-
-    if not _has_credits("tiktok"):
-        rem = get_remaining_credits("tiktok")
-        findings.append(
-            {
-                "title": "TikTok credits exhausted",
-                "detail": f"{rem} of {CREDIT_LIMITS['tiktok']} credits remaining this month. "
-                "They will reset next month.",
-                "source_type": "tiktok",
-                "icon": "🎵",
-                "verified": False,
-            }
-        )
-        return findings
 
     query = action.data_value if action.data_value else None
+    subject = _first_subject(action)
     if not query:
-        subject = _first_subject(action)
         query = subject.name if subject else ""
     if not query:
         return findings
 
-    seen_urls = set()
+    subject_id = subject.id if subject else None
+    name_for_dork = subject.name if subject else query
 
-    def add_finding(name, url, detail=""):
+    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
+    dork_findings = _site_dork_search(
+        "tiktok.com", name_for_dork, subject_id, icon="🎵"
+    )
+    seen_urls = set()
+    for f in dork_findings:
+        url = f.get("source_url")
+        if url:
+            seen_urls.add(url)
+    findings.extend(dork_findings)
+
+    # ─── Phase 2: API enrichment (only if key + credits) ────
+    if not api_key or not _has_credits("tiktok"):
+        return findings
+
+    def add_api_finding(name, url, detail=""):
         if url and url in seen_urls:
             return
         if url:
@@ -1950,41 +1986,14 @@ def _tiktok_check(action):
                         detail_parts.append(f"↗ {data['following_count']:,} following")
                     if data.get("verification_type") or data.get("verified"):
                         detail_parts.append("✅ Verified")
-
-                    # secondary check: verify TikTok profile page is reachable
-                    try:
-                        from cms.constants import HEADERS as tiktok_headers
-
-                        vr = jittered_get(url, headers=tiktok_headers, timeout=8)
-                        vt = vr.text.lower()
-                        if any(
-                            p in vt
-                            for p in [
-                                "kan dit account niet vinden",
-                                "couldn't find this account",
-                                "this account doesn't exist",
-                                "this page could not be found",
-                            ]
-                        ):
-                            detail_parts.append(
-                                "⚠️ Not directly accessible via TikTok link"
-                            )
-                    except Exception:
-                        pass
-
-                    add_finding(name, url, " · ".join(detail_parts))
+                    add_api_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code == 429:
-                add_finding(
-                    "TikTok rate limit",
-                    "",
-                    "ScrapTik rate limit exceeded (free: 50/month).",
-                )
+                logger.warning("TikTok API rate limit")
                 return findings
             elif r.status_code in (401, 403):
-                add_finding(
-                    "TikTok authentication error", "", "ScrapTik API key is invalid."
-                )
+                logger.warning("TikTok API auth error")
+                return findings
 
         # Name search fallback
         r = jittered_get(
@@ -2016,17 +2025,10 @@ def _tiktok_check(action):
                     detail = (
                         f"📝 {bio[:120]}{'…' if len(bio) > 120 else ''}" if bio else ""
                     )
-                    add_finding(name, url, detail)
-
-        if not findings:
-            add_finding(
-                "No TikTok results found",
-                "",
-                f"No users found for '{query}' via ScrapTik.",
-            )
+                    add_api_finding(name, url, detail)
 
     except Exception as e:
-        add_finding("TikTok check failed", "", str(e))
+        logger.warning("TikTok API check failed: %s", e)
 
     return findings
 
@@ -2034,44 +2036,33 @@ def _tiktok_check(action):
 def _instagram_check(action):
     findings = []
     api_key = _get_api_key("rapidapi_username_key")
-    if not api_key:
-        findings.append(
-            {
-                "title": "Instagram check not available",
-                "detail": "No RapidAPI key configured. "
-                "Add it in Settings → API Keys (rapidapi_username_key). "
-                "Key available via RapidAPI: instagram-scraper-api14",
-                "source_type": "instagram",
-                "icon": "📸",
-                "verified": False,
-            }
-        )
-        return findings
-
-    if not _has_credits("instagram"):
-        rem = get_remaining_credits("instagram")
-        findings.append(
-            {
-                "title": "Instagram credits exhausted",
-                "detail": f"{rem} of {CREDIT_LIMITS['instagram']} credits remaining this month. "
-                "They will reset next month.",
-                "source_type": "instagram",
-                "icon": "📸",
-                "verified": False,
-            }
-        )
-        return findings
 
     query = action.data_value if action.data_value else None
+    subject = _first_subject(action)
     if not query:
-        subject = _first_subject(action)
         query = subject.name if subject else ""
     if not query:
         return findings
 
-    seen_urls = set()
+    subject_id = subject.id if subject else None
+    name_for_dork = subject.name if subject else query
 
-    def add_finding(name, url, detail=""):
+    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
+    dork_findings = _site_dork_search(
+        "instagram.com", name_for_dork, subject_id, icon="📸"
+    )
+    seen_urls = set()
+    for f in dork_findings:
+        url = f.get("source_url")
+        if url:
+            seen_urls.add(url)
+    findings.extend(dork_findings)
+
+    # ─── Phase 2: API enrichment (only if key + credits) ────
+    if not api_key or not _has_credits("instagram"):
+        return findings
+
+    def add_api_finding(name, url, detail=""):
         if url and url in seen_urls:
             return
         if url:
@@ -2127,21 +2118,14 @@ def _instagram_check(action):
                     if data.get("business_category_name"):
                         detail_parts.append(f"🏢 {data['business_category_name']}")
                     _use_credit("instagram")
-                    add_finding(name, url, " · ".join(detail_parts))
+                    add_api_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code == 429:
-                add_finding(
-                    "Instagram rate limit",
-                    "",
-                    "Pro Social Instagram rate limit exceeded.",
-                )
+                logger.warning("Instagram API rate limit")
                 return findings
             elif r.status_code in (401, 403):
-                add_finding(
-                    "Instagram authentication error",
-                    "",
-                    "Pro Social Instagram key is invalid.",
-                )
+                logger.warning("Instagram API auth error")
+                return findings
 
         # Name search fallback
         r = jittered_get(
@@ -2166,17 +2150,10 @@ def _instagram_check(action):
                 url = f"https://www.instagram.com/{uname}/" if uname else ""
                 bio = item.get("biography") or ""
                 detail = f"📝 {bio[:120]}{'…' if len(bio) > 120 else ''}" if bio else ""
-                add_finding(name, url, detail)
-
-        if not findings:
-            add_finding(
-                "No Instagram results found",
-                "",
-                f"No profiles found for '{query}' via PullAPI Instagram.",
-            )
+                add_api_finding(name, url, detail)
 
     except Exception as e:
-        add_finding("Instagram check failed", "", str(e))
+        logger.warning("Instagram API check failed: %s", e)
 
     return findings
 
@@ -2184,44 +2161,33 @@ def _instagram_check(action):
 def _linkedin_check(action):
     findings = []
     api_key = _get_api_key("rapidapi_username_key")
-    if not api_key:
-        findings.append(
-            {
-                "title": "LinkedIn check not available",
-                "detail": "No RapidAPI key configured. "
-                "Add it in Settings → API Keys (rapidapi_username_key). "
-                "Key available via RapidAPI: linkedin-data-api",
-                "source_type": "linkedin",
-                "icon": "💼",
-                "verified": False,
-            }
-        )
-        return findings
-
-    if not _has_credits("linkedin"):
-        rem = get_remaining_credits("linkedin")
-        findings.append(
-            {
-                "title": "LinkedIn credits exhausted",
-                "detail": f"{rem} of {CREDIT_LIMITS['linkedin']} credits remaining this month. "
-                "They will reset next month.",
-                "source_type": "linkedin",
-                "icon": "💼",
-                "verified": False,
-            }
-        )
-        return findings
 
     query = action.data_value if action.data_value else None
+    subject = _first_subject(action)
     if not query:
-        subject = _first_subject(action)
         query = subject.name if subject else ""
     if not query:
         return findings
 
-    seen_urls = set()
+    subject_id = subject.id if subject else None
+    name_for_dork = subject.name if subject else query
 
-    def add_finding(name, url, detail=""):
+    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
+    dork_findings = _site_dork_search(
+        "linkedin.com", name_for_dork, subject_id, icon="💼"
+    )
+    seen_urls = set()
+    for f in dork_findings:
+        url = f.get("source_url")
+        if url:
+            seen_urls.add(url)
+    findings.extend(dork_findings)
+
+    # ─── Phase 2: API enrichment (only if key + credits) ────
+    if not api_key or not _has_credits("linkedin"):
+        return findings
+
+    def add_api_finding(name, url, detail=""):
         if url and url in seen_urls:
             return
         if url:
@@ -2257,19 +2223,7 @@ def _linkedin_check(action):
                 headers=headers,
                 timeout=15,
             )
-            if r.status_code == 429:
-                add_finding(
-                    "LinkedIn rate limit",
-                    "",
-                    "LinkedIn Data API rate limit exceeded.",
-                )
-                return None
-            if r.status_code in (401, 403):
-                add_finding(
-                    "LinkedIn authentication error",
-                    "",
-                    "LinkedIn Data API key is invalid.",
-                )
+            if r.status_code in (401, 403, 429):
                 return None
             if r.status_code != 200:
                 return None
@@ -2320,7 +2274,7 @@ def _linkedin_check(action):
                     if summary:
                         sp = summary[:120] + "…" if len(summary) > 120 else summary
                         detail_parts.append(f"📝 {sp}")
-                    add_finding(name, url or query, " · ".join(detail_parts))
+                    add_api_finding(name, url or query, " · ".join(detail_parts))
                     return findings
 
         if is_username:
@@ -2343,7 +2297,7 @@ def _linkedin_check(action):
                     if summary:
                         sp = summary[:120] + "…" if len(summary) > 120 else summary
                         detail_parts.append(f"📝 {sp}")
-                    add_finding(name, url or profile_url, " · ".join(detail_parts))
+                    add_api_finding(name, url or profile_url, " · ".join(detail_parts))
                     return findings
 
         # Name search
@@ -2374,17 +2328,10 @@ def _linkedin_check(action):
                     if location:
                         detail_parts.append(f"📍 {location}")
                     detail = " · ".join(detail_parts)
-                    add_finding(name, url, detail)
-
-        if not findings:
-            add_finding(
-                "No LinkedIn results found",
-                "",
-                f"No profiles found for '{query}' via LinkedIn Data API.",
-            )
+                    add_api_finding(name, url, detail)
 
     except Exception as e:
-        add_finding("LinkedIn check failed", "", str(e))
+        logger.warning("LinkedIn API check failed: %s", e)
 
     return findings
 
@@ -2392,44 +2339,37 @@ def _linkedin_check(action):
 def _twitter_check(action):
     findings = []
     api_key = _get_api_key("rapidapi_username_key")
-    if not api_key:
-        findings.append(
-            {
-                "title": "Twitter check not available",
-                "detail": "No RapidAPI key configured. "
-                "Add it in Settings → API Keys (rapidapi_username_key). "
-                "Key available via RapidAPI: twitter-api45",
-                "source_type": "twitter",
-                "icon": "🐦",
-                "verified": False,
-            }
-        )
-        return findings
-
-    if not _has_credits("twitter"):
-        rem = get_remaining_credits("twitter")
-        findings.append(
-            {
-                "title": "Twitter credits exhausted",
-                "detail": f"{rem} of {CREDIT_LIMITS['twitter']} credits remaining this month. "
-                "They will reset next month.",
-                "source_type": "twitter",
-                "icon": "🐦",
-                "verified": False,
-            }
-        )
-        return findings
 
     query = action.data_value if action.data_value else None
+    subject = _first_subject(action)
     if not query:
-        subject = _first_subject(action)
         query = subject.name if subject else ""
     if not query:
         return findings
 
-    seen_urls = set()
+    subject_id = subject.id if subject else None
+    name_for_dork = subject.name if subject else query
 
-    def add_finding(name, url, detail=""):
+    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
+    # Twitter/X: search both domains
+    dork_findings = _site_dork_search(
+        "twitter.com", name_for_dork, subject_id, icon="🐦"
+    )
+    dork_findings += _site_dork_search("x.com", name_for_dork, subject_id, icon="🐦")
+    seen_urls = set()
+    deduped = []
+    for f in dork_findings:
+        url = f.get("source_url")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            deduped.append(f)
+    findings.extend(deduped)
+
+    # ─── Phase 2: API enrichment (only if key + credits) ────
+    if not api_key or not _has_credits("twitter"):
+        return findings
+
+    def add_api_finding(name, url, detail=""):
         if url and url in seen_urls:
             return
         if url:
@@ -2485,17 +2425,14 @@ def _twitter_check(action):
                         detail_parts.append(f"↗ {body['friends_count']:,} following")
                     if body.get("verified") or body.get("is_blue_verified"):
                         detail_parts.append("✅ Verified")
-                    add_finding(name, url, " · ".join(detail_parts))
+                    add_api_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code == 429:
-                add_finding(
-                    "Twitter rate limit", "", "Twitter API rate limit exceeded."
-                )
+                logger.warning("Twitter API rate limit")
                 return findings
             elif r.status_code in (401, 403):
-                add_finding(
-                    "Twitter authentication error", "", "Twitter API key is invalid."
-                )
+                logger.warning("Twitter API auth error")
+                return findings
 
         # Search fallback
         r = jittered_get(
@@ -2524,17 +2461,10 @@ def _twitter_check(action):
                     detail = (
                         f"📝 {bio[:120]}{'…' if len(bio) > 120 else ''}" if bio else ""
                     )
-                    add_finding(name, url, detail)
-
-        if not findings:
-            add_finding(
-                "No Twitter results found",
-                "",
-                f"No users found for '{query}' via Twitter API.",
-            )
+                    add_api_finding(name, url, detail)
 
     except Exception as e:
-        add_finding("Twitter check failed", "", str(e))
+        logger.warning("Twitter API check failed: %s", e)
 
     return findings
 

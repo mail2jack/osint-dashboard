@@ -2,9 +2,10 @@ import logging
 import re
 import threading
 import time
+import concurrent.futures
 
 import flask
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from flask_login import login_required, current_user
 
 from . import cms_bp
@@ -53,32 +54,33 @@ def _interpol_headers() -> dict:
 def check_policie_data() -> flask.Response:
     """Check subject against INTERPOL Red Notices + Yellow Notices + politie.nl."""
     data = request.validated_data
-
     subject_name = data.get("name", "").strip()
     subject_id = data.get("subject_id")
 
     if not subject_name:
         return api_error("Subject name is required", 400)
 
-    name_parts = subject_name.lower().split()
-    forename = name_parts[0] if len(name_parts) > 0 else ""
-    surname = name_parts[-1] if len(name_parts) > 1 else ""
+    app = current_app._get_current_object()
 
-    results = {
-        "subject_name": subject_name,
-        "subject_id": subject_id,
-        "missing_persons": [],
-        "wanted_persons": [],
-        "opsporingsberichten": [],
-        "api_available": True,
-        "source": "interpol",
-        "error": None,
-    }
+    def _do_check():
+        name_parts = subject_name.lower().split()
+        forename = name_parts[0] if len(name_parts) > 0 else ""
+        surname = name_parts[-1] if len(name_parts) > 1 else ""
 
-    wait = _check_interpol_rate_limit()
-    if wait > 0:
-        return jsonify(
-            {
+        results = {
+            "subject_name": subject_name,
+            "subject_id": subject_id,
+            "missing_persons": [],
+            "wanted_persons": [],
+            "opsporingsberichten": [],
+            "api_available": True,
+            "source": "interpol",
+            "error": None,
+        }
+
+        wait = _check_interpol_rate_limit()
+        if wait > 0:
+            return {
                 "subject_name": subject_name,
                 "subject_id": subject_id,
                 "missing_persons": [],
@@ -87,200 +89,232 @@ def check_policie_data() -> flask.Response:
                 "source": "interpol",
                 "error": f"Interpol API rate limit: wait {wait:.0f} seconds before next request",
                 "retry_after": int(wait),
-            }
-        ), 429
+            }, 429
 
-    interpol_403 = False
-    try:
-        client = Session(
-            impersonate="chrome124", headers=_interpol_headers(), timeout=15
-        )
-
+        interpol_403 = False
         try:
-            red_params = {"resultPerPage": 10}
-            if surname:
-                red_params["name"] = surname
-            if forename:
-                red_params["forename"] = forename
-            r = client.get(
-                "https://ws-public.interpol.int/notices/v1/red", params=red_params
+            client = Session(
+                impersonate="chrome124", headers=_interpol_headers(), timeout=15
             )
-            if r.status_code == 200:
-                red_data = r.json()
-                for notice in red_data.get("_embedded", {}).get("notices", []):
-                    nid = notice["entity_id"].replace("/", "-")
-                    detail = None
-                    try:
-                        dr = client.get(
-                            f"https://ws-public.interpol.int/notices/v1/red/{nid}"
-                        )
-                        if dr.status_code == 200:
-                            detail = dr.json()
-                    except Exception as e:
-                        logger.debug(
-                            f"INTERPOL Red Notice detail fetch failed for {nid} ({type(e).__name__}): {e}"
-                        )
-                    charge = ""
-                    issuing = ""
-                    if detail and detail.get("arrest_warrants"):
-                        aw = detail["arrest_warrants"][0]
-                        charge = aw.get("charge", "")
-                        issuing = aw.get("issuing_country_id", "")
-                    results["wanted_persons"].append(
-                        {
-                            "name": f"{notice.get('forename', '')} {notice.get('name', '')}".strip(),
-                            "forename": notice.get("forename", ""),
-                            "surname": notice.get("name", ""),
-                            "date_of_birth": notice.get("date_of_birth", ""),
-                            "nationality": ", ".join(notice.get("nationalities", [])),
-                            "charge": charge,
-                            "issuing_country": issuing,
-                            "url": notice.get("_links", {})
-                            .get("self", {})
-                            .get("href", ""),
-                            "thumbnail": notice.get("_links", {})
-                            .get("thumbnail", {})
-                            .get("href", ""),
-                            "type": "Red Notice (Wanted)",
-                            "source": "INTERPOL",
-                        }
-                    )
-            elif r.status_code == 403:
-                interpol_403 = True
-        except Exception as e:
-            logger.warning(f"Interpol Red Notice lookup error: {e}")
 
-        try:
-            yellow_params = {"resultPerPage": 10}
-            if surname:
-                yellow_params["name"] = surname
-            if forename:
-                yellow_params["forename"] = forename
-            r = client.get(
-                "https://ws-public.interpol.int/notices/v1/yellow", params=yellow_params
-            )
-            if r.status_code == 200:
-                yellow_data = r.json()
-                for notice in yellow_data.get("_embedded", {}).get("notices", []):
-                    nid = notice["entity_id"].replace("/", "-")
-                    detail = None
-                    try:
-                        dr = client.get(
-                            f"https://ws-public.interpol.int/notices/v1/yellow/{nid}"
-                        )
-                        if dr.status_code == 200:
-                            detail = dr.json()
-                    except Exception as e:
-                        logger.debug(
-                            f"INTERPOL Yellow Notice detail fetch failed for {nid} ({type(e).__name__}): {e}"
-                        )
-                    results["missing_persons"].append(
-                        {
-                            "name": f"{notice.get('forename', '')} {notice.get('name', '')}".strip(),
-                            "forename": notice.get("forename", ""),
-                            "surname": notice.get("name", ""),
-                            "date_of_birth": notice.get("date_of_birth", ""),
-                            "nationality": ", ".join(notice.get("nationalities", [])),
-                            "date_missing": detail.get("date_of_event", "")
-                            if detail
-                            else "",
-                            "place": detail.get("place", "") if detail else "",
-                            "countries_likely_to_visit": ", ".join(
-                                detail.get("countries_likely_to_be_visited", [])
-                            )
-                            if detail
-                            else "",
-                            "url": notice.get("_links", {})
-                            .get("self", {})
-                            .get("href", ""),
-                            "thumbnail": notice.get("_links", {})
-                            .get("thumbnail", {})
-                            .get("href", ""),
-                            "type": "Yellow Notice (Missing)",
-                            "source": "INTERPOL",
-                        }
-                    )
-            elif r.status_code == 403:
-                interpol_403 = True
-        except Exception as e:
-            logger.warning(f"Interpol Yellow Notice lookup error: {e}")
-
-        if (
-            len(results["wanted_persons"]) == 0
-            and len(results["missing_persons"]) == 0
-            and len(name_parts) >= 1
-        ):
             try:
-                vermist_resp = jittered_get(
-                    "https://www.politie.nl/vermist",
-                    headers=_interpol_headers(),
-                    timeout=10,
+                red_params = {"resultPerPage": 10}
+                if surname:
+                    red_params["name"] = surname
+                if forename:
+                    red_params["forename"] = forename
+                r = client.get(
+                    "https://ws-public.interpol.int/notices/v1/red", params=red_params
                 )
-                if vermist_resp.status_code == 200:
-                    case_links = re.findall(
-                        r'href="(/vermist/[^"]+)"', vermist_resp.text
-                    )
-                    for link in case_links[:20]:
+                if r.status_code == 200:
+                    red_data = r.json()
+                    for notice in red_data.get("_embedded", {}).get("notices", []):
+                        nid = notice["entity_id"].replace("/", "-")
+                        detail = None
                         try:
-                            detail = jittered_get(
-                                f"https://www.politie.nl{link}",
-                                headers=_interpol_headers(),
-                                timeout=10,
+                            dr = client.get(
+                                f"https://ws-public.interpol.int/notices/v1/red/{nid}"
                             )
-                            if detail.status_code == 200:
-                                text_lower = detail.text.lower()
-                                if any(part in text_lower for part in name_parts):
-                                    title_match = re.search(
-                                        r"<h1[^>]*>([^<]+)</h1>", detail.text
-                                    )
-                                    title = (
-                                        title_match.group(1).strip()
-                                        if title_match
-                                        else "Unknown"
-                                    )
-                                    results["missing_persons"].append(
-                                        {
-                                            "name": title,
-                                            "source": "politie.nl/vermist",
-                                            "url": f"https://www.politie.nl{link}",
-                                            "type": "Missing Person (Netherlands)",
-                                            "description": "Matching name parts found on politie.nl",
-                                        }
-                                    )
+                            if dr.status_code == 200:
+                                detail = dr.json()
                         except Exception as e:
                             logger.debug(
-                                f"Politie.nl/vermist detail page fetch failed for {link} ({type(e).__name__}): {e}"
+                                f"INTERPOL Red Notice detail fetch failed for {nid} ({type(e).__name__}): {e}"
                             )
+                        charge = ""
+                        issuing = ""
+                        if detail and detail.get("arrest_warrants"):
+                            aw = detail["arrest_warrants"][0]
+                            charge = aw.get("charge", "")
+                            issuing = aw.get("issuing_country_id", "")
+                        results["wanted_persons"].append(
+                            {
+                                "name": f"{notice.get('forename', '')} {notice.get('name', '')}".strip(),
+                                "forename": notice.get("forename", ""),
+                                "surname": notice.get("name", ""),
+                                "date_of_birth": notice.get("date_of_birth", ""),
+                                "nationality": ", ".join(
+                                    notice.get("nationalities", [])
+                                ),
+                                "charge": charge,
+                                "issuing_country": issuing,
+                                "url": notice.get("_links", {})
+                                .get("self", {})
+                                .get("href", ""),
+                                "thumbnail": notice.get("_links", {})
+                                .get("thumbnail", {})
+                                .get("href", ""),
+                                "type": "Red Notice (Wanted)",
+                                "source": "INTERPOL",
+                            }
+                        )
+                elif r.status_code == 403:
+                    interpol_403 = True
             except Exception as e:
-                logger.warning(
-                    f"Politie.nl/vermist main page scrape failed ({type(e).__name__}): {e}"
+                logger.warning(f"Interpol Red Notice lookup error: {e}")
+
+            try:
+                yellow_params = {"resultPerPage": 10}
+                if surname:
+                    yellow_params["name"] = surname
+                if forename:
+                    yellow_params["forename"] = forename
+                r = client.get(
+                    "https://ws-public.interpol.int/notices/v1/yellow",
+                    params=yellow_params,
                 )
+                if r.status_code == 200:
+                    yellow_data = r.json()
+                    for notice in yellow_data.get("_embedded", {}).get("notices", []):
+                        nid = notice["entity_id"].replace("/", "-")
+                        detail = None
+                        try:
+                            dr = client.get(
+                                f"https://ws-public.interpol.int/notices/v1/yellow/{nid}"
+                            )
+                            if dr.status_code == 200:
+                                detail = dr.json()
+                        except Exception as e:
+                            logger.debug(
+                                f"INTERPOL Yellow Notice detail fetch failed for {nid} ({type(e).__name__}): {e}"
+                            )
+                        results["missing_persons"].append(
+                            {
+                                "name": f"{notice.get('forename', '')} {notice.get('name', '')}".strip(),
+                                "forename": notice.get("forename", ""),
+                                "surname": notice.get("name", ""),
+                                "date_of_birth": notice.get("date_of_birth", ""),
+                                "nationality": ", ".join(
+                                    notice.get("nationalities", [])
+                                ),
+                                "date_missing": detail.get("date_of_event", "")
+                                if detail
+                                else "",
+                                "place": detail.get("place", "") if detail else "",
+                                "countries_likely_to_visit": ", ".join(
+                                    detail.get("countries_likely_to_be_visited", [])
+                                )
+                                if detail
+                                else "",
+                                "url": notice.get("_links", {})
+                                .get("self", {})
+                                .get("href", ""),
+                                "thumbnail": notice.get("_links", {})
+                                .get("thumbnail", {})
+                                .get("href", ""),
+                                "type": "Yellow Notice (Missing)",
+                                "source": "INTERPOL",
+                            }
+                        )
+                elif r.status_code == 403:
+                    interpol_403 = True
+            except Exception as e:
+                logger.warning(f"Interpol Yellow Notice lookup error: {e}")
 
-        results["api_available"] = not interpol_403
-        if (
-            interpol_403
-            and len(results["wanted_persons"]) == 0
-            and len(results["missing_persons"]) == 0
-        ):
-            results["error"] = (
-                "INTERPOL API is tijdelijk geblokkeerd (Akamai). Politie.nl check uitgevoerd als fallback."
-            )
-            results["source"] = "politie.nl (fallback)"
+            if (
+                len(results["wanted_persons"]) == 0
+                and len(results["missing_persons"]) == 0
+                and len(name_parts) >= 1
+            ):
+                try:
+                    vermist_resp = jittered_get(
+                        "https://www.politie.nl/vermist",
+                        headers=_interpol_headers(),
+                        timeout=10,
+                    )
+                    if vermist_resp.status_code == 200:
+                        case_links = re.findall(
+                            r'href="(/vermist/[^"]+)"', vermist_resp.text
+                        )
+                        for link in case_links[:20]:
+                            try:
+                                detail = jittered_get(
+                                    f"https://www.politie.nl{link}",
+                                    headers=_interpol_headers(),
+                                    timeout=10,
+                                )
+                                if detail.status_code == 200:
+                                    text_lower = detail.text.lower()
+                                    if any(part in text_lower for part in name_parts):
+                                        title_match = re.search(
+                                            r"<h1[^>]*>([^<]+)</h1>", detail.text
+                                        )
+                                        title = (
+                                            title_match.group(1).strip()
+                                            if title_match
+                                            else "Unknown"
+                                        )
+                                        results["missing_persons"].append(
+                                            {
+                                                "name": title,
+                                                "source": "politie.nl/vermist",
+                                                "url": f"https://www.politie.nl{link}",
+                                                "type": "Missing Person (Netherlands)",
+                                                "description": "Matching name parts found on politie.nl",
+                                            }
+                                        )
+                            except Exception as e:
+                                logger.debug(
+                                    f"Politie.nl/vermist detail page fetch failed for {link} ({type(e).__name__}): {e}"
+                                )
+                except Exception as e:
+                    logger.warning(
+                        f"Politie.nl/vermist main page scrape failed ({type(e).__name__}): {e}"
+                    )
 
-        try:
-            from cms.politie_scraper import search_opsporingsberichten
+            results["api_available"] = not interpol_403
+            if (
+                interpol_403
+                and len(results["wanted_persons"]) == 0
+                and len(results["missing_persons"]) == 0
+            ):
+                results["error"] = (
+                    "INTERPOL API is tijdelijk geblokkeerd (Akamai). Politie.nl check uitgevoerd als fallback."
+                )
+                results["source"] = "politie.nl (fallback)"
 
-            gezocht = search_opsporingsberichten(
-                forename=forename, surname=surname, max_pages=2
-            )
-            results["opsporingsberichten"] = gezocht.get("matches", [])
-        except Exception as e:
-            logger.warning(f"Opsporingsberichten check error: {e}")
+            try:
+                from cms.politie_scraper import search_opsporingsberichten
 
-        return jsonify(results), 200
-    except Exception:
-        logger.exception("Interpol data check error")
-        return jsonify({"error": "Failed to check data", "api_available": False}), 500
+                gezocht = search_opsporingsberichten(
+                    forename=forename, surname=surname, max_pages=2
+                )
+                results["opsporingsberichten"] = gezocht.get("matches", [])
+            except Exception as e:
+                logger.warning(f"Opsporingsberichten check error: {e}")
+
+            return results, 200
+        except Exception:
+            logger.exception("Interpol data check error")
+            return {"error": "Failed to check data", "api_available": False}, 500
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+
+            def _run():
+                with app.app_context():
+                    return _do_check()
+
+            future = pool.submit(_run)
+            result, status = future.result(timeout=60)
+    except concurrent.futures.TimeoutError:
+        return jsonify(
+            {
+                "subject_name": subject_name,
+                "subject_id": subject_id,
+                "missing_persons": [],
+                "wanted_persons": [],
+                "opsporingsberichten": [],
+                "api_available": False,
+                "source": "interpol",
+                "error": "Interpol check timed out, try again later",
+            }
+        ), 504
+    except Exception as e:
+        logger.warning(f"Interpol check failed ({type(e).__name__}): {e}")
+        return jsonify({"error": f"Interpol check failed: {type(e).__name__}"}), 500
+
+    return jsonify(result), status
 
 
 @cms_bp.route("/check-policie-data-status", methods=["GET"])

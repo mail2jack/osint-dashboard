@@ -403,6 +403,10 @@
         <label for="risk_score">{{ _('Risk Score (0-100)') }}</label>
         <input type="number" name="risk_score" id="risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100">
     </div>
+    <div class="form-group">
+        <label for="notes">{{ _('Notes') }}</label>
+        <textarea name="notes" id="notes" rows="3" placeholder="{{ _('Internal notes') }}">{{ subject.notes or '' }}</textarea>
+    </div>
     </div>
     <button type="submit" class="btn-cms primary">{{ _('Save Changes') }}</button>
     <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" class="btn-cms gray" style="margin-left:0.5rem;">{{ _('Cancel') }}</a>

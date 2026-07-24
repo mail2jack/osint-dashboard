@@ -229,7 +229,7 @@ input:-webkit-autofill:focus {
               <select name="subject_0_reisdocument_type">
                 <option value="">— {{ _('Select') }} —</option>
                 <option value="paspoort">{{ _('Paspoort') }}</option>
-                <option value="id_kaart">{{ _('ID-kaart') }}</option>
+                <option value="id-kaart">{{ _('ID-kaart') }}</option>
                 <option value="rijbewijs">{{ _('Rijbewijs') }}</option>
                 <option value="overige">{{ _('Overig') }}</option>
               </select>
@@ -265,6 +265,10 @@ input:-webkit-autofill:focus {
             <div class="form-group full-width sf-person sf-online">
               <label>{{ _('Social accounts') }}</label>
               <input type="text" name="subject_0_social_accounts" placeholder="{{ _('@username1, @username2') }}">
+            </div>
+            <div class="form-group full-width sf-all">
+              <label>{{ _('Risk Score (0-100)') }}</label>
+              <input type="number" name="subject_0_risk_score" value="0" min="0" max="100">
             </div>
             <div class="form-group full-width sf-all">
               <label>{{ _('Notes') }}</label>
@@ -308,6 +312,7 @@ var T = {
   straat: {{ _('Straat')|tojson }},
   plaats: {{ _('Plaats')|tojson }},
   socialAccounts: {{ _('Social accounts')|tojson }},
+  riskScore: {{ _('Risk Score (0-100)')|tojson }},
   notes: {{ _('Notes')|tojson }},
   streetName: {{ _('Street name')|tojson }},
   last_name: {{ _('Last name')|tojson }},
@@ -390,7 +395,7 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-person"><label>' + T.nationality + '</label><input type="text" name="subject_' + count + '_nationality" placeholder="' + T.dutch + '"></div>' +
           '<div class="form-group sf-person"><label>' + T.geslacht + '</label><select name="subject_' + count + '_geslacht"><option value="">— ' + T.select + ' —</option><option value="man">' + T.man + '</option><option value="vrouw">' + T.vrouw + '</option><option value="onbekend">' + T.onbekend + '</option><option value="geen_opgave">' + T.geenOpgave + '</option></select></div>' +
           '<div class="form-group sf-person"><label>' + T.bsnNummer + '</label><input type="text" name="subject_' + count + '_bsn_number" placeholder="000000000"></div>' +
-          '<div class="form-group sf-person"><label>' + T.reisdocumentType + '</label><select name="subject_' + count + '_reisdocument_type"><option value="">— ' + T.select + ' —</option><option value="paspoort">' + T.paspoort + '</option><option value="id_kaart">' + T.idKaart + '</option><option value="rijbewijs">' + T.rijbewijs + '</option><option value="overige">' + T.overig + '</option></select></div>' +
+          '<div class="form-group sf-person"><label>' + T.reisdocumentType + '</label><select name="subject_' + count + '_reisdocument_type"><option value="">— ' + T.select + ' —</option><option value="paspoort">' + T.paspoort + '</option><option value="id-kaart">' + T.idKaart + '</option><option value="rijbewijs">' + T.rijbewijs + '</option><option value="overige">' + T.overig + '</option></select></div>' +
           '<div class="form-group sf-person"><label>' + T.reisdocumentNummer + '</label><input type="text" name="subject_' + count + '_reisdocument_nummer" placeholder="' + T.abPlaceholder + '"></div>' +
           '<div class="form-group sf-person sf-company"><label>' + T.bankAccount + '</label><input type="text" name="subject_' + count + '_bank_account" placeholder="' + T.ingbPlaceholder + '"></div>' +
           '<div class="form-group sf-person sf-company"><label>' + T.postcode + '</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="' + T.zipPlaceholder + '"></div>' +
@@ -399,6 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-person sf-company"><label>' + T.straat + '</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="' + T.streetName + '"></div>' +
           '<div class="form-group sf-person sf-company"><label>' + T.plaats + '</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="' + T.amsterdam + '"></div>' +
           '<div class="form-group full-width sf-person sf-online"><label>' + T.socialAccounts + '</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="' + T.socialPlaceholder + '"></div>' +
+          '<div class="form-group full-width sf-all"><label>' + T.riskScore + '</label><input type="number" name="subject_' + count + '_risk_score" value="0" min="0" max="100"></div>' +
           '<div class="form-group full-width sf-all"><label>' + T.notes + '</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="' + T.internalNotes + '"></textarea></div>' +
         '</div>' +
       '</div>';

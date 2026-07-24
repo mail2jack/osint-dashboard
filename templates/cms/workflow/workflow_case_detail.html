@@ -264,7 +264,7 @@ input:-webkit-autofill:focus {
         {% if subject.reisdocument_type %}
         <div class="subject-info-item">
           <div class="lbl">{{ _('Reisdocument') }}</div>
-          <div class="val">{{ subject.reisdocument_type }} {{ subject.reisdocument_nummer or '' }}</div>
+          <div class="val">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overig'}.get(subject.reisdocument_type, subject.reisdocument_type) }}{{ ' — ' + subject.reisdocument_nummer if subject.reisdocument_nummer else '' }}</div>
         </div>
         {% endif %}
         <div class="subject-info-item">

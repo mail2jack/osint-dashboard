@@ -124,6 +124,181 @@ def _get_brave_key() -> str:
     return os.environ.get("BRAVE_API_KEY", "")
 
 
+_DDG_UA_BASE = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{}.0.0.0 Safari/537.36"
+_DDG_HEADERS = {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Connection": "keep-alive",
+    "DNT": "1",
+}
+
+
+def _ddg_is_blocked(text):
+    return any(
+        p in text.lower()
+        for p in [
+            "challenge-platform",
+            "cf-browser-request",
+            "please complete the security",
+            "captcha",
+            "ddos",
+            "blocked",
+            "automated requests",
+        ]
+    )
+
+
+def ddg_single_query(query, max_results=10):
+    """Run a single query against DuckDuckGo (lite -> html -> api cascade).
+
+    Returns list of {"url": ..., "title": ..., "description": ...} dicts.
+    Uses curl_cffi with TLS fingerprint rotation and jitter for OPSEC.
+    """
+    results = []
+    seen = set()
+
+    ddg_methods = [
+        {
+            "name": "lite",
+            "url": "https://lite.duckduckgo.com/lite/",
+            "ua_chrome": "121",
+        },
+        {
+            "name": "html",
+            "url": "https://html.duckduckgo.com/html/",
+            "ua_chrome": "122",
+        },
+        {"name": "api", "url": "https://api.duckduckgo.com/", "ua_chrome": "123"},
+    ]
+
+    for method in ddg_methods:
+        if len(results) >= max_results:
+            break
+        try:
+            headers = dict(_DDG_HEADERS)
+            headers["User-Agent"] = _DDG_UA_BASE.format(method["ua_chrome"])
+            client = _get_http_client(timeout=7.0, headers=headers)
+
+            params = {"q": query}
+            if method["name"] == "api":
+                params.update({"format": "json", "no_html": "1", "skip_disambig": "1"})
+
+            jitter_sleep(domain_hint=method["url"])
+            response = client.get(method["url"], params=params)
+
+            if response.status_code != 200 or not response.text:
+                client.close()
+                continue
+
+            text = response.text
+            if _ddg_is_blocked(text):
+                client.close()
+                break
+
+            found = 0
+
+            if method["name"] == "lite":
+                for pat in [
+                    r'<a[^>]+rel="nofollow"[^>]+href="(https?://[^"]+)"',
+                    r'<a[^>]+href="(https?://[^"]+)"[^>]*>',
+                ]:
+                    links = re.findall(pat, text)
+                    if links:
+                        for link in links[:10]:
+                            if link not in seen:
+                                seen.add(link)
+                                results.append(
+                                    {"url": link, "title": "", "description": ""}
+                                )
+                                found += 1
+                        break
+
+            elif method["name"] == "html":
+                redirect_links = re.findall(r'uddg=(https?%3A%2F%2F[^&"]+)', text)
+                if redirect_links:
+                    for link in redirect_links[:10]:
+                        decoded = unquote(unquote(link))
+                        if decoded not in seen:
+                            seen.add(decoded)
+                            results.append(
+                                {"url": decoded, "title": "", "description": ""}
+                            )
+                            found += 1
+                else:
+                    links = re.findall(
+                        r'<a[^>]+href="(https?://[^"]+)"[^>]*class="result__a"', text
+                    )
+                    if not links:
+                        links = re.findall(
+                            r'<a[^>]+href="(https?://[^"]+)"[^>]*rel="nofollow"', text
+                        )
+                    for link in links[:10]:
+                        if link not in seen:
+                            seen.add(link)
+                            results.append(
+                                {"url": link, "title": "", "description": ""}
+                            )
+                            found += 1
+
+            elif method["name"] == "api":
+                try:
+                    import json as _json
+
+                    api_data = _json.loads(text)
+                    for topic in api_data.get("RelatedTopics", []):
+                        if "Topics" in topic:
+                            for sub in topic["Topics"]:
+                                url = sub.get("FirstURL") or sub.get("URL", "")
+                                if url and url not in seen:
+                                    seen.add(url)
+                                    results.append(
+                                        {
+                                            "url": url,
+                                            "title": sub.get("Text", "")[:200],
+                                            "description": sub.get("Text", "")[:300],
+                                        }
+                                    )
+                                    found += 1
+                        else:
+                            url = topic.get("FirstURL") or topic.get("URL", "")
+                            if url and url not in seen:
+                                seen.add(url)
+                                results.append(
+                                    {
+                                        "url": url,
+                                        "title": topic.get("Text", "")[:200],
+                                        "description": topic.get("Text", "")[:300],
+                                    }
+                                )
+                                found += 1
+                    for res in api_data.get("Results", []):
+                        url = res.get("FirstURL") or res.get("URL", "")
+                        if url and url not in seen:
+                            seen.add(url)
+                            results.append(
+                                {
+                                    "url": url,
+                                    "title": res.get("Text", "")[:200],
+                                    "description": res.get("Text", "")[:300],
+                                }
+                            )
+                            found += 1
+                except Exception as e:
+                    logger.debug("DDG API parse error: %s", e)
+
+            client.close()
+            if found > 0 and len(results) >= max_results:
+                break
+            time.sleep(0.5)
+
+        except CurlError:
+            continue
+        except Exception:
+            continue
+
+    return results[:max_results]
+
+
 def person_dorks_search(full_name, cancel_event: threading.Event | None = None) -> dict:
     """Search using Google dorks to find person info across web.
 

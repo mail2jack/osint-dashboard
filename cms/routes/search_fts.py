@@ -103,7 +103,7 @@ def full_text_search() -> flask.Response:
             if not current_user.is_admin
             else cases
         )
-        results["cases"] = [c.to_dict() for c in filtered_cases]
+        results["cases"] = Case.batch_to_dict(filtered_cases)
 
     if scope in ("all", "findings"):
         findings = _fts_query(

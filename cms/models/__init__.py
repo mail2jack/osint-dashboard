@@ -758,6 +758,94 @@ class Case(db.Model):
         for finding in self.findings:
             finding.archived_at = None
 
+    def _loaded_count(self, rel) -> int:
+        """Return len() for pre-loaded collections, .count() for dynamic queries."""
+        if isinstance(rel, list):
+            return len(rel)
+        return rel.count()
+
+    @staticmethod
+    def batch_to_dict(cases: list) -> list[dict]:
+        """Serialize a list of cases with batch-loaded relations to avoid N+1."""
+        if not cases:
+            return []
+
+        case_ids = [c.id for c in cases]
+
+        from sqlalchemy import select
+        from collections import defaultdict
+
+        subjects_by_case: dict[str, list] = defaultdict(list)
+        for row in db.session.execute(
+            select(case_subjects.c.case_id, case_subjects.c.subject_id).filter(
+                case_subjects.c.case_id.in_(case_ids)
+            )
+        ):
+            subject = db.session.get(Subject, row.subject_id)
+            if subject:
+                subjects_by_case[row.case_id].append(subject)
+
+        findings_count_by_case: dict[str, int] = defaultdict(int)
+        for case_id, cnt in (
+            db.session.query(Finding.case_id, db.func.count(Finding.id))
+            .filter(
+                Finding.case_id.in_(case_ids),
+                Finding.is_deleted == False,
+            )
+            .group_by(Finding.case_id)
+            .all()
+        ):
+            findings_count_by_case[case_id] = cnt
+
+        child_cases_by_parent: dict[str, list] = defaultdict(list)
+        for c in Case.query.filter(
+            Case.parent_case_id.in_(case_ids),
+            Case.is_deleted == False,
+        ).all():
+            child_cases_by_parent[c.parent_case_id].append(c)
+
+        investigators_by_case: dict[str, list] = defaultdict(list)
+        for row in db.session.execute(
+            select(case_assignments.c.case_id, case_assignments.c.user_id).filter(
+                case_assignments.c.case_id.in_(case_ids)
+            )
+        ):
+            user = db.session.get(User, row.user_id)
+            if user:
+                investigators_by_case[row.case_id].append(user)
+
+        result = []
+        for case in cases:
+            d = case.to_dict(include_relations=False)
+            d["subjects"] = [s.to_dict() for s in subjects_by_case.get(case.id, [])]
+            d["findings_count"] = findings_count_by_case.get(case.id, 0)
+            d["assigned_investigators"] = [
+                {"id": u.id, "name": u.full_name}
+                for u in investigators_by_case.get(case.id, [])
+            ]
+            parent = case.parent_case
+            d["parent_case"] = (
+                {
+                    "id": parent.id,
+                    "case_number": parent.case_number,
+                    "title": parent.title,
+                }
+                if parent
+                else None
+            )
+            d["child_cases"] = [
+                {
+                    "id": c.id,
+                    "case_number": c.case_number,
+                    "title": c.title,
+                    "status": c.status,
+                }
+                for c in child_cases_by_parent.get(case.id, [])
+            ]
+            result.append(d)
+
+        return result
+
     def to_dict(self, include_relations: bool = True) -> dict:
         """Serialize case data."""
         result = {
@@ -787,7 +875,7 @@ class Case(db.Model):
 
         if include_relations:
             result["subjects"] = [s.to_dict() for s in self.subjects]
-            result["findings_count"] = self.findings.count()
+            result["findings_count"] = self._loaded_count(self.findings)
             result["assigned_investigators"] = [
                 {"id": u.id, "name": u.full_name} for u in self.investigators
             ]
@@ -800,6 +888,10 @@ class Case(db.Model):
                 if self.parent_case
                 else None
             )
+            if isinstance(self.child_cases, list):
+                open_children = [c for c in self.child_cases if not c.is_deleted]
+            else:
+                open_children = self.child_cases.filter_by(is_deleted=False).all()
             result["child_cases"] = [
                 {
                     "id": c.id,
@@ -807,7 +899,7 @@ class Case(db.Model):
                     "title": c.title,
                     "status": c.status,
                 }
-                for c in self.child_cases.filter_by(is_deleted=False)
+                for c in open_children
             ]
 
         return result

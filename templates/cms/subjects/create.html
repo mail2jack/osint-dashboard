@@ -165,6 +165,10 @@
             <input type="number" name="risk_score" id="risk_score" value="0" min="0" max="100">
         </div>
         <div class="form-group">
+            <label for="notes">{{ _('Notes') }}</label>
+            <textarea name="notes" id="notes" rows="3" placeholder="{{ _('Internal notes') }}"></textarea>
+        </div>
+        <div class="form-group">
             <label for="bank_account">{{ _('💳 Bank / IBAN') }}</label>
             <input type="text" name="bank_account" id="bank_account" placeholder="{{ _('e.g. NL39INGB0001234567') }}">
             <small style="color:var(--text-muted);">{{ _('Encrypted at rest') }}</small>
