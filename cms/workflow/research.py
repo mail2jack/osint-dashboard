@@ -127,26 +127,6 @@ def run_action(action_id):
             case = db.session.get(WorkflowCase, action.case_id)
             action_creator_id = case.created_by if case else None
 
-        prev_actions = WorkflowResearchAction.query.filter(
-            WorkflowResearchAction.case_id == action.case_id,
-            WorkflowResearchAction.action_type == action.action_type,
-            WorkflowResearchAction.id != action.id,
-            WorkflowResearchAction.status == "completed",
-        ).all()
-        if prev_actions:
-            prev_ids = [a.id for a in prev_actions]
-            old_links = WorkflowActionFinding.query.filter(
-                WorkflowActionFinding.action_id.in_(prev_ids)
-            ).all()
-            old_finding_ids = list(set(link.finding_id for link in old_links))
-            if old_finding_ids:
-                now = datetime.now()
-                WorkflowFinding.query.filter(
-                    WorkflowFinding.id.in_(old_finding_ids),
-                    WorkflowFinding.archived_at.is_(None),
-                ).update({"archived_at": now}, synchronize_session=False)
-                db.session.commit()
-
         findings_data = entry["handler"](action)
 
         if is_action_cancelled(action_id):

@@ -349,6 +349,33 @@
                     {% if subject.rdw_data.get('datum_eerste_toelating') %}
                     <div class="info-row"><span class="info-label">{{ _('First Registration Date') }}</span><span class="info-value">{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
                     {% endif %}
+                    {% if subject.rdw_data.get('vermogen') %}
+                    <div class="info-row"><span class="info-label">{{ _('Engine Power (kW)') }}</span><span class="info-value">{{ subject.rdw_data.vermogen }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('wielbasis') %}
+                    <div class="info-row"><span class="info-label">{{ _('Wheelbase (mm)') }}</span><span class="info-value">{{ subject.rdw_data.wielbasis }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('datum_tenaamstelling') %}
+                    <div class="info-row"><span class="info-label">{{ _('Registration Date') }}</span><span class="info-value">{{ subject.rdw_data.datum_tenaamstelling }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('bruto_bpm') %}
+                    <div class="info-row"><span class="info-label">{{ _('BPM (EUR)') }}</span><span class="info-value">€{{ subject.rdw_data.bruto_bpm }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('typegoedkeuringsnummer') %}
+                    <div class="info-row"><span class="info-label">{{ _('Type Approval No.') }}</span><span class="info-value">{{ subject.rdw_data.typegoedkeuringsnummer }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('openstaande_terugroepactie') %}
+                    <div class="info-row"><span class="info-label">{{ _('Recall Action') }}</span><span class="info-value">{{ subject.rdw_data.openstaande_terugroepactie }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('type') %}
+                    <div class="info-row"><span class="info-label">{{ _('Type') }}</span><span class="info-value">{{ subject.rdw_data.rdw_type }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('variant') %}
+                    <div class="info-row"><span class="info-label">{{ _('Variant') }}</span><span class="info-value">{{ subject.rdw_data.variant }}</span></div>
+                    {% endif %}
+                    {% if subject.rdw_data.get('uitvoering') %}
+                    <div class="info-row"><span class="info-label">{{ _('Execution (Uitvoering)') }}</span><span class="info-value">{{ subject.rdw_data.uitvoering }}</span></div>
+                    {% endif %}
                 </div>
                 <div style="margin-top: 0.75rem;">
                     <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small bg-blue">{{ _('✏️ Edit RDW Data') }}</a>

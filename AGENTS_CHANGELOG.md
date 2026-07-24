@@ -367,3 +367,16 @@ System-wide announcement feature so super admin can broadcast mandatory popup me
 
 ### Laatste commit
 - `5186c4c` — alles lokaal, GitHub en productie in sync
+
+---
+
+## Vehicle check: findings niet meer overschreven bij heruitvoering
+
+### Probleem
+Bij het heruitvoeren van een Vehicle check (of andere actie van hetzelfde type) verdwenen de bevindingen van eerdere uitvoeringen. De `run_action`-functie archiveerde automatisch alle findings van eerdere completed actions van hetzelfde type, en het `case_status`-endpoint filterde archived findings eruit.
+
+### Wijziging
+- **`cms/workflow/research.py:130-148`**: Archivering van eerdere findings bij heruitvoering verwijderd. Elke actie behoudt zijn eigen bevindingen; ze worden in de UI gegroepeerd per actie, dus duplicaten worden zo voorkomen.
+
+### Tests
+422 passed — geen regressie.
