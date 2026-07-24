@@ -138,7 +138,7 @@ window.wfRdwLookup = function(btn) {
   btn.disabled = true;
   btn.textContent = '\u23f3 Fetching...';
   if (statusEl) statusEl.textContent = 'Fetching RDW data...';
-  apiFetch('/check-rdw-vehicle', {
+  apiFetch('/cms/check-rdw-vehicle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ kenteken: kenteken })
@@ -151,8 +151,8 @@ window.wfRdwLookup = function(btn) {
       if (statusEl) statusEl.textContent = data.error;
       return;
     }
-    if (data.found && data.vehicle) {
-      var v = data.vehicle;
+    if (data.found) {
+      var v = data;
       function set(k, val) { var el = document.querySelector('[name="' + prefix + k + '"]'); if (el) el.value = val || ''; }
       set('name', v.merk || '');
       set('identification', v.kenteken || kenteken);
@@ -161,11 +161,31 @@ window.wfRdwLookup = function(btn) {
       set('handelsbenaming', v.handelsbenaming || '');
       set('vehicle_type', v.inrichting || '');
       set('eerste_kleur', v.eerste_kleur || '');
+      set('tweede_kleur', v.tweede_kleur || '');
       set('voertuigsoort', v.voertuigsoort || '');
       set('aantal_deuren', v.aantal_deuren || '');
       set('aantal_zitplaatsen', v.aantal_zitplaatsen || '');
+      set('rdw_type', v.type || '');
+      set('variant', v.variant || '');
+      set('uitvoering', v.uitvoering || '');
+      set('cilinderinhoud', v.cilinderinhoud || '');
+      set('aantal_cilinders', v.aantal_cilinders || '');
+      set('vermogen', v.vermogen || '');
+      set('massa_ledig', v.massa_ledig || '');
+      set('maximum_massa', v.maximum_massa || '');
+      set('wielbasis', v.wielbasis || '');
+      set('datum_eerste_toelating', v.datum_eerste_toelating || '');
+      set('datum_tenaamstelling', v.datum_tenaamstelling || '');
       set('vervaldatum_apk', v.vervaldatum_apk || '');
+      set('europese_voertuigcategorie', v.europese_voertuigcategorie || '');
       set('wam_verzekerd', v.wam_verzekerd || '');
+      set('catalogusprijs', v.catalogusprijs || '');
+      set('bruto_bpm', v.bruto_bpm || '');
+      set('zuinigheidsclassificatie', v.zuinigheidsclassificatie || '');
+      set('typegoedkeuringsnummer', v.typegoedkeuringsnummer || '');
+      set('taxi_indicator', v.taxi_indicator || '');
+      set('export_indicator', v.export_indicator || '');
+      set('openstaande_terugroepactie', v.openstaande_terugroepactie || '');
       if (statusEl) statusEl.textContent = '\u2705 Found: ' + (v.handelsbenaming || v.merk || kenteken);
     }
   })

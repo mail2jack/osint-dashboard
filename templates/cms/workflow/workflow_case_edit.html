@@ -88,7 +88,11 @@ input:-webkit-autofill:focus {
   </div>
 
   <div class="form-section">
-    <h2>🧑 Client</h2>
+    <div class="subject-collapse-header" data-action="toggle-client" style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0;cursor:pointer;user-select:none;">
+      <span style="font-size:0.8rem;color:var(--text-muted);transition:transform 0.2s;" class="client-chevron">▶</span>
+      <h2 style="margin:0;">🧑 Client</h2>
+    </div>
+    <div class="client-section-body" style="display:none;">
     <div class="form-grid">
       <div class="form-group">
         <label>Company name *</label>
@@ -151,6 +155,7 @@ input:-webkit-autofill:focus {
         <textarea name="client_notes" rows="2">{{ client.financial_notes or '' }}</textarea>
       </div>
     </div>
+    </div>
   </div>
 
   <div class="form-section" id="subjects-section">
@@ -167,12 +172,12 @@ input:-webkit-autofill:focus {
           </div>
           <div style="display:flex;align-items:center;gap:0.5rem;">
             <span style="font-size:0.75rem;color:var(--text-muted);">Subject {{ loop.index }}</span>
-            <button type="button" class="btn-cms small" data-action="remove-subject" data-sid="{{ sid }}" style="color:#ef4444;position:relative;z-index:1;" onclick="event.stopPropagation();">Remove</button>
+            <button type="button" class="btn-cms small" data-action="remove-subject" data-sid="{{ sid }}" style="color:#ef4444;position:relative;z-index:1;">Remove</button>
           </div>
         </div>
         <div class="subject-type-row" style="display:none;">
           <label>Subject type</label>
-          <select name="subj_{{ sid }}_type" data-action="update-fields" required>
+          <select name="subj_{{ sid }}_type" data-action="update-fields">
             <option value="">— Select type —</option>
             <option value="person" {% if subject.subject_type == 'person' %}selected{% endif %}>Person</option>
             <option value="company" {% if subject.subject_type == 'company' %}selected{% endif %}>Company</option>
@@ -392,14 +397,18 @@ input:-webkit-autofill:focus {
                 <input type="text" name="subj_{{ sid }}_handelsbenaming" value="{{ subject.handelsbenaming or '' }}">
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
               <div class="form-group">
-                <label>{{ _('Body Type') }}</label>
+                <label>{{ _('Body Type (Inrichting)') }}</label>
                 <input type="text" name="subj_{{ sid }}_vehicle_type" value="{{ subject.vehicle_type or '' }}">
               </div>
               <div class="form-group">
-                <label>{{ _('Color') }}</label>
+                <label>{{ _('Color (Eerste kleur)') }}</label>
                 <input type="text" name="subj_{{ sid }}_eerste_kleur" value="{{ subject.eerste_kleur or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('2nd Color') }}</label>
+                <input type="text" name="subj_{{ sid }}_tweede_kleur" value="{{ subject.tweede_kleur or '' }}">
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
@@ -418,13 +427,103 @@ input:-webkit-autofill:focus {
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
               <div class="form-group">
+                <label>{{ _('Type') }}</label>
+                <input type="text" name="subj_{{ sid }}_rdw_type" value="{{ subject.rdw_type or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Variant') }}</label>
+                <input type="text" name="subj_{{ sid }}_variant" value="{{ subject.variant or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Execution (Uitvoering)') }}</label>
+                <input type="text" name="subj_{{ sid }}_uitvoering" value="{{ subject.uitvoering or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Engine (cc)') }}</label>
+                <input type="text" name="subj_{{ sid }}_cilinderinhoud" value="{{ subject.cilinderinhoud or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Cylinders') }}</label>
+                <input type="number" name="subj_{{ sid }}_aantal_cilinders" value="{{ subject.aantal_cilinders or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Engine Power (kW)') }}</label>
+                <input type="text" name="subj_{{ sid }}_vermogen" value="{{ subject.vermogen or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Empty Weight (kg)') }}</label>
+                <input type="text" name="subj_{{ sid }}_massa_ledig" value="{{ subject.massa_ledig or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Max Weight (kg)') }}</label>
+                <input type="text" name="subj_{{ sid }}_maximum_massa" value="{{ subject.maximum_massa or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Wheelbase (mm)') }}</label>
+                <input type="text" name="subj_{{ sid }}_wielbasis" value="{{ subject.wielbasis or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('First Registration') }}</label>
+                <input type="text" name="subj_{{ sid }}_datum_eerste_toelating" value="{{ subject.datum_eerste_toelating or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Registration Date') }}</label>
+                <input type="text" name="subj_{{ sid }}_datum_tenaamstelling" value="{{ subject.datum_tenaamstelling or '' }}">
+              </div>
+              <div class="form-group">
                 <label>{{ _('APK Expiry') }}</label>
                 <input type="text" name="subj_{{ sid }}_vervaldatum_apk" value="{{ subject.vervaldatum_apk or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('EU Category') }}</label>
+                <input type="text" name="subj_{{ sid }}_europese_voertuigcategorie" value="{{ subject.europese_voertuigcategorie or '' }}">
               </div>
               <div class="form-group">
                 <label>{{ _('WAM Insured') }}</label>
                 <input type="text" name="subj_{{ sid }}_wam_verzekerd" value="{{ subject.wam_verzekerd or '' }}">
               </div>
+              <div class="form-group">
+                <label>{{ _('Catalog Price (EUR)') }}</label>
+                <input type="text" name="subj_{{ sid }}_catalogusprijs" value="{{ subject.catalogusprijs or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('BPM (EUR)') }}</label>
+                <input type="text" name="subj_{{ sid }}_bruto_bpm" value="{{ subject.bruto_bpm or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Fuel Class') }}</label>
+                <input type="text" name="subj_{{ sid }}_zuinigheidsclassificatie" value="{{ subject.zuinigheidsclassificatie or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Type Approval No.') }}</label>
+                <input type="text" name="subj_{{ sid }}_typegoedkeuringsnummer" value="{{ subject.typegoedkeuringsnummer or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Taxi') }}</label>
+                <input type="text" name="subj_{{ sid }}_taxi_indicator" value="{{ subject.taxi_indicator or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Export') }}</label>
+                <input type="text" name="subj_{{ sid }}_export_indicator" value="{{ subject.export_indicator or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Recall Action') }}</label>
+                <input type="text" name="subj_{{ sid }}_openstaande_terugroepactie" value="{{ subject.openstaande_terugroepactie or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
               <div class="form-group">
                 <label>{{ _('Insurance Company') }}</label>
                 <input type="text" name="subj_{{ sid }}_insurance_company" value="{{ subject.insurance_company or '' }}">
@@ -503,7 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
     for (var i = 0; i < children.length; i++) {
       var el = children[i];
       if (el.classList.contains('sf-all')) {
-        el.style.display = '';
+        el.style.display = (val === 'vehicle' || val === 'vessel') ? 'none' : '';
       } else if (el.classList.contains('sf-' + val)) {
         el.style.display = '';
       } else {
@@ -524,6 +623,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var _newIdx = 0;
   function addSubject() {
+    var clientBody = document.querySelector('.client-section-body');
+    var clientChevron = document.querySelector('.client-chevron');
+    if (clientBody && clientBody.style.display !== 'none') {
+      clientBody.style.display = 'none';
+      if (clientChevron) clientChevron.style.transform = '';
+    }
     var container = document.getElementById('subjects-container');
     var idx = _newIdx++;
     var div = document.createElement('div');
@@ -641,17 +746,43 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
             '<div class="form-group"><label>{{ _("Brand") }}</label><input type="text" name="subj_new_' + i + '_brand"></div>' +
             '<div class="form-group"><label>{{ _("Model (Handelsbenaming)") }}</label><input type="text" name="subj_new_' + i + '_handelsbenaming"></div></div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
-            '<div class="form-group"><label>{{ _("Body Type") }}</label><input type="text" name="subj_new_' + i + '_vehicle_type"></div>' +
-            '<div class="form-group"><label>{{ _("Color") }}</label><input type="text" name="subj_new_' + i + '_eerste_kleur"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Body Type (Inrichting)") }}</label><input type="text" name="subj_new_' + i + '_vehicle_type"></div>' +
+            '<div class="form-group"><label>{{ _("Color (Eerste kleur)") }}</label><input type="text" name="subj_new_' + i + '_eerste_kleur"></div>' +
+            '<div class="form-group"><label>{{ _("2nd Color") }}</label><input type="text" name="subj_new_' + i + '_tweede_kleur"></div></div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
             '<div class="form-group"><label>{{ _("Vehicle Category") }}</label><input type="text" name="subj_new_' + i + '_voertuigsoort"></div>' +
             '<div class="form-group"><label>{{ _("Doors") }}</label><input type="number" name="subj_new_' + i + '_aantal_deuren"></div>' +
             '<div class="form-group"><label>{{ _("Seats") }}</label><input type="number" name="subj_new_' + i + '_aantal_zitplaatsen"></div></div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
-            '<div class="form-group"><label>{{ _("APK Expiry") }}</label><input type="text" name="subj_new_' + i + '_vervaldatum_apk"></div>' +
+            '<div class="form-group"><label>{{ _("Type") }}</label><input type="text" name="subj_new_' + i + '_rdw_type"></div>' +
+            '<div class="form-group"><label>{{ _("Variant") }}</label><input type="text" name="subj_new_' + i + '_variant"></div>' +
+            '<div class="form-group"><label>{{ _("Execution (Uitvoering)") }}</label><input type="text" name="subj_new_' + i + '_uitvoering"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Engine (cc)") }}</label><input type="text" name="subj_new_' + i + '_cilinderinhoud"></div>' +
+            '<div class="form-group"><label>{{ _("Cylinders") }}</label><input type="number" name="subj_new_' + i + '_aantal_cilinders"></div>' +
+            '<div class="form-group"><label>{{ _("Engine Power (kW)") }}</label><input type="text" name="subj_new_' + i + '_vermogen"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Empty Weight (kg)") }}</label><input type="text" name="subj_new_' + i + '_massa_ledig"></div>' +
+            '<div class="form-group"><label>{{ _("Max Weight (kg)") }}</label><input type="text" name="subj_new_' + i + '_maximum_massa"></div>' +
+            '<div class="form-group"><label>{{ _("Wheelbase (mm)") }}</label><input type="text" name="subj_new_' + i + '_wielbasis"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("First Registration") }}</label><input type="text" name="subj_new_' + i + '_datum_eerste_toelating"></div>' +
+            '<div class="form-group"><label>{{ _("Registration Date") }}</label><input type="text" name="subj_new_' + i + '_datum_tenaamstelling"></div>' +
+            '<div class="form-group"><label>{{ _("APK Expiry") }}</label><input type="text" name="subj_new_' + i + '_vervaldatum_apk"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("EU Category") }}</label><input type="text" name="subj_new_' + i + '_europese_voertuigcategorie"></div>' +
             '<div class="form-group"><label>{{ _("WAM Insured") }}</label><input type="text" name="subj_new_' + i + '_wam_verzekerd"></div>' +
-            '<div class="form-group"><label>{{ _("Insurance Company") }}</label><input type="text" name="subj_new_' + i + '_insurance_company"></div></div>' +
+            '<div class="form-group"><label>{{ _("Catalog Price (EUR)") }}</label><input type="text" name="subj_new_' + i + '_catalogusprijs"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("BPM (EUR)") }}</label><input type="text" name="subj_new_' + i + '_bruto_bpm"></div>' +
+            '<div class="form-group"><label>{{ _("Fuel Class") }}</label><input type="text" name="subj_new_' + i + '_zuinigheidsclassificatie"></div>' +
+            '<div class="form-group"><label>{{ _("Type Approval No.") }}</label><input type="text" name="subj_new_' + i + '_typegoedkeuringsnummer"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Taxi") }}</label><input type="text" name="subj_new_' + i + '_taxi_indicator"></div>' +
+            '<div class="form-group"><label>{{ _("Export") }}</label><input type="text" name="subj_new_' + i + '_export_indicator"></div>' +
+            '<div class="form-group"><label>{{ _("Recall Action") }}</label><input type="text" name="subj_new_' + i + '_openstaande_terugroepactie"></div></div>' +
+          '<div class="form-group"><label>{{ _("Insurance Company") }}</label><input type="text" name="subj_new_' + i + '_insurance_company"></div>' +
         '</div>' +
         '<div class="sf-vessel" style="display:none;">' +
           '<div style="background:linear-gradient(135deg,#0369a1 0%,#075985 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
@@ -696,24 +827,26 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   document.getElementById('subjects-section').addEventListener('click', function(e) {
-    var toggle = e.target.closest('[data-action="toggle-collapse"]');
-    if (toggle) {
-      var block = toggle.closest('.subject-block');
-      if (block) toggleCollapse(block);
-      return;
-    }
     var btn = e.target.closest('[data-action]');
     if (!btn) return;
     var action = btn.getAttribute('data-action');
     if (action === 'add-subject') {
       addSubject();
+      return;
     } else if (action === 'remove-subject') {
       var sid = btn.getAttribute('data-sid');
       var block = btn.closest('.subject-block');
       if (block) removeExistingSubject(sid, block);
+      return;
     } else if (action === 'remove-new-subject') {
       var block = btn.closest('.subject-block');
       if (block) block.remove();
+      return;
+    }
+    var toggle = e.target.closest('[data-action="toggle-collapse"]');
+    if (toggle) {
+      var block = toggle.closest('.subject-block');
+      if (block) toggleCollapse(block);
     }
   });
 
@@ -723,10 +856,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  document.querySelector('.form-section').addEventListener('click', function(e) {
+    var hdr = e.target.closest('[data-action="toggle-client"]');
+    if (!hdr) return;
+    var body = document.querySelector('.client-section-body');
+    var chevron = document.querySelector('.client-chevron');
+    if (!body) return;
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    if (chevron) chevron.style.transform = open ? '' : 'rotate(90deg)';
+  });
+
   // Init: existing subjects collapsed, new subjects open
   document.querySelectorAll('.subject-block').forEach(function(block) {
     if (block.dataset.subjectId) {
       block.classList.remove('open');
+      var sel = block.querySelector('select[data-action="update-fields"]');
+      if (sel && sel.value) updateFields(sel);
     } else {
       block.classList.add('open');
     }
