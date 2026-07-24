@@ -16,6 +16,12 @@
 .subject-type-row label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; }
 .subject-type-row select { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; background: var(--bg); color: var(--text); font-weight: 500; }
 .sf-hidden { display: none !important; }
+.subject-block .subject-fields.collapsed { display: none; }
+.subject-block.collapsed .subject-fields { display: none !important; }
+.subject-block.collapsed .subject-type-row { display: none !important; }
+.subject-block .subject-collapse-header:hover { background: var(--table-hover); }
+.subject-block .subject-collapse-header .collapse-chevron { display: inline-block; }
+.subject-block.open .subject-collapse-header .collapse-chevron { transform: rotate(90deg); }
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
@@ -153,12 +159,18 @@ input:-webkit-autofill:focus {
       {% for subject in subjects %}
       {% set sid = subject.id %}
       <div class="subject-block" data-subject-id="{{ sid }}">
-        {% if not loop.first %}<hr style="border:none;border-top:1px solid var(--border-color);margin:1rem 0;">{% endif %}
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-          <strong style="font-size:0.85rem;">Subject {{ loop.index }}</strong>
-          <button type="button" class="btn-cms small" data-action="remove-subject" data-sid="{{ sid }}" style="color:#ef4444;">Remove</button>
+        <div class="subject-collapse-header" data-action="toggle-collapse" style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;margin-bottom:0.5rem;user-select:none;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span style="font-size:0.75rem;color:var(--text-muted);transition:transform 0.2s;" class="collapse-chevron">▶</span>
+            <strong style="font-size:0.85rem;">{{ subject.name or _('Subject') }}</strong>
+            <span style="font-size:0.7rem;padding:0.15rem 0.4rem;background:var(--border-color);border-radius:4px;color:var(--text-secondary);">{{ subject.subject_type or 'person' }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span style="font-size:0.75rem;color:var(--text-muted);">Subject {{ loop.index }}</span>
+            <button type="button" class="btn-cms small" data-action="remove-subject" data-sid="{{ sid }}" style="color:#ef4444;position:relative;z-index:1;" onclick="event.stopPropagation();">Remove</button>
+          </div>
         </div>
-        <div class="subject-type-row">
+        <div class="subject-type-row" style="display:none;">
           <label>Subject type</label>
           <select name="subj_{{ sid }}_type" data-action="update-fields" required>
             <option value="">— Select type —</option>
@@ -169,7 +181,7 @@ input:-webkit-autofill:focus {
             <option value="online" {% if subject.subject_type == 'online' %}selected{% endif %}>Online entity</option>
           </select>
         </div>
-        <div class="subject-fields">
+        <div class="subject-fields" style="display:none;">
           {# ── General fields ── #}
           <div class="sf-all">
             <div class="form-group">
@@ -515,13 +527,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var container = document.getElementById('subjects-container');
     var idx = _newIdx++;
     var div = document.createElement('div');
-    div.className = 'subject-block';
-    div.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-color);';
+    div.className = 'subject-block open';
     var i = idx;
     div.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
-        '<strong style="font-size:0.85rem;">Subject (new)</strong>' +
-        '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Remove</button>' +
+      '<div class="subject-collapse-header" data-action="toggle-collapse" style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.75rem;background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;margin-bottom:0.5rem;user-select:none;">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+          '<span style="font-size:0.75rem;color:var(--text-muted);transition:transform 0.2s;transform:rotate(90deg);" class="collapse-chevron">\u25b6</span>' +
+          '<strong style="font-size:0.85rem;">New subject</strong>' +
+        '</div>' +
+        '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;position:relative;z-index:1;">Remove</button>' +
       '</div>' +
       '<div class="subject-type-row">' +
         '<label>Subject type</label>' +
@@ -663,7 +677,31 @@ document.addEventListener('DOMContentLoaded', function() {
     container.parentElement.insertBefore(div, container.nextElementSibling);
   }
 
+  function toggleCollapse(block) {
+    if (block.classList.contains('open')) {
+      block.classList.remove('open');
+      var fields = block.querySelector('.subject-fields');
+      var typeRow = block.querySelector('.subject-type-row');
+      if (fields) fields.style.display = 'none';
+      if (typeRow) typeRow.style.display = 'none';
+    } else {
+      block.classList.add('open');
+      var fields = block.querySelector('.subject-fields');
+      var typeRow = block.querySelector('.subject-type-row');
+      if (fields) fields.style.display = '';
+      if (typeRow) typeRow.style.display = '';
+      var sel = block.querySelector('select[data-action="update-fields"]');
+      if (sel && sel.value) updateFields(sel);
+    }
+  }
+
   document.getElementById('subjects-section').addEventListener('click', function(e) {
+    var toggle = e.target.closest('[data-action="toggle-collapse"]');
+    if (toggle) {
+      var block = toggle.closest('.subject-block');
+      if (block) toggleCollapse(block);
+      return;
+    }
     var btn = e.target.closest('[data-action]');
     if (!btn) return;
     var action = btn.getAttribute('data-action');
@@ -685,8 +723,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  document.querySelectorAll('.subject-block select[data-action="update-fields"]').forEach(function(sel) {
-    if (sel.value) updateFields(sel);
+  // Init: existing subjects collapsed, new subjects open
+  document.querySelectorAll('.subject-block').forEach(function(block) {
+    if (block.dataset.subjectId) {
+      block.classList.remove('open');
+    } else {
+      block.classList.add('open');
+    }
   });
 
 });
