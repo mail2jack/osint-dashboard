@@ -169,110 +169,296 @@ input:-webkit-autofill:focus {
           </select>
         </div>
         <div class="subject-fields" style="display:none">
-          <div class="form-grid">
-            <div class="form-group sf-all">
+          {# ── General fields (all types) ── #}
+          <div class="sf-all">
+            <div class="form-group">
               <label>{{ _('Achternaam') }} *</label>
-              <input type="text" name="subject_0_name" placeholder="{{ _('Last name') }}">
+              <input type="text" name="subject_0_name" data-input="checkDuplicate" data-idx="0" placeholder="">
+              <div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div>
             </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Tussenvoegsels') }}</label>
-              <input type="text" name="subject_0_tussenvoegsels" placeholder="{{ _('van de') }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Voornamen') }}</label>
+                <input type="text" name="subject_0_voornamen" data-idx="0" placeholder="{{ _('Jan Peter') }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Voorletters') }}</label>
+                <input type="text" name="subject_0_voorletters" data-idx="0" placeholder="{{ _('J.P.') }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Tussenvoegsels') }}</label>
+                <input type="text" name="subject_0_tussenvoegsels" data-idx="0" placeholder="{{ _('van de') }}">
+              </div>
             </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Voornamen') }}</label>
-              <input type="text" name="subject_0_voornamen" placeholder="{{ _('Jan Peter') }}">
-            </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Voorletters') }}</label>
-              <input type="text" name="subject_0_voorletters" placeholder="{{ _('J.P.') }}">
-            </div>
-            <div class="form-group sf-person sf-company sf-vehicle sf-vessel">
-              <label>{{ _('ID Number') }}</label>
-              <input type="text" name="subject_0_identification" placeholder="{{ _('BSN / KvK / license plate / IMO') }}">
+            <input type="hidden" name="subject_0_name_computed" data-idx="0" value="">
+            <div class="form-group sf-person sf-company">
+              <label>{{ _('Address(es)') }}</label>
+              <div class="addresses-container" data-idx="0">
+                <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
+                  <div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                      <input type="text" class="addr-zipcode" data-idx="0" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Number') }}</label>
+                      <input type="text" class="addr-number" data-idx="0" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                      <input type="text" class="addr-street" data-idx="0" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Town') }}</label>
+                      <input type="text" class="addr-town" data-idx="0" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.25rem;">
+                      <button type="button" data-click="wfPostcodeCheck" data-idx="0" title="{{ _('Look up zipcode + number') }}" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
+                      <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                        <input type="checkbox" class="addr-primary" checked> {{ _('Primary') }}
+                      </label>
+                    </div>
+                  </div>
+                  <input type="hidden" class="addr-country" value="Netherlands">
+                </div>
+              </div>
+              <button type="button" data-click="wfAddAddress" data-idx="0" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another address') }}</button>
+              <input type="hidden" name="subject_0_addresses_data" data-idx="0" value="">
             </div>
             <div class="form-group sf-person sf-company">
-              <label>{{ _('Email') }}</label>
-              <input type="email" name="subject_0_email" placeholder="{{ _('name@example.com') }}">
+              <label>{{ _('Contact(s)') }}</label>
+              <div class="contacts-container" data-idx="0">
+                <div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
+                  <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Type') }}</label>
+                      <select class="contact-type" data-idx="0" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <option value="email">{{ _('Email') }}</option>
+                        <option value="phone">{{ _('Phone') }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Value') }}</label>
+                      <input type="text" class="contact-value" data-idx="0" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
+                      <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                        <input type="checkbox" class="contact-primary" checked> {{ _('Primary') }}
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button type="button" data-click="wfAddContact" data-idx="0" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another contact') }}</button>
+              <input type="hidden" name="subject_0_contacts_data" data-idx="0" value="">
             </div>
-            <div class="form-group sf-person sf-company">
-              <label>{{ _('Phone') }}</label>
-              <input type="text" name="subject_0_phone" placeholder="{{ _('+31 6 12345678') }}">
+            <div class="vehicle-restricted-fields" data-idx="0">
+              <div class="form-group">
+                <label>{{ _('Risk Score (0-100)') }}</label>
+                <input type="number" name="subject_0_risk_score" data-idx="0" value="0" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Notes') }}</label>
+                <textarea name="subject_0_notes" data-idx="0" rows="3" placeholder="{{ _('Internal notes') }}"></textarea>
+              </div>
+              <div class="form-group">
+                <label>{{ _('💳 Bank / IBAN') }}</label>
+                <input type="text" name="subject_0_bank_account" data-idx="0" placeholder="{{ _('e.g. NL39INGB0001234567') }}">
+                <small style="color:var(--text-muted);">{{ _('Encrypted at rest') }}</small>
+              </div>
             </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Date of Birth') }}</label>
-              <input type="date" name="subject_0_date_of_birth">
+          </div>
+          {# ── Person fields ── #}
+          <div class="sf-person" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Geslacht') }}</label>
+                <select name="subject_0_geslacht" data-idx="0" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                  <option value="">{{ _('-- Selecteer --') }}</option>
+                  <option value="man">{{ _('Man') }}</option>
+                  <option value="vrouw">{{ _('Vrouw') }}</option>
+                  <option value="onbekend">{{ _('Onbekend') }}</option>
+                  <option value="geen_opgave">{{ _('Geen opgave') }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>{{ _('Nationality') }}</label>
+                <input type="text" name="subject_0_nationality" data-idx="0" placeholder="{{ _('e.g. Dutch') }}">
+              </div>
             </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Place of Birth') }}</label>
-              <input type="text" name="subject_0_place_of_birth" placeholder="{{ _('Amsterdam') }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Date of Birth') }}</label>
+                <input type="date" name="subject_0_date_of_birth" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Place of Birth') }}</label>
+                <input type="text" name="subject_0_place_of_birth" data-idx="0" placeholder="{{ _('e.g. Amsterdam, Netherlands') }}">
+              </div>
             </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Nationality') }}</label>
-              <input type="text" name="subject_0_nationality" placeholder="{{ _('Dutch') }}">
-            </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Geslacht') }}</label>
-              <select name="subject_0_geslacht">
-                <option value="">— {{ _('Select') }} —</option>
-                <option value="man">{{ _('Man') }}</option>
-                <option value="vrouw">{{ _('Vrouw') }}</option>
-                <option value="onbekend">{{ _('Onbekend') }}</option>
-                <option value="geen_opgave">{{ _('Geen opgave') }}</option>
-              </select>
-            </div>
-            <div class="form-group sf-person">
+            <div class="form-group">
               <label>{{ _('BSN nummer') }}</label>
-              <input type="text" name="subject_0_bsn_number" placeholder="{{ _('000000000') }}">
+              <input type="text" name="subject_0_bsn_number" data-idx="0" placeholder="{{ _('Burgerservicenummer') }}">
             </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Reisdocument type') }}</label>
-              <select name="subject_0_reisdocument_type">
-                <option value="">— {{ _('Select') }} —</option>
-                <option value="paspoort">{{ _('Paspoort') }}</option>
-                <option value="id-kaart">{{ _('ID-kaart') }}</option>
-                <option value="rijbewijs">{{ _('Rijbewijs') }}</option>
-                <option value="overige">{{ _('Overig') }}</option>
-              </select>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Reisdocument type') }}</label>
+                <select name="subject_0_reisdocument_type" data-idx="0" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                  <option value="">{{ _('-- Selecteer --') }}</option>
+                  <option value="paspoort">{{ _('Paspoort') }}</option>
+                  <option value="id-kaart">{{ _('ID-kaart') }}</option>
+                  <option value="rijbewijs">{{ _('Rijbewijs') }}</option>
+                  <option value="overige">{{ _('Overige') }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>{{ _('Reisdocument nummer') }}</label>
+                <input type="text" name="subject_0_reisdocument_nummer" data-idx="0">
+              </div>
             </div>
-            <div class="form-group sf-person">
-              <label>{{ _('Reisdocument nummer') }}</label>
-              <input type="text" name="subject_0_reisdocument_nummer" placeholder="{{ _('AB1234567') }}">
+          </div>
+          {# ── Company fields ── #}
+          <div class="sf-company" style="display:none;">
+            <div style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.25rem 0;">{{ _('🏢 Company Information') }}</h3>
+                  <p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _('Look up company data from KVK / Overheid.io') }}</p>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                  <input type="text" data-kvk-query data-idx="0" placeholder="{{ _('Company name or KVK number') }}" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:220px;">
+                  <button type="button" data-click="wfKvkLookup" data-idx="0" style="padding:0.75rem 1.5rem;background:white;color:#7c3aed;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">🔍 {{ _('KVK Search') }}</button>
+                </div>
+              </div>
+              <div class="kvk-lookup-status" data-idx="0" style="margin-top:0.75rem;font-size:0.875rem;"></div>
+              <div class="kvk-results" data-idx="0" style="margin-top:0.5rem;display:none;"></div>
             </div>
-            <div class="form-group sf-person sf-company">
-              <label>{{ _('Bank Account') }}</label>
-              <input type="text" name="subject_0_bank_account" placeholder="{{ _('NL00 INGB 0000 0000 00') }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+              <div class="form-group">
+                <label>{{ _('KVK number') }}</label>
+                <input type="text" name="subject_0_registration_number" data-idx="0" placeholder="{{ _('e.g. 30128191') }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Legal Form') }}</label>
+                <input type="text" name="subject_0_legal_form" data-idx="0" placeholder="{{ _('e.g. BV, NV, Stichting') }}">
+              </div>
             </div>
-            <div class="form-group sf-person sf-company">
-              <label>{{ _('Postcode') }}</label>
-              <input type="text" name="subject_0_postal_code" class="addr-zipcode" placeholder="{{ _('1012LL') }}">
+          </div>
+          {# ── Vehicle fields ── #}
+          <div class="sf-vehicle" style="display:none;">
+            <div style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.25rem 0;">{{ _('🚗 Vehicle Information') }}</h3>
+                  <p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _('Look up vehicle data from RDW') }}</p>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                  <input type="text" data-rdw-kenteken data-idx="0" placeholder="{{ _('License plate (e.g. XX-XX-XX)') }}" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:200px;text-transform:uppercase;">
+                  <button type="button" data-click="wfRdwLookup" data-idx="0" style="padding:0.75rem 1.5rem;background:white;color:#ea580c;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">📡 {{ _('Fetch RDW') }}</button>
+                </div>
+              </div>
+              <div class="rdw-status" data-idx="0" style="margin-top:0.75rem;font-size:0.875rem;"></div>
             </div>
-            <div class="form-group sf-person sf-company">
-              <label>{{ _('Huisnummer') }}</label>
-              <input type="text" name="subject_0_house_number" class="addr-number" placeholder="{{ _('45') }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('License Plate') }}</label>
+                <input type="text" name="subject_0_identification" data-idx="0" style="text-transform:uppercase;" placeholder="{{ _('XX-XX-XX') }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('VIN (Chassis Number)') }}</label>
+                <input type="text" name="subject_0_vin" data-idx="0" maxlength="17" placeholder="{{ _('17 characters') }}">
+              </div>
             </div>
-            <div class="form-group sf-person sf-company">
-              <label>{{ _('Toevoeging') }}</label>
-              <input type="text" name="subject_0_house_number_addition" placeholder="{{ _('A') }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Brand') }}</label>
+                <input type="text" name="subject_0_brand" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Model (Handelsbenaming)') }}</label>
+                <input type="text" name="subject_0_handelsbenaming" data-idx="0">
+              </div>
             </div>
-            <div class="form-group sf-person sf-company">
-              <label>{{ _('Straat') }}</label>
-              <input type="text" name="subject_0_street" class="addr-street" placeholder="{{ _('Street name') }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Body Type') }}</label>
+                <input type="text" name="subject_0_vehicle_type" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Color') }}</label>
+                <input type="text" name="subject_0_eerste_kleur" data-idx="0">
+              </div>
             </div>
-            <div class="form-group sf-person sf-company">
-              <label>{{ _('Plaats') }}</label>
-              <input type="text" name="subject_0_city" class="addr-town" placeholder="{{ _('Amsterdam') }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Vehicle Category') }}</label>
+                <input type="text" name="subject_0_voertuigsoort" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Doors') }}</label>
+                <input type="number" name="subject_0_aantal_deuren" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Seats') }}</label>
+                <input type="number" name="subject_0_aantal_zitplaatsen" data-idx="0">
+              </div>
             </div>
-            <div class="form-group full-width sf-person sf-online">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('APK Expiry') }}</label>
+                <input type="text" name="subject_0_vervaldatum_apk" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('WAM Insured') }}</label>
+                <input type="text" name="subject_0_wam_verzekerd" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Insurance Company') }}</label>
+                <input type="text" name="subject_0_insurance_company" data-idx="0">
+              </div>
+            </div>
+          </div>
+          {# ── Vessel fields ── #}
+          <div class="sf-vessel" style="display:none;">
+            <div style="background:linear-gradient(135deg,#0369a1 0%,#075985 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.25rem 0;">{{ _('🚢 Vessel Information') }}</h3>
+                  <p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _('Look up vessel data') }}</p>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                  <input type="text" data-vessel-imo data-idx="0" placeholder="IMO" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">
+                  <input type="text" data-vessel-mmsi data-idx="0" placeholder="MMSI" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">
+                  <input type="text" data-vessel-eni data-idx="0" placeholder="ENI" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">
+                  <button type="button" data-click="wfVesselLookup" data-idx="0" style="padding:0.75rem 1.5rem;background:white;color:#0369a1;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">🔍 {{ _('Search Ship') }}</button>
+                </div>
+              </div>
+              <div class="vessel-lookup-status" data-idx="0" style="margin-top:0.75rem;font-size:0.875rem;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('IMO Number') }}</label>
+                <input type="text" name="subject_0_imo_number" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('MMSI') }}</label>
+                <input type="text" name="subject_0_mmsi" data-idx="0">
+              </div>
+              <div class="form-group">
+                <label>{{ _('ENI (Inland Shipping)') }}</label>
+                <input type="text" name="subject_0_eni_number" data-idx="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>{{ _('Flag State (vessel_nationality)') }}</label>
+              <input type="text" name="subject_0_vessel_nationality" data-idx="0">
+            </div>
+          </div>
+          {# ── Online entity fields ── #}
+          <div class="sf-online" style="display:none;">
+            <div class="form-group full-width">
               <label>{{ _('Social accounts') }}</label>
-              <input type="text" name="subject_0_social_accounts" placeholder="{{ _('@username1, @username2') }}">
-            </div>
-            <div class="form-group full-width sf-all">
-              <label>{{ _('Risk Score (0-100)') }}</label>
-              <input type="number" name="subject_0_risk_score" value="0" min="0" max="100">
-            </div>
-            <div class="form-group full-width sf-all">
-              <label>{{ _('Notes') }}</label>
-              <textarea name="subject_0_notes" rows="2" placeholder="{{ _('Internal notes') }}"></textarea>
+              <input type="text" name="subject_0_social_accounts" data-idx="0" placeholder="{{ _('@username1, @username2') }}">
             </div>
           </div>
         </div>
@@ -280,63 +466,159 @@ input:-webkit-autofill:focus {
     <button type="button" class="btn-cms small" data-action="add-subject" style="margin-top:1rem;">+ Subject</button>
   </div>
 
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/workflowCase.js') }}?v={{ g.css_version }}"></script>
 <script nonce="{{ csp_nonce }}">
 var T = {
   achternaam: {{ _('Achternaam')|tojson }},
-  tussenvoegsels: {{ _('Tussenvoegsels')|tojson }},
   voornamen: {{ _('Voornamen')|tojson }},
   voorletters: {{ _('Voorletters')|tojson }},
-  idNumber: {{ _('ID Number')|tojson }},
-  email: {{ _('Email')|tojson }},
-  phone: {{ _('Phone')|tojson }},
-  dateOfBirth: {{ _('Date of Birth')|tojson }},
-  placeOfBirth: {{ _('Place of Birth')|tojson }},
-  nationality: {{ _('Nationality')|tojson }},
-  geslacht: {{ _('Geslacht')|tojson }},
+  tussenvoegsels: {{ _('Tussenvoegsels')|tojson }},
+  vanDe: {{ _('van de')|tojson }},
+  jp: {{ _('J.P.')|tojson }},
   select: {{ _('Select')|tojson }},
+  selecteer: {{ _('-- Selecteer --')|tojson }},
   man: {{ _('Man')|tojson }},
   vrouw: {{ _('Vrouw')|tojson }},
   onbekend: {{ _('Onbekend')|tojson }},
   geenOpgave: {{ _('Geen opgave')|tojson }},
+  geslacht: {{ _('Geslacht')|tojson }},
+  nationality: {{ _('Nationality')|tojson }},
+  dateOfBirth: {{ _('Date of Birth')|tojson }},
+  placeOfBirth: {{ _('Place of Birth')|tojson }},
   bsnNummer: {{ _('BSN nummer')|tojson }},
+  bsnPlaceholder: {{ _('Burgerservicenummer')|tojson }},
   reisdocumentType: {{ _('Reisdocument type')|tojson }},
   paspoort: {{ _('Paspoort')|tojson }},
   idKaart: {{ _('ID-kaart')|tojson }},
   rijbewijs: {{ _('Rijbewijs')|tojson }},
-  overig: {{ _('Overig')|tojson }},
+  overig: {{ _('Overige')|tojson }},
   reisdocumentNummer: {{ _('Reisdocument nummer')|tojson }},
   bankAccount: {{ _('Bank Account')|tojson }},
-  postcode: {{ _('Postcode')|tojson }},
-  huisnummer: {{ _('Huisnummer')|tojson }},
-  toevoeging: {{ _('Toevoeging')|tojson }},
-  straat: {{ _('Straat')|tojson }},
-  plaats: {{ _('Plaats')|tojson }},
-  socialAccounts: {{ _('Social accounts')|tojson }},
+  ibanPlaceholder: {{ _('e.g. NL39INGB0001234567')|tojson }},
   riskScore: {{ _('Risk Score (0-100)')|tojson }},
   notes: {{ _('Notes')|tojson }},
-  streetName: {{ _('Street name')|tojson }},
-  last_name: {{ _('Last name')|tojson }},
-  van_de: {{ _('van de')|tojson }},
-  jp: {{ _('J.P.')|tojson }},
-  bsnPlaceholder: {{ _('BSN / KvK / license plate / IMO')|tojson }},
-  emailPlaceholder: {{ _('name@example.com')|tojson }},
-  phonePlaceholder: {{ _('+31 6 12345678')|tojson }},
-  amsterdam: {{ _('Amsterdam')|tojson }},
-  dutch: {{ _('Dutch')|tojson }},
-  abPlaceholder: {{ _('AB1234567')|tojson }},
-  ingbPlaceholder: {{ _('NL00 INGB 0000 0000 00')|tojson }},
-  zipPlaceholder: {{ _('1012LL')|tojson }},
-  numberPlaceholder: {{ _('45')|tojson }},
-  additionPlaceholder: {{ _('A')|tojson }},
+  internalNotes: {{ _('Internal notes')|tojson }},
+  addresses: {{ _('Address(es)')|tojson }},
+  addAddress: {{ _('+ Add another address')|tojson }},
+  contacts: {{ _('Contact(s)')|tojson }},
+  addContact: {{ _('+ Add another contact')|tojson }},
+  socialAccounts: {{ _('Social accounts')|tojson }},
   socialPlaceholder: {{ _('@username1, @username2')|tojson }},
-  internalNotes: {{ _('Internal notes')|tojson }}
+  zipPlaceholder: {{ _('1234 AB')|tojson }},
+  numberPlaceholder: {{ _('1')|tojson }},
+  streetPlaceholder: {{ _('Street name')|tojson }},
+  townPlaceholder: {{ _('Amsterdam')|tojson }},
+  contactEmail: {{ _('Email')|tojson }},
+  contactPhone: {{ _('Phone')|tojson }},
+  contactValuePlaceholder: {{ _('email@example.com or +31612345678')|tojson }},
+  primaryLabel: {{ _('Primary')|tojson }},
+  duplicateFound: {{ _('A subject with this name already exists in this case.')|tojson }},
+  encrypted: {{ _('Encrypted at rest')|tojson }},
+  kvkTitle: {{ _('Company Information')|tojson }},
+  kvkSubtitle: {{ _('Look up company data from KVK / Overheid.io')|tojson }},
+  kvkSearch: {{ _('KVK Search')|tojson }},
+  kvkPlaceholder: {{ _('Company name or KVK number')|tojson }},
+  kvkNumber: {{ _('KVK number')|tojson }},
+  kvkKvkPlaceholder: {{ _('e.g. 30128191')|tojson }},
+  kvkLegalForm: {{ _('Legal Form')|tojson }},
+  kvkLegalPlaceholder: {{ _('e.g. BV, NV, Stichting')|tojson }},
+  vehicleTitle: {{ _('Vehicle Information')|tojson }},
+  vehicleSubtitle: {{ _('Look up vehicle data from RDW')|tojson }},
+  vehicleFetch: {{ _('Fetch RDW')|tojson }},
+  vehiclePlatePlaceholder: {{ _('License plate (e.g. XX-XX-XX)')|tojson }},
+  licensePlate: {{ _('License Plate')|tojson }},
+  vinLabel: {{ _('VIN (Chassis Number)')|tojson }},
+  vinPlaceholder: {{ _('17 characters')|tojson }},
+  brand: {{ _('Brand')|tojson }},
+  model: {{ _('Model (Handelsbenaming)')|tojson }},
+  bodyType: {{ _('Body Type')|tojson }},
+  color: {{ _('Color')|tojson }},
+  vehicleCategory: {{ _('Vehicle Category')|tojson }},
+  doors: {{ _('Doors')|tojson }},
+  seats: {{ _('Seats')|tojson }},
+  apkExpiry: {{ _('APK Expiry')|tojson }},
+  wamInsured: {{ _('WAM Insured')|tojson }},
+  insuranceCompany: {{ _('Insurance Company')|tojson }},
+  vesselTitle: {{ _('Vessel Information')|tojson }},
+  vesselSubtitle: {{ _('Look up vessel data')|tojson }},
+  vesselSearch: {{ _('Search Ship')|tojson }},
+  imoNumber: {{ _('IMO Number')|tojson }},
+  mmsi: {{ _('MMSI')|tojson }},
+  eniNumber: {{ _('ENI (Inland Shipping)')|tojson }},
+  flagState: {{ _('Flag State (vessel_nationality)')|tojson }}
 };
 document.addEventListener('DOMContentLoaded', function() {
 
-  // Show fields for pre-selected subject types on page load
-  document.querySelectorAll('.subject-block select[name$="_type"]').forEach(function(sel) {
-    if (sel.value) updateSubjectFields(sel);
-  });
+  function computeName(idx) {
+    var prefix = 'subject_' + idx + '_';
+    function n(k) { return document.querySelector('[name="' + prefix + k + '"]'); }
+    var parts = [];
+    var vn = n('voornamen'); if (vn && vn.value.trim()) parts.push(vn.value.trim());
+    var tv = n('tussenvoegsels'); if (tv && tv.value.trim()) parts.push(tv.value.trim());
+    var an = n('name'); if (an && an.value.trim()) parts.push(an.value.trim());
+    var computed = parts.join(' ');
+    var ci = n('name_computed'); if (ci) ci.value = computed;
+  }
+
+  function checkDuplicate(idx) {
+    var nameEl = document.querySelector('[name="subject_' + idx + '_name"]');
+    if (!nameEl) return;
+    var wrap = nameEl.closest('.sf-all') || nameEl.parentElement;
+    var alertEl = wrap ? wrap.querySelector('.duplicate-alert') : null;
+    if (!alertEl) return;
+    var val = nameEl.value.trim().toLowerCase();
+    if (!val) { alertEl.style.display = 'none'; return; }
+    var dup = false;
+    document.querySelectorAll('select[name$="_type"]').forEach(function(sel) {
+      var block = sel.closest('.subject-block');
+      if (!block) return;
+      var m = sel.name.match(/subject_(\d+)_type/);
+      if (!m || m[1] == idx) return;
+      var otherName = document.querySelector('[name="subject_' + m[1] + '_name"]');
+      if (otherName && otherName.value.trim().toLowerCase() === val) dup = true;
+    });
+    if (dup) {
+      alertEl.innerHTML = '<strong style="color:#b45309;">' + T.duplicateFound + '</strong>';
+      alertEl.style.display = 'block';
+    } else {
+      alertEl.style.display = 'none';
+    }
+  }
+
+  function addressRowHtml(idx, rowIdx) {
+    return '<div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">' +
+      '<div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">' +
+        '<div><label style="font-size:0.75rem;">Zipcode</label>' +
+          '<input type="text" class="addr-zipcode" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.zipPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+        '<div><label style="font-size:0.75rem;">Number</label>' +
+          '<input type="text" class="addr-number" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.numberPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+        '<div><label style="font-size:0.75rem;">Street</label>' +
+          '<input type="text" class="addr-street" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.streetPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+        '<div><label style="font-size:0.75rem;">Town</label>' +
+          '<input type="text" class="addr-town" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.townPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+        '<div style="display:flex;align-items:center;gap:0.25rem;">' +
+          '<button type="button" data-click="wfPostcodeCheck" data-idx="' + idx + '" data-row="' + rowIdx + '" title="Look up" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>' +
+          '<label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;"><input type="checkbox" class="addr-primary" ' + (rowIdx === 0 ? 'checked' : '') + '> Primary</label>' +
+        '</div>' +
+      '</div>' +
+      '<input type="hidden" class="addr-country" value="Netherlands">' +
+    '</div>';
+  }
+
+  function contactRowHtml(idx, rowIdx) {
+    return '<div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">' +
+      '<div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">' +
+        '<div><label style="font-size:0.75rem;">Type</label>' +
+          '<select class="contact-type" data-idx="' + idx + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">' +
+            '<option value="email">' + T.contactEmail + '</option><option value="phone">' + T.contactPhone + '</option></select></div>' +
+        '<div><label style="font-size:0.75rem;">Value</label>' +
+          '<input type="text" class="contact-value" data-idx="' + idx + '" placeholder="' + T.contactValuePlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+        '<div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">' +
+          '<label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;"><input type="checkbox" class="contact-primary" ' + (rowIdx === 0 ? 'checked' : '') + '> Primary</label>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
 
   function updateSubjectFields(sel) {
     var block = sel.closest('.subject-block');
@@ -346,9 +628,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var val = sel.value;
     if (!val) { fields.style.display = 'none'; return; }
     fields.style.display = '';
-    var groups = fields.children[0] ? fields.children[0].children : [];
-    for (var i = 0; i < groups.length; i++) {
-      var el = groups[i];
+    var children = fields.children;
+    for (var i = 0; i < children.length; i++) {
+      var el = children[i];
       if (el.classList.contains('sf-all')) {
         el.style.display = '';
       } else if (el.classList.contains('sf-' + val)) {
@@ -365,6 +647,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var div = document.createElement('div');
     div.className = 'subject-block';
     div.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-color);';
+    var i = count;
+    var adrHtml = addressRowHtml(i, 0);
+    var conHtml = contactRowHtml(i, 0);
     div.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
         '<strong style="font-size:0.85rem;">Subject ' + (count + 1) + '</strong>' +
@@ -372,7 +657,7 @@ document.addEventListener('DOMContentLoaded', function() {
       '</div>' +
       '<div class="subject-type-row">' +
         '<label>Subject type</label>' +
-        '<select name="subject_' + count + '_type" data-action="update-fields" required>' +
+        '<select name="subject_' + i + '_type" data-action="update-fields" required>' +
           '<option value="">— Select type —</option>' +
           '<option value="person">Person</option>' +
           '<option value="company">Company</option>' +
@@ -382,36 +667,110 @@ document.addEventListener('DOMContentLoaded', function() {
         '</select>' +
       '</div>' +
       '<div class="subject-fields" style="display:none">' +
-        '<div class="form-grid">' +
-          '<div class="form-group sf-all"><label>' + T.achternaam + ' *</label><input type="text" name="subject_' + count + '_name" placeholder="' + T.last_name + '"></div>' +
-          '<div class="form-group sf-person"><label>' + T.tussenvoegsels + '</label><input type="text" name="subject_' + count + '_tussenvoegsels" placeholder="' + T.van_de + '"></div>' +
-          '<div class="form-group sf-person"><label>' + T.voornamen + '</label><input type="text" name="subject_' + count + '_voornamen" placeholder="' + T.jp + '"></div>' +
-          '<div class="form-group sf-person"><label>' + T.voorletters + '</label><input type="text" name="subject_' + count + '_voorletters" placeholder="' + T.jp + '"></div>' +
-          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>' + T.idNumber + '</label><input type="text" name="subject_' + count + '_identification" placeholder="' + T.bsnPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.email + '</label><input type="email" name="subject_' + count + '_email" placeholder="' + T.emailPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.phone + '</label><input type="text" name="subject_' + count + '_phone" placeholder="' + T.phonePlaceholder + '"></div>' +
-          '<div class="form-group sf-person"><label>' + T.dateOfBirth + '</label><input type="date" name="subject_' + count + '_date_of_birth"></div>' +
-          '<div class="form-group sf-person"><label>' + T.placeOfBirth + '</label><input type="text" name="subject_' + count + '_place_of_birth" placeholder="' + T.amsterdam + '"></div>' +
-          '<div class="form-group sf-person"><label>' + T.nationality + '</label><input type="text" name="subject_' + count + '_nationality" placeholder="' + T.dutch + '"></div>' +
-          '<div class="form-group sf-person"><label>' + T.geslacht + '</label><select name="subject_' + count + '_geslacht"><option value="">— ' + T.select + ' —</option><option value="man">' + T.man + '</option><option value="vrouw">' + T.vrouw + '</option><option value="onbekend">' + T.onbekend + '</option><option value="geen_opgave">' + T.geenOpgave + '</option></select></div>' +
-          '<div class="form-group sf-person"><label>' + T.bsnNummer + '</label><input type="text" name="subject_' + count + '_bsn_number" placeholder="000000000"></div>' +
-          '<div class="form-group sf-person"><label>' + T.reisdocumentType + '</label><select name="subject_' + count + '_reisdocument_type"><option value="">— ' + T.select + ' —</option><option value="paspoort">' + T.paspoort + '</option><option value="id-kaart">' + T.idKaart + '</option><option value="rijbewijs">' + T.rijbewijs + '</option><option value="overige">' + T.overig + '</option></select></div>' +
-          '<div class="form-group sf-person"><label>' + T.reisdocumentNummer + '</label><input type="text" name="subject_' + count + '_reisdocument_nummer" placeholder="' + T.abPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.bankAccount + '</label><input type="text" name="subject_' + count + '_bank_account" placeholder="' + T.ingbPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.postcode + '</label><input type="text" name="subject_' + count + '_postal_code" class="addr-zipcode" placeholder="' + T.zipPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.huisnummer + '</label><input type="text" name="subject_' + count + '_house_number" class="addr-number" placeholder="' + T.numberPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.toevoeging + '</label><input type="text" name="subject_' + count + '_house_number_addition" placeholder="' + T.additionPlaceholder + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.straat + '</label><input type="text" name="subject_' + count + '_street" class="addr-street" placeholder="' + T.streetName + '"></div>' +
-          '<div class="form-group sf-person sf-company"><label>' + T.plaats + '</label><input type="text" name="subject_' + count + '_city" class="addr-town" placeholder="' + T.amsterdam + '"></div>' +
-          '<div class="form-group full-width sf-person sf-online"><label>' + T.socialAccounts + '</label><input type="text" name="subject_' + count + '_social_accounts" placeholder="' + T.socialPlaceholder + '"></div>' +
-          '<div class="form-group full-width sf-all"><label>' + T.riskScore + '</label><input type="number" name="subject_' + count + '_risk_score" value="0" min="0" max="100"></div>' +
-          '<div class="form-group full-width sf-all"><label>' + T.notes + '</label><textarea name="subject_' + count + '_notes" rows="2" placeholder="' + T.internalNotes + '"></textarea></div>' +
+        '<div class="sf-all">' +
+          '<div class="form-group"><label>' + T.achternaam + ' *</label>' +
+            '<input type="text" name="subject_' + i + '_name" data-input="checkDuplicate" data-idx="' + i + '">' +
+            '<div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.voornamen + '</label><input type="text" name="subject_' + i + '_voornamen" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.voorletters + '</label><input type="text" name="subject_' + i + '_voorletters" data-idx="' + i + '" placeholder="' + T.jp + '"></div>' +
+            '<div class="form-group"><label>' + T.tussenvoegsels + '</label><input type="text" name="subject_' + i + '_tussenvoegsels" data-idx="' + i + '" placeholder="' + T.vanDe + '"></div>' +
+          '</div>' +
+          '<input type="hidden" name="subject_' + i + '_name_computed" data-idx="' + i + '">' +
+          '<div class="form-group sf-person sf-company"><label>' + T.addresses + '</label>' +
+            '<div class="addresses-container" data-idx="' + i + '">' + adrHtml + '</div>' +
+            '<button type="button" data-click="wfAddAddress" data-idx="' + i + '" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">' + T.addAddress + '</button>' +
+            '<input type="hidden" name="subject_' + i + '_addresses_data" data-idx="' + i + '"></div>' +
+          '<div class="form-group sf-person sf-company"><label>' + T.contacts + '</label>' +
+            '<div class="contacts-container" data-idx="' + i + '">' + conHtml + '</div>' +
+            '<button type="button" data-click="wfAddContact" data-idx="' + i + '" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">' + T.addContact + '</button>' +
+            '<input type="hidden" name="subject_' + i + '_contacts_data" data-idx="' + i + '"></div>' +
+          '<div class="vehicle-restricted-fields" data-idx="' + i + '">' +
+            '<div class="form-group"><label>' + T.riskScore + '</label><input type="number" name="subject_' + i + '_risk_score" data-idx="' + i + '" value="0" min="0" max="100"></div>' +
+            '<div class="form-group"><label>' + T.notes + '</label><textarea name="subject_' + i + '_notes" data-idx="' + i + '" rows="3" placeholder="' + T.internalNotes + '"></textarea></div>' +
+            '<div class="form-group"><label>' + T.bankAccount + '</label><input type="text" name="subject_' + i + '_bank_account" data-idx="' + i + '" placeholder="' + T.ibanPlaceholder + '"><small style="color:var(--text-muted);">' + T.encrypted + '</small></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sf-person" style="display:none;">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.geslacht + '</label><select name="subject_' + i + '_geslacht" data-idx="' + i + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="">' + T.selecteer + '</option><option value="man">' + T.man + '</option><option value="vrouw">' + T.vrouw + '</option><option value="onbekend">' + T.onbekend + '</option><option value="geen_opgave">' + T.geenOpgave + '</option></select></div>' +
+            '<div class="form-group"><label>' + T.nationality + '</label><input type="text" name="subject_' + i + '_nationality" data-idx="' + i + '"></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.dateOfBirth + '</label><input type="date" name="subject_' + i + '_date_of_birth" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.placeOfBirth + '</label><input type="text" name="subject_' + i + '_place_of_birth" data-idx="' + i + '"></div>' +
+          '</div>' +
+          '<div class="form-group"><label>' + T.bsnNummer + '</label><input type="text" name="subject_' + i + '_bsn_number" data-idx="' + i + '" placeholder="' + T.bsnPlaceholder + '"></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.reisdocumentType + '</label><select name="subject_' + i + '_reisdocument_type" data-idx="' + i + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="">' + T.selecteer + '</option><option value="paspoort">' + T.paspoort + '</option><option value="id-kaart">' + T.idKaart + '</option><option value="rijbewijs">' + T.rijbewijs + '</option><option value="overige">' + T.overig + '</option></select></div>' +
+            '<div class="form-group"><label>' + T.reisdocumentNummer + '</label><input type="text" name="subject_' + i + '_reisdocument_nummer" data-idx="' + i + '"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sf-company" style="display:none;">' +
+          '<div style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">' +
+              '<div><h3 style="margin:0 0 0.25rem 0;">' + T.kvkTitle + '</h3><p style="margin:0;opacity:0.9;font-size:0.875rem;">' + T.kvkSubtitle + '</p></div>' +
+              '<div style="display:flex;gap:0.5rem;align-items:center;">' +
+                '<input type="text" data-kvk-query data-idx="' + i + '" placeholder="' + T.kvkPlaceholder + '" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:220px;">' +
+                '<button type="button" data-click="wfKvkLookup" data-idx="' + i + '" style="padding:0.75rem 1.5rem;background:white;color:#7c3aed;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">🔍 ' + T.kvkSearch + '</button></div>' +
+            '</div>' +
+            '<div class="kvk-lookup-status" data-idx="' + i + '" style="margin-top:0.75rem;font-size:0.875rem;"></div>' +
+            '<div class="kvk-results" data-idx="' + i + '" style="margin-top:0.5rem;display:none;"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">' +
+            '<div class="form-group"><label>' + T.kvkNumber + '</label><input type="text" name="subject_' + i + '_registration_number" data-idx="' + i + '" placeholder="' + T.kvkKvkPlaceholder + '"></div>' +
+            '<div class="form-group"><label>' + T.kvkLegalForm + '</label><input type="text" name="subject_' + i + '_legal_form" data-idx="' + i + '" placeholder="' + T.kvkLegalPlaceholder + '"></div></div>' +
+        '</div>' +
+        '<div class="sf-vehicle" style="display:none;">' +
+          '<div style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">' +
+              '<div><h3 style="margin:0 0 0.25rem 0;">' + T.vehicleTitle + '</h3><p style="margin:0;opacity:0.9;font-size:0.875rem;">' + T.vehicleSubtitle + '</p></div>' +
+              '<div style="display:flex;gap:0.5rem;align-items:center;">' +
+                '<input type="text" data-rdw-kenteken data-idx="' + i + '" placeholder="' + T.vehiclePlatePlaceholder + '" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:200px;text-transform:uppercase;">' +
+                '<button type="button" data-click="wfRdwLookup" data-idx="' + i + '" style="padding:0.75rem 1.5rem;background:white;color:#ea580c;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">📡 ' + T.vehicleFetch + '</button></div>' +
+            '</div>' +
+            '<div class="rdw-status" data-idx="' + i + '" style="margin-top:0.75rem;font-size:0.875rem;"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.licensePlate + '</label><input type="text" name="subject_' + i + '_identification" data-idx="' + i + '" style="text-transform:uppercase;" placeholder="XX-XX-XX"></div>' +
+            '<div class="form-group"><label>' + T.vinLabel + '</label><input type="text" name="subject_' + i + '_vin" data-idx="' + i + '" maxlength="17" placeholder="' + T.vinPlaceholder + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.brand + '</label><input type="text" name="subject_' + i + '_brand" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.model + '</label><input type="text" name="subject_' + i + '_handelsbenaming" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.bodyType + '</label><input type="text" name="subject_' + i + '_vehicle_type" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.color + '</label><input type="text" name="subject_' + i + '_eerste_kleur" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.vehicleCategory + '</label><input type="text" name="subject_' + i + '_voertuigsoort" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.doors + '</label><input type="number" name="subject_' + i + '_aantal_deuren" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.seats + '</label><input type="number" name="subject_' + i + '_aantal_zitplaatsen" data-idx="' + i + '"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.apkExpiry + '</label><input type="text" name="subject_' + i + '_vervaldatum_apk" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.wamInsured + '</label><input type="text" name="subject_' + i + '_wam_verzekerd" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.insuranceCompany + '</label><input type="text" name="subject_' + i + '_insurance_company" data-idx="' + i + '"></div></div>' +
+        '</div>' +
+        '<div class="sf-vessel" style="display:none;">' +
+          '<div style="background:linear-gradient(135deg,#0369a1 0%,#075985 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">' +
+              '<div><h3 style="margin:0 0 0.25rem 0;">' + T.vesselTitle + '</h3><p style="margin:0;opacity:0.9;font-size:0.875rem;">' + T.vesselSubtitle + '</p></div>' +
+              '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">' +
+                '<input type="text" data-vessel-imo data-idx="' + i + '" placeholder="IMO" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">' +
+                '<input type="text" data-vessel-mmsi data-idx="' + i + '" placeholder="MMSI" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">' +
+                '<input type="text" data-vessel-eni data-idx="' + i + '" placeholder="ENI" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">' +
+                '<button type="button" data-click="wfVesselLookup" data-idx="' + i + '" style="padding:0.75rem 1.5rem;background:white;color:#0369a1;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">🔍 ' + T.vesselSearch + '</button></div>' +
+            '</div>' +
+            '<div class="vessel-lookup-status" data-idx="' + i + '" style="margin-top:0.75rem;font-size:0.875rem;"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>' + T.imoNumber + '</label><input type="text" name="subject_' + i + '_imo_number" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.mmsi + '</label><input type="text" name="subject_' + i + '_mmsi" data-idx="' + i + '"></div>' +
+            '<div class="form-group"><label>' + T.eniNumber + '</label><input type="text" name="subject_' + i + '_eni_number" data-idx="' + i + '"></div></div>' +
+          '<div class="form-group"><label>' + T.flagState + '</label><input type="text" name="subject_' + i + '_vessel_nationality" data-idx="' + i + '"></div>' +
+        '</div>' +
+        '<div class="sf-online" style="display:none;">' +
+          '<div class="form-group full-width"><label>' + T.socialAccounts + '</label><input type="text" name="subject_' + i + '_social_accounts" data-idx="' + i + '" placeholder="' + T.socialPlaceholder + '"></div>' +
         '</div>' +
       '</div>';
     container.parentElement.insertBefore(div, container.nextElementSibling);
   }
 
-  // Event delegation
   document.getElementById('subjects-section').addEventListener('click', function(e) {
     var btn = e.target.closest('[data-action]');
     if (!btn) return;
@@ -430,9 +789,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  document.querySelectorAll('.subject-block select[name$="_type"]').forEach(function(sel) {
+    if (sel.value) updateSubjectFields(sel);
+  });
+
+  document.querySelectorAll('[data-input="checkDuplicate"]').forEach(function(el) {
+    el.addEventListener('input', function() {
+      checkDuplicate(this.dataset.idx);
+    });
+  });
+
+  document.querySelectorAll('[data-idx]').forEach(function(el) {
+    if (el.classList.contains('addr-zipcode') || el.classList.contains('addr-number') ||
+        el.classList.contains('addr-street') || el.classList.contains('addr-town')) return;
+    if (el.classList.contains('contact-type') || el.classList.contains('contact-value')) return;
+    if (el.classList.contains('addr-primary') || el.classList.contains('contact-primary')) return;
+    if (el.tagName === 'BUTTON') return;
+    if (el.name && el.name.indexOf('voornamen') !== -1) {
+      el.addEventListener('input', function() { computeName(this.dataset.idx); });
+    }
+    if (el.name && el.name.indexOf('tussenvoegsels') !== -1) {
+      el.addEventListener('input', function() { computeName(this.dataset.idx); });
+    }
+  });
+
 });
 
-// ── Client lookup ──────────────────────────────────────────
 (function() {
   var nameInput = document.querySelector('[name="client_name"]');
   var contactInput = document.querySelector('[name="client_contact"]');
@@ -451,42 +833,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function doLookup() {
     var q = getQuery();
-    if (!q || q.length < 2) {
-      suggestions.style.display = 'none';
-      return;
-    }
+    if (!q || q.length < 2) { suggestions.style.display = 'none'; return; }
     fetch('/cms/workflow/api/client-lookup?q=' + encodeURIComponent(q))
       .then(function(r) { return r.json(); })
       .then(function(data) {
         suggestions.innerHTML = '';
-        if (!data.results || data.results.length === 0) {
-          suggestions.style.display = 'none';
-          return;
-        }
+        if (!data.results || data.results.length === 0) { suggestions.style.display = 'none'; return; }
         data.results.forEach(function(c) {
           var item = document.createElement('div');
           item.className = 'client-suggestion';
           item.style.cssText = 'padding:0.6rem 0.8rem;cursor:pointer;border-bottom:1px solid var(--border-color);display:flex;flex-direction:column;gap:0.15rem;';
           item.onmouseover = function() { this.style.background = 'var(--table-hover)'; };
           item.onmouseout = function() { this.style.background = ''; };
-          var nameEl = document.createElement('strong');
-          nameEl.textContent = c.name;
-          nameEl.style.fontSize = '0.85rem';
-          item.appendChild(nameEl);
-          if (c.contact_person) {
-            var cp = document.createElement('span');
-            cp.textContent = 'Contact: ' + c.contact_person;
-            cp.style.fontSize = '0.75rem';
-            cp.style.color = 'var(--text-secondary)';
-            item.appendChild(cp);
-          }
-          if (c.contact_email) {
-            var em = document.createElement('span');
-            em.textContent = c.contact_email;
-            em.style.fontSize = '0.75rem';
-            em.style.color = 'var(--text-secondary)';
-            item.appendChild(em);
-          }
+          var nm = document.createElement('strong');
+          nm.textContent = c.name; nm.style.fontSize = '0.85rem';
+          item.appendChild(nm);
+          if (c.contact_person) { var cp = document.createElement('span'); cp.textContent = 'Contact: ' + c.contact_person; cp.style.cssText = 'font-size:0.75rem;color:var(--text-secondary)'; item.appendChild(cp); }
+          if (c.contact_email) { var em = document.createElement('span'); em.textContent = c.contact_email; em.style.cssText = 'font-size:0.75rem;color:var(--text-secondary)'; item.appendChild(em); }
           item.addEventListener('click', function() { selectClient(c); });
           suggestions.appendChild(item);
         });
@@ -504,14 +867,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setFieldValue('client_email', c.contact_email || '');
     setFieldValue('client_phone', c.contact_phone || '');
     setFieldValue('client_street', (c.address && c.address.street) || '');
-    // Split combined address_number into house_number + addition
     var num = (c.address && c.address.number) || '';
     if (num) {
       var parts = num.split(/(\s+)/);
-      var hn = parts[0] || '';
-      var add = parts.slice(2).join('') || '';
-      setFieldValue('client_house_number', hn);
-      setFieldValue('client_house_number_addition', add);
+      setFieldValue('client_house_number', parts[0] || '');
+      setFieldValue('client_house_number_addition', parts.slice(2).join('') || '');
     }
     setFieldValue('client_city', (c.address && c.address.city) || '');
     setFieldValue('client_postal_code', (c.address && c.address.postal) || '');
@@ -521,8 +881,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setFieldValue('client_contract_number', c.contract_number || '');
     setFieldValue('client_contract_info', c.contract_info || '');
     setFieldValue('client_notes', c.financial_notes || '');
-
-    // Mark empty fields
     var anyEmpty = false;
     var fields = lookupWrap.querySelectorAll('input, textarea');
     fields.forEach(function(f) {
@@ -536,9 +894,7 @@ document.addEventListener('DOMContentLoaded', function() {
         delete f.dataset.emptySuggestion;
       }
     });
-
     if (anyEmpty) {
-      // Remove any existing prompt
       var oldPrompt = document.getElementById('empty-fields-prompt');
       if (oldPrompt) oldPrompt.remove();
       var prompt = document.createElement('div');
@@ -548,12 +904,7 @@ document.addEventListener('DOMContentLoaded', function() {
         '<button type="button" id="dismiss-empty-fields" class="btn-cms small orange">Skip, that\'s fine</button>';
       lookupWrap.insertBefore(prompt, lookupWrap.firstChild);
       document.getElementById('dismiss-empty-fields').addEventListener('click', function() {
-        fields.forEach(function(f) {
-          if (f.dataset.emptySuggestion) {
-            f.style.outline = '';
-            delete f.dataset.emptySuggestion;
-          }
-        });
+        fields.forEach(function(f) { if (f.dataset.emptySuggestion) { f.style.outline = ''; delete f.dataset.emptySuggestion; } });
         var p = document.getElementById('empty-fields-prompt');
         if (p) p.remove();
       });
@@ -574,12 +925,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (nameInput) nameInput.addEventListener('input', onInputChange);
   if (contactInput) contactInput.addEventListener('input', onInputChange);
-
-  // Close suggestions on outside click
   document.addEventListener('click', function(e) {
-    if (!lookupWrap.contains(e.target)) {
-      suggestions.style.display = 'none';
-    }
+    if (!lookupWrap.contains(e.target)) suggestions.style.display = 'none';
   });
 })();
 </script>

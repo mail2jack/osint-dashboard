@@ -170,30 +170,297 @@ input:-webkit-autofill:focus {
           </select>
         </div>
         <div class="subject-fields">
-          <div class="form-grid">
-            <div class="form-group sf-all"><label>{{ _('Achternaam') }} *</label><input type="text" name="subj_{{ sid }}_name" value="{{ subject.name or '' }}"></div>
-            <div class="form-group sf-person"><label>{{ _('Tussenvoegsels') }}</label><input type="text" name="subj_{{ sid }}_tussenvoegsels" value="{{ subject.tussenvoegsels or '' }}" placeholder="{{ _('van de') }}"></div>
-            <div class="form-group sf-person"><label>{{ _('Voornamen') }}</label><input type="text" name="subj_{{ sid }}_voornamen" value="{{ subject.voornamen or '' }}" placeholder="{{ _('Jan Peter') }}"></div>
-            <div class="form-group sf-person"><label>{{ _('Voorletters') }}</label><input type="text" name="subj_{{ sid }}_voorletters" value="{{ subject.voorletters or '' }}" placeholder="{{ _('J.P.') }}"></div>
-            <div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>{{ _('ID Number') }}</label><input type="text" name="subj_{{ sid }}_identification" value="{{ subject.identification_number or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Email') }}</label><input type="email" name="subj_{{ sid }}_email" value="{{ subject.email or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Phone') }}</label><input type="text" name="subj_{{ sid }}_phone" value="{{ subject.phone or '' }}"></div>
-            <div class="form-group sf-person"><label>{{ _('Date of Birth') }}</label><input type="date" name="subj_{{ sid }}_date_of_birth" value="{{ subject.date_of_birth or '' }}"></div>
-            <div class="form-group sf-person"><label>{{ _('Place of Birth') }}</label><input type="text" name="subj_{{ sid }}_place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="{{ _('Amsterdam') }}"></div>
-            <div class="form-group sf-person"><label>{{ _('Nationality') }}</label><input type="text" name="subj_{{ sid }}_nationality" value="{{ subject.nationality or '' }}" placeholder="{{ _('Dutch') }}"></div>
-            <div class="form-group sf-person"><label>{{ _('Geslacht') }}</label><select name="subj_{{ sid }}_geslacht"><option value="">— {{ _('Select') }} —</option><option value="man" {% if subject.geslacht == 'man' %}selected{% endif %}>{{ _('Man') }}</option><option value="vrouw" {% if subject.geslacht == 'vrouw' %}selected{% endif %}>{{ _('Vrouw') }}</option><option value="onbekend" {% if subject.geslacht == 'onbekend' %}selected{% endif %}>{{ _('Onbekend') }}</option><option value="geen_opgave" {% if subject.geslacht == 'geen_opgave' %}selected{% endif %}>{{ _('Geen opgave') }}</option></select></div>
-            <div class="form-group sf-person"><label>{{ _('BSN nummer') }}</label><input type="text" name="subj_{{ sid }}_bsn_number" value="{{ subject.bsn_number or '' }}" placeholder="000000000"></div>
-            <div class="form-group sf-person"><label>{{ _('Reisdocument type') }}</label><select name="subj_{{ sid }}_reisdocument_type"><option value="">— {{ _('Select') }} —</option><option value="paspoort" {% if subject.reisdocument_type == 'paspoort' %}selected{% endif %}>{{ _('Paspoort') }}</option><option value="id-kaart" {% if subject.reisdocument_type == 'id-kaart' %}selected{% endif %}>{{ _('ID-kaart') }}</option><option value="rijbewijs" {% if subject.reisdocument_type == 'rijbewijs' %}selected{% endif %}>{{ _('Rijbewijs') }}</option><option value="overige" {% if subject.reisdocument_type == 'overige' %}selected{% endif %}>{{ _('Overig') }}</option></select></div>
-            <div class="form-group sf-person"><label>{{ _('Reisdocument nummer') }}</label><input type="text" name="subj_{{ sid }}_reisdocument_nummer" value="{{ subject.reisdocument_nummer or '' }}" placeholder="{{ _('AB1234567') }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Bank Account') }}</label><input type="text" name="subj_{{ sid }}_bank_account" value="{{ subject.bank_account or '' }}" placeholder="{{ _('NL00 INGB 0000 0000 00') }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Postcode') }}</label><input type="text" name="subj_{{ sid }}_postal_code" class="addr-zipcode" value="{{ subject.postal_code or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Huisnummer') }}</label><input type="text" name="subj_{{ sid }}_house_number" class="addr-number" value="{{ subject.house_number or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Toevoeging') }}</label><input type="text" name="subj_{{ sid }}_house_number_addition" value="{{ subject.house_number_addition or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Straat') }}</label><input type="text" name="subj_{{ sid }}_street" class="addr-street" value="{{ subject.street or '' }}"></div>
-            <div class="form-group sf-person sf-company"><label>{{ _('Plaats') }}</label><input type="text" name="subj_{{ sid }}_city" class="addr-town" value="{{ subject.city or '' }}"></div>
-            <div class="form-group full-width sf-person sf-online"><label>Social accounts</label><input type="text" name="subj_{{ sid }}_social_accounts" value="{{ subject.workflow_social_accounts|join(', ') if subject.workflow_social_accounts else '' }}" placeholder="@username1, @username2"></div>
-            <div class="form-group full-width sf-all"><label>Risk score (0-100)</label><input type="number" name="subj_{{ sid }}_risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100"></div>
-            <div class="form-group full-width sf-all"><label>Notes</label><textarea name="subj_{{ sid }}_notes" rows="2">{{ subject.notes or '' }}</textarea></div>
+          {# ── General fields ── #}
+          <div class="sf-all">
+            <div class="form-group">
+              <label>{{ _('Achternaam') }} *</label>
+              <input type="text" name="subj_{{ sid }}_name" value="{{ subject.name or '' }}">
+              <div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Voornamen') }}</label>
+                <input type="text" name="subj_{{ sid }}_voornamen" value="{{ subject.voornamen or '' }}" placeholder="{{ _('Jan Peter') }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Voorletters') }}</label>
+                <input type="text" name="subj_{{ sid }}_voorletters" value="{{ subject.voorletters or '' }}" placeholder="{{ _('J.P.') }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Tussenvoegsels') }}</label>
+                <input type="text" name="subj_{{ sid }}_tussenvoegsels" value="{{ subject.tussenvoegsels or '' }}" placeholder="{{ _('van de') }}">
+              </div>
+            </div>
+            <input type="hidden" name="subj_{{ sid }}_name_computed" value="">
+            <div class="form-group sf-person sf-company">
+              <label>{{ _('Address(es)') }}</label>
+              <div class="addresses-container" data-sid="{{ sid }}">
+                <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
+                  <div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                      <input type="text" class="addr-zipcode" value="{{ subject.postal_code or '' }}" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Number') }}</label>
+                      <input type="text" class="addr-number" value="{{ subject.house_number or '' }}" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                      <input type="text" class="addr-street" value="{{ subject.street or '' }}" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Town') }}</label>
+                      <input type="text" class="addr-town" value="{{ subject.city or '' }}" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.25rem;">
+                      <button type="button" data-click="wfPostcodeCheck" data-sid="{{ sid }}" title="{{ _('Look up zipcode + number') }}" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
+                      <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                        <input type="checkbox" class="addr-primary" checked> {{ _('Primary') }}
+                      </label>
+                    </div>
+                  </div>
+                  <input type="hidden" class="addr-country" value="Netherlands">
+                </div>
+              </div>
+              <button type="button" data-click="wfAddAddress" data-sid="{{ sid }}" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another address') }}</button>
+              <input type="hidden" name="subj_{{ sid }}_addresses_data" value="">
+            </div>
+            <div class="form-group sf-person sf-company">
+              <label>{{ _('Contact(s)') }}</label>
+              <div class="contacts-container" data-sid="{{ sid }}">
+                <div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
+                  <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Type') }}</label>
+                      <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <option value="email" {% if not subject.phone %}selected{% endif %}>{{ _('Email') }}</option>
+                        <option value="phone" {% if subject.phone %}selected{% endif %}>{{ _('Phone') }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Value') }}</label>
+                      <input type="text" class="contact-value" value="{{ subject.email or subject.phone or '' }}" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
+                      <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
+                        <input type="checkbox" class="contact-primary" checked> {{ _('Primary') }}
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button type="button" data-click="wfAddContact" data-sid="{{ sid }}" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another contact') }}</button>
+              <input type="hidden" name="subj_{{ sid }}_contacts_data" value="">
+            </div>
+            <div class="vehicle-restricted-fields">
+              <div class="form-group">
+                <label>{{ _('Risk Score (0-100)') }}</label>
+                <input type="number" name="subj_{{ sid }}_risk_score" value="{{ subject.risk_score or 0 }}" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Notes') }}</label>
+                <textarea name="subj_{{ sid }}_notes" rows="3" placeholder="{{ _('Internal notes') }}">{{ subject.notes or '' }}</textarea>
+              </div>
+              <div class="form-group">
+                <label>{{ _('💳 Bank / IBAN') }}</label>
+                <input type="text" name="subj_{{ sid }}_bank_account" value="{{ subject.bank_account or '' }}" placeholder="{{ _('e.g. NL39INGB0001234567') }}">
+                <small style="color:var(--text-muted);">{{ _('Encrypted at rest') }}</small>
+              </div>
+            </div>
+          </div>
+          {# ── Person fields ── #}
+          <div class="sf-person" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Geslacht') }}</label>
+                <select name="subj_{{ sid }}_geslacht" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                  <option value="">{{ _('-- Selecteer --') }}</option>
+                  <option value="man" {% if subject.geslacht == 'man' %}selected{% endif %}>{{ _('Man') }}</option>
+                  <option value="vrouw" {% if subject.geslacht == 'vrouw' %}selected{% endif %}>{{ _('Vrouw') }}</option>
+                  <option value="onbekend" {% if subject.geslacht == 'onbekend' %}selected{% endif %}>{{ _('Onbekend') }}</option>
+                  <option value="geen_opgave" {% if subject.geslacht == 'geen_opgave' %}selected{% endif %}>{{ _('Geen opgave') }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>{{ _('Nationality') }}</label>
+                <input type="text" name="subj_{{ sid }}_nationality" value="{{ subject.nationality or '' }}" placeholder="{{ _('e.g. Dutch') }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Date of Birth') }}</label>
+                <input type="date" name="subj_{{ sid }}_date_of_birth" value="{{ subject.date_of_birth or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Place of Birth') }}</label>
+                <input type="text" name="subj_{{ sid }}_place_of_birth" value="{{ subject.place_of_birth or '' }}" placeholder="{{ _('e.g. Amsterdam, Netherlands') }}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>{{ _('BSN nummer') }}</label>
+              <input type="text" name="subj_{{ sid }}_bsn_number" value="{{ subject.bsn_number or '' }}" placeholder="{{ _('Burgerservicenummer') }}">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Reisdocument type') }}</label>
+                <select name="subj_{{ sid }}_reisdocument_type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                  <option value="">{{ _('-- Selecteer --') }}</option>
+                  <option value="paspoort" {% if subject.reisdocument_type == 'paspoort' %}selected{% endif %}>{{ _('Paspoort') }}</option>
+                  <option value="id-kaart" {% if subject.reisdocument_type == 'id-kaart' %}selected{% endif %}>{{ _('ID-kaart') }}</option>
+                  <option value="rijbewijs" {% if subject.reisdocument_type == 'rijbewijs' %}selected{% endif %}>{{ _('Rijbewijs') }}</option>
+                  <option value="overige" {% if subject.reisdocument_type == 'overige' %}selected{% endif %}>{{ _('Overige') }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>{{ _('Reisdocument nummer') }}</label>
+                <input type="text" name="subj_{{ sid }}_reisdocument_nummer" value="{{ subject.reisdocument_nummer or '' }}">
+              </div>
+            </div>
+          </div>
+          {# ── Company fields ── #}
+          <div class="sf-company" style="display:none;">
+            <div style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.25rem 0;">{{ _('🏢 Company Information') }}</h3>
+                  <p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _('Look up company data from KVK / Overheid.io') }}</p>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                  <input type="text" data-kvk-query data-sid="{{ sid }}" placeholder="{{ _('Company name or KVK number') }}" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:220px;">
+                  <button type="button" data-click="wfKvkLookup" data-sid="{{ sid }}" style="padding:0.75rem 1.5rem;background:white;color:#7c3aed;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">🔍 {{ _('KVK Search') }}</button>
+                </div>
+              </div>
+              <div class="kvk-lookup-status" data-sid="{{ sid }}" style="margin-top:0.75rem;font-size:0.875rem;"></div>
+              <div class="kvk-results" data-sid="{{ sid }}" style="margin-top:0.5rem;display:none;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+              <div class="form-group">
+                <label>{{ _('KVK number') }}</label>
+                <input type="text" name="subj_{{ sid }}_registration_number" value="{{ subject.registration_number or '' }}" placeholder="{{ _('e.g. 30128191') }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Legal Form') }}</label>
+                <input type="text" name="subj_{{ sid }}_legal_form" value="{{ subject.legal_form or '' }}" placeholder="{{ _('e.g. BV, NV, Stichting') }}">
+              </div>
+            </div>
+          </div>
+          {# ── Vehicle fields ── #}
+          <div class="sf-vehicle" style="display:none;">
+            <div style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.25rem 0;">{{ _('🚗 Vehicle Information') }}</h3>
+                  <p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _('Look up vehicle data from RDW') }}</p>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                  <input type="text" data-rdw-kenteken data-sid="{{ sid }}" placeholder="{{ _('License plate (e.g. XX-XX-XX)') }}" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:200px;text-transform:uppercase;">
+                  <button type="button" data-click="wfRdwLookup" data-sid="{{ sid }}" style="padding:0.75rem 1.5rem;background:white;color:#ea580c;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">📡 {{ _('Fetch RDW') }}</button>
+                </div>
+              </div>
+              <div class="rdw-status" data-sid="{{ sid }}" style="margin-top:0.75rem;font-size:0.875rem;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('License Plate') }}</label>
+                <input type="text" name="subj_{{ sid }}_identification" value="{{ subject.identification_number or '' }}" style="text-transform:uppercase;" placeholder="{{ _('XX-XX-XX') }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('VIN (Chassis Number)') }}</label>
+                <input type="text" name="subj_{{ sid }}_vin" value="{{ subject.vin or '' }}" maxlength="17" placeholder="{{ _('17 characters') }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Brand') }}</label>
+                <input type="text" name="subj_{{ sid }}_brand" value="{{ subject.brand or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Model (Handelsbenaming)') }}</label>
+                <input type="text" name="subj_{{ sid }}_handelsbenaming" value="{{ subject.handelsbenaming or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Body Type') }}</label>
+                <input type="text" name="subj_{{ sid }}_vehicle_type" value="{{ subject.vehicle_type or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Color') }}</label>
+                <input type="text" name="subj_{{ sid }}_eerste_kleur" value="{{ subject.eerste_kleur or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('Vehicle Category') }}</label>
+                <input type="text" name="subj_{{ sid }}_voertuigsoort" value="{{ subject.voertuigsoort or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Doors') }}</label>
+                <input type="number" name="subj_{{ sid }}_aantal_deuren" value="{{ subject.aantal_deuren or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Seats') }}</label>
+                <input type="number" name="subj_{{ sid }}_aantal_zitplaatsen" value="{{ subject.aantal_zitplaatsen or '' }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('APK Expiry') }}</label>
+                <input type="text" name="subj_{{ sid }}_vervaldatum_apk" value="{{ subject.vervaldatum_apk or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('WAM Insured') }}</label>
+                <input type="text" name="subj_{{ sid }}_wam_verzekerd" value="{{ subject.wam_verzekerd or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('Insurance Company') }}</label>
+                <input type="text" name="subj_{{ sid }}_insurance_company" value="{{ subject.insurance_company or '' }}">
+              </div>
+            </div>
+          </div>
+          {# ── Vessel fields ── #}
+          <div class="sf-vessel" style="display:none;">
+            <div style="background:linear-gradient(135deg,#0369a1 0%,#075985 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+                <div>
+                  <h3 style="margin:0 0 0.25rem 0;">{{ _('🚢 Vessel Information') }}</h3>
+                  <p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _('Look up vessel data') }}</p>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                  <input type="text" data-vessel-imo data-sid="{{ sid }}" placeholder="IMO" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">
+                  <input type="text" data-vessel-mmsi data-sid="{{ sid }}" placeholder="MMSI" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">
+                  <input type="text" data-vessel-eni data-sid="{{ sid }}" placeholder="ENI" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">
+                  <button type="button" data-click="wfVesselLookup" data-sid="{{ sid }}" style="padding:0.75rem 1.5rem;background:white;color:#0369a1;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">🔍 {{ _('Search Ship') }}</button>
+                </div>
+              </div>
+              <div class="vessel-lookup-status" data-sid="{{ sid }}" style="margin-top:0.75rem;font-size:0.875rem;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label>{{ _('IMO Number') }}</label>
+                <input type="text" name="subj_{{ sid }}_imo_number" value="{{ subject.imo_number or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('MMSI') }}</label>
+                <input type="text" name="subj_{{ sid }}_mmsi" value="{{ subject.mmsi or '' }}">
+              </div>
+              <div class="form-group">
+                <label>{{ _('ENI (Inland Shipping)') }}</label>
+                <input type="text" name="subj_{{ sid }}_eni_number" value="{{ subject.eni_number or '' }}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>{{ _('Flag State (vessel_nationality)') }}</label>
+              <input type="text" name="subj_{{ sid }}_vessel_nationality" value="{{ subject.vessel_nationality or '' }}">
+            </div>
+          </div>
+          {# ── Online entity fields ── #}
+          <div class="sf-online" style="display:none;">
+            <div class="form-group full-width">
+              <label>{{ _('Social accounts') }}</label>
+              <input type="text" name="subj_{{ sid }}_social_accounts" value="{{ subject.workflow_social_accounts|join(', ') if subject.workflow_social_accounts else '' }}" placeholder="{{ _('@username1, @username2') }}">
+            </div>
           </div>
         </div>
       </div>
@@ -208,21 +475,28 @@ input:-webkit-autofill:focus {
   </div>
 </form>
 
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/workflowCase.js') }}?v={{ g.css_version }}"></script>
 <script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
 
   function updateFields(sel) {
     var block = sel.closest('.subject-block');
+    if (!block) return;
     var fields = block.querySelector('.subject-fields');
     if (!fields) return;
     var val = sel.value;
-    if (!val) { fields.classList.add('sf-hidden'); return; }
-    fields.classList.remove('sf-hidden');
-    var groups = fields.querySelectorAll('.form-group');
-    for (var i = 0; i < groups.length; i++) {
-      var el = groups[i];
-      var show = el.classList.contains('sf-all') || el.classList.contains('sf-' + val);
-      el.classList.toggle('sf-hidden', !show);
+    if (!val) { fields.style.display = 'none'; return; }
+    fields.style.display = '';
+    var children = fields.children;
+    for (var i = 0; i < children.length; i++) {
+      var el = children[i];
+      if (el.classList.contains('sf-all')) {
+        el.style.display = '';
+      } else if (el.classList.contains('sf-' + val)) {
+        el.style.display = '';
+      } else {
+        el.style.display = 'none';
+      }
     }
   }
 
@@ -240,17 +514,18 @@ document.addEventListener('DOMContentLoaded', function() {
   function addSubject() {
     var container = document.getElementById('subjects-container');
     var idx = _newIdx++;
-    var sep = container.querySelectorAll('.subject-block').length > 0 ? '<hr style="border:none;border-top:1px solid var(--border-color);margin:1rem 0;">' : '';
     var div = document.createElement('div');
     div.className = 'subject-block';
-    div.innerHTML = sep +
+    div.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-color);';
+    var i = idx;
+    div.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">' +
-        '<strong style="font-size:0.85rem;">Subject ' + (idx + 1) + '</strong>' +
+        '<strong style="font-size:0.85rem;">Subject (new)</strong>' +
         '<button type="button" class="btn-cms small" data-action="remove-new-subject" style="color:#ef4444;">Remove</button>' +
       '</div>' +
       '<div class="subject-type-row">' +
         '<label>Subject type</label>' +
-        '<select name="subj_new_' + idx + '_type" data-action="update-fields" required>' +
+        '<select name="subj_new_' + i + '_type" data-action="update-fields" required>' +
           '<option value="">— Select type —</option>' +
           '<option value="person">Person</option>' +
           '<option value="company">Company</option>' +
@@ -259,42 +534,139 @@ document.addEventListener('DOMContentLoaded', function() {
           '<option value="online">Online entity</option>' +
         '</select>' +
       '</div>' +
-      '<div class="subject-fields sf-hidden">' +
-        '<div class="form-grid">' +
-          '<div class="form-group sf-all"><label>{{ _("Achternaam") }} *</label><input type="text" name="subj_new_' + idx + '_name" placeholder="{{ _("Last name") }}"></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Tussenvoegsels") }}</label><input type="text" name="subj_new_' + idx + '_tussenvoegsels" placeholder="{{ _("van de") }}"></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Voornamen") }}</label><input type="text" name="subj_new_' + idx + '_voornamen" placeholder="{{ _("Jan Peter") }}"></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Voorletters") }}</label><input type="text" name="subj_new_' + idx + '_voorletters" placeholder="{{ _("J.P.") }}"></div>' +
-          '<div class="form-group sf-person sf-company sf-vehicle sf-vessel"><label>{{ _("ID Number") }}</label><input type="text" name="subj_new_' + idx + '_identification" placeholder="{{ _("BSN / KvK / license plate / IMO") }}"></div>' +
-          '<div class="form-group sf-person sf-company"><label>{{ _("Email") }}</label><input type="email" name="subj_new_' + idx + '_email" placeholder="name@example.com"></div>' +
-          '<div class="form-group sf-person sf-company"><label>{{ _("Phone") }}</label><input type="text" name="subj_new_' + idx + '_phone" placeholder="+31 6 12345678"></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Date of Birth") }}</label><input type="date" name="subj_new_' + idx + '_date_of_birth"></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Place of Birth") }}</label><input type="text" name="subj_new_' + idx + '_place_of_birth" placeholder="Amsterdam"></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Nationality") }}</label><input type="text" name="subj_new_' + idx + '_nationality" placeholder="{{ _("Dutch") }}"></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Geslacht") }}</label><select name="subj_new_' + idx + '_geslacht"><option value="">— {{ _("Select") }} —</option><option value="man">{{ _("Man") }}</option><option value="vrouw">{{ _("Vrouw") }}</option><option value="onbekend">{{ _("Onbekend") }}</option><option value="geen_opgave">{{ _("Geen opgave") }}</option></select></div>' +
-          '<div class="form-group sf-person"><label>{{ _("BSN nummer") }}</label><input type="text" name="subj_new_' + idx + '_bsn_number" placeholder="000000000"></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Reisdocument type") }}</label><select name="subj_new_' + idx + '_reisdocument_type"><option value="">— {{ _("Select") }} —</option><option value="paspoort">{{ _("Paspoort") }}</option><option value="id-kaart">{{ _("ID-kaart") }}</option><option value="rijbewijs">{{ _("Rijbewijs") }}</option><option value="overige">{{ _("Overig") }}</option></select></div>' +
-          '<div class="form-group sf-person"><label>{{ _("Reisdocument nummer") }}</label><input type="text" name="subj_new_' + idx + '_reisdocument_nummer" placeholder="{{ _("AB1234567") }}"></div>' +
-          '<div class="form-group sf-person sf-company"><label>{{ _("Bank Account") }}</label><input type="text" name="subj_new_' + idx + '_bank_account" placeholder="{{ _("NL00 INGB 0000 0000 00") }}"></div>' +
-          '<div class="form-group sf-person sf-company"><label>{{ _("Postcode") }}</label><input type="text" name="subj_new_' + idx + '_postal_code" class="addr-zipcode" placeholder="{{ _("1012LL") }}"></div>' +
-          '<div class="form-group sf-person sf-company"><label>{{ _("Huisnummer") }}</label><input type="text" name="subj_new_' + idx + '_house_number" class="addr-number" placeholder="{{ _("45") }}"></div>' +
-          '<div class="form-group sf-person sf-company"><label>{{ _("Toevoeging") }}</label><input type="text" name="subj_new_' + idx + '_house_number_addition" placeholder="{{ _("A") }}"></div>' +
-          '<div class="form-group sf-person sf-company"><label>{{ _("Straat") }}</label><input type="text" name="subj_new_' + idx + '_street" class="addr-street" placeholder="{{ _("Street name") }}"></div>' +
-          '<div class="form-group sf-person sf-company"><label>{{ _("Plaats") }}</label><input type="text" name="subj_new_' + idx + '_city" class="addr-town" placeholder="Amsterdam"></div>' +
-          '<div class="form-group full-width sf-person sf-online"><label>{{ _("Social accounts") }}</label><input type="text" name="subj_new_' + idx + '_social_accounts" placeholder="{{ _("@username1, @username2") }}"></div>' +
-          '<div class="form-group full-width sf-all"><label>Risk score (0-100)</label><input type="number" name="subj_new_' + idx + '_risk_score" value="0" min="0" max="100"></div>' +
-          '<div class="form-group full-width sf-all"><label>{{ _("Notes") }}</label><textarea name="subj_new_' + idx + '_notes" rows="2" placeholder="{{ _("Internal notes") }}"></textarea></div>' +
+      '<div class="subject-fields" style="display:none">' +
+        '<div class="sf-all">' +
+          '<div class="form-group"><label>{{ _("Achternaam") }} *</label>' +
+            '<input type="text" name="subj_new_' + i + '_name">' +
+            '<div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Voornamen") }}</label><input type="text" name="subj_new_' + i + '_voornamen"></div>' +
+            '<div class="form-group"><label>{{ _("Voorletters") }}</label><input type="text" name="subj_new_' + i + '_voorletters" placeholder="J.P."></div>' +
+            '<div class="form-group"><label>{{ _("Tussenvoegsels") }}</label><input type="text" name="subj_new_' + i + '_tussenvoegsels" placeholder="van de"></div>' +
+          '</div>' +
+          '<input type="hidden" name="subj_new_' + i + '_name_computed">' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Address(es)") }}</label>' +
+            '<div class="addresses-container" data-newidx="' + i + '">' +
+              '<div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">' +
+                '<div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">' +
+                  '<div><label style="font-size:0.75rem;">Zip</label><input type="text" class="addr-zipcode" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+                  '<div><label style="font-size:0.75rem;">Number</label><input type="text" class="addr-number" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+                  '<div><label style="font-size:0.75rem;">Street</label><input type="text" class="addr-street" placeholder="Street name" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+                  '<div><label style="font-size:0.75rem;">Town</label><input type="text" class="addr-town" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+                  '<div style="display:flex;align-items:center;gap:0.25rem;">' +
+                    '<button type="button" data-click="wfPostcodeCheck" data-newidx="' + i + '" title="Look up" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>' +
+                    '<label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;"><input type="checkbox" class="addr-primary" checked> Primary</label>' +
+                  '</div>' +
+                '</div>' +
+                '<input type="hidden" class="addr-country" value="Netherlands">' +
+              '</div>' +
+            '</div>' +
+            '<button type="button" data-click="wfAddAddress" data-newidx="' + i + '" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _("+ Add another address") }}</button>' +
+            '<input type="hidden" name="subj_new_' + i + '_addresses_data">' +
+          '</div>' +
+          '<div class="form-group sf-person sf-company"><label>{{ _("Contact(s)") }}</label>' +
+            '<div class="contacts-container" data-newidx="' + i + '">' +
+              '<div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">' +
+                '<div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">' +
+                  '<div><label style="font-size:0.75rem;">Type</label><select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="email">Email</option><option value="phone">Phone</option></select></div>' +
+                  '<div><label style="font-size:0.75rem;">Value</label><input type="text" class="contact-value" placeholder="email@example.com or +31612345678" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+                  '<div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;"><label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;"><input type="checkbox" class="contact-primary" checked> Primary</label></div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<button type="button" data-click="wfAddContact" data-newidx="' + i + '" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _("+ Add another contact") }}</button>' +
+            '<input type="hidden" name="subj_new_' + i + '_contacts_data">' +
+          '</div>' +
+          '<div class="vehicle-restricted-fields">' +
+            '<div class="form-group"><label>{{ _("Risk Score (0-100)") }}</label><input type="number" name="subj_new_' + i + '_risk_score" value="0" min="0" max="100"></div>' +
+            '<div class="form-group"><label>{{ _("Notes") }}</label><textarea name="subj_new_' + i + '_notes" rows="3" placeholder="{{ _("Internal notes") }}"></textarea></div>' +
+            '<div class="form-group"><label>{{ _("💳 Bank / IBAN") }}</label><input type="text" name="subj_new_' + i + '_bank_account" placeholder="e.g. NL39INGB0001234567"><small style="color:var(--text-muted);">{{ _("Encrypted at rest") }}</small></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sf-person" style="display:none;">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Geslacht") }}</label><select name="subj_new_' + i + '_geslacht" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="">{{ _("-- Selecteer --") }}</option><option value="man">{{ _("Man") }}</option><option value="vrouw">{{ _("Vrouw") }}</option><option value="onbekend">{{ _("Onbekend") }}</option><option value="geen_opgave">{{ _("Geen opgave") }}</option></select></div>' +
+            '<div class="form-group"><label>{{ _("Nationality") }}</label><input type="text" name="subj_new_' + i + '_nationality"></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Date of Birth") }}</label><input type="date" name="subj_new_' + i + '_date_of_birth"></div>' +
+            '<div class="form-group"><label>{{ _("Place of Birth") }}</label><input type="text" name="subj_new_' + i + '_place_of_birth"></div>' +
+          '</div>' +
+          '<div class="form-group"><label>{{ _("BSN nummer") }}</label><input type="text" name="subj_new_' + i + '_bsn_number" placeholder="Burgerservicenummer"></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Reisdocument type") }}</label><select name="subj_new_' + i + '_reisdocument_type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="">{{ _("-- Selecteer --") }}</option><option value="paspoort">{{ _("Paspoort") }}</option><option value="id-kaart">{{ _("ID-kaart") }}</option><option value="rijbewijs">{{ _("Rijbewijs") }}</option><option value="overige">{{ _("Overige") }}</option></select></div>' +
+            '<div class="form-group"><label>{{ _("Reisdocument nummer") }}</label><input type="text" name="subj_new_' + i + '_reisdocument_nummer"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sf-company" style="display:none;">' +
+          '<div style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">' +
+              '<div><h3 style="margin:0 0 0.25rem 0;">{{ _("🏢 Company Information") }}</h3><p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _("Look up company data from KVK / Overheid.io") }}</p></div>' +
+              '<div style="display:flex;gap:0.5rem;align-items:center;">' +
+                '<input type="text" data-kvk-query data-newidx="' + i + '" placeholder="{{ _("Company name or KVK number") }}" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:220px;">' +
+                '<button type="button" data-click="wfKvkLookup" data-newidx="' + i + '" style="padding:0.75rem 1.5rem;background:white;color:#7c3aed;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">🔍 {{ _("KVK Search") }}</button></div>' +
+            '</div>' +
+            '<div class="kvk-lookup-status" data-newidx="' + i + '" style="margin-top:0.75rem;font-size:0.875rem;"></div>' +
+            '<div class="kvk-results" data-newidx="' + i + '" style="margin-top:0.5rem;display:none;"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">' +
+            '<div class="form-group"><label>{{ _("KVK number") }}</label><input type="text" name="subj_new_' + i + '_registration_number"></div>' +
+            '<div class="form-group"><label>{{ _("Legal Form") }}</label><input type="text" name="subj_new_' + i + '_legal_form"></div></div>' +
+        '</div>' +
+        '<div class="sf-vehicle" style="display:none;">' +
+          '<div style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">' +
+              '<div><h3 style="margin:0 0 0.25rem 0;">{{ _("🚗 Vehicle Information") }}</h3><p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _("Look up vehicle data from RDW") }}</p></div>' +
+              '<div style="display:flex;gap:0.5rem;align-items:center;">' +
+                '<input type="text" data-rdw-kenteken data-newidx="' + i + '" placeholder="{{ _("License plate (e.g. XX-XX-XX)") }}" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:200px;text-transform:uppercase;">' +
+                '<button type="button" data-click="wfRdwLookup" data-newidx="' + i + '" style="padding:0.75rem 1.5rem;background:white;color:#ea580c;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">📡 {{ _("Fetch RDW") }}</button></div>' +
+            '</div>' +
+            '<div class="rdw-status" data-newidx="' + i + '" style="margin-top:0.75rem;font-size:0.875rem;"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("License Plate") }}</label><input type="text" name="subj_new_' + i + '_identification" style="text-transform:uppercase;" placeholder="XX-XX-XX"></div>' +
+            '<div class="form-group"><label>{{ _("VIN (Chassis Number)") }}</label><input type="text" name="subj_new_' + i + '_vin" maxlength="17" placeholder="{{ _("17 characters") }}"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Brand") }}</label><input type="text" name="subj_new_' + i + '_brand"></div>' +
+            '<div class="form-group"><label>{{ _("Model (Handelsbenaming)") }}</label><input type="text" name="subj_new_' + i + '_handelsbenaming"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Body Type") }}</label><input type="text" name="subj_new_' + i + '_vehicle_type"></div>' +
+            '<div class="form-group"><label>{{ _("Color") }}</label><input type="text" name="subj_new_' + i + '_eerste_kleur"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("Vehicle Category") }}</label><input type="text" name="subj_new_' + i + '_voertuigsoort"></div>' +
+            '<div class="form-group"><label>{{ _("Doors") }}</label><input type="number" name="subj_new_' + i + '_aantal_deuren"></div>' +
+            '<div class="form-group"><label>{{ _("Seats") }}</label><input type="number" name="subj_new_' + i + '_aantal_zitplaatsen"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("APK Expiry") }}</label><input type="text" name="subj_new_' + i + '_vervaldatum_apk"></div>' +
+            '<div class="form-group"><label>{{ _("WAM Insured") }}</label><input type="text" name="subj_new_' + i + '_wam_verzekerd"></div>' +
+            '<div class="form-group"><label>{{ _("Insurance Company") }}</label><input type="text" name="subj_new_' + i + '_insurance_company"></div></div>' +
+        '</div>' +
+        '<div class="sf-vessel" style="display:none;">' +
+          '<div style="background:linear-gradient(135deg,#0369a1 0%,#075985 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">' +
+              '<div><h3 style="margin:0 0 0.25rem 0;">{{ _("🚢 Vessel Information") }}</h3><p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _("Look up vessel data") }}</p></div>' +
+              '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">' +
+                '<input type="text" data-vessel-imo data-newidx="' + i + '" placeholder="IMO" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">' +
+                '<input type="text" data-vessel-mmsi data-newidx="' + i + '" placeholder="MMSI" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">' +
+                '<input type="text" data-vessel-eni data-newidx="' + i + '" placeholder="ENI" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:120px;">' +
+                '<button type="button" data-click="wfVesselLookup" data-newidx="' + i + '" style="padding:0.75rem 1.5rem;background:white;color:#0369a1;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">🔍 {{ _("Search Ship") }}</button></div>' +
+            '</div>' +
+            '<div class="vessel-lookup-status" data-newidx="' + i + '" style="margin-top:0.75rem;font-size:0.875rem;"></div></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+            '<div class="form-group"><label>{{ _("IMO Number") }}</label><input type="text" name="subj_new_' + i + '_imo_number"></div>' +
+            '<div class="form-group"><label>{{ _("MMSI") }}</label><input type="text" name="subj_new_' + i + '_mmsi"></div>' +
+            '<div class="form-group"><label>{{ _("ENI (Inland Shipping)") }}</label><input type="text" name="subj_new_' + i + '_eni_number"></div></div>' +
+          '<div class="form-group"><label>{{ _("Flag State (vessel_nationality)") }}</label><input type="text" name="subj_new_' + i + '_vessel_nationality"></div>' +
+        '</div>' +
+        '<div class="sf-online" style="display:none;">' +
+          '<div class="form-group full-width"><label>{{ _("Social accounts") }}</label><input type="text" name="subj_new_' + i + '_social_accounts" placeholder="{{ _("@username1, @username2") }}"></div>' +
         '</div>' +
       '</div>';
     container.parentElement.insertBefore(div, container.nextElementSibling);
   }
 
-  // Event delegation
   document.getElementById('subjects-section').addEventListener('click', function(e) {
     var btn = e.target.closest('[data-action]');
     if (!btn) return;
     var action = btn.getAttribute('data-action');
-
     if (action === 'add-subject') {
       addSubject();
     } else if (action === 'remove-subject') {
@@ -313,7 +685,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // init field visibility for existing subjects
   document.querySelectorAll('.subject-block select[data-action="update-fields"]').forEach(function(sel) {
     if (sel.value) updateFields(sel);
   });
