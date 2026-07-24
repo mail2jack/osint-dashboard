@@ -3,6 +3,13 @@
 {% block title %}{{ subject.name }} - {{ _('CMS') }}{% endblock %}
 
 {% block content %}
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('cms.subjects') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Subjects') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <span style="color:var(--text-primary);">{{ subject.name }}</span>
+</nav>
 <style>
     .comment-item {
         padding: 0.75rem;
@@ -68,6 +75,14 @@
     .edit-date { color: var(--text-muted, #9198ac); font-size: 0.7rem; }
     .edit-old { color: #dc2626; }
     .edit-new { color: #16a34a; }
+    .collapsible-section { margin-bottom: 0.5rem; }
+    .collapsible-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; background: var(--bg-secondary, #f0f0f5); border: 1px solid var(--border-color, #e2e5ed); border-radius: 8px; cursor: pointer; user-select: none; margin-bottom: 0; }
+    .collapsible-header:hover { background: var(--table-hover, #e8eaf0); }
+    .collapsible-chevron { display: inline-block; font-size: 0.7rem; color: var(--text-muted); transition: transform 0.2s; }
+    .collapsible-section:not(.open) .collapsible-chevron { transform: rotate(0deg); }
+    .collapsible-section.open .collapsible-chevron { transform: rotate(90deg); }
+    .collapsible-body { display: none; padding: 0.5rem 0 0 0; }
+    .collapsible-section.open .collapsible-body { display: block; }
     /* Type badge colors */
     .comment-type-badge.note { background: #eef0f6; color: #5b637a; }
     .comment-type-badge.discussion { background: #dbeafe; color: #1d4ed8; }
@@ -156,305 +171,357 @@
     </div>
     <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
         <div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Type') }}</span>
-                <span class="info-value">{{ subject.subject_type }}</span>
-            </div>
-            {% if subject.subject_type != 'vehicle' %}
-            <div class="info-row">
-                <span class="info-label">{{ _('Risk Score') }}</span>
-                <span class="info-value">{{ subject.risk_score }}/100</span>
-            </div>
-            {% endif %}
-            {% if subject.subject_type == 'company' %}
-            <div class="info-row">
-                <span class="info-label">{{ _('KVK number') }}</span>
-                <span class="info-value">{{ subject.registration_number if subject.registration_number else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Legal Form') }}</span>
-                <span class="info-value">{{ subject.legal_form if subject.legal_form else '-' }}</span>
-            </div>
-            {% endif %}
-            {% if subject.subject_type != 'vehicle' %}
-            <div class="info-row" style="flex-direction:column;align-items:stretch;">
-                <span class="info-label">{{ _('Email(s)') }}</span>
-                <div class="info-value" style="margin-top:0.25rem;">
-                    {% set emails = subject.contacts.filter_by(contact_type='email') if subject.contacts else [] %}
-                    {% if emails.count() > 0 %}
-                        {% for c in emails %}
-                        <div class="contact-row">
-                            <span class="icon">✉️</span>
-                            <span class="value">{{ c.value|redact_for_viewer }}</span>
-                            {% if c.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
-                            <span class="actions"><button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">{{ _('✉️ Check') }}</button></span>
-                            <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
-                        </div>
-                        {% endfor %}
-                    {% elif subject.email %}
-                        <div class="contact-row">
-                            <span class="icon">✉️</span>
-                            <span class="value">{{ subject.email|redact_for_viewer }}</span>
-                            <span></span>
-                            <span class="actions"><button data-click="emailCheck" data-arg0="{{ subject.email }}" class="btn-cms purple small">{{ _('✉️ Check') }}</button></span>
-                            <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
-                        </div>
-                    {% else %}
-                        <span>-</span>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="info-row" style="flex-direction:column;align-items:stretch;">
-                <span class="info-label">{{ _('Phone(s)') }}</span>
-                <div class="info-value" style="margin-top:0.25rem;">
-                    {% set phones = subject.contacts.filter_by(contact_type='phone') if subject.contacts else [] %}
-                    {% if phones.count() > 0 %}
-                        {% for c in phones %}
-                        <div class="contact-row">
-                            <span class="icon">📞</span>
-                            <span class="value">{{ c.value|redact_for_viewer }}</span>
-                            {% if c.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
-                            <span class="actions"><button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">{{ _('📞 Check') }}</button></span>
-                            <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
-                        </div>
-                        {% endfor %}
-                    {% elif subject.phone %}
-                        <div class="contact-row">
-                            <span class="icon">📞</span>
-                            <span class="value">{{ subject.phone|redact_for_viewer }}</span>
-                            <span></span>
-                            <span class="actions"><button data-click="phoneLookup" data-arg0="{{ subject.phone }}" class="btn-cms purple small">{{ _('📞 Check') }}</button></span>
-                            <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
-                        </div>
-                    {% else %}
-                        <span>-</span>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-            {% if subject.subject_type == 'person' %}
-            <div class="info-row">
-                <span class="info-label">{{ _('Geslacht') }}</span>
-                <span class="info-value">{{ {'man':'Man','vrouw':'Vrouw','onbekend':'Onbekend','geen_opgave':'Geen opgave'}.get(subject.geslacht, '-') }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Nationality') }}</span>
-                <span class="info-value">{{ subject.nationality if subject.nationality else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Date of Birth') }}</span>
-                <span class="info-value">{{ subject.date_of_birth if subject.date_of_birth else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Place of Birth') }}</span>
-                <span class="info-value">{{ subject.place_of_birth if subject.place_of_birth else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('BSN nummer') }}</span>
-                <span class="info-value">{{ subject.bsn_number|redact_for_viewer if subject.bsn_number else '-' }}</span>
-            </div>
-            {% if subject.reisdocument_type %}
-            <div class="info-row">
-                <span class="info-label">{{ _('Reisdocument') }}</span>
-                <span class="info-value">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overige'}.get(subject.reisdocument_type, subject.reisdocument_type) }}{{ ' — ' + subject.reisdocument_nummer|redact_for_viewer if subject.reisdocument_nummer else '' }}</span>
-            </div>
-            {% endif %}
-            {% endif %}
-            {% if subject.subject_type == 'vehicle' %}
-            <div class="info-row">
-                <span class="info-label">{{ _('License Plate') }}</span>
-                <span class="info-value" style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate|redact_for_viewer if subject.license_plate else '-' }}</span>
-                {% if subject.license_plate %}
-                <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate }}" data-arg1="{{ subject.id }}" class="btn-cms small orange" style="margin-left: 0.5rem;">{{ _('🚗 Check RDW') }}</button>
-                {% else %}
-                <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">{{ _('(Add license plate first)') }}</span>
-                {% endif %}
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('VIN (Chassis Number)') }}</span>
-                <span class="info-value">{{ subject.vin|redact_for_viewer if subject.vin else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Brand') }}</span>
-                <span class="info-value">{{ subject.brand if subject.brand else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Vehicle Type') }}</span>
-                <span class="info-value">{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Insurance Company') }}</span>
-                <span class="info-value">{{ subject.insurance_company if subject.insurance_company else '-' }}</span>
-            </div>
-            
-            {% if subject.rdw_data %}
-            <div style="margin-top: 1rem; padding: 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px;">
-                <h4 style="margin: 0 0 0.75rem 0; color: #0369a1;">{{ _('RDW Vehicle Data') }}</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
-                    {% if subject.rdw_data.get('handelsbenaming') %}
-                    <div class="info-row"><span class="info-label">{{ _('Model') }}</span><span class="info-value">{{ subject.rdw_data.handelsbenaming }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('voertuigsoort') %}
-                    <div class="info-row"><span class="info-label">{{ _('Vehicle Category') }}</span><span class="info-value">{{ subject.rdw_data.voertuigsoort }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('eerste_kleur') %}
-                    <div class="info-row"><span class="info-label">{{ _('Color (Primary)') }}</span><span class="info-value">{{ subject.rdw_data.eerste_kleur }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('tweede_kleur') %}
-                    <div class="info-row"><span class="info-label">{{ _('Color (Secondary)') }}</span><span class="info-value">{{ subject.rdw_data.tweede_kleur }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('aantal_deuren') %}
-                    <div class="info-row"><span class="info-label">{{ _('Doors') }}</span><span class="info-value">{{ subject.rdw_data.aantal_deuren }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('aantal_zitplaatsen') %}
-                    <div class="info-row"><span class="info-label">{{ _('Seats') }}</span><span class="info-value">{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('cilinderinhoud') %}
-                    <div class="info-row"><span class="info-label">{{ _('Engine Capacity (cc)') }}</span><span class="info-value">{{ subject.rdw_data.cilinderinhoud }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('aantal_cilinders') %}
-                    <div class="info-row"><span class="info-label">{{ _('Cylinders') }}</span><span class="info-value">{{ subject.rdw_data.aantal_cilinders }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('massa_ledig') %}
-                    <div class="info-row"><span class="info-label">{{ _('Curb Weight (kg)') }}</span><span class="info-value">{{ subject.rdw_data.massa_ledig }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('maximum_massa') %}
-                    <div class="info-row"><span class="info-label">{{ _('Max Weight (kg)') }}</span><span class="info-value">{{ subject.rdw_data.maximum_massa }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('vervaldatum_apk') %}
-                    <div class="info-row"><span class="info-label">{{ _('APK Expiry') }}</span><span class="info-value">{{ subject.rdw_data.vervaldatum_apk }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('wam_verzekerd') %}
-                    <div class="info-row"><span class="info-label">{{ _('WAM Insured') }}</span>
-                        <span class="info-value" style="color: {% if subject.rdw_data.wam_verzekerd == 'Ja' %}#16a34a{% else %}#dc2626{% endif %};">
-                            {{ subject.rdw_data.wam_verzekerd }}
-                        </span>
+            {# ── Basic Info ── #}
+            {% set has_basic = subject.subject_type or (subject.subject_type != 'vehicle' and subject.risk_score) %}
+            <div class="collapsible-section open">
+                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Basic Info</strong></div>
+                <div class="collapsible-body">
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Type') }}</span>
+                        <span class="info-value">{{ subject.subject_type }}</span>
+                    </div>
+                    {% if subject.subject_type != 'vehicle' %}
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Risk Score') }}</span>
+                        <span class="info-value">{{ subject.risk_score }}/100</span>
                     </div>
                     {% endif %}
-                    {% if subject.rdw_data.get('taxi_indicator') %}
-                    <div class="info-row"><span class="info-label">{{ _('Taxi') }}</span><span class="info-value">{{ subject.rdw_data.taxi_indicator }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('export_indicator') %}
-                    <div class="info-row"><span class="info-label">{{ _('Exported') }}</span><span class="info-value">{{ subject.rdw_data.export_indicator }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('europese_voertuigcategorie') %}
-                    <div class="info-row"><span class="info-label">{{ _('EU Category') }}</span><span class="info-value">{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('zuinigheidsclassificatie') %}
-                    <div class="info-row"><span class="info-label">{{ _('Efficiency Class') }}</span><span class="info-value">{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('catalogusprijs') %}
-                    <div class="info-row"><span class="info-label">{{ _('List Price (EUR)') }}</span><span class="info-value">€{{ subject.rdw_data.catalogusprijs }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('datum_eerste_toelating') %}
-                    <div class="info-row"><span class="info-label">{{ _('First Registration Date') }}</span><span class="info-value">{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('vermogen') %}
-                    <div class="info-row"><span class="info-label">{{ _('Engine Power (kW)') }}</span><span class="info-value">{{ subject.rdw_data.vermogen }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('wielbasis') %}
-                    <div class="info-row"><span class="info-label">{{ _('Wheelbase (mm)') }}</span><span class="info-value">{{ subject.rdw_data.wielbasis }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('datum_tenaamstelling') %}
-                    <div class="info-row"><span class="info-label">{{ _('Registration Date') }}</span><span class="info-value">{{ subject.rdw_data.datum_tenaamstelling }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('bruto_bpm') %}
-                    <div class="info-row"><span class="info-label">{{ _('BPM (EUR)') }}</span><span class="info-value">€{{ subject.rdw_data.bruto_bpm }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('typegoedkeuringsnummer') %}
-                    <div class="info-row"><span class="info-label">{{ _('Type Approval No.') }}</span><span class="info-value">{{ subject.rdw_data.typegoedkeuringsnummer }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('openstaande_terugroepactie') %}
-                    <div class="info-row"><span class="info-label">{{ _('Recall Action') }}</span><span class="info-value">{{ subject.rdw_data.openstaande_terugroepactie }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('type') %}
-                    <div class="info-row"><span class="info-label">{{ _('Type') }}</span><span class="info-value">{{ subject.rdw_data.rdw_type }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('variant') %}
-                    <div class="info-row"><span class="info-label">{{ _('Variant') }}</span><span class="info-value">{{ subject.rdw_data.variant }}</span></div>
-                    {% endif %}
-                    {% if subject.rdw_data.get('uitvoering') %}
-                    <div class="info-row"><span class="info-label">{{ _('Execution (Uitvoering)') }}</span><span class="info-value">{{ subject.rdw_data.uitvoering }}</span></div>
+                    {% if subject.subject_type == 'company' %}
+                    <div class="info-row">
+                        <span class="info-label">{{ _('KVK number') }}</span>
+                        <span class="info-value">{{ subject.registration_number if subject.registration_number else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Legal Form') }}</span>
+                        <span class="info-value">{{ subject.legal_form if subject.legal_form else '-' }}</span>
+                    </div>
                     {% endif %}
                 </div>
-                <div style="margin-top: 0.75rem;">
-                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small bg-blue">{{ _('✏️ Edit RDW Data') }}</a>
-                </div>
-            </div>
-            {% endif %}
-            {% endif %}
-            {% if subject.subject_type == 'vessel' %}
-            <div class="info-row">
-                <span class="info-label">{{ _('IMO Number') }}</span>
-                <span class="info-value">{{ subject.imo_number if subject.imo_number else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('MMSI') }}</span>
-                <span class="info-value">{{ subject.mmsi if subject.mmsi else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('ENI (Inland Shipping)') }}</span>
-                <span class="info-value">{{ subject.eni_number if subject.eni_number else '-' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ _('Flag State') }}</span>
-                <span class="info-value">{{ subject.vessel_nationality if subject.vessel_nationality else '-' }}</span>
             </div>
 
-            {% if subject.vessel_data and subject.vessel_data is mapping %}
-            <div style="margin-top: 1rem; padding: 1rem; background: #ecfeff; border: 1px solid #0e7490; border-radius: 8px;">
-                <h4 style="margin: 0 0 0.75rem 0; color: #0e7490;">{{ _('🚢 Vessel Data') }}</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
-                    {% for source_key, source_val in subject.vessel_data.items() %}
-                        {% if source_val is mapping %}
-                            {% for k, v in source_val.items() %}
-                                {% if v and k not in ('source', 'source_url') %}
-                                <div class="info-row"><span class="info-label">{{ k|capitalize|replace('_', ' ') }}</span><span class="info-value">{{ v }}</span></div>
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
-                    {% endfor %}
-                </div>
-                <div style="margin-top: 0.75rem;">
-                    <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small teal">{{ _('✏️ Edit Vessel Data') }}</a>
-                </div>
-            </div>
-            {% endif %}
-            {% endif %}
-            <div class="info-row" style="flex-direction:column;align-items:stretch;">
-                <span class="info-label">{{ _('Address(es)') }}</span>
-                <div class="info-value" style="margin-top:0.25rem;">
-                    {% if subject.addresses.count() > 0 %}
-                        {% for addr in subject.addresses %}
-                        <div class="address-card{% if addr.is_primary %} primary{% endif %}">
-                            <div class="address-header">
-                                <div>
-                                    <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
-                                    {% if addr.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}
-                                    {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ CADASTRAL') }}</span>{% endif %}
-                                    <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
-                                        {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
-                                        {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
-                                    </div>
-                                </div>
-                                <div class="btn-group m-0">
-                                    <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">{{ _('🏛 Cadastre') }}</button>
-                                    <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small danger">{{ _('🚔 Police Station') }}</button>
-                                </div>
-                            </div>
-                            <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
-                            <div class="politiebureau-result" style="margin-top:0.5rem;display:none;"></div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <span>{{ subject.address if subject.address else '-' }}</span>
+            {# ── Personal Details (person only) ── #}
+            {% if subject.subject_type == 'person' %}
+            {% set has_personal = subject.geslacht or subject.nationality or subject.date_of_birth or subject.place_of_birth or subject.bsn_number or subject.reisdocument_type %}
+            <div class="collapsible-section{% if has_personal %} open{% endif %}">
+                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Personal Details</strong></div>
+                <div class="collapsible-body">
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Geslacht') }}</span>
+                        <span class="info-value">{{ {'man':'Man','vrouw':'Vrouw','onbekend':'Onbekend','geen_opgave':'Geen opgave'}.get(subject.geslacht, '-') }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Nationality') }}</span>
+                        <span class="info-value">{{ subject.nationality if subject.nationality else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Date of Birth') }}</span>
+                        <span class="info-value">{{ subject.date_of_birth if subject.date_of_birth else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Place of Birth') }}</span>
+                        <span class="info-value">{{ subject.place_of_birth if subject.place_of_birth else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('BSN nummer') }}</span>
+                        <span class="info-value">{{ subject.bsn_number|redact_for_viewer if subject.bsn_number else '-' }}</span>
+                    </div>
+                    {% if subject.reisdocument_type %}
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Reisdocument') }}</span>
+                        <span class="info-value">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overige'}.get(subject.reisdocument_type, subject.reisdocument_type) }}{{ ' — ' + subject.reisdocument_nummer|redact_for_viewer if subject.reisdocument_nummer else '' }}</span>
+                    </div>
                     {% endif %}
                 </div>
             </div>
+            {% endif %}
+
+            {# ── Contacts (non-vehicle) ── #}
             {% if subject.subject_type != 'vehicle' %}
-            <div class="info-row">
-                <span class="info-label">{{ _('💳 Bank / IBAN') }}</span>
-                <span class="info-value">{{ subject.bank_account|redact_for_viewer if subject.bank_account else '-' }}</span>
+            {% set emails = subject.contacts.filter_by(contact_type='email') if subject.contacts else [] %}
+            {% set phones = subject.contacts.filter_by(contact_type='phone') if subject.contacts else [] %}
+            {% set has_contacts = emails.count() > 0 or phones.count() > 0 or subject.email or subject.phone %}
+            <div class="collapsible-section{% if has_contacts %} open{% endif %}">
+                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Contacts</strong></div>
+                <div class="collapsible-body">
+                    <div class="info-row" style="flex-direction:column;align-items:stretch;">
+                        <span class="info-label">{{ _('Email(s)') }}</span>
+                        <div class="info-value" style="margin-top:0.25rem;">
+                            {% if emails.count() > 0 %}
+                                {% for c in emails %}
+                                <div class="contact-row">
+                                    <span class="icon">✉️</span>
+                                    <span class="value">{{ c.value|redact_for_viewer }}</span>
+                                    {% if c.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
+                                    <span class="actions"><button data-click="emailCheck" data-arg0="{{ c.value }}" class="btn-cms purple small">{{ _('✉️ Check') }}</button></span>
+                                    <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
+                                </div>
+                                {% endfor %}
+                            {% elif subject.email %}
+                                <div class="contact-row">
+                                    <span class="icon">✉️</span>
+                                    <span class="value">{{ subject.email|redact_for_viewer }}</span>
+                                    <span></span>
+                                    <span class="actions"><button data-click="emailCheck" data-arg0="{{ subject.email }}" class="btn-cms purple small">{{ _('✉️ Check') }}</button></span>
+                                    <div class="email-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
+                                </div>
+                            {% else %}
+                                <span>-</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="info-row" style="flex-direction:column;align-items:stretch;">
+                        <span class="info-label">{{ _('Phone(s)') }}</span>
+                        <div class="info-value" style="margin-top:0.25rem;">
+                            {% if phones.count() > 0 %}
+                                {% for c in phones %}
+                                <div class="contact-row">
+                                    <span class="icon">📞</span>
+                                    <span class="value">{{ c.value|redact_for_viewer }}</span>
+                                    {% if c.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% else %}<span></span>{% endif %}
+                                    <span class="actions"><button data-click="phoneLookup" data-arg0="{{ c.value }}" class="btn-cms purple small">{{ _('📞 Check') }}</button></span>
+                                    <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
+                                </div>
+                                {% endfor %}
+                            {% elif subject.phone %}
+                                <div class="contact-row">
+                                    <span class="icon">📞</span>
+                                    <span class="value">{{ subject.phone|redact_for_viewer }}</span>
+                                    <span></span>
+                                    <span class="actions"><button data-click="phoneLookup" data-arg0="{{ subject.phone }}" class="btn-cms purple small">{{ _('📞 Check') }}</button></span>
+                                    <div class="phone-result" style="display:none;grid-column:1/-1;margin-top:0.25rem;"></div>
+                                </div>
+                            {% else %}
+                                <span>-</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {# ── Addresses ── #}
+            {% set has_addresses = subject.addresses.count() > 0 or subject.address %}
+            <div class="collapsible-section{% if has_addresses %} open{% endif %}">
+                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Addresses</strong></div>
+                <div class="collapsible-body">
+                    <div class="info-row" style="flex-direction:column;align-items:stretch;">
+                        <div class="info-value">
+                            {% if subject.addresses.count() > 0 %}
+                                {% for addr in subject.addresses %}
+                                <div class="address-card{% if addr.is_primary %} primary{% endif %}">
+                                    <div class="address-header">
+                                        <div>
+                                            <strong>{{ addr.street or '' }}{% if addr.number %} {{ addr.number }}{% endif %}</strong>
+                                            {% if addr.is_primary %}<span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}
+                                            {% if addr.kadaster_verified %}<span class="badge badge-kadaster">{{ _('✓ CADASTRAL') }}</span>{% endif %}
+                                            <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.15rem;">
+                                                {{ addr.zipcode or '' }}{% if addr.zipcode and addr.town %}, {% endif %}{{ addr.town or '' }}
+                                                {% if addr.country and addr.country != 'Netherlands' %}, {{ addr.country }}{% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="btn-group m-0">
+                                            <button type="button" data-click="kadasterLookup" data-arg0="{{ addr.id }}" class="btn-cms small bg-blue">{{ _('🏛 Cadastre') }}</button>
+                                            <button type="button" data-click="politiebureauLookup" data-arg0="{{ addr.id }}" class="btn-cms small danger">{{ _('🚔 Police Station') }}</button>
+                                        </div>
+                                    </div>
+                                    <div class="kadaster-result" style="margin-top:0.5rem;display:none;"></div>
+                                    <div class="politiebureau-result" style="margin-top:0.5rem;display:none;"></div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <span>{{ subject.address if subject.address else '-' }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# ── Vehicle Data (vehicle only) ── #}
+            {% if subject.subject_type == 'vehicle' %}
+            {% set has_vehicle = subject.license_plate or subject.vin or subject.brand or subject.vehicle_type or subject.rdw_data %}
+            <div class="collapsible-section{% if has_vehicle %} open{% endif %}">
+                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Vehicle Data</strong></div>
+                <div class="collapsible-body">
+                    <div class="info-row">
+                        <span class="info-label">{{ _('License Plate') }}</span>
+                        <span class="info-value" style="font-weight: bold; font-size: 1.1rem;">{{ subject.license_plate|redact_for_viewer if subject.license_plate else '-' }}</span>
+                        {% if subject.license_plate %}
+                        <button data-click="checkRDWVehicle" data-arg0="{{ subject.license_plate }}" data-arg1="{{ subject.id }}" class="btn-cms small orange" style="margin-left: 0.5rem;">{{ _('🚗 Check RDW') }}</button>
+                        {% else %}
+                        <span style="color: #888; font-size: 0.8rem; margin-left: 0.5rem;">{{ _('(Add license plate first)') }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('VIN (Chassis Number)') }}</span>
+                        <span class="info-value">{{ subject.vin|redact_for_viewer if subject.vin else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Brand') }}</span>
+                        <span class="info-value">{{ subject.brand if subject.brand else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Vehicle Type') }}</span>
+                        <span class="info-value">{{ subject.vehicle_type if subject.vehicle_type else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Insurance Company') }}</span>
+                        <span class="info-value">{{ subject.insurance_company if subject.insurance_company else '-' }}</span>
+                    </div>
+                    {% if subject.rdw_data %}
+                    <div style="margin-top: 1rem; padding: 1rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px;">
+                        <h4 style="margin: 0 0 0.75rem 0; color: #0369a1;">{{ _('RDW Vehicle Data') }}</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+                            {% if subject.rdw_data.get('handelsbenaming') %}
+                            <div class="info-row"><span class="info-label">{{ _('Model') }}</span><span class="info-value">{{ subject.rdw_data.handelsbenaming }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('voertuigsoort') %}
+                            <div class="info-row"><span class="info-label">{{ _('Vehicle Category') }}</span><span class="info-value">{{ subject.rdw_data.voertuigsoort }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('eerste_kleur') %}
+                            <div class="info-row"><span class="info-label">{{ _('Color (Primary)') }}</span><span class="info-value">{{ subject.rdw_data.eerste_kleur }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('tweede_kleur') %}
+                            <div class="info-row"><span class="info-label">{{ _('Color (Secondary)') }}</span><span class="info-value">{{ subject.rdw_data.tweede_kleur }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('aantal_deuren') %}
+                            <div class="info-row"><span class="info-label">{{ _('Doors') }}</span><span class="info-value">{{ subject.rdw_data.aantal_deuren }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('aantal_zitplaatsen') %}
+                            <div class="info-row"><span class="info-label">{{ _('Seats') }}</span><span class="info-value">{{ subject.rdw_data.aantal_zitplaatsen }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('cilinderinhoud') %}
+                            <div class="info-row"><span class="info-label">{{ _('Engine Capacity (cc)') }}</span><span class="info-value">{{ subject.rdw_data.cilinderinhoud }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('aantal_cilinders') %}
+                            <div class="info-row"><span class="info-label">{{ _('Cylinders') }}</span><span class="info-value">{{ subject.rdw_data.aantal_cilinders }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('massa_ledig') %}
+                            <div class="info-row"><span class="info-label">{{ _('Curb Weight (kg)') }}</span><span class="info-value">{{ subject.rdw_data.massa_ledig }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('maximum_massa') %}
+                            <div class="info-row"><span class="info-label">{{ _('Max Weight (kg)') }}</span><span class="info-value">{{ subject.rdw_data.maximum_massa }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('vervaldatum_apk') %}
+                            <div class="info-row"><span class="info-label">{{ _('APK Expiry') }}</span><span class="info-value">{{ subject.rdw_data.vervaldatum_apk }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('wam_verzekerd') %}
+                            <div class="info-row"><span class="info-label">{{ _('WAM Insured') }}</span>
+                                <span class="info-value" style="color: {% if subject.rdw_data.wam_verzekerd == 'Ja' %}#16a34a{% else %}#dc2626{% endif %};">
+                                    {{ subject.rdw_data.wam_verzekerd }}
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('taxi_indicator') %}
+                            <div class="info-row"><span class="info-label">{{ _('Taxi') }}</span><span class="info-value">{{ subject.rdw_data.taxi_indicator }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('export_indicator') %}
+                            <div class="info-row"><span class="info-label">{{ _('Exported') }}</span><span class="info-value">{{ subject.rdw_data.export_indicator }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('europese_voertuigcategorie') %}
+                            <div class="info-row"><span class="info-label">{{ _('EU Category') }}</span><span class="info-value">{{ subject.rdw_data.europese_voertuigcategorie }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('zuinigheidsclassificatie') %}
+                            <div class="info-row"><span class="info-label">{{ _('Efficiency Class') }}</span><span class="info-value">{{ subject.rdw_data.zuinigheidsclassificatie }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('catalogusprijs') %}
+                            <div class="info-row"><span class="info-label">{{ _('List Price (EUR)') }}</span><span class="info-value">€{{ subject.rdw_data.catalogusprijs }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('datum_eerste_toelating') %}
+                            <div class="info-row"><span class="info-label">{{ _('First Registration Date') }}</span><span class="info-value">{{ subject.rdw_data.datum_eerste_toelating }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('vermogen') %}
+                            <div class="info-row"><span class="info-label">{{ _('Engine Power (kW)') }}</span><span class="info-value">{{ subject.rdw_data.vermogen }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('wielbasis') %}
+                            <div class="info-row"><span class="info-label">{{ _('Wheelbase (mm)') }}</span><span class="info-value">{{ subject.rdw_data.wielbasis }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('datum_tenaamstelling') %}
+                            <div class="info-row"><span class="info-label">{{ _('Registration Date') }}</span><span class="info-value">{{ subject.rdw_data.datum_tenaamstelling }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('bruto_bpm') %}
+                            <div class="info-row"><span class="info-label">{{ _('BPM (EUR)') }}</span><span class="info-value">€{{ subject.rdw_data.bruto_bpm }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('typegoedkeuringsnummer') %}
+                            <div class="info-row"><span class="info-label">{{ _('Type Approval No.') }}</span><span class="info-value">{{ subject.rdw_data.typegoedkeuringsnummer }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('openstaande_terugroepactie') %}
+                            <div class="info-row"><span class="info-label">{{ _('Recall Action') }}</span><span class="info-value">{{ subject.rdw_data.openstaande_terugroepactie }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('type') %}
+                            <div class="info-row"><span class="info-label">{{ _('Type') }}</span><span class="info-value">{{ subject.rdw_data.rdw_type }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('variant') %}
+                            <div class="info-row"><span class="info-label">{{ _('Variant') }}</span><span class="info-value">{{ subject.rdw_data.variant }}</span></div>
+                            {% endif %}
+                            {% if subject.rdw_data.get('uitvoering') %}
+                            <div class="info-row"><span class="info-label">{{ _('Execution (Uitvoering)') }}</span><span class="info-value">{{ subject.rdw_data.uitvoering }}</span></div>
+                            {% endif %}
+                        </div>
+                        <div style="margin-top: 0.75rem;">
+                            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small bg-blue">{{ _('✏️ Edit RDW Data') }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {# ── Vessel Data (vessel only) ── #}
+            {% if subject.subject_type == 'vessel' %}
+            {% set has_vessel = subject.imo_number or subject.mmsi or subject.eni_number or subject.vessel_nationality or subject.vessel_data %}
+            <div class="collapsible-section{% if has_vessel %} open{% endif %}">
+                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Vessel Data</strong></div>
+                <div class="collapsible-body">
+                    <div class="info-row">
+                        <span class="info-label">{{ _('IMO Number') }}</span>
+                        <span class="info-value">{{ subject.imo_number if subject.imo_number else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('MMSI') }}</span>
+                        <span class="info-value">{{ subject.mmsi if subject.mmsi else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('ENI (Inland Shipping)') }}</span>
+                        <span class="info-value">{{ subject.eni_number if subject.eni_number else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Flag State') }}</span>
+                        <span class="info-value">{{ subject.vessel_nationality if subject.vessel_nationality else '-' }}</span>
+                    </div>
+                    {% if subject.vessel_data and subject.vessel_data is mapping %}
+                    <div style="margin-top: 1rem; padding: 1rem; background: #ecfeff; border: 1px solid #0e7490; border-radius: 8px;">
+                        <h4 style="margin: 0 0 0.75rem 0; color: #0e7490;">{{ _('🚢 Vessel Data') }}</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+                            {% for source_key, source_val in subject.vessel_data.items() %}
+                                {% if source_val is mapping %}
+                                    {% for k, v in source_val.items() %}
+                                        {% if v and k not in ('source', 'source_url') %}
+                                        <div class="info-row"><span class="info-label">{{ k|capitalize|replace('_', ' ') }}</span><span class="info-value">{{ v }}</span></div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <div style="margin-top: 0.75rem;">
+                            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small teal">{{ _('✏️ Edit Vessel Data') }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {# ── Financial ── #}
+            {% if subject.subject_type != 'vehicle' %}
+            {% set has_financial = subject.bank_account %}
+            <div class="collapsible-section{% if has_financial %} open{% endif %}">
+                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Financial</strong></div>
+                <div class="collapsible-body">
+                    <div class="info-row">
+                        <span class="info-label">{{ _('💳 Bank / IBAN') }}</span>
+                        <span class="info-value">{{ subject.bank_account|redact_for_viewer if subject.bank_account else '-' }}</span>
+                    </div>
+                </div>
             </div>
             {% endif %}
             <!-- Subject.notes is deprecated. Comments now use Comment model with timestamps -->
@@ -3023,6 +3090,13 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
     // Enter key
     document.getElementById('usernameSearchInput').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') searchUsername();
+    });
+
+    // Collapsible sections
+    document.querySelectorAll('.collapsible-header').forEach(function(header) {
+        header.addEventListener('click', function() {
+            this.closest('.collapsible-section').classList.toggle('open');
+        });
     });
 </script>
 {% endblock %}
