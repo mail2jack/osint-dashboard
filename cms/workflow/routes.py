@@ -96,6 +96,63 @@ def _set_address_fields(obj, prefix: str) -> None:
     obj.city = request.form.get(f"{prefix}_city", "")
 
 
+_VEHICLE_RDW_FIELDS = [
+    "handelsbenaming",
+    "voertuigsoort",
+    "eerste_kleur",
+    "tweede_kleur",
+    "aantal_deuren",
+    "aantal_zitplaatsen",
+    "cilinderinhoud",
+    "aantal_cilinders",
+    "vermogen",
+    "massa_ledig",
+    "maximum_massa",
+    "wielbasis",
+    "datum_eerste_toelating",
+    "datum_tenaamstelling",
+    "vervaldatum_apk",
+    "europese_voertuigcategorie",
+    "wam_verzekerd",
+    "catalogusprijs",
+    "bruto_bpm",
+    "zuinigheidsclassificatie",
+    "typegoedkeuringsnummer",
+    "taxi_indicator",
+    "export_indicator",
+    "openstaande_terugroepactie",
+    "rdw_type",
+    "variant",
+    "uitvoering",
+]
+
+
+def _set_vehicle_fields(obj, prefix: str) -> None:
+    """Set vehicle-specific fields from form data."""
+    obj.brand = request.form.get(f"{prefix}_brand", "")
+    obj.vehicle_type = request.form.get(f"{prefix}_vehicle_type", "")
+    obj.license_plate = request.form.get(f"{prefix}_identification", "")
+    obj.vin = request.form.get(f"{prefix}_vin", "")
+    obj.insurance_company = request.form.get(f"{prefix}_insurance_company", "")
+    rdw_data = obj.rdw_data or {}
+    for field in _VEHICLE_RDW_FIELDS:
+        val = request.form.get(f"{prefix}_{field}", "")
+        if val:
+            rdw_data[field] = val
+    obj.rdw_data = rdw_data if rdw_data else None
+
+
+def _vehicle_auto_name(prefix: str) -> str:
+    """Build a display name for a vehicle from form fields."""
+    brand = request.form.get(f"{prefix}_brand", "").strip()
+    model = request.form.get(f"{prefix}_handelsbenaming", "").strip()
+    kenteken = request.form.get(f"{prefix}_identification", "").strip()
+    parts = [p for p in [brand, model] if p]
+    if kenteken:
+        parts.append(f"({kenteken})")
+    return " ".join(parts) if parts else "Voertuig"
+
+
 SCREENSHOT_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "instance",
@@ -225,7 +282,11 @@ def case_new():
             raw = request.form.get(name, "").strip()
             if not raw:
                 return []
-            return [p.strip() for p in raw.split(",") if p.strip()]
+            return [
+                p.strip() if p.strip().startswith("@") else "@" + p.strip()
+                for p in raw.split(",")
+                if p.strip()
+            ]
 
         def _int_field(name, default=0):
             try:
@@ -345,10 +406,17 @@ def case_new():
             db.session.add(client)
 
         def _make_subject(idx_str):
+            subj_type = request.form.get(f"{idx_str}_type", "person")
+            raw_name = request.form.get(f"{idx_str}_name", "").strip()
+            if not raw_name and subj_type == "vehicle":
+                raw_name = _vehicle_auto_name(idx_str)
+            # Auto-prepend @ for online entity names
+            if subj_type == "online" and raw_name and not raw_name.startswith("@"):
+                raw_name = "@" + raw_name
             s = WorkflowSubject(
                 id=str(uuid.uuid4()),
-                name=request.form.get(f"{idx_str}_name", "Onbekend"),
-                subject_type=request.form.get(f"{idx_str}_type", "person"),
+                name=raw_name or "Onbekend",
+                subject_type=subj_type,
                 identification_number=request.form.get(f"{idx_str}_identification", ""),
                 email=request.form.get(f"{idx_str}_email", ""),
                 phone=normalize_phone(request.form.get(f"{idx_str}_phone", "")),
@@ -372,12 +440,16 @@ def case_new():
                 ),
             )
             _set_address_fields(s, idx_str)
+            if subj_type == "vehicle":
+                _set_vehicle_fields(s, idx_str)
             s.encrypt_identifiers()
             return s
 
         subjects = []
         idx = 0
-        while request.form.get(f"subject_{idx}_name"):
+        while request.form.get(f"subject_{idx}_name") or request.form.get(
+            f"subject_{idx}_type"
+        ):
             subjects.append(_make_subject(f"subject_{idx}"))
             idx += 1
         if not subjects:
@@ -548,7 +620,11 @@ def case_edit(case_id):
             raw = request.form.get(name, "").strip()
             if not raw:
                 return []
-            return [p.strip() for p in raw.split(",") if p.strip()]
+            return [
+                p.strip() if p.strip().startswith("@") else "@" + p.strip()
+                for p in raw.split(",")
+                if p.strip()
+            ]
 
         def _int_field(name, default=0):
             try:
@@ -609,6 +685,13 @@ def case_edit(case_id):
                 continue
             subj.name = request.form.get(f"subj_{sid}_name", subj.name)
             subj.subject_type = request.form.get(f"subj_{sid}_type", "person")
+            # Auto-prepend @ for online entity names
+            if (
+                subj.subject_type == "online"
+                and subj.name
+                and not subj.name.startswith("@")
+            ):
+                subj.name = "@" + subj.name
             subj.identification_number = request.form.get(
                 f"subj_{sid}_identification", ""
             )
@@ -630,6 +713,8 @@ def case_edit(case_id):
                 f"subj_{sid}_reisdocument_nummer", ""
             )
             _set_address_fields(subj, f"subj_{sid}")
+            if subj.subject_type == "vehicle":
+                _set_vehicle_fields(subj, f"subj_{sid}")
             subj.workflow_social_accounts = _social_field(f"subj_{sid}_social_accounts")
             subj.risk_score = _int_field(f"subj_{sid}_risk_score")
             subj.notes = request.form.get(f"subj_{sid}_notes", "")
@@ -637,11 +722,20 @@ def case_edit(case_id):
 
         # process new subjects
         n = 0
-        while request.form.get(f"subj_new_{n}_name"):
+        while request.form.get(f"subj_new_{n}_name") or request.form.get(
+            f"subj_new_{n}_type"
+        ):
+            new_subj_type = request.form.get(f"subj_new_{n}_type", "person")
+            raw_name = request.form.get(f"subj_new_{n}_name", "").strip()
+            if not raw_name and new_subj_type == "vehicle":
+                raw_name = _vehicle_auto_name(f"subj_new_{n}")
+            # Auto-prepend @ for online entity names
+            if new_subj_type == "online" and raw_name and not raw_name.startswith("@"):
+                raw_name = "@" + raw_name
             new_subj = WorkflowSubject(
                 id=str(uuid.uuid4()),
-                name=request.form.get(f"subj_new_{n}_name", "Onbekend"),
-                subject_type=request.form.get(f"subj_new_{n}_type", "person"),
+                name=raw_name or "Onbekend",
+                subject_type=new_subj_type,
                 identification_number=request.form.get(
                     f"subj_new_{n}_identification", ""
                 ),
@@ -668,6 +762,8 @@ def case_edit(case_id):
                 ),
             )
             _set_address_fields(new_subj, f"subj_new_{n}")
+            if new_subj_type == "vehicle":
+                _set_vehicle_fields(new_subj, f"subj_new_{n}")
             new_subj.encrypt_identifiers()
             db.session.add(new_subj)
             case.subjects.append(new_subj)

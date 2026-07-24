@@ -68,6 +68,11 @@ def create_subject() -> flask.Response:
 
         name = data["name"].strip()
 
+        # Auto-prepend @ for online entity names
+        if data.get("subject_type") == "online" and name and not name.startswith("@"):
+            name = "@" + name
+            data["name"] = name
+
         # Check for duplicates
         exact_match = check_for_exact_match(name, "subject")
         similar = find_similar_subjects(name)
@@ -175,8 +180,10 @@ def create_subject() -> flask.Response:
                 "aantal_zitplaatsen",
                 "cilinderinhoud",
                 "aantal_cilinders",
+                "vermogen",
                 "massa_ledig",
                 "maximum_massa",
+                "wielbasis",
                 "vervaldatum_apk",
                 "wam_verzekerd",
                 "taxi_indicator",
@@ -184,12 +191,14 @@ def create_subject() -> flask.Response:
                 "europese_voertuigcategorie",
                 "zuinigheidsclassificatie",
                 "catalogusprijs",
+                "bruto_bpm",
                 "datum_eerste_toelating",
-                "type",
+                "datum_tenaamstelling",
+                "rdw_type",
                 "variant",
                 "uitvoering",
                 "typegoedkeuringsnummer",
-                "wielbasis",
+                "openstaande_terugroepactie",
             ]
             for field in rdw_fields:
                 if data.get(field):
@@ -387,8 +396,16 @@ def edit_subject(subject_id: str) -> flask.Response:
 
         # Update basic fields
         if data.get("name") and data["name"] != subject.name:
-            changes["name"] = {"old": subject.name, "new": data["name"]}
-            subject.name = data["name"]
+            new_name = data["name"].strip()
+            # Auto-prepend @ for online entity names
+            if (
+                subject.subject_type == "online"
+                and new_name
+                and not new_name.startswith("@")
+            ):
+                new_name = "@" + new_name
+            changes["name"] = {"old": subject.name, "new": new_name}
+            subject.name = new_name
 
         # Update subject_type if provided
         if (
@@ -680,7 +697,7 @@ def edit_subject(subject_id: str) -> flask.Response:
             "zuinigheidsclassificatie",
             "catalogusprijs",
             "datum_eerste_toelating",
-            "type",
+            "rdw_type",
             "variant",
             "uitvoering",
             "typegoedkeuringsnummer",
