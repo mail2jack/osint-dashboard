@@ -1,6 +1,13 @@
 {% extends "cms/base.html" %}
 {% block title %}Workflow — New investigation{% endblock %}
 {% block content %}
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Investigations') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <span style="color:var(--text-primary);">{{ _('New case') }}</span>
+</nav>
 <style>
 .super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .form-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
@@ -16,6 +23,8 @@
 .subject-type-row label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; }
 .subject-type-row select { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; background: var(--bg); color: var(--text); font-weight: 500; }
 .sf-hidden { display: none !important; }
+.subject-collapse-header:hover { background: var(--table-hover); }
+.client-section-body.collapsed { display: none; }
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
@@ -80,7 +89,11 @@ input:-webkit-autofill:focus {
   </div>
 
   <div class="form-section">
-    <h2>🧑 Client</h2>
+    <div class="subject-collapse-header" data-action="toggle-client" style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0;cursor:pointer;user-select:none;">
+      <span style="font-size:0.8rem;color:var(--text-muted);transition:transform 0.2s;" class="client-chevron">▶</span>
+      <h2 style="margin:0;">🧑 Client</h2>
+    </div>
+    <div class="client-section-body" style="display:none;">
     <div id="client-lookup-wrap" style="position:relative;">
       <div style="margin-bottom:0.75rem;font-size:0.8rem;color:var(--text-secondary);">
         <em>Type a company name or contact person — existing clients will be suggested.</em>
@@ -151,6 +164,7 @@ input:-webkit-autofill:focus {
         <label>Notes</label>
         <textarea name="client_notes" rows="2" placeholder="Internal notes about the client"></textarea>
       </div>
+    </div>
     </div>
   </div>
 
@@ -953,6 +967,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  // Client section toggle
+  var clientHeader = document.querySelector('[data-action="toggle-client"]');
+  var clientBody = document.querySelector('.client-section-body');
+  var clientChevron = document.querySelector('.client-chevron');
+  if (clientHeader && clientBody) {
+    clientHeader.addEventListener('click', function() {
+      var open = clientBody.style.display !== 'none';
+      clientBody.style.display = open ? 'none' : '';
+      if (clientChevron) clientChevron.style.transform = open ? '' : 'rotate(90deg)';
+    });
+    // Auto-expand on focus
+    clientBody.querySelectorAll('input, select, textarea').forEach(function(el) {
+      el.addEventListener('focus', function() {
+        if (clientBody.style.display === 'none') {
+          clientBody.style.display = '';
+          if (clientChevron) clientChevron.style.transform = 'rotate(90deg)';
+        }
+      });
+    });
+  }
+
 });
 
 (function() {
@@ -974,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function doLookup() {
     var q = getQuery();
     if (!q || q.length < 2) { suggestions.style.display = 'none'; return; }
-    fetch('/cms/workflow/api/client-lookup?q=' + encodeURIComponent(q))
+    apiFetch('/cms/workflow/api/client-lookup?q=' + encodeURIComponent(q))
       .then(function(r) { return r.json(); })
       .then(function(data) {
         suggestions.innerHTML = '';
@@ -1073,7 +1108,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
   <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
     <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms">Cancel</a>
-    <button type="submit" class="btn-cms primary">Create investigation →</button>
+    <button type="submit" class="btn-cms primary" id="wfCreateBtn">Create investigation →</button>
   </div>
 </form>
+<script nonce="{{ csp_nonce }}">
+document.querySelector('form[method="POST"]').addEventListener('submit', function() {
+  var btn = document.getElementById('wfCreateBtn');
+  if (btn && !btn.disabled) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner"></span>Creating\u2026';
+  }
+});
+</script>
 {% endblock %}

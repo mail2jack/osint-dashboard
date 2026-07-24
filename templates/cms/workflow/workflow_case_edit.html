@@ -1,6 +1,15 @@
 {% extends "cms/base.html" %}
 {% block title %}Workflow — {{ case.case_number }} — Edit{% endblock %}
 {% block content %}
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Investigations') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" style="color:var(--text-secondary);text-decoration:none;">{{ case.case_number }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <span style="color:var(--text-primary);">{{ _('Edit') }}</span>
+</nav>
 <style>
 .super-badge { display: inline-block; background: #7c3aed; color: #fff; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .form-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
@@ -582,9 +591,18 @@ input:-webkit-autofill:focus {
 
   <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
     <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="btn-cms">Cancel</a>
-    <button type="submit" class="btn-cms primary">Save changes →</button>
+    <button type="submit" class="btn-cms primary" id="wfSaveBtn">Save changes →</button>
   </div>
 </form>
+<script nonce="{{ csp_nonce }}">
+document.querySelector('form[method="POST"]').addEventListener('submit', function() {
+  var btn = document.getElementById('wfSaveBtn');
+  if (btn && !btn.disabled) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner"></span>Saving\u2026';
+  }
+});
+</script>
 
 <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/workflowCase.js') }}?v={{ g.css_version }}"></script>
 <script nonce="{{ csp_nonce }}">

@@ -1,6 +1,13 @@
 {% extends "cms/base.html" %}
 {% block title %}Workflow — {{ case.case_number }}{% endblock %}
 {% block content %}
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Investigations') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <span style="color:var(--text-primary);">{{ case.case_number }}</span>
+</nav>
 <style>
 .workflow-step {
   border: 2px solid var(--border-color); border-radius: 10px;
