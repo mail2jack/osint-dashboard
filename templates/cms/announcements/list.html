@@ -43,7 +43,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-cms small">{{ '📥 Deactivate' if ann.is_active else '📤 Activate' }}</button>
       </form>
-      <form method="POST" action="{{ url_for('cms.delete_announcement', announcement_id=ann.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure?');">
+      <form method="POST" action="{{ url_for('cms.delete_announcement', announcement_id=ann.id) }}" style="display:inline;" data-submit-confirm="Are you sure?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn-cms small" style="color:#ef4444;">🗑️ Delete</button>
       </form>
@@ -56,4 +56,10 @@
   <p>No announcements yet.</p>
 </div>
 {% endif %}
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('submit', function(e) {
+    var msg = e.target.getAttribute('data-submit-confirm');
+    if (msg && !confirm(msg)) e.preventDefault();
+});
+</script>
 {% endblock %}

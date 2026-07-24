@@ -15,11 +15,11 @@
             <a href="{{ url_for('cms.credit_note_list') }}" class="btn-cms small">← {{ _('Overview') }}</a>
             <a href="{{ url_for('cms.credit_note_pdf', credit_note_id=cn.id) }}" class="btn-cms small danger">{{ _('📄 PDF') }}</a>
             {% if cn.status == 'draft' %}
-            <form method="POST" action="{{ url_for('cms.credit_note_issue', credit_note_id=cn.id) }}" style="display:inline;" onsubmit="return confirm('{{ _('Issue this credit note? This cannot be undone.') }}')">
+            <form method="POST" action="{{ url_for('cms.credit_note_issue', credit_note_id=cn.id) }}" style="display:inline;" data-submit-confirm="{{ _('Issue this credit note? This cannot be undone.') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-cms small bg-blue">{{ _('Issue') }}</button>
             </form>
-            <form method="POST" action="{{ url_for('cms.credit_note_delete', credit_note_id=cn.id) }}" style="display:inline;" onsubmit="return confirm('{{ _('Delete this credit note?') }}')">
+            <form method="POST" action="{{ url_for('cms.credit_note_delete', credit_note_id=cn.id) }}" style="display:inline;" data-submit-confirm="{{ _('Delete this credit note?') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-cms small danger">{{ _('Delete') }}</button>
             </form>
@@ -90,4 +90,10 @@
     </div>
 </div>
 
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('submit', function(e) {
+    var msg = e.target.getAttribute('data-submit-confirm');
+    if (msg && !confirm(msg)) e.preventDefault();
+});
+</script>
 {% endblock %}

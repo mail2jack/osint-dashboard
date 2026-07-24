@@ -477,7 +477,7 @@ async function searchByFace(input) {
                 const sim = match.similarity;
                 const simColor = sim > 80 ? '#059669' : sim > 60 ? '#f59e0b' : '#dc2626';
                 return '<div style="background: white; border-radius: 8px; padding: 1rem; color: #1a1a2e;">' +
-                    '<img src="/static' + esc(match.photo_path) + '" style="width: 100%; height: 150px; object-fit: cover; border-radius: 6px; margin-bottom: 0.5rem;" onerror="this.src=\'/static/pwa/icon-180.png\'">' +
+                    '<img src="/static' + esc(match.photo_path) + '" style="width: 100%; height: 150px; object-fit: cover; border-radius: 6px; margin-bottom: 0.5rem;" data-fallback-src="/static/pwa/icon-180.png">' +
                     '<div style="font-weight: 600; margin-bottom: 0.25rem;">' + esc(match.name) + '</div>' +
                     '<div style="font-size: 0.75rem; color: #666; margin-bottom: 0.5rem;">' + esc(match.subject_type) + '</div>' +
                     '<div style="display: flex; justify-content: space-between; align-items: center;">' +

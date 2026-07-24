@@ -157,7 +157,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-cms" style="font-size:0.8rem;">Switch to this tenant</button>
         </form>
-        <form method="POST" action="{{ url_for('cms.tenant_toggle_active', tenant_id=tenant.id) }}" style="display:inline;" onsubmit="return confirm('{% if tenant.is_active %}{{ _('Deactivate this tenant? Users will lose access.') }}{% else %}{{ _('Reactivate this tenant?') }}{% endif %}')">
+        <form method="POST" action="{{ url_for('cms.tenant_toggle_active', tenant_id=tenant.id) }}" style="display:inline;" data-submit-confirm="{% if tenant.is_active %}{{ _('Deactivate this tenant? Users will lose access.') }}{% else %}{{ _('Reactivate this tenant?') }}{% endif %}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-cms" style="font-size:0.8rem;{% if tenant.is_active %}background:#ef4444;border-color:#ef4444;{% else %}background:#10b981;border-color:#10b981;{% endif %}">
                 {% if tenant.is_active %}{{ _('Deactivate') }}{% else %}{{ _('Reactivate') }}{% endif %}
@@ -248,7 +248,7 @@
     <div class="detail-card">
         <div style="display:flex;justify-content:space-between;align-items:center;">
             <h3>{{ _('Tenant Info') }}</h3>
-            <button class="btn-cms" style="font-size:0.75rem;padding:0.2rem 0.5rem;" onclick="document.getElementById('tenantEditForm').style.display=document.getElementById('tenantEditForm').style.display==='none'?'block':'none'">{{ _('Edit') }}</button>
+            <button class="btn-cms" style="font-size:0.75rem;padding:0.2rem 0.5rem;" data-click="toggleEditForm">{{ _('Edit') }}</button>
         </div>
         <div class="detail-row">
             <span class="key">ID</span>
@@ -307,7 +307,7 @@
             <span class="tier-badge tier-{{ tenant.tier }}" style="vertical-align:middle;">{{ tenant.tier|capitalize }}</span>
             {% if current_user.is_super_admin %}
             <form method="POST" action="{{ url_for('cms.admin_change_tier', tenant_id=tenant.id) }}" style="display:inline;margin-left:0.5rem;">
-                <select name="tier" onchange="this.form.submit()" style="font-size:0.75rem;padding:0.2rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;">
+                <select name="tier" data-change-submit="true" style="font-size:0.75rem;padding:0.2rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;">
                     {% set tier_order = ['free','starter','professional','enterprise'] %}
                     {% for t in tier_order %}
                     <option value="{{ t }}" {% if tenant.tier == t %}selected{% endif %}>{{ t|capitalize }}</option>
@@ -457,7 +457,7 @@
                 <td>
                     <form method="POST" action="{{ url_for('cms.tenant_change_role', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline-flex;gap:0.25rem;align-items:center;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <select name="role" onchange="this.form.submit()" style="font-size:0.75rem;padding:0.15rem 0.3rem;border:1px solid var(--border-color);border-radius:3px;background:var(--card-bg);color:var(--text);">
+                        <select name="role" data-change-submit="true" style="font-size:0.75rem;padding:0.15rem 0.3rem;border:1px solid var(--border-color);border-radius:3px;background:var(--card-bg);color:var(--text);">
                             {% for r in ['viewer','junior_investigator','investigator','senior_investigator','admin'] %}
                             <option value="{{ r }}" {{ 'selected' if u.role == r }}>{{ r.replace('_',' ')|title }}</option>
                             {% endfor %}
@@ -482,7 +482,7 @@
                     {% if u.totp_enabled %}
                     <form method="POST" action="{{ url_for('cms.tenant_reset_2fa', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;margin-left:0.25rem;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-cms" style="font-size:0.7rem;padding:0.15rem 0.4rem;background:#8b5cf6;border-color:#8b5cf6;" onclick="return confirm('{{ _('Reset 2FA for this user?') }}')">{{ _('Reset 2FA') }}</button>
+                        <button type="submit" class="btn-cms" style="font-size:0.7rem;padding:0.15rem 0.4rem;background:#8b5cf6;border-color:#8b5cf6;" data-submit-confirm="{{ _('Reset 2FA for this user?') }}">{{ _('Reset 2FA') }}</button>
                     </form>
                     {% endif %}
                     <a href="{{ url_for('users.edit_user', user_id=u.id) }}" style="font-size:0.7rem;margin-left:0.25rem;">✎</a>
@@ -535,4 +535,25 @@
         🗑️ {{ _('Delete All Tenant Data') }}
     </a>
 </div>
+
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-click]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-click');
+    if (action === 'toggleEditForm') {
+        var f = document.getElementById('tenantEditForm');
+        if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+});
+document.addEventListener('change', function(e) {
+    if (e.target.matches('[data-change-submit]')) {
+        e.target.form.submit();
+    }
+});
+document.addEventListener('submit', function(e) {
+    var msg = e.target.getAttribute('data-submit-confirm');
+    if (msg && !confirm(msg)) e.preventDefault();
+});
+</script>
 {% endblock %}

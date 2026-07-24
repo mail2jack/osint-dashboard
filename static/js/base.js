@@ -485,6 +485,26 @@ document.addEventListener('input', function(e) {
   }
 });
 
+// Image fallback handler — replaces broken images with data-fallback-src or hides them
+document.addEventListener('error', function(e) {
+  if (e.target.tagName === 'IMG') {
+    var fb = e.target.getAttribute('data-fallback-src');
+    if (fb && e.target.src !== fb) {
+      e.target.src = fb;
+      e.target.removeAttribute('data-fallback-src');
+    } else if (e.target.getAttribute('data-hide-on-error')) {
+      e.target.style.display = 'none';
+    }
+  }
+}, true);
+
+// Stop propagation for elements with data-stop-propagation
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-stop-propagation]')) {
+    e.stopPropagation();
+  }
+}, true);
+
 // Update runner (admin-only, called from data-click)
 var _updatePollTimer = null;
 var _updateTaskId = null;
@@ -791,7 +811,7 @@ function checkForUpdates() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.update_available) {
-        statusEl.innerHTML = '\u2705 <strong>' + (data.version_update ? 'Update ' + data.current_version + ' \u2192 ' + data.latest_version : 'New commits') + '</strong> \u2014 <a href="#" onclick="showUpdateModal();return false;" style="color:var(--link-color);">' + (data.version_update ? 'Click to update' : 'Click to update') + '</a>';
+        statusEl.innerHTML = '\u2705 <strong>' + (data.version_update ? 'Update ' + data.current_version + ' \u2192 ' + data.latest_version : 'New commits') + '</strong> \u2014 <a href="#" data-click="showUpdateModal" style="color:var(--link-color);">' + (data.version_update ? 'Click to update' : 'Click to update') + '</a>';
         var banner = document.getElementById('updateBanner');
         var text = document.getElementById('updateBannerText');
         if (banner && text) {

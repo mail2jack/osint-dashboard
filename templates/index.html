@@ -32,17 +32,17 @@
                     <span class="status-dot"></span>
                     <span class="status-text">Idle</span>
                 </div>
-                <button class="btn-icon" onclick="toggleHistory()" title="History">
+                <button class="btn-icon" data-click="toggleHistory" title="History">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     History
                 </button>
-                <button class="btn-icon" onclick="toggleHealthModal()" title="Health">
+                <button class="btn-icon" data-click="toggleHealthModal" title="Health">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                 </button>
-                <button class="btn-icon" onclick="restartApp()" title="Restart">
+                <button class="btn-icon" data-click="restartApp" title="Restart">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                 </button>
-                <button class="btn-icon" onclick="openChangelog()" title="Changelog">v<span id="versionBadge">2.0</span></button>
+                <button class="btn-icon" data-click="openChangelog" title="Changelog">v<span id="versionBadge">2.0</span></button>
             </div>
         </header>
 
@@ -87,7 +87,7 @@
         <div id="results" class="results hidden">
             <div class="results-header">
                 <h3>Results</h3>
-                <button class="close-btn" onclick="closeResults()">&times;</button>
+                <button class="close-btn" data-click="closeResults">&times;</button>
             </div>
             <div id="resultsContent" class="results-content"></div>
         </div>
@@ -100,7 +100,7 @@
                 <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
                 <p class="progress-text" id="progressText">Preparing...</p>
                 <div class="search-controls">
-                    <button class="btn-icon danger" onclick="stopSearch()">■ Stop</button>
+                    <button class="btn-icon danger" data-click="stopSearch">■ Stop</button>
                 </div>
             </div>
         </div>
@@ -111,7 +111,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h3>Search History</h3>
-                <button class="close-btn" onclick="toggleHistory()">&times;</button>
+                <button class="close-btn" data-click="toggleHistory">&times;</button>
             </div>
             <div class="modal-body" id="historyContent">
                 <div class="empty">No history yet</div>
@@ -124,7 +124,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h3>Platform Status</h3>
-                <button class="close-btn" onclick="toggleHealthModal()">&times;</button>
+                <button class="close-btn" data-click="toggleHealthModal">&times;</button>
             </div>
             <div class="modal-body" id="healthContent">
                 <div class="loading">Loading...</div>
@@ -137,7 +137,7 @@
         <div class="modal">
             <div class="modal-header">
                 <h3>What's New</h3>
-                <button class="close-btn" onclick="openChangelog()">&times;</button>
+                <button class="close-btn" data-click="openChangelog">&times;</button>
             </div>
             <div class="modal-body" id="changelogContent">
                 <div class="loading">Loading...</div>
@@ -695,7 +695,7 @@
                     <div class="result-item ${f.exists ? 'found' : ''}">
                         <div class="result-info">
                             <div class="result-name">${f.platform || f.site || f.service}</div>
-                            ${f.url ? `<div class="url-row"><a href="${f.url}" target="_blank" class="result-url">${f.url}</a><button class="copy-btn" onclick="copyToClipboard('${f.url}', this)" title="Copy URL">⎘</button></div>` : ''}
+                            ${f.url ? `<div class="url-row"><a href="${f.url}" target="_blank" class="result-url">${f.url}</a><button class="copy-btn" data-click="copyToClipboard" data-url="${f.url}" title="Copy URL">⎘</button></div>` : ''}
                             <div class="result-meta">
                                 <span class="confidence-badge ${scoreClass}">${scoreLabel} ${score}%</span>
                             </div>
@@ -903,7 +903,7 @@
                     <div class="result-item found">
                         <div class="result-info">
                             <div class="result-name">${esc(dork.domain)}</div>
-                            ${dork.url ? `<div class="url-row"><a href="${dorkUrl}" target="_blank" class="result-url">${dorkUrl}</a><button class="copy-btn" onclick="copyToClipboard('${dorkUrl}', this)" title="Copy URL">⎘</button></div>` : ''}
+                            ${dork.url ? `<div class="url-row"><a href="${dorkUrl}" target="_blank" class="result-url">${dorkUrl}</a><button class="copy-btn" data-click="copyToClipboard" data-url="${dorkUrl}" title="Copy URL">⎘</button></div>` : ''}
                             <div class="result-meta">
                                 <span class="category">${esc(dork.category)}</span>
                                 <span class="confidence-badge ${esc(scoreClass)}">${scoreLabel} ${score}%</span>
@@ -919,7 +919,7 @@
                 <div class="result-item">
                     <div class="result-info">
                         <div class="result-name">${esc(link.name || link.engine)}</div>
-                        ${link.url ? `<div class="url-row"><a href="${linkUrl}" target="_blank" class="result-url">${linkUrl}</a><button class="copy-btn" onclick="copyToClipboard('${linkUrl}', this)" title="Copy URL">⎘</button></div>` : ''}
+                        ${link.url ? `<div class="url-row"><a href="${linkUrl}" target="_blank" class="result-url">${linkUrl}</a><button class="copy-btn" data-click="copyToClipboard" data-url="${linkUrl}" title="Copy URL">⎘</button></div>` : ''}
                     </div>
                 </div>
             `;
@@ -939,7 +939,7 @@
                                 <strong style="color: #16a34a;">✓ Found ${dorksResults.length} results</strong>
                                 <p style="margin: 0.5rem 0 0 0; color: #666;">Ready to add to case findings?</p>
                             </div>
-                            <button onclick="addDorksToFindings(${JSON.stringify(data.case_id)}, ${JSON.stringify(data.subject_id || '')}, ${JSON.stringify(dorksResults).replace(/"/g, '&quot;')}, ${JSON.stringify(data.name)})" class="btn" style="background: #16a34a; padding: 0.5rem 1rem;">
+                            <button data-click="addDorksToFindings" data-case-id='${JSON.stringify(data.case_id)}' data-subject-id='${JSON.stringify(data.subject_id || '')}' data-dorks='${JSON.stringify(dorksResults).replace(/'/g, "&#39;")}' data-name='${JSON.stringify(data.name)}' class="btn" style="background: #16a34a; padding: 0.5rem 1rem;">
                                 Add to Case Findings
                             </button>
                         </div>
@@ -1235,7 +1235,7 @@
                     <div class="card">
                         <h3>Countries</h3>
                         <div class="tags">
-                            ${countries.map(c => `<span class="tag" onclick="searchWebcamsByCountry('${c.code}')">${c.name}</span>`).join('')}
+                            ${countries.map(c => `<span class="tag" data-click="searchWebcamsByCountry" data-code="${c.code}">${c.name}</span>`).join('')}
                         </div>
                     </div>
                 ` : ''}
@@ -1243,7 +1243,7 @@
                     <div class="webcam-grid">
                         ${webcams.map(w => `
                             <div class="webcam-item">
-                                <img src="${w.thumbnail}" alt="${w.title}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%2212%22>Offline</text></svg>'">
+                                <img src="${w.thumbnail}" alt="${w.title}" loading="lazy" data-fallback-src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23333%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%2212%22>Offline</text></svg>">
                                 <div class="webcam-info">
                                     <div class="webcam-title">${w.title}</div>
                                     <div class="webcam-location">${w.location}</div>
@@ -1374,6 +1374,26 @@
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 searchInput.focus();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            var el = e.target.closest('[data-click]');
+            if (!el) return;
+            var action = el.getAttribute('data-click');
+            if (action === 'copyToClipboard') {
+                e.preventDefault();
+                copyToClipboard(el.getAttribute('data-url'), el);
+            } else if (action === 'addDorksToFindings') {
+                e.preventDefault();
+                var caseId = JSON.parse(el.getAttribute('data-case-id'));
+                var subjectId = JSON.parse(el.getAttribute('data-subject-id'));
+                var dorks = JSON.parse(el.getAttribute('data-dorks'));
+                var name = JSON.parse(el.getAttribute('data-name'));
+                addDorksToFindings(caseId, subjectId, dorks, name);
+            } else if (action === 'searchWebcamsByCountry') {
+                e.preventDefault();
+                searchWebcamsByCountry(el.getAttribute('data-code'));
             }
         });
     </script>

@@ -38,7 +38,7 @@
         {{ tenant.name }}
     </p>
 
-    <form method="POST" action="{{ url_for('cms.tenant_gdpr_delete', tenant_id=tenant.id) }}" onsubmit="return confirm('{{ _('Are you absolutely sure? This permanently deletes ALL data for this tenant.') }}')">
+    <form method="POST" action="{{ url_for('cms.tenant_gdpr_delete', tenant_id=tenant.id) }}" data-submit-confirm="{{ _('Are you absolutely sure? This permanently deletes ALL data for this tenant.') }}">
         <input type="text" name="confirm_name" class="gdpr-input" placeholder="{{ _('Type the tenant name to confirm') }}" required autocomplete="off" autofocus>
         <div style="display:flex;gap:0.75rem;">
             <a href="{{ url_for('cms.tenant_detail', tenant_id=tenant.id) }}" class="btn-cms" style="text-decoration:none;flex:1;text-align:center;">{{ _('Cancel') }}</a>
@@ -46,4 +46,10 @@
         </div>
     </form>
 </div>
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('submit', function(e) {
+    var msg = e.target.getAttribute('data-submit-confirm');
+    if (msg && !confirm(msg)) e.preventDefault();
+});
+</script>
 {% endblock %}

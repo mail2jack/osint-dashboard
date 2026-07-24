@@ -127,12 +127,12 @@ function loadNotifications() {
                     h += '</div></div>';
                     h += '<div class="notif-actions">';
                     if (!n.is_read) {
-                        h += '<button onclick="markRead(\'' + n.id + '\')" title="{{ _("Mark read") }}">✓</button>';
+                        h += '<button data-click="markRead" data-id="' + esc(n.id) + '" title="{{ _("Mark read") }}">✓</button>';
                     }
                     if (safeLink) {
-                        h += '<button onclick="navigate(\'' + safeLink + '\')" title="{{ _("Open") }}">↗</button>';
+                        h += '<button data-click="navigate" data-link="' + safeLink + '" title="{{ _("Open") }}">↗</button>';
                     }
-                    h += '<button onclick="deleteNotif(\'' + n.id + '\')" title="{{ _("Delete") }}">✕</button>';
+                    h += '<button data-click="deleteNotif" data-id="' + esc(n.id) + '" title="{{ _("Delete") }}">✕</button>';
                     h += '</div></div>';
                 });
                 list.innerHTML = h;
@@ -142,15 +142,15 @@ function loadNotifications() {
             var ph = document.getElementById('pagination');
             if (totalPages <= 1) { ph.innerHTML = ''; return; }
             var phHtml = '';
-            phHtml += '<button onclick="goPage(0)"' + (currentPage === 0 ? ' disabled' : '') + '>«</button>';
+            phHtml += '<button data-click="goPage" data-page="0"' + (currentPage === 0 ? ' disabled' : '') + '>«</button>';
             for (var i = 0; i < totalPages; i++) {
                 if (i === 0 || i === totalPages - 1 || Math.abs(i - currentPage) <= 2) {
-                    phHtml += '<button onclick="goPage(' + i + ')"' + (i === currentPage ? ' class="active"' : '') + '>' + (i + 1) + '</button>';
+                    phHtml += '<button data-click="goPage" data-page="' + i + '"' + (i === currentPage ? ' class="active"' : '') + '>' + (i + 1) + '</button>';
                 } else if (phHtml.slice(-8) !== '...') {
                     phHtml += '<span style="padding:0 0.25rem;">...</span>';
                 }
             }
-            phHtml += '<button onclick="goPage(' + (totalPages - 1) + ')"' + (currentPage === totalPages - 1 ? ' disabled' : '') + '>»</button>';
+            phHtml += '<button data-click="goPage" data-page="' + (totalPages - 1) + '"' + (currentPage === totalPages - 1 ? ' disabled' : '') + '>»</button>';
             ph.innerHTML = phHtml;
 
             document.getElementById('notifCount').textContent = data.total + ' {{ _("notification(s)") }}';
@@ -185,5 +185,15 @@ document.getElementById('deleteAllReadBtn').addEventListener('click', function()
 });
 
 loadNotifications();
+
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-click]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-click');
+    if (action === 'markRead') markRead(btn.getAttribute('data-id'));
+    else if (action === 'navigate') navigate(btn.getAttribute('data-link'));
+    else if (action === 'deleteNotif') deleteNotif(btn.getAttribute('data-id'));
+    else if (action === 'goPage') goPage(parseInt(btn.getAttribute('data-page'), 10));
+});
 </script>
 {% endblock %}

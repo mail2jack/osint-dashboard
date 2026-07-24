@@ -105,7 +105,7 @@
             <div class="input-row">
                 {% if s.is_encrypted %}
                 <input type="password" id="ts-{{ s.id }}" name="{{ s.key }}" value="{{ s.value or '' }}" placeholder="{{ _('Enter value') }}" class="setting-input" data-setting-id="{{ s.id }}">
-                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;" onclick="togglePassword(this)">{{ _('Show') }}</button>
+                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;" data-click="togglePasswordBtn">{{ _('Show') }}</button>
                 {% if s.value %}
                 <span class="badge badge-configured">{{ _('Configured') }}</span>
                 {% else %}
@@ -134,9 +134,9 @@
             {% endif %}
             <div class="input-row">
                 <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp" style="flex:1;padding:0.25rem;">
-                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;" onclick="uploadLogo()">{{ _('Upload') }}</button>
+                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;" data-click="uploadLogoBtn">{{ _('Upload') }}</button>
                 {% if tenant_logo %}
-                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;background:#ef4444;border-color:#ef4444;" onclick="deleteLogo()">{{ _('Remove') }}</button>
+                <button type="button" class="btn-cms" style="font-size:0.7rem;padding:0.3rem 0.5rem;flex-shrink:0;background:#ef4444;border-color:#ef4444;" data-click="deleteLogoBtn">{{ _('Remove') }}</button>
                 {% endif %}
             </div>
             <div id="logoStatus" style="font-size:0.75rem;margin-top:0.25rem;color:var(--text-muted);"></div>
@@ -243,5 +243,14 @@ async function deleteLogo() {
         status.textContent = '{{ _("Error removing logo") }}';
     }
 }
+
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-click]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-click');
+    if (action === 'togglePasswordBtn') togglePassword(btn);
+    else if (action === 'uploadLogoBtn') uploadLogo();
+    else if (action === 'deleteLogoBtn') deleteLogo();
+});
 </script>
 {% endblock %}

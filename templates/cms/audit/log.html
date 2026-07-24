@@ -28,7 +28,7 @@
         </p>
     </div>
     {% if current_user.is_admin %}
-    <form method="POST" action="{{ url_for('cms.audit_purge') }}" onsubmit="return confirm('Purge audit logs older than {{ retention_days }} days? This cannot be undone.')">
+    <form method="POST" action="{{ url_for('cms.audit_purge') }}" data-submit-confirm="Purge audit logs older than {{ retention_days }} days? This cannot be undone.">
         <button type="submit" class="btn-cms danger" {% if retention_days <= 0 %}disabled title="Set retention period in settings first"{% endif %}>🗑️ Purge Old</button>
     </form>
     {% endif %}
@@ -127,4 +127,10 @@
     <div class="empty-state"><div class="icon">📭</div><p>No audit logs found matching your criteria.</p></div>
     {% endif %}
 </div>
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('submit', function(e) {
+    var msg = e.target.getAttribute('data-submit-confirm');
+    if (msg && !confirm(msg)) e.preventDefault();
+});
+</script>
 {% endblock %}

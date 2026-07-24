@@ -104,7 +104,7 @@
   </div>
   <div style="display:flex;gap:0.5rem;align-items:center;">
     <span id="totalFindings" class="findings-counter">📋 0 findings</span>
-    <a href="#" onclick="showProcesVerbaal();return false;" class="btn-cms primary small">📄 Generate official report</a>
+    <a href="#" data-click="showProcesVerbaal" class="btn-cms primary small">📄 Generate official report</a>
   </div>
 </div>
 
@@ -219,42 +219,42 @@
   </div>
   <div class="workflow-step-body">
     <div class="action-grid">
-      <div class="action-btn" onclick="runCheck(this, 'email')" data-check="email">
+      <div class="action-btn" data-click="runCheck" data-check="email">
         <div class="icon">📧</div>
         <div class="label">Email check</div>
         <div class="desc">ProtonMail + breaches</div>
       </div>
-      <div class="action-btn" onclick="runCheck(this, 'phone')" data-check="phone">
+      <div class="action-btn" data-click="runCheck" data-check="phone">
         <div class="icon">📞</div>
         <div class="label">Phone check</div>
         <div class="desc">Identity linking</div>
       </div>
-      <div class="action-btn" onclick="runCheck(this, 'address')" data-check="address">
+      <div class="action-btn" data-click="runCheck" data-check="address">
         <div class="icon">🏠</div>
         <div class="label">Address investigation</div>
         <div class="desc">Land registry + registration</div>
       </div>
-      <div class="action-btn" onclick="runCheck(this, 'social')" data-check="social">
+      <div class="action-btn" data-click="runCheck" data-check="social">
         <div class="icon">🌐</div>
         <div class="label">Social media scan</div>
         <div class="desc">LinkedIn, Facebook, IG</div>
       </div>
-      <div class="action-btn" onclick="runCheck(this, 'kvk')" data-check="kvk">
+      <div class="action-btn" data-click="runCheck" data-check="kvk">
         <div class="icon">🏢</div>
         <div class="label">KvK investigation</div>
         <div class="desc">Company data Kees Holding</div>
       </div>
-      <div class="action-btn" onclick="runCheck(this, 'rdw')" data-check="rdw">
+      <div class="action-btn" data-click="runCheck" data-check="rdw">
         <div class="icon">🚗</div>
         <div class="label">Vehicle check (RDW)</div>
         <div class="desc">License plate investigation</div>
       </div>
-      <div class="action-btn" onclick="runCheck(this, 'osint')" data-check="osint">
+      <div class="action-btn" data-click="runCheck" data-check="osint">
         <div class="icon">🌍</div>
         <div class="label">OSINT Deep Search</div>
         <div class="desc">Internet + dark web</div>
       </div>
-      <div class="action-btn" onclick="runCheck(this, 'financial')" data-check="financial">
+      <div class="action-btn" data-click="runCheck" data-check="financial">
         <div class="icon">💰</div>
         <div class="label">Financial investigation</div>
         <div class="desc">Accounts + transactions</div>
@@ -290,7 +290,7 @@
   </div>
   <div class="workflow-step-body">
     <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
-      <button onclick="showProcesVerbaal()" class="btn-cms primary">📄 Proces-verbaal genereren</button>
+      <button data-click="showProcesVerbaal" class="btn-cms primary">📄 Proces-verbaal genereren</button>
       <span style="font-size:0.85rem;color:var(--text-muted);">All findings are merged into a legally valid official report</span>
     </div>
     <div id="pvOutput" style="display:none;"></div>
@@ -463,5 +463,18 @@ function esc(s) {
   div.textContent = s;
   return div.innerHTML;
 }
+
+document.addEventListener('click', function(e) {
+    var el = e.target.closest('[data-click]');
+    if (!el) return;
+    var action = el.getAttribute('data-click');
+    if (action === 'runCheck') {
+        e.preventDefault();
+        runCheck(el, el.getAttribute('data-check'));
+    } else if (action === 'showProcesVerbaal') {
+        e.preventDefault();
+        showProcesVerbaal();
+    }
+});
 </script>
 {% endblock %}

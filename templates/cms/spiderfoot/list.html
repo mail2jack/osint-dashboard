@@ -54,15 +54,15 @@
             {% endif %}
         </div>
         <div class="scan-card-actions">
-            <span class="btn btn-small" onclick="event.stopPropagation(); window.location.href='{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}'">View</span>
+            <span class="btn btn-small" data-click="sfViewScan" data-arg0="{{ url_for('cms.spiderfoot_scan_status', scan_id=scan.id) }}">View</span>
             {% if scan.status == 'running' %}
-            <form method="POST" action="{{ url_for('cms.spiderfoot_stop_scan', scan_id=scan.id) }}" style="display: inline;" onclick="event.stopPropagation()">
+            <form method="POST" action="{{ url_for('cms.spiderfoot_stop_scan', scan_id=scan.id) }}" style="display: inline;" data-stop-propagation="true">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-small btn-danger" data-confirm="Stop scan?">Stop</button>
             </form>
             {% endif %}
             {% if current_user.is_admin and scan.status != 'running' %}
-            <form method="POST" action="{{ url_for('cms.spiderfoot_delete_scan', scan_id=scan.id) }}" style="display: inline;" onclick="event.stopPropagation()">
+            <form method="POST" action="{{ url_for('cms.spiderfoot_delete_scan', scan_id=scan.id) }}" style="display: inline;" data-stop-propagation="true">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-small btn-danger" data-confirm="Delete this scan record?">Delete</button>
             </form>
@@ -187,4 +187,16 @@
 }
 </style>
 
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('click', function(e) {
+    var el = e.target.closest('[data-click]');
+    if (!el) return;
+    var action = el.getAttribute('data-click');
+    if (action === 'sfViewScan') {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = el.getAttribute('data-arg0');
+    }
+});
+</script>
 {% endblock %}
