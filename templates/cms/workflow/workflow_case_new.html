@@ -212,19 +212,19 @@ input:-webkit-autofill:focus {
                   <div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
-                      <input type="text" class="addr-zipcode" data-idx="0" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                      <input type="text" name="subject_0_postal_code" class="addr-zipcode" data-idx="0" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Number') }}</label>
-                      <input type="text" class="addr-number" data-idx="0" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                      <input type="text" name="subject_0_house_number" class="addr-number" data-idx="0" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Street') }}</label>
-                      <input type="text" class="addr-street" data-idx="0" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                      <input type="text" name="subject_0_street" class="addr-street" data-idx="0" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Town') }}</label>
-                      <input type="text" class="addr-town" data-idx="0" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                      <input type="text" name="subject_0_city" class="addr-town" data-idx="0" placeholder="{{ _('Amsterdam') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div style="display:flex;align-items:center;gap:0.25rem;">
                       <button type="button" data-click="wfPostcodeCheck" data-idx="0" title="{{ _('Look up zipcode + number') }}" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>
@@ -717,13 +717,13 @@ document.addEventListener('DOMContentLoaded', function() {
     return '<div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">' +
       '<div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">' +
         '<div><label style="font-size:0.75rem;">Zipcode</label>' +
-          '<input type="text" class="addr-zipcode" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.zipPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+          '<input type="text" name="subject_' + idx + '_postal_code" class="addr-zipcode" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.zipPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
         '<div><label style="font-size:0.75rem;">Number</label>' +
-          '<input type="text" class="addr-number" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.numberPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+          '<input type="text" name="subject_' + idx + '_house_number" class="addr-number" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.numberPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
         '<div><label style="font-size:0.75rem;">Street</label>' +
-          '<input type="text" class="addr-street" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.streetPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+          '<input type="text" name="subject_' + idx + '_street" class="addr-street" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.streetPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
         '<div><label style="font-size:0.75rem;">Town</label>' +
-          '<input type="text" class="addr-town" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.townPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+          '<input type="text" name="subject_' + idx + '_city" class="addr-town" data-idx="' + idx + '" data-row="' + rowIdx + '" placeholder="' + T.townPlaceholder + '" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
         '<div style="display:flex;align-items:center;gap:0.25rem;">' +
           '<button type="button" data-click="wfPostcodeCheck" data-idx="' + idx + '" data-row="' + rowIdx + '" title="Look up" style="font-size:0.85rem;padding:0.4rem 0.5rem;background:#1e40af;color:white;border:none;border-radius:6px;cursor:pointer;">🔍</button>' +
           '<label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;"><input type="checkbox" class="addr-primary" ' + (rowIdx === 0 ? 'checked' : '') + '> Primary</label>' +
