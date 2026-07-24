@@ -169,7 +169,7 @@ class TestRDWCheck:
         resp = auth_client.post(self.URL, json={})
         assert resp.status_code == 400
 
-    @patch("cms.routes.rdw.jittered_get")
+    @patch("cms.routes.rdw.std_requests.get")
     def test_happy_path(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(
             status_code=200,
@@ -195,7 +195,7 @@ class TestRDWCheck:
         assert data.get("merk") == "VOLKSWAGEN"
         assert data.get("kenteken_display") == "22-PBR-2"
 
-    @patch("cms.routes.rdw.jittered_get")
+    @patch("cms.routes.rdw.std_requests.get")
     def test_not_found(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(status_code=200, json_data=[])
         resp = auth_client.post(self.URL, json={"kenteken": "XX-99-YY"})
@@ -203,7 +203,7 @@ class TestRDWCheck:
         assert resp.status_code == 200
         assert data.get("found") is False
 
-    @patch("cms.routes.rdw.jittered_get")
+    @patch("cms.routes.rdw.std_requests.get")
     def test_api_error(self, mock_get, auth_client):
         mock_get.return_value = MockRequestsResponse(status_code=503)
         resp = auth_client.post(self.URL, json={"kenteken": "22PBR2"})

@@ -1,6 +1,5 @@
 import logging
-from curl_cffi.requests import RequestsError
-from cms.services.http_utils import jittered_get
+import requests as std_requests
 
 import flask
 from flask import request, jsonify
@@ -59,7 +58,7 @@ def check_rdw_vehicle() -> flask.Response:
             "Accept": "application/json",
         }
         url = f"{RDW_API_BASE}?kenteken={kenteken_normalized}"
-        r = jittered_get(url, headers=headers, timeout=15)
+        r = std_requests.get(url, headers=headers, timeout=8)
 
         if r.status_code != 200:
             return jsonify(
@@ -85,6 +84,7 @@ def check_rdw_vehicle() -> flask.Response:
             "found": True,
             "kenteken": vehicle.get("kenteken", ""),
             "kenteken_display": _denormalize_kenteken(vehicle.get("kenteken", "")),
+            "chassisnummer": vehicle.get("chassisnummer", ""),
             "voertuigsoort": vehicle.get("voertuigsoort", ""),
             "merk": vehicle.get("merk", ""),
             "handelsbenaming": vehicle.get("handelsbenaming", ""),
@@ -92,7 +92,7 @@ def check_rdw_vehicle() -> flask.Response:
             "type": vehicle.get("type", ""),
             "variant": vehicle.get("variant", ""),
             "uitvoering": vehicle.get("uitvoering", ""),
-            "kleur": vehicle.get("eerste_kleur", ""),
+            "eerste_kleur": vehicle.get("eerste_kleur", ""),
             "tweede_kleur": vehicle.get("tweede_kleur", ""),
             "aantal_deuren": vehicle.get("aantal_deuren", ""),
             "aantal_zitplaatsen": vehicle.get("aantal_zitplaatsen", ""),
@@ -127,7 +127,7 @@ def check_rdw_vehicle() -> flask.Response:
             }
 
         return jsonify(vehicle_data), 200
-    except RequestsError:
+    except std_requests.exceptions.RequestException:
         logger.exception("RDW API connection error")
         return jsonify({"error": "Failed to connect to RDW API"}), 503
     except Exception:
@@ -160,7 +160,7 @@ def update_subject_from_rdw(subject_id: str) -> flask.Response:
             "Accept": "application/json",
         }
         url = f"{RDW_API_BASE}?kenteken={kenteken}"
-        r = jittered_get(url, headers=headers, timeout=15)
+        r = std_requests.get(url, headers=headers, timeout=8)
 
         if r.status_code != 200 or not r.json():
             return api_error("Vehicle not found in RDW database", 404)

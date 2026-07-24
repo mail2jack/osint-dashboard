@@ -1182,6 +1182,47 @@ class Subject(db.Model):
 
         return result
 
+    # RDW fields stored in rdw_data JSON — allow attribute-style access
+    _RDW_FALLBACK_FIELDS = frozenset(
+        {
+            "handelsbenaming",
+            "voertuigsoort",
+            "eerste_kleur",
+            "tweede_kleur",
+            "aantal_deuren",
+            "aantal_zitplaatsen",
+            "cilinderinhoud",
+            "aantal_cilinders",
+            "vermogen",
+            "massa_ledig",
+            "maximum_massa",
+            "wielbasis",
+            "datum_eerste_toelating",
+            "datum_tenaamstelling",
+            "vervaldatum_apk",
+            "europese_voertuigcategorie",
+            "wam_verzekerd",
+            "catalogusprijs",
+            "bruto_bpm",
+            "zuinigheidsclassificatie",
+            "typegoedkeuringsnummer",
+            "taxi_indicator",
+            "export_indicator",
+            "openstaande_terugroepactie",
+            "rdw_type",
+            "variant",
+            "uitvoering",
+        }
+    )
+
+    def __getattr__(self, name):
+        if name in self._RDW_FALLBACK_FIELDS:
+            rdw = self.__dict__.get("rdw_data") or {}
+            return rdw.get(name, "")
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
+
 
 # =============================================================================
 # Address Model

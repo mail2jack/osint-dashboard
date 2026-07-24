@@ -2758,6 +2758,72 @@ msgstr ""
 msgid "Verzekeringsmaatschappij (Insurance)"
 msgstr ""
 
+msgid "Body Type (Inrichting)"
+msgstr ""
+
+msgid "Color (Eerste kleur)"
+msgstr ""
+
+msgid "2nd Color"
+msgstr ""
+
+msgid "Type"
+msgstr ""
+
+msgid "Variant"
+msgstr ""
+
+msgid "Execution (Uitvoering)"
+msgstr ""
+
+msgid "Engine (cc)"
+msgstr ""
+
+msgid "Cylinders"
+msgstr ""
+
+msgid "Engine Power (kW)"
+msgstr ""
+
+msgid "Empty Weight (kg)"
+msgstr ""
+
+msgid "Max Weight (kg)"
+msgstr ""
+
+msgid "Wheelbase (mm)"
+msgstr ""
+
+msgid "First Registration"
+msgstr ""
+
+msgid "Registration Date"
+msgstr ""
+
+msgid "EU Category"
+msgstr ""
+
+msgid "Catalog Price (EUR)"
+msgstr ""
+
+msgid "BPM (EUR)"
+msgstr ""
+
+msgid "Fuel Class"
+msgstr ""
+
+msgid "Type Approval No."
+msgstr ""
+
+msgid "Taxi"
+msgstr ""
+
+msgid "Export"
+msgstr ""
+
+msgid "Recall Action"
+msgstr ""
+
 #: templates/cms/subjects/create.html:245 templates/cms/subjects/edit.html:162
 msgid "🚢 Vessel Information"
 msgstr ""

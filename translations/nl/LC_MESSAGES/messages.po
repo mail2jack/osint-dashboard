@@ -2605,6 +2605,72 @@ msgstr "WAM Verzekerd"
 msgid "Verzekeringsmaatschappij (Insurance)"
 msgstr "Verzekeringsmaatschappij"
 
+msgid "Body Type (Inrichting)"
+msgstr "Inrichting (Carrosserietype)"
+
+msgid "Color (Eerste kleur)"
+msgstr "Kleur (Eerste kleur)"
+
+msgid "2nd Color"
+msgstr "2e Kleur"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Variant"
+msgstr "Variant"
+
+msgid "Execution (Uitvoering)"
+msgstr "Uitvoering"
+
+msgid "Engine (cc)"
+msgstr "Motor (cc)"
+
+msgid "Cylinders"
+msgstr "Cilinders"
+
+msgid "Engine Power (kW)"
+msgstr "Vermogen (kW)"
+
+msgid "Empty Weight (kg)"
+msgstr "Ledig gewicht (kg)"
+
+msgid "Max Weight (kg)"
+msgstr "Max. gewicht (kg)"
+
+msgid "Wheelbase (mm)"
+msgstr "Wielbasis (mm)"
+
+msgid "First Registration"
+msgstr "Eerste toelating"
+
+msgid "Registration Date"
+msgstr "Datum tenaamstelling"
+
+msgid "EU Category"
+msgstr "EU Categorie"
+
+msgid "Catalog Price (EUR)"
+msgstr "Catalogusprijs (EUR)"
+
+msgid "BPM (EUR)"
+msgstr "BPM (EUR)"
+
+msgid "Fuel Class"
+msgstr "Zuinigheidsclassificatie"
+
+msgid "Type Approval No."
+msgstr "Typegoedkeuringsnummer"
+
+msgid "Taxi"
+msgstr "Taxi"
+
+msgid "Export"
+msgstr "Export"
+
+msgid "Recall Action"
+msgstr "Terugroepactie"
+
 #: templates/cms/subjects/create.html:245 templates/cms/subjects/edit.html:162
 msgid "🚢 Vessel Information"
 msgstr "🚢 Scheepsinformatie"
