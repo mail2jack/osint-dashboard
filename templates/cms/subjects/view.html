@@ -109,6 +109,45 @@
         </div>
         <label class="photo-upload-btn" for="photoInput">{{ _('📷 Upload') }}</label>
         <input type="file" id="photoInput" class="photo-input" accept="image/*" data-change="uploadPhoto">
+        {% if subject.photo_metadata %}
+        <div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.78rem; max-width: 280px;">
+            <div style="font-weight: 600; margin-bottom: 0.3rem;">📷 {{ _('Photo Metadata') }}</div>
+            {% set pm = subject.photo_metadata %}
+            {% if pm.gps %}
+            <div style="margin-bottom: 0.2rem;">
+                <span style="color: #ef4444;">🔴</span> {{ _('GPS') }}: {{ pm.gps.latitude }}, {{ pm.gps.longitude }}
+                <a href="{{ pm.gps.google_maps_url }}" target="_blank" rel="noopener" style="color: var(--accent-primary); font-size: 0.75rem;">{{ _('🗺️ Map') }}</a>
+            </div>
+            {% endif %}
+            {% if pm.camera %}
+            <div style="margin-bottom: 0.2rem;">
+                <span style="color: var(--text-muted);">📷</span> {{ pm.camera.get('camera_name', pm.camera.get('make', '')) }}
+            </div>
+            {% endif %}
+            {% if pm.datetime %}
+            <div style="margin-bottom: 0.2rem;">
+                <span style="color: var(--text-muted);">📅</span> {{ pm.datetime }}
+            </div>
+            {% endif %}
+            {% if pm.software %}
+            <div style="margin-bottom: 0.2rem;">
+                <span style="color: var(--text-muted);">💻</span> {{ pm.software }}
+            </div>
+            {% endif %}
+            {% if pm.privacy %}
+            <div style="margin-top: 0.3rem; padding-top: 0.3rem; border-top: 1px dashed var(--border-color);">
+                {% set risk = pm.privacy.get('risk_level', 'unknown') %}
+                {% if risk == 'high' %}
+                <span style="color: #ef4444; font-weight: 600;">🔴 {{ _('Privacy: HIGH RISK') }}</span>
+                {% elif risk == 'medium' %}
+                <span style="color: #f59e0b; font-weight: 600;">🟡 {{ _('Privacy: MEDIUM') }}</span>
+                {% else %}
+                <span style="color: #10b981;">🟢 {{ _('Privacy: OK') }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
     <div>
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}

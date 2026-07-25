@@ -2745,6 +2745,151 @@ def _subdomain_check(action):
     return findings
 
 
+def _photo_analysis(action):
+    """Analyze photo EXIF metadata, GPS, camera info, and generate reverse search links."""
+    from cms.services.photo_analysis import (
+        analyze_photo,
+        format_analysis_finding,
+    )
+    import os
+
+    subject = _first_subject(action)
+    findings = []
+
+    # Determine photo path
+    photo_path = None
+    photo_url = None
+
+    if subject and subject.photo_path:
+        photo_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "static",
+            subject.photo_path.lstrip("/"),
+        )
+        photo_url = subject.photo_path
+
+    # If no subject photo, check data_value for a path
+    if not photo_path and action.data_value:
+        data_val = action.data_value
+        if os.path.isfile(data_val):
+            photo_path = data_val
+        elif data_val.startswith("/"):
+            photo_path = data_val
+
+    if not photo_path or not os.path.exists(photo_path):
+        findings.append(
+            {
+                "title": "No photo available for analysis",
+                "detail": "Upload a photo to the subject first, then run Photo Analysis.",
+                "source_type": "photo_analysis",
+                "icon": "📷",
+                "verified": False,
+            }
+        )
+        return findings
+
+    # Run full analysis
+    try:
+        analysis = analyze_photo(photo_path, photo_url=photo_url)
+        finding = format_analysis_finding(
+            analysis, subject_name=subject.name if subject else ""
+        )
+        if subject:
+            finding["subject_id"] = subject.id
+        findings.append(finding)
+
+        # Store EXIF metadata on subject
+        if subject:
+            subject.photo_metadata = {
+                "gps": analysis.get("gps"),
+                "camera": analysis.get("camera"),
+                "datetime": analysis.get("datetime"),
+                "software": analysis.get("software"),
+                "privacy": analysis.get("privacy"),
+            }
+            db.session.commit()
+
+    except Exception as e:
+        logger.warning("Photo analysis failed: %s", e)
+        findings.append(
+            {
+                "title": f"Photo analysis error: {e}",
+                "detail": str(e),
+                "source_type": "photo_analysis",
+                "icon": "📷",
+                "verified": False,
+            }
+        )
+
+    # AI geolocation fallback (Picarta) — only if no GPS in EXIF
+    if findings and not findings[0].get("raw_data", {}).get("gps"):
+        try:
+            picarta_findings = _picarta_geolocate(photo_path, subject)
+            findings.extend(picarta_findings)
+        except Exception as e:
+            logger.debug("Picarta geolocation failed: %s", e)
+
+    return findings
+
+
+def _picarta_geolocate(photo_path, subject=None):
+    """Use Picarta API for AI-based photo geolocation (fallback when no EXIF GPS)."""
+    from cms.services.http_utils import jittered_get
+
+    findings = []
+    try:
+        import base64
+
+        with open(photo_path, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+
+        # Try Picarta API (free tier: 50 requests/month)
+        picarta_key = _get_api_key("picarta_api_key")
+        if not picarta_key:
+            return findings
+
+        r = jittered_get(
+            "https://api.picarta.ai/geo",
+            params={"token": picarta_key},
+            json={"image": img_b64},
+            timeout=30,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            lat = data.get("lat")
+            lng = data.get("lon") or data.get("lng")
+            confidence = data.get("confidence", 0)
+            if lat and lng:
+                detail_lines = [
+                    "🤖 AI Estimated Location (Picarta)",
+                    f"📍 Coordinates: {lat}, {lng}",
+                    f"🗺️  https://www.google.com/maps?q={lat},{lng}",
+                    f"📊 Confidence: {confidence}%",
+                    "",
+                    "⚠️ This is an AI estimate, not exact GPS data.",
+                ]
+                finding = {
+                    "title": f"AI Geolocation — {lat},{lng} (confidence: {confidence}%)",
+                    "detail": "\n".join(detail_lines),
+                    "source_type": "ai_geolocation",
+                    "icon": "🤖",
+                    "verified": False,
+                    "raw_data": {
+                        "lat": lat,
+                        "lng": lng,
+                        "confidence": confidence,
+                        "source": "picarta",
+                    },
+                }
+                if subject:
+                    finding["subject_id"] = subject.id
+                findings.append(finding)
+    except Exception as e:
+        logger.debug("Picarta geolocation failed: %s", e)
+
+    return findings
+
+
 # ─── Register all actions ─────────────────────────────────
 register_action(
     "email",
@@ -2872,4 +3017,14 @@ register_action(
     "📝",
     lambda action: [],
     "Manually created findings by the researcher.",
+)
+
+register_action(
+    "photo_analysis",
+    "Photo Analysis",
+    "📷",
+    _photo_analysis,
+    "Analyze photo EXIF metadata: GPS coordinates, camera info, date/time, "
+    "privacy/OPSEC risks, and generate reverse image search links. "
+    "Includes AI geolocation fallback when no GPS data is found.",
 )

@@ -76,6 +76,22 @@ def upload_subject_photo(subject_id: str) -> flask.Response:
     file_path = os.path.join(upload_dir, filename)
     file.save(file_path)
 
+    # Extract EXIF metadata
+    try:
+        from ..services.photo_analysis import analyze_photo
+
+        photo_url = f"/uploads/subjects/{subject_id}/{filename}"
+        analysis = analyze_photo(file_path, photo_url=photo_url)
+        subject.photo_metadata = {
+            "gps": analysis.get("gps"),
+            "camera": analysis.get("camera"),
+            "datetime": analysis.get("datetime"),
+            "software": analysis.get("software"),
+            "privacy": analysis.get("privacy"),
+        }
+    except Exception as e:
+        logger.debug("EXIF extraction failed on upload for %s: %s", subject_id, e)
+
     # Update subject
     subject.photo_path = f"/uploads/subjects/{subject_id}/{filename}"
 

@@ -1005,6 +1005,7 @@ class Subject(db.Model):
 
     # Photo
     photo_path = db.Column(db.String(500))  # Path to uploaded photo
+    photo_metadata = db.Column(SafeJSON)  # EXIF/GPS/camera data extracted from photo
 
     # Face recognition encoding (stored as JSON array of 128 floats from face-api.js)
     face_encoding = db.Column(SafeJSON)
@@ -1168,6 +1169,7 @@ class Subject(db.Model):
             "eni_number": self.eni_number,
             "vessel_nationality": self.vessel_nationality,
             "vessel_data": self.vessel_data or {},
+            "photo_metadata": self.photo_metadata or {},
             "addresses": [a.to_dict(decrypted=decrypted) for a in self.addresses],
             "contacts": [c.to_dict(decrypted=decrypted) for c in self.contacts],
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -2451,6 +2453,14 @@ def init_default_settings() -> None:
             "value_type": "password",
             "is_sensitive": True,
             "display_order": 3,
+        },
+        {
+            "key": "picarta_api_key",
+            "category": "api_keys",
+            "description": "Picarta API → AI-based photo geolocation (schat locatie op basis van foto). 📍 https://picarta.ai",
+            "value_type": "password",
+            "is_sensitive": True,
+            "display_order": 4,
         },
         {
             "key": "spiderfoot_url",
