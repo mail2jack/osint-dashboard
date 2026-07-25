@@ -974,6 +974,8 @@ def case_status(case_id):
                     "label": a.label,
                     "status": a.status,
                     "error": a.error,
+                    "data_value": a.data_value,
+                    "dork_label": a.dork_label,
                     "result_summary": a.result_summary,
                     "created_at": a.created_at.isoformat() if a.created_at else None,
                     "started_at": a.started_at.isoformat() if a.started_at else None,

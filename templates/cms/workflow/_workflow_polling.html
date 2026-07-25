@@ -306,7 +306,9 @@ function updateFindings(findings, actions) {
     var icon = '📄';
     var statusClass = a.status === 'completed' ? 'fg-done' : a.status === 'failed' ? 'fg-failed' : a.status === 'running' ? 'fg-running' : '';
     var groupLabel = a.label || a.action_type;
-    if (a.action_type === 'google_dork' && a.data_value) {
+    if (a.dork_label) {
+      groupLabel = groupLabel + ' — ' + a.dork_label;
+    } else if (a.action_type === 'google_dork' && a.data_value) {
       try {
         var dv = JSON.parse(a.data_value);
         if (dv && dv.dork_label) groupLabel = groupLabel + ' — ' + dv.dork_label;
