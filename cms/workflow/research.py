@@ -1070,7 +1070,7 @@ def _kvk_check(action):
         try:
             payload = json.loads(raw)
             if isinstance(payload, dict):
-                query = subject.name if subject else ""
+                query = payload.get("query", "") or (subject.name if subject else "")
         except (json.JSONDecodeError, TypeError):
             query = raw
     if not query:
