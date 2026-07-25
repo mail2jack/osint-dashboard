@@ -1,0 +1,1706 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "personal",
+      "label": "Personal Identity",
+      "icon": "\ud83d\udc64",
+      "dorks": [
+        {
+          "id": "person-name-general",
+          "label": "Name Search (Broad)",
+          "description": "Find all web pages mentioning this person's name",
+          "dork_template": "\"{name}\"",
+          "example": "\"Jan de Vries\"",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-exact",
+          "label": "Name Search (Exact Phrase)",
+          "description": "Find exact name matches only",
+          "dork_template": "intext:\"{name}\" -site:facebook.com -site:linkedin.com -site:twitter.com",
+          "example": "intext:\"Jan de Vries\" -site:facebook.com -site:linkedin.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-linkedin",
+          "label": "LinkedIn Profile",
+          "description": "Find LinkedIn profile for a person",
+          "dork_template": "\"{name}\" site:linkedin.com/in",
+          "example": "\"Jan de Vries\" site:linkedin.com/in",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-linkedin-company",
+          "label": "LinkedIn Company Employee",
+          "description": "Find person at specific company on LinkedIn",
+          "dork_template": "\"{name}\" \"{company}\" site:linkedin.com/in",
+          "example": "\"Jan de Vries\" \"ING\" site:linkedin.com/in",
+          "variables": [
+            {"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true},
+            {"name": "company", "label": "Company", "type": "text", "placeholder": "ING", "required": false}
+          ]
+        },
+        {
+          "id": "person-facebook",
+          "label": "Facebook Profile",
+          "description": "Find Facebook profile",
+          "dork_template": "\"{name}\" site:facebook.com",
+          "example": "\"Jan de Vries\" site:facebook.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-twitter",
+          "label": "Twitter / X Profile",
+          "description": "Find Twitter or X profile",
+          "dork_template": "\"{name}\" site:twitter.com OR site:x.com",
+          "example": "\"Jan de Vries\" site:twitter.com OR site:x.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-instagram",
+          "label": "Instagram Profile",
+          "description": "Find Instagram profile",
+          "dork_template": "\"{name}\" site:instagram.com",
+          "example": "\"Jan de Vries\" site:instagram.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-tiktok",
+          "label": "TikTok Profile",
+          "description": "Find TikTok profile",
+          "dork_template": "\"{name}\" site:tiktok.com",
+          "example": "\"Jan de Vries\" site:tiktok.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-youtube",
+          "label": "YouTube Channel",
+          "description": "Find YouTube channel or videos",
+          "dork_template": "\"{name}\" site:youtube.com",
+          "example": "\"Jan de Vries\" site:youtube.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-github",
+          "label": "GitHub Profile",
+          "description": "Find GitHub profile and repositories",
+          "dork_template": "\"{name}\" site:github.com",
+          "example": "\"Jan de Vries\" site:github.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-reddit",
+          "label": "Reddit Profile",
+          "description": "Find Reddit posts or profile",
+          "dork_template": "\"{name}\" site:reddit.com",
+          "example": "\"Jan de Vries\" site:reddit.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-pinterest",
+          "label": "Pinterest Profile",
+          "description": "Find Pinterest profile or boards",
+          "dork_template": "\"{name}\" site:pinterest.com",
+          "example": "\"Jan de Vries\" site:pinterest.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-medium",
+          "label": "Medium Articles",
+          "description": "Find Medium articles by or about person",
+          "dork_template": "\"{name}\" site:medium.com",
+          "example": "\"Jan de Vries\" site:medium.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-slideshare",
+          "label": "SlideShare Presentations",
+          "description": "Find SlideShare presentations",
+          "dork_template": "\"{name}\" site:slideshare.net",
+          "example": "\"Jan de Vries\" site:slideshare.net",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-researchgate",
+          "label": "ResearchGate Profile",
+          "description": "Find academic profile on ResearchGate",
+          "dork_template": "\"{name}\" site:researchgate.net",
+          "example": "\"Jan de Vries\" site:researchgate.net",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-academia",
+          "label": "Academia.edu Profile",
+          "description": "Find academic papers and profile",
+          "dork_template": "\"{name}\" site:academia.edu",
+          "example": "\"Jan de Vries\" site:academia.edu",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-keybase",
+          "label": "Keybase Profile",
+          "description": "Find Keybase cryptographic identity",
+          "dork_template": "\"{name}\" site:keybase.io",
+          "example": "\"Jan de Vries\" site:keybase.io",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-gravatar",
+          "label": "Gravatar Profile",
+          "description": "Find Gravatar profile by email",
+          "dork_template": "\"{email}\" site:gravatar.com",
+          "example": "\"jan@example.com\" site:gravatar.com",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "person-name-cv",
+          "label": "CV / Resume",
+          "description": "Find CV or resume documents",
+          "dork_template": "\"{name}\" (intitle:\"resume\" OR intitle:\"cv\" OR intitle:\"curriculum vitae\")",
+          "example": "\"Jan de Vries\" (intitle:\"resume\" OR intitle:\"cv\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-pdf",
+          "label": "PDF Documents with Name",
+          "description": "Find PDF files mentioning this person",
+          "dork_template": "\"{name}\" filetype:pdf",
+          "example": "\"Jan de Vries\" filetype:pdf",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-doc",
+          "label": "Word Documents with Name",
+          "description": "Find Word documents mentioning this person",
+          "dork_template": "\"{name}\" filetype:doc OR filetype:docx",
+          "example": "\"Jan de Vries\" filetype:doc OR filetype:docx",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-xls",
+          "label": "Excel Files with Name",
+          "description": "Find Excel spreadsheets mentioning this person",
+          "dork_template": "\"{name}\" filetype:xls OR filetype:xlsx",
+          "example": "\"Jan de Vries\" filetype:xls OR filetype:xlsx",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-ppt",
+          "label": "Presentations with Name",
+          "description": "Find PowerPoint presentations mentioning this person",
+          "dork_template": "\"{name}\" filetype:ppt OR filetype:pptx",
+          "example": "\"Jan de Vries\" filetype:ppt OR filetype:pptx",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-before-after",
+          "label": "Name in Date Range",
+          "description": "Find mentions of name within a specific date range",
+          "dork_template": "\"{name}\" after:{date_from} before:{date_to}",
+          "example": "\"Jan de Vries\" after:2023-01-01 before:2024-12-31",
+          "variables": [
+            {"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true},
+            {"name": "date_from", "label": "From Date (YYYY-MM-DD)", "type": "date", "placeholder": "2023-01-01", "required": true},
+            {"name": "date_to", "label": "To Date (YYYY-MM-DD)", "type": "date", "placeholder": "2024-12-31", "required": true}
+          ]
+        },
+        {
+          "id": "person-name-exclude-social",
+          "label": "Name (Exclude Social Media)",
+          "description": "Find mentions of name excluding major social platforms",
+          "dork_template": "\"{name}\" -site:facebook.com -site:linkedin.com -site:twitter.com -site:instagram.com -site:tiktok.com",
+          "example": "\"Jan de Vries\" -site:facebook.com -site:linkedin.com -site:twitter.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-phone",
+          "label": "Name + Phone Number",
+          "description": "Find pages with both name and phone number",
+          "dork_template": "\"{name}\" \"{phone}\"",
+          "example": "\"Jan de Vries\" \"+31612345678\"",
+          "variables": [
+            {"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true},
+            {"name": "phone", "label": "Phone Number", "type": "tel", "placeholder": "+31612345678", "required": false}
+          ]
+        },
+        {
+          "id": "person-name-email",
+          "label": "Name + Email",
+          "description": "Find pages with both name and email address",
+          "dork_template": "\"{name}\" \"{email}\"",
+          "example": "\"Jan de Vries\" \"jan@example.com\"",
+          "variables": [
+            {"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true},
+            {"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": false}
+          ]
+        },
+        {
+          "id": "person-name-address",
+          "label": "Name + Address",
+          "description": "Find pages mentioning name and address details",
+          "dork_template": "\"{name}\" \"{street}\" OR \"{city}\"",
+          "example": "\"Jan de Vries\" \"Damstraat\" OR \"Amsterdam\"",
+          "variables": [
+            {"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true},
+            {"name": "street", "label": "Street Name", "type": "text", "placeholder": "Damstraat", "required": false},
+            {"name": "city", "label": "City", "type": "text", "placeholder": "Amsterdam", "required": false}
+          ]
+        },
+        {
+          "id": "person-name-news",
+          "label": "Name in News Articles",
+          "description": "Find news articles mentioning this person",
+          "dork_template": "\"{name}\" (site:nu.nl OR site:ad.nl OR site:telegraaf.nl OR site:volkskrant.nl OR site:rtlnieuws.nl OR site:bbc.com OR site:cnn.com)",
+          "example": "\"Jan de Vries\" (site:nu.nl OR site:ad.nl OR site:telegraaf.nl)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-forum",
+          "label": "Name on Forums",
+          "description": "Find forum posts mentioning this person",
+          "dork_template": "\"{name}\" (site:forum OR inurl:forum OR inurl:community)",
+          "example": "\"Jan de Vries\" (site:forum OR inurl:forum OR inurl:community)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-court",
+          "label": "Name in Court Documents",
+          "description": "Find legal or court documents mentioning this person",
+          "dork_template": "\"{name}\" (site:rechtspraak.nl OR \"uitspraak\" OR \"vonnis\" OR \"arrest\" OR \"court ruling\")",
+          "example": "\"Jan de Vries\" (site:rechtspraak.nl OR \"uitspraak\" OR \"vonnis\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-birth",
+          "label": "Birth Registration",
+          "description": "Find birth announcements or registrations",
+          "dork_template": "\"{name}\" (\"geboren\" OR \"born\" OR \"geboorte\" OR \"birth announcement\")",
+          "example": "\"Jan de Vries\" (\"geboren\" OR \"born\" OR \"geboorte\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-property",
+          "label": "Property Ownership",
+          "description": "Find property records or real estate listings",
+          "dork_template": "\"{name}\" (\"eigendom\" OR \"property owner\" OR \"kadastraal\" OR \"kadaster\")",
+          "example": "\"Jan de Vries\" (\"eigendom\" OR \"property owner\" OR \"kadaster\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-insolvency",
+          "label": "Insolvency / Bankruptcy",
+          "description": "Find insolvency or bankruptcy records",
+          "dork_template": "\"{name}\" (\"faillissement\" OR \"insolvency\" OR \"bankruptcy\" OR \"surseance\")",
+          "example": "\"Jan de Vries\" (\"faillissement\" OR \"insolvency\" OR \"bankruptcy\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-crime",
+          "label": "Criminal Records / News",
+          "description": "Find criminal records or crime-related news",
+          "dork_template": "\"{name}\" (\"verdachte\" OR \"suspect\" OR \"arrested\" OR \"aangehouden\" OR \"politie\" OR \"police\")",
+          "example": "\"Jan de Vries\" (\"verdachte\" OR \"suspect\" OR \"arrested\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-wanted",
+          "label": "Wanted / Missing Persons",
+          "description": "Find wanted or missing persons databases",
+          "dork_template": "\"{name}\" (\"gezocht\" OR \"wanted\" OR \"vermist\" OR \"missing\" OR \"opsporing\")",
+          "example": "\"Jan de Vries\" (\"gezocht\" OR \"wanted\" OR \"vermist\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-username-all",
+          "label": "Username Across Platforms",
+          "description": "Find a username across multiple platforms",
+          "dork_template": "\"{username}\" (site:twitter.com OR site:instagram.com OR site:facebook.com OR site:linkedin.com OR site:reddit.com OR site:github.com OR site:tiktok.com OR site:youtube.com OR site:pinterest.com OR site:medium.com OR site:tumblr.com OR site:twitch.tv OR site:steamcommunity.com OR site:quora.com OR site:stackoverflow.com OR site:gitlab.com OR site:keybase.io OR site:flickr.com OR site:vimeo.com OR site:soundcloud.com OR site:dev.to OR site:patreon.com)",
+          "example": "\"jandevries\" (site:twitter.com OR site:instagram.com OR site:reddit.com OR site:github.com)",
+          "variables": [{"name": "username", "label": "Username", "type": "text", "placeholder": "jandevries", "required": true}]
+        },
+        {
+          "id": "person-username-github",
+          "label": "Username on GitHub",
+          "description": "Find GitHub profile by username",
+          "dork_template": "\"{username}\" site:github.com",
+          "example": "\"jandevries\" site:github.com",
+          "variables": [{"name": "username", "label": "Username", "type": "text", "placeholder": "jandevries", "required": true}]
+        },
+        {
+          "id": "person-name-disclosure",
+          "label": "Data Breach / Leak Mentions",
+          "description": "Find mentions in data breach contexts",
+          "dork_template": "\"{name}\" (\"data breach\" OR \"leaked\" OR \"datalek\" OR \"exposed\" OR \"compromised\")",
+          "example": "\"Jan de Vries\" (\"data breach\" OR \"leaked\" OR \"exposed\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-pastebin",
+          "label": "Name on Pastebin",
+          "description": "Find mentions on Pastebin paste sites",
+          "dork_template": "\"{name}\" site:pastebin.com OR site:paste.ee OR site:hastebin.com",
+          "example": "\"Jan de Vries\" site:pastebin.com OR site:paste.ee",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-wayback",
+          "label": "Archived Pages (Wayback)",
+          "description": "Find archived versions of pages mentioning name",
+          "dork_template": "\"{name}\" site:web.archive.org",
+          "example": "\"Jan de Vries\" site:web.archive.org",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-job",
+          "label": "Job Postings / Employment",
+          "description": "Find job-related mentions or employment history",
+          "dork_template": "\"{name}\" (\"werkt bij\" OR \"works at\" OR \"employed\" OR \"employee\" OR \"hired\")",
+          "example": "\"Jan de Vries\" (\"werkt bij\" OR \"works at\" OR \"employed\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "person-name-speech",
+          "label": "Speeches / Presentations",
+          "description": "Find speeches, talks, or presentations",
+          "dork_template": "\"{name}\" (\"speech\" OR \"presentation\" OR \"keynote\" OR \"talk\" OR \"spreker\")",
+          "example": "\"Jan de Vries\" (\"speech\" OR \"presentation\" OR \"keynote\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "email",
+      "label": "Email Investigation",
+      "icon": "\u2709\ufe0f",
+      "dorks": [
+        {
+          "id": "email-general",
+          "label": "Email Address Search",
+          "description": "Find all web pages mentioning this email",
+          "dork_template": "\"{email}\"",
+          "example": "\"jan@example.com\"",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-social",
+          "label": "Email on Social Media",
+          "description": "Find social media profiles linked to email",
+          "dork_template": "\"{email}\" (site:facebook.com OR site:twitter.com OR site:linkedin.com OR site:instagram.com)",
+          "example": "\"jan@example.com\" (site:facebook.com OR site:twitter.com OR site:linkedin.com)",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-pastebin",
+          "label": "Email on Paste Sites",
+          "description": "Find email on Pastebin and similar sites",
+          "dork_template": "\"{email}\" (site:pastebin.com OR site:paste.ee OR site:hastebin.com OR site:dpaste.org)",
+          "example": "\"jan@example.com\" (site:pastebin.com OR site:paste.ee)",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-github",
+          "label": "Email in GitHub Commits",
+          "description": "Find email in GitHub commits or code",
+          "dork_template": "\"{email}\" site:github.com",
+          "example": "\"jan@example.com\" site:github.com",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-leak",
+          "label": "Email in Data Leaks",
+          "description": "Find email in leaked data or breach discussions",
+          "dork_template": "\"{email}\" (\"data breach\" OR \"leaked\" OR \"exposed\" OR \"credential\" OR \"password leak\")",
+          "example": "\"jan@example.com\" (\"data breach\" OR \"leaked\" OR \"exposed\")",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-domain",
+          "label": "Emails from Domain",
+          "description": "Find all email addresses at a specific domain",
+          "dork_template": "\"@{domain}\" intext:\"email\" OR intext:\"contact\"",
+          "example": "\"@example.com\" intext:\"email\" OR intext:\"contact\"",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "example.com", "required": true}]
+        },
+        {
+          "id": "email-documents",
+          "label": "Email in Documents",
+          "description": "Find email in PDF, Word, or Excel files",
+          "dork_template": "\"{email}\" (filetype:pdf OR filetype:doc OR filetype:docx OR filetype:xls OR filetype:xlsx)",
+          "example": "\"jan@example.com\" (filetype:pdf OR filetype:doc)",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-gravatar",
+          "label": "Gravatar by Email",
+          "description": "Find Gravatar profile linked to email",
+          "dork_template": "\"{email}\" site:gravatar.com OR site:en.gravatar.com",
+          "example": "\"jan@example.com\" site:gravatar.com",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-newsletter",
+          "label": "Newsletter / Mailing List",
+          "description": "Find email in mailing list or newsletter archives",
+          "dork_template": "\"{email}\" (\"newsletter\" OR \"mailing list\" OR \"subscribe\" OR \"unsubscribe\" OR \"mailinglijst\")",
+          "example": "\"jan@example.com\" (\"newsletter\" OR \"mailing list\")",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-registration",
+          "label": "Account Registration",
+          "description": "Find email in account registration pages",
+          "dork_template": "\"{email}\" (\"registered\" OR \"account\" OR \"gebruiker\" OR \"registration confirmation\")",
+          "example": "\"jan@example.com\" (\"registered\" OR \"account\")",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        },
+        {
+          "id": "email-forum",
+          "label": "Email on Forums",
+          "description": "Find email in forum posts",
+          "dork_template": "\"{email}\" (inurl:forum OR inurl:community OR site:forum)",
+          "example": "\"jan@example.com\" (inurl:forum OR inurl:community)",
+          "variables": [{"name": "email", "label": "Email Address", "type": "email", "placeholder": "jan@example.com", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "phone",
+      "label": "Phone Investigation",
+      "icon": "\ud83d\udcde",
+      "dorks": [
+        {
+          "id": "phone-general",
+          "label": "Phone Number Search",
+          "description": "Find all web pages mentioning this phone number",
+          "dork_template": "\"{phone}\"",
+          "example": "\"+31612345678\"",
+          "variables": [{"name": "phone", "label": "Phone Number", "type": "tel", "placeholder": "+31612345678", "required": true}]
+        },
+        {
+          "id": "phone-name",
+          "label": "Phone + Name",
+          "description": "Find pages with both phone number and name",
+          "dork_template": "\"{phone}\" \"{name}\"",
+          "example": "\"+31612345678\" \"Jan de Vries\"",
+          "variables": [
+            {"name": "phone", "label": "Phone Number", "type": "tel", "placeholder": "+31612345678", "required": true},
+            {"name": "name", "label": "Name (optional)", "type": "text", "placeholder": "Jan de Vries", "required": false}
+          ]
+        },
+        {
+          "id": "phone-social",
+          "label": "Phone on Social Media",
+          "description": "Find social profiles linked to phone number",
+          "dork_template": "\"{phone}\" (site:facebook.com OR site:linkedin.com OR site:instagram.com OR site:whatsapp.com)",
+          "example": "\"+31612345678\" (site:facebook.com OR site:linkedin.com)",
+          "variables": [{"name": "phone", "label": "Phone Number", "type": "tel", "placeholder": "+31612345678", "required": true}]
+        },
+        {
+          "id": "phone-whatsapp",
+          "label": "WhatsApp Link",
+          "description": "Find WhatsApp click-to-chat links",
+          "dork_template": "inurl:\"wa.me/{phone_digits}\" OR inurl:\"api.whatsapp.com/send?phone={phone_digits}\"",
+          "example": "inurl:\"wa.me/31612345678\" OR inurl:\"api.whatsapp.com/send?phone=31612345678\"",
+          "variables": [{"name": "phone_digits", "label": "Phone Digits Only", "type": "text", "placeholder": "31612345678", "required": true}]
+        },
+        {
+          "id": "phone-local",
+          "label": "Local Format Phone Search",
+          "description": "Search with local phone format (without + prefix)",
+          "dork_template": "\"{phone_local}\" OR \"{phone_with_dashes}\"",
+          "example": "\"0612345678\" OR \"06-1234-5678\"",
+          "variables": [
+            {"name": "phone_local", "label": "Local Format", "type": "tel", "placeholder": "0612345678", "required": true},
+            {"name": "phone_with_dashes", "label": "Dashed Format", "type": "tel", "placeholder": "06-1234-5678", "required": false}
+          ]
+        },
+        {
+          "id": "phone-leak",
+          "label": "Phone in Data Leaks",
+          "description": "Find phone number in leaked data discussions",
+          "dork_template": "\"{phone}\" (\"data breach\" OR \"leaked\" OR \"exposed\" OR \"phone leak\")",
+          "example": "\"+31612345678\" (\"data breach\" OR \"leaked\")",
+          "variables": [{"name": "phone", "label": "Phone Number", "type": "tel", "placeholder": "+31612345678", "required": true}]
+        },
+        {
+          "id": "phone-yellowpages",
+          "label": "Business Directory",
+          "description": "Find phone in business directories",
+          "dork_template": "\"{phone}\" (site:google.com/maps OR site:bedrijvenregister.com OR \"telefoon\" OR \"bel\")",
+          "example": "\"+31612345678\" (site:google.com/maps OR \"telefoon\")",
+          "variables": [{"name": "phone", "label": "Phone Number", "type": "tel", "placeholder": "+31612345678", "required": true}]
+        },
+        {
+          "id": "phone-area",
+          "label": "Phone by Area Code",
+          "description": "Find all numbers in an area code range",
+          "dork_template": "\"{area_code}\" (\"telefoon\" OR \"phone\" OR \"contact\" OR \"tel:\")",
+          "example": "\"020\" (\"telefoon\" OR \"phone\" OR \"contact\")",
+          "variables": [{"name": "area_code", "label": "Area Code", "type": "text", "placeholder": "020", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "address",
+      "label": "Address & Location",
+      "icon": "\ud83d\udccd",
+      "dorks": [
+        {
+          "id": "address-general",
+          "label": "Address Search",
+          "description": "Find all web pages mentioning this address",
+          "dork_template": "\"{address}\"",
+          "example": "\"Damstraat 1, Amsterdam\"",
+          "variables": [{"name": "address", "label": "Full Address", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        },
+        {
+          "id": "address-street",
+          "label": "Street Name Search",
+          "description": "Find mentions of a street name",
+          "dork_template": "\"{street}\" \"{city}\"",
+          "example": "\"Damstraat\" \"Amsterdam\"",
+          "variables": [
+            {"name": "street", "label": "Street Name", "type": "text", "placeholder": "Damstraat", "required": true},
+            {"name": "city", "label": "City", "type": "text", "placeholder": "Amsterdam", "required": false}
+          ]
+        },
+        {
+          "id": "address-postcode",
+          "label": "Postcode Search",
+          "description": "Find pages mentioning a Dutch postcode",
+          "dork_template": "\"{postcode}\"",
+          "example": "\"1012 AB\"",
+          "variables": [{"name": "postcode", "label": "Postcode", "type": "text", "placeholder": "1012 AB", "required": true}]
+        },
+        {
+          "id": "address-name",
+          "label": "Address + Name",
+          "description": "Find pages with address and person name",
+          "dork_template": "\"{address}\" \"{name}\"",
+          "example": "\"Damstraat 1\" \"Jan de Vries\"",
+          "variables": [
+            {"name": "address", "label": "Address", "type": "text", "placeholder": "Damstraat 1", "required": true},
+            {"name": "name", "label": "Name", "type": "text", "placeholder": "Jan de Vries", "required": false}
+          ]
+        },
+        {
+          "id": "address-google-maps",
+          "label": "Google Maps Link",
+          "description": "Find Google Maps links for an address",
+          "dork_template": "\"{address}\" site:google.com/maps",
+          "example": "\"Damstraat 1, Amsterdam\" site:google.com/maps",
+          "variables": [{"name": "address", "label": "Address", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        },
+        {
+          "id": "address-property",
+          "label": "Property / Real Estate",
+          "description": "Find property listings or ownership at address",
+          "dork_template": "\"{address}\" (\"te koop\" OR \"for sale\" OR \"kadastraal\" OR \"property\" OR \"eigendom\" OR \"huur\" OR \"rent\")",
+          "example": "\"Damstraat 1\" (\"te koop\" OR \"for sale\" OR \"eigendom\")",
+          "variables": [{"name": "address", "label": "Address", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        },
+        {
+          "id": "address-police",
+          "label": "Police Station Nearby",
+          "description": "Find nearby police station information",
+          "dork_template": "\"{city}\" (site:politie.nl OR \"politiebureau\" OR \"police station\")",
+          "example": "\"Amsterdam\" (site:politie.nl OR \"politiebureau\")",
+          "variables": [{"name": "city", "label": "City", "type": "text", "placeholder": "Amsterdam", "required": true}]
+        },
+        {
+          "id": "address-kadaster",
+          "label": "Kadaster / Land Registry",
+          "description": "Find cadastre information for an address",
+          "dork_template": "\"{address}\" (site:kadaster.nl OR \"kadaster\" OR \"kadastraal perceel\" OR \"land registry\")",
+          "example": "\"Damstraat 1\" (site:kadaster.nl OR \"kadaster\")",
+          "variables": [{"name": "address", "label": "Address", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        },
+        {
+          "id": "address-cameras",
+          "label": "Nearby Security Cameras",
+          "description": "Find mentions of security cameras near address",
+          "dork_template": "\"{street}\" (\"camera\" OR \"bewakingscamera\" OR \"CCTV\" OR \"surveillance\")",
+          "example": "\"Damstraat\" (\"camera\" OR \"CCTV\" OR \"surveillance\")",
+          "variables": [{"name": "street", "label": "Street Name", "type": "text", "placeholder": "Damstraat", "required": true}]
+        },
+        {
+          "id": "address-google-earth",
+          "label": "Google Earth / Street View",
+          "description": "Find Google Earth or Street View imagery",
+          "dork_template": "\"{address}\" (site:google.com/maps/@ OR \"google earth\" OR \"street view\")",
+          "example": "\"Damstraat 1, Amsterdam\" (site:google.com/maps/@ OR \"street view\")",
+          "variables": [{"name": "address", "label": "Address", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        },
+        {
+          "id": "address-openstreetmap",
+          "label": "OpenStreetMap Data",
+          "description": "Find OpenStreetMap data for location",
+          "dork_template": "\"{address}\" site:openstreetmap.org OR site:overpass-api.de",
+          "example": "\"Damstraat 1, Amsterdam\" site:openstreetmap.org",
+          "variables": [{"name": "address", "label": "Address", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        },
+        {
+          "id": "address-neighbor",
+          "label": "Neighbors / Surrounding Buildings",
+          "description": "Find information about nearby addresses",
+          "dork_template": "\"{street}\" \"{house_number_range}\" \"{city}\"",
+          "example": "\"Damstraat\" \"1\" OR \"2\" OR \"3\" OR \"4\" \"Amsterdam\"",
+          "variables": [
+            {"name": "street", "label": "Street Name", "type": "text", "placeholder": "Damstraat", "required": true},
+            {"name": "house_number_range", "label": "House Numbers", "type": "text", "placeholder": "1 OR 2 OR 3 OR 4", "required": false},
+            {"name": "city", "label": "City", "type": "text", "placeholder": "Amsterdam", "required": true}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "company",
+      "label": "Company & Business",
+      "icon": "\ud83c\udfe2",
+      "dorks": [
+        {
+          "id": "company-general",
+          "label": "Company Name Search",
+          "description": "Find all web pages mentioning this company",
+          "dork_template": "\"{company}\"",
+          "example": "\"Acme BV\"",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-kvk",
+          "label": "KVK Registration",
+          "description": "Find KVK (Chamber of Commerce) registration",
+          "dork_template": "\"{company}\" (site:kvk.nl OR site:openkvk.nl OR \"kvk-nummer\" OR \"kvk nummer\")",
+          "example": "\"Acme BV\" (site:kvk.nl OR site:openkvk.nl OR \"kvk-nummer\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-kvk-number",
+          "label": "KVK Number Lookup",
+          "description": "Find company by KVK number",
+          "dork_template": "\"{kvk_number}\" (\"kvk\" OR \"kvk-nummer\" OR \"chamber of commerce\")",
+          "example": "\"30128191\" (\"kvk\" OR \"chamber of commerce\")",
+          "variables": [{"name": "kvk_number", "label": "KVK Number", "type": "text", "placeholder": "30128191", "required": true}]
+        },
+        {
+          "id": "company-linkedin",
+          "label": "LinkedIn Company Page",
+          "description": "Find LinkedIn company profile",
+          "dork_template": "\"{company}\" site:linkedin.com/company",
+          "example": "\"Acme BV\" site:linkedin.com/company",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-employees",
+          "label": "Company Employees",
+          "description": "Find employees of this company on LinkedIn",
+          "dork_template": "\"{company}\" site:linkedin.com/in",
+          "example": "\"Acme BV\" site:linkedin.com/in",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-glassdoor",
+          "label": "Glassdoor Reviews",
+          "description": "Find employee reviews on Glassdoor",
+          "dork_template": "\"{company}\" site:glassdoor.com",
+          "example": "\"Acme BV\" site:glassdoor.com",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-financial",
+          "label": "Financial Reports",
+          "description": "Find annual reports and financial statements",
+          "dork_template": "\"{company}\" (filetype:pdf \"annual report\" OR \"jaarverslag\" OR \"balance sheet\" OR \"financieel\")",
+          "example": "\"Acme BV\" (filetype:pdf \"annual report\" OR \"jaarverslag\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-news",
+          "label": "News Articles",
+          "description": "Find news articles about the company",
+          "dork_template": "\"{company}\" (site:nu.nl OR site:ad.nl OR site:telegraaf.nl OR site:volkskrant.nl OR site:rtlnieuws.nl OR site:rtlz.nl OR site:fd.nl)",
+          "example": "\"Acme BV\" (site:nu.nl OR site:fd.nl OR site:ad.nl)",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-vacancies",
+          "label": "Job Vacancies",
+          "description": "Find job postings by this company",
+          "dork_template": "\"{company}\" (\"vacature\" OR \"vacancy\" OR \"job opening\" OR \"werken bij\" OR \"careers\" OR \"jobs\")",
+          "example": "\"Acme BV\" (\"vacature\" OR \"vacancy\" OR \"werken bij\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-subdomain",
+          "label": "Company Subdomains",
+          "description": "Find subdomains of company website",
+          "dork_template": "site:*.{domain} -www.{domain}",
+          "example": "site:*.acme.nl -www.acme.nl",
+          "variables": [{"name": "domain", "label": "Domain (without www)", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "company-director",
+          "label": "Directors / Management",
+          "description": "Find company directors or management team",
+          "dork_template": "\"{company}\" (\"directeur\" OR \"director\" OR \"bestuurder\" OR \"CEO\" OR \"management\" OR \"eigenaar\" OR \"owner\")",
+          "example": "\"Acme BV\" (\"directeur\" OR \"director\" OR \"CEO\" OR \"eigenaar\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-legal",
+          "label": "Legal Proceedings",
+          "description": "Find legal cases involving the company",
+          "dork_template": "\"{company}\" (\"rechtszaak\" OR \"lawsuit\" OR \"court case\" OR \"rechtbank\" OR \"gerechtshof\")",
+          "example": "\"Acme BV\" (\"rechtszaak\" OR \"lawsuit\" OR \"court case\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-complaints",
+          "label": "Consumer Complaints",
+          "description": "Find consumer complaints about the company",
+          "dork_template": "\"{company}\" (\"klacht\" OR \"complaint\" OR \"review\" OR \"scam\" OR \"fraud\" OR \"oplichting\")",
+          "example": "\"Acme BV\" (\"klacht\" OR \"complaint\" OR \"scam\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-partners",
+          "label": "Partnerships / Collaborations",
+          "description": "Find partners or collaboration mentions",
+          "dork_template": "\"{company}\" (\"partnership\" OR \"samenwerking\" OR \"joint venture\" OR \"collaboration\" OR \"partner\")",
+          "example": "\"Acme BV\" (\"partnership\" OR \"samenwerking\" OR \"collaboration\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-subsidiary",
+          "label": "Subsidiaries / Parent Company",
+          "description": "Find subsidiaries or parent company info",
+          "dork_template": "\"{company}\" (\"subsidiary\" OR \"dochteronderneming\" OR \"moederbedrijf\" OR \"parent company\" OR \"onderdeel van\")",
+          "example": "\"Acme BV\" (\"subsidiary\" OR \"dochteronderneming\" OR \"moederbedrijf\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-overheid",
+          "label": "Government Contracts",
+          "description": "Find government contracts or tenders",
+          "dork_template": "\"{company}\" (site:overheid.nl OR site:ted.europa.eu OR \"aanbesteding\" OR \"tender\" OR \"government contract\")",
+          "example": "\"Acme BV\" (site:overheid.nl OR \"aanbesteding\" OR \"tender\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-btw",
+          "label": "BTW / VAT Number",
+          "description": "Find BTW (VAT) registration number",
+          "dork_template": "\"{company}\" (\"btw-nummer\" OR \"btw-id\" OR \"VAT number\" OR \"BTW\" OR \"NL*BTW*\")",
+          "example": "\"Acme BV\" (\"btw-nummer\" OR \"VAT number\" OR \"BTW\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-insolvency",
+          "label": "Insolvency / Bankruptcy",
+          "description": "Find insolvency filings for the company",
+          "dork_template": "\"{company}\" (\"faillissement\" OR \"insolvency\" OR \"bankruptcy\" OR \"surseance\" OR \"WCO\")",
+          "example": "\"Acme BV\" (\"faillissement\" OR \"insolvency\" OR \"bankruptcy\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "company-address",
+          "label": "Company Address",
+          "description": "Find registered address of company",
+          "dork_template": "\"{company}\" (\"vestigingsadres\" OR \"bezoekadres\" OR \"adres\" OR \"located at\" OR \"gevestigd\")",
+          "example": "\"Acme BV\" (\"vestigingsadres\" OR \"bezoekadres\" OR \"gevestigd\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "technical",
+      "label": "Technical & IT",
+      "icon": "\ud83d\udcbb",
+      "dorks": [
+        {
+          "id": "tech-github-secrets",
+          "label": "Secrets in GitHub",
+          "description": "Find API keys, passwords, or secrets in GitHub",
+          "dork_template": "\"{domain}\" (\"password\" OR \"secret\" OR \"api_key\" OR \"token\" OR \"credential\") site:github.com",
+          "example": "\"acme.nl\" (\"password\" OR \"secret\" OR \"api_key\") site:github.com",
+          "variables": [{"name": "domain", "label": "Domain / Company", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-github-repo",
+          "label": "GitHub Repositories",
+          "description": "Find GitHub repositories for domain or company",
+          "dork_template": "\"{domain}\" site:github.com",
+          "example": "\"acme.nl\" site:github.com",
+          "variables": [{"name": "domain", "label": "Domain / Company", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-gitlab",
+          "label": "GitLab Repositories",
+          "description": "Find GitLab repositories",
+          "dork_template": "\"{domain}\" site:gitlab.com",
+          "example": "\"acme.nl\" site:gitlab.com",
+          "variables": [{"name": "domain", "label": "Domain / Company", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-env-files",
+          "label": "Environment Files",
+          "description": "Find exposed .env files",
+          "dork_template": "\"{domain}\" filetype:env OR inurl:\".env\"",
+          "example": "\"acme.nl\" filetype:env OR inurl:\".env\"",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-config",
+          "label": "Configuration Files",
+          "description": "Find exposed configuration files",
+          "dork_template": "\"{domain}\" (filetype:conf OR filetype:yaml OR filetype:yml OR filetype:ini OR filetype:xml) -site:github.com",
+          "example": "\"acme.nl\" (filetype:conf OR filetype:yaml OR filetype:yml) -site:github.com",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-sql-dumps",
+          "label": "SQL Database Dumps",
+          "description": "Find exposed SQL dumps or database files",
+          "dork_template": "\"{domain}\" (filetype:sql OR \"mysql\" OR \"database dump\") -site:github.com",
+          "example": "\"acme.nl\" (filetype:sql OR \"database dump\") -site:github.com",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-backup-files",
+          "label": "Backup Files",
+          "description": "Find exposed backup files",
+          "dork_template": "\"{domain}\" (\"backup\" OR \"dump\" OR \"export\" OR \".bak\" OR \".old\" OR \".zip\" OR \".tar\") -site:github.com",
+          "example": "\"acme.nl\" (\"backup\" OR \"dump\" OR \".bak\" OR \".zip\") -site:github.com",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-directory-listing",
+          "label": "Directory Listings",
+          "description": "Find open directory listings",
+          "dork_template": "intitle:\"index of\" \"{domain}\" OR intitle:\"index of\" \"/\"",
+          "example": "intitle:\"index of\" \"acme.nl\"",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-login-pages",
+          "label": "Login / Admin Pages",
+          "description": "Find login or admin pages",
+          "dork_template": "\"{domain}\" (intitle:\"login\" OR intitle:\"inloggen\" OR inurl:admin OR inurl:login OR inurl:wp-admin)",
+          "example": "\"acme.nl\" (intitle:\"login\" OR inurl:admin OR inurl:wp-admin)",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-subdomains",
+          "label": "Subdomains",
+          "description": "Find subdomains of the target",
+          "dork_template": "site:*.{domain} -www.{domain} -mail.{domain}",
+          "example": "site:*.acme.nl -www.acme.nl -mail.acme.nl",
+          "variables": [{"name": "domain", "label": "Domain (without www)", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-error-pages",
+          "label": "Error Pages / Debug Info",
+          "description": "Find error pages or debug information",
+          "dork_template": "\"{domain}\" (\"error\" OR \"warning\" OR \"debug\" OR \"exception\" OR \"stack trace\" OR \"phpinfo\")",
+          "example": "\"acme.nl\" (\"error\" OR \"warning\" OR \"debug\" OR \"phpinfo\")",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-api-endpoints",
+          "label": "API Endpoints",
+          "description": "Find exposed API endpoints",
+          "dork_template": "\"{domain}\" (inurl:api/ OR inurl:v1/ OR inurl:v2/ OR \"swagger\" OR \"openapi\") -site:github.com",
+          "example": "\"acme.nl\" (inurl:api/ OR \"swagger\" OR \"openapi\") -site:github.com",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-cms-detect",
+          "label": "CMS Detection",
+          "description": "Identify what CMS the site uses",
+          "dork_template": "site:{domain} (inurl:wp-content OR inurl:wp-admin OR inurl:drupal OR inurl:joomla OR inurl:squarespace)",
+          "example": "site:acme.nl (inurl:wp-content OR inurl:wp-admin OR inurl:drupal)",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-ssl-certs",
+          "label": "SSL Certificate Info",
+          "description": "Find SSL certificate information",
+          "dork_template": "\"{domain}\" (site:crt.sh OR site:censys.io OR site:certificate.transparency)",
+          "example": "\"acme.nl\" (site:crt.sh OR site:censys.io)",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-shodan",
+          "label": "Shodan Results",
+          "description": "Find Shodan data for the domain",
+          "dork_template": "\"{domain}\" site:shodan.io",
+          "example": "\"acme.nl\" site:shodan.io",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-internal-pages",
+          "label": "Internal / Staging Pages",
+          "description": "Find internal or staging pages",
+          "dork_template": "\"{domain}\" (\"internal\" OR \"intranet\" OR \"staging\" OR \"test\" OR \"dev\" OR \"demo\")",
+          "example": "\"acme.nl\" (\"internal\" OR \"intranet\" OR \"staging\" OR \"test\")",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-cloud-storage",
+          "label": "Cloud Storage Exposure",
+          "description": "Find exposed cloud storage buckets",
+          "dork_template": "\"{company}\" (site:s3.amazonaws.com OR site:blob.core.windows.net OR \"aws s3\" OR \"azure blob\" OR \"google storage\")",
+          "example": "\"Acme\" (site:s3.amazonaws.com OR \"aws s3\" OR \"azure blob\")",
+          "variables": [{"name": "company", "label": "Company / Brand", "type": "text", "placeholder": "Acme", "required": true}]
+        },
+        {
+          "id": "tech-exposed-logs",
+          "label": "Exposed Log Files",
+          "description": "Find exposed log files",
+          "dork_template": "\"{domain}\" (filetype:log OR inurl:error_log OR inurl:access.log OR \"server status\")",
+          "example": "\"acme.nl\" (filetype:log OR inurl:error_log)",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "tech-wifi",
+          "label": "WiFi Network Names",
+          "description": "Find mentions of WiFi network names (SSIDs)",
+          "dork_template": "\"{company}\" (\"wifi\" OR \"ssid\" OR \"wireless\" OR \"netwerknaam\")",
+          "example": "\"Acme\" (\"wifi\" OR \"ssid\" OR \"wireless\")",
+          "variables": [{"name": "company", "label": "Company", "type": "text", "placeholder": "Acme", "required": true}]
+        },
+        {
+          "id": "tech-jobsite",
+          "label": "Job Site Profiles",
+          "description": "Find profiles on job sites",
+          "dork_template": "\"{name}\" (site:indeed.com OR site:monsterboard.nl OR site:glassdoor.com OR site:linkedin.com/jobs)",
+          "example": "\"Jan de Vries\" (site:indeed.com OR site:monsterboard.nl)",
+          "variables": [{"name": "name", "label": "Person Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "financial",
+      "label": "Financial & Legal",
+      "icon": "\ud83d\udcb0",
+      "dorks": [
+        {
+          "id": "fin-iban",
+          "label": "IBAN / Bank Account",
+          "description": "Find IBAN or bank account numbers",
+          "dork_template": "\"{iban}\" OR \"{partial_iban}\"",
+          "example": "\"NL39INGB0001234567\" OR \"NL39INGB*\"",
+          "variables": [
+            {"name": "iban", "label": "Full IBAN", "type": "text", "placeholder": "NL39INGB0001234567", "required": false},
+            {"name": "partial_iban", "label": "Partial IBAN (with *)", "type": "text", "placeholder": "NL39INGB*", "required": false}
+          ]
+        },
+        {
+          "id": "fin-btw",
+          "label": "BTW / VAT Number",
+          "description": "Find BTW (VAT) registration number",
+          "dork_template": "\"{btw_number}\" OR \"BTW:{btw_number}\"",
+          "example": "\"NL123456789B01\" OR \"BTW:NL123456789B01\"",
+          "variables": [{"name": "btw_number", "label": "BTW Number", "type": "text", "placeholder": "NL123456789B01", "required": true}]
+        },
+        {
+          "id": "fin-kvk",
+          "label": "KVK Number Search",
+          "description": "Find company by KVK number",
+          "dork_template": "\"{kvk_number}\" (\"kvk\" OR \"handelsregister\" OR \"kvk-nummer\")",
+          "example": "\"30128191\" (\"kvk\" OR \"handelsregister\")",
+          "variables": [{"name": "kvk_number", "label": "KVK Number", "type": "text", "placeholder": "30128191", "required": true}]
+        },
+        {
+          "id": "fin-annual-report",
+          "label": "Annual Reports",
+          "description": "Find annual reports or financial statements",
+          "dork_template": "\"{company}\" filetype:pdf (\"jaarverslag\" OR \"annual report\" OR \"financieel verslag\" OR \"balance sheet\")",
+          "example": "\"Acme BV\" filetype:pdf (\"jaarverslag\" OR \"annual report\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "fin-insolvency",
+          "label": "Insolvency Records",
+          "description": "Find insolvency or bankruptcy records",
+          "dork_template": "\"{name_or_company}\" (\"faillissement\" OR \"insolvency\" OR \"bankruptcy\" OR \"surseance\" OR \"WCO\" OR \"wsnp\")",
+          "example": "\"Acme BV\" (\"faillissement\" OR \"insolvency\" OR \"bankruptcy\")",
+          "variables": [{"name": "name_or_company", "label": "Name or Company", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "fin-property",
+          "label": "Property Records",
+          "description": "Find property ownership or cadastral data",
+          "dork_template": "\"{address}\" (\"kadaster\" OR \"cadastral\" OR \"eigendom\" OR \"property owner\" OR \"grond\")",
+          "example": "\"Damstraat 1\" (\"kadaster\" OR \"cadastral\" OR \"eigendom\")",
+          "variables": [{"name": "address", "label": "Address", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        },
+        {
+          "id": "fin-court",
+          "label": "Court Cases",
+          "description": "Find court cases or legal judgments",
+          "dork_template": "\"{name_or_company}\" (site:rechtspraak.nl OR \"uitspraak\" OR \"vonnis\" OR \"arrest\" OR \"judgment\")",
+          "example": "\"Acme BV\" (site:rechtspraak.nl OR \"uitspraak\" OR \"judgment\")",
+          "variables": [{"name": "name_or_company", "label": "Name or Company", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "fin-ubo",
+          "label": "UBO / Beneficial Owner",
+          "description": "Find Ultimate Beneficial Owner information",
+          "dork_template": "\"{company}\" (\"ubo\" OR \"beneficial owner\" OR \"economisch eigenaar\" OR \"uiteindelijk belanghebbende\")",
+          "example": "\"Acme BV\" (\"ubo\" OR \"beneficial owner\" OR \"economisch eigenaar\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "fin-subsidie",
+          "label": "Government Subsidies",
+          "description": "Find government subsidies or grants received",
+          "dork_template": "\"{company}\" (\"subsidie\" OR \"subsidy\" OR \"grant\" OR \"financiering\" OR \"funding\") site:overheid.nl",
+          "example": "\"Acme BV\" (\"subsidie\" OR \"subsidy\" OR \"grant\") site:overheid.nl",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "fin-tender",
+          "label": "Government Tenders",
+          "description": "Find government tenders or procurement",
+          "dork_template": "\"{company}\" (site:ted.europa.eu OR site:aanbestedingsregister.nl OR \"aanbesteding\" OR \"tender\" OR \"procurement\")",
+          "example": "\"Acme BV\" (site:ted.europa.eu OR \"aanbesteding\" OR \"tender\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "fin-registers",
+          "label": "Trade Registers",
+          "description": "Find trade register entries",
+          "dork_template": "\"{company}\" (\"handelsregister\" OR \"trade register\" OR \"registre du commerce\" OR \"handelsregister\")",
+          "example": "\"Acme BV\" (\"handelsregister\" OR \"trade register\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "fin-stock",
+          "label": "Stock / Investor Information",
+          "description": "Find stock listings or investor information",
+          "dork_template": "\"{company}\" (\"stock\" OR \"share price\" OR \"aandeel\" OR \"beurs\" OR \"investor\" OR \"IPO\")",
+          "example": "\"Acme BV\" (\"stock\" OR \"share price\" OR \"aandeel\")",
+          "variables": [{"name": "company", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "documents",
+      "label": "Documents & Files",
+      "icon": "\ud83d\udcc4",
+      "dorks": [
+        {
+          "id": "doc-pdf",
+          "label": "PDF Documents",
+          "description": "Find PDF files with search term",
+          "dork_template": "\"{query}\" filetype:pdf",
+          "example": "\"Acme BV\" filetype:pdf",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-word",
+          "label": "Word Documents",
+          "description": "Find Word documents with search term",
+          "dork_template": "\"{query}\" filetype:doc OR filetype:docx",
+          "example": "\"Acme BV\" filetype:doc OR filetype:docx",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-excel",
+          "label": "Excel Spreadsheets",
+          "description": "Find Excel files with search term",
+          "dork_template": "\"{query}\" filetype:xls OR filetype:xlsx",
+          "example": "\"Acme BV\" filetype:xls OR filetype:xlsx",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-powerpoint",
+          "label": "PowerPoint Presentations",
+          "description": "Find PowerPoint files with search term",
+          "dork_template": "\"{query}\" filetype:ppt OR filetype:pptx",
+          "example": "\"Acme BV\" filetype:ppt OR filetype:pptx",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-csv",
+          "label": "CSV Data Files",
+          "description": "Find CSV data files",
+          "dork_template": "\"{query}\" filetype:csv",
+          "example": "\"Acme BV\" filetype:csv",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-text",
+          "label": "Text Files",
+          "description": "Find text files",
+          "dork_template": "\"{query}\" filetype:txt",
+          "example": "\"Acme BV\" filetype:txt",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-xml",
+          "label": "XML Data Files",
+          "description": "Find XML data files",
+          "dork_template": "\"{query}\" filetype:xml",
+          "example": "\"Acme BV\" filetype:xml",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-json",
+          "label": "JSON Data Files",
+          "description": "Find JSON data files",
+          "dork_template": "\"{query}\" filetype:json -site:github.com -site:gitlab.com",
+          "example": "\"Acme BV\" filetype:json -site:github.com",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-log",
+          "label": "Log Files",
+          "description": "Find log files",
+          "dork_template": "\"{query}\" filetype:log",
+          "example": "\"acme.nl\" filetype:log",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "doc-sql",
+          "label": "SQL Files",
+          "description": "Find SQL files",
+          "dork_template": "\"{query}\" filetype:sql",
+          "example": "\"acme.nl\" filetype:sql",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "doc-conf",
+          "label": "Configuration Files",
+          "description": "Find configuration files",
+          "dork_template": "\"{query}\" (filetype:conf OR filetype:ini OR filetype:cfg)",
+          "example": "\"acme.nl\" (filetype:conf OR filetype:ini)",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "doc-md",
+          "label": "Markdown Documentation",
+          "description": "Find Markdown documentation",
+          "dork_template": "\"{query}\" filetype:md -site:github.com",
+          "example": "\"Acme BV\" filetype:md -site:github.com",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "doc-license",
+          "label": "License Files",
+          "description": "Find software license files",
+          "dork_template": "\"{query}\" (filename:LICENSE OR filename:COPYING OR filetype:md \"license\")",
+          "example": "\"Acme\" (filename:LICENSE OR \"license\" filetype:md)",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "social",
+      "label": "Social Media & Online",
+      "icon": "\ud83d\udc65",
+      "dorks": [
+        {
+          "id": "social-all-platforms",
+          "label": "All Social Platforms",
+          "description": "Find person across all major social platforms",
+          "dork_template": "\"{name}\" (site:facebook.com OR site:twitter.com OR site:linkedin.com OR site:instagram.com OR site:tiktok.com OR site:youtube.com OR site:reddit.com)",
+          "example": "\"Jan de Vries\" (site:facebook.com OR site:twitter.com OR site:linkedin.com)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-facebook",
+          "label": "Facebook Deep Search",
+          "description": "Deep Facebook search including groups and pages",
+          "dork_template": "\"{name}\" site:facebook.com (inurl:/groups/ OR inurl:/pages/ OR inurl:/profile.php OR inurl:/people/)",
+          "example": "\"Jan de Vries\" site:facebook.com (inurl:/groups/ OR inurl:/pages/)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-linkedin-deep",
+          "label": "LinkedIn Deep Search",
+          "description": "LinkedIn posts, articles, and activity",
+          "dork_template": "\"{name}\" site:linkedin.com (inurl:/posts/ OR inurl:/pulse/ OR \"activity\")",
+          "example": "\"Jan de Vries\" site:linkedin.com (inurl:/posts/ OR inurl:/pulse/)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-twitter-deep",
+          "label": "Twitter / X Deep Search",
+          "description": "Twitter posts, replies, and mentions",
+          "dork_template": "\"{name}\" site:twitter.com OR site:x.com (inurl:/status/ OR inurl:/with_replies/)",
+          "example": "\"Jan de Vries\" site:twitter.com OR site:x.com (inurl:/status/)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-instagram-deep",
+          "label": "Instagram Deep Search",
+          "description": "Instagram posts, stories highlights, and tagged photos",
+          "dork_template": "\"{name}\" site:instagram.com (inurl:/p/ OR inurl:/stories/ OR inurl:/explore/)",
+          "example": "\"Jan de Vries\" site:instagram.com (inurl:/p/ OR inurl:/stories/)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-tiktok-deep",
+          "label": "TikTok Deep Search",
+          "description": "TikTok videos and profile",
+          "dork_template": "\"{name}\" site:tiktok.com",
+          "example": "\"Jan de Vries\" site:tiktok.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-youtube-deep",
+          "label": "YouTube Videos & Channel",
+          "description": "YouTube channel and video content",
+          "dork_template": "\"{name}\" site:youtube.com (inurl:/channel/ OR inurl:/user/ OR inurl:/watch)",
+          "example": "\"Jan de Vries\" site:youtube.com (inurl:/channel/ OR inurl:/watch)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-reddit-deep",
+          "label": "Reddit Deep Search",
+          "description": "Reddit posts and comments",
+          "dork_template": "\"{name}\" site:reddit.com (inurl:/comments/ OR inurl:/user/)",
+          "example": "\"Jan de Vries\" site:reddit.com (inurl:/comments/ OR inurl:/user/)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-pinterest",
+          "label": "Pinterest Boards",
+          "description": "Find Pinterest boards and pins",
+          "dork_template": "\"{name}\" site:pinterest.com (inurl:/boards/ OR inurl:/pins/)",
+          "example": "\"Jan de Vries\" site:pinterest.com (inurl:/boards/)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-tumblr",
+          "label": "Tumblr Blog",
+          "description": "Find Tumblr blog",
+          "dork_template": "\"{name}\" site:tumblr.com",
+          "example": "\"Jan de Vries\" site:tumblr.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-quora",
+          "label": "Quora Answers",
+          "description": "Find Quora profile and answers",
+          "dork_template": "\"{name}\" site:quora.com",
+          "example": "\"Jan de Vries\" site:quora.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-stackoverflow",
+          "label": "Stack Overflow Profile",
+          "description": "Find Stack Overflow profile",
+          "dork_template": "\"{name}\" site:stackoverflow.com",
+          "example": "\"Jan de Vries\" site:stackoverflow.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-hackernews",
+          "label": "Hacker News Profile",
+          "description": "Find Hacker News profile or mentions",
+          "dork_template": "\"{name}\" site:news.ycombinator.com",
+          "example": "\"Jan de Vries\" site:news.ycombinator.com",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-devto",
+          "label": "Dev.to Profile",
+          "description": "Find Dev.to developer profile",
+          "dork_template": "\"{name}\" site:dev.to",
+          "example": "\"Jan de Vries\" site:dev.to",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-mention",
+          "label": "Brand / Name Mentions",
+          "description": "Find mentions of name/brand anywhere online",
+          "dork_template": "\"{query}\" -site:facebook.com -site:linkedin.com -site:twitter.com -site:instagram.com",
+          "example": "\"Acme BV\" -site:facebook.com -site:linkedin.com -site:twitter.com",
+          "variables": [{"name": "query", "label": "Name or Brand", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "social-forum-posts",
+          "label": "Forum Posts",
+          "description": "Find forum posts mentioning the name",
+          "dork_template": "\"{name}\" (inurl:forum OR inurl:community OR site:forum OR site:community)",
+          "example": "\"Jan de Vries\" (inurl:forum OR inurl:community)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-blog-posts",
+          "label": "Blog Posts",
+          "description": "Find blog posts mentioning the name",
+          "dork_template": "\"{name}\" (inurl:blog OR site:wordpress.com OR site:blogger.com OR site:medium.com OR site:substack.com)",
+          "example": "\"Jan de Vries\" (inurl:blog OR site:medium.com OR site:substack.com)",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "social-comments",
+          "label": "Comments / Reviews",
+          "description": "Find comments or reviews by this person",
+          "dork_template": "\"{name}\" (\"comment\" OR \"review\" OR \"reactie\" OR \"beoordeling\" OR \"recensie\")",
+          "example": "\"Jan de Vries\" (\"comment\" OR \"review\" OR \"reactie\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "government",
+      "label": "Government & Public Records",
+      "icon": "\ud83c\udfdb\ufe0f",
+      "dorks": [
+        {
+          "id": "gov-overheid",
+          "label": "Overheid.nl Documents",
+          "description": "Find documents on overheid.nl",
+          "dork_template": "\"{query}\" site:overheid.nl",
+          "example": "\"Acme BV\" site:overheid.nl",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "gov-officiele-bekendmakingen",
+          "label": "Official Announcements",
+          "description": "Find official government announcements",
+          "dork_template": "\"{query}\" site:officielebekendmakingen.nl",
+          "example": "\"Acme BV\" site:officielebekendmakingen.nl",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "gov-rechtspraak",
+          "label": "Court Rulings",
+          "description": "Find court rulings on rechtspraak.nl",
+          "dork_template": "\"{query}\" site:rechtspraak.nl",
+          "example": "\"Jan de Vries\" site:rechtspraak.nl",
+          "variables": [{"name": "query", "label": "Name or Company", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "gov-politie",
+          "label": "Police Reports",
+          "description": "Find police reports or crime news",
+          "dork_template": "\"{query}\" (site:politie.nl OR \"politie\" OR \"police report\" OR \"opsporingsbericht\")",
+          "example": "\"Jan de Vries\" (site:politie.nl OR \"politie\" OR \"opsporingsbericht\")",
+          "variables": [{"name": "query", "label": "Name or Case", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "gov-procurator",
+          "label": "Public Prosecutor",
+          "description": "Find public prosecution records",
+          "dork_template": "\"{query}\" (\"openbaar ministerie\" OR \"public prosecutor\" OR \"OM\" OR \"parket\")",
+          "example": "\"Jan de Vries\" (\"openbaar ministerie\" OR \"public prosecutor\")",
+          "variables": [{"name": "query", "label": "Name or Case", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "gov-kadaster",
+          "label": "Kadaster / Land Registry",
+          "description": "Find land registry records",
+          "dork_template": "\"{query}\" (site:kadaster.nl OR \"kadaster\" OR \"kadastraal\" OR \"land registry\")",
+          "example": "\"Damstraat 1\" (site:kadaster.nl OR \"kadaster\")",
+          "variables": [{"name": "query", "label": "Address or Name", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        },
+        {
+          "id": "gov-basisregistratie",
+          "label": "BRP / Civil Registry",
+          "description": "Find civil registry (BRP) mentions",
+          "dork_template": "\"{name}\" (\"brp\" OR \"basisregistratie personen\" OR \"burgerlijke stand\" OR \"civil registry\")",
+          "example": "\"Jan de Vries\" (\"brp\" OR \"burgerlijke stand\")",
+          "variables": [{"name": "name", "label": "Full Name", "type": "text", "placeholder": "Jan de Vries", "required": true}]
+        },
+        {
+          "id": "gov-eu",
+          "label": "EU Documents",
+          "description": "Find EU parliament or commission documents",
+          "dork_template": "\"{query}\" (site:europarl.europa.eu OR site:ec.europa.eu OR site:eur-lex.europa.eu)",
+          "example": "\"Acme BV\" (site:eur-lex.europa.eu OR site:ec.europa.eu)",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "gov-ted",
+          "label": "EU Tenders (TED)",
+          "description": "Find EU tenders on TED Europa",
+          "dork_template": "\"{query}\" site:ted.europa.eu",
+          "example": "\"Acme BV\" site:ted.europa.eu",
+          "variables": [{"name": "query", "label": "Company Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "gov-cbs",
+          "label": "CBS Statistics",
+          "description": "Find CBS (Statistics Netherlands) data",
+          "dork_template": "\"{query}\" site:cbs.nl",
+          "example": "\"Acme BV\" site:cbs.nl",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "gov-belastingdienst",
+          "label": "Tax Authority Records",
+          "description": "Find tax-related records or mentions",
+          "dork_template": "\"{query}\" (site:belastingdienst.nl OR \"belastingdienst\" OR \"tax authority\" OR \"fiscus\")",
+          "example": "\"Acme BV\" (site:belastingdienst.nl OR \"belastingdienst\")",
+          "variables": [{"name": "query", "label": "Company or Name", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "gov-zorg",
+          "label": "Healthcare Records",
+          "description": "Find healthcare institution data",
+          "dork_template": "\"{query}\" (site:zorgkaartnederland.nl OR site:igj.nl OR \"zorginstelling\" OR \"healthcare provider\")",
+          "example": "\"Acme Zorg\" (site:zorgkaartnederland.nl OR \"zorginstelling\")",
+          "variables": [{"name": "query", "label": "Institution Name", "type": "text", "placeholder": "Acme Zorg", "required": true}]
+        },
+        {
+          "id": "gov-woz",
+          "label": "WOZ Value",
+          "description": "Find WOZ (property valuation) data",
+          "dork_template": "\"{address}\" (\"woz\" OR \"woz-waarde\" OR \"property valuation\")",
+          "example": "\"Damstraat 1\" (\"woz\" OR \"woz-waarde\")",
+          "variables": [{"name": "address", "label": "Address", "type": "text", "placeholder": "Damstraat 1, Amsterdam", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "negative",
+      "label": "Negative Search & Exclusions",
+      "icon": "\u274c",
+      "dorks": [
+        {
+          "id": "neg-exclude-social",
+          "label": "Exclude Social Media",
+          "description": "Search excluding all major social platforms",
+          "dork_template": "\"{query}\" -site:facebook.com -site:linkedin.com -site:twitter.com -site:instagram.com -site:tiktok.com -site:youtube.com",
+          "example": "\"Acme BV\" -site:facebook.com -site:linkedin.com -site:twitter.com",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "neg-exclude-jobs",
+          "label": "Exclude Job Sites",
+          "description": "Search excluding job boards and career pages",
+          "dork_template": "\"{query}\" -intitle:\"vacancy\" -intitle:\"vacature\" -intitle:\"job\" -intitle:\"career\" -site:indeed.com -site:glassdoor.com -site:linkedin.com/jobs",
+          "example": "\"Acme BV\" -intitle:\"vacancy\" -intitle:\"vacature\" -site:indeed.com",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "neg-exclude-news",
+          "label": "Exclude News Sites",
+          "description": "Search excluding major news sites",
+          "dork_template": "\"{query}\" -site:nu.nl -site:ad.nl -site:telegraaf.nl -site:volkskrant.nl -site:rtlnieuws.nl",
+          "example": "\"Acme BV\" -site:nu.nl -site:ad.nl -site:telegraaf.nl",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "neg-exclude-pdf",
+          "label": "Exclude PDF Files",
+          "description": "Search excluding PDF documents",
+          "dork_template": "\"{query}\" -filetype:pdf",
+          "example": "\"Acme BV\" -filetype:pdf",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "neg-only-certain-sites",
+          "label": "Only Search Specific Sites",
+          "description": "Search only within listed sites",
+          "dork_template": "\"{query}\" (site:{site1} OR site:{site2} OR site:{site3})",
+          "example": "\"Acme BV\" (site:kvk.nl OR site:openkvk.nl OR site:overheid.nl)",
+          "variables": [
+            {"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true},
+            {"name": "site1", "label": "Site 1", "type": "text", "placeholder": "kvk.nl", "required": true},
+            {"name": "site2", "label": "Site 2", "type": "text", "placeholder": "openkvk.nl", "required": false},
+            {"name": "site3", "label": "Site 3", "type": "text", "placeholder": "overheid.nl", "required": false}
+          ]
+        },
+        {
+          "id": "neg-exclude-subdomains",
+          "label": "Exclude Own Subdomains",
+          "description": "Search for domain mentions excluding its own subdomains",
+          "dork_template": "\"{domain}\" -site:*.{domain}",
+          "example": "\"acme.nl\" -site:*.acme.nl",
+          "variables": [{"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true}]
+        },
+        {
+          "id": "neg-only-filetype",
+          "label": "Only Specific File Types",
+          "description": "Search only for specific file types",
+          "dork_template": "\"{query}\" filetype:{filetype}",
+          "example": "\"Acme BV\" filetype:pdf",
+          "variables": [
+            {"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true},
+            {"name": "filetype", "label": "File Type (pdf, doc, xls, etc.)", "type": "text", "placeholder": "pdf", "required": true}
+          ]
+        },
+        {
+          "id": "neg-intitle-only",
+          "label": "Only in Page Titles",
+          "description": "Search only within page titles",
+          "dork_template": "intitle:\"{query}\"",
+          "example": "intitle:\"Acme BV\"",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "neg-intext-only",
+          "label": "Only in Page Text",
+          "description": "Search only within page body text",
+          "dork_template": "intext:\"{query}\"",
+          "example": "intext:\"Acme BV\"",
+          "variables": [{"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true}]
+        },
+        {
+          "id": "neg-url-only",
+          "label": "Only in URLs",
+          "description": "Search only within URLs",
+          "dork_template": "inurl:\"{query}\"",
+          "example": "inurl:\"acme-bv\"",
+          "variables": [{"name": "query", "label": "URL Segment", "type": "text", "placeholder": "acme-bv", "required": true}]
+        },
+        {
+          "id": "neg-date-range",
+          "label": "Date Range Filter",
+          "description": "Search within a specific date range",
+          "dork_template": "\"{query}\" after:{date_from} before:{date_to}",
+          "example": "\"Acme BV\" after:2023-01-01 before:2024-12-31",
+          "variables": [
+            {"name": "query", "label": "Search Term", "type": "text", "placeholder": "Acme BV", "required": true},
+            {"name": "date_from", "label": "From Date (YYYY-MM-DD)", "type": "date", "placeholder": "2023-01-01", "required": true},
+            {"name": "date_to", "label": "To Date (YYYY-MM-DD)", "type": "date", "placeholder": "2024-12-31", "required": true}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vehicle",
+      "label": "Vehicle & Vessel",
+      "icon": "\ud83d\ude97",
+      "dorks": [
+        {
+          "id": "vehicle-plate",
+          "label": "License Plate Search",
+          "description": "Find all mentions of a license plate",
+          "dork_template": "\"{plate}\"",
+          "example": "\"AB-12-CD\"",
+          "variables": [{"name": "plate", "label": "License Plate", "type": "text", "placeholder": "AB-12-CD", "required": true}]
+        },
+        {
+          "id": "vehicle-plate-no-dash",
+          "label": "License Plate (No Dashes)",
+          "description": "Find license plate without dash separators",
+          "dork_template": "\"{plate_clean}\"",
+          "example": "\"AB12CD\"",
+          "variables": [{"name": "plate_clean", "label": "License Plate (no dashes)", "type": "text", "placeholder": "AB12CD", "required": true}]
+        },
+        {
+          "id": "vehicle-vin",
+          "label": "VIN Search",
+          "description": "Find vehicle by VIN (chassis number)",
+          "dork_template": "\"{vin}\" OR \"VIN: {vin}\"",
+          "example": "\"WF0EXXGBDEXA12345\" OR \"VIN: WF0EXXGBDEXA12345\"",
+          "variables": [{"name": "vin", "label": "VIN (17 chars)", "type": "text", "placeholder": "WF0EXXGBDEXA12345", "required": true}]
+        },
+        {
+          "id": "vehicle-plate-forum",
+          "label": "License Plate on Forums",
+          "description": "Find license plate mentions on car forums",
+          "dork_template": "\"{plate}\" (inurl:forum OR site:forum OR \"topic\" OR \"thread\")",
+          "example": "\"AB-12-CD\" (inurl:forum OR \"topic\" OR \"thread\")",
+          "variables": [{"name": "plate", "label": "License Plate", "type": "text", "placeholder": "AB-12-CD", "required": true}]
+        },
+        {
+          "id": "vehicle-plate-sale",
+          "label": "Vehicle For Sale",
+          "description": "Find vehicle sale listings",
+          "dork_template": "\"{plate}\" (\"te koop\" OR \"for sale\" OR \"verkoop\" OR \"sale\" OR \"marktplaats\")",
+          "example": "\"AB-12-CD\" (\"te koop\" OR \"for sale\" OR \"marktplaats\")",
+          "variables": [{"name": "plate", "label": "License Plate", "type": "text", "placeholder": "AB-12-CD", "required": true}]
+        },
+        {
+          "id": "vehicle-plate-accident",
+          "label": "Accident / Damage Reports",
+          "description": "Find accident or damage reports for vehicle",
+          "dork_template": "\"{plate}\" (\"ongeval\" OR \"accident\" OR \"schade\" OR \"damage\" OR \"botsing\" OR \"crash\")",
+          "example": "\"AB-12-CD\" (\"ongeval\" OR \"accident\" OR \"schade\")",
+          "variables": [{"name": "plate", "label": "License Plate", "type": "text", "placeholder": "AB-12-CD", "required": true}]
+        },
+        {
+          "id": "vehicle-name-model",
+          "label": "Vehicle Model Search",
+          "description": "Find information about specific vehicle model",
+          "dork_template": "\"{make}\" \"{model}\" (\"review\" OR \"specs\" OR \"specificaties\" OR \"test\")",
+          "example": "\"Toyota\" \"Aygo\" (\"review\" OR \"specs\" OR \"test\")",
+          "variables": [
+            {"name": "make", "label": "Brand / Make", "type": "text", "placeholder": "Toyota", "required": true},
+            {"name": "model", "label": "Model", "type": "text", "placeholder": "Aygo", "required": true}
+          ]
+        },
+        {
+          "id": "vessel-imo",
+          "label": "IMO Number Search",
+          "description": "Find vessel by IMO number",
+          "dork_template": "\"{imo}\" (\"IMO\" OR \"vessel\" OR \"ship\")",
+          "example": "\"9175717\" (\"IMO\" OR \"vessel\" OR \"ship\")",
+          "variables": [{"name": "imo", "label": "IMO Number", "type": "text", "placeholder": "9175717", "required": true}]
+        },
+        {
+          "id": "vessel-mmsi",
+          "label": "MMSI Number Search",
+          "description": "Find vessel by MMSI number",
+          "dork_template": "\"{mmsi}\" (\"MMSI\" OR \"vessel\" OR \"ship\" OR \"MarineTraffic\")",
+          "example": "\"244820664\" (\"MMSI\" OR \"vessel\" OR \"MarineTraffic\")",
+          "variables": [{"name": "mmsi", "label": "MMSI Number", "type": "text", "placeholder": "244820664", "required": true}]
+        },
+        {
+          "id": "vessel-name",
+          "label": "Vessel Name Search",
+          "description": "Find vessel by name",
+          "dork_template": "\"{vessel_name}\" (\"ship\" OR \"vessel\" OR \"boot\" OR \"schip\" OR \"marinetraffic\" OR \"vesselfinder\")",
+          "example": "\"Blue Marlin\" (\"ship\" OR \"vessel\" OR \"MarineTraffic\")",
+          "variables": [{"name": "vessel_name", "label": "Vessel Name", "type": "text", "placeholder": "Blue Marlin", "required": true}]
+        },
+        {
+          "id": "vehicle-parking",
+          "label": "Parking Violations",
+          "description": "Find parking violation mentions",
+          "dork_template": "\"{plate}\" (\"parkeerboete\" OR \"parking fine\" OR \"parkeerovertreding\" OR \"parking violation\")",
+          "example": "\"AB-12-CD\" (\"parkeerboete\" OR \"parking fine\")",
+          "variables": [{"name": "plate", "label": "License Plate", "type": "text", "placeholder": "AB-12-CD", "required": true}]
+        }
+      ]
+    },
+    {
+      "id": "custom",
+      "label": "Custom Search",
+      "icon": "\ud83d\udd0d",
+      "dorks": [
+        {
+          "id": "custom-free",
+          "label": "Free-form Google Dork",
+          "description": "Enter any custom Google dork query",
+          "dork_template": "{query}",
+          "example": "site:example.com intitle:\"confidential\"",
+          "variables": [{"name": "query", "label": "Google Dork Query", "type": "text", "placeholder": "site:example.com intitle:\"confidential\"", "required": true}]
+        },
+        {
+          "id": "custom-site",
+          "label": "Site-specific Search",
+          "description": "Search within a specific website",
+          "dork_template": "site:{domain} {query}",
+          "example": "site:acme.nl financial report",
+          "variables": [
+            {"name": "domain", "label": "Domain", "type": "text", "placeholder": "acme.nl", "required": true},
+            {"name": "query", "label": "Search Terms", "type": "text", "placeholder": "financial report", "required": true}
+          ]
+        },
+        {
+          "id": "custom-combined",
+          "label": "Combined Multi-term Search",
+          "description": "Search with multiple AND terms",
+          "dork_template": "{term1} AND {term2} AND {term3}",
+          "example": "\"Acme BV\" AND \"data breach\" AND 2024",
+          "variables": [
+            {"name": "term1", "label": "Term 1", "type": "text", "placeholder": "Acme BV", "required": true},
+            {"name": "term2", "label": "Term 2", "type": "text", "placeholder": "data breach", "required": true},
+            {"name": "term3", "label": "Term 3", "type": "text", "placeholder": "2024", "required": false}
+          ]
+        }
+      ]
+    }
+  ]
+}

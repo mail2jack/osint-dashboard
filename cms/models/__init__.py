@@ -15,6 +15,7 @@ Design Decisions:
 import uuid
 import json
 import hashlib
+import os
 import re
 import secrets
 import logging
@@ -2440,6 +2441,21 @@ def init_default_settings() -> None:
             "display_order": 3,
         },
         {
+            "key": "google_search_api_key",
+            "category": "api_keys",
+            "description": "Google Custom Search API → echte Google dorks (100 gratis/dag). 📍 https://console.cloud.google.com/apis/library/customsearch.googleapis.com",
+            "value_type": "password",
+            "is_sensitive": True,
+            "display_order": 3.5,
+        },
+        {
+            "key": "google_search_cx",
+            "category": "api_keys",
+            "description": "Google Programmable Search Engine ID (cx). 📍 https://programmablesearchengine.google.com/",
+            "value_type": "text",
+            "display_order": 3.6,
+        },
+        {
             "key": "spiderfoot_url",
             "category": "spiderfoot",
             "description": "SpiderFoot server URL",
@@ -3023,6 +3039,27 @@ def init_default_settings() -> None:
             if patched:
                 existing.updated_at = datetime.now(timezone.utc)
     db.session.commit()
+
+    # Auto-sync .env values → DB for API keys (only if DB has no value set)
+    env_sync = {
+        "google_search_api_key": "GOOGLE_SEARCH_API_KEY",
+        "google_search_cx": "GOOGLE_SEARCH_CX",
+        "brave_api_key": "BRAVE_API_KEY",
+        "hibp_api_key": "HIBP_API_KEY",
+        "overheid_api_key": "OVERHEID_API_KEY",
+        "rapidapi_username_key": "RAPIDAPI_USERNAME_KEY",
+    }
+    synced = False
+    for setting_key, env_var in env_sync.items():
+        env_val = os.environ.get(env_var, "")
+        if not env_val:
+            continue
+        existing = Setting.query.filter_by(key=setting_key).first()
+        if existing and not existing.value:
+            existing.value = env_val
+            synced = True
+    if synced:
+        db.session.commit()
 
 
 # =============================================================================

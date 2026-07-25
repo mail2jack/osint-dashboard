@@ -124,6 +124,73 @@ def _get_brave_key() -> str:
     return os.environ.get("BRAVE_API_KEY", "")
 
 
+def google_search(query, api_key, cx, num=10):
+    """Search using Google Custom Search API (Programmable Search Engine).
+
+    Returns list of {"url", "title", "description"} dicts.
+    Free tier: 100 queries/day. Paid: $5/1000 queries.
+    """
+    if not api_key or not cx:
+        return []
+
+    try:
+        import requests as std_requests
+
+        url = "https://www.googleapis.com/customsearch/v1"
+        params = {
+            "key": api_key,
+            "cx": cx,
+            "q": query,
+            "num": min(num, 10),
+        }
+        resp = std_requests.get(url, params=params, timeout=10)
+
+        if resp.status_code != 200:
+            logger.debug(
+                "Google Custom Search returned %s: %s",
+                resp.status_code,
+                resp.text[:200],
+            )
+            return []
+
+        data = resp.json()
+        results = []
+        for item in data.get("items", []):
+            results.append(
+                {
+                    "url": item.get("link", ""),
+                    "title": item.get("title", ""),
+                    "description": item.get("snippet", ""),
+                }
+            )
+        return results
+
+    except Exception as e:
+        logger.debug("Google Custom Search error: %s", e)
+        return []
+
+
+def _get_google_search_keys():
+    """Get Google Custom Search API key and cx from DB or env."""
+    api_key = ""
+    cx = ""
+    try:
+        from flask import current_app
+
+        with current_app.app_context():
+            from cms.models import Setting
+
+            api_key = Setting.get("google_search_api_key", "")
+            cx = Setting.get("google_search_cx", "")
+    except Exception:
+        pass
+    if not api_key:
+        api_key = os.environ.get("GOOGLE_SEARCH_API_KEY", "")
+    if not cx:
+        cx = os.environ.get("GOOGLE_SEARCH_CX", "")
+    return api_key, cx
+
+
 _DDG_UA_BASE = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{}.0.0.0 Safari/537.36"
 _DDG_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

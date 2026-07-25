@@ -573,6 +573,15 @@ def case_detail(case_id):
     action_credits = {}
     for key in ACTION_REGISTRY:
         action_credits[key] = get_remaining_credits(key)
+
+    dorks_library = {}
+    dorks_path = os.path.join(os.path.dirname(__file__), "dorks.json")
+    try:
+        with open(dorks_path, "r", encoding="utf-8") as _f:
+            dorks_library = json.load(_f)
+    except Exception:
+        pass
+
     return render_template(
         "cms/workflow/workflow_case_detail.html",
         case=case,
@@ -586,6 +595,7 @@ def case_detail(case_id):
         action_credits=action_credits,
         brave_health=brave_health,
         show_archived=show_archived,
+        dorks_library=dorks_library,
     )
 
 

@@ -15,9 +15,11 @@ function stopTimer() {
 
 function runAction(actionType, dataValue) {
   const btn = document.querySelector(`[data-action-key="${actionType}"]`);
-  if (!btn || btn.classList.contains('done') || btn.classList.contains('running')) return;
+  if (!btn || btn.classList.contains('running')) return;
+  btn.classList.remove('done', 'failed');
   btn.classList.add('running');
   btn.dataset.runningSince = Date.now();
+  delete btn.dataset.actionId;
   var cancelBtn = btn.querySelector('.action-cancel');
   if (cancelBtn) cancelBtn.style.display = 'inline-flex';
   startTimer();
@@ -256,6 +258,7 @@ function findingHtml(f) {
   '</div>';
 }
 
+var _lastFindingsHash = '';
 function updateFindings(findings, actions) {
   const container = document.getElementById('findingsContainer');
   const countEl = document.getElementById('findingsCount');
@@ -264,6 +267,11 @@ function updateFindings(findings, actions) {
 
   countEl.textContent = findings.length + ' findings';
   if (totalEl) totalEl.innerHTML = '📋 ' + findings.length + ' findings';
+
+  var hash = findings.length + ':' + actions.length + ':' + (findings.length > 0 ? findings[0].id + ':' + findings[findings.length - 1].id : '');
+  var hasRunning = actions.some(function(a) { return a.status === 'running' || a.status === 'pending'; });
+  if (hash === _lastFindingsHash && !hasRunning) return;
+  _lastFindingsHash = hash;
 
   if (findings.length === 0) {
     container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Run investigation actions in Step 3 to generate findings.</p></div>';
@@ -329,9 +337,9 @@ function updateFindings(findings, actions) {
   container.innerHTML = html;
 }
 
+var _escMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+var _escRe = /[&<>"']/g;
 function esc(s) {
   if (!s) return '';
-  var d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+  return String(s).replace(_escRe, function(c) { return _escMap[c]; });
 }

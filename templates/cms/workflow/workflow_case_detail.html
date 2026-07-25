@@ -653,5 +653,31 @@ input:-webkit-autofill:focus {
   padding: 0.2rem 0.45rem;
   word-break: break-word;
 }
+
+/* ── Dork picker ── */
+.dork-chip {
+  display: inline-flex; align-items: center; gap: 0.2rem;
+  padding: 0.25rem 0.55rem; border-radius: 999px;
+  border: 1px solid var(--border-color); background: var(--bg-card);
+  color: var(--text-secondary); font-size: 0.72rem; cursor: pointer;
+  transition: all 0.15s; white-space: nowrap;
+}
+.dork-chip:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+.dork-chip.active { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+.dork-list { max-height: 55vh; overflow-y: auto; }
+.dork-item {
+  padding: 0.6rem 0.75rem; margin-bottom: 0.4rem;
+  border: 1px solid var(--border-color); border-radius: 8px;
+  cursor: pointer; transition: all 0.15s;
+}
+.dork-item:hover { border-color: var(--accent-primary); background: var(--bg-secondary); }
+.dork-item-label { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); }
+.dork-item-desc { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem; }
+.dork-item-cat { font-size: 0.68rem; color: var(--text-muted); margin-top: 0.2rem; }
+.dork-item-example {
+  font-size: 0.72rem; font-family: monospace; color: var(--accent-primary);
+  margin-top: 0.2rem; padding: 0.2rem 0.4rem; background: var(--bg-secondary);
+  border-radius: 4px; word-break: break-all;
+}
 </style>
 {% endblock %}

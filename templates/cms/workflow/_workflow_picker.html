@@ -1,7 +1,12 @@
 // ── Action picker modal ──
 function showActionPicker(actionType) {
   const btn = document.querySelector(`[data-action-key="${actionType}"]`);
-  if (!btn || btn.classList.contains('done') || btn.classList.contains('running')) return;
+  if (!btn || btn.classList.contains('running')) return;
+
+  if (actionType === 'google_dork') {
+    showDorkPicker();
+    return;
+  }
 
   const label = btn.dataset.label;
   const items = buildPickerItems(actionType);
@@ -222,4 +227,210 @@ function buildPickerItems(actionType) {
     }
   });
   return items;
+}
+
+// ── Google Dork picker (3-step: browse → variables → preview) ──
+
+function showDorkPicker() {
+  var lib = typeof DORKS_LIBRARY !== 'undefined' ? DORKS_LIBRARY : null;
+  if (!lib || !lib.categories || !lib.categories.length) {
+    alert('Dork library not available.');
+    return;
+  }
+  var allCats = lib.categories;
+  var activeCat = 'all';
+  var searchQuery = '';
+
+  function filterDorks() {
+    var dorks = [];
+    allCats.forEach(function(cat) {
+      if (activeCat !== 'all' && cat.id !== activeCat) return;
+      cat.dorks.forEach(function(d) {
+        if (searchQuery) {
+          var hay = (d.label + ' ' + d.description + ' ' + (d.example || '') + ' ' + cat.label).toLowerCase();
+          if (hay.indexOf(searchQuery.toLowerCase()) === -1) return;
+        }
+        dorks.push({ dork: d, category: cat });
+      });
+    });
+    return dorks;
+  }
+
+  function renderPickerBody() {
+    var dorks = filterDorks();
+    var chipsHtml = '<div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.75rem;">' +
+      '<button class="dork-chip' + (activeCat === 'all' ? ' active' : '') + '" data-dcat="all">All</button>';
+    allCats.forEach(function(cat) {
+      chipsHtml += '<button class="dork-chip' + (activeCat === cat.id ? ' active' : '') + '" data-dcat="' + esc(cat.id) + '">' + esc(cat.icon) + ' ' + esc(cat.label) + '</button>';
+    });
+    chipsHtml += '</div>';
+
+    var listHtml = '';
+    if (dorks.length === 0) {
+      listHtml = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);">No dorks match your search.</div>';
+    } else {
+      dorks.forEach(function(item, idx) {
+        listHtml += '<div class="dork-item" data-didx="' + idx + '" data-dork-id="' + esc(item.dork.id) + '">' +
+          '<div class="dork-item-label">' + esc(item.dork.label) + '</div>' +
+          '<div class="dork-item-desc">' + esc(item.dork.description) + '</div>' +
+          '<div class="dork-item-cat">' + esc(item.category.icon) + ' ' + esc(item.category.label) + '</div>' +
+          (item.dork.example ? '<div class="dork-item-example">' + esc(item.dork.example) + '</div>' : '') +
+        '</div>';
+      });
+    }
+
+    return chipsHtml +
+      '<div style="position:relative;margin-bottom:0.75rem;">' +
+        '<input id="dork-search" type="text" placeholder="Search dorks..." value="' + esc(searchQuery) + '" style="width:100%;padding:0.5rem 0.6rem 0.5rem 2rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;background:var(--bg-card);color:var(--text-primary);box-sizing:border-box;" />' +
+        '<span style="position:absolute;left:0.6rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:0.85rem;">🔍</span>' +
+      '</div>' +
+      '<div class="dork-list">' + listHtml + '</div>';
+  }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'picker-overlay';
+  overlay.innerHTML =
+    '<div class="picker-modal" style="max-width:640px;">' +
+      '<div class="picker-header">' +
+        '<h3>🔎 Google Dork Search</h3>' +
+        '<button class="picker-close" data-action="close-dork">&times;</button>' +
+      '</div>' +
+      '<div class="picker-body" id="dork-picker-body">' +
+        renderPickerBody() +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  // Event: close
+  overlay.querySelector('[data-action="close-dork"]').onclick = function() { overlay.remove(); };
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+  // Event: category chips
+  overlay.addEventListener('click', function(e) {
+    var chip = e.target.closest('.dork-chip');
+    if (chip) {
+      activeCat = chip.dataset.dcat;
+      overlay.querySelector('#dork-picker-body').innerHTML = renderPickerBody();
+      rebindPickerEvents();
+      return;
+    }
+  });
+
+  // Event: search
+  function onSearchInput() {
+    searchQuery = overlay.querySelector('#dork-search').value;
+    overlay.querySelector('#dork-picker-body').innerHTML = renderPickerBody();
+    rebindPickerEvents();
+    var si = overlay.querySelector('#dork-search');
+    if (si) { si.focus(); si.setSelectionRange(si.value.length, si.value.length); }
+  }
+  function rebindPickerEvents() {
+    var si = overlay.querySelector('#dork-search');
+    if (si) si.addEventListener('input', debounceSearch);
+    overlay.querySelectorAll('.dork-item').forEach(function(el) {
+      el.addEventListener('click', function() {
+        var dorkId = el.dataset.dorkId;
+        var found = null;
+        allCats.forEach(function(cat) {
+          cat.dorks.forEach(function(d) { if (d.id === dorkId) found = d; });
+        });
+        if (found) { overlay.remove(); showDorkVariableForm(found); }
+      });
+    });
+  }
+  var debounceTimer = null;
+  function debounceSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(onSearchInput, 180);
+  }
+  rebindPickerEvents();
+}
+
+function showDorkVariableForm(dork) {
+  var vars = dork.variables || [];
+  var subjectName = (SUBJECTS.length > 0) ? (SUBJECTS[0].name || '') : '';
+
+  var fieldsHtml = '';
+  vars.forEach(function(v) {
+    var defaultVal = '';
+    if (v.name === 'name' && subjectName) defaultVal = subjectName;
+    else if (v.name === 'email' && SUBJECTS.length > 0 && SUBJECTS[0].email) defaultVal = SUBJECTS[0].email;
+    else if (v.name === 'phone' && SUBJECTS.length > 0 && SUBJECTS[0].phone) defaultVal = SUBJECTS[0].phone;
+    else if (v.name === 'address' && SUBJECTS.length > 0) {
+      var s = SUBJECTS[0];
+      defaultVal = [s.street, s.house_number, s.postal_code, s.city].filter(Boolean).join(' ');
+    }
+    else if (v.name === 'company' && SUBJECTS.length > 0 && SUBJECTS[0].name) defaultVal = SUBJECTS[0].name;
+    else if (v.name === 'domain' && SUBJECTS.length > 0 && SUBJECTS[0].email && SUBJECTS[0].email.indexOf('@') !== -1) defaultVal = SUBJECTS[0].email.split('@')[1];
+    else if (v.name === 'license_plate' && SUBJECTS.length > 0 && SUBJECTS[0].identification_number) defaultVal = SUBJECTS[0].identification_number;
+
+    var inputType = v.type || 'text';
+    if (inputType === 'phone') inputType = 'tel';
+
+    fieldsHtml += '<div style="margin-bottom:0.7rem;">' +
+      '<label style="display:block;font-size:0.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.25rem;">' +
+        esc(v.label) + (v.required ? ' <span style="color:#ef4444;">*</span>' : '') +
+      '</label>' +
+      '<input class="dork-var-input" data-var="' + esc(v.name) + '" type="' + esc(inputType) + '" ' +
+        'placeholder="' + esc(v.placeholder || '') + '" value="' + esc(defaultVal) + '" ' +
+        (v.required ? 'required' : '') +
+        ' style="width:100%;padding:0.45rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.85rem;background:var(--bg-card);color:var(--text-primary);box-sizing:border-box;" />' +
+    '</div>';
+  });
+
+  function buildPreviewQuery() {
+    var q = dork.dork_template;
+    overlay.querySelectorAll('.dork-var-input').forEach(function(inp) {
+      var val = inp.value.trim();
+      q = q.replace(new RegExp('\\{' + inp.dataset.var + '\\}', 'g'), val);
+    });
+    return q;
+  }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'picker-overlay';
+  overlay.innerHTML =
+    '<div class="picker-modal" style="max-width:500px;">' +
+      '<div class="picker-header">' +
+        '<h3>🔎 ' + esc(dork.label) + '</h3>' +
+        '<button class="picker-close" data-action="close-dork-var">&times;</button>' +
+      '</div>' +
+      '<div class="picker-body">' +
+        '<p style="color:var(--text-muted);font-size:0.82rem;margin:0 0 0.75rem 0;">' + esc(dork.description) + '</p>' +
+        fieldsHtml +
+        '<div id="dork-preview-box" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;padding:0.6rem 0.75rem;margin-top:0.75rem;font-family:monospace;font-size:0.82rem;color:var(--text-primary);word-break:break-all;"></div>' +
+        '<div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.75rem;">' +
+          '<button class="action-btn" data-action="dork-back" style="background:var(--border-color);color:var(--text-primary);">← Back</button>' +
+          '<button class="action-btn" id="dork-confirm-btn" style="background:#1877f2;color:#fff;font-weight:600;">Run search</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  function updatePreview() {
+    var q = buildPreviewQuery();
+    var previewBox = overlay.querySelector('#dork-preview-box');
+    if (previewBox) previewBox.textContent = q || '(fill in variables above)';
+    var confirmBtn = overlay.querySelector('#dork-confirm-btn');
+    if (confirmBtn) confirmBtn.disabled = !q;
+  }
+
+  overlay.querySelectorAll('.dork-var-input').forEach(function(inp) {
+    inp.addEventListener('input', updatePreview);
+  });
+  updatePreview();
+
+  overlay.querySelector('[data-action="close-dork-var"]').onclick = function() { overlay.remove(); };
+  overlay.querySelector('[data-action="dork-back"]').onclick = function() { overlay.remove(); showDorkPicker(); };
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+  overlay.querySelector('#dork-confirm-btn').onclick = function() {
+    var q = buildPreviewQuery();
+    if (!q) return;
+    overlay.remove();
+    runAction('google_dork', q);
+  };
+
+  var firstInput = overlay.querySelector('.dork-var-input');
+  if (firstInput) firstInput.focus();
 }
