@@ -1699,7 +1699,10 @@ def _google_dork_search(action):
         detail = r.get("description", "")[:300] or url
         if dork_label:
             title = f"[{dork_label}] {title}"
-            detail = f"Query: {query}\n{detail}"
+            dork_info = f"Dork: {dork_label}"
+            if dork_id:
+                dork_info += f" ({dork_id})"
+            detail = f"{dork_info}\nQuery: {query}\n{detail}"
         findings.append(
             {
                 "title": title,

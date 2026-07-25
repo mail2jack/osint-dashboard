@@ -305,11 +305,18 @@ function updateFindings(findings, actions) {
     if (!gf || !gf.length) return;
     var icon = '📄';
     var statusClass = a.status === 'completed' ? 'fg-done' : a.status === 'failed' ? 'fg-failed' : a.status === 'running' ? 'fg-running' : '';
+    var groupLabel = a.label || a.action_type;
+    if (a.action_type === 'google_dork' && a.data_value) {
+      try {
+        var dv = JSON.parse(a.data_value);
+        if (dv && dv.dork_label) groupLabel = groupLabel + ' — ' + dv.dork_label;
+      } catch(e) {}
+    }
     html += '<div class="finding-group">' +
       '<div class="finding-group-header" data-toggle="grp-' + esc(a.id) + '">' +
         '<span class="toggle-icon">▶</span>' +
         '<span class="fg-icon">' + esc(icon) + '</span>' +
-        '<span class="fg-label">' + esc(a.label || a.action_type) + '</span>' +
+        '<span class="fg-label">' + esc(groupLabel) + '</span>' +
         '<span class="fg-status ' + statusClass + '">' + esc(a.status) + '</span>' +
         '<span class="fg-count">' + gf.length + '</span>' +
         (a.completed_at ? '<span class="fg-time">' + new Date(a.completed_at).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'}) + '</span>' : '') +
