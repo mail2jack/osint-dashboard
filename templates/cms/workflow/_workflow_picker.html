@@ -428,7 +428,8 @@ function showDorkVariableForm(dork) {
     var q = buildPreviewQuery();
     if (!q) return;
     overlay.remove();
-    runAction('google_dork', q);
+    var payload = JSON.stringify({dork_id: dork.id, dork_label: dork.label, query: q});
+    runAction('google_dork', payload);
   };
 
   var firstInput = overlay.querySelector('.dork-var-input');

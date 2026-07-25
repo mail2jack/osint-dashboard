@@ -1083,7 +1083,8 @@ def _kvk_check(action):
             )
             if r.status_code == 200:
                 data = r.json()
-                for item in data if isinstance(data, list) else data.get("data", []):
+                items = data if isinstance(data, list) else data.get("data", [])
+                for item in items:
                     findings.append(
                         {
                             "title": f"KvK: {item.get('naam', 'unknown')}",
@@ -1103,7 +1104,8 @@ def _kvk_check(action):
                             ],
                         }
                     )
-                return findings
+                if findings:
+                    return findings
             else:
                 logger.warning(
                     f"KvK API gaf status {r.status_code}, vallen terug op openkvk.nl"
@@ -1609,11 +1611,21 @@ def _google_dork_search(action):
         google_search,
     )
 
-    query = action.data_value if action.data_value else None
+    raw_value = action.data_value if action.data_value else None
     subject = _first_subject(action)
     subject_id = subject.id if subject else None
-    if not query:
+    if not raw_value:
         return []
+
+    dork_label = ""
+    query = raw_value
+    try:
+        payload = json.loads(raw_value)
+        if isinstance(payload, dict) and "query" in payload:
+            query = payload["query"]
+            dork_label = payload.get("dork_label", "")
+    except (json.JSONDecodeError, TypeError):
+        pass
 
     findings = []
     seen_urls = set()
@@ -1623,10 +1635,15 @@ def _google_dork_search(action):
         if not url or url in seen_urls:
             return
         seen_urls.add(url)
+        title = f"Dork: {r.get('title', url)[:200]}"
+        detail = r.get("description", "")[:300] or url
+        if dork_label:
+            title = f"[{dork_label}] {title}"
+            detail = f"Query: {query}\n{detail}"
         findings.append(
             {
-                "title": f"Dork: {r.get('title', url)[:200]}",
-                "detail": r.get("description", "")[:300] or url,
+                "title": title,
+                "detail": detail,
                 "source_url": url,
                 "source_type": "google_dork",
                 "icon": "🔎",
@@ -1668,10 +1685,15 @@ def _google_dork_search(action):
                 logger.debug("Brave dork search failed: %s", e)
 
     if not findings:
+        no_result_detail = f"The query returned no results: {query}"
+        if dork_label:
+            no_result_detail = f"Dork: {dork_label}\nQuery: {query}\nNo results found."
         findings.append(
             {
-                "title": "No dork results found",
-                "detail": f"The query returned no results: {query}",
+                "title": f"No results — {dork_label}"
+                if dork_label
+                else "No dork results found",
+                "detail": no_result_detail,
                 "source_type": "google_dork",
                 "icon": "🔎",
                 "verified": False,
