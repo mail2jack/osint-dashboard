@@ -553,7 +553,6 @@ function runPhotoAnalysis(file) {
 
   var formData = new FormData();
   formData.append('photo', file);
-  formData.append('subject_id', subjectId);
 
   fetch('/cms/workflow/api/case/' + CASE_ID + '/photo-analysis', {
     method: 'POST',
