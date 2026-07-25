@@ -23,6 +23,7 @@ function showActionPicker(actionType) {
       rdw: 'No license plates available. Add a subject of type "Vehicle" with a license plate in Step 2.',
       social: 'No social media accounts available. Fill in social media accounts for a subject in Step 2.',
       vessel: 'No vessel data available. Add a subject of type "Vessel" with IMO/MMSI/ENI in Step 2.',
+      photo_analysis: 'No photos available. Upload a photo to a subject in Step 2 first.',
     };
     var msg = warnings[actionType] || 'No suitable subjects for this action. Fill in the required data for a subject in Step 2 first.';
     var overlay = document.createElement('div');
@@ -223,6 +224,10 @@ function buildPickerItems(actionType) {
       if (s.email && s.email.indexOf('@') !== -1) {
         var domain = s.email.split('@')[1];
         items.push({ subject: s.name, label: 'Domain (from email)', value: domain, display: domain });
+      }
+    } else if (actionType === 'photo_analysis') {
+      if (s.photo_path) {
+        items.push({ subject: s.name, label: 'Photo', value: s.photo_path, display: s.photo_path });
       }
     }
   });
