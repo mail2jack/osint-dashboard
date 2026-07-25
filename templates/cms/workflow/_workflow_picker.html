@@ -415,7 +415,11 @@ function showDorkVariableForm(dork) {
     var q = buildPreviewQuery();
     if (!q) return;
     overlay.remove();
-    var payload = JSON.stringify({dork_id: dork.id, dork_label: dork.label, query: q});
+    var vars = {};
+    overlay.querySelectorAll('.dork-var-input').forEach(function(inp) {
+      vars[inp.dataset.var] = inp.value.trim();
+    });
+    var payload = JSON.stringify({dork_id: dork.id, dork_label: dork.label, query: q, variables: vars});
     runAction('google_dork', payload);
   };
 
