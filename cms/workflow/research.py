@@ -274,8 +274,6 @@ def _get_api_key(key_name):
         "hibp_api_key": "HIBP_API_KEY",
         "overheid_api_key": "OVERHEID_API_KEY",
         "rapidapi_username_key": "RAPIDAPI_USERNAME_KEY",
-        "google_search_api_key": "GOOGLE_SEARCH_API_KEY",
-        "google_search_cx": "GOOGLE_SEARCH_CX",
     }
     env_val = os.environ.get(env_map.get(key_name, key_name.upper()))
     if env_val:
@@ -1612,10 +1610,10 @@ def _osint_deep_search(action):
 
 
 def _strip_dork_syntax(query):
-    """Strip Google dork operators to get plain search terms for DDG/Brave.
+    """Strip Google dork operators to get plain search terms for Brave/DDG.
 
     Google-only operators like site:, intext:, filetype: are removed.
-    The remaining quoted terms and keywords are kept as a plain query.
+    Useful quoted terms and keywords are kept as a plain query.
     """
     q = query
     q = re.sub(r"-?site:\S+", "", q)
@@ -1634,17 +1632,41 @@ def _strip_dork_syntax(query):
     return q
 
 
+_JUNK_DOMAINS = frozenset(
+    [
+        "osintteam.blog",
+        "boxpiper.com",
+        "dorksearch.com",
+        "google.com",
+        "bing.com",
+        "duckduckgo.com",
+        "search.brave.com",
+        "reddit.com/r/",
+        "medium.com/@",
+        "youtube.com/watch",
+        "github.com/peaceiris",
+        "slideshare.net",
+    ]
+)
+
+
+def _is_junk_url(url):
+    """Check if a URL is from a low-quality / irrelevant domain."""
+    if not url:
+        return True
+    url_lower = url.lower()
+    for d in _JUNK_DOMAINS:
+        if d in url_lower:
+            return True
+    return False
+
+
 def _google_dork_search(action):
     """Execute a user-constructed Google dork query.
 
-    Priority: Google Custom Search API → DDG → Brave.
-    Google gives proper dork support (site:, intitle:, inurl:, etc.).
+    Priority: Brave (best quality) → DDG (free fallback) → direct lookups.
     """
-    from cms.services.search_service import (
-        brave_search,
-        ddg_single_query,
-        google_search,
-    )
+    from cms.services.search_service import brave_search, ddg_single_query
 
     raw_value = action.data_value if action.data_value else None
     subject = _first_subject(action)
@@ -1666,13 +1688,14 @@ def _google_dork_search(action):
 
     findings = []
     seen_urls = set()
+    plain_query = _strip_dork_syntax(query)
 
     def _add_finding(r):
         url = r.get("url", "")
-        if not url or url in seen_urls:
+        if not url or url in seen_urls or _is_junk_url(url):
             return
         seen_urls.add(url)
-        title = f"Dork: {r.get('title', url)[:200]}"
+        title = f"{r.get('title', '')[:200] or url}"
         detail = r.get("description", "")[:300] or url
         if dork_label:
             title = f"[{dork_label}] {title}"
@@ -1690,19 +1713,17 @@ def _google_dork_search(action):
             }
         )
 
-    # Phase 1: Google Custom Search (best dork support, 100 free/day)
-    google_key = _get_api_key("google_search_api_key")
-    google_cx = _get_api_key("google_search_cx")
-    if google_key and google_cx:
+    # Phase 1: Brave (best quality, proper title/description)
+    brave_key = _get_api_key("brave_api_key")
+    if plain_query and brave_key:
         try:
-            results = google_search(query, api_key=google_key, cx=google_cx, num=10)
-            for r in results:
+            results = brave_search(plain_query, api_key=brave_key)
+            for r in results[:10]:
                 _add_finding(r)
         except Exception as e:
-            logger.debug("Google Custom Search dork failed: %s", e)
+            logger.debug("Brave dork search failed: %s", e)
 
-    # Phase 2: DDG (free, uses plain terms — dork syntax stripped)
-    plain_query = _strip_dork_syntax(query)
+    # Phase 2: DDG fallback (free, less reliable titles)
     if plain_query and not findings:
         try:
             ddg_raw = ddg_single_query(plain_query, max_results=10)
@@ -1710,17 +1731,6 @@ def _google_dork_search(action):
                 _add_finding(r)
         except Exception as e:
             logger.debug("DDG dork search failed: %s", e)
-
-    # Phase 3: Brave fallback (plain terms)
-    if plain_query and not findings:
-        brave_key = _get_api_key("brave_api_key")
-        if brave_key:
-            try:
-                results = brave_search(plain_query, api_key=brave_key)
-                for r in results[:10]:
-                    _add_finding(r)
-            except Exception as e:
-                logger.debug("Brave dork search failed: %s", e)
 
     # Phase 4: Direct database lookup for KvK dorks
     if dork_id.startswith("company-kvk") and subject:

@@ -67,27 +67,9 @@ def _get_hibp_key():
     return os.environ.get("HIBP_API_KEY", "")
 
 
-def _get_google_search_keys():
-    try:
-        from flask import current_app as app
-
-        with app.app_context():
-            from cms.models import Setting
-
-            api_key = Setting.get("google_search_api_key", "")
-            cx = Setting.get("google_search_cx", "")
-            return api_key, cx
-    except Exception as e:
-        logger.debug(f"_get_google_search_keys failed ({type(e).__name__}): {e}")
-    return os.environ.get("GOOGLE_SEARCH_API_KEY", ""), os.environ.get(
-        "GOOGLE_SEARCH_CX", ""
-    )
-
-
 __all__ = [
     "_get_overheid_key",
     "_get_twochat_credentials",
     "_get_brave_key",
     "_get_hibp_key",
-    "_get_google_search_keys",
 ]

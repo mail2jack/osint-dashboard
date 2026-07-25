@@ -93,16 +93,6 @@ def check_external_services(quick: bool = False) -> dict:
         else:
             result["brave"] = "no key configured"
 
-        # Google Custom Search — key + cx presence
-        google_key = Setting.get("google_search_api_key", "")
-        google_cx = Setting.get("google_search_cx", "")
-        if google_key and google_cx:
-            result["google_search"] = "ok"
-        elif google_key or google_cx:
-            result["google_search"] = "incomplete (need both key + cx)"
-        else:
-            result["google_search"] = "no key configured"
-
         # Tor — active connection test via check.torproject.org
         if is_tor_enabled():
             try:
