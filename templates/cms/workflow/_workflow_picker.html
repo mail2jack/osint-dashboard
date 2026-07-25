@@ -348,24 +348,11 @@ function showDorkPicker() {
 
 function showDorkVariableForm(dork) {
   var vars = dork.variables || [];
-  var subjectName = (SUBJECTS.length > 0) ? (SUBJECTS[0].name || '') : '';
 
   var fieldsHtml = '';
   vars.forEach(function(v) {
     var defaultVal = '';
-    if (v.name === 'name' && subjectName) defaultVal = subjectName;
-    else if (v.name === 'email' && SUBJECTS.length > 0 && SUBJECTS[0].email) defaultVal = SUBJECTS[0].email;
-    else if (v.name === 'phone' && SUBJECTS.length > 0 && SUBJECTS[0].phone) defaultVal = SUBJECTS[0].phone;
-    else if (v.name === 'address' && SUBJECTS.length > 0) {
-      var s = SUBJECTS[0];
-      defaultVal = [s.street, s.house_number, s.postal_code, s.city].filter(Boolean).join(' ');
-    }
-    else if (v.name === 'company' && SUBJECTS.length > 0 && SUBJECTS[0].name) defaultVal = SUBJECTS[0].name;
-    else if (v.name === 'domain' && SUBJECTS.length > 0 && SUBJECTS[0].email && SUBJECTS[0].email.indexOf('@') !== -1) defaultVal = SUBJECTS[0].email.split('@')[1];
-    else if (v.name === 'license_plate' && SUBJECTS.length > 0 && SUBJECTS[0].identification_number) defaultVal = SUBJECTS[0].identification_number;
-
     var inputType = v.type || 'text';
-    if (inputType === 'phone') inputType = 'tel';
 
     fieldsHtml += '<div style="margin-bottom:0.7rem;">' +
       '<label style="display:block;font-size:0.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.25rem;">' +
