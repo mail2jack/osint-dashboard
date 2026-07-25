@@ -24,3 +24,4 @@ instance/
 app.log.*
 app.log-*
 node_modules/
+static/uploads/

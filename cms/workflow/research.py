@@ -2773,6 +2773,12 @@ def _photo_analysis(action):
         data_val = action.data_value
         if os.path.isfile(data_val):
             photo_path = data_val
+            static_root = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "static",
+            )
+            if data_val.startswith(static_root):
+                photo_url = "/" + os.path.relpath(data_val, static_root)
         elif data_val.startswith("/"):
             photo_path = data_val
 
@@ -2780,7 +2786,7 @@ def _photo_analysis(action):
         findings.append(
             {
                 "title": "No photo available for analysis",
-                "detail": "Upload a photo to the subject first, then run Photo Analysis.",
+                "detail": "No photo was provided. Click Photo Analysis again and upload an image.",
                 "source_type": "photo_analysis",
                 "icon": "📷",
                 "verified": False,

@@ -7,6 +7,10 @@ function showActionPicker(actionType) {
     showDorkPicker();
     return;
   }
+  if (actionType === 'photo_analysis') {
+    showPhotoAnalysisPicker();
+    return;
+  }
 
   const label = btn.dataset.label;
   const items = buildPickerItems(actionType);
@@ -430,4 +434,148 @@ function showDorkVariableForm(dork) {
 
   var firstInput = overlay.querySelector('.dork-var-input');
   if (firstInput) firstInput.focus();
+}
+
+// ── Photo Analysis picker: file upload + optional subject ──
+function showPhotoAnalysisPicker() {
+  var overlay = document.createElement('div');
+  overlay.className = 'picker-overlay';
+
+  var subjectOptions = '<option value="">— No subject (just analyze) —</option>';
+  (window.CASE_SUBJECTS || window.SUBJECTS || []).forEach(function(s) {
+    subjectOptions += '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>';
+  });
+
+  overlay.innerHTML =
+    '<div class="picker-modal" style="max-width:480px;">' +
+      '<div class="picker-header">' +
+        '<h3>📷 Photo Analysis</h3>' +
+        '<button class="picker-close" data-action="close-photo">&times;</button>' +
+      '</div>' +
+      '<div class="picker-body">' +
+        '<p style="color:var(--text-secondary);font-size:0.82rem;margin:0 0 1rem 0;line-height:1.5;">' +
+          'Upload a photo to extract EXIF metadata, GPS coordinates, camera info, and generate reverse image search links.' +
+        '</p>' +
+        '<div style="margin-bottom:1rem;">' +
+          '<label style="display:block;font-weight:600;font-size:0.82rem;margin-bottom:0.3rem;">Subject (optional)</label>' +
+          '<select id="photoSubjectSelect" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--text-primary);font-size:0.85rem;">' +
+            subjectOptions +
+          '</select>' +
+        '</div>' +
+        '<div style="border:2px dashed var(--border-color);border-radius:8px;padding:2rem 1rem;text-align:center;cursor:pointer;transition:border-color 0.2s;" id="photoDropZone">' +
+          '<div style="font-size:2.5rem;margin-bottom:0.5rem;">🖼️</div>' +
+          '<div style="font-weight:600;font-size:0.85rem;margin-bottom:0.25rem;">Click to select or drop an image</div>' +
+          '<div style="font-size:0.75rem;color:var(--text-muted);">JPG, PNG, HEIC, WebP — max 25 MB</div>' +
+          '<input type="file" id="photoFileInput" accept="image/*" style="display:none;">' +
+        '</div>' +
+        '<div id="photoPreview" style="display:none;margin-top:1rem;text-align:center;">' +
+          '<div style="position:relative;display:inline-block;">' +
+            '<img id="photoPreviewImg" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border-color);">' +
+            '<div id="photoFileName" style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:1.25rem;text-align:right;">' +
+          '<button class="picker-close" data-action="close-photo" style="margin-right:0.5rem;">Cancel</button>' +
+          '<button id="photoAnalyzeBtn" disabled style="padding:0.5rem 1.2rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;font-weight:600;cursor:not-allowed;opacity:0.5;">📷 Analyze</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  var dropZone = document.getElementById('photoDropZone');
+  var fileInput = document.getElementById('photoFileInput');
+  var preview = document.getElementById('photoPreview');
+  var previewImg = document.getElementById('photoPreviewImg');
+  var fileName = document.getElementById('photoFileName');
+  var analyzeBtn = document.getElementById('photoAnalyzeBtn');
+  var selectedFile = null;
+
+  function closeOverlay() { overlay.remove(); }
+  overlay.querySelectorAll('[data-action="close-photo"]').forEach(function(el) {
+    el.onclick = closeOverlay;
+  });
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeOverlay(); });
+
+  function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 25 * 1024 * 1024) {
+      alert('File too large. Maximum 25 MB.');
+      return;
+    }
+    selectedFile = file;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      previewImg.src = e.target.result;
+      fileName.textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+      preview.style.display = 'block';
+      dropZone.style.display = 'none';
+      analyzeBtn.disabled = false;
+      analyzeBtn.style.opacity = '1';
+      analyzeBtn.style.cursor = 'pointer';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  dropZone.addEventListener('click', function() { fileInput.click(); });
+  dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.style.borderColor = 'var(--accent-primary)'; });
+  dropZone.addEventListener('dragleave', function() { dropZone.style.borderColor = 'var(--border-color)'; });
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--border-color)';
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function() {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  analyzeBtn.addEventListener('click', function() {
+    if (!selectedFile) return;
+    closeOverlay();
+    runPhotoAnalysis(selectedFile);
+  });
+}
+
+function runPhotoAnalysis(file) {
+  var btn = document.querySelector('[data-action-key="photo_analysis"]');
+  if (!btn || btn.classList.contains('running')) return;
+  btn.classList.remove('done', 'failed');
+  btn.classList.add('running');
+  btn.dataset.runningSince = Date.now();
+  delete btn.dataset.actionId;
+  var cancelBtn = btn.querySelector('.action-cancel');
+  if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+  startTimer();
+
+  var subjectId = '';
+  var sel = document.getElementById('photoSubjectSelect');
+  if (sel) subjectId = sel.value;
+
+  var formData = new FormData();
+  formData.append('photo', file);
+  formData.append('subject_id', subjectId);
+
+  fetch('/cms/workflow/api/case/' + CASE_ID + '/photo-analysis', {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token() }}'},
+    body: formData,
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) {
+      btn.classList.remove('running');
+      btn.classList.add('failed');
+      document.getElementById('actionsStatus').textContent = '❌ Photo Analysis failed: ' + data.error;
+      return;
+    }
+    btn.dataset.actionId = data.id;
+    document.getElementById('actionsStatus').textContent = '⏳ Photo Analysis processing...';
+    if (!pollTimer) startPolling();
+    setTimeout(pollStatus, 300);
+  })
+  .catch(function(err) {
+    btn.classList.remove('running');
+    btn.classList.add('failed');
+    document.getElementById('actionsStatus').textContent = '❌ Photo Analysis error: ' + err.message;
+  });
 }

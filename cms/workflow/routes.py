@@ -854,6 +854,77 @@ def run_action(case_id):
     return jsonify({"id": action_id, "status": "started"})
 
 
+@workflow_bp.route("/api/case/<case_id>/photo-analysis", methods=["POST"])
+@login_required
+@_investigator_required
+def photo_analysis_upload(case_id):
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    ensure_tenant_access(case)
+
+    photo = request.files.get("photo")
+    if not photo:
+        return jsonify({"error": "No photo uploaded"}), 400
+
+    allowed = {"image/jpeg", "image/png", "image/heic", "image/webp", "image/gif"}
+    if photo.content_type not in allowed:
+        return jsonify({"error": f"Unsupported file type: {photo.content_type}"}), 400
+
+    import os
+    import uuid as _uuid
+
+    upload_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "static",
+        "uploads",
+        "photos",
+    )
+    os.makedirs(upload_dir, exist_ok=True)
+
+    ext = (
+        photo.filename.rsplit(".", 1)[-1].lower()
+        if photo.filename and "." in photo.filename
+        else "jpg"
+    )
+    filename = f"{_uuid.uuid4().hex[:12]}.{ext}"
+    filepath = os.path.join(upload_dir, filename)
+    photo.save(filepath)
+
+    data_value = filepath
+
+    _STALE_TIMEOUT = 600
+    existing = WorkflowResearchAction.query.filter_by(
+        case_id=case_id, action_type="photo_analysis", status="running"
+    ).first()
+    if existing:
+        if (
+            existing.started_at
+            and (datetime.now() - existing.started_at).total_seconds() > _STALE_TIMEOUT
+        ):
+            existing.status = "error"
+            existing.error = "Stale action auto-reset (timed out)"
+            db.session.commit()
+        else:
+            return jsonify({"error": "Action already running"}), 409
+
+    action = WorkflowResearchAction(
+        id=str(uuid.uuid4()),
+        case_id=case_id,
+        action_type="photo_analysis",
+        data_value=data_value,
+        label=ACTION_REGISTRY["photo_analysis"]["label"],
+        status="pending",
+        tenant_id=current_user.tenant_id,
+    )
+    db.session.add(action)
+    db.session.commit()
+    action_id = action.id
+
+    start_action_async(action_id)
+    return jsonify({"id": action_id, "status": "started"})
+
+
 @workflow_bp.route("/api/case/<case_id>/manual-finding", methods=["POST"])
 @login_required
 @_investigator_required
