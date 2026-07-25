@@ -1797,6 +1797,18 @@ class ResearchAction(db.Model):
         "Finding", secondary="action_findings", backref="research_actions"
     )
 
+    @property
+    def dork_label(self):
+        if self.action_type != "google_dork" or not self.data_value:
+            return ""
+        try:
+            payload = json.loads(self.data_value)
+            if isinstance(payload, dict):
+                return payload.get("dork_label", "")
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return ""
+
     def to_dict(self):
         return {
             "id": self.id,

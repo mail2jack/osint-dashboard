@@ -394,8 +394,8 @@ input:-webkit-autofill:focus {
            <div class="finding-group">
              <div class="finding-group-header" data-toggle="findings-{{ aid }}">
                <span class="toggle-icon">▶</span>
-               <span class="fg-icon">{{ type_info.get('icon', '📄') }}</span>
-               <span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}</span>
+                <span class="fg-icon">{{ type_info.get('icon', '📄') }}</span>
+                <span class="fg-label">{{ act.label or type_info.get('label', act.action_type) }}{% if act.dork_label %} — {{ act.dork_label }}{% endif %}</span>
                <span class="fg-status {% if act.status == 'completed' %}fg-done{% elif act.status == 'failed' %}fg-failed{% elif act.status == 'running' %}fg-running{% endif %}">{{ act.status }}</span>
                <span class="fg-count">{{ group.findings|length }}</span>
                {% if act.completed_at %}
