@@ -1065,9 +1065,17 @@ def _social_scan(action):
 
 def _kvk_check(action):
     findings = []
-    query = action.data_value if action.data_value else None
+    raw = action.data_value if action.data_value else None
+    subject = _first_subject(action)
+    query = ""
+    if raw:
+        try:
+            payload = json.loads(raw)
+            if isinstance(payload, dict):
+                query = subject.name if subject else ""
+        except (json.JSONDecodeError, TypeError):
+            query = raw
     if not query:
-        subject = _first_subject(action)
         query = subject.name if subject else ""
     if not query:
         return findings
@@ -1077,17 +1085,21 @@ def _kvk_check(action):
         try:
             r = jittered_get(
                 "https://api.overheid.io/openkvk/zoeken",
-                params={"q": query, "rows": 5},
+                params={"q": query, "rows": 10},
                 headers={"ovio-api-key": api_key},
                 timeout=15,
             )
             if r.status_code == 200:
                 data = r.json()
                 items = data if isinstance(data, list) else data.get("data", [])
+                query_lower = query.lower()
                 for item in items:
+                    naam = item.get("naam", "")
+                    if query_lower not in naam.lower():
+                        continue
                     findings.append(
                         {
-                            "title": f"KvK: {item.get('naam', 'unknown')}",
+                            "title": f"KvK: {naam}",
                             "detail": f"KvK: {item.get('kvkNummer', '')}. "
                             f"Address: {item.get('straat', '')} {item.get('huisnummer', '')}, "
                             f"{item.get('postcode', '')} {item.get('plaats', '')}. "
@@ -1618,12 +1630,14 @@ def _google_dork_search(action):
         return []
 
     dork_label = ""
+    dork_id = ""
     query = raw_value
     try:
         payload = json.loads(raw_value)
         if isinstance(payload, dict) and "query" in payload:
             query = payload["query"]
             dork_label = payload.get("dork_label", "")
+            dork_id = payload.get("dork_id", "")
     except (json.JSONDecodeError, TypeError):
         pass
 
@@ -1683,6 +1697,18 @@ def _google_dork_search(action):
                     _add_finding(r)
             except Exception as e:
                 logger.debug("Brave dork search failed: %s", e)
+
+    # Phase 4: Direct database lookup for KvK dorks
+    if dork_id.startswith("company-kvk") and subject:
+        try:
+            kvk_findings = _kvk_check(action)
+            for f in kvk_findings:
+                key = f.get("source_url", "") or f.get("title", "")
+                if key not in seen_urls:
+                    seen_urls.add(key)
+                    findings.append(f)
+        except Exception as e:
+            logger.debug("KvK direct lookup from dork failed: %s", e)
 
     if not findings:
         no_result_detail = f"The query returned no results: {query}"
