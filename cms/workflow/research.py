@@ -1611,6 +1611,29 @@ def _osint_deep_search(action):
     return findings
 
 
+def _strip_dork_syntax(query):
+    """Strip Google dork operators to get plain search terms for DDG/Brave.
+
+    Google-only operators like site:, intext:, filetype: are removed.
+    The remaining quoted terms and keywords are kept as a plain query.
+    """
+    q = query
+    q = re.sub(r"-?site:\S+", "", q)
+    q = re.sub(r'-?intext:"([^"]*)"', r'"\1"', q)
+    q = re.sub(r'-?intitle:"([^"]*)"', r'"\1"', q)
+    q = re.sub(r'-?inurl:"([^"]*)"', r'"\1"', q)
+    q = re.sub(r"-?intext:\S+", "", q)
+    q = re.sub(r"-?intitle:\S+", "", q)
+    q = re.sub(r"-?inurl:\S+", "", q)
+    q = re.sub(r"-?filetype:\S+", "", q)
+    q = re.sub(r"after:\S+", "", q)
+    q = re.sub(r"before:\S+", "", q)
+    q = re.sub(r"\bOR\b", " ", q)
+    q = q.replace("(", "").replace(")", "")
+    q = re.sub(r"\s+", " ", q).strip()
+    return q
+
+
 def _google_dork_search(action):
     """Execute a user-constructed Google dork query.
 
@@ -1678,21 +1701,22 @@ def _google_dork_search(action):
         except Exception as e:
             logger.debug("Google Custom Search dork failed: %s", e)
 
-    # Phase 2: DDG (free, good site: support)
-    if not findings:
+    # Phase 2: DDG (free, uses plain terms — dork syntax stripped)
+    plain_query = _strip_dork_syntax(query)
+    if plain_query and not findings:
         try:
-            ddg_raw = ddg_single_query(query, max_results=10)
+            ddg_raw = ddg_single_query(plain_query, max_results=10)
             for r in ddg_raw:
                 _add_finding(r)
         except Exception as e:
             logger.debug("DDG dork search failed: %s", e)
 
-    # Phase 3: Brave fallback
-    if not findings:
+    # Phase 3: Brave fallback (plain terms)
+    if plain_query and not findings:
         brave_key = _get_api_key("brave_api_key")
         if brave_key:
             try:
-                results = brave_search(query, api_key=brave_key)
+                results = brave_search(plain_query, api_key=brave_key)
                 for r in results[:10]:
                     _add_finding(r)
             except Exception as e:
