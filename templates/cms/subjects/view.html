@@ -90,6 +90,10 @@
     .comment-type-badge.email { background: #fef3c7; color: #d97706; }
     .comment-type-badge.meeting { background: #ede9fe; color: #7c3aed; }
     .comment-type-badge.report { background: #fce7f3; color: #db2777; }
+    @media (max-width: 600px) {
+        .subject-photo-container { flex-direction: column; }
+        .subject-photo-container > div:last-child { width: 100%; }
+    }
 </style>
 <div class="back"><a href="{{ url_for('cms.subjects') }}">← {{ _('Back to Subjects') }}</a></div>
 
@@ -169,12 +173,12 @@
         </h2>
         <button data-click="openNetworkModal" class="btn-cms small bg-purple">{{ _('🔗 View Relationships') }}</button>
     </div>
-    <div style="display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem;">
+    <div style="display: grid; grid-template-columns: 1fr min(300px, 40vw); gap: 1.5rem;">
         <div>
             {# ── Basic Info ── #}
             {% set has_basic = subject.subject_type or (subject.subject_type != 'vehicle' and subject.risk_score) %}
             <div class="collapsible-section open">
-                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Basic Info</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="true" aria-controls="section-basic-info"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Basic Info</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row">
                         <span class="info-label">{{ _('Type') }}</span>
@@ -203,7 +207,7 @@
             {% if subject.subject_type == 'person' %}
             {% set has_personal = subject.geslacht or subject.nationality or subject.date_of_birth or subject.place_of_birth or subject.bsn_number or subject.reisdocument_type %}
             <div class="collapsible-section{% if has_personal %} open{% endif %}">
-                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Personal Details</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_personal %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Personal Details</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row">
                         <span class="info-label">{{ _('Geslacht') }}</span>
@@ -241,7 +245,7 @@
             {% set phones = subject.contacts.filter_by(contact_type='phone') if subject.contacts else [] %}
             {% set has_contacts = emails.count() > 0 or phones.count() > 0 or subject.email or subject.phone %}
             <div class="collapsible-section{% if has_contacts %} open{% endif %}">
-                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Contacts</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_contacts %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Contacts</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row" style="flex-direction:column;align-items:stretch;">
                         <span class="info-label">{{ _('Email(s)') }}</span>
@@ -302,7 +306,7 @@
             {# ── Addresses ── #}
             {% set has_addresses = subject.addresses.count() > 0 or subject.address %}
             <div class="collapsible-section{% if has_addresses %} open{% endif %}">
-                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Addresses</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_addresses %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Addresses</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row" style="flex-direction:column;align-items:stretch;">
                         <div class="info-value">
@@ -340,7 +344,7 @@
             {% if subject.subject_type == 'vehicle' %}
             {% set has_vehicle = subject.license_plate or subject.vin or subject.brand or subject.vehicle_type or subject.rdw_data %}
             <div class="collapsible-section{% if has_vehicle %} open{% endif %}">
-                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Vehicle Data</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_vehicle %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Vehicle Data</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row">
                         <span class="info-label">{{ _('License Plate') }}</span>
@@ -470,7 +474,7 @@
             {% if subject.subject_type == 'vessel' %}
             {% set has_vessel = subject.imo_number or subject.mmsi or subject.eni_number or subject.vessel_nationality or subject.vessel_data %}
             <div class="collapsible-section{% if has_vessel %} open{% endif %}">
-                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Vessel Data</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_vessel %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Vessel Data</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row">
                         <span class="info-label">{{ _('IMO Number') }}</span>
@@ -515,7 +519,7 @@
             {% if subject.subject_type != 'vehicle' %}
             {% set has_financial = subject.bank_account %}
             <div class="collapsible-section{% if has_financial %} open{% endif %}">
-                <div class="collapsible-header"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Financial</strong></div>
+                <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_financial %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Financial</strong></div>
                 <div class="collapsible-body">
                     <div class="info-row">
                         <span class="info-label">{{ _('💳 Bank / IBAN') }}</span>
@@ -3095,7 +3099,16 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
     // Collapsible sections
     document.querySelectorAll('.collapsible-header').forEach(function(header) {
         header.addEventListener('click', function() {
-            this.closest('.collapsible-section').classList.toggle('open');
+            var section = this.closest('.collapsible-section');
+            section.classList.toggle('open');
+            var expanded = section.classList.contains('open');
+            this.setAttribute('aria-expanded', expanded);
+        });
+        header.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
         });
     });
 </script>

@@ -402,15 +402,15 @@ input:-webkit-autofill:focus {
                <span class="fg-time">{{ act.completed_at.strftime('%H:%M') }}</span>
                {% endif %}
                {% if act.archived_at %}
-               <form method="POST" action="{{ url_for('workflow.restore_action', action_id=act.id) }}" style="display:inline;margin-left:auto;">
-                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Restore</button>
-                </form>
-                {% elif act.status == 'completed' %}
-                <form method="POST" action="{{ url_for('workflow.archive_action', action_id=act.id) }}" style="display:inline;margin-left:auto;">
+                <form method="POST" action="{{ url_for('workflow.restore_action', action_id=act.id) }}" style="display:inline;margin-left:auto;" onsubmit="return confirm('Restore this action?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Archive</button>
-               </form>
+                   <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Restore</button>
+                 </form>
+                 {% elif act.status == 'completed' %}
+                 <form method="POST" action="{{ url_for('workflow.archive_action', action_id=act.id) }}" style="display:inline;margin-left:auto;" onsubmit="return confirm('Archive this action? Its findings will be hidden.');">
+                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                   <button type="submit" class="btn-cms small" style="font-size:0.7rem;padding:0.1rem 0.4rem;">Archive</button>
+                </form>
                {% endif %}
             </div>
             <div class="finding-group-body" id="findings-{{ aid }}">

@@ -4,7 +4,7 @@
 <form method="POST" id="subjectForm" data-submit="handleEditSubmit">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-        <label>{{ _('Achternaam') }}</label>
+        <label>{{ _('Achternaam') }} *</label>
         <input type="text" name="achternaam" id="achternaam" value="{{ subject.achternaam or '' }}">
     </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr 0.7fr; gap: 1rem;">
@@ -113,7 +113,7 @@
             </div>
             <div class="form-group">
                 <label for="handelsbenaming">{{ _('Model') }}</label>
-                <input type="text" name="handelsbenaming" id="handelsbenaming" value="">
+                <input type="text" name="handelsbenaming" id="handelsbenaming" value="{{ subject.handelsbenaming or '' }}">
             </div>
             <div class="form-group">
                 <label for="vehicle_type">{{ _('Body Type') }}</label>
@@ -121,71 +121,71 @@
             </div>
             <div class="form-group">
                 <label for="voertuigsoort">{{ _('Vehicle Category') }}</label>
-                <input type="text" name="voertuigsoort" id="voertuigsoort" value="">
+                <input type="text" name="voertuigsoort" id="voertuigsoort" value="{{ subject.voertuigsoort or '' }}">
             </div>
             <div class="form-group">
                 <label for="eerste_kleur">{{ _('Color (Primary)') }}</label>
-                <input type="text" name="eerste_kleur" id="eerste_kleur" value="">
+                <input type="text" name="eerste_kleur" id="eerste_kleur" value="{{ subject.eerste_kleur or '' }}">
             </div>
             <div class="form-group">
                 <label for="tweede_kleur">{{ _('Color (Secondary)') }}</label>
-                <input type="text" name="tweede_kleur" id="tweede_kleur" value="">
+                <input type="text" name="tweede_kleur" id="tweede_kleur" value="{{ subject.tweede_kleur or '' }}">
             </div>
             <div class="form-group">
                 <label for="aantal_deuren">{{ _('Doors') }}</label>
-                <input type="number" name="aantal_deuren" id="aantal_deuren" value="">
+                <input type="number" name="aantal_deuren" id="aantal_deuren" value="{{ subject.aantal_deuren or '' }}">
             </div>
             <div class="form-group">
                 <label for="aantal_zitplaatsen">{{ _('Seats') }}</label>
-                <input type="number" name="aantal_zitplaatsen" id="aantal_zitplaatsen" value="">
+                <input type="number" name="aantal_zitplaatsen" id="aantal_zitplaatsen" value="{{ subject.aantal_zitplaatsen or '' }}">
             </div>
             <div class="form-group">
                 <label for="cilinderinhoud">{{ _('Engine Capacity (cc)') }}</label>
-                <input type="number" name="cilinderinhoud" id="cilinderinhoud" value="">
+                <input type="number" name="cilinderinhoud" id="cilinderinhoud" value="{{ subject.cilinderinhoud or '' }}">
             </div>
             <div class="form-group">
                 <label for="aantal_cilinders">{{ _('Cylinders') }}</label>
-                <input type="number" name="aantal_cilinders" id="aantal_cilinders" value="">
+                <input type="number" name="aantal_cilinders" id="aantal_cilinders" value="{{ subject.aantal_cilinders or '' }}">
             </div>
             <div class="form-group">
                 <label for="massa_ledig">{{ _('Curb Weight (kg)') }}</label>
-                <input type="number" name="massa_ledig" id="massa_ledig" value="">
+                <input type="number" name="massa_ledig" id="massa_ledig" value="{{ subject.massa_ledig or '' }}">
             </div>
             <div class="form-group">
                 <label for="maximum_massa">{{ _('Max Weight (kg)') }}</label>
-                <input type="number" name="maximum_massa" id="maximum_massa" value="">
+                <input type="number" name="maximum_massa" id="maximum_massa" value="{{ subject.maximum_massa or '' }}">
             </div>
             <div class="form-group">
                 <label for="vervaldatum_apk">{{ _('APK Expiry') }}</label>
-                <input type="text" name="vervaldatum_apk" id="vervaldatum_apk" value="" placeholder="{{ _('YYYYMMDD') }}">
+                <input type="text" name="vervaldatum_apk" id="vervaldatum_apk" value="{{ subject.vervaldatum_apk or '' }}" placeholder="{{ _('YYYYMMDD') }}">
             </div>
             <div class="form-group">
                 <label for="wam_verzekerd">{{ _('WAM Insured') }}</label>
-                <input type="text" name="wam_verzekerd" id="wam_verzekerd" value="">
+                <input type="text" name="wam_verzekerd" id="wam_verzekerd" value="{{ subject.wam_verzekerd or '' }}">
             </div>
             <div class="form-group">
                 <label for="taxi_indicator">{{ _('Taxi') }}</label>
-                <input type="text" name="taxi_indicator" id="taxi_indicator" value="">
+                <input type="text" name="taxi_indicator" id="taxi_indicator" value="{{ subject.taxi_indicator or '' }}">
             </div>
             <div class="form-group">
                 <label for="export_indicator">{{ _('Exported') }}</label>
-                <input type="text" name="export_indicator" id="export_indicator" value="">
+                <input type="text" name="export_indicator" id="export_indicator" value="{{ subject.export_indicator or '' }}">
             </div>
             <div class="form-group">
                 <label for="europese_voertuigcategorie">{{ _('EU Category') }}</label>
-                <input type="text" name="europese_voertuigcategorie" id="europese_voertuigcategorie" value="">
+                <input type="text" name="europese_voertuigcategorie" id="europese_voertuigcategorie" value="{{ subject.europese_voertuigcategorie or '' }}">
             </div>
             <div class="form-group">
                 <label for="zuinigheidsclassificatie">{{ _('Efficiency Class') }}</label>
-                <input type="text" name="zuinigheidsclassificatie" id="zuinigheidsclassificatie" value="">
+                <input type="text" name="zuinigheidsclassificatie" id="zuinigheidsclassificatie" value="{{ subject.zuinigheidsclassificatie or '' }}">
             </div>
             <div class="form-group">
                 <label for="catalogusprijs">{{ _('List Price (EUR)') }}</label>
-                <input type="number" name="catalogusprijs" id="catalogusprijs" value="">
+                <input type="number" name="catalogusprijs" id="catalogusprijs" value="{{ subject.catalogusprijs or '' }}">
             </div>
             <div class="form-group">
                 <label for="datum_eerste_toelating">{{ _('First Registration Date') }}</label>
-                <input type="text" name="datum_eerste_toelating" id="datum_eerste_toelating" value="" placeholder="{{ _('YYYYMMDD') }}">
+                <input type="text" name="datum_eerste_toelating" id="datum_eerste_toelating" value="{{ subject.datum_eerste_toelating or '' }}" placeholder="{{ _('YYYYMMDD') }}">
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
                 <label for="insurance_company">{{ _('Insurance Company') }}</label>
@@ -280,18 +280,18 @@
             {% if subject.addresses.count() > 0 %}
                 {% for addr in subject.addresses %}
                 <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
-                    <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
+                    <div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">
                         <div>
-                            <label style="font-size:0.75rem;">{{ _('Street') }}</label>
-                            <input type="text" class="addr-street" value="{{ addr.street or '' }}" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                            <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Number') }}</label>
                             <input type="text" class="addr-number" value="{{ addr.number or '' }}" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
-                            <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
-                            <input type="text" class="addr-zipcode" value="{{ addr.zipcode or '' }}" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                            <input type="text" class="addr-street" value="{{ addr.street or '' }}" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Town') }}</label>
@@ -310,18 +310,18 @@
                 {% endfor %}
             {% else %}
             <div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">
-                <div style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:0.5rem;align-items:end;">
+                <div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">
                     <div>
-                        <label style="font-size:0.75rem;">{{ _('Street') }}</label>
-                        <input type="text" class="addr-street" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
+                        <input type="text" class="addr-zipcode" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
                         <label style="font-size:0.75rem;">{{ _('Number') }}</label>
                         <input type="text" class="addr-number" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
-                        <label style="font-size:0.75rem;">{{ _('Zipcode') }}</label>
-                        <input type="text" class="addr-zipcode" placeholder="{{ _('1234 AB') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        <label style="font-size:0.75rem;">{{ _('Street') }}</label>
+                        <input type="text" class="addr-street" placeholder="{{ _('Street name') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div>
                         <label style="font-size:0.75rem;">{{ _('Town') }}</label>
@@ -602,7 +602,15 @@ function postcodeCheck(btn) {
     const number = entry.querySelector('.addr-number').value.trim();
 
     if (!zipcode || !number) {
-        alert('{{ _("Enter zipcode and house number first")|replace("'", "\\\\'")|safe }}');
+        var statusEl = entry.querySelector('.addr-status');
+        if (!statusEl) {
+            statusEl = document.createElement('div');
+            statusEl.className = 'addr-status';
+            statusEl.style.cssText = 'color:#ef4444;font-size:0.8rem;margin-top:0.25rem;';
+            entry.appendChild(statusEl);
+        }
+        statusEl.textContent = '{{ _("Enter zipcode and house number first") }}';
+        setTimeout(function() { statusEl.textContent = ''; }, 3000);
         return;
     }
 
@@ -736,14 +744,20 @@ document.getElementById('vessel_lookup_mmsi').addEventListener('keypress', funct
 document.addEventListener('DOMContentLoaded', toggleTypeFields);
 
 function handleEditSubmit(event) {
+    event.preventDefault();
     var form = document.getElementById('subjectForm');
-    if (form.checkValidity()) {
-        serializeAddresses();
-        serializeContacts();
-        form.submit();
-    } else {
+    var submitBtn = form.querySelector('button[type="submit"]');
+    if (!form.checkValidity()) {
         form.reportValidity();
+        return;
     }
+    serializeAddresses();
+    serializeContacts();
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="btn-spinner"></span>{{ _("Saving...")|replace("'", "\\\\'")|safe }}';
+    }
+    form.submit();
 }
 </script>
 {% endblock %}

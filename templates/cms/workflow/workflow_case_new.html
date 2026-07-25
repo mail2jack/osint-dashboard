@@ -265,6 +265,8 @@ input:-webkit-autofill:focus {
               </div>
               <button type="button" data-click="wfAddContact" data-idx="0" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another contact') }}</button>
               <input type="hidden" name="subject_0_contacts_data" data-idx="0" value="">
+              <input type="hidden" name="subject_0_email" data-idx="0" value="">
+              <input type="hidden" name="subject_0_phone" data-idx="0" value="">
             </div>
             <div class="vehicle-restricted-fields" data-idx="0">
               <div class="form-group">
@@ -360,15 +362,15 @@ input:-webkit-autofill:focus {
           </div>
           {# ── Vehicle fields ── #}
           <div class="sf-vehicle" style="display:none;">
-            <div style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+            <div style="background:linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
                 <div>
-                  <h3 style="margin:0 0 0.25rem 0;">{{ _('🚗 Vehicle Information') }}</h3>
-                  <p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _('Look up vehicle data from RDW') }}</p>
+                  <h3 style="margin:0 0 0.25rem 0;">🚗 {{ _('Vehicle Information') }}</h3>
+                  <p style="margin:0;opacity:0.9;font-size:0.875rem;">{{ _('Enter license plate to fetch RDW data, or fill in manually') }}</p>
                 </div>
                 <div style="display:flex;gap:0.5rem;align-items:center;">
-                  <input type="text" data-rdw-kenteken data-idx="0" placeholder="{{ _('License plate (e.g. XX-XX-XX)') }}" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:200px;text-transform:uppercase;">
-                  <button type="button" data-click="wfRdwLookup" data-idx="0" style="padding:0.75rem 1.5rem;background:white;color:#ea580c;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">📡 {{ _('Fetch RDW') }}</button>
+                  <input type="text" class="rdw-kenteken" data-idx="0" placeholder="{{ _('e.g. AB-12-CD') }}" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:180px;">
+                  <button type="button" data-click="wfRdwLookup" data-idx="0" style="padding:0.75rem 1.5rem;background:white;color:#0ea5e9;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">📡 {{ _('Fetch RDW') }}</button>
                 </div>
               </div>
               <div class="rdw-status" data-idx="0" style="margin-top:0.75rem;font-size:0.875rem;"></div>
@@ -812,7 +814,10 @@ document.addEventListener('DOMContentLoaded', function() {
           '<div class="form-group sf-person sf-company"><label>' + T.contacts + '</label>' +
             '<div class="contacts-container" data-idx="' + i + '">' + conHtml + '</div>' +
             '<button type="button" data-click="wfAddContact" data-idx="' + i + '" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">' + T.addContact + '</button>' +
-            '<input type="hidden" name="subject_' + i + '_contacts_data" data-idx="' + i + '"></div>' +
+            '<input type="hidden" name="subject_' + i + '_contacts_data" data-idx="' + i + '">' +
+            '<input type="hidden" name="subject_' + i + '_email" data-idx="' + i + '">' +
+            '<input type="hidden" name="subject_' + i + '_phone" data-idx="' + i + '">' +
+            '</div>' +
           '<div class="vehicle-restricted-fields" data-idx="' + i + '">' +
             '<div class="form-group"><label>' + T.riskScore + '</label><input type="number" name="subject_' + i + '_risk_score" data-idx="' + i + '" value="0" min="0" max="100"></div>' +
             '<div class="form-group"><label>' + T.notes + '</label><textarea name="subject_' + i + '_notes" data-idx="' + i + '" rows="3" placeholder="' + T.internalNotes + '"></textarea></div>' +
@@ -849,12 +854,12 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="form-group"><label>' + T.kvkLegalForm + '</label><input type="text" name="subject_' + i + '_legal_form" data-idx="' + i + '" placeholder="' + T.kvkLegalPlaceholder + '"></div></div>' +
         '</div>' +
         '<div class="sf-vehicle" style="display:none;">' +
-          '<div style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
+          '<div style="background:linear-gradient(135deg,#0ea5e9 0%,#0284c7 100%);color:white;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">' +
               '<div><h3 style="margin:0 0 0.25rem 0;">' + T.vehicleTitle + '</h3><p style="margin:0;opacity:0.9;font-size:0.875rem;">' + T.vehicleSubtitle + '</p></div>' +
               '<div style="display:flex;gap:0.5rem;align-items:center;">' +
                 '<input type="text" data-rdw-kenteken data-idx="' + i + '" placeholder="' + T.vehiclePlatePlaceholder + '" style="padding:0.75rem;border:none;border-radius:8px;font-size:1rem;width:200px;text-transform:uppercase;">' +
-                '<button type="button" data-click="wfRdwLookup" data-idx="' + i + '" style="padding:0.75rem 1.5rem;background:white;color:#ea580c;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">📡 ' + T.vehicleFetch + '</button></div>' +
+                '<button type="button" data-click="wfRdwLookup" data-idx="' + i + '" style="padding:0.75rem 1.5rem;background:white;color:#0ea5e9;border:none;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap;">📡 ' + T.vehicleFetch + '</button></div>' +
             '</div>' +
             '<div class="rdw-status" data-idx="' + i + '" style="margin-top:0.75rem;font-size:0.875rem;"></div></div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">' +
@@ -1112,7 +1117,32 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </form>
 <script nonce="{{ csp_nonce }}">
-document.querySelector('form[method="POST"]').addEventListener('submit', function() {
+function wfSerializeAllContacts() {
+  document.querySelectorAll('.contacts-container').forEach(function(container) {
+    var idx = container.getAttribute('data-idx') || container.getAttribute('data-newidx');
+    var prefix = idx !== null ? 'subject_' + idx : '';
+    if (!prefix) return;
+    var emailVal = '', phoneVal = '', contactsArr = [];
+    container.querySelectorAll('.contact-entry').forEach(function(entry) {
+      var val = (entry.querySelector('.contact-value') || {}).value || '';
+      val = val.trim();
+      var type = (entry.querySelector('.contact-type') || {}).value || 'email';
+      if (!val) return;
+      contactsArr.push({ contact_type: type, value: val, is_primary: !!(entry.querySelector('.contact-primary') || {}).checked });
+      if (type === 'email' && !emailVal) emailVal = val;
+      if (type === 'phone' && !phoneVal) phoneVal = val;
+    });
+    var emailInput = document.querySelector('input[name="' + prefix + '_email"]');
+    var phoneInput = document.querySelector('input[name="' + prefix + '_phone"]');
+    var contactsInput = document.querySelector('input[name="' + prefix + '_contacts_data"]');
+    if (emailInput) emailInput.value = emailVal;
+    if (phoneInput) phoneInput.value = phoneVal;
+    if (contactsInput) contactsInput.value = JSON.stringify(contactsArr);
+  });
+}
+
+document.querySelector('form[method="POST"]').addEventListener('submit', function(e) {
+  wfSerializeAllContacts();
   var btn = document.getElementById('wfCreateBtn');
   if (btn && !btn.disabled) {
     btn.disabled = true;
