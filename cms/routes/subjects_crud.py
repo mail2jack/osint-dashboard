@@ -29,6 +29,332 @@ from .response import api_success, api_error
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Field constants
+# ---------------------------------------------------------------------------
+
+_CREATE_RDW_FIELDS = [
+    "handelsbenaming",
+    "voertuigsoort",
+    "eerste_kleur",
+    "tweede_kleur",
+    "aantal_deuren",
+    "aantal_zitplaatsen",
+    "cilinderinhoud",
+    "aantal_cilinders",
+    "vermogen",
+    "massa_ledig",
+    "maximum_massa",
+    "wielbasis",
+    "vervaldatum_apk",
+    "wam_verzekerd",
+    "taxi_indicator",
+    "export_indicator",
+    "europese_voertuigcategorie",
+    "zuinigheidsclassificatie",
+    "catalogusprijs",
+    "bruto_bpm",
+    "datum_eerste_toelating",
+    "datum_tenaamstelling",
+    "rdw_type",
+    "variant",
+    "uitvoering",
+    "typegoedkeuringsnummer",
+    "openstaande_terugroepactie",
+]
+
+_EDIT_RDW_FIELDS = [
+    "handelsbenaming",
+    "voertuigsoort",
+    "eerste_kleur",
+    "tweede_kleur",
+    "aantal_deuren",
+    "aantal_zitplaatsen",
+    "cilinderinhoud",
+    "aantal_cilinders",
+    "massa_ledig",
+    "maximum_massa",
+    "vervaldatum_apk",
+    "wam_verzekerd",
+    "taxi_indicator",
+    "export_indicator",
+    "europese_voertuigcategorie",
+    "zuinigheidsclassificatie",
+    "catalogusprijs",
+    "datum_eerste_toelating",
+    "rdw_type",
+    "variant",
+    "uitvoering",
+    "typegoedkeuringsnummer",
+    "wielbasis",
+]
+
+_PERSON_TEXT_FIELDS = [
+    "achternaam",
+    "voornamen",
+    "voorletters",
+    "tussenvoegsels",
+    "geslacht",
+    "reisdocument_type",
+]
+
+_PERSON_ENCRYPTED_FIELDS = [
+    "date_of_birth",
+    "place_of_birth",
+    "nationality",
+    "identification_number",
+    "address",
+    "phone",
+    "email",
+    "bank_account",
+    "bsn_number",
+    "reisdocument_nummer",
+]
+
+_VEHICLE_ENCRYPTED_FIELDS = ["license_plate", "vin", "insurance_company"]
+
+_VEHICLE_PLAIN_FIELDS = ["brand", "vehicle_type"]
+
+_VESSEL_ENCRYPTED_FIELDS = [
+    "imo_number",
+    "mmsi",
+    "eni_number",
+    "vessel_nationality",
+]
+
+
+# ---------------------------------------------------------------------------
+# Private helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_json_data(raw):
+    """Parse a JSON string or return a list/dict as-is."""
+    if isinstance(raw, str):
+        return json.loads(raw)
+    return raw
+
+
+def _build_subject_from_data(data, created_by):
+    """Construct a Subject from validated form data."""
+    return Subject(
+        name=data["name"],
+        subject_type=data["subject_type"],
+        risk_score=data.get("risk_score", 0),
+        risk_factors=data.get("risk_factors"),
+        notes=data.get("notes"),
+        registration_number=data.get("registration_number"),
+        legal_form=data.get("legal_form"),
+        asset_type=data.get("asset_type"),
+        estimated_value=data.get("estimated_value"),
+        currency=data.get("currency", "EUR"),
+        license_plate=data.get("license_plate"),
+        vin=data.get("vin"),
+        insurance_company=data.get("insurance_company"),
+        brand=data.get("brand"),
+        vehicle_type=data.get("vehicle_type"),
+        imo_number=data.get("imo_number"),
+        mmsi=data.get("mmsi"),
+        eni_number=data.get("eni_number"),
+        vessel_nationality=data.get("vessel_nationality"),
+        date_of_birth=data.get("date_of_birth"),
+        place_of_birth=data.get("place_of_birth"),
+        identification_number=data.get("identification_number"),
+        bank_account=data.get("bank_account"),
+        created_by=created_by,
+        achternaam=data.get("achternaam"),
+        voornamen=data.get("voornamen"),
+        voorletters=data.get("voorletters"),
+        tussenvoegsels=data.get("tussenvoegsels"),
+        geslacht=data.get("geslacht"),
+        nationality=data.get("nationality"),
+        bsn_number=data.get("bsn_number"),
+        reisdocument_type=data.get("reisdocument_type"),
+        reisdocument_nummer=data.get("reisdocument_nummer"),
+    )
+
+
+def _extract_rdw_data(data, fields):
+    """Pull RDW-specific fields from form data into a dict."""
+    rdw_data = {}
+    for field in fields:
+        if data.get(field):
+            rdw_data[field] = data.get(field)
+    return rdw_data
+
+
+def _sync_primary_address_to_subject(subject, primary_addr):
+    """Write the primary address back to legacy Subject columns."""
+    parts = []
+    if primary_addr.get("street"):
+        parts.append(primary_addr["street"])
+    if primary_addr.get("number"):
+        parts.append(primary_addr["number"])
+    street_loc = " ".join(parts)
+    pc = primary_addr.get("zipcode", "")
+    town = primary_addr.get("town", "")
+    subject.address = ", ".join(p for p in [street_loc, f"{pc} {town}".strip()] if p)
+    subject.street = (
+        encryptor.encrypt(primary_addr["street"])
+        if primary_addr.get("street")
+        else None
+    )
+    subject.house_number = (
+        encryptor.encrypt(primary_addr["number"])
+        if primary_addr.get("number")
+        else None
+    )
+    subject.house_number_addition = (
+        encryptor.encrypt(primary_addr.get("addition", ""))
+        if primary_addr.get("addition")
+        else None
+    )
+    subject.postal_code = encryptor.encrypt(pc) if pc else None
+    subject.city = encryptor.encrypt(town) if town else None
+
+
+def _save_addresses(subject, addresses_data, replace_existing=False):
+    """Create Address records and sync primary to legacy fields.
+
+    When *replace_existing* is ``True`` all prior addresses are deleted first.
+    Returns the count of removed addresses (0 when not replacing).
+    """
+    old_count = 0
+    if replace_existing and addresses_data:
+        old_addresses = list(subject.addresses)
+        old_count = len(old_addresses)
+        for addr in old_addresses:
+            db.session.delete(addr)
+
+    primary_addr = None
+    for addr_data in addresses_data:
+        if addr_data.get("street") or addr_data.get("zipcode"):
+            address = Address(
+                subject_id=subject.id,
+                street=addr_data.get("street"),
+                number=addr_data.get("number"),
+                zipcode=addr_data.get("zipcode"),
+                town=addr_data.get("town"),
+                country=addr_data.get("country", "Netherlands"),
+                is_primary=addr_data.get("is_primary", False),
+            )
+            address.encrypt_fields()
+            db.session.add(address)
+            if addr_data.get("is_primary") or not primary_addr:
+                primary_addr = addr_data
+
+    if primary_addr:
+        _sync_primary_address_to_subject(subject, primary_addr)
+
+    return old_count
+
+
+def _sync_legacy_contact_fields(subject, c_data):
+    """Set the primary email/phone on the Subject for backward compat."""
+    if c_data.get("contact_type") == "email" and c_data.get("is_primary"):
+        new_val = c_data.get("value")
+        try:
+            current = encryptor.decrypt(subject.email) if subject.email else None
+        except Exception:
+            current = subject.email
+        if new_val != current:
+            subject.email = encryptor.encrypt(new_val) if new_val else None
+    elif c_data.get("contact_type") == "phone" and c_data.get("is_primary"):
+        new_val = normalize_phone(c_data.get("value"))
+        try:
+            current = encryptor.decrypt(subject.phone) if subject.phone else None
+        except Exception:
+            current = subject.phone
+        if new_val != current:
+            subject.phone = encryptor.encrypt(new_val) if new_val else None
+
+
+def _save_contacts(subject, contacts_data, replace_existing=False):
+    """Create Contact records and sync primary to legacy fields.
+
+    When *replace_existing* is ``True`` all prior contacts are deleted first.
+    Returns the count of removed contacts (0 when not replacing).
+    """
+    old_count = 0
+    if replace_existing and contacts_data:
+        old_contacts = list(subject.contacts)
+        old_count = len(old_contacts)
+        for c in old_contacts:
+            db.session.delete(c)
+
+    for c_data in contacts_data:
+        if c_data.get("value"):
+            contact = Contact(
+                subject_id=subject.id,
+                contact_type=c_data.get("contact_type", "email"),
+                value=c_data.get("value"),
+                is_primary=c_data.get("is_primary", False),
+            )
+            contact.encrypt_fields()
+            db.session.add(contact)
+            _sync_legacy_contact_fields(subject, c_data)
+
+    return old_count
+
+
+def _update_encrypted_fields(subject, data, fields, changes, sensitive=True):
+    """Update encrypted fields on *subject*, recording diffs in *changes*.
+
+    When *sensitive* is ``True`` the change log shows ``[encrypted]`` for both
+    old and new values.  When ``False`` the (decrypted) values are stored.
+    """
+    for field in fields:
+        if field in data:
+            new_value = data[field] if data[field] else None
+            old_value = getattr(subject, field)
+            try:
+                if old_value:
+                    old_value = encryptor.decrypt(old_value)
+            except EncryptionError:
+                logger.debug(
+                    "Could not decrypt %s (may already be plaintext or key changed)",
+                    field,
+                )
+            if field == "phone" and new_value:
+                new_value = normalize_phone(new_value)
+            if new_value != old_value:
+                if sensitive:
+                    changes[field] = {"old": "[encrypted]", "new": "[encrypted]"}
+                else:
+                    changes[field] = {
+                        "old": old_value or "[empty]",
+                        "new": new_value or "[empty]",
+                    }
+                if new_value:
+                    setattr(subject, field, encryptor.encrypt(new_value))
+                else:
+                    setattr(subject, field, None)
+
+
+def _update_plain_fields(subject, data, fields, changes=None):
+    """Update non-encrypted fields.
+
+    When *changes* is ``None`` the value is set unconditionally (create).
+    When a dict is provided only actual changes are recorded (edit).
+    """
+    for field in fields:
+        if field in data:
+            if changes is not None:
+                new_value = data[field] if data[field] else None
+                if new_value != getattr(subject, field):
+                    changes[field] = {
+                        "old": getattr(subject, field) or "[empty]",
+                        "new": new_value or "[empty]",
+                    }
+                    setattr(subject, field, new_value)
+            else:
+                setattr(subject, field, data[field])
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
 
 @cms_bp.route("/subjects/create", methods=["GET", "POST"])
 @login_required
@@ -133,77 +459,10 @@ def create_subject() -> flask.Response:
             )
             return render_template("cms/subjects/create.html")
 
-        subject = Subject(
-            name=name,
-            subject_type=data["subject_type"],
-            risk_score=data.get("risk_score", 0),
-            risk_factors=data.get("risk_factors"),
-            notes=data.get("notes"),
-            registration_number=data.get("registration_number"),
-            legal_form=data.get("legal_form"),
-            asset_type=data.get("asset_type"),
-            estimated_value=data.get("estimated_value"),
-            currency=data.get("currency", "EUR"),
-            license_plate=data.get("license_plate"),
-            vin=data.get("vin"),
-            insurance_company=data.get("insurance_company"),
-            brand=data.get("brand"),
-            vehicle_type=data.get("vehicle_type"),
-            imo_number=data.get("imo_number"),
-            mmsi=data.get("mmsi"),
-            eni_number=data.get("eni_number"),
-            vessel_nationality=data.get("vessel_nationality"),
-            date_of_birth=data.get("date_of_birth"),
-            place_of_birth=data.get("place_of_birth"),
-            identification_number=data.get("identification_number"),
-            bank_account=data.get("bank_account"),
-            created_by=current_user.id,
-            achternaam=data.get("achternaam"),
-            voornamen=data.get("voornamen"),
-            voorletters=data.get("voorletters"),
-            tussenvoegsels=data.get("tussenvoegsels"),
-            geslacht=data.get("geslacht"),
-            nationality=data.get("nationality"),
-            bsn_number=data.get("bsn_number"),
-            reisdocument_type=data.get("reisdocument_type"),
-            reisdocument_nummer=data.get("reisdocument_nummer"),
-        )
+        subject = _build_subject_from_data(data, current_user.id)
 
         if data["subject_type"] == "vehicle":
-            rdw_data = {}
-            rdw_fields = [
-                "handelsbenaming",
-                "voertuigsoort",
-                "eerste_kleur",
-                "tweede_kleur",
-                "aantal_deuren",
-                "aantal_zitplaatsen",
-                "cilinderinhoud",
-                "aantal_cilinders",
-                "vermogen",
-                "massa_ledig",
-                "maximum_massa",
-                "wielbasis",
-                "vervaldatum_apk",
-                "wam_verzekerd",
-                "taxi_indicator",
-                "export_indicator",
-                "europese_voertuigcategorie",
-                "zuinigheidsclassificatie",
-                "catalogusprijs",
-                "bruto_bpm",
-                "datum_eerste_toelating",
-                "datum_tenaamstelling",
-                "rdw_type",
-                "variant",
-                "uitvoering",
-                "typegoedkeuringsnummer",
-                "openstaande_terugroepactie",
-            ]
-            for field in rdw_fields:
-                if data.get(field):
-                    rdw_data[field] = data.get(field)
-
+            rdw_data = _extract_rdw_data(data, _CREATE_RDW_FIELDS)
             if rdw_data or data.get("license_plate"):
                 rdw_data["kenteken"] = data.get("license_plate", "").upper()
                 rdw_data["merk"] = data.get("brand", "")
@@ -227,95 +486,14 @@ def create_subject() -> flask.Response:
         # Handle structured addresses
         if data.get("addresses_data"):
             try:
-                addresses_data = (
-                    json.loads(data["addresses_data"])
-                    if isinstance(data["addresses_data"], str)
-                    else data["addresses_data"]
-                )
-                primary_addr = None
-                for addr_data in addresses_data:
-                    if addr_data.get("street") or addr_data.get("zipcode"):
-                        address = Address(
-                            subject_id=subject.id,
-                            street=addr_data.get("street"),
-                            number=addr_data.get("number"),
-                            zipcode=addr_data.get("zipcode"),
-                            town=addr_data.get("town"),
-                            country=addr_data.get("country", "Netherlands"),
-                            is_primary=addr_data.get("is_primary", False),
-                        )
-                        address.encrypt_fields()
-                        db.session.add(address)
-                        if addr_data.get("is_primary") or not primary_addr:
-                            primary_addr = addr_data
-                # Sync primary address to legacy Subject fields for backward compat
-                if primary_addr:
-                    parts = []
-                    if primary_addr.get("street"):
-                        parts.append(primary_addr["street"])
-                    if primary_addr.get("number"):
-                        parts.append(primary_addr["number"])
-                    street_loc = " ".join(parts)
-                    pc = primary_addr.get("zipcode", "")
-                    town = primary_addr.get("town", "")
-                    subject.address = ", ".join(
-                        p for p in [street_loc, f"{pc} {town}".strip()] if p
-                    )
-                    subject.street = (
-                        encryptor.encrypt(primary_addr["street"])
-                        if primary_addr.get("street")
-                        else None
-                    )
-                    subject.house_number = (
-                        encryptor.encrypt(primary_addr["number"])
-                        if primary_addr.get("number")
-                        else None
-                    )
-                    subject.house_number_addition = (
-                        encryptor.encrypt(primary_addr.get("addition", ""))
-                        if primary_addr.get("addition")
-                        else None
-                    )
-                    subject.postal_code = encryptor.encrypt(pc) if pc else None
-                    subject.city = encryptor.encrypt(town) if town else None
+                _save_addresses(subject, _parse_json_data(data["addresses_data"]))
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse addresses_data: {e}")
 
         # Handle structured contacts
         if data.get("contacts_data"):
             try:
-                contacts_data = (
-                    json.loads(data["contacts_data"])
-                    if isinstance(data["contacts_data"], str)
-                    else data["contacts_data"]
-                )
-                for c_data in contacts_data:
-                    if c_data.get("value"):
-                        contact = Contact(
-                            subject_id=subject.id,
-                            contact_type=c_data.get("contact_type", "email"),
-                            value=c_data.get("value"),
-                            is_primary=c_data.get("is_primary", False),
-                        )
-                        contact.encrypt_fields()
-                        db.session.add(contact)
-                        # Also set legacy fields for backward compat
-                        if c_data.get("contact_type") == "email" and c_data.get(
-                            "is_primary"
-                        ):
-                            subject.email = (
-                                encryptor.encrypt(c_data.get("value"))
-                                if c_data.get("value")
-                                else None
-                            )
-                        elif c_data.get("contact_type") == "phone" and c_data.get(
-                            "is_primary"
-                        ):
-                            subject.phone = (
-                                encryptor.encrypt(normalize_phone(c_data.get("value")))
-                                if c_data.get("value")
-                                else None
-                            )
+                _save_contacts(subject, _parse_json_data(data["contacts_data"]))
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse contacts_data: {e}")
 
@@ -454,184 +632,28 @@ def edit_subject(subject_id: str) -> flask.Response:
             subject.notes = data["notes"]
 
         # Update non-encrypted person fields
-        person_text_fields = [
-            "achternaam",
-            "voornamen",
-            "voorletters",
-            "tussenvoegsels",
-            "geslacht",
-            "reisdocument_type",
-        ]
-        for field in person_text_fields:
-            if field in data:
-                setattr(subject, field, data[field])
+        _update_plain_fields(subject, data, _PERSON_TEXT_FIELDS)
 
-        # Update encrypted fields for persons
-        encrypted_fields = [
-            "date_of_birth",
-            "place_of_birth",
-            "nationality",
-            "identification_number",
-            "address",
-            "phone",
-            "email",
-            "bank_account",
-            "bsn_number",
-            "reisdocument_nummer",
-        ]
-        for field in encrypted_fields:
-            if field in data:
-                new_value = data[field] if data[field] else None
-                old_value = getattr(subject, field)
-                # Decrypt old value for comparison
-                try:
-                    if old_value:
-                        old_value = encryptor.decrypt(old_value)
-                except EncryptionError:
-                    logger.debug(
-                        "Could not decrypt %s (may already be plaintext or key changed)",
-                        field,
-                    )
-                if field == "phone" and new_value:
-                    new_value = normalize_phone(new_value)
-                if new_value != old_value:
-                    changes[field] = {
-                        "old": "[encrypted]",
-                        "new": "[encrypted]",
-                    }
-                    if new_value:
-                        setattr(subject, field, encryptor.encrypt(new_value))
-                    else:
-                        setattr(subject, field, None)
+        # Update encrypted fields for persons, vehicles, and vessels
+        _update_encrypted_fields(subject, data, _PERSON_ENCRYPTED_FIELDS, changes)
+        _update_encrypted_fields(subject, data, _VEHICLE_ENCRYPTED_FIELDS, changes)
+        _update_encrypted_fields(
+            subject, data, _VESSEL_ENCRYPTED_FIELDS, changes, sensitive=False
+        )
 
-        # Update vehicle fields
-        # Encrypted vehicle fields
-        encrypted_vehicle_fields = ["license_plate", "vin", "insurance_company"]
-        for field in encrypted_vehicle_fields:
-            if field in data:
-                new_value = data[field] if data[field] else None
-                old_value = getattr(subject, field)
-                # Decrypt old value for comparison
-                try:
-                    if old_value:
-                        old_value = encryptor.decrypt(old_value)
-                except EncryptionError:
-                    logger.debug(
-                        "Could not decrypt %s (may already be plaintext or key changed)",
-                        field,
-                    )
-                if new_value != old_value:
-                    changes[field] = {
-                        "old": "[encrypted]",
-                        "new": "[encrypted]",
-                    }
-                    if new_value:
-                        setattr(subject, field, encryptor.encrypt(new_value))
-                    else:
-                        setattr(subject, field, None)
-
-        # Non-encrypted vehicle fields
-        non_encrypted_vehicle_fields = ["brand", "vehicle_type"]
-        for field in non_encrypted_vehicle_fields:
-            if field in data:
-                new_value = data[field] if data[field] else None
-                if new_value != getattr(subject, field):
-                    changes[field] = {
-                        "old": getattr(subject, field) or "[empty]",
-                        "new": new_value or "[empty]",
-                    }
-                    setattr(subject, field, new_value)
-
-        # Encrypted vessel fields
-        encrypted_vessel_fields = [
-            "imo_number",
-            "mmsi",
-            "eni_number",
-            "vessel_nationality",
-        ]
-        for field in encrypted_vessel_fields:
-            if field in data:
-                new_value = data[field] if data[field] else None
-                old_value = getattr(subject, field)
-                try:
-                    if old_value:
-                        old_value = encryptor.decrypt(old_value)
-                except EncryptionError:
-                    logger.debug(
-                        "Could not decrypt %s (may already be plaintext or key changed)",
-                        field,
-                    )
-                if new_value != old_value:
-                    changes[field] = {
-                        "old": old_value or "[empty]",
-                        "new": new_value or "[empty]",
-                    }
-                    if new_value:
-                        setattr(subject, field, encryptor.encrypt(new_value))
-                    else:
-                        setattr(subject, field, None)
+        # Update non-encrypted vehicle fields
+        _update_plain_fields(subject, data, _VEHICLE_PLAIN_FIELDS, changes)
 
         # Handle structured addresses
         if data.get("addresses_data"):
             try:
-                addresses_data = (
-                    json.loads(data["addresses_data"])
-                    if isinstance(data["addresses_data"], str)
-                    else data["addresses_data"]
-                )
-                if addresses_data:  # only replace if non-empty
-                    old_addresses = list(subject.addresses)
-                    addr_count_before = len(old_addresses)
-                    for addr in old_addresses:
-                        db.session.delete(addr)
-                    primary_addr = None
-                    for addr_data in addresses_data:
-                        if addr_data.get("street") or addr_data.get("zipcode"):
-                            address = Address(
-                                subject_id=subject.id,
-                                street=addr_data.get("street"),
-                                number=addr_data.get("number"),
-                                zipcode=addr_data.get("zipcode"),
-                                town=addr_data.get("town"),
-                                country=addr_data.get("country", "Netherlands"),
-                                is_primary=addr_data.get("is_primary", False),
-                            )
-                            address.encrypt_fields()
-                            db.session.add(address)
-                            if addr_data.get("is_primary") or not primary_addr:
-                                primary_addr = addr_data
-                    # Sync primary address to legacy Subject fields for backward compat
-                    if primary_addr:
-                        parts = []
-                        if primary_addr.get("street"):
-                            parts.append(primary_addr["street"])
-                        if primary_addr.get("number"):
-                            parts.append(primary_addr["number"])
-                        street_loc = " ".join(parts)
-                        pc = primary_addr.get("zipcode", "")
-                        town = primary_addr.get("town", "")
-                        subject.address = ", ".join(
-                            p for p in [street_loc, f"{pc} {town}".strip()] if p
-                        )
-                        subject.street = (
-                            encryptor.encrypt(primary_addr["street"])
-                            if primary_addr.get("street")
-                            else None
-                        )
-                        subject.house_number = (
-                            encryptor.encrypt(primary_addr["number"])
-                            if primary_addr.get("number")
-                            else None
-                        )
-                        subject.house_number_addition = (
-                            encryptor.encrypt(primary_addr.get("addition", ""))
-                            if primary_addr.get("addition")
-                            else None
-                        )
-                        subject.postal_code = encryptor.encrypt(pc) if pc else None
-                        subject.city = encryptor.encrypt(town) if town else None
+                addresses_data = _parse_json_data(data["addresses_data"])
+                if addresses_data:
+                    old_count = _save_addresses(
+                        subject, addresses_data, replace_existing=True
+                    )
                     changes["addresses"] = {
-                        "old": f"{addr_count_before} address(es)",
+                        "old": f"{old_count} address(es)",
                         "new": f"{len(addresses_data)} address(es)",
                     }
             except (json.JSONDecodeError, TypeError) as e:
@@ -640,98 +662,20 @@ def edit_subject(subject_id: str) -> flask.Response:
         # Handle structured contacts
         if data.get("contacts_data"):
             try:
-                contacts_data = (
-                    json.loads(data["contacts_data"])
-                    if isinstance(data["contacts_data"], str)
-                    else data["contacts_data"]
-                )
-                if contacts_data:  # only replace if non-empty
-                    old_contacts = list(subject.contacts)
-                    contact_count_before = len(old_contacts)
-                    for c in old_contacts:
-                        db.session.delete(c)
-                    for c_data in contacts_data:
-                        if c_data.get("value"):
-                            contact = Contact(
-                                subject_id=subject.id,
-                                contact_type=c_data.get("contact_type", "email"),
-                                value=c_data.get("value"),
-                                is_primary=c_data.get("is_primary", False),
-                            )
-                            contact.encrypt_fields()
-                            db.session.add(contact)
-                            # Update legacy fields for backward compat
-                            if c_data.get("contact_type") == "email" and c_data.get(
-                                "is_primary"
-                            ):
-                                try:
-                                    current = (
-                                        encryptor.decrypt(subject.email)
-                                        if subject.email
-                                        else None
-                                    )
-                                except Exception:
-                                    current = subject.email  # may already be plaintext
-                                if c_data.get("value") != current:
-                                    subject.email = (
-                                        encryptor.encrypt(c_data.get("value"))
-                                        if c_data.get("value")
-                                        else None
-                                    )
-                            elif c_data.get("contact_type") == "phone" and c_data.get(
-                                "is_primary"
-                            ):
-                                try:
-                                    current = (
-                                        encryptor.decrypt(subject.phone)
-                                        if subject.phone
-                                        else None
-                                    )
-                                except Exception:
-                                    current = subject.phone  # may already be plaintext
-                                new_val = normalize_phone(c_data.get("value"))
-                                if new_val != current:
-                                    subject.phone = (
-                                        encryptor.encrypt(new_val) if new_val else None
-                                    )
+                contacts_data = _parse_json_data(data["contacts_data"])
+                if contacts_data:
+                    old_count = _save_contacts(
+                        subject, contacts_data, replace_existing=True
+                    )
                     changes["contacts"] = {
-                        "old": f"{contact_count_before} contact(s)",
+                        "old": f"{old_count} contact(s)",
                         "new": f"{len(contacts_data)} contact(s)",
                     }
             except (json.JSONDecodeError, TypeError) as e:
                 logger.warning(f"Failed to parse contacts_data: {e}")
 
         # Update RDW data if provided
-        rdw_fields = [
-            "handelsbenaming",
-            "voertuigsoort",
-            "eerste_kleur",
-            "tweede_kleur",
-            "aantal_deuren",
-            "aantal_zitplaatsen",
-            "cilinderinhoud",
-            "aantal_cilinders",
-            "massa_ledig",
-            "maximum_massa",
-            "vervaldatum_apk",
-            "wam_verzekerd",
-            "taxi_indicator",
-            "export_indicator",
-            "europese_voertuigcategorie",
-            "zuinigheidsclassificatie",
-            "catalogusprijs",
-            "datum_eerste_toelating",
-            "rdw_type",
-            "variant",
-            "uitvoering",
-            "typegoedkeuringsnummer",
-            "wielbasis",
-        ]
-
-        rdw_data = {}
-        for field in rdw_fields:
-            if data.get(field):
-                rdw_data[field] = data[field]
+        rdw_data = _extract_rdw_data(data, _EDIT_RDW_FIELDS)
 
         # Also store basic vehicle fields in RDW data
         if data.get("license_plate"):

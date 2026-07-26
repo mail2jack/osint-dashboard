@@ -403,90 +403,275 @@ def _read_task(task_id: str) -> dict | None:
         return None
 
 
+def _abort_check(task_id):
+    t = _read_task(task_id)
+    return t is not None and t.get("aborted", False)
+
+
+def _abort_return(task_id, task):
+    task["status"] = "aborted"
+    task["message"] = "Update cancelled by user"
+    _write_task(task_id, task)
+
+
+def _full_env():
+    env = {**os.environ}
+    env["PATH"] = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:" + env.get("PATH", "")
+    return env
+
+
+def _step(task_id, task, msg, cmd_list, cwd=None, env=None):
+    task["results"].append({"step": msg, "status": "running"})
+    _write_task(task_id, task)
+    try:
+        r = subprocess.run(
+            cmd_list,
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+            timeout=300,
+            env=env,
+        )
+        if _abort_check(task_id):
+            task["results"][-1] = {
+                "step": msg,
+                "status": "aborted",
+                "output": "Step cancelled by user",
+            }
+            _write_task(task_id, task)
+            return
+        if r.returncode == 0:
+            task["results"][-1] = {
+                "step": msg,
+                "status": "ok",
+                "output": r.stdout.strip(),
+            }
+        elif r.returncode < 0 and "restart" in msg.lower():
+            task["results"][-1] = {
+                "step": msg,
+                "status": "ok",
+                "output": "Service restarted (process killed by signal, expected)",
+            }
+        else:
+            output = (
+                r.stderr.strip()
+                or r.stdout.strip()
+                or f"Command failed (exit code {r.returncode})"
+            )
+            task["results"][-1] = {
+                "step": msg,
+                "status": "error",
+                "output": output,
+            }
+            logger.error("Update step failed: %s\n%s", msg, output)
+    except Exception:
+        logger.exception("Update step exception: %s", msg)
+        task["results"][-1] = {
+            "step": msg,
+            "status": "error",
+            "output": "Step failed",
+        }
+    _write_task(task_id, task)
+
+
+def _check_for_updates(task_id, task, app):
+    """Run backup and record pre-pull state for potential rollback."""
+    import subprocess
+    from datetime import datetime
+
+    if _abort_check(task_id):
+        _abort_return(task_id, task)
+        return True
+
+    project_root = app.root_path
+    db_path = app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db")
+
+    backup_script = os.path.join(project_root, "scripts", "backup.sh")
+    if os.path.isfile(backup_script):
+        try:
+            os.chmod(backup_script, 0o755)
+        except PermissionError:
+            logger.warning("Could not chmod backup.sh (not fatal)")
+        _step(
+            task_id,
+            task,
+            "Full backup",
+            [backup_script, os.path.join(project_root, "backups")],
+            cwd=project_root,
+            env=_full_env(),
+        )
+    else:
+        if db_path.startswith("sqlite"):
+            db_file = db_path.replace("sqlite:///", "")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            _step(
+                task_id,
+                task,
+                "Backup database",
+                ["cp", db_file, f"{db_file}.backup.{timestamp}"],
+                cwd=project_root,
+            )
+
+    if _abort_check(task_id):
+        _abort_return(task_id, task)
+        return True
+
+    try:
+        latest_backup = None
+        backup_dir = os.path.join(project_root, "backups")
+        if os.path.isdir(backup_dir):
+            backups_ = sorted(
+                os.path.join(backup_dir, f)
+                for f in os.listdir(backup_dir)
+                if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
+            )
+            if backups_:
+                latest_backup = backups_[-1]
+        elif db_path.startswith("sqlite"):
+            db_file = db_path.replace("sqlite:///", "")
+            bc = sorted(
+                f
+                for f in os.listdir(os.path.dirname(db_file) or ".")
+                if f.startswith(os.path.basename(db_file) + ".backup.")
+            )
+            if bc:
+                latest_backup = os.path.join(os.path.dirname(db_file) or ".", bc[-1])
+        if latest_backup:
+            _cfg_set("last_backup_path", latest_backup)
+        pre_sha_r = subprocess.run(
+            ["/usr/bin/git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=project_root,
+            timeout=15,
+        )
+        if pre_sha_r.returncode == 0:
+            _cfg_set("pre_update_commit", pre_sha_r.stdout.strip())
+    except Exception as e:
+        logger.warning("Rollback metadata error: %s", e)
+
+    if _abort_check(task_id):
+        _abort_return(task_id, task)
+        return True
+
+    return False
+
+
+def _apply_update(task_id, task, app, python_bin):
+    """Pull latest code, install dependencies, and run database migrations."""
+    project_root = app.root_path
+    db_path = app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db")
+
+    if _abort_check(task_id):
+        _abort_return(task_id, task)
+        return True
+
+    _step(
+        task_id,
+        task,
+        "Pull latest code",
+        ["/usr/bin/sudo", "/usr/bin/git", "pull", "origin", "master"],
+        cwd=project_root,
+    )
+
+    if _abort_check(task_id):
+        _abort_return(task_id, task)
+        return True
+
+    _step(
+        task_id,
+        task,
+        "Update Python packages",
+        [
+            python_bin,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            "requirements.txt",
+            "--upgrade",
+        ],
+        cwd=project_root,
+    )
+
+    if _abort_check(task_id):
+        _abort_return(task_id, task)
+        return True
+
+    alembic_env = {**os.environ}
+    alembic_env["DATABASE_URL"] = db_path
+    if "CMS_ENCRYPTION_KEY" not in alembic_env:
+        alembic_env["CMS_ENCRYPTION_KEY"] = app.config.get("CMS_ENCRYPTION_KEY", "")
+    _step(
+        task_id,
+        task,
+        "Apply database migrations",
+        [python_bin, "-m", "alembic", "upgrade", "head"],
+        cwd=project_root,
+        env=alembic_env,
+    )
+
+    if _abort_check(task_id):
+        _abort_return(task_id, task)
+        return True
+
+    try:
+        sha_r = subprocess.run(
+            ["/usr/bin/git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=project_root,
+            timeout=15,
+        )
+        if sha_r.returncode == 0:
+            _cfg_set("last_update_commit", sha_r.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+    return False
+
+
+def _restart_application(task_id, task, project_root, app, current_ver):
+    """Restart the server process and finalize task status."""
+    task["status"] = "restarting"
+    _write_task(task_id, task)
+    subprocess.Popen(
+        [
+            "/usr/bin/sudo",
+            "/bin/sh",
+            "-c",
+            "sleep 3 && /usr/bin/systemctl restart osint-dashboard",
+        ],
+        cwd=project_root,
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    task["results"].append(
+        {
+            "step": "Restart services",
+            "status": "ok",
+            "output": "Restart initiated (server will reload shortly)",
+        }
+    )
+    task["success"] = all(r["status"] == "ok" for r in task["results"])
+    task["message"] = (
+        "Update completed successfully" if task["success"] else "Update had errors"
+    )
+    task["status"] = "done"
+    _write_task(task_id, task)
+
+    _send_update_email(app, task, current_ver)
+
+
 def _run_update_background(task_id: str, app):
     """Background thread: runs update steps, writes progress to task file."""
-    import subprocess
     import sys
-    from datetime import datetime
     from version import get_version
 
     with app.app_context():
         try:
-
-            def _save():
-                _write_task(task_id, task)
-
-            def _step(msg, cmd_list, cwd=None, env=None):
-                task["results"].append({"step": msg, "status": "running"})
-                _save()
-                try:
-                    r = subprocess.run(
-                        cmd_list,
-                        capture_output=True,
-                        text=True,
-                        cwd=cwd or app.root_path,
-                        timeout=300,
-                        env=env,
-                    )
-                    if _abort_check():
-                        task["results"][-1] = {
-                            "step": msg,
-                            "status": "aborted",
-                            "output": "Step cancelled by user",
-                        }
-                        _save()
-                        return
-                    if r.returncode == 0:
-                        task["results"][-1] = {
-                            "step": msg,
-                            "status": "ok",
-                            "output": r.stdout.strip(),
-                        }
-                    elif r.returncode < 0 and "restart" in msg.lower():
-                        task["results"][-1] = {
-                            "step": msg,
-                            "status": "ok",
-                            "output": "Service restarted (process killed by signal, expected)",
-                        }
-                    else:
-                        output = (
-                            r.stderr.strip()
-                            or r.stdout.strip()
-                            or f"Command failed (exit code {r.returncode})"
-                        )
-                        task["results"][-1] = {
-                            "step": msg,
-                            "status": "error",
-                            "output": output,
-                        }
-                        logger.error("Update step failed: %s\n%s", msg, output)
-                except Exception:
-                    logger.exception("Update step exception: %s", msg)
-                    task["results"][-1] = {
-                        "step": msg,
-                        "status": "error",
-                        "output": "Step failed",
-                    }
-                _save()
-
-            def _abort_return():
-                task["status"] = "aborted"
-                task["message"] = "Update cancelled by user"
-                _save()
-
-            def _abort_check():
-                t = _read_task(task_id)
-                return t is not None and t.get("aborted", False)
-
             task = _read_task(task_id)
-
-            def _full_env():
-                env = {**os.environ}
-                env["PATH"] = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:" + env.get(
-                    "PATH", ""
-                )
-                return env
-
             if task is None:
                 logger.error("Task %s not found at start of background thread", task_id)
                 _write_task(
@@ -508,7 +693,7 @@ def _run_update_background(task_id: str, app):
                 )
                 return
             task["status"] = "running"
-            _save()
+            _write_task(task_id, task)
 
             project_root = app.root_path
             current_ver = get_version()
@@ -516,169 +701,12 @@ def _run_update_background(task_id: str, app):
                 os.path.dirname(app.root_path), "venv", "bin", "python3"
             )
             python_bin = venv_python if os.path.isfile(venv_python) else sys.executable
-            db_path = app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///cms.db")
 
-            # Step 1: Full backup
-            if _abort_check():
-                _abort_return()
+            if _check_for_updates(task_id, task, app):
                 return
-            backup_script = os.path.join(project_root, "scripts", "backup.sh")
-            if os.path.isfile(backup_script):
-                try:
-                    os.chmod(backup_script, 0o755)
-                except PermissionError:
-                    logger.warning("Could not chmod backup.sh (not fatal)")
-                _step(
-                    "Full backup",
-                    [backup_script, os.path.join(project_root, "backups")],
-                    cwd=project_root,
-                    env=_full_env(),
-                )
-            else:
-                if db_path.startswith("sqlite"):
-                    db_file = db_path.replace("sqlite:///", "")
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    _step(
-                        "Backup database",
-                        ["cp", db_file, f"{db_file}.backup.{timestamp}"],
-                    )
-            if _abort_check():
-                _abort_return()
+            if _apply_update(task_id, task, app, python_bin):
                 return
-
-            # Store backup path + pre-pull SHA for rollback
-            try:
-                latest_backup = None
-                backup_dir = os.path.join(project_root, "backups")
-                if os.path.isdir(backup_dir):
-                    backups_ = sorted(
-                        os.path.join(backup_dir, f)
-                        for f in os.listdir(backup_dir)
-                        if f.startswith("iveras_backup_") and f.endswith(".tar.gz.gpg")
-                    )
-                    if backups_:
-                        latest_backup = backups_[-1]
-                elif db_path.startswith("sqlite"):
-                    db_file = db_path.replace("sqlite:///", "")
-                    bc = sorted(
-                        f
-                        for f in os.listdir(os.path.dirname(db_file) or ".")
-                        if f.startswith(os.path.basename(db_file) + ".backup.")
-                    )
-                    if bc:
-                        latest_backup = os.path.join(
-                            os.path.dirname(db_file) or ".", bc[-1]
-                        )
-                if latest_backup:
-                    _cfg_set("last_backup_path", latest_backup)
-                pre_sha_r = subprocess.run(
-                    ["/usr/bin/git", "rev-parse", "HEAD"],
-                    capture_output=True,
-                    text=True,
-                    cwd=project_root,
-                    timeout=15,
-                )
-                if pre_sha_r.returncode == 0:
-                    _cfg_set("pre_update_commit", pre_sha_r.stdout.strip())
-            except Exception as e:
-                logger.warning("Rollback metadata error: %s", e)
-
-            if _abort_check():
-                _abort_return()
-                return
-
-            # Step 2: Git pull
-            _step(
-                "Pull latest code",
-                ["/usr/bin/sudo", "/usr/bin/git", "pull", "origin", "master"],
-                cwd=project_root,
-            )
-            if _abort_check():
-                _abort_return()
-                return
-
-            # Step 3: pip install
-            _step(
-                "Update Python packages",
-                [
-                    python_bin,
-                    "-m",
-                    "pip",
-                    "install",
-                    "-r",
-                    "requirements.txt",
-                    "--upgrade",
-                ],
-                cwd=project_root,
-            )
-            if _abort_check():
-                _abort_return()
-                return
-
-            # Step 4: Alembic
-            alembic_env = {**os.environ}
-            alembic_env["DATABASE_URL"] = db_path
-            if "CMS_ENCRYPTION_KEY" not in alembic_env:
-                alembic_env["CMS_ENCRYPTION_KEY"] = app.config.get(
-                    "CMS_ENCRYPTION_KEY", ""
-                )
-            _step(
-                "Apply database migrations",
-                [python_bin, "-m", "alembic", "upgrade", "head"],
-                cwd=project_root,
-                env=alembic_env,
-            )
-            if _abort_check():
-                _abort_return()
-                return
-
-            # Store post-pull commit SHA
-            try:
-                sha_r = subprocess.run(
-                    ["/usr/bin/git", "rev-parse", "HEAD"],
-                    capture_output=True,
-                    text=True,
-                    cwd=project_root,
-                    timeout=15,
-                )
-                if sha_r.returncode == 0:
-                    _cfg_set("last_update_commit", sha_r.stdout.strip())
-            except (OSError, subprocess.SubprocessError):
-                pass
-
-            # Step 5: Restart — set status to restarting so frontend knows
-            task["status"] = "restarting"
-            _save()
-            subprocess.Popen(
-                [
-                    "/usr/bin/sudo",
-                    "/bin/sh",
-                    "-c",
-                    "sleep 3 && /usr/bin/systemctl restart osint-dashboard",
-                ],
-                cwd=project_root,
-                start_new_session=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            task["results"].append(
-                {
-                    "step": "Restart services",
-                    "status": "ok",
-                    "output": "Restart initiated (server will reload shortly)",
-                }
-            )
-            task["success"] = all(r["status"] == "ok" for r in task["results"])
-            task["message"] = (
-                "Update completed successfully"
-                if task["success"]
-                else "Update had errors"
-            )
-            task["status"] = "done"
-            _save()
-
-            # Send notification email (best effort)
-            _send_update_email(app, task, current_ver)
+            _restart_application(task_id, task, project_root, app, current_ver)
 
         except Exception:
             import traceback

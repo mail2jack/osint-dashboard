@@ -2428,8 +2428,9 @@ def set_setting(
     return setting
 
 
-def init_default_settings() -> None:
-    defaults = [
+def _osint_search_defaults():
+    """Default settings for OSINT search APIs, SpiderFoot, and search config."""
+    return [
         {
             "key": "brave_api_key",
             "category": "api_keys",
@@ -2511,113 +2512,12 @@ def init_default_settings() -> None:
             "value_type": "boolean",
             "display_order": 12,
         },
-        {
-            "key": "case_number_prefix",
-            "category": "general",
-            "description": "Case number prefix",
-            "value_type": "text",
-            "display_order": 20,
-        },
-        {
-            "key": "default_risk_score",
-            "category": "general",
-            "description": "Default risk score",
-            "value_type": "number",
-            "display_order": 21,
-        },
-        {
-            "key": "organization_name",
-            "category": "general",
-            "description": "Organization name",
-            "value_type": "text",
-            "display_order": 22,
-        },
-        {
-            "key": "session_timeout_minutes",
-            "category": "security",
-            "description": "Session timeout (minutes)",
-            "value_type": "number",
-            "display_order": 30,
-        },
-        {
-            "key": "require_password_change",
-            "category": "security",
-            "description": "Password change (days)",
-            "value_type": "number",
-            "display_order": 31,
-        },
-        {
-            "key": "smtp_server",
-            "category": "email",
-            "description": "SMTP server",
-            "value_type": "text",
-            "display_order": 40,
-        },
-        {
-            "key": "smtp_port",
-            "category": "email",
-            "description": "SMTP port",
-            "value_type": "number",
-            "display_order": 41,
-        },
-        {
-            "key": "smtp_username",
-            "category": "email",
-            "description": "SMTP username",
-            "value_type": "text",
-            "display_order": 42,
-        },
-        {
-            "key": "smtp_password",
-            "category": "email",
-            "description": "SMTP password",
-            "value_type": "password",
-            "is_sensitive": True,
-            "display_order": 43,
-        },
-        {
-            "key": "smtp_from_email",
-            "category": "email",
-            "description": "From email",
-            "value_type": "text",
-            "display_order": 44,
-        },
-        {
-            "key": "smtp_from_name",
-            "category": "email",
-            "description": "From name",
-            "value_type": "text",
-            "display_order": 45,
-        },
-        {
-            "key": "update_check_repo",
-            "category": "general",
-            "description": "GitHub repo for update checks (e.g. user/repo). Leave empty to disable.",
-            "value_type": "text",
-            "display_order": 50,
-        },
-        {
-            "key": "theme_style",
-            "category": "appearance",
-            "value": "classic",
-            "description": "Visual style and layout",
-            "value_type": "select",
-            "options": {
-                "options": [
-                    {"value": "classic", "label": "Classic"},
-                    {"value": "professional", "label": "Professional"},
-                ]
-            },
-            "display_order": 1,
-        },
-        {
-            "key": "app_logo",
-            "category": "appearance",
-            "value": "",
-            "description": "Logo bestandsnaam in static/uploads/logo/",
-            "value_type": "text",
-            "display_order": 2,
-        },
+    ]
+
+
+def _integration_api_defaults():
+    """Default settings for external service API integrations."""
+    return [
         {
             "key": "marineplan_api_key",
             "category": "api_keys",
@@ -2681,6 +2581,179 @@ def init_default_settings() -> None:
             "display_order": 11,
         },
         {
+            "key": "whatsapp_checkleaked_key",
+            "category": "api_keys",
+            "description": "whatsapp.checkleaked.cc API Key (RapidAPI: https://rapidapi.com/...). 📍 https://whatsapp.checkleaked.cc/pricing",
+            "value_type": "password",
+            "is_sensitive": True,
+            "display_order": 12,
+        },
+        {
+            "key": "telegram_rapidapi_key",
+            "category": "api_keys",
+            "description": "Telegram155 / TG Gateway API Key (RapidAPI: https://rapidapi.com/starnikovoleg/api/telegram155). 📍 https://rapidapi.com/starnikovoleg/api/telegram155",
+            "value_type": "password",
+            "is_sensitive": True,
+            "display_order": 13,
+        },
+        {
+            "key": "telegram_rapidapi_limit",
+            "category": "api_keys",
+            "value": "30",
+            "description": "Telegram155 API monthly limit (number of checks per month, resets on the 1st of each month)",
+            "value_type": "number",
+            "display_order": 14,
+        },
+    ]
+
+
+def _general_defaults():
+    """Default general, appearance, and webhook settings."""
+    return [
+        {
+            "key": "case_number_prefix",
+            "category": "general",
+            "description": "Case number prefix",
+            "value_type": "text",
+            "display_order": 20,
+        },
+        {
+            "key": "default_risk_score",
+            "category": "general",
+            "description": "Default risk score",
+            "value_type": "number",
+            "display_order": 21,
+        },
+        {
+            "key": "organization_name",
+            "category": "general",
+            "description": "Organization name",
+            "value_type": "text",
+            "display_order": 22,
+        },
+        {
+            "key": "update_check_repo",
+            "category": "general",
+            "description": "GitHub repo for update checks (e.g. user/repo). Leave empty to disable.",
+            "value_type": "text",
+            "display_order": 50,
+        },
+        {
+            "key": "webhook_url",
+            "category": "general",
+            "value": "",
+            "description": "Webhook URL for system notifications (POST JSON). Leave empty to disable.",
+            "value_type": "text",
+            "display_order": 51,
+        },
+        {
+            "key": "theme_style",
+            "category": "appearance",
+            "value": "classic",
+            "description": "Visual style and layout",
+            "value_type": "select",
+            "options": {
+                "options": [
+                    {"value": "classic", "label": "Classic"},
+                    {"value": "professional", "label": "Professional"},
+                ]
+            },
+            "display_order": 1,
+        },
+        {
+            "key": "app_logo",
+            "category": "appearance",
+            "value": "",
+            "description": "Logo bestandsnaam in static/uploads/logo/",
+            "value_type": "text",
+            "display_order": 2,
+        },
+    ]
+
+
+def _security_email_defaults():
+    """Default security and email/SMTP settings."""
+    return [
+        {
+            "key": "session_timeout_minutes",
+            "category": "security",
+            "description": "Session timeout (minutes)",
+            "value_type": "number",
+            "display_order": 30,
+        },
+        {
+            "key": "require_password_change",
+            "category": "security",
+            "description": "Password change (days)",
+            "value_type": "number",
+            "display_order": 31,
+        },
+        {
+            "key": "audit_log_retention_days",
+            "category": "security",
+            "value": "365",
+            "description": "Audit log retention (days, 0=keep forever)",
+            "value_type": "number",
+            "display_order": 32,
+        },
+        {
+            "key": "phone_lookup_retention_days",
+            "category": "security",
+            "value": "90",
+            "description": "Phone lookup retention (days, 0=keep forever)",
+            "value_type": "number",
+            "display_order": 33,
+        },
+        {
+            "key": "smtp_server",
+            "category": "email",
+            "description": "SMTP server",
+            "value_type": "text",
+            "display_order": 40,
+        },
+        {
+            "key": "smtp_port",
+            "category": "email",
+            "description": "SMTP port",
+            "value_type": "number",
+            "display_order": 41,
+        },
+        {
+            "key": "smtp_username",
+            "category": "email",
+            "description": "SMTP username",
+            "value_type": "text",
+            "display_order": 42,
+        },
+        {
+            "key": "smtp_password",
+            "category": "email",
+            "description": "SMTP password",
+            "value_type": "password",
+            "is_sensitive": True,
+            "display_order": 43,
+        },
+        {
+            "key": "smtp_from_email",
+            "category": "email",
+            "description": "From email",
+            "value_type": "text",
+            "display_order": 44,
+        },
+        {
+            "key": "smtp_from_name",
+            "category": "email",
+            "description": "From name",
+            "value_type": "text",
+            "display_order": 45,
+        },
+    ]
+
+
+def _ai_telegram_defaults():
+    """Default AI model and Telegram bot settings."""
+    return [
+        {
             "key": "openrouter_model",
             "category": "ai",
             "value": "openrouter/auto",
@@ -2713,29 +2786,36 @@ def init_default_settings() -> None:
             "display_order": 4,
         },
         {
-            "key": "audit_log_retention_days",
-            "category": "security",
-            "value": "365",
-            "description": "Audit log retention (days, 0=keep forever)",
-            "value_type": "number",
-            "display_order": 32,
+            "key": "telegram_enabled",
+            "category": "telegram",
+            "value": "false",
+            "description": "Enable Telegram bot (true/false)",
+            "value_type": "boolean",
+            "display_order": 1,
         },
         {
-            "key": "phone_lookup_retention_days",
-            "category": "security",
-            "value": "90",
-            "description": "Phone lookup retention (days, 0=keep forever)",
-            "value_type": "number",
-            "display_order": 33,
-        },
-        {
-            "key": "webhook_url",
-            "category": "general",
+            "key": "telegram_bot_token",
+            "category": "telegram",
             "value": "",
-            "description": "Webhook URL for system notifications (POST JSON). Leave empty to disable.",
-            "value_type": "text",
-            "display_order": 51,
+            "description": "Bot token from @BotFather",
+            "value_type": "password",
+            "is_sensitive": True,
+            "display_order": 2,
         },
+        {
+            "key": "telegram_allowed_users",
+            "category": "telegram",
+            "value": "",
+            "description": "Comma-separated Telegram user IDs allowed to use the bot",
+            "value_type": "text",
+            "display_order": 3,
+        },
+    ]
+
+
+def _feature_flag_defaults():
+    """Default feature flag settings."""
+    return [
         {
             "key": "feature_email",
             "category": "feature_flags",
@@ -2848,58 +2928,12 @@ def init_default_settings() -> None:
             "value_type": "boolean",
             "display_order": 14,
         },
-        # WhatsApp / Telegram API keys
-        {
-            "key": "whatsapp_checkleaked_key",
-            "category": "api_keys",
-            "description": "whatsapp.checkleaked.cc API Key (RapidAPI: https://rapidapi.com/...). 📍 https://whatsapp.checkleaked.cc/pricing",
-            "value_type": "password",
-            "is_sensitive": True,
-            "display_order": 12,
-        },
-        {
-            "key": "telegram_rapidapi_key",
-            "category": "api_keys",
-            "description": "Telegram155 / TG Gateway API Key (RapidAPI: https://rapidapi.com/starnikovoleg/api/telegram155). 📍 https://rapidapi.com/starnikovoleg/api/telegram155",
-            "value_type": "password",
-            "is_sensitive": True,
-            "display_order": 13,
-        },
-        {
-            "key": "telegram_rapidapi_limit",
-            "category": "api_keys",
-            "value": "30",
-            "description": "Telegram155 API monthly limit (number of checks per month, resets on the 1st of each month)",
-            "value_type": "number",
-            "display_order": 14,
-        },
-        # Telegram bot settings
-        {
-            "key": "telegram_enabled",
-            "category": "telegram",
-            "value": "false",
-            "description": "Enable Telegram bot (true/false)",
-            "value_type": "boolean",
-            "display_order": 1,
-        },
-        {
-            "key": "telegram_bot_token",
-            "category": "telegram",
-            "value": "",
-            "description": "Bot token from @BotFather",
-            "value_type": "password",
-            "is_sensitive": True,
-            "display_order": 2,
-        },
-        {
-            "key": "telegram_allowed_users",
-            "category": "telegram",
-            "value": "",
-            "description": "Comma-separated Telegram user IDs allowed to use the bot",
-            "value_type": "text",
-            "display_order": 3,
-        },
-        # Twilio SMS/WhatsApp settings
+    ]
+
+
+def _communication_defaults():
+    """Default Twilio SMS/WhatsApp and rate limit settings."""
+    return [
         {
             "key": "twilio_account_sid",
             "category": "general",
@@ -2933,7 +2967,6 @@ def init_default_settings() -> None:
             "value_type": "text",
             "display_order": 63,
         },
-        # Rate limit tier defaults
         {
             "key": "rate_limit_tier_defaults",
             "category": "general",
@@ -2950,7 +2983,12 @@ def init_default_settings() -> None:
             "value_type": "text",
             "display_order": 71,
         },
-        # Tor / OPSEC settings
+    ]
+
+
+def _opsec_defaults():
+    """Default OPSEC, Tor, and stealth settings."""
+    return [
         {
             "key": "tor_enabled",
             "category": "opsec",
@@ -2983,7 +3021,6 @@ def init_default_settings() -> None:
             "value_type": "number",
             "display_order": 4,
         },
-        # Domain-based impersonation
         {
             "key": "domain_impersonation_enabled",
             "category": "opsec",
@@ -2992,7 +3029,6 @@ def init_default_settings() -> None:
             "value_type": "boolean",
             "display_order": 5,
         },
-        # Playwright stealth
         {
             "key": "playwright_stealth_enabled",
             "category": "opsec",
@@ -3001,7 +3037,6 @@ def init_default_settings() -> None:
             "value_type": "boolean",
             "display_order": 6,
         },
-        # Audit hash chain
         {
             "key": "audit_chain_enabled",
             "category": "opsec",
@@ -3010,7 +3045,6 @@ def init_default_settings() -> None:
             "value_type": "boolean",
             "display_order": 7,
         },
-        # Identity isolation
         {
             "key": "identity_isolation_enabled",
             "category": "opsec",
@@ -3020,13 +3054,47 @@ def init_default_settings() -> None:
             "display_order": 8,
         },
     ]
+
+
+def _sync_env_settings():
+    """Auto-sync .env values → DB for API keys (only if DB has no value set)."""
+    env_sync = {
+        "brave_api_key": "BRAVE_API_KEY",
+        "hibp_api_key": "HIBP_API_KEY",
+        "overheid_api_key": "OVERHEID_API_KEY",
+        "rapidapi_username_key": "RAPIDAPI_USERNAME_KEY",
+    }
+    synced = False
+    for setting_key, env_var in env_sync.items():
+        env_val = os.environ.get(env_var, "")
+        if not env_val:
+            continue
+        existing = Setting.query.filter_by(key=setting_key).first()
+        if existing and not existing.value:
+            existing.value = env_val
+            synced = True
+    if synced:
+        db.session.commit()
+
+
+def init_default_settings() -> None:
+    """Initialize all default settings."""
+    defaults = (
+        _osint_search_defaults()
+        + _integration_api_defaults()
+        + _general_defaults()
+        + _security_email_defaults()
+        + _ai_telegram_defaults()
+        + _feature_flag_defaults()
+        + _communication_defaults()
+        + _opsec_defaults()
+    )
     for default in defaults:
         existing = Setting.query.filter_by(key=default["key"]).first()
         if not existing:
             setting = Setting(**default)
             db.session.add(setting)
         else:
-            # Patch existing settings that are missing fields like options
             patched = False
             if default.get("options") and not existing.options:
                 existing.options = default["options"]
@@ -3047,24 +3115,7 @@ def init_default_settings() -> None:
                 existing.updated_at = datetime.now(timezone.utc)
     db.session.commit()
 
-    # Auto-sync .env values → DB for API keys (only if DB has no value set)
-    env_sync = {
-        "brave_api_key": "BRAVE_API_KEY",
-        "hibp_api_key": "HIBP_API_KEY",
-        "overheid_api_key": "OVERHEID_API_KEY",
-        "rapidapi_username_key": "RAPIDAPI_USERNAME_KEY",
-    }
-    synced = False
-    for setting_key, env_var in env_sync.items():
-        env_val = os.environ.get(env_var, "")
-        if not env_val:
-            continue
-        existing = Setting.query.filter_by(key=setting_key).first()
-        if existing and not existing.value:
-            existing.value = env_val
-            synced = True
-    if synced:
-        db.session.commit()
+    _sync_env_settings()
 
 
 # =============================================================================

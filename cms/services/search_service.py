@@ -299,34 +299,90 @@ def ddg_single_query(query, max_results=10):
     return results[:max_results]
 
 
-def person_dorks_search(full_name, cancel_event: threading.Event | None = None) -> dict:
-    """Search using Google dorks to find person info across web.
+_EXCLUDE_DOMAINS = [
+    "duckduckgo.com",
+    "bing.com",
+    "google.com",
+    "microsoft.com",
+    "yahoo.com",
+    "duck.com",
+    "brave.com",
+    "duckduckgo",
+    "lite.duckduckgo",
+]
 
-    Uses Brave Search API if available, falls back to multiple DuckDuckGo methods.
-    Tracks source for each result and shows which source was used.
-    """
-    from datetime import datetime
 
-    parts = full_name.strip().split()
-    if len(parts) < 2:
-        return {"error": "Please enter first and last name", "results": None}
+def _get_category(domain):
+    """Classify a domain into a content category."""
+    if any(
+        s in domain
+        for s in [
+            "linkedin",
+            "facebook",
+            "twitter",
+            "instagram",
+            "tiktok",
+            "youtube",
+            "mastodon",
+        ]
+    ):
+        return "social_media"
+    elif any(s in domain for s in ["pdf", "doc", "docx", "xls", "xlsx", "csv"]):
+        return "files"
+    elif any(s in domain for s in ["news", "medium", "blog", "wordpress", "substack"]):
+        return "news"
+    elif any(
+        s in domain
+        for s in [
+            "whitepages",
+            "truecaller",
+            "spokeo",
+            "pipl",
+            "fastbackgroundcheck",
+        ]
+    ):
+        return "people_search"
+    return "general"
 
-    first_name = parts[0]
-    last_name = " ".join(parts[1:])
 
-    logger.info(f"Dorks search started for: {full_name}")
-
-    dorks_log_file = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "dorks_log.txt"
-    )
-    log_start = f"\n=== {datetime.now()} - Dorks search: {full_name} ===\n"
+def _add_dork_result(link, query, source, results, seen):
+    """Add a single search result to the results dict if it passes filters."""
     try:
-        with _dorks_log_lock, open(dorks_log_file, "a") as f:
-            f.write(log_start)
-    except Exception:
-        logger.warning("Failed to write search log")
+        if not link or "://" not in link:
+            return
+        domain = re.sub(r"https?://(www\.)?", "", link).split("/")[0]
+        if (
+            domain
+            and domain not in seen
+            and not any(ex in domain for ex in _EXCLUDE_DOMAINS)
+        ):
+            seen.add(domain)
+            category = _get_category(domain)
 
+            results["dorks_results"].append(
+                {
+                    "url": link,
+                    "domain": domain,
+                    "query": query[:60] if query else "",
+                    "category": category,
+                    "source": source,
+                }
+            )
+            results["total_results"] += 1
+
+            if source == "brave":
+                results["brave_results_count"] += 1
+            elif source == "duckduckgo":
+                results["ddg_results_count"] += 1
+    except Exception:
+        logger.debug("Failed to parse search result")
+
+
+def _build_person_search_data(first_name, last_name, full_name):
+    """Build platform search links and dork queries for a person."""
     search_query = quote(f'"{first_name}" "{last_name}"')
+    full_query = first_name + " " + last_name
+
     search_links = [
         {
             "engine": "Google",
@@ -337,19 +393,19 @@ def person_dorks_search(full_name, cancel_event: threading.Event | None = None) 
         {
             "engine": "LinkedIn",
             "name": "Search on LinkedIn",
-            "url": f"https://www.linkedin.com/search/results/all/?keywords={quote(first_name + ' ' + last_name)}",
+            "url": f"https://www.linkedin.com/search/results/all/?keywords={quote(full_query)}",
             "query": "LinkedIn Profile",
         },
         {
             "engine": "Facebook",
             "name": "Search on Facebook",
-            "url": f"https://www.facebook.com/search/top?q={quote(first_name + ' ' + last_name)}",
+            "url": f"https://www.facebook.com/search/top?q={quote(full_query)}",
             "query": "Facebook Profile",
         },
         {
             "engine": "Twitter/X",
             "name": "Search on Twitter/X",
-            "url": f"https://nitter.net/search?f=users&q={quote(first_name + ' ' + last_name)}",
+            "url": f"https://nitter.net/search?f=users&q={quote(full_query)}",
             "query": "Twitter Profile",
         },
         {
@@ -367,13 +423,13 @@ def person_dorks_search(full_name, cancel_event: threading.Event | None = None) 
         {
             "engine": "Reddit",
             "name": "Search on Reddit",
-            "url": f"https://www.reddit.com/search/?q={quote(first_name + ' ' + last_name)}",
+            "url": f"https://www.reddit.com/search/?q={quote(full_query)}",
             "query": "Reddit Posts",
         },
         {
             "engine": "YouTube",
             "name": "Search on YouTube",
-            "url": f"https://www.youtube.com/results?search_query={quote(first_name + ' ' + last_name)}",
+            "url": f"https://www.youtube.com/results?search_query={quote(full_query)}",
             "query": "YouTube Channel",
         },
         {
@@ -405,6 +461,239 @@ def person_dorks_search(full_name, cancel_event: threading.Event | None = None) 
         f'"{full_name}" email',
     ]
 
+    return search_links, dork_queries
+
+
+def _run_brave_dorks(dork_queries, brave_api_key, results, seen, cancel_event, log_fn):
+    """Run dork queries using Brave Search API. Returns True if any results found."""
+    if not brave_api_key:
+        log_fn("Brave API key not configured - skipping Brave search")
+        return False
+
+    logger.info("Using Brave Search API")
+    results["sources_used"].append("brave")
+    log_fn("Using Brave Search API (key configured)")
+
+    brave_meta = {}
+    brave_success = False
+    for query in dork_queries[:6]:
+        if cancel_event and cancel_event.is_set():
+            log_fn("  Cancelled via cancel_event")
+            break
+        results["queries_run"].append(query)
+        try:
+            brave_results = brave_search(query, brave_api_key, brave_meta)
+            log_fn(f"Brave Query: {query}")
+            log_fn(f"  Brave found {len(brave_results)} results")
+            if brave_results:
+                brave_success = True
+                for item in brave_results:
+                    _add_dork_result(item.get("url", ""), query, "brave", results, seen)
+            time.sleep(0.15)
+        except Exception as e:
+            log_fn(f"  Brave error: {str(e)}")
+            logger.warning(f"Brave search error: {e}")
+
+    bs = brave_meta.get("brave_status", 0)
+    remaining = brave_meta.get("brave_remaining_monthly")
+    limit = brave_meta.get("brave_limit_monthly")
+    if remaining is not None and limit is not None:
+        used = limit - remaining
+        est_cost = 5.0 + (used / 1000) * 5.0
+        results["brave_usage"] = {
+            "remaining": remaining,
+            "limit": limit,
+            "used": used,
+            "estimated_cost": round(est_cost, 2),
+        }
+        pct = remaining / limit * 100 if limit else 0
+        if pct < 20:
+            logger.warning(
+                f"Brave API quota low: {remaining}/{limit} ({pct:.0f}%) — est. cost ${est_cost:.2f} this month"
+            )
+            results["brave_warning"] = (
+                f"Brave quota bijna op: {remaining}/{limit} ({pct:.0f}%) — ~${est_cost:.2f} deze maand"
+            )
+
+    if bs == 402:
+        results["brave_error"] = "Brave API quota exhausted (402)"
+    elif bs:
+        results["brave_error"] = f"Brave API returned HTTP {bs}"
+
+    return brave_success
+
+
+def _parse_ddg_lite(text):
+    """Extract URLs from DDG Lite HTML response."""
+    for pat in [
+        r'<a[^>]+rel="nofollow"[^>]+href="(https?://[^"]+)"',
+        r'<a[^>]+href="(https?://[^"]+)"[^>]*>',
+    ]:
+        links = re.findall(pat, text)
+        if links:
+            return links[:10]
+    return []
+
+
+def _parse_ddg_html(text):
+    """Extract URLs from DDG HTML response."""
+    redirect_links = re.findall(r'uddg=(https?%3A%2F%2F[^&"]+)', text)
+    if redirect_links:
+        return [unquote(unquote(link)) for link in redirect_links[:10]]
+
+    links = re.findall(r'<a[^>]+href="(https?://[^"]+)"[^>]*class="result__a"', text)
+    if not links:
+        links = re.findall(r'<a[^>]+href="(https?://[^"]+)"[^>]*rel="nofollow"', text)
+    return links[:10]
+
+
+def _parse_ddg_api(text):
+    """Extract URLs from DDG API JSON response."""
+    import json as _json
+
+    urls = []
+    try:
+        api_data = _json.loads(text)
+        seen = set()
+        for topic in api_data.get("RelatedTopics", []):
+            if "Topics" in topic:
+                for sub in topic["Topics"]:
+                    url = sub.get("FirstURL") or sub.get("URL", "")
+                    if url and url not in seen:
+                        seen.add(url)
+                        urls.append(url)
+            else:
+                url = topic.get("FirstURL") or topic.get("URL", "")
+                if url and url not in seen:
+                    seen.add(url)
+                    urls.append(url)
+        for res in api_data.get("Results", []):
+            url = res.get("FirstURL") or res.get("URL", "")
+            if url and url not in seen:
+                seen.add(url)
+                urls.append(url)
+    except Exception as e:
+        logger.debug("DDG API parse error: %s", e)
+    return urls
+
+
+_DDG_METHODS = [
+    {"name": "lite", "url": "https://lite.duckduckgo.com/lite/", "ua_chrome": "121"},
+    {"name": "html", "url": "https://html.duckduckgo.com/html/", "ua_chrome": "122"},
+    {"name": "api", "url": "https://api.duckduckgo.com/", "ua_chrome": "123"},
+]
+
+
+def _run_ddg_fallback(dork_queries, results, seen, log_fn):
+    """Fall back to DuckDuckGo scraping when Brave yields no results."""
+    logger.info("Trying DuckDuckGo scraping methods")
+    log_fn("Trying DuckDuckGo scraping...")
+
+    for method in _DDG_METHODS:
+        if results["ddg_results_count"] > 5:
+            break
+        if results["brave_results_count"] > 5:
+            break
+
+        try:
+            headers = dict(_DDG_HEADERS)
+            headers["User-Agent"] = _DDG_UA_BASE.format(method["ua_chrome"])
+            client = _get_http_client(timeout=7.0, headers=headers)
+
+            queries_to_run = (
+                dork_queries[:5] if method["name"] != "api" else dork_queries[:3]
+            )
+            for query in queries_to_run:
+                if results["ddg_results_count"] > 5:
+                    break
+
+                results["queries_run"].append(query)
+                method_url = method["url"]
+                params = {"q": query}
+                if method["name"] == "api":
+                    params.update(
+                        {"format": "json", "no_html": "1", "skip_disambig": "1"}
+                    )
+
+                try:
+                    jitter_sleep(domain_hint=method_url)
+                    response = client.get(method_url, params=params)
+
+                    log_fn(f"DDG {method['name']}: {query}")
+                    log_fn(f"  Status: {response.status_code}")
+
+                    if response.status_code == 200 and response.text:
+                        text = response.text
+                        if _ddg_is_blocked(text):
+                            log_fn("  BLOCKED — skipping method")
+                            break
+
+                        if method["name"] == "lite":
+                            urls = _parse_ddg_lite(text)
+                        elif method["name"] == "html":
+                            urls = _parse_ddg_html(text)
+                        else:
+                            urls = _parse_ddg_api(text)
+
+                        found_count = 0
+                        for url in urls:
+                            _add_dork_result(url, query, "duckduckgo", results, seen)
+                            found_count += 1
+
+                        if (
+                            found_count > 0
+                            and "duckduckgo" not in results["sources_used"]
+                        ):
+                            results["sources_used"].append("duckduckgo")
+                        log_fn(f"  Found {found_count} results")
+
+                except CurlError as e:
+                    log_fn(f"  CurlError: {str(e)[:80]}")
+                    continue
+                except Exception as e:
+                    log_fn(f"  Exception ({type(e).__name__}): {str(e)}")
+                    continue
+
+                time.sleep(0.5)
+
+            client.close()
+
+        except Exception as e:
+            log_fn(f"  Method error ({type(e).__name__}): {str(e)}")
+            continue
+
+
+def person_dorks_search(full_name, cancel_event: threading.Event | None = None) -> dict:
+    """Search using Google dorks to find person info across web.
+
+    Uses Brave Search API if available, falls back to multiple DuckDuckGo methods.
+    Tracks source for each result and shows which source was used.
+    """
+    from datetime import datetime
+
+    parts = full_name.strip().split()
+    if len(parts) < 2:
+        return {"error": "Please enter first and last name", "results": None}
+
+    first_name = parts[0]
+    last_name = " ".join(parts[1:])
+
+    logger.info(f"Dorks search started for: {full_name}")
+
+    dorks_log_file = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "dorks_log.txt"
+    )
+    log_start = f"\n=== {datetime.now()} - Dorks search: {full_name} ===\n"
+    try:
+        with _dorks_log_lock, open(dorks_log_file, "a") as f:
+            f.write(log_start)
+    except Exception:
+        logger.warning("Failed to write search log")
+
+    search_links, dork_queries = _build_person_search_data(
+        first_name, last_name, full_name
+    )
+
     results = {
         "name": full_name,
         "first_name": first_name,
@@ -417,87 +706,9 @@ def person_dorks_search(full_name, cancel_event: threading.Event | None = None) 
         "brave_results_count": 0,
         "ddg_results_count": 0,
     }
-
     seen = set()
-    exclude_domains = [
-        "duckduckgo.com",
-        "bing.com",
-        "google.com",
-        "microsoft.com",
-        "yahoo.com",
-        "duck.com",
-        "brave.com",
-        "duckduckgo",
-        "lite.duckduckgo",
-    ]
 
-    def get_category(domain):
-        if any(
-            s in domain
-            for s in [
-                "linkedin",
-                "facebook",
-                "twitter",
-                "instagram",
-                "tiktok",
-                "youtube",
-                "mastodon",
-            ]
-        ):
-            return "social_media"
-        elif any(s in domain for s in ["pdf", "doc", "docx", "xls", "xlsx", "csv"]):
-            return "files"
-        elif any(
-            s in domain for s in ["news", "medium", "blog", "wordpress", "substack"]
-        ):
-            return "news"
-        elif any(
-            s in domain
-            for s in [
-                "whitepages",
-                "truecaller",
-                "spokeo",
-                "pipl",
-                "fastbackgroundcheck",
-            ]
-        ):
-            return "people_search"
-        return "general"
-
-    def add_result(link, query, source="unknown"):
-        try:
-            if not link or "://" not in link:
-                return
-            domain = re.sub(r"https?://(www\.)?", "", link).split("/")[0]
-            if (
-                domain
-                and domain not in seen
-                and not any(ex in domain for ex in exclude_domains)
-            ):
-                seen.add(domain)
-                category = get_category(domain)
-
-                results["dorks_results"].append(
-                    {
-                        "url": link,
-                        "domain": domain,
-                        "query": query[:60] if query else "",
-                        "category": category,
-                        "source": source,
-                    }
-                )
-                results["total_results"] += 1
-
-                if source == "brave":
-                    results["brave_results_count"] += 1
-                elif source == "duckduckgo":
-                    results["ddg_results_count"] += 1
-        except Exception:
-            logger.debug("Failed to parse search result")
-
-    brave_success = False
-
-    def log_ddg(msg):
+    def log_fn(msg):
         try:
             with _dorks_log_lock, open(dorks_log_file, "a") as f:
                 f.write(msg + "\n")
@@ -506,233 +717,12 @@ def person_dorks_search(full_name, cancel_event: threading.Event | None = None) 
             logger.warning("Failed to flush search log")
 
     brave_api_key = _get_brave_key()
-    brave_meta: dict = {}
-    if brave_api_key:
-        logger.info("Using Brave Search API")
-        results["sources_used"].append("brave")
+    brave_success = _run_brave_dorks(
+        dork_queries, brave_api_key, results, seen, cancel_event, log_fn
+    )
 
-        log_ddg("Using Brave Search API (key configured)")
-
-        for query in dork_queries[:6]:
-            if cancel_event and cancel_event.is_set():
-                log_ddg("  Cancelled via cancel_event")
-                break
-            results["queries_run"].append(query)
-            try:
-                brave_results = brave_search(query, brave_api_key, brave_meta)
-                log_ddg(f"Brave Query: {query}")
-                log_ddg(f"  Brave found {len(brave_results)} results")
-                if brave_results:
-                    brave_success = True
-                    for item in brave_results:
-                        add_result(item.get("url", ""), query, "brave")
-                time.sleep(0.15)
-            except Exception as e:
-                log_ddg(f"  Brave error: {str(e)}")
-                logger.warning(f"Brave search error: {e}")
-
-        bs = brave_meta.get("brave_status", 0)
-        remaining = brave_meta.get("brave_remaining_monthly")
-        limit = brave_meta.get("brave_limit_monthly")
-        if remaining is not None and limit is not None:
-            used = limit - remaining
-            est_cost = 5.0 + (used / 1000) * 5.0
-            results["brave_usage"] = {
-                "remaining": remaining,
-                "limit": limit,
-                "used": used,
-                "estimated_cost": round(est_cost, 2),
-            }
-            pct = remaining / limit * 100 if limit else 0
-            if pct < 20:
-                logger.warning(
-                    f"Brave API quota low: {remaining}/{limit} ({pct:.0f}%) — est. cost ${est_cost:.2f} this month"
-                )
-                results["brave_warning"] = (
-                    f"Brave quota bijna op: {remaining}/{limit} ({pct:.0f}%) — ~${est_cost:.2f} deze maand"
-                )
-
-        if bs == 402:
-            results["brave_error"] = "Brave API quota exhausted (402)"
-        elif bs:
-            results["brave_error"] = f"Brave API returned HTTP {bs}"
-    else:
-        log_ddg("Brave API key not configured - skipping Brave search")
-
-    ddg_success = False
     if not brave_success or not results["dorks_results"]:
-        logger.info("Trying DuckDuckGo scraping methods")
-        log_ddg("Trying DuckDuckGo scraping...")
-
-        _ua_base = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{}.0.0.0 Safari/537.36"
-        _ddg_headers = {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Connection": "keep-alive",
-            "DNT": "1",
-        }
-
-        def _is_blocked(text):
-            return any(
-                p in text.lower()
-                for p in [
-                    "challenge-platform",
-                    "cf-browser-request",
-                    "please complete the security",
-                    "captcha",
-                    "ddos",
-                    "blocked",
-                    "automated requests",
-                ]
-            )
-
-        ddg_methods = [
-            # 1) DDG Lite — simplest HTML, most stable endpoint
-            {
-                "name": "lite",
-                "url": "https://lite.duckduckgo.com/lite/",
-                "ua_chrome": "121",
-            },
-            # 2) DDG HTML — full results, uses redirect wrapping
-            {
-                "name": "html",
-                "url": "https://html.duckduckgo.com/html/",
-                "ua_chrome": "122",
-            },
-            # 3) DDG JSON API — no scraping, limited results but very stable
-            {"name": "api", "url": "https://api.duckduckgo.com/", "ua_chrome": "123"},
-        ]
-
-        for method in ddg_methods:
-            if ddg_success and results["ddg_results_count"] > 5:
-                break
-            if results["brave_results_count"] > 5:
-                break
-
-            try:
-                headers = dict(_ddg_headers)
-                headers["User-Agent"] = _ua_base.format(method["ua_chrome"])
-                client = _get_http_client(timeout=7.0, headers=headers)
-
-                queries_to_run = (
-                    dork_queries[:5] if method["name"] != "api" else dork_queries[:3]
-                )
-                for query in queries_to_run:
-                    if ddg_success and results["ddg_results_count"] > 5:
-                        break
-
-                    results["queries_run"].append(query)
-                    method_url = method["url"]
-                    params = {"q": query}
-                    if method["name"] == "api":
-                        params.update(
-                            {"format": "json", "no_html": "1", "skip_disambig": "1"}
-                        )
-
-                    try:
-                        jitter_sleep(domain_hint=method_url)
-                        response = client.get(method_url, params=params)
-
-                        log_ddg(f"DDG {method['name']}: {query}")
-                        log_ddg(f"  Status: {response.status_code}")
-
-                        if response.status_code == 200 and response.text:
-                            text = response.text
-                            if _is_blocked(text):
-                                log_ddg("  BLOCKED — skipping method")
-                                break
-
-                            found_count = 0
-
-                            if method["name"] == "lite":
-                                for pat in [
-                                    r'<a[^>]+rel="nofollow"[^>]+href="(https?://[^"]+)"',
-                                    r'<a[^>]+href="(https?://[^"]+)"[^>]*>',
-                                ]:
-                                    links = re.findall(pat, text)
-                                    if links:
-                                        for link in links[:10]:
-                                            add_result(link, query, "duckduckgo")
-                                            found_count += 1
-                                        break
-
-                            elif method["name"] == "html":
-                                redirect_links = re.findall(
-                                    r'uddg=(https?%3A%2F%2F[^&"]+)', text
-                                )
-                                if redirect_links:
-                                    for link in redirect_links[:10]:
-                                        add_result(
-                                            unquote(unquote(link)), query, "duckduckgo"
-                                        )
-                                        found_count += 1
-                                else:
-                                    links = re.findall(
-                                        r'<a[^>]+href="(https?://[^"]+)"[^>]*class="result__a"',
-                                        text,
-                                    )
-                                    if not links:
-                                        links = re.findall(
-                                            r'<a[^>]+href="(https?://[^"]+)"[^>]*rel="nofollow"',
-                                            text,
-                                        )
-                                    for link in links[:10]:
-                                        add_result(link, query, "duckduckgo")
-                                        found_count += 1
-
-                            elif method["name"] == "api":
-                                try:
-                                    import json as _json
-
-                                    api_data = _json.loads(text)
-                                    seen_api = set()
-                                    for topic in api_data.get("RelatedTopics", []):
-                                        if "Topics" in topic:
-                                            for sub in topic["Topics"]:
-                                                url = sub.get("FirstURL") or sub.get(
-                                                    "URL", ""
-                                                )
-                                                if url and url not in seen_api:
-                                                    seen_api.add(url)
-                                                    add_result(url, query, "duckduckgo")
-                                                    found_count += 1
-                                        else:
-                                            url = topic.get("FirstURL") or topic.get(
-                                                "URL", ""
-                                            )
-                                            if url and url not in seen_api:
-                                                seen_api.add(url)
-                                                add_result(url, query, "duckduckgo")
-                                                found_count += 1
-                                    for res in api_data.get("Results", []):
-                                        url = res.get("FirstURL") or res.get("URL", "")
-                                        if url and url not in seen_api:
-                                            seen_api.add(url)
-                                            add_result(url, query, "duckduckgo")
-                                            found_count += 1
-                                except Exception as e:
-                                    log_ddg(f"  API parse error: {e}")
-
-                            if found_count > 0:
-                                ddg_success = True
-                                if "duckduckgo" not in results["sources_used"]:
-                                    results["sources_used"].append("duckduckgo")
-                            log_ddg(f"  Found {found_count} results")
-
-                    except CurlError as e:
-                        log_ddg(f"  CurlError: {str(e)[:80]}")
-                        continue
-                    except Exception as e:
-                        log_ddg(f"  Exception ({type(e).__name__}): {str(e)}")
-                        continue
-
-                    time.sleep(0.5)
-
-                client.close()
-
-            except Exception as e:
-                log_ddg(f"  Method error ({type(e).__name__}): {str(e)}")
-                continue
+        _run_ddg_fallback(dork_queries, results, seen, log_fn)
 
     if results["brave_results_count"] > 0:
         results["sources_used"].append("brave")
@@ -748,7 +738,7 @@ def person_dorks_search(full_name, cancel_event: threading.Event | None = None) 
         f"Search complete: {results['total_results']} results from {results['sources_used']}"
     )
 
-    log_ddg(
+    log_fn(
         f"=== COMPLETE: {results['total_results']} dork results, {len(results['search_links'])} search links ==="
     )
 

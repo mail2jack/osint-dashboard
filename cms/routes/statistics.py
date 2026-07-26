@@ -25,11 +25,8 @@ from sqlalchemy import func
 logger = logging.getLogger(__name__)
 
 
-@cms_bp.route("/settings/statistics")
-@login_required
-@admin_required
-def statistics() -> str:
-    """Statistics page with all dashboard widgets."""
+def _compute_case_stats() -> dict:
+    """Case statistics: counts by status/priority, totals, recent, overdue."""
     case_counts = dict(
         apply_tenant_filter(
             db.session.query(Case.status, func.count(Case.id))
@@ -90,6 +87,27 @@ def statistics() -> str:
         Case,
     ).count()
 
+    overdue_cases = apply_tenant_filter(
+        Case.query.filter(
+            Case.is_deleted == False,
+            Case.target_end_date < datetime.now(timezone.utc).date(),
+            Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
+        ),
+        Case,
+    ).count()
+
+    return {
+        "stats": stats,
+        "status_labels": status_labels,
+        "status_values": status_values,
+        "priority_data": priority_data,
+        "recent_cases": recent_cases,
+        "overdue_cases": overdue_cases,
+    }
+
+
+def _compute_subject_stats() -> dict:
+    """Subject statistics: type breakdown, case types, investigator workload."""
     subject_types = apply_tenant_filter(
         db.session.query(Subject.subject_type, func.count(Subject.id))
         .filter(Subject.is_deleted == False)
@@ -137,14 +155,26 @@ def statistics() -> str:
     investigator_names = [s.full_name for s in lead_investigator_stats]
     investigator_counts = [s.case_count for s in lead_investigator_stats]
 
+    return {
+        "subject_type_labels": subject_type_labels,
+        "subject_type_values": subject_type_values,
+        "case_type_labels": case_type_labels,
+        "case_type_values": case_type_values,
+        "investigator_names": investigator_names,
+        "investigator_counts": investigator_counts,
+    }
+
+
+def _compute_activity_stats() -> dict:
+    """Activity timeline: my cases, recent activity, priority cases."""
     from ..models import case_assignments
 
-    my_assigned_ids = (
-        db.session.query(case_assignments.c.case_id)
+    my_assigned_ids = [
+        row[0]
+        for row in db.session.query(case_assignments.c.case_id)
         .filter(case_assignments.c.user_id == current_user.id)
         .all()
-    )
-    my_assigned_ids = [row[0] for row in my_assigned_ids]
+    ]
 
     my_open_cases = apply_tenant_filter(
         Case.query.filter(
@@ -172,22 +202,6 @@ def statistics() -> str:
         Case,
     ).count()
 
-    overdue_cases = apply_tenant_filter(
-        Case.query.filter(
-            Case.is_deleted == False,
-            Case.target_end_date < datetime.now(timezone.utc).date(),
-            Case.status.in_([CaseStatus.OPEN.value, CaseStatus.ACTIVE.value]),
-        ),
-        Case,
-    ).count()
-
-    assigned_ids = (
-        db.session.query(case_assignments.c.case_id)
-        .filter(case_assignments.c.user_id == current_user.id)
-        .all()
-    )
-    assigned_ids = [row[0] for row in assigned_ids]
-
     my_cases = (
         apply_tenant_filter(
             Case.query.filter(
@@ -196,7 +210,9 @@ def statistics() -> str:
                 db.or_(
                     Case.assigned_to == current_user.id,
                     Case.lead_investigator_id == current_user.id,
-                    Case.id.in_(assigned_ids) if assigned_ids else Case.id == None,
+                    Case.id.in_(my_assigned_ids)
+                    if my_assigned_ids
+                    else Case.id == None,
                 ),
             ),
             Case,
@@ -232,6 +248,17 @@ def statistics() -> str:
         .all()
     )
 
+    return {
+        "my_open_cases": my_open_cases,
+        "my_active_cases": my_active_cases,
+        "my_cases": my_cases,
+        "recent_activity": recent_activity,
+        "priority_cases": priority_cases,
+    }
+
+
+def _compute_workflow_stats() -> dict:
+    """Workflow stats: reminders and SpiderFoot scan metrics."""
     now = datetime.now(timezone.utc)
     overdue_reminders = (
         Reminder.query.filter(
@@ -262,7 +289,6 @@ def statistics() -> str:
     if overdue_reminders:
         db.session.commit()
 
-    # SpiderFoot stats
     sf_total = apply_tenant_filter(
         SpiderFootScan.query.filter_by(is_deleted=False), SpiderFootScan
     ).count()
@@ -290,32 +316,55 @@ def statistics() -> str:
     sf_health = Setting.get("spiderfoot_health", "")
     sf_last_ok = Setting.get("spiderfoot_last_ok", "")
 
+    return {
+        "overdue_reminders": overdue_reminders,
+        "upcoming_reminders": upcoming_reminders,
+        "sf_total": sf_total,
+        "sf_running": sf_running,
+        "sf_completed": sf_completed,
+        "sf_failed": sf_failed,
+        "sf_last_scan_time": sf_last_scan_time,
+        "sf_health": sf_health,
+        "sf_last_ok": sf_last_ok,
+    }
+
+
+@cms_bp.route("/settings/statistics")
+@login_required
+@admin_required
+def statistics() -> str:
+    """Statistics page with all dashboard widgets."""
+    case = _compute_case_stats()
+    subject = _compute_subject_stats()
+    activity = _compute_activity_stats()
+    workflow = _compute_workflow_stats()
+
     return render_template(
         "cms/settings/statistics.html",
-        stats=stats,
-        my_cases=my_cases,
-        recent_activity=recent_activity,
-        priority_cases=priority_cases,
-        status_labels=status_labels,
-        status_values=status_values,
-        priority_data=priority_data,
-        recent_cases=recent_cases,
-        subject_type_labels=subject_type_labels,
-        subject_type_values=subject_type_values,
-        overdue_reminders=overdue_reminders,
-        upcoming_reminders=upcoming_reminders,
-        case_type_labels=case_type_labels,
-        case_type_values=case_type_values,
-        investigator_names=investigator_names,
-        investigator_counts=investigator_counts,
-        my_open_cases=my_open_cases,
-        my_active_cases=my_active_cases,
-        overdue_cases=overdue_cases,
-        sf_total=sf_total,
-        sf_running=sf_running,
-        sf_completed=sf_completed,
-        sf_failed=sf_failed,
-        sf_last_scan_time=sf_last_scan_time,
-        sf_health=sf_health,
-        sf_last_ok=sf_last_ok,
+        stats=case["stats"],
+        my_cases=activity["my_cases"],
+        recent_activity=activity["recent_activity"],
+        priority_cases=activity["priority_cases"],
+        status_labels=case["status_labels"],
+        status_values=case["status_values"],
+        priority_data=case["priority_data"],
+        recent_cases=case["recent_cases"],
+        subject_type_labels=subject["subject_type_labels"],
+        subject_type_values=subject["subject_type_values"],
+        overdue_reminders=workflow["overdue_reminders"],
+        upcoming_reminders=workflow["upcoming_reminders"],
+        case_type_labels=subject["case_type_labels"],
+        case_type_values=subject["case_type_values"],
+        investigator_names=subject["investigator_names"],
+        investigator_counts=subject["investigator_counts"],
+        my_open_cases=activity["my_open_cases"],
+        my_active_cases=activity["my_active_cases"],
+        overdue_cases=case["overdue_cases"],
+        sf_total=workflow["sf_total"],
+        sf_running=workflow["sf_running"],
+        sf_completed=workflow["sf_completed"],
+        sf_failed=workflow["sf_failed"],
+        sf_last_scan_time=workflow["sf_last_scan_time"],
+        sf_health=workflow["sf_health"],
+        sf_last_ok=workflow["sf_last_ok"],
     )
