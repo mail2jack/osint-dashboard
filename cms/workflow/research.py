@@ -127,6 +127,15 @@ def run_action(action_id):
             case = db.session.get(WorkflowCase, action.case_id)
             action_creator_id = case.created_by if case else None
 
+        # Decrypt subject identifiers so handlers can read plaintext
+        _case = db.session.get(WorkflowCase, action.case_id)
+        if _case:
+            for _s in _case.subjects:
+                try:
+                    _s.decrypt_identifiers()
+                except Exception:
+                    pass
+
         findings_data = entry["handler"](action)
 
         if is_action_cancelled(action_id):
@@ -375,9 +384,10 @@ def _site_dork_search(platform_domain, query, subject_id=None, icon="🔍"):
 
 
 def _email_check(action):
+    subject = _first_subject(action)
+    subject_id = subject.id if subject else None
     email = action.data_value if action.data_value else None
     if not email:
-        subject = _first_subject(action)
         email = subject.email if subject else None
     if not email:
         return []
@@ -404,6 +414,7 @@ def _email_check(action):
                         "source_type": "email",
                         "icon": "📧",
                         "verified": acct.get("verified", False),
+                        "subject_id": subject_id,
                         "screenshots": [{"url": None, "source_url": acct.get("url")}],
                     }
                 )
@@ -417,6 +428,7 @@ def _email_check(action):
                     "source_type": "email",
                     "icon": "⚠️",
                     "verified": False,
+                    "subject_id": subject_id,
                 }
             )
         if not confirmed and not unverified:
@@ -427,6 +439,7 @@ def _email_check(action):
                     "source_type": "email",
                     "icon": "📧",
                     "verified": False,
+                    "subject_id": subject_id,
                 }
             )
     except Exception as e:
@@ -437,6 +450,7 @@ def _email_check(action):
                 "source_type": "email",
                 "icon": "📧",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
 
@@ -460,6 +474,7 @@ def _email_check(action):
                             "source_type": "hibp",
                             "icon": "🔓",
                             "verified": False,
+                            "subject_id": subject_id,
                             "screenshots": [
                                 {
                                     "url": None,
@@ -490,6 +505,7 @@ def _email_check(action):
                     "source_type": "pgp",
                     "icon": "🔐",
                     "verified": True,
+                    "subject_id": subject_id,
                     "screenshots": [
                         {
                             "url": None,
@@ -517,6 +533,7 @@ def _email_check(action):
                         "source_type": "email_context",
                         "icon": "🔍",
                         "verified": False,
+                        "subject_id": subject_id,
                         "screenshots": [{"url": None, "source_url": res.get("url")}],
                     }
                 )
@@ -526,13 +543,14 @@ def _email_check(action):
 
 
 def _phone_check(action):
+    subject = _first_subject(action)
     phone = action.data_value if action.data_value else None
     if not phone:
-        subject = _first_subject(action)
         phone = subject.phone if subject else None
     if not phone:
         return []
     findings = []
+    subject_id = subject.id if subject else None
 
     import phonenumbers
     from phonenumbers import geocoder, carrier as pn_carrier, timezone as pn_tz
@@ -610,6 +628,7 @@ def _phone_check(action):
             "source_type": "phone",
             "icon": "📞",
             "verified": bool(enrichment.get("valid")),
+            "subject_id": subject_id,
         }
     )
 
@@ -623,6 +642,7 @@ def _phone_check(action):
                 "source_type": "phone",
                 "icon": "💬",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
     elif wa.get("exists") is False:
@@ -633,6 +653,7 @@ def _phone_check(action):
                 "source_type": "phone",
                 "icon": "💬",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
 
@@ -646,6 +667,7 @@ def _phone_check(action):
                 "source_type": "phone",
                 "icon": "✈️",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
 
@@ -684,6 +706,7 @@ def _phone_check(action):
                     "source_type": "phone",
                     "icon": "🏢" if ba.get("is_business") else "💬",
                     "verified": True,
+                    "subject_id": subject_id,
                     "screenshots": [
                         {
                             "url": ba["profile_pic"],
@@ -760,6 +783,7 @@ def _phone_check(action):
                                 "source_type": "phone",
                                 "icon": "🏢",
                                 "verified": True,
+                                "subject_id": subject_id,
                                 "screenshots": [
                                     {
                                         "url": wa_info.get("contact_profile_pic"),
@@ -778,9 +802,10 @@ def _phone_check(action):
 
 def _address_check(action):
     findings = []
+    subject = _first_subject(action)
+    subject_id = subject.id if subject else None
     address_query = action.data_value if action.data_value else None
     if not address_query:
-        subject = _first_subject(action)
         parts = []
         if subject:
             if subject.street:
@@ -799,6 +824,7 @@ def _address_check(action):
                 "source_type": "kadaster",
                 "icon": "🏠",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
         return findings
@@ -856,6 +882,7 @@ def _address_check(action):
                     "source_type": "kadaster",
                     "icon": "🏠",
                     "verified": False,
+                    "subject_id": subject_id,
                     "screenshots": [{"url": None, "source_url": bag_url}],
                 }
             )
@@ -867,6 +894,7 @@ def _address_check(action):
                 "source_type": "kadaster",
                 "icon": "🏠",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
     if not findings:
@@ -877,6 +905,7 @@ def _address_check(action):
                 "source_type": "kadaster",
                 "icon": "🏠",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
     return findings
@@ -905,15 +934,17 @@ def _social_scan(action):
     if not accounts_with_subject:
         for subject in action.case.subjects or []:
             sa_query = getattr(subject, "social_accounts", None)
+            has_social = False
             if sa_query is not None:
                 try:
                     count = sa_query.count()
                 except Exception:
                     count = 0
                 if count > 0:
+                    has_social = True
                     for sa in sa_query:
                         accounts_with_subject.append((sa, subject.id))
-            if subject.name:
+            if not has_social and subject.name:
                 accounts_with_subject.append((subject.name, subject.id))
 
     if not accounts_with_subject:
@@ -1065,6 +1096,7 @@ def _kvk_check(action):
     findings = []
     raw = action.data_value if action.data_value else None
     subject = _first_subject(action)
+    subject_id = subject.id if subject else None
     query = ""
     if raw:
         try:
@@ -1111,6 +1143,7 @@ def _kvk_check(action):
                             "source_type": "kvk",
                             "icon": "🏢",
                             "verified": False,
+                            "subject_id": subject_id,
                             "screenshots": [
                                 {
                                     "url": None,
@@ -1150,6 +1183,7 @@ def _kvk_check(action):
                     "source_type": "kvk",
                     "icon": "🏢",
                     "verified": False,
+                    "subject_id": subject_id,
                 }
             )
             return findings
@@ -1163,6 +1197,7 @@ def _kvk_check(action):
                     "source_type": "kvk",
                     "icon": "🏢",
                     "verified": False,
+                    "subject_id": subject_id,
                 }
             )
             return findings
@@ -1178,6 +1213,7 @@ def _kvk_check(action):
                     "source_type": "kvk",
                     "icon": "🏢",
                     "verified": False,
+                    "subject_id": subject_id,
                 }
             )
             return findings
@@ -1226,6 +1262,7 @@ def _kvk_check(action):
                     "source_type": "kvk",
                     "icon": "🏢",
                     "verified": False,
+                    "subject_id": subject_id,
                     "screenshots": [
                         {
                             "url": None,
@@ -1243,6 +1280,7 @@ def _kvk_check(action):
                 "source_type": "kvk",
                 "icon": "🏢",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
 
@@ -1251,10 +1289,11 @@ def _kvk_check(action):
 
 def _rdw_check(action):
     findings = []
+    subject = _first_subject(action)
     ipc = action.data_value if action.data_value else None
     if not ipc:
-        subject = _first_subject(action)
         ipc = getattr(subject, "identification_number", None) if subject else None
+    subject_id = subject.id if subject else None
     if not ipc:
         findings.append(
             {
@@ -1263,6 +1302,7 @@ def _rdw_check(action):
                 "source_type": "rdw",
                 "icon": "🚗",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
         return findings
@@ -1307,6 +1347,7 @@ def _rdw_check(action):
                     "source_type": "rdw",
                     "icon": "🚗",
                     "verified": False,
+                    "subject_id": subject_id,
                     "raw_data": data,
                 }
             )
@@ -1318,6 +1359,7 @@ def _rdw_check(action):
                     "source_type": "rdw",
                     "icon": "🚗",
                     "verified": False,
+                    "subject_id": subject_id,
                 }
             )
     except Exception as e:
@@ -1328,6 +1370,7 @@ def _rdw_check(action):
                 "source_type": "rdw",
                 "icon": "🚗",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
     return findings
@@ -1335,7 +1378,6 @@ def _rdw_check(action):
 
 def _vessel_check(action):
     findings = []
-    from cms.encryption_utils import encryptor
 
     identifier = action.data_value if action.data_value else None
     subject = _first_subject(action)
@@ -1355,40 +1397,14 @@ def _vessel_check(action):
             name = name or subject.name
     else:
         if subject and subject.subject_type == "vessel":
-            try:
-                imo = (
-                    encryptor.decrypt(subject.imo_number)
-                    if subject.imo_number
-                    else None
-                )
-            except Exception:
-                imo = None
-            try:
-                mmsi = encryptor.decrypt(subject.mmsi) if subject.mmsi else None
-            except Exception:
-                mmsi = None
-            try:
-                eni = (
-                    encryptor.decrypt(subject.eni_number)
-                    if subject.eni_number
-                    else None
-                )
-            except Exception:
-                eni = None
+            imo = subject.imo_number or None
+            mmsi = subject.mmsi or None
+            eni = subject.eni_number or None
             name = subject.name
 
             # Fallback to identification_number (workflow IMO-veld)
             if not imo and subject.identification_number:
                 raw = subject.identification_number
-                try:
-                    raw = encryptor.decrypt(raw)
-                except Exception:
-                    logger.warning(
-                        "Failed to decrypt identification_number for subject %s",
-                        subject.id,
-                        exc_info=True,
-                    )
-                    raw = ""
                 if re.match(r"^\d{7}$", raw.strip()):
                     imo = raw.strip()
                 else:
@@ -1834,6 +1850,7 @@ def _facebook_check(action):
                 "source_type": "facebook",
                 "icon": "📘",
                 "verified": False,
+                "subject_id": subject_id,
                 "screenshots": [{"url": None, "source_url": url}] if url else [],
             }
         )
@@ -2100,6 +2117,7 @@ def _tiktok_check(action):
                 "source_type": "tiktok",
                 "icon": "🎵",
                 "verified": False,
+                "subject_id": subject_id,
                 "screenshots": [{"url": None, "source_url": url}] if url else [],
             }
         )
@@ -2232,6 +2250,7 @@ def _instagram_check(action):
                 "source_type": "instagram",
                 "icon": "📸",
                 "verified": False,
+                "subject_id": subject_id,
                 "screenshots": [{"url": None, "source_url": url}] if url else [],
             }
         )
@@ -2357,6 +2376,7 @@ def _linkedin_check(action):
                 "source_type": "linkedin",
                 "icon": "💼",
                 "verified": False,
+                "subject_id": subject_id,
                 "screenshots": [{"url": None, "source_url": url}] if url else [],
             }
         )
@@ -2539,6 +2559,7 @@ def _twitter_check(action):
                 "source_type": "twitter",
                 "icon": "🐦",
                 "verified": False,
+                "subject_id": subject_id,
                 "screenshots": [{"url": None, "source_url": url}] if url else [],
             }
         )
