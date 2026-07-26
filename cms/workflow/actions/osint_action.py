@@ -143,34 +143,10 @@ def _osint_deep_search(action):
     return findings
 
 
-def _google_dork_search(action):
-    """Execute a user-constructed Google dork query.
-
-    Priority: Brave (best quality) → DDG (free fallback) → direct lookups.
-    """
-    from cms.services.search_service import brave_search, ddg_single_query
-
-    raw_value = action.data_value if action.data_value else None
-    subject = _first_subject(action)
-    subject_id = subject.id if subject else None
-    if not raw_value:
-        return []
-
-    dork_label = ""
-    dork_id = ""
-    query = raw_value
-    try:
-        payload = json.loads(raw_value)
-        if isinstance(payload, dict) and "query" in payload:
-            query = payload["query"]
-            dork_label = payload.get("dork_label", "")
-            dork_id = payload.get("dork_id", "")
-    except (json.JSONDecodeError, TypeError):
-        pass
-
+def _process_dork_results(raw_results, dork_label, dork_id, query, subject_id):
+    """Process raw search results into findings, deduplicating by URL."""
     findings = []
     seen_urls = set()
-    plain_query = _strip_dork_syntax(query)
 
     def _add_finding(r):
         url = r.get("url", "")
@@ -198,26 +174,41 @@ def _google_dork_search(action):
             }
         )
 
-    # Phase 1: Brave (best quality, proper title/description)
+    for r in raw_results:
+        _add_finding(r)
+    return findings, seen_urls
+
+
+def _execute_dork_queries(
+    plain_query, subject, action, dork_label, dork_id, subject_id
+):
+    """Run Brave then DDG dork searches, returning findings and seen URLs."""
+    from cms.services.search_service import brave_search, ddg_single_query
+
+    all_raw = []
+
     brave_key = _get_api_key("brave_api_key")
     if plain_query and brave_key:
         try:
-            results = brave_search(plain_query, api_key=brave_key)
-            for r in results[:10]:
-                _add_finding(r)
+            all_raw.extend(brave_search(plain_query, api_key=brave_key)[:10])
         except Exception as e:
             logger.debug("Brave dork search failed: %s", e)
 
-    # Phase 2: DDG fallback (free, less reliable titles)
+    findings, seen_urls = _process_dork_results(
+        all_raw, dork_label, dork_id, query=plain_query, subject_id=subject_id
+    )
+
     if plain_query and not findings:
         try:
             ddg_raw = ddg_single_query(plain_query, max_results=10)
-            for r in ddg_raw:
-                _add_finding(r)
+            ddg_findings, ddg_seen = _process_dork_results(
+                ddg_raw, dork_label, dork_id, query=plain_query, subject_id=subject_id
+            )
+            findings.extend(ddg_findings)
+            seen_urls.update(ddg_seen)
         except Exception as e:
             logger.debug("DDG dork search failed: %s", e)
 
-    # Phase 4: Direct database lookup for KvK dorks
     if dork_id.startswith("company-kvk") and subject:
         try:
             kvk_findings = _kvk_check(action)
@@ -228,6 +219,37 @@ def _google_dork_search(action):
                     findings.append(f)
         except Exception as e:
             logger.debug("KvK direct lookup from dork failed: %s", e)
+
+    return findings, seen_urls
+
+
+def _google_dork_search(action):
+    """Execute a user-constructed Google dork query.
+
+    Priority: Brave (best quality) → DDG (free fallback) → direct lookups.
+    """
+    raw_value = action.data_value if action.data_value else None
+    subject = _first_subject(action)
+    subject_id = subject.id if subject else None
+    if not raw_value:
+        return []
+
+    dork_label = ""
+    dork_id = ""
+    query = raw_value
+    try:
+        payload = json.loads(raw_value)
+        if isinstance(payload, dict) and "query" in payload:
+            query = payload["query"]
+            dork_label = payload.get("dork_label", "")
+            dork_id = payload.get("dork_id", "")
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    plain_query = _strip_dork_syntax(query)
+    findings, _ = _execute_dork_queries(
+        plain_query, subject, action, dork_label, dork_id, subject_id
+    )
 
     if not findings:
         no_result_detail = f"The query returned no results: {query}"

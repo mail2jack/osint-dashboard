@@ -37,7 +37,12 @@ from ..models import (
     ProrationLog,
     init_default_settings,
 )
-from ..auth import admin_required, apply_tenant_filter, ensure_tenant_access
+from ..auth import (
+    admin_required,
+    super_admin_required,
+    apply_tenant_filter,
+    ensure_tenant_access,
+)
 from ..validation import validate, SaveSettingsSchema
 
 from .response import api_success, api_error
@@ -274,11 +279,9 @@ def save_settings_api() -> flask.Response:
 
 @cms_bp.route("/api/platform-settings")
 @login_required
-@admin_required
+@super_admin_required
 def get_platform_settings() -> flask.Response:
     """Get all platform settings."""
-    if not current_user.is_super_admin:
-        abort(403)
     settings_list = PlatformSetting.query.order_by(PlatformSetting.key).all()
     return jsonify(
         {
@@ -300,11 +303,9 @@ def get_platform_settings() -> flask.Response:
 
 @cms_bp.route("/api/platform-settings", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def save_platform_settings() -> flask.Response:
     """Save platform settings."""
-    if not current_user.is_super_admin:
-        abort(403)
     data = request.get_json() or {}
     saved_count = 0
     for item in data.get("settings", []):
@@ -386,11 +387,9 @@ def save_tenant_settings() -> flask.Response:
 
 @cms_bp.route("/api/platform-settings/<setting_id>/reset", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def reset_platform_setting(setting_id: str) -> flask.Response:
     """Delete a platform setting (reset to default)."""
-    if not current_user.is_super_admin:
-        abort(403)
     setting = db.session.get(PlatformSetting, setting_id) or abort(404)
     db.session.delete(setting)
     AuditLog.log(
@@ -702,11 +701,9 @@ def api_delete_api_key(key_id: str) -> flask.Response:
 
 @cms_bp.route("/tenants")
 @login_required
-@admin_required
+@super_admin_required
 def list_tenants() -> str:
     """List all tenants (super admin only)."""
-    if not current_user.is_super_admin:
-        abort(403)
     tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
     from collections import Counter
 
@@ -740,11 +737,9 @@ def list_tenants() -> str:
 
 @cms_bp.route("/tenants/<tenant_id>")
 @login_required
-@admin_required
+@super_admin_required
 def tenant_detail(tenant_id: str) -> str:
     """Tenant detail page (super admin only)."""
-    if not current_user.is_super_admin:
-        abort(403)
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
 
     users = (
@@ -813,11 +808,9 @@ def tenant_detail(tenant_id: str) -> str:
 
 @cms_bp.route("/api/tenants")
 @login_required
-@admin_required
+@super_admin_required
 def get_tenants_api() -> flask.Response:
     """Get all tenants with user counts."""
-    if not current_user.is_super_admin:
-        abort(403)
     tenants = Tenant.query.order_by(Tenant.created_at.desc()).all()
     return jsonify(
         {
@@ -834,11 +827,9 @@ def get_tenants_api() -> flask.Response:
 
 @cms_bp.route("/api/tenants", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def create_tenant() -> flask.Response:
     """Create a new tenant."""
-    if not current_user.is_super_admin:
-        abort(403)
     data = request.get_json() or {}
     name = data.get("name", "").strip()
     slug = data.get("slug", "").strip()
@@ -873,12 +864,10 @@ def create_tenant() -> flask.Response:
 
 @cms_bp.route("/api/tenants/<tenant_id>", methods=["PUT"])
 @login_required
-@admin_required
+@super_admin_required
 def update_tenant(tenant_id: str) -> flask.Response:
     """Update tenant name, slug, domain, or tier."""
     try:
-        if not current_user.is_super_admin:
-            abort(403)
         tenant = db.session.get(Tenant, tenant_id) or abort(404)
         data = request.get_json() or {}
         name = data.get("name", "").strip()
@@ -913,12 +902,10 @@ def update_tenant(tenant_id: str) -> flask.Response:
 
 @cms_bp.route("/api/tenants/<tenant_id>", methods=["DELETE"])
 @login_required
-@admin_required
+@super_admin_required
 def delete_tenant(tenant_id: str) -> flask.Response:
     """Delete a tenant (super admin only)."""
     try:
-        if not current_user.is_super_admin:
-            abort(403)
         tenant = db.session.get(Tenant, tenant_id) or abort(404)
         if not tenant:
             return api_error("Tenant not found", 404)
@@ -933,11 +920,9 @@ def delete_tenant(tenant_id: str) -> flask.Response:
 
 @cms_bp.route("/api/tenants/<tenant_id>/toggle", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def toggle_tenant(tenant_id: str) -> flask.Response:
     """Toggle tenant active status."""
-    if not current_user.is_super_admin:
-        abort(403)
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
     tenant.is_active = not tenant.is_active
     db.session.commit()
@@ -951,11 +936,9 @@ def toggle_tenant(tenant_id: str) -> flask.Response:
 
 @cms_bp.route("/switch-tenant/<tenant_id>", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def switch_tenant(tenant_id: str) -> flask.Response:
     """Super-admin: switch tenant context to inspect tenant data."""
-    if not current_user.is_super_admin:
-        abort(403)
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
     session["switched_tenant_id"] = tenant.id
     flash(f"Switched to tenant: {tenant.name}", "info")
@@ -978,10 +961,8 @@ def clear_switch_tenant() -> flask.Response:
 
 @cms_bp.route("/tenants/<tenant_id>/invite", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def tenant_invite_user(tenant_id: str) -> flask.Response:
-    if not current_user.is_super_admin:
-        abort(403)
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
     email = (request.form.get("email") or "").strip().lower()
     role = request.form.get("role", "investigator").strip()
@@ -1025,10 +1006,8 @@ def tenant_invite_user(tenant_id: str) -> flask.Response:
 
 @cms_bp.route("/tenants/<tenant_id>/users/<user_id>/deactivate", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def tenant_deactivate_user(tenant_id: str, user_id: str) -> flask.Response:
-    if not current_user.is_super_admin:
-        abort(403)
     db.session.get(Tenant, tenant_id) or abort(404)
     user = db.session.get(User, user_id) or abort(404)
     if user.tenant_id != tenant_id:
@@ -1052,10 +1031,8 @@ def tenant_deactivate_user(tenant_id: str, user_id: str) -> flask.Response:
 
 @cms_bp.route("/tenants/<tenant_id>/users/<user_id>/reactivate", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def tenant_reactivate_user(tenant_id: str, user_id: str) -> flask.Response:
-    if not current_user.is_super_admin:
-        abort(403)
     db.session.get(Tenant, tenant_id) or abort(404)
     user = db.session.get(User, user_id) or abort(404)
     if user.tenant_id != tenant_id:
@@ -1076,10 +1053,8 @@ def tenant_reactivate_user(tenant_id: str, user_id: str) -> flask.Response:
 
 @cms_bp.route("/tenants/<tenant_id>/users/<user_id>/role", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def tenant_change_role(tenant_id: str, user_id: str) -> flask.Response:
-    if not current_user.is_super_admin:
-        abort(403)
     db.session.get(Tenant, tenant_id) or abort(404)
     user = db.session.get(User, user_id) or abort(404)
     if user.tenant_id != tenant_id:
@@ -1112,10 +1087,8 @@ def tenant_change_role(tenant_id: str, user_id: str) -> flask.Response:
 
 @cms_bp.route("/tenants/<tenant_id>/users/<user_id>/reset-2fa", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def tenant_reset_2fa(tenant_id: str, user_id: str) -> flask.Response:
-    if not current_user.is_super_admin:
-        abort(403)
     db.session.get(Tenant, tenant_id) or abort(404)
     user = db.session.get(User, user_id) or abort(404)
     if user.tenant_id != tenant_id:
@@ -1138,11 +1111,9 @@ def tenant_reset_2fa(tenant_id: str, user_id: str) -> flask.Response:
 
 @cms_bp.route("/tenants/<tenant_id>/billing-portal")
 @login_required
-@admin_required
+@super_admin_required
 def tenant_billing_portal(tenant_id: str) -> flask.Response:
     """Super-admin: open Stripe customer portal for a specific tenant."""
-    if not current_user.is_super_admin:
-        abort(403)
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
     if not tenant.stripe_customer_id:
         flash("No Stripe customer ID for this tenant.", "warning")
@@ -1234,11 +1205,9 @@ def delete_tenant_logo():
 
 @cms_bp.route("/tenants/<tenant_id>/settings", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def tenant_update_settings(tenant_id: str) -> flask.Response:
     """Super-admin: update tenant name/slug/domain."""
-    if not current_user.is_super_admin:
-        abort(403)
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
     name = (request.form.get("name") or "").strip()
     slug = (request.form.get("slug") or "").strip()
@@ -1280,11 +1249,9 @@ def tenant_update_settings(tenant_id: str) -> flask.Response:
 
 @cms_bp.route("/tenants/<tenant_id>/toggle-active", methods=["POST"])
 @login_required
-@admin_required
+@super_admin_required
 def tenant_toggle_active(tenant_id: str) -> flask.Response:
     """Super-admin: toggle tenant active/inactive."""
-    if not current_user.is_super_admin:
-        abort(403)
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
     tenant.is_active = not tenant.is_active
     action = "activated" if tenant.is_active else "deactivated"

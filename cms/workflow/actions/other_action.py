@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import threading
 
 import requests
 from cms.models import db
@@ -25,113 +26,125 @@ def _financial_check(action):
     ]
 
 
-def _subdomain_check(action):
+def _query_crtsh(domain):
+    """Query crt.sh for subdomains via certificate transparency logs."""
+    from cms.constants import HEADERS
+
+    url = f"https://crt.sh/?q=%25.{domain}&output=json"
+    headers = dict(HEADERS)
+    headers["Accept"] = "application/json"
+    subs = set()
+
+    for attempt in range(2):
+        try:
+            resp = jittered_get(url, headers=headers, timeout=60)
+            if resp.status_code in (502, 503, 504):
+                threading.Event().wait(2)
+                continue
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                except json.JSONDecodeError:
+                    body_len = len(
+                        getattr(resp, "text", "") or getattr(resp, "content", b"") or ""
+                    )
+                    raise ValueError(
+                        f"crt.sh returned no valid JSON ({body_len} bytes)"
+                    )
+                for entry in data:
+                    raw = entry.get("name_value", "")
+                    for name in raw.split("\n"):
+                        name = name.strip().lower()
+                        if name.startswith("*."):
+                            name = name[2:]
+                        if name.endswith(f".{domain}") or name == domain:
+                            subs.add(name)
+                break
+        except (requests.RequestException, ValueError):
+            if attempt == 0:
+                threading.Event().wait(3)
+                continue
+            raise
+    return subs
+
+
+def _query_certspotter(domain):
+    """Fallback: query CertSpotter API for subdomains."""
+    from cms.constants import HEADERS
+
+    cs_url = f"https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names&after="
+    cs_headers = {
+        "Accept": "application/json",
+        "User-Agent": HEADERS.get("User-Agent", "Mozilla/5.0"),
+    }
+    subs = set()
+    try:
+        cs_resp = jittered_get(cs_url, headers=cs_headers, timeout=30)
+        if cs_resp.status_code == 200:
+            try:
+                cs_data = cs_resp.json()
+            except json.JSONDecodeError:
+                cs_data = []
+            for entry in cs_data:
+                for name in entry.get("dns_names", []):
+                    name = name.strip().lower().lstrip("*.")
+                    if name.endswith(f".{domain}") or name == domain:
+                        subs.add(name)
+    except requests.RequestException:
+        logger.debug("Certspotter fallback failed for %s", domain, exc_info=True)
+    return subs
+
+
+def _process_subdomains(subs, domain):
+    """Deduplicate and format subdomain findings."""
     findings = []
+    sorted_subs = sorted(subs)[:50]
+    if not sorted_subs:
+        findings.append(
+            {
+                "title": f"No subdomains found for {domain}",
+                "detail": "No certificate transparency logs with subdomains were found.",
+                "source_type": "subdomain",
+                "icon": "🌐",
+                "verified": False,
+            }
+        )
+        return findings
+
+    findings.append(
+        {
+            "title": f"{len(sorted_subs)} subdomains found for {domain}",
+            "detail": "\n".join(sorted_subs[:30])
+            + ("\n... and more" if len(sorted_subs) > 30 else ""),
+            "source_url": f"https://crt.sh/?q=%25.{domain}",
+            "source_type": "subdomain",
+            "icon": "🌐",
+            "verified": True,
+            "screenshots": [
+                {"url": None, "source_url": f"https://crt.sh/?q=%25.{domain}"}
+            ],
+        }
+    )
+    return findings
+
+
+def _subdomain_check(action):
+    """Check subdomains for a domain via crt.sh and CertSpotter."""
     domain = action.data_value if action.data_value else None
     if not domain:
         subject = _first_subject(action)
         if subject and subject.email and "@" in subject.email:
             domain = subject.email.split("@")[1]
     if not domain:
-        return findings
+        return []
 
     try:
-        from cms.constants import HEADERS
-        import time
-
-        url = f"https://crt.sh/?q=%25.{domain}&output=json"
-        headers = dict(HEADERS)
-        headers["Accept"] = "application/json"
-
-        subs = set()
-
-        # Try up to 2 times with longer timeout
-        for attempt in range(2):
-            try:
-                resp = jittered_get(url, headers=headers, timeout=60)
-                if resp.status_code in (502, 503, 504):
-                    time.sleep(2)
-                    continue
-                if resp.status_code == 200:
-                    try:
-                        data = resp.json()
-                    except json.JSONDecodeError:
-                        body_len = len(
-                            getattr(resp, "text", "")
-                            or getattr(resp, "content", b"")
-                            or ""
-                        )
-                        raise ValueError(
-                            f"crt.sh returned no valid JSON ({body_len} bytes)"
-                        )
-                    for entry in data:
-                        raw = entry.get("name_value", "")
-                        for name in raw.split("\n"):
-                            name = name.strip().lower()
-                            if name.startswith("*."):
-                                name = name[2:]
-                            if name.endswith(f".{domain}") or name == domain:
-                                subs.add(name)
-                    break
-            except (requests.RequestException, ValueError):
-                if attempt == 0:
-                    time.sleep(3)
-                    continue
-                raise
-
+        subs = _query_crtsh(domain)
         if not subs:
-            # Fallback: try certspotter API (no Cloudflare)
-            try:
-                cs_url = f"https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names&after="
-                cs_headers = {
-                    "Accept": "application/json",
-                    "User-Agent": HEADERS.get("User-Agent", "Mozilla/5.0"),
-                }
-                cs_resp = jittered_get(cs_url, headers=cs_headers, timeout=30)
-                if cs_resp.status_code == 200:
-                    try:
-                        cs_data = cs_resp.json()
-                    except json.JSONDecodeError:
-                        cs_data = []
-                    for entry in cs_data:
-                        for name in entry.get("dns_names", []):
-                            name = name.strip().lower().lstrip("*.")
-                            if name.endswith(f".{domain}") or name == domain:
-                                subs.add(name)
-            except requests.RequestException:
-                logger.debug(
-                    "Certspotter fallback failed for %s", domain, exc_info=True
-                )
-
-        sorted_subs = sorted(subs)[:50]
-        if not sorted_subs:
-            findings.append(
-                {
-                    "title": f"No subdomains found for {domain}",
-                    "detail": "No certificate transparency logs with subdomains were found.",
-                    "source_type": "subdomain",
-                    "icon": "🌐",
-                    "verified": False,
-                }
-            )
-            return findings
-
-        findings.append(
-            {
-                "title": f"{len(sorted_subs)} subdomains found for {domain}",
-                "detail": "\n".join(sorted_subs[:30])
-                + ("\n... and more" if len(sorted_subs) > 30 else ""),
-                "source_url": f"https://crt.sh/?q=%25.{domain}",
-                "source_type": "subdomain",
-                "icon": "🌐",
-                "verified": True,
-                "screenshots": [
-                    {"url": None, "source_url": f"https://crt.sh/?q=%25.{domain}"}
-                ],
-            }
-        )
+            subs = _query_certspotter(domain)
+        return _process_subdomains(subs, domain)
     except Exception as e:
-        findings.append(
+        return [
             {
                 "title": f"Subdomein scan error: {e}",
                 "detail": str(e),
@@ -139,8 +152,7 @@ def _subdomain_check(action):
                 "icon": "🌐",
                 "verified": False,
             }
-        )
-    return findings
+        ]
 
 
 def _photo_analysis(action):

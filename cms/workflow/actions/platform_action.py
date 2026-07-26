@@ -8,41 +8,61 @@ from cms.workflow.actions.registry import _use_credit, _has_credits
 
 logger = logging.getLogger(__name__)
 
+PLATFORM_API_URLS = {
+    "facebook_pullapi": "https://facebook-scraper-api9.p.rapidapi.com/facebook/profile",
+    "facebook_scraper3": "https://facebook-scraper3.p.rapidapi.com",
+    "tiktok_user": "https://scraptik.p.rapidapi.com/get-user",
+    "tiktok_search": "https://scraptik.p.rapidapi.com/search-users",
+    "instagram_userinfo": "https://pro-social.p.rapidapi.com/userinfo_username/",
+    "instagram_search": "https://pro-social.p.rapidapi.com/usersearch/",
+    "linkedin_base": "https://linkedin-data-api.p.rapidapi.com",
+    "twitter_screenname": "https://twitter-api45.p.rapidapi.com/screenname.php",
+    "twitter_search": "https://twitter-api45.p.rapidapi.com/search.php",
+}
 
-def _facebook_check(action):
-    findings = []
-    api_key = _get_api_key("rapidapi_username_key")
 
+# ─── Shared helpers ─────────────────────────────────────────────
+
+
+def _resolve_query(action):
     query = action.data_value if action.data_value else None
     subject = _first_subject(action)
     if not query:
         query = subject.name if subject else ""
     if not query:
-        return findings
-
+        return None
     subject_id = subject.id if subject else None
     name_for_dork = subject.name if subject else query
+    return query, subject_id, name_for_dork
 
-    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
-    dork_findings = _site_dork_search(
-        "facebook.com", name_for_dork, subject_id, icon="📘"
-    )
-    seen_urls = set()
-    for f in dork_findings:
-        url = f.get("source_url")
-        if url:
-            seen_urls.add(url)
-    findings.extend(dork_findings)
 
-    # ─── Phase 2: API enrichment (only if key available) ────
-    if not api_key:
-        return findings
+def _run_dork_search(domain, name_for_dork, subject_id, icon, extra_domains=None):
+    dork_findings = _site_dork_search(domain, name_for_dork, subject_id, icon=icon)
+    if extra_domains:
+        for extra in extra_domains:
+            dork_findings += _site_dork_search(
+                extra, name_for_dork, subject_id, icon=icon
+            )
+        seen_urls = set()
+        deduped = []
+        for f in dork_findings:
+            url = f.get("source_url")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                deduped.append(f)
+        return deduped, seen_urls
+    else:
+        seen_urls = set()
+        for f in dork_findings:
+            url = f.get("source_url")
+            if url:
+                seen_urls.add(url)
+        return dork_findings, seen_urls
 
-    is_url = query.startswith("http://") or query.startswith("https://")
-    is_username = (
-        not is_url and "/" not in query and " " not in query and len(query) < 100
-    )
 
+def _make_add_api_finding(
+    findings, seen_urls, platform_name, source_type, icon, subject_id
+):
     def add_api_finding(name, url, detail=""):
         if url and url in seen_urls:
             return
@@ -50,16 +70,48 @@ def _facebook_check(action):
             seen_urls.add(url)
         findings.append(
             {
-                "title": f"Facebook: {name}",
+                "title": f"{platform_name}: {name}",
                 "detail": detail or url or name,
                 "source_url": url or "",
-                "source_type": "facebook",
-                "icon": "📘",
+                "source_type": source_type,
+                "icon": icon,
                 "verified": False,
                 "subject_id": subject_id,
                 "screenshots": [{"url": None, "source_url": url}] if url else [],
             }
         )
+
+    return add_api_finding
+
+
+def _is_username(query):
+    return "/" not in query and " " not in query and len(query) < 100
+
+
+# ─── Platform handlers ──────────────────────────────────────────
+
+
+def _facebook_check(action):
+    result = _resolve_query(action)
+    if result is None:
+        return []
+    query, subject_id, name_for_dork = result
+
+    findings, seen_urls = _run_dork_search(
+        "facebook.com", name_for_dork, subject_id, icon="📘"
+    )
+    add_api_finding = _make_add_api_finding(
+        findings, seen_urls, "Facebook", "facebook", "📘", subject_id
+    )
+
+    api_key = _get_api_key("rapidapi_username_key")
+    if not api_key:
+        return findings
+
+    is_url = query.startswith("http://") or query.startswith("https://")
+    is_username = (
+        not is_url and "/" not in query and " " not in query and len(query) < 100
+    )
 
     # ─── PullAPI (primary for URL/username) ────────────────
     if is_url or is_username:
@@ -70,7 +122,7 @@ def _facebook_check(action):
                 username_param = m.group(1)
         try:
             r = jittered_get(
-                "https://facebook-scraper-api9.p.rapidapi.com/facebook/profile",
+                PLATFORM_API_URLS["facebook_pullapi"],
                 params={"username": username_param},
                 headers={
                     "x-rapidapi-key": api_key,
@@ -125,7 +177,7 @@ def _facebook_check(action):
 
         def api_get(path, params):
             r = jittered_get(
-                f"https://facebook-scraper3.p.rapidapi.com{path}",
+                f"{PLATFORM_API_URLS['facebook_scraper3']}{path}",
                 params=params,
                 headers=headers,
                 timeout=15,
@@ -282,53 +334,23 @@ def _facebook_check(action):
 
 
 def _tiktok_check(action):
-    findings = []
-    api_key = _get_api_key("rapidapi_username_key")
+    result = _resolve_query(action)
+    if result is None:
+        return []
+    query, subject_id, name_for_dork = result
 
-    query = action.data_value if action.data_value else None
-    subject = _first_subject(action)
-    if not query:
-        query = subject.name if subject else ""
-    if not query:
-        return findings
-
-    subject_id = subject.id if subject else None
-    name_for_dork = subject.name if subject else query
-
-    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
-    dork_findings = _site_dork_search(
+    findings, seen_urls = _run_dork_search(
         "tiktok.com", name_for_dork, subject_id, icon="🎵"
     )
-    seen_urls = set()
-    for f in dork_findings:
-        url = f.get("source_url")
-        if url:
-            seen_urls.add(url)
-    findings.extend(dork_findings)
+    add_api_finding = _make_add_api_finding(
+        findings, seen_urls, "TikTok", "tiktok", "🎵", subject_id
+    )
 
-    # ─── Phase 2: API enrichment (only if key + credits) ────
+    api_key = _get_api_key("rapidapi_username_key")
     if not api_key or not _has_credits("tiktok"):
         return findings
 
-    def add_api_finding(name, url, detail=""):
-        if url and url in seen_urls:
-            return
-        if url:
-            seen_urls.add(url)
-        findings.append(
-            {
-                "title": f"TikTok: {name}",
-                "detail": detail or url or name,
-                "source_url": url or "",
-                "source_type": "tiktok",
-                "icon": "🎵",
-                "verified": False,
-                "subject_id": subject_id,
-                "screenshots": [{"url": None, "source_url": url}] if url else [],
-            }
-        )
-
-    is_username = "/" not in query and " " not in query and len(query) < 100
+    is_username = _is_username(query)
 
     try:
         headers = {
@@ -339,7 +361,7 @@ def _tiktok_check(action):
 
         if is_username:
             r = jittered_get(
-                "https://scraptik.p.rapidapi.com/get-user",
+                PLATFORM_API_URLS["tiktok_user"],
                 params={"username": query},
                 headers=headers,
                 timeout=15,
@@ -378,7 +400,7 @@ def _tiktok_check(action):
 
         # Name search fallback
         r = jittered_get(
-            "https://scraptik.p.rapidapi.com/search-users",
+            PLATFORM_API_URLS["tiktok_search"],
             params={"keyword": query, "count": "5"},
             headers=headers,
             timeout=15,
@@ -415,53 +437,23 @@ def _tiktok_check(action):
 
 
 def _instagram_check(action):
-    findings = []
-    api_key = _get_api_key("rapidapi_username_key")
+    result = _resolve_query(action)
+    if result is None:
+        return []
+    query, subject_id, name_for_dork = result
 
-    query = action.data_value if action.data_value else None
-    subject = _first_subject(action)
-    if not query:
-        query = subject.name if subject else ""
-    if not query:
-        return findings
-
-    subject_id = subject.id if subject else None
-    name_for_dork = subject.name if subject else query
-
-    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
-    dork_findings = _site_dork_search(
+    findings, seen_urls = _run_dork_search(
         "instagram.com", name_for_dork, subject_id, icon="📸"
     )
-    seen_urls = set()
-    for f in dork_findings:
-        url = f.get("source_url")
-        if url:
-            seen_urls.add(url)
-    findings.extend(dork_findings)
+    add_api_finding = _make_add_api_finding(
+        findings, seen_urls, "Instagram", "instagram", "📸", subject_id
+    )
 
-    # ─── Phase 2: API enrichment (only if key + credits) ────
+    api_key = _get_api_key("rapidapi_username_key")
     if not api_key or not _has_credits("instagram"):
         return findings
 
-    def add_api_finding(name, url, detail=""):
-        if url and url in seen_urls:
-            return
-        if url:
-            seen_urls.add(url)
-        findings.append(
-            {
-                "title": f"Instagram: {name}",
-                "detail": detail or url or name,
-                "source_url": url or "",
-                "source_type": "instagram",
-                "icon": "📸",
-                "verified": False,
-                "subject_id": subject_id,
-                "screenshots": [{"url": None, "source_url": url}] if url else [],
-            }
-        )
-
-    is_username = "/" not in query and " " not in query and len(query) < 100
+    is_username = _is_username(query)
 
     try:
         headers = {
@@ -472,7 +464,7 @@ def _instagram_check(action):
 
         if is_username:
             r = jittered_get(
-                "https://pro-social.p.rapidapi.com/userinfo_username/",
+                PLATFORM_API_URLS["instagram_userinfo"],
                 params={"username": query},
                 headers=headers,
                 timeout=15,
@@ -511,7 +503,7 @@ def _instagram_check(action):
 
         # Name search fallback
         r = jittered_get(
-            "https://pro-social.p.rapidapi.com/usersearch/",
+            PLATFORM_API_URLS["instagram_search"],
             params={"query": query},
             headers=headers,
             timeout=15,
@@ -541,51 +533,21 @@ def _instagram_check(action):
 
 
 def _linkedin_check(action):
-    findings = []
-    api_key = _get_api_key("rapidapi_username_key")
+    result = _resolve_query(action)
+    if result is None:
+        return []
+    query, subject_id, name_for_dork = result
 
-    query = action.data_value if action.data_value else None
-    subject = _first_subject(action)
-    if not query:
-        query = subject.name if subject else ""
-    if not query:
-        return findings
-
-    subject_id = subject.id if subject else None
-    name_for_dork = subject.name if subject else query
-
-    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
-    dork_findings = _site_dork_search(
+    findings, seen_urls = _run_dork_search(
         "linkedin.com", name_for_dork, subject_id, icon="💼"
     )
-    seen_urls = set()
-    for f in dork_findings:
-        url = f.get("source_url")
-        if url:
-            seen_urls.add(url)
-    findings.extend(dork_findings)
+    add_api_finding = _make_add_api_finding(
+        findings, seen_urls, "LinkedIn", "linkedin", "💼", subject_id
+    )
 
-    # ─── Phase 2: API enrichment (only if key + credits) ────
+    api_key = _get_api_key("rapidapi_username_key")
     if not api_key or not _has_credits("linkedin"):
         return findings
-
-    def add_api_finding(name, url, detail=""):
-        if url and url in seen_urls:
-            return
-        if url:
-            seen_urls.add(url)
-        findings.append(
-            {
-                "title": f"LinkedIn: {name}",
-                "detail": detail or url or name,
-                "source_url": url or "",
-                "source_type": "linkedin",
-                "icon": "💼",
-                "verified": False,
-                "subject_id": subject_id,
-                "screenshots": [{"url": None, "source_url": url}] if url else [],
-            }
-        )
 
     is_url = "linkedin.com" in query.lower() and query.startswith("http")
     is_username = (
@@ -601,7 +563,7 @@ def _linkedin_check(action):
 
         def api_get(path, params):
             r = jittered_get(
-                f"https://linkedin-data-api.p.rapidapi.com{path}",
+                f"{PLATFORM_API_URLS['linkedin_base']}{path}",
                 params=params,
                 headers=headers,
                 timeout=15,
@@ -720,57 +682,23 @@ def _linkedin_check(action):
 
 
 def _twitter_check(action):
-    findings = []
-    api_key = _get_api_key("rapidapi_username_key")
+    result = _resolve_query(action)
+    if result is None:
+        return []
+    query, subject_id, name_for_dork = result
 
-    query = action.data_value if action.data_value else None
-    subject = _first_subject(action)
-    if not query:
-        query = subject.name if subject else ""
-    if not query:
-        return findings
-
-    subject_id = subject.id if subject else None
-    name_for_dork = subject.name if subject else query
-
-    # ─── Phase 1: Brave/DDG dork search (always runs) ──────
-    # Twitter/X: search both domains
-    dork_findings = _site_dork_search(
-        "twitter.com", name_for_dork, subject_id, icon="🐦"
+    findings, seen_urls = _run_dork_search(
+        "twitter.com", name_for_dork, subject_id, icon="🐦", extra_domains=["x.com"]
     )
-    dork_findings += _site_dork_search("x.com", name_for_dork, subject_id, icon="🐦")
-    seen_urls = set()
-    deduped = []
-    for f in dork_findings:
-        url = f.get("source_url")
-        if url and url not in seen_urls:
-            seen_urls.add(url)
-            deduped.append(f)
-    findings.extend(deduped)
+    add_api_finding = _make_add_api_finding(
+        findings, seen_urls, "Twitter", "twitter", "🐦", subject_id
+    )
 
-    # ─── Phase 2: API enrichment (only if key + credits) ────
+    api_key = _get_api_key("rapidapi_username_key")
     if not api_key or not _has_credits("twitter"):
         return findings
 
-    def add_api_finding(name, url, detail=""):
-        if url and url in seen_urls:
-            return
-        if url:
-            seen_urls.add(url)
-        findings.append(
-            {
-                "title": f"Twitter: {name}",
-                "detail": detail or url or name,
-                "source_url": url or "",
-                "source_type": "twitter",
-                "icon": "🐦",
-                "verified": False,
-                "subject_id": subject_id,
-                "screenshots": [{"url": None, "source_url": url}] if url else [],
-            }
-        )
-
-    is_username = "/" not in query and " " not in query and len(query) < 100
+    is_username = _is_username(query)
 
     try:
         headers = {
@@ -781,7 +709,7 @@ def _twitter_check(action):
 
         if is_username:
             r = jittered_get(
-                "https://twitter-api45.p.rapidapi.com/screenname.php",
+                PLATFORM_API_URLS["twitter_screenname"],
                 params={"screenname": query},
                 headers=headers,
                 timeout=15,
@@ -820,7 +748,7 @@ def _twitter_check(action):
 
         # Search fallback
         r = jittered_get(
-            "https://twitter-api45.p.rapidapi.com/search.php",
+            PLATFORM_API_URLS["twitter_search"],
             params={"query": query, "type": "Popular"},
             headers=headers,
             timeout=15,

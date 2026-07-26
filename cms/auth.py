@@ -175,6 +175,21 @@ def admin_required(f: Callable) -> Callable:
     return roles_required("admin", "owner")(f)
 
 
+def super_admin_required(f: Callable) -> Callable:
+    """Decorator for super-admin-only routes."""
+
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return unauthorized()
+
+        if not current_user.is_super_admin:
+            abort(403)
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 def senior_required(f: Callable) -> Callable:
     """Decorator for routes requiring senior investigator or higher."""
     return roles_required("admin", "owner", "senior_investigator")(f)
