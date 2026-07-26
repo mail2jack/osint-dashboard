@@ -66,10 +66,10 @@ window.deleteSession = async function(btn, id) {
             loadSessions();
         } else {
             const d = await r.json();
-            alert('Failed: ' + (d.error || 'Unknown error'));
+            showToast('Failed: ' + (d.error || 'Unknown error'), 'error');
         }
     } catch (e) {
-        alert('Failed: ' + e.message);
+        showToast('Failed: ' + e.message, 'error');
     }
 };
 

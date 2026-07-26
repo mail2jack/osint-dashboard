@@ -251,8 +251,8 @@ function createKey(btn) {
     const userId = document.getElementById('keyUser').value;
     const scopes = Array.from(document.querySelectorAll('.scope-cb:checked')).map(cb => cb.value);
 
-    if (!name) { alert('Please enter a key name.'); return; }
-    if (!scopes.length) { alert('Select at least one scope.'); return; }
+    if (!name) { showToast('Please enter a key name.', 'warning'); return; }
+    if (!scopes.length) { showToast('Select at least one scope.', 'warning'); return; }
 
     apiFetch('{{ url_for("cms.api_create_api_key") }}', {
         method: 'POST',
@@ -264,7 +264,7 @@ function createKey(btn) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { showToast(data.error, 'error'); return; }
         closeCreateModal();
         document.getElementById('createdKeyValue').textContent = data.key;
         document.getElementById('createdKeyDisplay').style.display = 'block';
@@ -297,7 +297,7 @@ function deleteKey(btn, id) {
 
 function copyCreatedKey(btn) {
     const el = document.getElementById('createdKeyValue');
-    navigator.clipboard.writeText(el.textContent).then(() => alert('Copied!'));
+    navigator.clipboard.writeText(el.textContent).then(() => showToast('Copied!', 'success'));
 }
 </script>
 {% endblock %}

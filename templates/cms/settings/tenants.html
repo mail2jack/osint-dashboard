@@ -212,8 +212,8 @@ function createTenant(btn) {
     const slug = document.getElementById('tenantSlug').value.trim();
     const tier = document.getElementById('tenantTier').value;
 
-    if (!name) { alert('Please enter a tenant name.'); return; }
-    if (!slug) { alert('Please enter a slug.'); return; }
+    if (!name) { showToast('Please enter a tenant name.', 'warning'); return; }
+    if (!slug) { showToast('Please enter a slug.', 'warning'); return; }
 
     apiFetch('{{ url_for("cms.create_tenant") }}', {
         method: 'POST',
@@ -225,16 +225,16 @@ function createTenant(btn) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { showToast(data.error, 'error'); return; }
         location.reload();
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => showToast('Error: ' + err.message, 'error'));
 }
 
 function editTenant(btn, id) {
     const tenants = JSON.parse(document.getElementById('tenants-data').textContent);
     const tenant = tenants.find(t => t.id === id);
-    if (!tenant) { alert('Tenant not found'); return; }
+    if (!tenant) { showToast('Tenant not found', 'error'); return; }
     document.getElementById('editTenantId').value = tenant.id;
     document.getElementById('editTenantName').value = tenant.name;
     document.getElementById('editTenantSlug').value = tenant.slug;
@@ -266,10 +266,10 @@ function saveTenant(btn) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { showToast(data.error, 'error'); return; }
         location.reload();
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => showToast('Error: ' + err.message, 'error'));
 }
 
 function toggleTenant(btn, id) {

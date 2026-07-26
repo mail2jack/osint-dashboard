@@ -395,7 +395,6 @@
     </div>
     <div id="helpOverlay" class="help-overlay" data-click="closeHelp" style="display:none;"></div>
 
-    <div id="toast-container"></div>
 
     {# Cookie consent banner #}
     <div id="cookieBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg-card,#1e1e2e);color:var(--text-primary,#e0e0e0);padding:1rem 1.5rem;box-shadow:0 -4px 20px rgba(0,0,0,0.3);z-index:9999;border-top:1px solid var(--border-color,#333);">
@@ -437,6 +436,7 @@ window.CMS = {
     noStatusText: '{{ _("Geen status beschikbaar") }}',
 };
 </script>
+<script nonce="{{ csp_nonce }}" src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='dist/base.min.js' if g.use_bundle else 'js/base.js') }}?v={{ g.css_version }}"></script>
 
 <script nonce="{{ csp_nonce }}">

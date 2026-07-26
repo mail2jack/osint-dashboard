@@ -93,7 +93,7 @@
                 document.getElementById('password').value = data.password;
                 document.querySelector('input[name="generated_password"]').value = data.password;
             } catch (e) {
-                alert('Failed to generate password');
+                showToast('Failed to generate password', 'error');
             }
         }
 

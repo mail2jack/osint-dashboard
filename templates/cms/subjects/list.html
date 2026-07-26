@@ -202,7 +202,7 @@ function clearSelection() {
 
 function openBulkLinkModal() {
     if (selectedSubjects.size === 0) {
-        alert('{{ _('Please select at least one subject.')|e }}');
+        showToast('{{ _('Please select at least one subject.')|e }}', 'warning');
         return;
     }
     
@@ -226,7 +226,7 @@ function closeBulkLinkModal() {
 function submitBulkLink() {
     const caseId = document.getElementById('caseSelect').value;
     if (!caseId) {
-        alert('{{ _('Please select a case.')|e }}');
+        showToast('{{ _('Please select a case.')|e }}', 'warning');
         return;
     }
     
@@ -239,14 +239,14 @@ function submitBulkLink() {
     })
     .then(r => r.json())
     .then(data => {
-        alert(`{{ _('Added') }} ${data.total_added || 0} {{ _('subject(s) to case.') }}`);
+        showToast(`{{ _('Added') }} ${data.total_added || 0} {{ _('subject(s) to case.') }}`, 'success');
         if (data.skipped && data.skipped.length > 0) {
-            alert(`{{ _('Skipped') }}: ${data.skipped.map(s => s.name || s.id).join(', ')}`);
+            showToast(`{{ _('Skipped') }}: ${data.skipped.map(s => s.name || s.id).join(', ')}`, 'warning');
         }
         closeBulkLinkModal();
         clearSelection();
     })
-    .catch(err => alert('{{ _('Error') }}: ' + err.message));
+    .catch(err => showToast('{{ _('Error') }}: ' + err.message, 'error'));
 }
 
 document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
@@ -262,12 +262,12 @@ document.getElementById('bulkLinkModal').addEventListener('click', function(e) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert(data.error);
+            showToast(data.error, 'error');
         } else {
             location.reload();
         }
     })
-    .catch(err => alert('{{ _('Error') }}: ' + err.message));
+    .catch(err => showToast('{{ _('Error') }}: ' + err.message, 'error'));
 }
 </script>
 {% endblock %}

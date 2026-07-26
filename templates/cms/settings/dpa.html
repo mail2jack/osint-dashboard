@@ -189,7 +189,7 @@ function saveRecord(event) {
         status: document.getElementById('fieldStatus').value,
         notes: document.getElementById('fieldNotes').value.trim(),
     };
-    if (!payload.name) { alert('Name is required.'); return; }
+    if (!payload.name) { showToast('Name is required.', 'warning'); return; }
 
     var url = '/cms/api/dpa';
     var method = 'POST';
@@ -206,10 +206,10 @@ function saveRecord(event) {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { showToast(data.error, 'error'); return; }
         location.reload();
     })
-    .catch(function(err) { alert('Error: ' + err.message); })
+    .catch(function(err) { showToast('Error: ' + err.message, 'error'); })
     .finally(function() { btn.disabled = false; btn.textContent = 'Save'; });
 }
 
@@ -221,10 +221,10 @@ function confirmDelete(id, name) {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { showToast(data.error, 'error'); return; }
         location.reload();
     })
-    .catch(function(err) { alert('Error: ' + err.message); });
+    .catch(function(err) { showToast('Error: ' + err.message, 'error'); });
 }
 
 // Wire up event listeners

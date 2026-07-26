@@ -327,7 +327,7 @@
         const zipcode = entry.querySelector('.addr-zipcode').value.trim();
         const number = entry.querySelector('.addr-number').value.trim();
         if (!zipcode || !number) {
-            alert({{ _('Enter zipcode and house number first')|tojson }});
+            showToast({{ _('Enter zipcode and house number first')|tojson }}, 'warning');
             return;
         }
         btn.disabled = true;

@@ -78,7 +78,7 @@
 
         function copyCodes() {
             navigator.clipboard.writeText(codes.join('\n')).then(() => {
-                alert('Recovery codes copied to clipboard!');
+                showToast('Recovery codes copied to clipboard!', 'success');
             });
         }
 

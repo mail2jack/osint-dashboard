@@ -841,7 +841,7 @@ function changeStatus(btn, newStatus) {
     if (newStatus === 'closed') {
         const reason = prompt({{ _('Reason for closing (required):')|tojson }});
         if (!reason || !reason.trim()) {
-            alert({{ _('Closure reason is required')|tojson }});
+            showToast({{ _('Closure reason is required')|tojson }}, 'warning');
             return;
         }
         body.closure_reason = reason.trim();
@@ -850,7 +850,7 @@ function changeStatus(btn, newStatus) {
     if (newStatus === 'active' && ('{{ case.status }}' === 'closed' || '{{ case.status }}' === 'archived')) {
         const reason = prompt({{ _('Reason for reopening (required):')|tojson }});
         if (!reason || !reason.trim()) {
-            alert({{ _('Reopening reason is required')|tojson }});
+            showToast({{ _('Reopening reason is required')|tojson }}, 'warning');
             return;
         }
         body.reopened_reason = reason.trim();
@@ -864,18 +864,18 @@ function changeStatus(btn, newStatus) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert({{ _('Error')|tojson }} + ': ' + data.error);
+            showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
         } else {
             location.reload();
         }
     })
-    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+    .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
 }
 
 function reopenCase() {
     const reason = prompt({{ _('Reason for reopening (required):')|tojson }});
     if (!reason || !reason.trim()) {
-        alert({{ _('Reopening reason is required')|tojson }});
+        showToast({{ _('Reopening reason is required')|tojson }}, 'warning');
         return;
     }
     
@@ -887,12 +887,12 @@ function reopenCase() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert({{ _('Error')|tojson }} + ': ' + data.error);
+            showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
         } else {
             location.reload();
         }
     })
-    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+    .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
 }
 
 // OSINT Search Functions
@@ -931,11 +931,11 @@ function resetOsintModal() {
 function startOsintSearch() {
     const name = document.getElementById('osintName').value.trim();
     if (!name) {
-        alert({{ _('Please enter a name')|tojson }});
+        showToast({{ _('Please enter a name')|tojson }}, 'warning');
         return;
     }
     if (name.split(' ').length < 2) {
-        alert({{ _('Please enter a full name (first and last name)')|tojson }});
+        showToast({{ _('Please enter a full name (first and last name)')|tojson }}, 'warning');
         return;
     }
     
@@ -1304,7 +1304,7 @@ function addSelectedFindings() {
             if (btn) { btn.disabled = false; btn.textContent = {{ _('Add Selected to Findings')|tojson }}; }
             return;
         }
-        alert(data.message);
+        showToast(data.message, 'success');
         closeOsintModal();
         location.reload();
     })
@@ -1318,7 +1318,7 @@ function saveSelectedAsSocialAccounts() {
     const checkboxes = document.querySelectorAll('.result-checkbox:checked');
     if (checkboxes.length === 0) return;
     const subjectId = document.getElementById('osintSubject')?.value;
-    if (!subjectId) { alert({{ _('Please select a subject first.')|tojson }}); return; }
+    if (!subjectId) { showToast({{ _('Please select a subject first.')|tojson }}, 'warning'); return; }
     if (!confirm({{ _('Save selected result(s) as social accounts on the selected subject?')|tojson }})) return;
     let saved = 0;
     let errors = 0;
@@ -1345,14 +1345,14 @@ function saveSelectedAsSocialAccounts() {
             completed++;
             if (data.error) errors++; else saved++;
             if (completed === total) {
-                alert({{ _('Saved')|tojson }} + ' ' + saved + ' ' + {{ _('social account(s).')|tojson }} + (errors ? ' ' + errors + ' ' + {{ _('error(s).')|tojson }} : ''));
+                showToast({{ _('Saved')|tojson }} + ' ' + saved + ' ' + {{ _('social account(s).')|tojson }} + (errors ? ' ' + errors + ' ' + {{ _('error(s).')|tojson }} : ''), 'success');
                 if (saved > 0) location.reload();
             }
         })
         .catch(() => {
             completed++;
             errors++;
-            if (completed === total) alert({{ _('Saved')|tojson }} + ' ' + saved + ' ' + {{ _('social account(s).')|tojson }} + (errors ? ' ' + errors + ' ' + {{ _('error(s).')|tojson }} : ''));
+            if (completed === total) showToast({{ _('Saved')|tojson }} + ' ' + saved + ' ' + {{ _('social account(s).')|tojson }} + (errors ? ' ' + errors + ' ' + {{ _('error(s).')|tojson }} : ''), 'success');
         });
     });
 }
@@ -1367,7 +1367,7 @@ function closeCreateFromUsernameModal() {
 function createSubjectFromUsername(event) {
     event.preventDefault();
     const username = document.getElementById('cuUsername').value.trim();
-    if (!username) { alert({{ _('Username is required')|tojson }}); return false; }
+    if (!username) { showToast({{ _('Username is required')|tojson }}, 'warning'); return false; }
     const platform = document.getElementById('cuPlatform').value;
     const url = document.getElementById('cuUrl').value.trim();
     apiFetch('/cms/api/subjects/create-from-username', {
@@ -1382,12 +1382,12 @@ function createSubjectFromUsername(event) {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.error) { alert({{ _('Error')|tojson }} + ': ' + data.error); return; }
-        alert({{ _('Subject created:')|tojson }} + ' ' + data.subject.name);
+        if (data.error) { showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error'); return; }
+        showToast({{ _('Subject created:')|tojson }} + ' ' + data.subject.name, 'success');
         closeCreateFromUsernameModal();
         location.reload();
     })
-    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+    .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
     return false;
 }
 
@@ -1562,7 +1562,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     const fileInput = document.getElementById('uploadFile');
     
     if (fileInput.files.length === 0) {
-        alert({{ _('Please select a file')|tojson }});
+        showToast({{ _('Please select a file')|tojson }}, 'warning');
         return;
     }
     
@@ -1580,15 +1580,15 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert(data.error);
+            showToast(data.error, 'error');
         } else {
-            alert({{ _('Document uploaded successfully')|tojson }});
+            showToast({{ _('Document uploaded successfully')|tojson }}, 'success');
             closeUploadModal();
             location.reload();
         }
     })
     .catch(err => {
-        alert({{ _('Upload failed')|tojson }} + ': ' + err.message);
+        showToast({{ _('Upload failed')|tojson }} + ': ' + err.message, 'error');
     });
 });
 
@@ -1601,7 +1601,7 @@ function deleteDocument(btn, docId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert(data.error);
+            showToast(data.error, 'error');
         } else {
             location.reload();
         }
@@ -1704,7 +1704,7 @@ function openLinkForScreenshot() {
     let url = urlInput.value.trim();
     
     if (!url) {
-        alert({{ _('Please enter a URL first')|tojson }});
+        showToast({{ _('Please enter a URL first')|tojson }}, 'warning');
         return;
     }
     
@@ -1725,12 +1725,12 @@ function uploadScreenshot() {
     const status = document.getElementById('screenshotStatus');
     
     if (!file) {
-        alert({{ _('Please select a screenshot file')|tojson }});
+        showToast({{ _('Please select a screenshot file')|tojson }}, 'warning');
         return;
     }
     
     if (!file.type.startsWith('image/')) {
-        alert({{ _('Please select an image file')|tojson }});
+        showToast({{ _('Please select an image file')|tojson }}, 'warning');
         return;
     }
     
@@ -1812,31 +1812,31 @@ function extractSocialId(btn, url, subjectId, findingId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert({{ _('Error')|tojson }} + ': ' + data.error);
+            showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
         } else if (data.extracted && Object.keys(data.extracted).length > 0) {
-            let message = {{ _('Social media data extracted!')|tojson }} + '\n\n';
+            let message = {{ _('Social media data extracted!')|tojson }} + '. ';
             for (const [key, value] of Object.entries(data.extracted)) {
                 if (key.endsWith('id') || ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit', 'username', 'profile_platform'].includes(key)) {
-                    message += key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : value) + '\n';
+                    message += key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : value) + '. ';
                 }
             }
-            if (data.platform && !data.extracted.profile_platform) message += '\n' + {{ _('Platform:')|tojson }} + ' ' + data.platform;
-            if (data.username && !data.extracted.username) message += '\n' + {{ _('Username:')|tojson }} + ' ' + data.username;
-            message += '\n\n' + {{ _('Saved to subject. Refreshing...')|tojson }};
-            alert(message);
+            if (data.platform && !data.extracted.profile_platform) message += '. ' + {{ _('Platform:')|tojson }} + ' ' + data.platform;
+            if (data.username && !data.extracted.username) message += '. ' + {{ _('Username:')|tojson }} + ' ' + data.username;
+            message += '. ' + {{ _('Saved to subject. Refreshing...')|tojson }};
+            showToast(message, 'success');
             location.reload();
         } else {
             let msg = {{ _('No social media IDs found on this page.')|tojson }};
             if (data.platform || data.username) {
-                msg += '\n\n' + {{ _('Detected from URL:')|tojson }} + '\n';
-                if (data.platform) msg += {{ _('Platform:')|tojson }} + ' ' + data.platform + '\n';
+                msg += '. ' + {{ _('Detected from URL:')|tojson }} + ' ';
+                if (data.platform) msg += {{ _('Platform:')|tojson }} + ' ' + data.platform + ' ';
                 if (data.username) msg += {{ _('Username:')|tojson }} + ' ' + data.username;
             }
-            alert(msg);
+            showToast(msg, 'info');
         }
     })
     .catch(err => {
-        alert({{ _('Failed to extract')|tojson }} + ': ' + err.message);
+        showToast({{ _('Failed to extract')|tojson }} + ': ' + err.message, 'error');
     })
     .finally(() => {
         btn.disabled = false;
@@ -1858,13 +1858,13 @@ function deleteScreenshot(btn, screenshotId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert({{ _('Error')|tojson }} + ': ' + data.error);
+            showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
         } else {
             loadScreenshots();
         }
     })
     .catch(err => {
-        alert({{ _('Failed to delete')|tojson }} + ': ' + err.message);
+        showToast({{ _('Failed to delete')|tojson }} + ': ' + err.message, 'error');
     });
 }
 
@@ -1954,13 +1954,13 @@ function setParent(btn, parentId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert({{ _('Error')|tojson }} + ': ' + data.error);
+            showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
         } else {
-            alert({{ _('Parent case set successfully!')|tojson }});
+            showToast({{ _('Parent case set successfully!')|tojson }}, 'success');
             location.reload();
         }
     })
-    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+    .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
 }
 
 function removeParent() {
@@ -1974,13 +1974,13 @@ function removeParent() {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert({{ _('Error')|tojson }} + ': ' + data.error);
+            showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
         } else {
-            alert({{ _('Parent case removed!')|tojson }});
+            showToast({{ _('Parent case removed!')|tojson }}, 'success');
             location.reload();
         }
     })
-    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+    .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
 }
 
 document.getElementById('hierarchyModal').addEventListener('click', function(e) {
@@ -2068,7 +2068,7 @@ function cancelEdit(btn, commentId) {
 function saveEdit(btn, commentId) {
     const newContent = document.getElementById(`edit-content-${commentId}`).value.trim();
     if (!newContent) {
-        alert({{ _('Comment cannot be empty.')|tojson }});
+        showToast({{ _('Comment cannot be empty.')|tojson }}, 'warning');
         return;
     }
     
@@ -2080,18 +2080,18 @@ function saveEdit(btn, commentId) {
     .then(r => r.json())
     .then(data => {
         if (data.error) {
-            alert({{ _('Error')|tojson }} + ': ' + data.error);
+            showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
         } else {
             loadComments();
         }
     })
-    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+    .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
 }
 
 function addComment() {
     const content = document.getElementById('newComment').value.trim();
     if (!content) {
-        alert({{ _('Please enter a comment.')|tojson }});
+        showToast({{ _('Please enter a comment.')|tojson }}, 'warning');
         return;
     }
     
@@ -2110,7 +2110,7 @@ function addComment() {
         document.getElementById('newComment').value = '';
         loadComments();
     })
-    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+    .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
 }
 
 function deleteComment(btn, commentId) {
@@ -2120,7 +2120,7 @@ function deleteComment(btn, commentId) {
         method: 'DELETE'
     })
     .then(() => loadComments())
-    .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+    .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
 }
 
 loadComments();

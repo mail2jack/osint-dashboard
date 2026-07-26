@@ -1014,7 +1014,7 @@
             displayRelationships(data);
         })
         .catch(err => {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
         });
     }
 
@@ -1028,14 +1028,14 @@
         .then(data => {
             btn.disabled = false;
             btn.textContent = '{{ _("🔍 Bulk Extract from Findings")|replace("'", "\\'")|safe }}';
-            if (data.error) { alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error); return; }
-            alert(data.message);
+            if (data.error) { showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error, 'error'); return; }
+            showToast(data.message, 'info');
             if (data.found > 0) location.reload();
         })
         .catch(err => {
             btn.disabled = false;
             btn.textContent = '{{ _("🔍 Bulk Extract from Findings")|replace("'", "\\'")|safe }}';
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
         });
     }
     
@@ -1173,10 +1173,10 @@
         })
         .then(r => r.json().then(data => ({ status: r.status, data: data })))
         .then(({ status, data }) => {
-            if (data.error) alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
+            if (data.error) showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error, 'error');
             else loadNetwork();
         })
-        .catch(err => alert('{{ _("Network error:")|replace("'", "\\'")|safe }} ' + err.message));
+        .catch(err => showToast('{{ _("Network error:")|replace("'", "\\'")|safe }} ' + err.message, 'error'));
     }
     
     document.getElementById('networkModal').addEventListener('click', e => { if (e.target === this) closeNetworkModal(); });
@@ -1184,7 +1184,7 @@
     // RDW Vehicle Check Functions
     function checkRDWVehicle(btn, kenteken, subjectId) {
         if (!kenteken) {
-            alert('{{ _("No license plate available for this vehicle.")|replace("'", "\\'")|safe }}');
+            showToast('{{ _("No license plate available for this vehicle.")|replace("'", "\\'")|safe }}', 'warning');
             return;
         }
         
@@ -1204,12 +1204,12 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
+                showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error, 'error');
                 return;
             }
             
             if (!data.found) {
-                alert('{{ _("No vehicle found in RDW database for:")|replace("'", "\\'")|safe }} ' + kenteken);
+                showToast('{{ _("No vehicle found in RDW database for:")|replace("'", "\\'")|safe }} ' + kenteken, 'warning');
                 return;
             }
             
@@ -1230,7 +1230,7 @@
             }
         })
         .catch(err => {
-            alert('{{ _("Failed to check RDW:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Failed to check RDW:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
         });
     }
     
@@ -1243,14 +1243,14 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('{{ _("Error updating:")|replace("'", "\\'")|safe }} ' + data.error);
+                showToast('{{ _("Error updating:")|replace("'", "\\'")|safe }} ' + data.error, 'error');
             } else {
-                alert('{{ _("Subject updated successfully!")|replace("'", "\\'")|safe }}');
+                showToast('{{ _("Subject updated successfully!")|replace("'", "\\'")|safe }}', 'success');
                 location.reload();
             }
         })
         .catch(err => {
-            alert('{{ _("Failed to update:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Failed to update:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
         });
     }
 
@@ -1269,7 +1269,7 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
+                showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error, 'error');
             } else {
                 const photoFrame = document.getElementById('photoFrame');
                 const existingImg = photoFrame.querySelector('img');
@@ -1281,7 +1281,7 @@
                 document.querySelector('.photo-upload-btn').textContent = '{{ _("📷 Change")|replace("'", "\\'")|safe }}';
             }
         })
-        .catch(err => alert('{{ _("Upload failed:")|replace("'", "\\'")|safe }} ' + err.message));
+        .catch(err => showToast('{{ _("Upload failed:")|replace("'", "\\'")|safe }} ' + err.message, 'error'));
     }
     
     // Interpol + Politie Data Check
@@ -1403,7 +1403,7 @@
         const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
         
         if (!firstCaseId) {
-            alert('{{ _("This subject is not linked to a case. Link it to a case first to save findings.")|replace("'", "\\'")|safe }}');
+            showToast('{{ _("This subject is not linked to a case. Link it to a case first to save findings.")|replace("'", "\\'")|safe }}', 'warning');
             return;
         }
 
@@ -1439,7 +1439,7 @@
             setTimeout(() => location.reload(), 800);
         })
         .catch(err => {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
             btn.disabled = false;
             btn.textContent = '{{ _("Save as finding")|replace("'", "\\'")|safe }}';
         });
@@ -1639,7 +1639,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         const firstCaseId = {{ first_case_id|tojson if first_case_id else 'null' }};
 
         if (!firstCaseId) {
-            alert('{{ _("This subject is not linked to a case.")|replace("'", "\\'")|safe }}');
+            showToast('{{ _("This subject is not linked to a case.")|replace("'", "\\'")|safe }}', 'warning');
             return;
         }
 
@@ -1667,7 +1667,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
             setTimeout(() => location.reload(), 800);
         })
         .catch(err => {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
             btn.disabled = false;
             btn.textContent = '{{ _("📥 Save as finding")|replace("'", "\\'")|safe }}';
         });
@@ -1694,14 +1694,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         .then(r => r.json())
         .then(result => {
             if (result.error) {
-                alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + result.error);
+                showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + result.error, 'error');
             } else {
-                alert('{{ _("✅ Vessel fields updated!")|replace("'", "\\'")|safe }}');
+                showToast('{{ _("✅ Vessel fields updated!")|replace("'", "\\'")|safe }}', 'success');
                 location.reload();
             }
         })
         .catch(err => {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
         });
     }
 
@@ -1718,7 +1718,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
     }
     
     function openOsintModalNoCase() {
-        alert('{{ _("This subject is not linked to any case yet.\\n\\nPlease link this subject to a case first before using OSINT search.\\nYou can do this from the Case view.")|replace("'", "\\'")|safe }}');
+        showToast('{{ _("This subject is not linked to any case yet. Please link this subject to a case first before using OSINT search. You can do this from the Case view.")|replace("'", "\\'")|safe }}', 'warning');
     }
     
     function closeOsintModal() {
@@ -2113,7 +2113,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         .then(r => r.json())
         .then(data => {
             if (data.error) { showOsintError(data.error); if (btn) { btn.disabled = false; btn.textContent = '{{ _("Add Selected to Findings")|replace("'", "\\'")|safe }} (<span id=\"selectedCount\">0</span>)'; } return; }
-            alert(data.message);
+            showToast(data.message, 'info');
             closeOsintModal();
             location.reload();
         })
@@ -2150,14 +2150,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
                 completed++;
                 if (data.error) errors++; else saved++;
                 if (completed === total) {
-                    alert('{{ _("Saved")|replace("'", "\\'")|safe }} ' + saved + ' {{ _("social account(s).")|replace("'", "\\'")|safe }}' + (errors ? ' ' + errors + ' {{ _("error(s).")|replace("'", "\\'")|safe }}' : ''));
+                    showToast('{{ _("Saved")|replace("'", "\\'")|safe }} ' + saved + ' {{ _("social account(s).")|replace("'", "\\'")|safe }}' + (errors ? ' ' + errors + ' {{ _("error(s).")|replace("'", "\\'")|safe }}' : ''), errors ? 'warning' : 'success');
                     if (saved > 0) location.reload();
                 }
             })
             .catch(() => {
                 completed++;
                 errors++;
-                if (completed === total) alert('{{ _("Saved")|replace("'", "\\'")|safe }} ' + saved + ' {{ _("social account(s).")|replace("'", "\\'")|safe }}' + (errors ? ' ' + errors + ' {{ _("error(s).")|replace("'", "\\'")|safe }}' : ''));
+                if (completed === total) showToast('{{ _("Saved")|replace("'", "\\'")|safe }} ' + saved + ' {{ _("social account(s).")|replace("'", "\\'")|safe }}' + (errors ? ' ' + errors + ' {{ _("error(s).")|replace("'", "\\'")|safe }}' : ''), errors ? 'warning' : 'success');
             });
         });
     }
@@ -2179,7 +2179,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         const username = document.getElementById('saUsername').value.trim();
         const accountId = document.getElementById('saAccountId').value.trim();
         const url = document.getElementById('saUrl').value.trim();
-        if (!username) { alert('{{ _("Username is required")|replace("'", "\\'")|safe }}'); return; }
+        if (!username) { showToast('{{ _("Username is required")|replace("'", "\\'")|safe }}', 'warning'); return; }
         apiFetch('/cms/api/subjects/{{ subject.id }}/social-accounts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2187,10 +2187,10 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) { alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error); return; }
+            if (data.error) { showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error, 'error'); return; }
             location.reload();
         })
-        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
+        .catch(err => showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error'));
     }
     function deleteSocialAccount(btn, accountId) {
         if (!confirm('{{ _("Delete this social account?")|replace("'", "\\'")|safe }}')) return;
@@ -2199,7 +2199,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         })
         .then(r => r.json())
         .then(data => location.reload())
-        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
+        .catch(err => showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error'));
     }
 
     function openEditSocialAccountModal(btn, accountId, accountJson) {
@@ -2229,7 +2229,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         var username = document.getElementById('editSaUsername').value.trim();
         var accountIdVal = document.getElementById('editSaAccountId').value.trim();
         var url = document.getElementById('editSaUrl').value.trim();
-        if (!username) { alert('{{ _("Username is required")|replace("'", "\\'")|safe }}'); return; }
+        if (!username) { showToast('{{ _("Username is required")|replace("'", "\\'")|safe }}', 'warning'); return; }
         apiFetch('/cms/api/subjects/{{ subject.id }}/social-accounts/' + accountId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -2237,10 +2237,10 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) { alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error); return; }
+            if (data.error) { showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error, 'error'); return; }
             location.reload();
         })
-        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
+        .catch(err => showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error'));
     }
 
     document.getElementById('addSocialAccountModal').addEventListener('click', function(e) {
@@ -2356,14 +2356,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
                 location.reload();
             }
         } catch (err) {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
         }
     }
     
     function searchTinEye() {
         const photoPath = {{ subject.photo_path|tojson }};
         if (!photoPath) {
-            alert('{{ _("No photo available for this subject")|replace("'", "\\'")|safe }}');
+            showToast('{{ _("No photo available for this subject")|replace("'", "\\'")|safe }}', 'warning');
             return;
         }
         
@@ -2780,7 +2780,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
     }
     function addSubjectComment() {
         const content = document.getElementById('newSubjectComment').value.trim();
-        if (!content) { alert('{{ _("Please enter a note.")|replace("'", "\\'")|safe }}'); return; }
+        if (!content) { showToast('{{ _("Please enter a note.")|replace("'", "\\'")|safe }}', 'warning'); return; }
         const commentType = document.getElementById('subjectCommentType').value;
         const isPinned = document.getElementById('subjectCommentPinned').checked;
         apiFetch('/cms/api/comments', {
@@ -2799,7 +2799,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
             document.getElementById('subjectCommentPinned').checked = false;
             loadSubjectComments();
         })
-        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
+        .catch(err => showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error'));
     }
     function showSubjectCommentEditForm(btn, commentId) {
         document.getElementById('edit-form-'+commentId).style.display = 'block';
@@ -2811,7 +2811,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
     }
     function saveSubjectComment(btn, commentId) {
         const newContent = document.getElementById('edit-content-'+commentId).value.trim();
-        if (!newContent) { alert('{{ _("Comment cannot be empty.")|replace("'", "\\'")|safe }}'); return; }
+        if (!newContent) { showToast('{{ _("Comment cannot be empty.")|replace("'", "\\'")|safe }}', 'warning'); return; }
         apiFetch('/cms/api/comments/'+commentId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -2819,16 +2819,16 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
+            if (data.error) showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error, 'error');
             else loadSubjectComments();
         })
-        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
+        .catch(err => showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error'));
     }
     function deleteSubjectComment(btn, commentId) {
         if (!confirm('{{ _("Delete this comment?")|replace("'", "\\'")|safe }}')) return;
         apiFetch('/cms/api/comments/'+commentId, { method: 'DELETE' })
         .then(() => loadSubjectComments())
-        .catch(err => alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message));
+        .catch(err => showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error'));
     }
     document.addEventListener('DOMContentLoaded', function() {
         // Only load if the subject comments section exists on this page
@@ -2847,7 +2847,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert(data.error);
+                showToast(data.error, 'error');
                 btn.disabled = false;
                 btn.textContent = '{{ _("🗑️ Delete")|replace("'", "\\'")|safe }}';
             } else {
@@ -2855,7 +2855,7 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
             }
         })
         .catch(err => {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
             btn.disabled = false;
             btn.textContent = '{{ _("🗑️ Delete")|replace("'", "\\'")|safe }}';
         });
@@ -3104,14 +3104,14 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error);
+                showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + data.error, 'error');
             } else {
-                alert(data.message || '{{ _("Saved!")|replace("'", "\\'")|safe }}');
+                showToast(data.message || '{{ _("Saved!")|replace("'", "\\'")|safe }}', 'success');
                 if (data.findings_count > 0) location.reload();
             }
         })
         .catch(err => {
-            alert('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message);
+            showToast('{{ _("Error:")|replace("'", "\\'")|safe }} ' + err.message, 'error');
         })
         .finally(() => {
             btn.disabled = false;

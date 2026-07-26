@@ -167,7 +167,7 @@ window.apiFetch = function(url, options) {
         h += '<a href="/cms/notifications" style="font-size:0.7rem;color:var(--accent);text-decoration:none;font-weight:400;">See all</a>';
         h += '</div>';
         if (data.notifications.length === 0) {
-          h += '<div style="padding:1.5rem;text-align:center;color:var(--text-secondary);font-size:0.875rem;">' + (C.noNotificationsText || 'No notifications') + '</div>';
+          h += '<div style="padding:1.5rem;text-align:center;color:var(--text-secondary);font-size:0.875rem;">' + esc(C.noNotificationsText || 'No notifications') + '</div>';
         } else {
           data.notifications.forEach(function(n) {
             var safeId = String(n.id).replace(/"/g, '&quot;');
@@ -257,7 +257,14 @@ function openChangelog() {
   fetch('/api/changelog')
     .then(function(r) { return r.json(); })
     .then(function(d) {
-      if (content) content.innerHTML = d.html || '<div style="text-align:center;padding:2rem;">No changelog available</div>';
+      if (content) {
+        var raw = d.html || '<div style="text-align:center;padding:2rem;">No changelog available</div>';
+        if (typeof DOMPurify !== 'undefined') {
+          content.innerHTML = DOMPurify.sanitize(raw, {ADD_ATTR: ['target']});
+        } else {
+          content.textContent = raw;
+        }
+      }
     })
     .catch(function() {
       if (content) content.innerHTML = '<div style="text-align:center;padding:2rem;color:#dc2626;">Failed to load changelog</div>';
@@ -393,31 +400,19 @@ function openHelp(topic) {
   fetch('/cms/api/help/' + encodeURIComponent(topic))
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (content) content.innerHTML = data.html;
+      if (content) {
+        if (typeof DOMPurify !== 'undefined') {
+          content.innerHTML = DOMPurify.sanitize(data.html, {ADD_ATTR: ['target']});
+        } else {
+          content.textContent = data.html;
+        }
+      }
     })
     .catch(function() {
       if (content) content.innerHTML = '<p style="color:var(--error);">Failed to load help content.</p>';
     });
 }
 
-// Toast notification system
-function showToast(message, type, duration) {
-  type = type || 'info';
-  duration = duration || 4000;
-  var container = document.getElementById('toast-container');
-  if (!container) return;
-  var toast = document.createElement('div');
-  toast.className = 'toast toast-' + type;
-  var icons = { success: '\u2705', error: '\u274c', warning: '\u26a0\ufe0f', info: '\u2139\ufe0f' };
-  toast.innerHTML = '<span>' + (icons[type] || '\u2139\ufe0f') + '</span><span>' + esc(message) + '</span>';
-  toast.addEventListener('click', function() { if (toast.parentNode) toast.parentNode.removeChild(toast); });
-  container.appendChild(toast);
-  setTimeout(function() {
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
-    setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
-  }, duration);
-}
 function showLoading(text) {
   var el = document.getElementById('actionLoaderText');
   if (el) el.textContent = text || 'Loading...';
@@ -855,7 +850,12 @@ function checkForUpdates() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.update_available) {
-        statusEl.innerHTML = '\u2705 <strong>' + (data.version_update ? 'Update ' + data.current_version + ' \u2192 ' + data.latest_version : 'New commits') + '</strong> \u2014 <a href="#" data-click="showUpdateModal" style="color:var(--link-color);">' + (data.version_update ? 'Click to update' : 'Click to update') + '</a>';
+        var statusHtml = '\u2705 <strong>' + esc(data.version_update ? 'Update ' + data.current_version + ' \u2192 ' + data.latest_version : 'New commits') + '</strong> \u2014 <a href="#" data-click="showUpdateModal" style="color:var(--link-color);">' + esc(data.version_update ? 'Click to update' : 'Click to update') + '</a>';
+        if (typeof DOMPurify !== 'undefined') {
+          statusEl.innerHTML = DOMPurify.sanitize(statusHtml, {ADD_ATTR: ['target']});
+        } else {
+          statusEl.textContent = statusHtml;
+        }
         var banner = document.getElementById('updateBanner');
         var text = document.getElementById('updateBannerText');
         if (banner && text) {
@@ -886,6 +886,6 @@ function checkForUpdates() {
       }
     })
     .catch(function(err) {
-      statusEl.innerHTML = '\u274c Error: ' + (err.message || 'check failed');
+      statusEl.textContent = '\u274c Error: ' + (err.message || 'check failed');
     });
 }

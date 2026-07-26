@@ -260,7 +260,7 @@ document.querySelector('.purge-form')?.addEventListener('submit', function(e) {
         },
         body: JSON.stringify({days: parseInt(days) || 90})
     }).then(r => r.json()).then(data => {
-        alert(data.message);
+        showToast(data.message, 'success');
         location.reload();
     });
 });

@@ -413,7 +413,7 @@ function showProcesVerbaal() {
   const total = FINDINGS_MAP.length;
   
   if (total === 0) {
-    alert('First run research actions to generate findings.');
+    showToast('First run research actions to generate findings.', 'info');
     return;
   }
   

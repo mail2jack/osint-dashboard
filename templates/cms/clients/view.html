@@ -243,12 +243,12 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert({{ _('Error')|tojson }} + ': ' + data.error);
+                showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
             } else {
                 window.location.href = '/cms/clients';
             }
         })
-        .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+        .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
     }
 
     function restoreClient(btn, clientId) {
@@ -264,12 +264,12 @@
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                alert({{ _('Error')|tojson }} + ': ' + data.error);
+                showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
             } else {
                 location.reload();
             }
         })
-        .catch(err => alert({{ _('Error')|tojson }} + ': ' + err.message));
+        .catch(err => showToast({{ _('Error')|tojson }} + ': ' + err.message, 'error'));
     }
 
     async function kadasterLookup(btn, addrId) {
@@ -530,7 +530,7 @@
         const query = [street, postal, city, country].filter(Boolean).join(', ');
 
         if (!query) {
-            alert({{ _('No address available for this client.')|tojson }});
+            showToast({{ _('No address available for this client.')|tojson }}, 'warning');
             return;
         }
 

@@ -84,7 +84,7 @@ document.getElementById('creditNoteForm').addEventListener('submit', function(e)
     });
     if (items.length === 0) {
         e.preventDefault();
-        alert('{{ _("Select at least one item with quantity > 0.") }}');
+        showToast('{{ _("Select at least one item with quantity > 0.") }}', 'warning');
         return;
     }
     document.getElementById('itemsInput').value = JSON.stringify(items);
