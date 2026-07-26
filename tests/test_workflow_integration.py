@@ -413,7 +413,7 @@ class TestEmailCheckPGP:
         )
         # Return brave key, but skip hibp
         monkeypatch.setattr(
-            "cms.workflow.research._get_api_key",
+            "cms.workflow.actions.email_action._get_api_key",
             lambda k: "fake-brave-key" if k == "brave_api_key" else None,
         )
 

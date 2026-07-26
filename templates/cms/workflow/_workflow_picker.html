@@ -154,7 +154,7 @@ function showEditConfirm(actionType, currentValue) {
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { showToast(data.error, 'error'); return; }
         pollStatus();
       });
     };
@@ -243,7 +243,7 @@ function buildPickerItems(actionType) {
 function showDorkPicker() {
   var lib = typeof DORKS_LIBRARY !== 'undefined' ? DORKS_LIBRARY : null;
   if (!lib || !lib.categories || !lib.categories.length) {
-    alert('Dork library not available.');
+    showToast('Dork library not available.', 'error');
     return;
   }
   var allCats = lib.categories;
@@ -500,7 +500,7 @@ function showPhotoAnalysisPicker() {
   function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) return;
     if (file.size > 25 * 1024 * 1024) {
-      alert('File too large. Maximum 25 MB.');
+      showToast('File too large. Maximum 25 MB.', 'warning');
       return;
     }
     selectedFile = file;

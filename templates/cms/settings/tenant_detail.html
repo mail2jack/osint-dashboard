@@ -336,11 +336,11 @@
         {% endif %}
         <div class="detail-row">
             <span class="key">{{ _('Stripe Customer') }}</span>
-            <span>{% if tenant.stripe_customer_id %}<code>{{ tenant.stripe_customer_id }}</code>{% else %}—{% endif %}</span>
+            <span>{% if tenant.stripe_customer_id %}<code>{{ tenant.stripe_customer_id[:8] }}…{{ tenant.stripe_customer_id[-4:] }}</code>{% else %}—{% endif %}</span>
         </div>
         <div class="detail-row">
             <span class="key">{{ _('Stripe Sub') }}</span>
-            <span>{% if tenant.stripe_subscription_id %}<code>{{ tenant.stripe_subscription_id }}</code>{% else %}—{% endif %}</span>
+            <span>{% if tenant.stripe_subscription_id %}<code>{{ tenant.stripe_subscription_id[:8] }}…{{ tenant.stripe_subscription_id[-4:] }}</code>{% else %}—{% endif %}</span>
         </div>
         {% if config.get('STRIPE_SECRET_KEY') and tenant.stripe_customer_id %}
         <div style="margin-top:0.75rem;text-align:center;">

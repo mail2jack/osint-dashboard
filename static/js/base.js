@@ -1,3 +1,25 @@
+// Toast notification system — replaces alert() for non-blocking messages
+window.showToast = function(message, type) {
+  type = type || 'info';
+  var toast = document.createElement('div');
+  toast.className = 'cms-toast cms-toast-' + type;
+  toast.textContent = message;
+  var close = document.createElement('button');
+  close.textContent = '\u00d7';
+  close.className = 'cms-toast-close';
+  close.onclick = function() { toast.remove(); };
+  toast.appendChild(close);
+  var container = document.getElementById('cms-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'cms-toast-container';
+    container.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:10000;display:flex;flex-direction:column;gap:0.5rem;max-width:380px;';
+    document.body.appendChild(container);
+  }
+  container.appendChild(toast);
+  setTimeout(function() { toast.style.opacity = '0'; setTimeout(function() { toast.remove(); }, 300); }, 4500);
+};
+
 // CSRF-safe fetch wrapper — auto-adds X-CSRFToken header
 window.apiFetch = function(url, options) {
   options = options || {};

@@ -7,7 +7,7 @@ window.wfPostcodeCheck = function(btn) {
   var zipcode = entry.querySelector('.addr-zipcode').value.trim();
   var number = entry.querySelector('.addr-number').value.trim();
   if (!zipcode || !number) {
-    alert('Enter zipcode and house number first');
+    showToast('Enter zipcode and house number first', 'warning');
     return;
   }
   btn.disabled = true;

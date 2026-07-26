@@ -180,7 +180,7 @@ class TestCreditTracking:
 class TestSiteDorkSearch:
     @patch("cms.services.search_service.ddg_single_query", return_value=[])
     @patch("cms.services.search_service.brave_search")
-    @patch("cms.workflow.research._get_api_key", return_value="brave_key")
+    @patch("cms.workflow.actions.helpers._get_api_key", return_value="brave_key")
     def test_brave_success(self, mock_key, mock_brave, mock_ddg):
         mock_brave.return_value = [
             {
@@ -198,7 +198,7 @@ class TestSiteDorkSearch:
 
     @patch("cms.services.search_service.ddg_single_query")
     @patch("cms.services.search_service.brave_search", return_value=[])
-    @patch("cms.workflow.research._get_api_key", return_value="brave_key")
+    @patch("cms.workflow.actions.helpers._get_api_key", return_value="brave_key")
     def test_ddg_fallback(self, mock_key, mock_brave, mock_ddg):
         mock_ddg.return_value = [
             {
@@ -214,14 +214,14 @@ class TestSiteDorkSearch:
 
     @patch("cms.services.search_service.ddg_single_query", return_value=[])
     @patch("cms.services.search_service.brave_search", return_value=[])
-    @patch("cms.workflow.research._get_api_key", return_value=None)
+    @patch("cms.workflow.actions.helpers._get_api_key", return_value=None)
     def test_no_keys_returns_empty(self, mock_key, mock_brave, mock_ddg):
         findings = _site_dork_search("facebook.com", "Jan de Vries")
         assert findings == []
 
     @patch("cms.services.search_service.ddg_single_query", return_value=[])
     @patch("cms.services.search_service.brave_search")
-    @patch("cms.workflow.research._get_api_key", return_value="brave_key")
+    @patch("cms.workflow.actions.helpers._get_api_key", return_value="brave_key")
     def test_deduplicates_urls(self, mock_key, mock_brave, mock_ddg):
         mock_brave.return_value = [
             {"url": "https://www.facebook.com/jan", "title": "Jan", "description": ""},
@@ -239,9 +239,11 @@ class TestSiteDorkSearch:
 
 
 class TestFacebookCheck:
-    @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
-    @patch("cms.workflow.research._site_dork_search", return_value=[])
-    @patch("cms.workflow.research.jittered_get")
+    @patch(
+        "cms.workflow.actions.platform_action._get_api_key", return_value="test_key_123"
+    )
+    @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
+    @patch("cms.workflow.actions.platform_action.jittered_get")
     def test_pullapi_success(self, mock_get, mock_dork, mock_get_key):
         mock_get.return_value = MockCurlResponse(200, facebook_pull_profile)
         findings = _facebook_check(MockAction(data_value="jan.vandijk"))
@@ -250,16 +252,18 @@ class TestFacebookCheck:
         assert "Jan van Dijk" in api_findings[0]["title"]
         assert api_findings[0]["source_type"] == "facebook"
 
-    @patch("cms.workflow.research._get_api_key", return_value=None)
-    @patch("cms.workflow.research._site_dork_search")
+    @patch("cms.workflow.actions.platform_action._get_api_key", return_value=None)
+    @patch("cms.workflow.actions.platform_action._site_dork_search")
     def test_no_api_key_returns_dork_results(self, mock_dork, mock_get_key):
         mock_dork.return_value = [DORK_RESULT]
         findings = _facebook_check(MockAction(data_value="Jan van Dijk"))
         assert len(findings) >= 1
         assert any("facebook.com" in f.get("source_url", "") for f in findings)
 
-    @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
-    @patch("cms.workflow.research._site_dork_search")
+    @patch(
+        "cms.workflow.actions.platform_action._get_api_key", return_value="test_key_123"
+    )
+    @patch("cms.workflow.actions.platform_action._site_dork_search")
     @patch("cms.models.Setting.get", return_value={_THIS_MONTH: 100})
     def test_no_credits_returns_dork_results(self, mock_credit, mock_dork, mock_key):
         mock_dork.return_value = [DORK_RESULT]
@@ -272,11 +276,13 @@ class TestFacebookCheck:
 
 
 class TestTikTokCheck:
-    @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
-    @patch("cms.workflow.research._site_dork_search", return_value=[])
+    @patch(
+        "cms.workflow.actions.platform_action._get_api_key", return_value="test_key_123"
+    )
+    @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("cms.workflow.research.jittered_get")
+    @patch("cms.workflow.actions.platform_action.jittered_get")
     def test_username_success(
         self, mock_get, mock_set, mock_credit_get, mock_dork, mock_key
     ):
@@ -287,8 +293,8 @@ class TestTikTokCheck:
         assert "Jan van Dijk" in api_findings[0]["title"]
         assert api_findings[0]["source_type"] == "tiktok"
 
-    @patch("cms.workflow.research._get_api_key", return_value=None)
-    @patch("cms.workflow.research._site_dork_search")
+    @patch("cms.workflow.actions.platform_action._get_api_key", return_value=None)
+    @patch("cms.workflow.actions.platform_action._site_dork_search")
     def test_no_api_key_returns_dork_results(self, mock_dork, mock_get_key):
         mock_dork.return_value = [
             {
@@ -306,11 +312,13 @@ class TestTikTokCheck:
 
 
 class TestInstagramCheck:
-    @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
-    @patch("cms.workflow.research._site_dork_search", return_value=[])
+    @patch(
+        "cms.workflow.actions.platform_action._get_api_key", return_value="test_key_123"
+    )
+    @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("cms.workflow.research.jittered_get")
+    @patch("cms.workflow.actions.platform_action.jittered_get")
     def test_username_success(
         self, mock_get, mock_set, mock_credit_get, mock_dork, mock_key
     ):
@@ -321,8 +329,8 @@ class TestInstagramCheck:
         assert "Jan van Dijk" in api_findings[0]["title"]
         assert api_findings[0]["source_type"] == "instagram"
 
-    @patch("cms.workflow.research._get_api_key", return_value=None)
-    @patch("cms.workflow.research._site_dork_search")
+    @patch("cms.workflow.actions.platform_action._get_api_key", return_value=None)
+    @patch("cms.workflow.actions.platform_action._site_dork_search")
     def test_no_api_key_returns_dork_results(self, mock_dork, mock_get_key):
         mock_dork.return_value = [
             {
@@ -340,11 +348,13 @@ class TestInstagramCheck:
 
 
 class TestLinkedInCheck:
-    @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
-    @patch("cms.workflow.research._site_dork_search", return_value=[])
+    @patch(
+        "cms.workflow.actions.platform_action._get_api_key", return_value="test_key_123"
+    )
+    @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("cms.workflow.research.jittered_get")
+    @patch("cms.workflow.actions.platform_action.jittered_get")
     def test_url_success(
         self, mock_get, mock_set, mock_credit_get, mock_dork, mock_key
     ):
@@ -359,8 +369,8 @@ class TestLinkedInCheck:
         assert "Jan van Dijk" in api_findings[0]["title"]
         assert api_findings[0]["source_type"] == "linkedin"
 
-    @patch("cms.workflow.research._get_api_key", return_value=None)
-    @patch("cms.workflow.research._site_dork_search")
+    @patch("cms.workflow.actions.platform_action._get_api_key", return_value=None)
+    @patch("cms.workflow.actions.platform_action._site_dork_search")
     def test_no_api_key_returns_dork_results(self, mock_dork, mock_get_key):
         mock_dork.return_value = [
             {
@@ -378,11 +388,13 @@ class TestLinkedInCheck:
 
 
 class TestTwitterCheck:
-    @patch("cms.workflow.research._get_api_key", return_value="test_key_123")
-    @patch("cms.workflow.research._site_dork_search", return_value=[])
+    @patch(
+        "cms.workflow.actions.platform_action._get_api_key", return_value="test_key_123"
+    )
+    @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("cms.workflow.research.jittered_get")
+    @patch("cms.workflow.actions.platform_action.jittered_get")
     def test_username_success(
         self, mock_get, mock_set, mock_credit_get, mock_dork, mock_key
     ):
@@ -393,8 +405,8 @@ class TestTwitterCheck:
         assert "Jan van Dijk" in api_findings[0]["title"]
         assert api_findings[0]["source_type"] == "twitter"
 
-    @patch("cms.workflow.research._get_api_key", return_value=None)
-    @patch("cms.workflow.research._site_dork_search")
+    @patch("cms.workflow.actions.platform_action._get_api_key", return_value=None)
+    @patch("cms.workflow.actions.platform_action._site_dork_search")
     def test_no_api_key_returns_dork_results(self, mock_dork, mock_get_key):
         mock_dork.return_value = [
             {"source_url": "https://x.com/jandevries", "title": "Jan", "detail": ""},

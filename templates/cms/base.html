@@ -128,6 +128,13 @@
         .btn-cms.bg-orange:hover { background: #b45309; border-color: #b45309; }
         .btn-cms.bg-gray { background: #6b7280; color: #fff; border-color: #6b7280; }
         .btn-cms.bg-gray:hover { background: #4b5563; border-color: #4b5563; }
+        .cms-toast { padding: 0.75rem 2.5rem 0.75rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: opacity 0.3s, transform 0.3s; cursor: default; position: relative; }
+        .cms-toast-info { background: #1e293b; color: #e2e8f0; border-left: 4px solid #3b82f6; }
+        .cms-toast-success { background: #052e16; color: #bbf7d0; border-left: 4px solid #22c55e; }
+        .cms-toast-error { background: #450a0a; color: #fecaca; border-left: 4px solid #ef4444; }
+        .cms-toast-warning { background: #451a03; color: #fed7aa; border-left: 4px solid #f59e0b; }
+        .cms-toast-close { position: absolute; top: 0.5rem; right: 0.75rem; background: none; border: none; color: inherit; font-size: 1.1rem; cursor: pointer; opacity: 0.6; line-height: 1; padding: 0; }
+        .cms-toast-close:hover { opacity: 1; }
     </style>
 </head>
 <body data-help-topic="{{ help_topic|default('general') }}">
