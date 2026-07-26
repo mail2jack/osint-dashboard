@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
           pollStatus();
         }
       })
-      .catch(function(err) { console.error('Verify error:', err.message || err); });
+      .catch(function() { /* verify failed — user can retry */ });
       return;
     }
     var ssBtn = e.target.closest('[data-action="add-screenshot-btn"]');

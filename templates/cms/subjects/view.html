@@ -2272,7 +2272,6 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
             return true;
         } catch (err) {
             statusEl.innerHTML = '<span class="text-red">{{ _("Failed to load face recognition") }}</span>';
-            console.error('Face API error:', err);
             return false;
         }
     }
@@ -2336,7 +2335,6 @@ html += '<button data-click="saveVesselFinding" class="btn-cms small teal">{{ _(
             }
         } catch (err) {
             statusEl.innerHTML = '<span class="text-red">{{ _("Error:") }} ' + esc(err.message) + '</span>';
-            console.error('Face encoding error:', err);
         }
         
         btn.disabled = false;

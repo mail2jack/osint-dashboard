@@ -45,7 +45,11 @@ def _record_restricted(
         description=f"Search '{query}' for {entity_type}: {restricted} result(s) restricted "
         f"in cases: {', '.join(accessible_case_numbers)}",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.warning("Failed to log restricted search audit entry")
     owner_names = notify_search_restricted(
         user_id=current_user.id,
         query=query,
@@ -379,7 +383,11 @@ def search() -> str:
             ip_address=request.remote_addr,
             description=f"Searched for: {query}",
         )
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.warning("Failed to log search audit entry")
 
     return render_template(
         "cms/search.html", query=query, results=results, active_filter=entity_type
@@ -741,7 +749,11 @@ def global_search():
             ip_address=request.remote_addr,
             description=f"Super-admin global search for: {q}",
         )
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.warning("Failed to log super-admin search audit entry")
 
     return render_template(
         "cms/global_search.html", query=q, results=results, active_filter=entity_type

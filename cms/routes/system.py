@@ -2,6 +2,7 @@ import json as _json
 import logging
 import os
 import re
+import subprocess
 import time
 
 import flask
@@ -131,7 +132,7 @@ def _read_session_data(session_id: str) -> dict:
                 "created_at": data.get("_created_at"),
                 "ip": data.get("_ip", data.get("ip", "")),
             }
-    except Exception:
+    except (FileNotFoundError, OSError, _json.JSONDecodeError):
         logger.exception("Failed to read session data")
     return {}
 
@@ -285,7 +286,7 @@ def check_update() -> flask.Response:
             )
             if r.returncode == 0:
                 local_sha = r.stdout.strip()
-        except Exception:
+        except (OSError, subprocess.SubprocessError):
             pass
 
         if not local_sha:
@@ -387,10 +388,10 @@ def _write_task(task_id: str, data: dict):
         with open(tmp, "w") as f:
             _json.dump(data, f)
         os.rename(tmp, _task_file_path(task_id))
-    except Exception:
+    except OSError:
         try:
             os.remove(tmp)
-        except Exception:
+        except OSError:
             pass
 
 
@@ -642,7 +643,7 @@ def _run_update_background(task_id: str, app):
                 )
                 if sha_r.returncode == 0:
                     _cfg_set("last_update_commit", sha_r.stdout.strip())
-            except Exception:
+            except (OSError, subprocess.SubprocessError):
                 pass
 
             # Step 5: Restart — set status to restarting so frontend knows
@@ -1083,7 +1084,7 @@ def brave_status():
             try:
                 body = resp.json()
                 result["api_error"] = body.get("error", body.get("message", str(body)))
-            except Exception:
+            except (ValueError, KeyError, TypeError):
                 result["api_error"] = resp.text[:500] or "Unknown error"
         try:
             parts_remaining = remaining_header.split(",")
@@ -1200,7 +1201,12 @@ def create_announcement():
             created_by_id=current_user.id,
         )
         db.session.add(announcement)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            flask.flash("Failed to create announcement.", "danger")
+            return render_template("cms/announcements/form.html", announcement=None)
         flask.flash("Announcement created.", "success")
         return flask.redirect(flask.url_for("cms.list_announcements"))
 
@@ -1239,7 +1245,14 @@ def edit_announcement(announcement_id):
         else:
             announcement.expires_at = None
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            flask.flash("Failed to update announcement.", "danger")
+            return render_template(
+                "cms/announcements/form.html", announcement=announcement
+            )
         flask.flash("Announcement updated.", "success")
         return flask.redirect(flask.url_for("cms.list_announcements"))
 
@@ -1254,7 +1267,12 @@ def toggle_announcement(announcement_id):
 
     announcement = Announcement.query.get_or_404(announcement_id)
     announcement.is_active = not announcement.is_active
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flask.flash("Failed to toggle announcement.", "danger")
+        return flask.redirect(flask.url_for("cms.list_announcements"))
     flask.flash(
         f"Announcement {'activated' if announcement.is_active else 'deactivated'}.",
         "success",
@@ -1271,7 +1289,12 @@ def delete_announcement(announcement_id):
     announcement = Announcement.query.get_or_404(announcement_id)
     AnnouncementAck.query.filter_by(announcement_id=announcement.id).delete()
     db.session.delete(announcement)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flask.flash("Failed to delete announcement.", "danger")
+        return flask.redirect(flask.url_for("cms.list_announcements"))
     flask.flash("Announcement deleted.", "success")
     return flask.redirect(flask.url_for("cms.list_announcements"))
 
@@ -1291,5 +1314,8 @@ def ack_announcement(announcement_id):
             user_id=current_user.id,
         )
         db.session.add(ack)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     return api_success({"status": "acknowledged"})

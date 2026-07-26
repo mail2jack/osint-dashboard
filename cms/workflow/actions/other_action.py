@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 def _financial_check(action):
     """Placeholder — financieel onderzoek is handmatig in deze fase."""
+    subject = _first_subject(action)
     return [
         {
             "title": "Financial research — manual action",
@@ -22,6 +23,7 @@ def _financial_check(action):
             "source_type": "financial",
             "icon": "💰",
             "verified": False,
+            "subject_id": subject.id if subject else None,
         }
     ]
 
@@ -95,7 +97,7 @@ def _query_certspotter(domain):
     return subs
 
 
-def _process_subdomains(subs, domain):
+def _process_subdomains(subs, domain, subject_id=None):
     """Deduplicate and format subdomain findings."""
     findings = []
     sorted_subs = sorted(subs)[:50]
@@ -107,6 +109,7 @@ def _process_subdomains(subs, domain):
                 "source_type": "subdomain",
                 "icon": "🌐",
                 "verified": False,
+                "subject_id": subject_id,
             }
         )
         return findings
@@ -120,6 +123,7 @@ def _process_subdomains(subs, domain):
             "source_type": "subdomain",
             "icon": "🌐",
             "verified": True,
+            "subject_id": subject_id,
             "screenshots": [
                 {"url": None, "source_url": f"https://crt.sh/?q=%25.{domain}"}
             ],
@@ -131,6 +135,7 @@ def _process_subdomains(subs, domain):
 def _subdomain_check(action):
     """Check subdomains for a domain via crt.sh and CertSpotter."""
     domain = action.data_value if action.data_value else None
+    subject = None
     if not domain:
         subject = _first_subject(action)
         if subject and subject.email and "@" in subject.email:
@@ -138,11 +143,16 @@ def _subdomain_check(action):
     if not domain:
         return []
 
+    subject_id = subject.id if subject else None
+    if not subject_id:
+        subject = _first_subject(action)
+        subject_id = subject.id if subject else None
+
     try:
         subs = _query_crtsh(domain)
         if not subs:
             subs = _query_certspotter(domain)
-        return _process_subdomains(subs, domain)
+        return _process_subdomains(subs, domain, subject_id=subject_id)
     except Exception as e:
         return [
             {

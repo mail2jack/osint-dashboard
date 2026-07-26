@@ -420,7 +420,6 @@ async function loadFaceApi() {
         return true;
     } catch (err) {
         statusEl.innerHTML = '<span style="color: #fca5a5;">Failed to load face recognition</span>';
-        console.error('Face API error:', err);
         return false;
     }
 }
@@ -492,7 +491,6 @@ async function searchByFace(input) {
         resultsEl.style.display = 'block';
     } catch (err) {
         statusEl.innerHTML = '<span style="color: #fca5a5;">Error: ' + esc(err.message) + '</span>';
-        console.error('Face search error:', err);
     }
 }
 </script>

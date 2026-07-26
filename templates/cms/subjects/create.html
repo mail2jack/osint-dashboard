@@ -767,8 +767,7 @@ function checkDuplicate() {
                     alertEl.style.display = 'none';
                 }
             })
-            .catch(err => {
-                console.error('Check duplicate error:', err);
+            .catch(() => {
                 if (alertEl) alertEl.style.display = 'none';
             });
     }, 300);

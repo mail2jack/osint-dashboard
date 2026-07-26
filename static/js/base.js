@@ -322,8 +322,8 @@ function hideLoader() {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('/static/pwa/sw.js')
-      .then(function(reg) { console.log('SW registered'); hideLoader(); })
-      .catch(function(err) { console.log('SW registration failed:', err); hideLoader(); });
+      .then(function() { hideLoader(); })
+      .catch(function() { hideLoader(); });
   });
 } else {
   hideLoader();
@@ -710,7 +710,6 @@ function _pollUpdate(taskId) {
       })
       .catch(function(err) {
         // Connection errors during restart are expected — keep polling
-        console.warn('Poll error (may be restarting):', err.message);
       });
   }, 2000);
 }

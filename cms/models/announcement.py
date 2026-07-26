@@ -1,5 +1,6 @@
 """System-wide announcement model for super admin broadcasts."""
 
+import uuid
 from datetime import datetime, timezone
 
 from . import db
@@ -10,9 +11,7 @@ class Announcement(db.Model):
 
     __tablename__ = "announcements"
 
-    id = db.Column(
-        db.String(36), primary_key=True, default=lambda: str(__import__("uuid").uuid4())
-    )
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = db.Column(db.String(200), nullable=False)
     body = db.Column(db.Text, nullable=False)
     severity = db.Column(
@@ -47,9 +46,7 @@ class AnnouncementAck(db.Model):
 
     __tablename__ = "announcement_acks"
 
-    id = db.Column(
-        db.String(36), primary_key=True, default=lambda: str(__import__("uuid").uuid4())
-    )
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     announcement_id = db.Column(
         db.String(36), db.ForeignKey("announcements.id"), nullable=False, index=True
     )

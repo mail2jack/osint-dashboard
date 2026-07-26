@@ -1,5 +1,6 @@
 import logging
 import threading
+import uuid
 from datetime import datetime
 
 from cms.models import db, SocialAccount
@@ -148,7 +149,7 @@ def run_action(action_id):
             detail_text = fd.get("detail", "")
             subject_id = fd.get("subject_id")
             finding = WorkflowFinding(
-                id=str(__import__("uuid").uuid4()),
+                id=str(uuid.uuid4()),
                 case_id=action.case_id,
                 subject_id=subject_id,
                 title=fd["title"],
@@ -170,7 +171,7 @@ def run_action(action_id):
 
             for ss in fd.get("screenshots", []):
                 screenshot = WorkflowScreenshot(
-                    id=str(__import__("uuid").uuid4()),
+                    id=str(uuid.uuid4()),
                     finding_id=finding.id,
                     url=ss.get("url"),
                     source_url=ss.get("source_url"),

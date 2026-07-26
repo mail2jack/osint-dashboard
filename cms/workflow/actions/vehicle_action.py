@@ -147,6 +147,7 @@ def _vessel_check(action):
                 "source_type": "vessel",
                 "icon": "🚢",
                 "verified": False,
+                "subject_id": subject.id if subject else None,
             }
         )
         return findings
@@ -250,6 +251,7 @@ def _vessel_check(action):
                     "source_type": "vessel",
                     "icon": "🚢",
                     "verified": False,
+                    "subject_id": subject.id if subject else None,
                 }
             )
     except Exception as e:

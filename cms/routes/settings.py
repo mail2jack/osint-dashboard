@@ -253,7 +253,12 @@ def save_settings_api() -> flask.Response:
         else:
             errors.append(f"Missing setting ID for: {item.get('key', 'unknown')}")
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to save settings")
+        return api_error("Failed to save settings", 500)
 
     # Reinitialize default settings if needed
     try:
@@ -317,7 +322,12 @@ def save_platform_settings() -> flask.Response:
                 setting.value = new_value
                 setting.updated_at = datetime.now(timezone.utc)
                 saved_count += 1
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to save platform settings")
+        return api_error("Failed to save platform settings", 500)
     return jsonify(
         {"message": f"Saved {saved_count} platform setting(s)", "saved": saved_count}
     )
@@ -374,7 +384,12 @@ def save_tenant_settings() -> flask.Response:
                 setting.value = new_value
                 setting.updated_at = datetime.now(timezone.utc)
                 saved_count += 1
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to save tenant settings")
+        return api_error("Failed to save tenant settings", 500)
     return jsonify(
         {"message": f"Saved {saved_count} tenant setting(s)", "saved": saved_count}
     )
@@ -400,7 +415,12 @@ def reset_platform_setting(setting_id: str) -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Reset platform setting: {setting.key}",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to reset platform setting")
+        return api_error("Failed to reset platform setting", 500)
     return api_success({}, "Platform setting reset to default")
 
 
@@ -424,7 +444,12 @@ def reset_setting_api(setting_id: str) -> flask.Response:
         description=f"Reset setting: {setting.key}",
     )
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to reset setting")
+        return api_error("Failed to reset setting", 500)
 
     # Reinitialize to get default value
     init_default_settings()
@@ -547,7 +572,12 @@ def dismiss_anomaly(log_id: str) -> flask.Response:
     ensure_tenant_access(log)
     log.is_anomaly = False
     log.anomaly_reason = ""
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to dismiss anomaly")
+        return api_error("Failed to dismiss anomaly", 500)
     return api_success({}, "Anomaly dismissed")
 
 
@@ -562,7 +592,12 @@ def purge_login_logs() -> flask.Response:
     query = apply_tenant_filter(query, LoginLog)
     deleted = query.delete()
     if deleted:
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.exception("Failed to purge login logs")
+            return api_error("Failed to purge login logs", 500)
     return api_success({}, f"Deleted {deleted} login log(s)")
 
 
@@ -641,7 +676,12 @@ def api_create_api_key() -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Created API key '{name}' for user {user.username}",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to create API key")
+        return api_error("Failed to create API key", 500)
 
     return jsonify(
         {
@@ -662,7 +702,12 @@ def api_deactivate_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id) or abort(404)
     ensure_tenant_access(key)
     key.is_active = False
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to deactivate API key")
+        return api_error("Failed to deactivate API key", 500)
     return api_success({}, "API key deactivated")
 
 
@@ -676,7 +721,12 @@ def api_activate_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id) or abort(404)
     ensure_tenant_access(key)
     key.is_active = True
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to activate API key")
+        return api_error("Failed to activate API key", 500)
     return api_success({}, "API key reactivated")
 
 
@@ -690,7 +740,12 @@ def api_delete_api_key(key_id: str) -> flask.Response:
     key = db.session.get(ApiKey, key_id) or abort(404)
     ensure_tenant_access(key)
     db.session.delete(key)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to delete API key")
+        return api_error("Failed to delete API key", 500)
     return api_success({}, "API key deleted")
 
 
@@ -856,7 +911,12 @@ def create_tenant() -> flask.Response:
         tier=data.get("tier", "free"),
     )
     db.session.add(tenant)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to create tenant")
+        return api_error("Failed to create tenant", 500)
     return jsonify(
         {"message": f"Tenant '{name}' created", "tenant": tenant.to_dict()}
     ), 201
@@ -925,7 +985,12 @@ def toggle_tenant(tenant_id: str) -> flask.Response:
     """Toggle tenant active status."""
     tenant = db.session.get(Tenant, tenant_id) or abort(404)
     tenant.is_active = not tenant.is_active
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to toggle tenant")
+        return api_error("Failed to toggle tenant", 500)
     return jsonify(
         {
             "message": f"Tenant {'activated' if tenant.is_active else 'deactivated'}",
@@ -984,7 +1049,13 @@ def tenant_invite_user(tenant_id: str) -> flask.Response:
         role=role,
         invited_by_id=current_user.id,
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to create invitation")
+        flash("Failed to send invitation.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
 
     accept_url = url_for("auth.accept_invite", token=inv.token, _external=True)
     from ..email_utils import is_smtp_configured, send_email
@@ -1024,7 +1095,13 @@ def tenant_deactivate_user(tenant_id: str, user_id: str) -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Super-admin deactivated user {user.username} in tenant {tenant_id}",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to deactivate user")
+        flash("Failed to deactivate user.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
     flash(f"User {user.full_name} deactivated.", "info")
     return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
 
@@ -1046,7 +1123,13 @@ def tenant_reactivate_user(tenant_id: str, user_id: str) -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Super-admin reactivated user {user.username} in tenant {tenant_id}",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to reactivate user")
+        flash("Failed to reactivate user.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
     flash(f"User {user.full_name} reactivated.", "success")
     return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
 
@@ -1080,7 +1163,13 @@ def tenant_change_role(tenant_id: str, user_id: str) -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Super-admin changed role from {old_role} to {new_role} for user {user.username} in tenant {tenant_id}",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to change user role")
+        flash("Failed to change role.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
     flash(f"Role for {user.full_name} changed to {new_role}.", "success")
     return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
 
@@ -1104,7 +1193,13 @@ def tenant_reset_2fa(tenant_id: str, user_id: str) -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Super-admin reset 2FA for user {user.username} in tenant {tenant_id}",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to reset 2FA")
+        flash("Failed to reset 2FA.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
     flash(f"2FA reset for {user.full_name}.", "success")
     return redirect(url_for("cms.tenant_detail", tenant_id=tenant_id))
 
@@ -1166,7 +1261,12 @@ def upload_tenant_logo():
     TenantSetting.set(
         "app_logo", filename, category="branding", description="Tenant logo filename"
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to save tenant logo")
+        return api_error("Failed to save tenant logo", 500)
 
     return jsonify(
         {
@@ -1199,7 +1299,12 @@ def delete_tenant_logo():
         ).first()
         if existing:
             db.session.delete(existing)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logger.exception("Failed to delete tenant logo")
+                return api_error("Failed to delete tenant logo", 500)
     return jsonify({"status": "ok"})
 
 
@@ -1242,7 +1347,13 @@ def tenant_update_settings(tenant_id: str) -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Super-admin updated tenant {tenant.name} settings",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to update tenant settings")
+        flash("Failed to update tenant settings.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
     flash("Tenant settings updated.", "success")
     return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
 
@@ -1263,7 +1374,13 @@ def tenant_toggle_active(tenant_id: str) -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Super-admin {action} tenant {tenant.name}",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to toggle tenant active status")
+        flash("Failed to toggle tenant status.", "danger")
+        return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
     flash(f"Tenant {action}.", "success")
     return redirect(url_for("cms.tenant_detail", tenant_id=tenant.id))
 
@@ -1302,7 +1419,13 @@ def update_tier():
         abort(400)
 
     tenant.tier = new_tier
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to update tier")
+        flash("Failed to update plan.", "danger")
+        return redirect(url_for("cms.settings", category="plan"))
 
     flash(
         f"Plan updated to {TIER_DISPLAY.get(new_tier, new_tier.title())}.",
@@ -1355,7 +1478,12 @@ def upload_logo():
     else:
         setting = Setting(key="app_logo", value=filename, category="appearance")
         db.session.add(setting)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to save logo")
+        return api_error("Failed to save logo", 500)
 
     return jsonify({"filename": filename})
 
@@ -1378,7 +1506,12 @@ def delete_logo():
 
     setting.value = ""
     setting.updated_at = datetime.now(timezone.utc)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to delete logo")
+        return api_error("Failed to delete logo", 500)
 
     return jsonify({"status": "ok"})
 

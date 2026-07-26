@@ -7,6 +7,7 @@ Provides:
 """
 
 import logging
+from datetime import datetime, timezone
 from functools import wraps
 
 from flask import request, jsonify, g
@@ -49,9 +50,7 @@ def api_key_required(f):
             logger.debug("API key hash mismatch")
             return jsonify({"error": "Invalid API key"}), 401
 
-        key_record.last_used_at = __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        )
+        key_record.last_used_at = datetime.now(timezone.utc)
         db.session.commit()
 
         g.api_user_id = key_record.user_id

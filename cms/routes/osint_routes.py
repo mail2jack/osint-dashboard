@@ -291,7 +291,7 @@ def openkvk_lookup() -> FlaskResponse:
         else:
             logger.exception("OpenKVK request failed")
             result["error"] = "Request failed"
-    except Exception:
+    except (ValueError, KeyError):
         logger.exception("OpenKVK unexpected error")
         result["error"] = "Unexpected error"
 
@@ -445,7 +445,7 @@ def hibp_check() -> FlaskResponse:
                 }
             )
 
-    except Exception:
+    except (RequestsError, ValueError):
         logger.exception("HIBP check error")
         return jsonify(
             {"email": email, "error": "Internal server error", "breaches": []}
@@ -1028,7 +1028,7 @@ def username_rapidapi() -> FlaskResponse:
                     "api_usage": usage_info,
                 }
             )
-        except Exception as e:
+        except (RequestsError, ValueError) as e:
             logger.error(
                 f"RapidAPI username check failed for '{username}' ({type(e).__name__}): {e}"
             )

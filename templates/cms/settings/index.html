@@ -953,7 +953,7 @@ async function resetAllSettings() {
                 headers: {'X-CSRFToken': '{{ csrf_token() }}'}
             });
         } catch (err) {
-            console.error('Failed to reset setting:', id, err);
+            // Reset failed — will be visible in UI state
         }
     }
     

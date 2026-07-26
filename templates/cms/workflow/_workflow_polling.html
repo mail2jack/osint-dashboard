@@ -107,7 +107,7 @@ function pollStatus() {
       if (!hasRunning) { stopPolling(); }
       updateFindings(data.findings || [], data.actions || []);
     })
-    .catch(function(err) { console.warn('pollStatus error:', err); });
+    .catch(function() { /* polling error — will retry */ });
 }
 
 function rdwCardHtml(data) {

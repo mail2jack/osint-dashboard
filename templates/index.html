@@ -587,7 +587,7 @@
                                     finished = true;
                                 }
                             } catch (e) {
-                                console.error('Parse error:', e);
+                                // JSON parse error during polling — will retry
                             }
                         }
                     }
@@ -639,7 +639,7 @@
                 }
             }
             
-            alert(`Added ${added} findings to case${errors > 0 ? ` (${errors} errors)` : ''}`);
+            showToast(`Added ${added} findings to case${errors > 0 ? ` (${errors} errors)` : ''}`, errors > 0 ? 'warning' : 'success');
             
             // Open the case in CMS
             window.open(`/cms/cases/${caseId}`, '_blank');

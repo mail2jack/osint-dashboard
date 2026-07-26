@@ -10,7 +10,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..validation import validate, StartOSINTSearchSchema, AddOSINTFindingsSchema
-from ..models import db, Case, Subject, AuditLog, Finding
+from ..models import db, Case, Subject, AuditLog, Finding, Setting, OsintSearch
 from ..auth import case_access_required
 from ..search_manager import search_manager
 
@@ -47,14 +47,13 @@ def run_osint_search(
             if ctx2:
                 ctx2.push()
             try:
-                SettingModel = __import__("cms.models", fromlist=["Setting"]).Setting
-                sf_url = SettingModel.get("spiderfoot_url")
+                sf_url = Setting.get("spiderfoot_url")
                 if not sf_url:
                     search_manager.set_sf_status(search_id, "failed")
                     return
                 search_manager.set_sf_status(search_id, "running")
-                sf_user = SettingModel.get("spiderfoot_username", "admin") or "admin"
-                sf_pass = SettingModel.get("spiderfoot_password", "") or ""
+                sf_user = Setting.get("spiderfoot_username", "admin") or "admin"
+                sf_pass = Setting.get("spiderfoot_password", "") or ""
 
                 from cms.spiderfoot_service import (
                     SpiderFootService,
@@ -337,13 +336,12 @@ def get_osint_sf_results(search_id: str) -> flask.Response:
 
     # Fetch status from SF server
     try:
-        SettingModel = __import__("cms.models", fromlist=["Setting"]).Setting
-        sf_url = SettingModel.get("spiderfoot_url")
+        sf_url = Setting.get("spiderfoot_url")
         if not sf_url:
             return jsonify({"status": "unavailable", "results": []})
 
-        sf_user = SettingModel.get("spiderfoot_username", "admin") or "admin"
-        sf_pass = SettingModel.get("spiderfoot_password", "") or ""
+        sf_user = Setting.get("spiderfoot_username", "admin") or "admin"
+        sf_pass = Setting.get("spiderfoot_password", "") or ""
 
         from cms.spiderfoot_service import SpiderFootService, SpiderFootConfig
 
@@ -386,13 +384,7 @@ def get_osint_sf_results(search_id: str) -> flask.Response:
         sf_results = [sf_service.normalize_sf_result_for_osint(r) for r in normalized]
 
         # Cache results in the OsintSearch record
-        row = (
-            db.session.query(
-                __import__("cms.models", fromlist=["OsintSearch"]).OsintSearch
-            )
-            .filter_by(search_id=search_id)
-            .first()
-        )
+        row = db.session.query(OsintSearch).filter_by(search_id=search_id).first()
         if row:
             if not row.results:
                 row.results = {}

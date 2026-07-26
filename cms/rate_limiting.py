@@ -8,6 +8,7 @@ using tier defaults stored in PlatformSetting("rate_limit_tier_defaults")
 with optional per-tenant overrides in PlatformSetting("rate_limit_overrides").
 """
 
+import logging
 import time
 import threading
 from datetime import datetime, timedelta
@@ -15,7 +16,7 @@ from functools import wraps
 
 import flask
 
-logger = __import__("logging").getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 _SETTING_KEY_API = "rate_limits_api"
 _SETTING_KEY_PLATFORM = "rate_limits_platform"

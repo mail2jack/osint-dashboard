@@ -154,7 +154,7 @@ apiFetch('/static/data/cbs-crime-codes.json')
     .then(data => {
         beleidData = data;
     })
-    .catch(error => console.error('Error loading crime codes:', error));
+    .catch(() => {});
 
 function getItemsWithHeaders(items) {
     const result = [];

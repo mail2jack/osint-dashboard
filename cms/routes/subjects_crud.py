@@ -20,7 +20,7 @@ from ..auth import (
     apply_tenant_filter,
     ensure_tenant_access,
 )
-from ..encryption_utils import encryptor
+from ..encryption_utils import encryptor, EncryptionError
 from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 from ..tier_limits import check_resource_limit
@@ -352,7 +352,15 @@ def create_subject() -> flask.Response:
             case_id=data.get("case_id"),
             description=f"Created subject ({subject.subject_type})",
         )
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.exception("Failed to create subject")
+            if request.is_json:
+                return api_error("Failed to create subject", 500)
+            flash("Failed to create subject.", "danger")
+            return render_template("cms/subjects/create.html")
 
         try:
             from ..webhooks import dispatch
@@ -366,7 +374,7 @@ def create_subject() -> flask.Response:
                 },
             )
         except Exception:
-            pass
+            logger.debug("Webhook dispatch failed for subject.created", exc_info=True)
 
         if request.is_json:
             return jsonify(
@@ -479,7 +487,7 @@ def edit_subject(subject_id: str) -> flask.Response:
                 try:
                     if old_value:
                         old_value = encryptor.decrypt(old_value)
-                except Exception:
+                except EncryptionError:
                     logger.debug(
                         "Could not decrypt %s (may already be plaintext or key changed)",
                         field,
@@ -507,7 +515,7 @@ def edit_subject(subject_id: str) -> flask.Response:
                 try:
                     if old_value:
                         old_value = encryptor.decrypt(old_value)
-                except Exception:
+                except EncryptionError:
                     logger.debug(
                         "Could not decrypt %s (may already be plaintext or key changed)",
                         field,
@@ -548,7 +556,7 @@ def edit_subject(subject_id: str) -> flask.Response:
                 try:
                     if old_value:
                         old_value = encryptor.decrypt(old_value)
-                except Exception:
+                except EncryptionError:
                     logger.debug(
                         "Could not decrypt %s (may already be plaintext or key changed)",
                         field,
@@ -760,7 +768,15 @@ def edit_subject(subject_id: str) -> flask.Response:
             ip_address=request.remote_addr,
             description=f"Updated subject ({subject.subject_type})",
         )
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.exception("Failed to update subject")
+            if request.is_json:
+                return api_error("Failed to update subject", 500)
+            flash("Failed to update subject.", "danger")
+            return redirect(url_for("cms.edit_subject", subject_id=subject_id))
 
         if request.is_json:
             return jsonify({"message": "Subject updated", "subject": subject.to_dict()})
@@ -798,7 +814,12 @@ def bulk_delete_subjects() -> flask.Response:
         Subject.query.filter(Subject.id.in_(ids), Subject.is_deleted == False),
         Subject,
     ).update({"is_deleted": True, "deleted_at": now}, synchronize_session=False)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to bulk delete subjects")
+        return api_error("Failed to delete subjects", 500)
     AuditLog.log(
         user_id=current_user.id,
         action="bulk_delete",
@@ -850,7 +871,15 @@ def delete_subject(subject_id: str) -> flask.Response:
         ip_address=request.remote_addr,
         description=f"Deleted subject ({subject.subject_type})",
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to delete subject")
+        if request.is_json:
+            return api_error("Failed to delete subject", 500)
+        flash("Failed to delete subject.", "danger")
+        return redirect(url_for("cms.subjects"))
 
     if request.is_json:
         return api_success({}, "Subject deleted")
