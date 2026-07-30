@@ -495,11 +495,9 @@ def _instagram_check(action):
                     add_api_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code == 429:
-                logger.warning("Instagram API rate limit")
-                return findings
+                logger.warning("Instagram API rate limit — fallback to name search")
             elif r.status_code in (401, 403):
-                logger.warning("Instagram API auth error")
-                return findings
+                logger.warning("Instagram API auth error — fallback to name search")
 
         # Name search fallback
         r = jittered_get(
@@ -740,11 +738,9 @@ def _twitter_check(action):
                     add_api_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code == 429:
-                logger.warning("Twitter API rate limit")
-                return findings
+                logger.warning("Twitter API rate limit — fallback to name search")
             elif r.status_code in (401, 403):
-                logger.warning("Twitter API auth error")
-                return findings
+                logger.warning("Twitter API auth error — fallback to name search")
 
         # Search fallback
         r = jittered_get(
