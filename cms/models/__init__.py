@@ -3765,19 +3765,24 @@ class TenantSetting(db.Model):
     def set(
         cls,
         key: str,
-        value: str,
+        value: str | dict | list | None,
         tenant_id: str | None = None,
         category: str = "general",
         description: str = "",
         encrypt: bool = False,
     ) -> "TenantSetting":
         """Set a setting value for a tenant."""
+        import json
+
         from flask import g
 
         tid = tenant_id or getattr(g, "tenant_id", None)
         if not tid:
             raise ValueError("No tenant_id provided or available in context")
         from ..encryption_utils import encryptor
+
+        if isinstance(value, (dict, list)):
+            value = json.dumps(value)
 
         row = cls.query.filter_by(tenant_id=tid, key=key).first()
         if not row:

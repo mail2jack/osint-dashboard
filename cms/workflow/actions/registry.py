@@ -27,13 +27,28 @@ CREDIT_LIMITS = {
 }
 
 
+def _load_credits():
+    import json
+    from cms.models import Setting
+
+    raw = Setting.get("rapidapi_credits_usage", "{}")
+    if isinstance(raw, str):
+        return json.loads(raw) if raw.strip() else {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _save_credits(usage):
+    import json
+    from cms.models import Setting
+
+    Setting.set("rapidapi_credits_usage", json.dumps(usage))
+
+
 def get_remaining_credits(action_type):
     with _credit_lock:
         month = datetime.now().strftime("%Y-%m")
         try:
-            from cms.models import Setting
-
-            usage = Setting.get("rapidapi_credits_usage", {})
+            usage = _load_credits()
             used = usage.get(action_type, {}).get(month, 0)
             limit = CREDIT_LIMITS.get(action_type, 0)
             return max(0, limit - used)
@@ -48,12 +63,10 @@ def _use_credit(action_type):
     with _credit_lock:
         month = datetime.now().strftime("%Y-%m")
         try:
-            from cms.models import Setting
-
-            usage = Setting.get("rapidapi_credits_usage", {})
+            usage = _load_credits()
             usage.setdefault(action_type, {})
             usage[action_type][month] = usage[action_type].get(month, 0) + 1
-            Setting.set("rapidapi_credits_usage", usage)
+            _save_credits(usage)
         except Exception:
             logger.warning(
                 "Failed to record credit usage for %s", action_type, exc_info=True

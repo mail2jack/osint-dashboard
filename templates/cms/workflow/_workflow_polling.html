@@ -93,7 +93,7 @@ function pollStatus() {
           document.getElementById('actionsStatus').textContent = '✅ ' + btn.dataset.label + ' completed — ' + (a.result_summary || '');
           if (CREDIT_LIMITS.hasOwnProperty(a.action_type)) updateCredits(a.action_type);
         }
-        if (a.status === 'failed' && btn.classList.contains('running')) {
+        if ((a.status === 'error' || a.status === 'failed') && btn.classList.contains('running')) {
           btn.classList.remove('running');
           btn.classList.add('failed');
           btn.dataset.runningSince = '';
@@ -304,7 +304,7 @@ function updateFindings(findings, actions) {
     var gf = groups[a.id];
     if (!gf || !gf.length) return;
     var icon = '📄';
-    var statusClass = a.status === 'completed' ? 'fg-done' : a.status === 'failed' ? 'fg-failed' : a.status === 'running' ? 'fg-running' : '';
+    var statusClass = a.status === 'completed' ? 'fg-done' : (a.status === 'error' || a.status === 'failed') ? 'fg-failed' : a.status === 'running' ? 'fg-running' : '';
     var groupLabel = a.label || a.action_type;
     if (a.dork_label) {
       groupLabel = groupLabel + ' — ' + a.dork_label;
