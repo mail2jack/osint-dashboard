@@ -6,6 +6,7 @@ import subprocess
 import time
 
 import flask
+import requests
 from flask import jsonify, current_app, render_template
 from flask_login import login_required, current_user
 
@@ -255,20 +256,23 @@ def check_update() -> flask.Response:
         latest_ver = r.text.strip()
 
         # Fetch remote HEAD commit SHA via GitHub API
+        # Use plain requests — GitHub API rate-limits Tor/proxy IPs hard
         remote_sha = ""
         try:
             api_url = f"https://api.github.com/repos/{repo}/commits/master"
-            api_r = jittered_get(
+            api_r = requests.get(
                 api_url,
                 timeout=10,
                 headers={"Accept": "application/vnd.github.v3.sha"},
             )
             if api_r.status_code == 200:
                 remote_sha = api_r.text.strip()
-        except Exception as e:
-            logger.debug(
-                f"Failed to fetch remote SHA from GitHub ({type(e).__name__}): {e}"
-            )
+            elif api_r.status_code == 403:
+                logger.warning(
+                    "GitHub API rate limited. VERSION-based update check still works."
+                )
+        except requests.RequestException as e:
+            logger.debug(f"GitHub API request failed: {e}")
 
         # Get local HEAD SHA directly from git (authoritative), fall back to DB
         local_sha = ""
