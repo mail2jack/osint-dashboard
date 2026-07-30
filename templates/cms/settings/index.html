@@ -1191,13 +1191,13 @@ async function searchSettings(query) {
     }
 }
 
-// Click search result → navigate to its category
+// Click search result → navigate to its category and highlight the setting
 document.getElementById('settingsSearchResults').addEventListener('click', function(e) {
     var item = e.target.closest('.search-result-item');
     if (item) {
         var cat = item.dataset.category;
-        var q = document.getElementById('settingsSearchInput').value;
-        window.location.href = '/cms/settings?category=' + encodeURIComponent(cat) + '&q=' + encodeURIComponent(q);
+        var key = item.dataset.key;
+        window.location.href = '/cms/settings?category=' + encodeURIComponent(cat) + '&highlight=' + encodeURIComponent(key);
     }
 });
 
@@ -1290,11 +1290,25 @@ window.deleteLogo = async function() {
     }
 };
 
-// Pre-populate search from ?q= param on page load
+// Scroll to and highlight a setting when ?highlight=key is present
+function scrollToSetting(key) {
+    var input = document.querySelector('.setting-item[data-key="' + CSS.escape(key) + '"]');
+    if (input) {
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input.style.transition = 'background 0.5s';
+        input.style.background = 'rgba(59, 130, 246, 0.1)';
+        setTimeout(function() { input.style.background = ''; }, 2000);
+    }
+}
+
+// Pre-populate search from ?q= param on page load, or scroll to ?highlight=
 document.addEventListener('DOMContentLoaded', function() {
     var urlParams = new URLSearchParams(window.location.search);
     var q = urlParams.get('q');
-    if (q) {
+    var highlight = urlParams.get('highlight');
+    if (highlight) {
+        scrollToSetting(highlight);
+    } else if (q) {
         var input = document.getElementById('settingsSearchInput');
         input.value = q;
         searchSettings(q);
