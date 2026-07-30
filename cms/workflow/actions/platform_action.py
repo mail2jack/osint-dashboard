@@ -2,6 +2,7 @@ import json
 import logging
 import re
 
+import requests
 from cms.services.http_utils import jittered_get
 from cms.workflow.actions.helpers import _first_subject, _get_api_key, _site_dork_search
 from cms.workflow.actions.registry import _use_credit, _has_credits
@@ -360,7 +361,7 @@ def _tiktok_check(action):
         }
 
         if is_username:
-            r = jittered_get(
+            r = requests.get(
                 PLATFORM_API_URLS["tiktok_user"],
                 params={"username": query},
                 headers=headers,
@@ -392,14 +393,12 @@ def _tiktok_check(action):
                     add_api_finding(name, url, " · ".join(detail_parts))
                     return findings
             elif r.status_code == 429:
-                logger.warning("TikTok API rate limit")
-                return findings
+                logger.warning("TikTok API rate limit — fallback to name search")
             elif r.status_code in (401, 403):
-                logger.warning("TikTok API auth error")
-                return findings
+                logger.warning("TikTok API auth error — fallback to name search")
 
         # Name search fallback
-        r = jittered_get(
+        r = requests.get(
             PLATFORM_API_URLS["tiktok_search"],
             params={"keyword": query, "count": "5"},
             headers=headers,
@@ -463,7 +462,7 @@ def _instagram_check(action):
         }
 
         if is_username:
-            r = jittered_get(
+            r = requests.get(
                 PLATFORM_API_URLS["instagram_userinfo"],
                 params={"username": query},
                 headers=headers,
@@ -500,7 +499,7 @@ def _instagram_check(action):
                 logger.warning("Instagram API auth error — fallback to name search")
 
         # Name search fallback
-        r = jittered_get(
+        r = requests.get(
             PLATFORM_API_URLS["instagram_search"],
             params={"query": query},
             headers=headers,
@@ -706,7 +705,7 @@ def _twitter_check(action):
         }
 
         if is_username:
-            r = jittered_get(
+            r = requests.get(
                 PLATFORM_API_URLS["twitter_screenname"],
                 params={"screenname": query},
                 headers=headers,
@@ -743,7 +742,7 @@ def _twitter_check(action):
                 logger.warning("Twitter API auth error — fallback to name search")
 
         # Search fallback
-        r = jittered_get(
+        r = requests.get(
             PLATFORM_API_URLS["twitter_search"],
             params={"query": query, "type": "Popular"},
             headers=headers,
