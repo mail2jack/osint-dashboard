@@ -1,7 +1,7 @@
 # SaaS Roadmap — Iveras OSINT Dashboard
 
 ## Status
-- **Branch:** `saas-migration` (11 commits ahead of `master`)
+- **Branch:** `master` (SaaS work is merged — no more `saas-migration`)
 - **Tests:** 292 passed, 4 skipped
 - **Tenant isolation audit:** Clean (zero leaks verified)
 
@@ -125,5 +125,5 @@ The `TenantSetting` model + API exists but has **no dedicated UI**.
 ## Notes
 
 - **Tenant isolation is done** — all new development on models/routes must use `apply_tenant_filter()` and `ensure_tenant_access()`.
-- **Branches**: Work on `saas-migration`, merge to `master` when Phase 1 is complete.
+- **Branches**: Work directly on `master`; feature branches merged to `master`.
 - **Testing**: 292 tests must stay green. Add tests for all new features.

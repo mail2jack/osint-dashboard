@@ -306,11 +306,9 @@ def create_cms_module(app: Flask):
 
         # Create default admin user if none exists
         if not User.query.filter_by(role="admin").first():
-            import secrets
-            import string
-
-            alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-            default_password = "".join(secrets.choice(alphabet) for _ in range(20))
+            # Default password matches INSTALL.md / MANUAL.md / setup wizard.
+            # The setup wizard forces a password change on first login.
+            default_password = "changeme123"
             admin = User(
                 username="admin",
                 email="admin@localhost",
@@ -325,7 +323,8 @@ def create_cms_module(app: Flask):
             first_tenant.owner_id = admin.id
             db.session.commit()
             app.logger.warning(
-                "Default admin user created. Set a password immediately via Settings > Users or the password reset flow."
+                "Default admin user created with password 'changeme123'. "
+                "The setup wizard will force a password change on first login."
             )
         else:
             # Ensure existing admin of the default tenant is super admin + linked

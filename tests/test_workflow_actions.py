@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from unittest.mock import patch, MagicMock
 
@@ -161,7 +162,8 @@ class TestCreditTracking:
         _use_credit("tiktok")
         args, _ = mock_set.call_args
         assert args[0] == "rapidapi_credits_usage"
-        assert args[1]["tiktok"][_THIS_MONTH] == 6
+        saved = json.loads(args[1])
+        assert saved["tiktok"][_THIS_MONTH] == 6
 
     @patch("cms.models.Setting.get")
     def test_has_credits_true(self, mock_get):
@@ -282,7 +284,7 @@ class TestTikTokCheck:
     @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("cms.workflow.actions.platform_action.jittered_get")
+    @patch("cms.workflow.actions.platform_action.requests.get")
     def test_username_success(
         self, mock_get, mock_set, mock_credit_get, mock_dork, mock_key
     ):
@@ -318,7 +320,7 @@ class TestInstagramCheck:
     @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("cms.workflow.actions.platform_action.jittered_get")
+    @patch("cms.workflow.actions.platform_action.requests.get")
     def test_username_success(
         self, mock_get, mock_set, mock_credit_get, mock_dork, mock_key
     ):
@@ -394,7 +396,7 @@ class TestTwitterCheck:
     @patch("cms.workflow.actions.platform_action._site_dork_search", return_value=[])
     @patch("cms.models.Setting.get", return_value={})
     @patch("cms.models.Setting.set")
-    @patch("cms.workflow.actions.platform_action.jittered_get")
+    @patch("cms.workflow.actions.platform_action.requests.get")
     def test_username_success(
         self, mock_get, mock_set, mock_credit_get, mock_dork, mock_key
     ):

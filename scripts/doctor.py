@@ -445,11 +445,18 @@ def check_opsec(dry: bool) -> bool:
 
 def check_playwright(dry: bool) -> bool:
     log("Checking Playwright Chromium...", end=" ")
-    chromium_path = Path.home() / ".cache" / "ms-playwright"
-    if chromium_path.exists() and any(chromium_path.iterdir()):
-        log(OK)
-        return True
-    log(FAIL + " (run: playwright install chromium)")
+    candidates = [
+        Path.home() / ".cache" / "ms-playwright",
+        Path("/home/osint/.cache/ms-playwright"),
+    ]
+    for chromium_path in candidates:
+        if chromium_path.exists() and any(chromium_path.iterdir()):
+            log(OK)
+            return True
+    log(
+        FAIL
+        + " (run: sudo -u osint /opt/osint-dashboard/venv/bin/python3 -m playwright install chromium)"
+    )
     return False
 
 

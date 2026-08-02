@@ -71,7 +71,7 @@ Two methods: **one-command server install** (recommended for production) or **ma
 
 ```bash
 sudo apt install -y wget
-wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/saas-migration/install.sh
+wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/master/install.sh
 chmod +x install.sh
 sudo ./install.sh
 ```
@@ -94,6 +94,7 @@ The script installs everything automatically:
 
 1. **Domain name(s)** — Enter one or more space-separated domains for SSL (e.g. `joost.iveras.nl joost.iveras.com`), or press Enter for IP-only access.
 2. **Let's Encrypt email** — Required for certificate expiry notifications.
+3. **Tor** — Optional; installs a local SOCKS proxy (`127.0.0.1:9050`) for anonymous searches. Enable it later in **Settings → OPSEC**.
 
 #### After installation
 
@@ -123,7 +124,7 @@ sudo ./start-server stop         # Stop all services
 sudo ./start-server restart      # Restart all services
 sudo ./start-server logs         # Live logs for Iveras
 sudo ./start-server logs-sf      # Live logs for SpiderFoot
-sudo ./start-server update       # Git pull + pip install + restart
+sudo ./start-server update       # Git pull + pip install + frontend build + migrations + restart
 ```
 
 Or use systemd directly:
@@ -148,8 +149,8 @@ sudo journalctl -u osint-dashboard -f
 #### Steps
 
 ```bash
-# 1. Clone the repository (saas-migration branch)
-git clone -b saas-migration https://github.com/mail2jack/osint-dashboard.git
+# 1. Clone the repository (master branch)
+git clone -b master https://github.com/mail2jack/osint-dashboard.git
 cd osint-dashboard
 
 # 2. Create virtual environment

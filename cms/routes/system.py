@@ -602,6 +602,26 @@ def _apply_update(task_id, task, app, python_bin):
         _abort_return(task_id, task)
         return True
 
+    _step(
+        task_id,
+        task,
+        "Rebuild frontend assets",
+        [
+            "/usr/bin/sudo",
+            "-u",
+            "osint",
+            "/usr/bin/env",
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "node",
+            "build.mjs",
+        ],
+        cwd=project_root,
+    )
+
+    if _abort_check(task_id):
+        _abort_return(task_id, task)
+        return True
+
     alembic_env = {**os.environ}
     alembic_env["DATABASE_URL"] = db_path
     if "CMS_ENCRYPTION_KEY" not in alembic_env:

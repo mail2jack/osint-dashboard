@@ -6,7 +6,7 @@ Open-source intelligence case management system with automated investigations, S
 
 ```bash
 sudo apt install -y wget
-wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/saas-migration/install.sh
+wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/master/install.sh
 chmod +x install.sh
 sudo ./install.sh
 ```

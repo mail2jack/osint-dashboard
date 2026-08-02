@@ -55,15 +55,23 @@ sudo -u osint git pull origin "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || 
     OVERALL_STATUS="failed"
 }
 
-# --- 3/5 Dependencies ---
-echo "=== 3/5 Installing dependencies ==="
+# --- 3/6 Dependencies ---
+echo "=== 3/6 Installing dependencies ==="
 sudo -u osint "$VENV_PYTHON" -m pip install -r "$DIR/requirements.txt" --quiet || {
     echo "❌ pip install failed"
     OVERALL_STATUS="failed"
 }
 
-# --- 4/5 Database migrations ---
-echo "=== 4/5 Running database migrations ==="
+# --- 4/6 Frontend build ---
+echo "=== 4/6 Building frontend assets ==="
+sudo -u osint env PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    node "$DIR/build.mjs" || {
+    echo "❌ frontend build failed"
+    OVERALL_STATUS="failed"
+}
+
+# --- 5/6 Database migrations ---
+echo "=== 5/6 Running database migrations ==="
 if [ -n "$DB_URL" ]; then
     sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic upgrade head || {
         echo "❌ alembic upgrade failed"
@@ -77,8 +85,8 @@ else
     }
 fi
 
-# --- 5/5 Restart ---
-echo "=== 5/5 Restarting server ==="
+# --- 6/6 Restart ---
+echo "=== 6/6 Restarting server ==="
 sudo systemctl restart osint-dashboard || {
     echo "❌ restart failed"
     OVERALL_STATUS="failed"

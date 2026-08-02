@@ -52,7 +52,7 @@ cherrypy-cors==1.7.0
 click==8.3.1
 cloudscraper==1.2.71
 colorama==0.4.6
-cryptography==3.4.8
+cryptography==44.0.3
 cssselect2==0.9.0
 decorator==5.2.1
 dnspython==2.8.0
@@ -89,7 +89,7 @@ jaraco.text==4.2.0
 jedi==0.19.2
 jsonpickle==4.1.1
 langdetect==1.0.9
-lxml==4.9.4
+lxml==5.4.0
 maigret==0.5.0
 markdown-it-py==4.0.0
 matplotlib-inline==0.2.1
@@ -124,7 +124,7 @@ ptyprocess==0.7.0
 publicsuffixlist==0.9.4
 pure_eval==0.2.3
 pyHanko==0.34.1
-pyOpenSSL==21.0.0
+pyOpenSSL==25.1.0
 pycares==4.11.0
 pycodestyle==2.14.0
 pycountry==24.6.1

@@ -4,7 +4,7 @@
 # Production-ready: SpiderFoot, Nginx, PostgreSQL, SSL, systemd
 #
 # Usage:
-#   wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/main/install.sh
+#   wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/master/install.sh
 #   chmod +x install.sh
 #   sudo ./install.sh
 #
@@ -21,7 +21,7 @@ NC='\033[0m'
 
 # Configuration
 REPO_URL="https://github.com/mail2jack/osint-dashboard.git"
-BRANCH="saas-migration"
+BRANCH="master"
 APP_DIR="/opt/osint-dashboard"
 SF_DIR="/opt/spiderfoot"
 SERVICE_NAME="osint-dashboard"
@@ -192,8 +192,15 @@ print_step "Installing Python packages from requirements.txt..."
 pip install -r requirements.txt
 
 # Install Playwright and Chromium browser for PDF/screenshot features
+# Run as the osint user so Chromium lands in /home/osint/.cache/ms-playwright
+# (the app runs as osint — browsers in /root would be invisible to it).
 print_step "Installing Playwright browsers..."
-python3 -m playwright install chromium 2>&1 || print_warning "Playwright browser install failed — PDF generation may not work"
+python3 -m playwright install-deps chromium 2>&1 || \
+    print_warning "Playwright system deps failed — screenshots may not work"
+mkdir -p /home/osint/.cache/ms-playwright
+chown -R osint:osint /home/osint/.cache
+sudo -u osint HOME=/home/osint "$APP_DIR/venv/bin/python3" -m playwright install chromium 2>&1 || \
+    print_warning "Playwright browser install failed — PDF generation may not work"
 
 if ! "$APP_DIR/venv/bin/gunicorn" --version &>/dev/null; then
     print_error "Gunicorn installation failed!"
@@ -478,6 +485,27 @@ FAIL2EOF
     systemctl enable fail2ban
     systemctl restart fail2ban
     print_success "Fail2ban configured"
+fi
+
+# ============================================================================
+# STEP 11b: Optional Tor (SOCKS proxy on 127.0.0.1:9050 for OPSEC features)
+# ============================================================================
+print_step "Optional: Install Tor for anonymous OSINT searches?"
+read -r -p "Install Tor? [Y/n]: " INSTALL_TOR
+if [[ "${INSTALL_TOR:-Y}" =~ ^[Yy]$ ]]; then
+    apt install -y tor 2>&1 || print_warning "Tor install failed — install manually with: sudo apt install tor"
+    if ! grep -q "SOCKSPort 9050" /etc/tor/torrc 2>/dev/null; then
+        cat >> /etc/tor/torrc << 'TOREOT'
+SOCKSPort 127.0.0.1:9050
+ControlPort 127.0.0.1:9051
+TOREOT
+    fi
+    systemctl enable tor 2>/dev/null || true
+    systemctl restart tor 2>/dev/null || true
+    print_success "Tor installed (SOCKS proxy on 127.0.0.1:9050)"
+    print_info "Enable Tor routing in the dashboard: Settings > OPSEC > Use Tor"
+else
+    print_info "Skipping Tor. You can install later with: sudo apt install tor"
 fi
 
 # ============================================================================

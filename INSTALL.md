@@ -35,7 +35,7 @@ Log in to your server via SSH and run:
 ```bash
 sudo apt update
 sudo apt install -y wget
-wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/saas-migration/install.sh
+wget https://raw.githubusercontent.com/mail2jack/osint-dashboard/master/install.sh
 chmod +x install.sh
 sudo ./install.sh
 ```
@@ -57,6 +57,8 @@ sudo ./install.sh
 13. SSL certificates are obtained (if domains provided)
 14. UFW firewall and Fail2ban are configured
 15. Systemd services are created and enabled
+16. **You'll be prompted to install Tor** (optional, for anonymous searches — enable later in Settings → OPSEC)
+17. A health check verifies both Iveras and SpiderFoot are running
 
 ## 3. After Installation
 
@@ -65,7 +67,7 @@ sudo ./install.sh
 Open your browser and navigate to:
 
 - **With domain:** `https://your-domain.com`
-- **With IP:** `http://<server-ip>:5000`
+- **With IP:** `http://<server-ip>`
 
 Login with:
 
@@ -102,7 +104,7 @@ sudo ./start-server stop         # Stop all services
 sudo ./start-server restart      # Restart all services
 sudo ./start-server logs         # Live app logs
 sudo ./start-server logs-sf      # Live SpiderFoot logs
-sudo ./start-server update       # One-click update (git pull + pip + restart)
+sudo ./start-server update       # One-click update (git pull + pip + frontend build + migrations + restart)
 ```
 
 Or use systemd directly:
@@ -145,7 +147,7 @@ The dashboard checks for updates automatically and shows a banner when a new ver
 sudo ./start-server update
 ```
 
-This runs `git pull`, updates Python packages, applies migrations, and restarts services.
+This runs `git pull`, updates Python packages, rebuilds frontend assets, applies migrations, and restarts services.
 
 ---
 
