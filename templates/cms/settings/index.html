@@ -649,8 +649,13 @@
                         <td style="padding:0.35rem 0;text-align:right;">{{ ls.days_left if ls.days_left is not none else '-' }}</td></tr>
                     <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Message') }}</td>
                         <td style="padding:0.35rem 0;text-align:right;">{{ ls.message or '-' }}</td></tr>
+                    {% if ls.valid and ls.plan in ('full', 'professional', 'enterprise') %}
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Tenant limit') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;">{{ _('Unlimited') }}</td></tr>
+                    {% else %}
                     <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Trial tenant limit') }}</td>
                         <td style="padding:0.35rem 0;text-align:right;">{{ license_info.trial_tenant_limit }}</td></tr>
+                    {% endif %}
                     <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Public key') }}</td>
                         <td style="padding:0.35rem 0;text-align:right;" class="small">{{ license_info.public_key }}</td></tr>
                 </table>

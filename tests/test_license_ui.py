@@ -144,6 +144,16 @@ class TestLicenseUI:
         assert "Public key" in body
         assert "Trial tenant limit" in body
 
+    def test_settings_card_full_license_shows_unlimited(self, app):
+        with app.app_context():
+            _make_signed_claims(plan="full")
+        c = self._fresh_admin_client(app)
+        r = c.get("/cms/settings?category=general")
+        assert r.status_code == 200
+        body = r.get_data(as_text=True)
+        assert "Unlimited" in body
+        assert "Trial tenant limit" not in body
+
     def test_banner_shown_when_no_license(self, app):
         c = self._fresh_admin_client(app)
         r = c.get("/cms/dashboard")
