@@ -113,6 +113,22 @@ def settings() -> str:
             .all()
         )
 
+    license_info = None
+    try:
+        from ..services import license as license_service
+        from ..services.telemetry import get_install_id
+
+        state = license_service.get_license_state()
+        license_info = {
+            "state": state,
+            "install_id": get_install_id(),
+            "public_key": license_service.get_public_key(),
+            "trial_tenant_limit": license_service.trial_tenant_limit(),
+        }
+    except Exception:
+        db.session.rollback()
+        license_info = None
+
     return render_template(
         "cms/settings/index.html",
         settings_list=settings_list,
@@ -121,6 +137,7 @@ def settings() -> str:
         search_query=search_q,
         is_platform_cat=is_platform_cat,
         plan_info=plan_info,
+        license_info=license_info,
     )
 
 
@@ -895,6 +912,16 @@ def create_tenant() -> flask.Response:
         return api_error("name and slug are required", 400)
     if Tenant.query.filter_by(slug=slug).first():
         return api_error("Slug already exists", 409)
+    from cms.services import license as license_service
+
+    if license_service.trial_mode():
+        limit = license_service.trial_tenant_limit()
+        if Tenant.query.count() >= limit:
+            return api_error(
+                f"De trial-licentie staat maximaal {limit} tenant(s) toe. "
+                "Upgrade naar een volledige licentie voor meer tenants.",
+                403,
+            )
     import uuid as _uuid
     import secrets
     import string

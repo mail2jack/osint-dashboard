@@ -119,6 +119,26 @@ Force a check-in from the CLI:
 sudo -u osint /opt/osint-dashboard/venv/bin/flask telemetry:report
 ```
 
+Check the current license state:
+
+```bash
+sudo -u osint /opt/osint-dashboard/venv/bin/flask license:status
+```
+
+### Licensing (trial)
+
+Every install receives a **trial license** automatically when it registers
+(30 days, issued by the license server). With a trial license the app limits
+AI, SpiderFoot, vessel and phone lookups, and restricts tenants to
+`trial_tenant_limit` (default 1). A signed **full license** lifts these
+limits. Licenses are Ed25519-signed and verified offline with the public key
+embedded in the app (`license_public_key` setting); revocation/expiry are
+delivered online via the daily check-in.
+
+- To disable license enforcement entirely (self-hosted, no license server):
+  set `LICENSE_ENFORCEMENT=off` in `.env` and restart.
+- Trial banner + license status card: **Settings → General**.
+
 ### Service Management
 
 ```bash

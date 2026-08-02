@@ -310,6 +310,12 @@
     </div>
 
     <div class="container">
+        {% if license_state %}
+        <div class="alert alert-warning" style="position:relative;padding-right:2rem;">
+            <strong>🪪 {{ _('License') }}:</strong> {{ license_state.message }}
+            <a href="{{ url_for('cms.settings') }}?category=general" style="margin-left:0.5rem;">{{ _('Details') }}</a>
+        </div>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}

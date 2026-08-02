@@ -2669,6 +2669,22 @@ def _general_defaults():
             "display_order": 53,
         },
         {
+            "key": "license_public_key",
+            "category": "general",
+            "value": "MiZPC_SlLBguBQzROD3KibNy1KwT23HYUgaKQeEx2l0",
+            "description": "Ed25519 public key for license verification (must match the license server's private key).",
+            "value_type": "text",
+            "display_order": 54,
+        },
+        {
+            "key": "trial_tenant_limit",
+            "category": "general",
+            "value": "1",
+            "description": "Maximum number of tenants on a trial license (0 = unlimited).",
+            "value_type": "number",
+            "display_order": 55,
+        },
+        {
             "key": "theme_style",
             "category": "appearance",
             "value": "classic",

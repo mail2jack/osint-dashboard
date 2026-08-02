@@ -1,5 +1,78 @@
 # Session Summaries / Changelog
 
+## August 2 — Licenties fase 2: Ed25519 + soft trial (per install)
+
+### Doel
+Fase 1 (telemetrie + registry, live op prod) uitbouwen tot een echt
+licentiesysteem: Ed25519-ondertekende licenties die de app offline verifieert,
+een automatische trial bij registratie, en soft-trial-limieten (tenants,
+externe integraties, AI) per install.
+
+### Wijzigingen (license-server)
+- **`licensing.py`**: Ed25519 via `cryptography`; `canonical_payload`,
+  `sign_claims`, `build_license`, `generate_keypair` (privésleutel →
+  `keys/private.pem`, mode 600), `load_private_key`. Sleutelpad nu via
+  `LICENSE_KEY_PATH` env (default `keys/private.pem`).
+- **`cli.py`**: `keys:generate`, `license:new --install <id> [--plan full|trial]
+  [--expires YYYY-MM-DD | --days N]`, `license:revoke --install`, `license:list`.
+- **`app.py`**: `licenses`-tabel (UNIQUE install_id); `_issue_trial_if_needed`
+  (env `TRIAL_DAYS`, default 30) bij registratie; register/telemetry-respons
+  bevatten `license`; nieuw `GET /api/license` (Bearer + `X-Install-ID`;
+  401/403/404); `/api/installs` incl. licentie per install; dashboard
+  License-kolom (plan/status/expires, kleur-dot).
+- **`tests/test_server.py`** (nieuw, 20 tests): register→auto-trial,
+  signature-verificatie, idempotent/wrong-token/413, `/api/license`
+  (signed/unregistered/wrong-token/missing-auth/revoked), telemetry
+  (incl. license + 404), CLI als subprocess (new vervangt trial, unregistered
+  install, revoke, list), dashboard basic-auth + installs. De server-app wordt
+  via importlib geladen om botsing met de root-`app` te vermijden.
+- **`.gitignore`**: `license-server/keys/`, `license-server/data/`,
+  `license-server/.env`.
+
+### Wijzigingen (dashboard client)
+- **`cms/services/license.py`** (nieuw): `verify_signature`, `cache_license`
+  (weigert ongeldige signatures), `get_license_state` (toestandsmachine:
+  revoked/expired/≤14d-waarschuwing), `is_licensed`, `enforcement_off`
+  (`LICENSE_ENFORCEMENT=off`), `trial_mode`, `trial_blocked(feature)`
+  (gated: `ai`, `spiderfoot`, `vessel`, `phone`), `trial_tenant_limit`
+  (default 1), `get_public_key`. Default publieke sleutel ingebakken:
+  `MiZPC_SlLBguBQzROD3KibNy1KwT23HYUgaKQeEx2l0`.
+- **`cms/services/telemetry.py`**: `_send` retourneert Response; `_consume_license`
+  cachet de licentie bij register/heartbeat.
+- **Gates**: `check_feature()` (tier_limits) en `is_tool_enabled()`
+  (feature_flags) checken eerst de trial-gate; `ai_service._generate`
+  retourneert `None` in trial; `create_tenant` (settings.py) blokkeert bij
+  `Tenant.query.count() >= trial_tenant_limit()` met 403 NL-bericht.
+- **UI**: trial-banner in `templates/cms/base.html` (context processor
+  `inject_license_state` in `cms/__init__.py`, alleen bij niet-volledig
+  gelicenseerd) + licentiestatus-kaart in Settings → General
+  (install_id, status, plan, expires, days left, message, trial_tenant_limit,
+  publieke sleutel). Nieuwe Settings: `license_public_key` +
+  `trial_tenant_limit`.
+- **`app.py`**: CLI `flask license:status`.
+
+### Bugfixes
+- `cms/services/license.py::_parse_ts` gaf naive datetime terug →
+  `TypeError` bij de dagenberekening; nu timezone-aware (naive → UTC).
+- Testhelper-fix: 2FA-POST mag niet binnen een `with c.session_transaction()`
+  blok staan (cookie werd overschreven → login verloren).
+
+### Validatie
+- **Tests**: `tests/test_license_ui.py` (14 nieuw: state-machine, banner,
+  settings-kaart, tenant-limit 403/201, gates) + `license-server/tests` (20).
+  Volledige suite **492 passed, 0 failed**; ruff clean.
+- `LICENSE_ENFORCEMENT=off` in `tests/conftest.py` zodat bestaande
+  phone/vessel-integratietests niet door trial-gates breken (gate-logica wordt
+  apart getest met `monkeypatch.setenv`).
+
+### Nog te doen
+- Deploy op prod: pull als `osint`, veilige rsync, `pip install` (cryptography),
+  `keys:generate` als `license`-user, bestaande installs een full-licentie geven
+  of trial laten verlopen.
+- Kernel-reboot op `cloud` (nog openstaand).
+
+---
+
 ## August 2 — Telemetrie & License Server fase 1
 
 ### Doel
@@ -28,7 +101,7 @@ Fase 1 van het telemetrie + licensing-systeem: een centrale `license-server/` op
 ### Nog te doen
 - **Deploy `license-server/` op `license.iveras.com`** (zie `license-server/README.md`; eigenaar runt dit zelf op de VPS).
 - Op prod `git pull` + `sudo systemctl restart osint-dashboard` — daarna `flask telemetry:report` om de eerste registratie te verifiëren.
-- Fase 2: Ed25519-licenties (publieke sleutel in de app, offline-verifieerbaar, online revocatie via check-in).
+- Fase 2 (Ed25519-licenties) is inmiddels geïmplementeerd — zie de entry bovenaan.
 - Kernel-reboot op `cloud` (nog openstaand).
 
 ---

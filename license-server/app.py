@@ -1,19 +1,23 @@
 """
-Iveras License & Telemetry Server — fase 1.
+Iveras License & Telemetry Server.
 
 Central registry for all OSINT Dashboard installs:
 
-    POST /api/register   — register a new install (idempotent)
+    POST /api/register   — register a new install (idempotent), auto-issues a trial license
     POST /api/telemetry  — daily heartbeat + updated system info
+    GET  /api/license    — signed Ed25519 license for the install (offline-verifiable)
     GET  /               — registry dashboard (HTTP Basic Auth)
     GET  /api/installs   — registry as JSON (HTTP Basic Auth)
+    GET  /health         — health check
 
 Storage: SQLite via the stdlib sqlite3 module. Dependencies: Flask + gunicorn.
+Licenses: Ed25519-signed claims; issue/revoke via `cli.py`.
 
 Runtime config (env vars):
     LICENSE_DB_PATH     sqlite file path (default ./data/license.db)
     ADMIN_USER          basic-auth user for the dashboard
     ADMIN_PASSWORD      basic-auth password for the dashboard
+    TRIAL_DAYS          trial license length in days for new installs (default 30)
 """
 
 import hashlib
@@ -21,9 +25,11 @@ import hmac
 import json
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import Flask, Response, jsonify, render_template, request
+
+import licensing
 
 app = Flask(__name__)
 
@@ -73,6 +79,20 @@ def _init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS licenses (
+                license_id   TEXT PRIMARY KEY,
+                install_id   TEXT NOT NULL UNIQUE,
+                plan         TEXT NOT NULL DEFAULT 'trial',
+                payload      TEXT NOT NULL,
+                signature    TEXT NOT NULL,
+                status       TEXT NOT NULL DEFAULT 'active',
+                created_at   TEXT,
+                expires_at   TEXT
+            )
+            """
+        )
 
 
 def _token_hash(token: str) -> str:
@@ -109,6 +129,68 @@ def _row_to_dict(row) -> dict:
     }
 
 
+def _license_row(conn, install_id):
+    return conn.execute(
+        "SELECT * FROM licenses WHERE install_id = ? ORDER BY created_at DESC LIMIT 1",
+        (install_id,),
+    ).fetchone()
+
+
+def _license_dict(row) -> dict | None:
+    if row is None:
+        return None
+    return {
+        "license_id": row["license_id"],
+        "plan": row["plan"],
+        "payload": row["payload"],
+        "signature": row["signature"],
+        "status": row["status"],
+        "expires_at": row["expires_at"],
+    }
+
+
+def _issue_trial_if_needed(conn, install_id) -> None:
+    if _license_row(conn, install_id) is not None:
+        return
+    days = int(os.environ.get("TRIAL_DAYS", "30"))
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=days)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    try:
+        private_key = licensing.load_private_key()
+        claims, signature = licensing.build_license(
+            install_id, plan="trial", expires_at=expires_at, private_key=private_key
+        )
+    except Exception:
+        app.logger.warning(
+            "Could not issue trial license for %s (private key missing?)",
+            install_id,
+            exc_info=True,
+        )
+        return
+    payload = json.dumps(claims, separators=(",", ":"), sort_keys=True)
+    conn.execute(
+        "INSERT INTO licenses (license_id, install_id, plan, payload, signature, status, created_at, expires_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            claims["license_id"],
+            install_id,
+            "trial",
+            payload,
+            signature,
+            "active",
+            claims["issued_at"],
+            claims["expires_at"],
+        ),
+    )
+    app.logger.info(
+        "Auto-issued trial license %s for %s (expires %s)",
+        claims["license_id"],
+        install_id,
+        claims["expires_at"],
+    )
+
+
 def _json_body():
     try:
         return request.get_json(silent=True) or {}
@@ -117,7 +199,9 @@ def _json_body():
 
 
 def _auth_install(body) -> tuple[str | None, str | None]:
-    install_id = _clean(body.get("install_id"), 100)
+    install_id = _clean(body.get("install_id"), 100) or _clean(
+        request.headers.get("X-Install-ID"), 100
+    )
     auth = request.headers.get("Authorization", "")
     token = None
     if auth.startswith("Bearer "):
@@ -218,7 +302,14 @@ def api_register():
         ).fetchone()
         if row is None:
             _update_install(conn, install_id, token_hash, fields, is_new=True)
-            return jsonify({"status": "ok", "registered": True})
+            _issue_trial_if_needed(conn, install_id)
+            return jsonify(
+                {
+                    "status": "ok",
+                    "registered": True,
+                    "license": _license_dict(_license_row(conn, install_id)),
+                }
+            )
         if not hmac.compare_digest(row["token_hash"], token_hash):
             return jsonify(
                 {"status": "error", "message": "invalid token for install_id"}
@@ -250,7 +341,31 @@ def api_telemetry():
                 {"status": "error", "message": "invalid token for install_id"}
             ), 403
         _update_install(conn, install_id, token_hash, fields, is_new=False)
-        return jsonify({"status": "ok"})
+        return jsonify(
+            {"status": "ok", "license": _license_dict(_license_row(conn, install_id))}
+        )
+
+
+@app.route("/api/license")
+def api_license():
+    """Return the signed license for the authenticated install."""
+    install_id, token_hash = _auth_install({})
+    if not install_id or not token_hash:
+        return jsonify(
+            {"status": "error", "message": "install_id and Bearer token required"}
+        ), 401
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT token_hash FROM installs WHERE install_id = ?", (install_id,)
+        ).fetchone()
+        if row is None:
+            return jsonify({"status": "error", "message": "not registered"}), 404
+        if not hmac.compare_digest(row["token_hash"], token_hash):
+            return jsonify(
+                {"status": "error", "message": "invalid token for install_id"}
+            ), 403
+        license_obj = _license_dict(_license_row(conn, install_id))
+    return jsonify({"status": "ok", "install_id": install_id, "license": license_obj})
 
 
 @app.route("/")
@@ -270,7 +385,12 @@ def api_installs():
         return guard
     with _connect() as conn:
         rows = conn.execute("SELECT * FROM installs ORDER BY last_seen DESC").fetchall()
-    return jsonify({"installs": [_row_to_dict(r) for r in rows], "now": _now()})
+        installs = []
+        for r in rows:
+            item = _row_to_dict(r)
+            item["license"] = _license_dict(_license_row(conn, r["install_id"]))
+            installs.append(item)
+    return jsonify({"installs": installs, "now": _now()})
 
 
 @app.route("/health")

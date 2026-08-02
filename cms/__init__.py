@@ -95,6 +95,34 @@ def create_cms_module(app: Flask):
             db.session.rollback()
             return {"theme_style": "classic", "app_logo": ""}
 
+    # Inject license banner state into all templates (only when license is not
+    # fully active, e.g. trial / expired / revoked / invalid).
+    @app.context_processor
+    def inject_license_state():
+        try:
+            from flask_login import current_user
+
+            if not current_user.is_authenticated:
+                return {"license_state": None}
+        except Exception:
+            return {"license_state": None}
+        try:
+            from .services import license as license_service
+
+            state = license_service.get_license_state()
+            if state.get("valid") and (state.get("plan") or "").lower() in (
+                "full",
+                "professional",
+                "enterprise",
+            ):
+                return {"license_state": None}
+            return {"license_state": state}
+        except Exception:
+            from .models import db
+
+            db.session.rollback()
+            return {"license_state": None}
+
     # Schema management via Alembic
     with app.app_context():
         from alembic.config import Config

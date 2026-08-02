@@ -11,6 +11,7 @@ os.environ["FLASK_SECRET_KEY"] = secrets.token_hex(32)
 os.environ["CMS_ENCRYPTION_KEY"] = base64.urlsafe_b64encode(
     secrets.token_bytes(32)
 ).decode()
+os.environ["LICENSE_ENFORCEMENT"] = "off"
 
 from app import app as _app
 from cms.models import db, User, init_default_settings

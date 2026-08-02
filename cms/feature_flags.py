@@ -14,12 +14,19 @@ logger = logging.getLogger(__name__)
 def is_tool_enabled(tool_name: str) -> bool:
     """Check if a tool is enabled via Setting. Falls back to default (enabled)."""
     from .models import Setting
+    from .services import license as license_service
 
     setting_key = f"feature_{tool_name}"
     stored = Setting.get(setting_key)
     if stored is None:
-        return True
-    return stored.lower() in ("1", "true", "yes")
+        default = True
+    else:
+        default = stored.lower() in ("1", "true", "yes")
+    if not default:
+        return False
+    if license_service.trial_blocked(tool_name):
+        return False
+    return True
 
 
 def tool_enabled(tool_name: str):

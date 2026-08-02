@@ -106,12 +106,17 @@ def get_tier_limits(tier_name: str) -> dict[str, int | None]:
 def check_feature(feature: str, tenant_id: str | None = None) -> bool:
     """Check if the current tenant's tier allows a feature.
 
-    Checks for a ``FeatureFlag`` override first; if none, falls back to
-    the tier-based default.  Returns False if blocked; caller should
-    return an error response.
+    Checks the install license first (soft trial gates AI/SpiderFoot), then a
+    ``FeatureFlag`` override, then the tier-based default.  Returns False if
+    blocked; caller should return an error response.
 
     When called from background tasks (no request context), pass *tenant_id*.
     """
+    from cms.services import license as license_service
+
+    if license_service.trial_blocked(feature):
+        return False
+
     from flask_login import current_user
     from .models import FeatureFlag, Tenant as TenantModel
 

@@ -214,7 +214,7 @@ def _post(url: str, payload: dict) -> requests.Response | None:
     return requests.post(url, json=payload, headers=headers, timeout=8)
 
 
-def _send(kind: str, install_id: str) -> int | None:
+def _send(kind: str, install_id: str) -> requests.Response | None:
     payload = {"install_id": install_id, "info": collect_system_info()}
     url = f"{telemetry_server_url()}/api/{kind}"
     try:
@@ -226,7 +226,17 @@ def _send(kind: str, install_id: str) -> int | None:
         return None
     if resp.status_code in (401, 403, 404):
         _clear_registered(install_id)
-    return resp.status_code
+    return resp
+
+
+def _consume_license(resp: requests.Response) -> None:
+    """Cache the signed license returned with the check-in response."""
+    try:
+        from cms.services import license as license_service
+
+        license_service.cache_license(resp.json().get("license"))
+    except Exception:
+        logger.debug("Could not refresh license from check-in", exc_info=True)
 
 
 def _registered_id() -> str | None:
@@ -298,20 +308,22 @@ def maybe_check_in(force: bool = False) -> bool:
     last = _last_check()
 
     if not registered:
-        status = _send("register", install_id)
-        if status and status < 400:
+        resp = _send("register", install_id)
+        if resp is not None and resp.status_code < 400:
             _mark_registered(install_id)
             _set_last_check(now)
+            _consume_license(resp)
             logger.info("Telemetry: install %s registered", install_id)
             return True
         return False
 
     if force or last is None or (now - last) >= CHECK_IN_INTERVAL:
-        status = _send("telemetry", install_id)
-        if status and status < 400:
+        resp = _send("telemetry", install_id)
+        if resp is not None and resp.status_code < 400:
             _set_last_check(now)
+            _consume_license(resp)
             return True
-        if status in (401, 403, 404):
+        if resp is not None and resp.status_code in (401, 403, 404):
             _clear_registered(install_id)
         return False
     return False

@@ -825,6 +825,17 @@ def telemetry_report():
         )
 
 
+@app.cli.command("license:status")
+def license_status_cli():
+    """Show the locally verified license state."""
+    from cms.services import license as license_service
+
+    with app.app_context():
+        state = license_service.get_license_state()
+        for key, value in state.items():
+            print(f"{key}: {value}")
+
+
 @app.cli.command("purge-expired-tenants")
 def purge_expired_tenants_cli():
     """Hard-delete tenant data for tenants past their retention grace period."""

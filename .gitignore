@@ -29,3 +29,8 @@ venv/
 .venv/
 backups/
 static/dist/
+
+# License server runtime files (never commit — contains the private signing key)
+license-server/keys/
+license-server/data/
+license-server/.env

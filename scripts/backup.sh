@@ -199,6 +199,12 @@ if [ -d "$LICENSE_DIR/data" ]; then
             && _log_ok "license-env.txt (will be encrypted)" \
             || _log_warn "license-env.txt backup failed (non-critical — ADMIN_PASSWORD is reset-able)"
     fi
+
+    if [ -f "$LICENSE_DIR/keys/private.pem" ]; then
+        cp "$LICENSE_DIR/keys/private.pem" "$BACKUP_PATH/license-private.pem" 2>/dev/null \
+            && _log_ok "license-private.pem (Ed25519 signing key — required to issue new licenses)" \
+            || _log_warn "license-private.pem backup failed (non-critical — existing licenses stay valid)"
+    fi
 else
     _log_warn "License server not found at $LICENSE_DIR"
 fi

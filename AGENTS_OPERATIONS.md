@@ -12,7 +12,11 @@
 - Client: `cms/services/telemetry.py`. Registers at install, then a daily heartbeat on a background thread (**production only** — gated on `FLASK_ENV=production`, `app.testing`, and `TELEMETRY_DISABLED`).
 - Identity: env `INSTALL_ID`/`INSTALL_TOKEN` (written by `install.sh`/`docker-up.sh`) → fallback to `Setting` (`install_id`, encrypted `install_token`), auto-generated on first prod start.
 - Settings: `telemetry_enabled` (toggle) + `telemetry_server_url` in Settings → General. CLI force: `flask telemetry:report`.
-- Phase 2 will add Ed25519 license verification on top of the same check-in channel.
+- **Licensing (fase 2, Ed25519)**: de server geeft elke install automatisch een trial-licentie (`TRIAL_DAYS`, default 30); `license:new`/`license:revoke`/`license:list` via `license-server/cli.py`. De app verifieert offline met de ingebakken publieke sleutel (`cms/services/license.py`), revocatie/verloop komt online via de check-in.
+- **App-side gates (soft trial)**: `trial_blocked(feature)` blokkeert `ai`, `spiderfoot`, `vessel`, `phone`; tenants gelimiteerd op `trial_tenant_limit` (default 1) via `create_tenant`. Central: `check_feature()` (tier_limits) + `is_tool_enabled()` (feature_flags).
+- **Uitschakelen**: `LICENSE_ENFORCEMENT=off` in de app `.env`, óf een geldige full-licentie op de install.
+- Settings: `license_public_key` (overschrijfbaar, default = ingebakken publieke sleutel) + `trial_tenant_limit` in Settings → General. UI: banner in header (trial/verlopen/revoked) + licentiestatus-kaart in Settings → General. CLI: `flask license:status`.
+- Tests: `license-server/tests/test_server.py` (20) + `tests/test_license_ui.py` (14). `LICENSE_ENFORCEMENT=off` staat in `tests/conftest.py` zodat bestaande integratietests niet door trial-gates breken.
 
 ---
 

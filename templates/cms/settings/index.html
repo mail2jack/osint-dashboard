@@ -514,6 +514,8 @@
                         'enable_osint_dorks': '🔍 Enable OSINT dorks',
                         'update_check_repo': '🔄 Update check repo',
                         'webhook_url': '🔗 Webhook URL',
+                        'license_public_key': '🪪 License public key',
+                        'trial_tenant_limit': '🪪 Max tenants (trial)',
                         'organization_name': '🏢 Organization name',
                         'case_number_prefix': '📁 Case prefix',
                         'default_risk_score': '⚠️ Default risk score',
@@ -615,6 +617,43 @@
                     🔍 {{ _('Check for Updates') }}
                 </button>
                 <span id="updateCheckStatus" style="margin-left:1rem;font-size:0.9rem;"></span>
+            </div>
+        {% endif %}
+
+        {% if active_category == 'general' and license_info %}
+            <hr style="margin:2rem 0;border:none;border-top:1px solid var(--border-color);">
+            <div>
+                <h3>🪪 {{ _('License') }}</h3>
+                {% set ls = license_info.state %}
+                <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">
+                    {{ _('Ed25519 offline-verifiable license for this install.') }}
+                </p>
+                <table class="settings-table" style="width:100%;border-collapse:collapse;">
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Install ID') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;" class="small">{{ license_info.install_id or '-' }}</td></tr>
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Status') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;font-weight:600;">
+                        {% if ls.valid and ls.plan in ('full', 'professional', 'enterprise') %}
+                            <span style="color:var(--green, #37c46a);">{{ _('Licensed') }}</span>
+                        {% elif ls.revoked %}
+                            <span style="color:var(--red, #ef5350);">{{ _('Revoked') }}</span>
+                        {% else %}
+                            <span style="color:var(--warn, #f2b03d);">{{ ls.message or _('Trial') }}</span>
+                        {% endif %}
+                        </td></tr>
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Plan') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;">{{ ls.plan or '-' }}</td></tr>
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Expires') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;">{{ ls.expires_at or '-' }}</td></tr>
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Days left') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;">{{ ls.days_left if ls.days_left is not none else '-' }}</td></tr>
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Message') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;">{{ ls.message or '-' }}</td></tr>
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Trial tenant limit') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;">{{ license_info.trial_tenant_limit }}</td></tr>
+                    <tr><td style="padding:0.35rem 0;color:var(--text-secondary);">{{ _('Public key') }}</td>
+                        <td style="padding:0.35rem 0;text-align:right;" class="small">{{ license_info.public_key }}</td></tr>
+                </table>
             </div>
         {% endif %}
 

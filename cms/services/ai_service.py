@@ -278,6 +278,14 @@ def check_ai_available() -> bool:
 
 def _generate(prompt, system_prompt=None, timeout=60) -> str | None:
     """Try OpenRouter first, fall back to Ollama."""
+    try:
+        from cms.services import license as license_service
+
+        if license_service.trial_blocked("ai"):
+            logger.info("AI limited: install is on a trial license")
+            return None
+    except Exception:
+        pass
     if get_openrouter_config()["api_key"]:
         result = openrouter_generate(prompt, system_prompt, timeout)
         if result is not None:

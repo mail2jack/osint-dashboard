@@ -1,17 +1,19 @@
 # Iveras License & Telemetry Server
 
-Fase 1 van het telemetrie + licensing-systeem. Centrale registry voor alle
+Fase 1 + 2 van het telemetrie + licensing-systeem. Centrale registry voor alle
 OSINT Dashboard installs: registratie bij install + dagelijkse heartbeat met
-systeeminfo. Fase 2 voegt Ed25519-licenties toe, fase 3 Stripe-betalingen.
+systeeminfo, plus Ed25519-ondertekende licenties die de app offline kan
+verifiëren. Fase 3 voegt Stripe-betalingen toe.
 
 ## Endpoints
 
 | Method | Path             | Auth                  | Doel                                  |
 |--------|------------------|-----------------------|---------------------------------------|
-| POST   | `/api/register`  | `Bearer <token>`      | Registreer een install (idempotent)   |
-| POST   | `/api/telemetry` | `Bearer <token>`      | Dagelijkse heartbeat + systeeminfo    |
-| GET    | `/`              | Basic (dashboard)     | Overzicht alle installaties           |
-| GET    | `/api/installs`  | Basic (dashboard)     | Registry als JSON                     |
+| POST   | `/api/register`  | `Bearer <token>`      | Registreer een install (idempotent); geeft meteen een trial-licentie |
+| POST   | `/api/telemetry` | `Bearer <token>`      | Dagelijkse heartbeat + systeeminfo + actuele licentie |
+| GET    | `/api/license`   | `Bearer <token>` + `X-Install-ID` | Opgehaalde ondertekende licentie |
+| GET    | `/`              | Basic (dashboard)     | Overzicht alle installaties + licenties |
+| GET    | `/api/installs`  | Basic (dashboard)     | Registry als JSON (incl. licentie per install) |
 | GET    | `/health`        | —                      | Health check                          |
 
 De client stuurt `{"install_id": "...", "info": {...}}` met
@@ -19,6 +21,54 @@ De client stuurt `{"install_id": "...", "info": {...}}` met
 alleen een SHA-256 hash van het token op. Bij een onbekend install_id + geldige
 token registreert de server de install opnieuw (idempotent). Verkeerde token →
 `403`.
+
+## Licenties (fase 2, Ed25519)
+
+Elke install krijgt automatisch een **trial-licentie** (default 30 dagen, env
+`TRIAL_DAYS`) bij registratie. Via de CLI kun je handmatig licenties
+verstrekken/vervangen/revoken. De payload is een JSON-document
+(`install_id`, `license_id`, `plan`, `issued_at`, `expires_at`) ondertekend met
+Ed25519; de app verifieert dit offline met de ingebakken publieke sleutel.
+Revocatie is online (de app krijgt `status: "revoked"` mee bij de check-in).
+
+### Keypair genereren (éénmalig, na deploy)
+
+```bash
+sudo -u license env HOME=/opt/license-server \
+  /opt/license-server/venv/bin/python3 /opt/license-server/cli.py keys:generate
+```
+
+Schrijft `keys/private.pem` (mode 600, eigenaar `license`) en print de publieke
+sleutel. Die publieke sleutel is al als default ingebakken in
+`cms/services/license.py` en via Settings → General (`license_public_key`)
+overschrijfbaar — alleen wijzigen als je de sleutels roteert. `keys/`, `data/`
+en `.env` staan in `.gitignore`, dus die gaan niet mee met `rsync --delete`.
+
+### Licenties beheren (CLI)
+
+```bash
+CLI="sudo -u license env HOME=/opt/license-server /opt/license-server/venv/bin/python3 /opt/license-server/cli.py"
+
+$CLI license:list
+$CLI license:new --install <install_id> --plan full --days 365   # vervangt trial
+$CLI license:new --install <install_id> --plan full --expires 2026-12-31
+$CLI license:revoke --install <install_id>
+```
+
+`license:new` overschrijft de vorige licentie van de install; de app toont de
+nieuwe bij de volgende check-in. `--days` en `--expires` zijn optioneel
+(default 365 dagen / respectievelijk eind van de dag).
+
+### App-side (soft trial, per install)
+
+- `cms/services/license.py` — offline verificatie + toestandsmachine
+  (present/valid/plan/expires/revoked), gated features.
+- Gates: trial blokkeert `ai`, `spiderfoot`, `vessel`, `phone` en beperkt
+  tenants tot `trial_tenant_limit` (default 1).
+- Uitschakelen: `LICENSE_ENFORCEMENT=off` in `.env` van de app of een geldige
+  full-licentie.
+- UI: banner in de header (trial/verlopen/revoked/invalid) + licentiestatus in
+  Settings → General.
 
 ## Deployment (eigen VPS, `license.iveras.com`)
 
@@ -46,6 +96,9 @@ sudo cp license-server/deploy/license-server.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now license-server
 ```
+
+Na de deploy nog eenmalig `keys:generate` draaien (zie boven) zodat
+register/trial-uitgifte kan werken.
 
 ### Nginx + TLS (certbot)
 
@@ -97,7 +150,8 @@ sudo chmod g+rX /opt/license-server/data
 - **`ADMIN_PASSWORD` is verplicht.** Zonder wachtwoord is het dashboard
   onbeveiligd (dev-modus + waarschuwing in logs).
 - Back-up van `/opt/license-server/data/license.db` is voldoende om de registry
-  te herstellen.
+  te herstellen. **Back-up ook `keys/private.pem`**: zonder de privésleutel kun
+  je geen nieuwe licenties uitgeven (bestaande blijven wel verifieerbaar).
 - Het token van een client wordt nergens in plaintext bewaard; verlies van het
   `INSTALL_TOKEN` betekent her-registratie met een nieuw token.
 

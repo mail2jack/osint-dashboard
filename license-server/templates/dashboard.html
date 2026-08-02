@@ -73,12 +73,13 @@
       <th>HW</th>
       <th>App</th>
       <th>Platform</th>
+      <th>License</th>
       <th>Registered</th>
       <th>Last seen</th>
     </tr>
   </thead>
   <tbody id="rows">
-    <tr><td colspan="10" class="muted">Loading…</td></tr>
+    <tr><td colspan="11" class="muted">Loading…</td></tr>
   </tbody>
 </table>
 
@@ -106,6 +107,15 @@
   function full(iso) {
     return iso ? new Date(iso).toLocaleString() : "-";
   }
+  function licCell(lic) {
+    if (!lic) return '<td class="small">-</td>';
+    var status = esc(lic.status || "active");
+    var color = lic.status === "revoked" ? "var(--bad)" : (lic.status === "expired" ? "var(--warn)" : "var(--ok)");
+    return '<td class="small"><span style="color:' + color + '">●</span> ' +
+      esc(lic.plan || "-") + " · " + status +
+      (lic.expires_at ? '<br><span class="muted">' + esc(lic.expires_at) + '</span>' : "") +
+      '</td>';
+  }
   function load() {
     fetch("/api/installs")
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
@@ -125,7 +135,7 @@
 
         var tb = document.getElementById("rows");
         tb.innerHTML = rows.length ? "" :
-          '<tr><td colspan="10" class="muted">No installs registered yet.</td></tr>';
+          '<tr><td colspan="11" class="muted">No installs registered yet.</td></tr>';
 
         rows.forEach(function (it) {
           var t = Date.parse(it.last_seen || "");
@@ -147,6 +157,7 @@
               '<br><span class="muted">' + (it.ram_gb || "-") + ' GB RAM · ' + (it.disk_gb || "-") + ' GB disk</span></td>' +
             '<td>' + esc(it.app_version || "-") + '</td>' +
             '<td>' + esc(it.platform || "-") + '</td>' +
+            licCell(it.license) +
             '<td class="small" title="' + full(it.registered_at) + '">' + ago(it.registered_at) + '</td>' +
             '<td class="small" title="' + full(it.last_seen) + '">' + ago(it.last_seen) + '</td>';
           tb.appendChild(tr);
