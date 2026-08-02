@@ -13,6 +13,14 @@ sudo ./install.sh
 
 See [INSTALL.md](INSTALL.md) for detailed instructions and [MANUAL.md](MANUAL.md) for the full user manual.
 
+## Quick Start (Docker)
+
+```bash
+./docker-up.sh
+```
+
+Runs the app with PostgreSQL + Redis in containers. See [INSTALL.md](INSTALL.md#10-docker-installation-alternative) for details.
+
 ## Features
 
 - **Case Management** — Investigations with clients, subjects, and findings

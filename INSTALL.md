@@ -234,3 +234,76 @@ sudo certbot renew --dry-run
 - UFW blocks everything except SSH (22), HTTP (80), HTTPS (443)
 - Fail2ban bans IPs after 5 failed SSH attempts and 5 failed Nginx auth attempts
 - For production, set `FLASK_ENV=production` and `DB_SSL_MODE=require` in `.env`
+
+---
+
+## 10. Docker Installation (Alternative)
+
+A Docker Compose setup is available for local development, testing, or containerized
+deployment. It runs the app plus PostgreSQL, Redis, and the optional WhatsApp service.
+
+**What you get:**
+- App (gunicorn) + PostgreSQL 16 + Redis 7
+- Migrations run automatically on startup
+- Optional background worker (RQ) via `--profile worker`
+- Optional WhatsApp service (`wa-service`)
+
+### Quick start (one command)
+
+Prerequisite: [Docker](https://docs.docker.com/engine/install/) with the Compose plugin.
+
+```bash
+./docker-up.sh
+```
+
+The script:
+1. Creates a `.env` with random keys (if it doesn't exist yet)
+2. Builds and starts the containers
+3. Waits until the app responds
+4. Prints the login details
+
+First login: `admin@localhost` / `changeme123` (change immediately).
+
+### Manual Docker Compose
+
+```bash
+# 1. Create .env in the repo root (all values are required)
+cat > .env <<'EOF'
+DB_PASSWORD=een-sterk-wachtwoord
+CMS_ENCRYPTION_KEY=<32-byte base64 key>
+SECRET_KEY=<willekeurige string>
+PORT=5000
+EOF
+```
+
+Generate keys:
+
+```bash
+python3 -c "import base64,secrets;print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
+python3 -c "import secrets;print(secrets.token_hex(32))"
+```
+
+```bash
+# 2. Build and start
+docker compose up -d --build
+
+# 3. Check
+docker compose ps
+curl http://localhost:5000/health
+```
+
+### Docker commands
+
+| Command | Purpose |
+|---|---|
+| `docker compose up -d --build` | Build and start / update |
+| `docker compose down` | Stop and remove containers |
+| `docker compose logs -f app` | Follow app logs |
+| `docker compose restart app` | Restart the app |
+| `docker compose --profile worker up -d` | Enable the background worker |
+
+**Notes:**
+- The Compose setup does **not** include Nginx, SSL, SpiderFoot, or the firewall
+  hardening that `install.sh` provides — for production bare-metal use `install.sh`.
+- Database is stored in the `pgdata` volume; uploads in the `uploads` volume.
+- Keep `.env` safe — it contains the encryption key and secrets.
