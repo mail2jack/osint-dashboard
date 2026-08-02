@@ -94,7 +94,8 @@
   }
   function ago(iso) {
     if (!iso) return "-";
-    var t = new Date(iso + (iso.endsWith("Z") ? "" : "Z")).getTime();
+    var t = Date.parse(iso);
+    if (isNaN(t)) return "-";
     var d = Math.floor((Date.now() - t) / 60000);
     if (d < 1) return "now";
     if (d < 60) return d + "m";
@@ -103,7 +104,7 @@
     return Math.floor(h / 24) + "d";
   }
   function full(iso) {
-    return iso ? new Date(iso + (iso.endsWith("Z") ? "" : "Z")).toLocaleString() : "-";
+    return iso ? new Date(iso).toLocaleString() : "-";
   }
   function load() {
     fetch("/api/installs")
@@ -113,7 +114,8 @@
         var now = Date.now();
         var online = 0, stale = 0;
         rows.forEach(function (it) {
-          var t = new Date((it.last_seen || it.registered_at || "").replace("Z", "") + "Z").getTime();
+          var t = Date.parse(it.last_seen || it.registered_at || "");
+          if (isNaN(t)) t = Date.now();
           var hours = (now - t) / 3600000;
           if (hours <= 48) online++; else stale++;
         });
@@ -126,7 +128,8 @@
           '<tr><td colspan="10" class="muted">No installs registered yet.</td></tr>';
 
         rows.forEach(function (it) {
-          var t = new Date((it.last_seen || "").replace("Z", "") + "Z").getTime();
+          var t = Date.parse(it.last_seen || "");
+          if (isNaN(t)) t = Date.now();
           var hours = (now - t) / 3600000;
           var cls = hours <= 48 ? "ok" : (hours <= 240 ? "warn" : "bad");
           var tr = document.createElement("tr");

@@ -38,7 +38,7 @@ MAX_JSON = 8192
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _connect() -> sqlite3.Connection:
