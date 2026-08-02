@@ -431,8 +431,11 @@ def reset_setting_api(setting_id: str) -> flask.Response:
     """Reset a setting to its default value."""
     setting = db.session.get(Setting, setting_id) or abort(404)
 
-    # Remove the setting (will be recreated by init_default_settings)
-    setting.is_active = False
+    # Clear the stored value and re-activate the row so it stays visible in
+    # the UI (init_default_settings below then re-patches its metadata).
+    setting.value = None
+    setting.is_encrypted = False
+    setting.is_active = True
     setting.updated_at = datetime.now(timezone.utc)
 
     AuditLog.log(

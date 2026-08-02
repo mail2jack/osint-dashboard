@@ -3111,6 +3111,16 @@ def init_default_settings() -> None:
             ):
                 existing.display_order = default["display_order"]
                 patched = True
+            if default.get("category") and existing.category != default["category"]:
+                existing.category = default["category"]
+                patched = True
+            # Re-activate known defaults: a prior "reset" deactivates the row
+            # (is_active=False) while leaving the value in place, which makes
+            # the setting invisible in the UI but still readable by code that
+            # queries without the is_active filter.
+            if not existing.is_active:
+                existing.is_active = True
+                patched = True
             if patched:
                 existing.updated_at = datetime.now(timezone.utc)
     db.session.commit()
