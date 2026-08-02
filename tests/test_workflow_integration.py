@@ -86,6 +86,20 @@ class TestCaseCrud:
     def test_create_case_get(self, auth_client, db_session):
         resp = auth_client.get("/cms/workflow/case/new")
         assert resp.status_code == 200
+        assert b'name="client_name" required' not in resp.data
+
+    def test_create_case_post_without_client(self, auth_client, db_session):
+        resp = auth_client.post(
+            "/cms/workflow/case/new",
+            data={
+                "title": "Case Without Client",
+                "subject_0_name": "Test Person",
+                "subject_0_type": "person",
+                "priority": "medium",
+            },
+        )
+        assert resp.status_code in (200, 302)
+        assert Case.query.filter_by(title="Case Without Client").first() is not None
 
     def test_create_case_post(self, auth_client, db_session):
         resp = auth_client.post(

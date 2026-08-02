@@ -104,8 +104,8 @@ input:-webkit-autofill:focus {
     <div class="client-section-body" style="display:none;">
     <div class="form-grid">
       <div class="form-group">
-        <label>Company name *</label>
-        <input type="text" name="client_name" required value="{{ client.name if client else '' }}">
+        <label>Company name</label>
+        <input type="text" name="client_name" value="{{ client.name if client else '' }}">
       </div>
       <div class="form-group">
         <label>Contact person</label>
