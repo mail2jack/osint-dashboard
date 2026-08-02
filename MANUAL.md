@@ -104,7 +104,7 @@ The script installs everything automatically:
    - `HIBP_API_KEY` — for breach checking (https://haveibeenpwned.com/API/Key)
    - `TWOCHAT_API_KEY` — for WhatsApp integration (https://app.2chat.io)
 2. SpiderFoot password is shown in the install output — save it.
-3. Log in at `https://your-domain.com` with `admin` / `changeme123` (change immediately).
+3. Log in at `https://your-domain.com` with `admin@localhost` / `changeme123` (change immediately).
 
 **Update notifications** are automatically enabled — a banner appears on the dashboard when a new version is available.
 
@@ -184,7 +184,7 @@ For PostgreSQL, add `DATABASE_URL=postgresql://user:pass@localhost/dbname` to `.
 
 ### Default Login
 
-- **Username:** admin
+- **Email:** admin@localhost
 - **Password:** changeme123 (change on first login!)
 
 ---

@@ -71,7 +71,7 @@ Open your browser and navigate to:
 
 Login with:
 
-- **Username:** `admin`
+- **Email:** `admin@localhost`
 - **Password:** `changeme123`
 
 **Change the password immediately** after first login.

@@ -754,7 +754,7 @@ echo -e "  URL:      ${BLUE}postgresql://osint:$DB_PASSWORD@localhost:5432/osint
 echo ""
 
 echo -e "${YELLOW}--- Default App Login ---${NC}"
-echo -e "  Username: ${BLUE}admin${NC}"
+echo -e "  Email:    ${BLUE}admin@localhost${NC}"
 echo -e "  Password: ${RED}changeme123${NC} (change immediately after first login!)"
 echo ""
 

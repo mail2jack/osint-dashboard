@@ -30,7 +30,7 @@
   - **New DB** (no tables): `alembic upgrade head`
   - **Existing DB** (tables, no `alembic_version`): `alembic stamp head`
   - **Already migrated**: idempotent
-- Admin (`admin`/`changeme123`) created by `cms/__init__.py` data migration.
+- Admin (`admin@localhost`/`changeme123`) created by `cms/__init__.py` data migration.
 - **Alembic CLI**: `DATABASE_URL="sqlite:///test.db" python3 -m alembic upgrade head` (no Flask CLI needed).
 - **New migration**: `DATABASE_URL="..." python3 -m alembic revision --autogenerate -m "description"`.
 
