@@ -6,7 +6,7 @@
 Fase 1 van het telemetrie + licensing-systeem: een centrale `license-server/` op eigen VPS (`license.iveras.com`) die alle OSINT Dashboard installaties registreert en dagelijks systeeminfo ontvangt. Fundament voor Ed25519-licenties (fase 2) en Stripe (fase 3).
 
 ### Wijzigingen
-- **`license-server/`** (nieuw, eigen deploy): Flask-app met SQLite (stdlib, alleen Flask als dependency).
+- **`license-server/`** (nieuw, eigen deploy): Flask-app met SQLite (stdlib) + gunicorn.
   - `POST /api/register` — registreert een install (idempotent; her-registratie met zelfde token werkt, verkeerd token → 403).
   - `POST /api/telemetry` — dagelijkse heartbeat; partial payloads overschrijven bestaande velden niet.
   - `GET /` + `GET /api/installs` — registry-dashboard met status (online/stale), systeeminfo per install; HTTP Basic Auth (`ADMIN_PASSWORD` verplicht in prod).

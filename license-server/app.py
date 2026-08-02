@@ -8,7 +8,7 @@ Central registry for all OSINT Dashboard installs:
     GET  /               — registry dashboard (HTTP Basic Auth)
     GET  /api/installs   — registry as JSON (HTTP Basic Auth)
 
-Storage: SQLite via the stdlib sqlite3 module. Only dependency is Flask.
+Storage: SQLite via the stdlib sqlite3 module. Dependencies: Flask + gunicorn.
 
 Runtime config (env vars):
     LICENSE_DB_PATH     sqlite file path (default ./data/license.db)

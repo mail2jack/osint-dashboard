@@ -31,11 +31,12 @@ sudo chown -R license:license /opt/license-server
 sudo -u license python3 -m venv /opt/license-server/venv
 sudo -u license /opt/license-server/venv/bin/pip install -r /opt/license-server/requirements.txt
 
-sudo tee /opt/license-server/.env > /dev/null <<'EOF'
+sudo tee /opt/license-server/.env > /dev/null <<EOF
 ADMIN_USER=admin
-ADMIN_PASSWORD=<sterk wachtwoord>
+ADMIN_PASSWORD=$(openssl rand -hex 24)
 EOF
 sudo chmod 600 /opt/license-server/.env
+sudo cat /opt/license-server/.env   # noteer ADMIN_PASSWORD (of vervang door eigen wachtwoord)
 
 sudo cp license-server/deploy/license-server.service /etc/systemd/system/
 sudo systemctl daemon-reload
