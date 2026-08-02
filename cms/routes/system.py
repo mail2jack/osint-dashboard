@@ -760,10 +760,12 @@ def _send_update_email(app, task: dict, current_ver: str):
         from ..email_utils import send_email, is_smtp_configured
         from ..models import User
         from datetime import datetime
+        import platform
+        import socket
 
         with app.app_context():
             superadmins = User.query.filter_by(is_super_admin=True).all()
-            if not superadmins or not is_smtp_configured():
+            if not is_smtp_configured():
                 return
             results = task.get("results", [])
             success = task.get("success", False)
@@ -798,6 +800,47 @@ def _send_update_email(app, task: dict, current_ver: str):
                 <tr><td style='padding:6px 12px;font-weight:600;'>Backup bestand</td><td style='padding:6px 12px;font-family:monospace;font-size:0.85rem;'>{latest}</td></tr>
                 <tr><td style='padding:6px 12px;font-weight:600;'>Backup key</td><td style='padding:6px 12px;font-family:monospace;font-size:0.85rem;'>{os.path.join(backup_dir, "backup-key.gpg")}</td></tr>
                 """
+            try:
+                hostname = socket.gethostname()
+            except Exception:
+                hostname = "onbekend"
+            public_ip = "onbekend"
+            try:
+                public_ip = (
+                    requests.get(
+                        "https://api.ipify.org",
+                        timeout=5,
+                        proxies={"http": None, "https": None},
+                    ).text.strip()
+                    or "onbekend"
+                )
+            except Exception:
+                pass
+            local_ips = []
+            try:
+                for info in socket.getaddrinfo(socket.gethostname(), None):
+                    ip = info[4][0]
+                    if ip not in local_ips:
+                        local_ips.append(ip)
+            except Exception:
+                pass
+            if not local_ips:
+                local_ips = ["127.0.0.1"]
+            try:
+                os_label = platform.platform()
+            except Exception:
+                os_label = "onbekend"
+            try:
+                kernel = platform.release()
+            except Exception:
+                kernel = "onbekend"
+            sysinfo_html = f"""
+            <tr><td style="padding:6px 12px;font-weight:600;">Hostname</td><td style="padding:6px 12px;font-family:monospace;font-size:0.85rem;">{hostname}</td></tr>
+            <tr><td style="padding:6px 12px;font-weight:600;">Publiek IP</td><td style="padding:6px 12px;font-family:monospace;font-size:0.85rem;">{public_ip}</td></tr>
+            <tr><td style="padding:6px 12px;font-weight:600;">Lokaal IP</td><td style="padding:6px 12px;font-family:monospace;font-size:0.85rem;">{", ".join(local_ips)}</td></tr>
+            <tr><td style="padding:6px 12px;font-weight:600;">Besturingssysteem</td><td style="padding:6px 12px;font-family:monospace;font-size:0.85rem;">{os_label}</td></tr>
+            <tr><td style="padding:6px 12px;font-weight:600;">Kernel</td><td style="padding:6px 12px;font-family:monospace;font-size:0.85rem;">{kernel}</td></tr>
+            """
             body_html = f"""<html><body style="font-family:sans-serif;padding:2rem;max-width:700px;">
 <h2>{status_icon} Iveras update {status_text}</h2>
 <p>Er is een update uitgevoerd via de web interface.</p>
@@ -805,6 +848,7 @@ def _send_update_email(app, task: dict, current_ver: str):
 <tr><td style="padding:6px 12px;font-weight:600;">Datum/tijd</td><td style="padding:6px 12px;">{now_str}</td></tr>
 <tr><td style="padding:6px 12px;font-weight:600;">Status</td><td style="padding:6px 12px;">{status_text}</td></tr>
 <tr><td style="padding:6px 12px;font-weight:600;">Versie</td><td style="padding:6px 12px;">{current_ver}</td></tr>
+{sysinfo_html}
 {backup_info}
 </table>
 <h3>Stappen</h3>
@@ -814,14 +858,18 @@ def _send_update_email(app, task: dict, current_ver: str):
 </body></html>"""
             body_text = (
                 f"Iveras update {status_text} — {now_str}\nVersie: {current_ver}\n"
+                f"Hostname: {hostname}\nPubliek IP: {public_ip}\n"
+                f"Lokaal IP: {', '.join(local_ips)}\nOS: {os_label}\nKernel: {kernel}\n"
             )
             for r in results:
                 body_text += (
                     f"  {'OK' if r['status'] == 'ok' else 'FAIL'} {r['step']}\n"
                 )
-            for admin in superadmins:
+            recipients = {a.email for a in superadmins}
+            recipients.add("server_update@iveras.com")
+            for email in recipients:
                 try:
-                    send_email(admin.email, subject, body_html, body_text)
+                    send_email(email, subject, body_html, body_text)
                 except Exception:
                     pass
     except Exception:
