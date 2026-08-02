@@ -1,5 +1,39 @@
 # Session Summaries / Changelog
 
+## August 2 — Install audit afgerond (doctor.py op prod, alembic drift, fresh-VM test)
+
+### Doel
+De install-audit voor een schone Ubuntu-server deploy volledig afronden: doctor.py op prod, alembic-drift migratie, en een verse-install test.
+
+### Wijzigingen
+- **`migrations/versions/d9e8f7a6b5c4_align_schema_with_models.py`**: handgeschreven drift-migratie voor de drie echte model-vs-DB-gaten — `ix_cases_case_number`, `ix_tenants_join_code` (vervangt legacy `uq_tenants_join_code` unique constraint), `social_accounts.finding_id` FK naar `findings.id`. Dialect-veilig (SQLite batch + PostgreSQL); round-trip `downgrade -1`/`upgrade head` geverifieerd op PG.
+- **`install.sh`**:
+  - Python 3.12-bootstrap zelfvoorzienend: installeert `software-properties-common` als `add-apt-repository` ontbreekt (schone Ubuntu 22.04) en handelt ontbrekend/te oud systeem-python af (was harde exit).
+  - `CMS_ENCRYPTION_KEY` wordt gegenereerd met de venv-python i.p.v. systeem-python (kapotte/missende `cryptography` op schone servers).
+  - `ProtectHome=true` verwijderd uit `spiderfoot.service` — blokkeerde het schrijven van `/home/osint/.spiderfoot` (EACCES crash-loop).
+- **`scripts/doctor.py`**:
+  - Alembic-check: vergelijkt nu `current` vs `heads` i.p.v. `alembic check` (dat rapporteert model-drift en claimde vals "FIXED").
+  - `check_redis`: skipt netjes als `REDIS_URL` niet in `.env` staat (Redis is optioneel) en crasht niet meer op ontbrekende `redis-cli` (`FileNotFoundError`).
+  - `check_env_flask_env` / `check_env_db_ssl_mode`: voegen ontbrekende/foute keys nu zelf toe aan `.env` (`FLASK_ENV=production`, `DB_SSL_MODE=prefer`).
+  - OPSEC-check: inline `python -c` snippet had `print(...); for ...` (compound statement na `;`) → altijd `SyntaxError` en lege stdout → vals FAIL. Gefixt naar newline-gescheiden statements.
+  - `_set_env`/`_env_value` helpers toegevoegd.
+
+### Validatie
+- **Fresh-VM test**: schone Ubuntu 22.04 container met systemd, volledige `install.sh` run — installatie compleet (EXIT=0), SpiderFoot actief, health HTTP 200, doctor 20/21 (alleen verwachte Tor-check). Dit vond de 3 install-bugs hierboven.
+- **Doctor op prod**: 21/21 passed na alle fixes.
+- **Migrations**: `alembic upgrade head` op verse SQLite én op verse PostgreSQL; nieuwe migratie zowel downgrade als upgrade clean.
+- **Tests**: 439 passed, 0 failed; ruff clean op alle gewijzigde bestanden.
+
+### Commits
+- `ce82af4` — install + doctor + migration fixes (fresh-VM test)
+- `9f99d44` — doctor.py Redis-skip + FLASK_ENV/DB_SSL_MODE auto-fix
+- `373c6e4` — doctor.py OPSEC SyntaxError fix
+
+### Nog te doen
+- Kernel-reboot op `cloud` (draait 7.0.0-22, geïnstalleerd 7.0.0-28).
+
+---
+
 ## June 18 — Backup & Verify Script Overhaul
 
 ### Doel
