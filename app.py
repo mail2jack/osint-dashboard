@@ -805,6 +805,26 @@ def aggregate_usage():
         print("No usage alerts triggered")
 
 
+@app.cli.command("telemetry:report")
+def telemetry_report():
+    """Register this install with the license server and send a check-in now."""
+    from cms.services import telemetry
+
+    with app.app_context():
+        telemetry.ensure_install_identity()
+        install_id = telemetry.get_install_id()
+        if not install_id:
+            print("No install identity available.")
+            return
+        if not telemetry.is_telemetry_enabled():
+            print("Telemetry is disabled in Settings.")
+            return
+        ok = telemetry.maybe_check_in(force=True)
+        print(
+            f"Telemetry sent for {install_id}" if ok else "Telemetry failed or skipped"
+        )
+
+
 @app.cli.command("purge-expired-tenants")
 def purge_expired_tenants_cli():
     """Hard-delete tenant data for tenants past their retention grace period."""

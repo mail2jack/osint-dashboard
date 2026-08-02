@@ -2647,6 +2647,28 @@ def _general_defaults():
             "display_order": 51,
         },
         {
+            "key": "telemetry_server_url",
+            "category": "general",
+            "value": "https://license.iveras.com",
+            "description": "Iveras license & telemetry server URL. Leave empty to disable.",
+            "value_type": "text",
+            "display_order": 52,
+        },
+        {
+            "key": "telemetry_enabled",
+            "category": "general",
+            "value": "true",
+            "description": "Report install info (hostname, IP, hardware/software, version) to the Iveras license server.",
+            "value_type": "select",
+            "options": {
+                "options": [
+                    {"value": "true", "label": "Enabled"},
+                    {"value": "false", "label": "Disabled"},
+                ]
+            },
+            "display_order": 53,
+        },
+        {
             "key": "theme_style",
             "category": "appearance",
             "value": "classic",

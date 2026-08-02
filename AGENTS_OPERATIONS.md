@@ -7,6 +7,13 @@
 - **Production push**: Before deploying, change `debug=True` → `debug=False` in `app.py`.
 - Dev with SpiderFoot: `./start.sh start`. Stop: `./start.sh stop`.
 
+## Telemetry & Licensing
+- Central license server lives in `license-server/` (own VPS, `license.iveras.com`) — see `license-server/README.md` for deploy.
+- Client: `cms/services/telemetry.py`. Registers at install, then a daily heartbeat on a background thread (**production only** — gated on `FLASK_ENV=production`, `app.testing`, and `TELEMETRY_DISABLED`).
+- Identity: env `INSTALL_ID`/`INSTALL_TOKEN` (written by `install.sh`/`docker-up.sh`) → fallback to `Setting` (`install_id`, encrypted `install_token`), auto-generated on first prod start.
+- Settings: `telemetry_enabled` (toggle) + `telemetry_server_url` in Settings → General. CLI force: `flask telemetry:report`.
+- Phase 2 will add Ed25519 license verification on top of the same check-in channel.
+
 ---
 
 ## Database

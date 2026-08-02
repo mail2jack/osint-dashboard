@@ -1,5 +1,38 @@
 # Session Summaries / Changelog
 
+## August 2 — Telemetrie & License Server fase 1
+
+### Doel
+Fase 1 van het telemetrie + licensing-systeem: een centrale `license-server/` op eigen VPS (`license.iveras.com`) die alle OSINT Dashboard installaties registreert en dagelijks systeeminfo ontvangt. Fundament voor Ed25519-licenties (fase 2) en Stripe (fase 3).
+
+### Wijzigingen
+- **`license-server/`** (nieuw, eigen deploy): Flask-app met SQLite (stdlib, alleen Flask als dependency).
+  - `POST /api/register` — registreert een install (idempotent; her-registratie met zelfde token werkt, verkeerd token → 403).
+  - `POST /api/telemetry` — dagelijkse heartbeat; partial payloads overschrijven bestaande velden niet.
+  - `GET /` + `GET /api/installs` — registry-dashboard met status (online/stale), systeeminfo per install; HTTP Basic Auth (`ADMIN_PASSWORD` verplicht in prod).
+  - Tokens worden alleen als SHA-256-hash opgeslagen.
+  - `requirements.txt`, `README.md`, `deploy/license-server.service` + `deploy/nginx.conf`.
+- **`cms/services/telemetry.py`** (nieuw): client die systeeminfo verzamelt (hostname, lokale IPs, OS/kernel, CPU/RAM/disk via psutil, app-versie) en register + heartbeat stuurt. Silent fail; via `requests` direct (géén Tor/proxy/jitter). Identiteit: env `INSTALL_ID`/`INSTALL_TOKEN` → fallback naar `Setting` (`install_id`/`install_token`, token encrypted).
+- **`cms/__init__.py`**: `init_telemetry(app)` aan einde van `create_cms_module` — genereert identiteit + start check-in thread (alleen productie, `FLASK_ENV=production` en niet-testing; skipt in tests/dev).
+- **`cms/models/__init__.py`**: `_general_defaults` → `telemetry_enabled` (select, default true) + `telemetry_server_url` (default `https://license.iveras.com`).
+- **`app.py`**: CLI `flask telemetry:report` om handmatig een check-in te forceren.
+- **`install.sh`**: `.env` krijgt `INSTALL_ID` (`/proc/sys/kernel/random/uuid`) + `INSTALL_TOKEN`; direct na aanmaken best-effort register-call naar de license server.
+- **`docker-up.sh` + `docker-compose.yml`**: stabiele identiteit in `.env` + doorgeven aan `app`/`worker` services.
+- **`.env.example` / `INSTALL.md`**: telemetry-documentatie.
+
+### Validatie
+- License-server smoke test: register/re-register/wrong-token/telemetry/unknown/401-auth/dashboard/health allemaal correct; partial-telemetry-preserves-fields bug gevonden en gefixt.
+- Tests: `tests/test_telemetry.py` (14 nieuw) + volledige suite 458 passed, 0 failed.
+- Ruff clean op alle gewijzigde bestanden.
+
+### Nog te doen
+- **Deploy `license-server/` op `license.iveras.com`** (zie `license-server/README.md`; eigenaar runt dit zelf op de VPS).
+- Op prod `git pull` + `sudo systemctl restart osint-dashboard` — daarna `flask telemetry:report` om de eerste registratie te verifiëren.
+- Fase 2: Ed25519-licenties (publieke sleutel in de app, offline-verifieerbaar, online revocatie via check-in).
+- Kernel-reboot op `cloud` (nog openstaand).
+
+---
+
 ## August 2 — Install audit afgerond (doctor.py op prod, alembic drift, fresh-VM test)
 
 ### Doel

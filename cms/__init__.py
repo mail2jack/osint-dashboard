@@ -356,7 +356,17 @@ def create_cms_module(app: Flask):
                     linked,
                 )
 
+    init_telemetry(app)
     return app
+
+
+def init_telemetry(app: Flask) -> None:
+    try:
+        from .services.telemetry import init_telemetry as _init_telemetry
+
+        _init_telemetry(app)
+    except Exception as e:
+        app.logger.debug("Telemetry init skipped: %s", e)
 
 
 def init_db(app: Flask, database_url: str = None):

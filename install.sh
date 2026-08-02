@@ -351,11 +351,27 @@ BRAVE_API_KEY=
 TWOCHAT_API_KEY=
 TWOCHAT_WHATSAPP_NUMBER=
 HIBP_API_KEY=
+
+# Telemetry (Iveras license server)
+INSTALL_ID=$(cat /proc/sys/kernel/random/uuid)
+INSTALL_TOKEN=$(openssl rand -hex 32)
 EOF
 
 chown osint:osint "$APP_DIR/.env"
 chmod 600 "$APP_DIR/.env"
 print_success "Environment file created"
+
+# Register this install with the Iveras license server (best-effort, non-blocking)
+LICENSE_SERVER_URL="${LICENSE_SERVER_URL:-https://license.iveras.com}"
+if command -v curl >/dev/null 2>&1; then
+    REGISTER_INFO=$(python3 -c "import json,sys;print(json.dumps({'hostname':'$(hostname)','os_name':'Linux','platform':'bare-metal'}))" 2>/dev/null)
+    curl -fsS -m 8 -X POST "$LICENSE_SERVER_URL/api/register" \
+        -H "Authorization: Bearer $INSTALL_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"install_id\":\"$INSTALL_ID\",\"info\":${REGISTER_INFO:-{}}}" \
+        >/dev/null 2>&1 && print_success "Installation registered with Iveras telemetry server" \
+        || print_warning "Could not reach Iveras telemetry server (non-fatal)"
+fi
 
 # ============================================================================
 # STEP 9: Configure Nginx

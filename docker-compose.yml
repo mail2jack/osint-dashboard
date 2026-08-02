@@ -56,6 +56,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       WA_SERVICE_URL: http://wa-service:3001
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5000}
+      INSTALL_ID: ${INSTALL_ID:-}
+      INSTALL_TOKEN: ${INSTALL_TOKEN:-}
       PYTHONUNBUFFERED: 1
       LOG_FILE: /dev/null
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -83,6 +85,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       CMS_ENCRYPTION_KEY: ${CMS_ENCRYPTION_KEY:?Set CMS_ENCRYPTION_KEY in .env}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      INSTALL_ID: ${INSTALL_ID:-}
+      INSTALL_TOKEN: ${INSTALL_TOKEN:-}
       PYTHONUNBUFFERED: 1
       LOG_FILE: /dev/null
       LOG_LEVEL: ${LOG_LEVEL:-INFO}

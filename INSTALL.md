@@ -95,6 +95,30 @@ sudo systemctl restart osint-dashboard
 
 You can also set API keys via the web UI at **Settings > API Keys**.
 
+### Telemetry & License Server
+
+This project reports basic install info to the Iveras license server
+(`https://license.iveras.com`) so the operator can track all deployed
+installations and later enforce licenses:
+
+- **At install:** `install.sh` generates `INSTALL_ID` + `INSTALL_TOKEN`, writes
+  them to `/opt/osint-dashboard/.env` and registers the install once.
+- **Daily:** the app sends a heartbeat with system info (hostname, local IPs,
+  public IP, OS/kernel, CPU/RAM/disk, app version). This runs on a background
+  thread in production only.
+- **On upgrade:** if `INSTALL_ID` is missing, the app auto-generates one on
+  first start and stores it in the `Setting` table.
+
+To disable: **Settings → General → Telemetry**, set `telemetry_enabled` to
+`Disabled`, or set `TELEMETRY_DISABLED=1` in `.env`. The server URL is
+configurable via `telemetry_server_url` (default `https://license.iveras.com`).
+
+Force a check-in from the CLI:
+
+```bash
+sudo -u osint /opt/osint-dashboard/venv/bin/flask telemetry:report
+```
+
 ### Service Management
 
 ```bash

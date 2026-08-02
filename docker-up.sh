@@ -30,11 +30,15 @@ if [ ! -f "$ENV_FILE" ]; then
     DB_PASSWORD=$(python3 -c "import secrets;print(secrets.token_urlsafe(24))")
     CMS_ENCRYPTION_KEY=$(python3 -c "import base64,secrets;print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())")
     SECRET_KEY=$(python3 -c "import secrets;print(secrets.token_hex(32))")
+    INSTALL_ID=$(python3 -c "import uuid;print(uuid.uuid4())")
+    INSTALL_TOKEN=$(python3 -c "import secrets;print(secrets.token_hex(32))")
     cat > "$ENV_FILE" <<EOF
 DB_PASSWORD=$DB_PASSWORD
 CMS_ENCRYPTION_KEY=$CMS_ENCRYPTION_KEY
 SECRET_KEY=$SECRET_KEY
 PORT=5000
+INSTALL_ID=$INSTALL_ID
+INSTALL_TOKEN=$INSTALL_TOKEN
 EOF
     echo "✅ .env gegenereerd (bewaar dit bestand goed — het bevat secrets)."
 else

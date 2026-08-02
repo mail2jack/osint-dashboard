@@ -177,10 +177,46 @@ if [ -d "$ALEMBIC_DIR" ]; then
 fi
 
 # ------------------------------------------------------------------
-# 5. Backup metadata
+# 5. License Server registry
 # ------------------------------------------------------------------
 echo ""
-echo "--- 5. Metadata ---"
+echo "--- 5. License Server ---"
+
+LICENSE_DIR="/opt/license-server"
+if [ -d "$LICENSE_DIR/data" ]; then
+    if command -v sqlite3 &>/dev/null; then
+        sqlite3 "$LICENSE_DIR/data/license.db" ".backup '$BACKUP_PATH/license.db'" 2>/dev/null \
+            && _log_ok "license.db (consistent copy)" \
+            || _log_warn "license.db backup failed — osint needs read access to $LICENSE_DIR/data (try: sudo usermod -aG license osint && sudo chmod g+rX /opt/license-server/data)"
+    else
+        cp "$LICENSE_DIR/data/license.db" "$BACKUP_PATH/license.db" 2>/dev/null \
+            && _log_ok "license.db" \
+            || _log_warn "license.db backup failed — osint needs read access to $LICENSE_DIR/data (try: sudo usermod -aG license osint && sudo chmod g+rX /opt/license-server/data)"
+    fi
+
+    if [ -f "$LICENSE_DIR/.env" ]; then
+        cp "$LICENSE_DIR/.env" "$BACKUP_PATH/license-env.txt" 2>/dev/null \
+            && _log_ok "license-env.txt (will be encrypted)" \
+            || _log_warn "license-env.txt backup failed (non-critical — ADMIN_PASSWORD is reset-able)"
+    fi
+else
+    _log_warn "License server not found at $LICENSE_DIR"
+fi
+
+if [ -f /etc/systemd/system/license-server.service ]; then
+    cp /etc/systemd/system/license-server.service "$BACKUP_PATH/license-server.service"
+    _log_ok "license-server.service"
+fi
+if [ -f /etc/nginx/sites-available/license ]; then
+    cp /etc/nginx/sites-available/license "$BACKUP_PATH/nginx-license.conf"
+    _log_ok "nginx-license.conf"
+fi
+
+# ------------------------------------------------------------------
+# 6. Backup metadata
+# ------------------------------------------------------------------
+echo ""
+echo "--- 6. Metadata ---"
 
 cat > "$BACKUP_PATH/BACKUP_INFO.txt" << EOF
 Iveras OSINT Dashboard Backup
@@ -205,10 +241,10 @@ done
 _log_ok "BACKUP_INFO.txt"
 
 # ------------------------------------------------------------------
-# 6. Create archive + encrypt
+# 7. Create archive + encrypt
 # ------------------------------------------------------------------
 echo ""
-echo "--- 6. Archive & Encrypt ---"
+echo "--- 7. Archive & Encrypt ---"
 
 _ensure_gpg_key
 
@@ -224,10 +260,10 @@ chmod 600 "$ENCRYPTED_FILE"
 echo "  🔒 Encrypted archive: $ENCRYPTED_FILE"
 
 # ------------------------------------------------------------------
-# 7. Verify integrity
+# 8. Verify integrity
 # ------------------------------------------------------------------
 echo ""
-echo "--- 7. Verification ---"
+echo "--- 8. Verification ---"
 
 echo -n "  Decrypt & check integrity... "
 DECRYPTED="/tmp/iveras_backup_verify_$TIMESTAMP.tar.gz"
@@ -239,10 +275,10 @@ tar tzf "$DECRYPTED" > /dev/null 2>&1 && echo "✅" || { _log_error "tar corrupt
 rm -f "$DECRYPTED"
 
 # ------------------------------------------------------------------
-# 8. Cleanup old backups (keep last 30 days)
+# 9. Cleanup old backups (keep last 30 days)
 # ------------------------------------------------------------------
 echo ""
-echo "--- 8. Cleanup ---"
+echo "--- 9. Cleanup ---"
 
 OLD_BACKUPS=$(find "$BACKUP_DIR" -name "iveras_backup_*.tar.gz.gpg" -type f -mtime +30 2>/dev/null | sort)
 if [ -n "$OLD_BACKUPS" ]; then
