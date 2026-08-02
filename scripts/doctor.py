@@ -497,22 +497,52 @@ def check_default_password(dry: bool) -> bool:
     return True
 
 
+def _set_env(key: str, value: str) -> None:
+    """Append or replace a KEY=value line in .env (preserves other lines)."""
+    lines = ENV_FILE.read_text().splitlines()
+    out, found = [], False
+    for line in lines:
+        if line.strip().startswith(key + "="):
+            out.append(f"{key}={value}")
+            found = True
+        else:
+            out.append(line)
+    if not found:
+        out.append(f"{key}={value}")
+    ENV_FILE.write_text("\n".join(out) + "\n")
+
+
+def _env_value(key: str) -> str:
+    if not ENV_FILE.exists():
+        return ""
+    for line in ENV_FILE.read_text().splitlines():
+        if line.strip().startswith(key + "="):
+            return line.split("=", 1)[1].strip()
+    return ""
+
+
 def check_env_flask_env(dry: bool) -> bool:
     log("Checking FLASK_ENV in .env...", end=" ")
     if not ENV_FILE.exists():
         log(FAIL + " (.env not found)")
         return False
-    content = ENV_FILE.read_text()
-    for line in content.splitlines():
-        if line.strip().startswith("FLASK_ENV="):
-            val = line.split("=", 1)[1].strip()
-            if val == "production":
-                log(OK)
-                return True
-            log(FAIL + f" (FLASK_ENV={val}, should be production)")
-            return False
-    log(FAIL + " (FLASK_ENV not set)")
-    return False
+    val = _env_value("FLASK_ENV")
+    if val == "production":
+        log(OK)
+        return True
+    if dry:
+        log(
+            DRY
+            + (
+                f" (FLASK_ENV={val}, should be production)"
+                if val
+                else " (FLASK_ENV not set)"
+            )
+        )
+        return False
+    _set_env("FLASK_ENV", "production")
+    log(FIXED + (f" (was {val})" if val else ""))
+    return True
 
 
 def check_env_db_ssl_mode(dry: bool) -> bool:
@@ -520,17 +550,26 @@ def check_env_db_ssl_mode(dry: bool) -> bool:
     if not ENV_FILE.exists():
         log(SKIP + " (.env not found)")
         return True
-    content = ENV_FILE.read_text()
-    for line in content.splitlines():
-        if line.strip().startswith("DB_SSL_MODE="):
-            log(OK)
-            return True
-    log(FAIL + " (DB_SSL_MODE not set)")
-    return False
+    if _env_value("DB_SSL_MODE"):
+        log(OK)
+        return True
+    if dry:
+        log(DRY + " (DB_SSL_MODE not set)")
+        return False
+    _set_env("DB_SSL_MODE", "prefer")
+    log(FIXED)
+    return True
 
 
 def check_redis(dry: bool) -> bool:
     log("Checking Redis...", end=" ")
+    # Redis is optional: the app only uses it when REDIS_URL is set in .env.
+    if not _env_value("REDIS_URL"):
+        log(SKIP + " (REDIS_URL not set — session backend is filesystem)")
+        return True
+    if not shutil.which("redis-cli"):
+        log(FAIL + " (redis-cli not installed)")
+        return False
     r = run(["redis-cli", "ping"], timeout=5)
     if r.returncode == 0 and "PONG" in r.stdout:
         log(OK)
