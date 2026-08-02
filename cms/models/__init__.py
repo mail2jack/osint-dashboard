@@ -2671,7 +2671,7 @@ def _general_defaults():
         {
             "key": "license_public_key",
             "category": "general",
-            "value": "MiZPC_SlLBguBQzROD3KibNy1KwT23HYUgaKQeEx2l0",
+            "value": "0O8JlHxzLlOaAEnD26eG4gfPJWALL3mRPbfVpJx93zE",
             "description": "Ed25519 public key for license verification (must match the license server's private key).",
             "value_type": "text",
             "display_order": 54,

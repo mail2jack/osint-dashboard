@@ -36,7 +36,8 @@ externe integraties, AI) per install.
   (`LICENSE_ENFORCEMENT=off`), `trial_mode`, `trial_blocked(feature)`
   (gated: `ai`, `spiderfoot`, `vessel`, `phone`), `trial_tenant_limit`
   (default 1), `get_public_key`. Default publieke sleutel ingebakken:
-  `MiZPC_SlLBguBQzROD3KibNy1KwT23HYUgaKQeEx2l0`.
+  `0O8JlHxzLlOaAEnD26eG4gfPJWALL3mRPbfVpJx93zE` (prod-keypair van de deploy
+  van 2026-08-02; de eerdere placeholder `MiZPC_…` had geen privésleutel).
 - **`cms/services/telemetry.py`**: `_send` retourneert Response; `_consume_license`
   cachet de licentie bij register/heartbeat.
 - **Gates**: `check_feature()` (tier_limits) en `is_tool_enabled()`
