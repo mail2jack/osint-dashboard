@@ -25,7 +25,11 @@ token registreert de server de install opnieuw (idempotent). Verkeerde token →
 ```bash
 sudo useradd -r -s /usr/sbin/nologin license || true
 sudo mkdir -p /opt/license-server/data
-sudo rsync -a --delete ./license-server/ /opt/license-server/
+# Let op: GEEN plain `--delete` — dat wist runtime-bestanden (.env, venv/, data/)
+# die niet in git staan. De excludes houden die in stand bij updates.
+sudo rsync -a --delete \
+    --exclude='.env' --exclude='venv/' --exclude='data/' --exclude='.cache/' \
+    ./license-server/ /opt/license-server/
 sudo chown -R license:license /opt/license-server
 
 sudo -u license python3 -m venv /opt/license-server/venv
