@@ -607,9 +607,6 @@ def _apply_update(task_id, task, app, python_bin):
         task,
         "Rebuild frontend assets",
         [
-            "/usr/bin/sudo",
-            "-u",
-            "osint",
             "/usr/bin/env",
             "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             "node",
@@ -661,10 +658,9 @@ def _restart_application(task_id, task, project_root, app, current_ver):
     _write_task(task_id, task)
     subprocess.Popen(
         [
-            "/usr/bin/sudo",
             "/bin/sh",
             "-c",
-            "sleep 3 && /usr/bin/systemctl restart osint-dashboard",
+            "sleep 3 && /usr/bin/sudo /usr/bin/systemctl restart osint-dashboard",
         ],
         cwd=project_root,
         start_new_session=True,
@@ -1033,10 +1029,9 @@ def rollback_update() -> flask.Response:
         # Step 4: Restart services (delayed)
         restart_proc = subprocess.Popen(
             [
-                "/usr/bin/sudo",
                 "/bin/sh",
                 "-c",
-                "sleep 3 && /usr/bin/systemctl restart osint-dashboard",
+                "sleep 3 && /usr/bin/sudo /usr/bin/systemctl restart osint-dashboard",
             ],
             cwd=project_root,
             start_new_session=True,
