@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { readFileSync, writeFileSync, existsSync, readdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from "fs";
 import path from "path";
 
 async function buildCSS() {
@@ -61,6 +61,7 @@ async function buildJS() {
 }
 
 async function main() {
+  mkdirSync("static/dist", { recursive: true });
   await buildCSS();
   await buildJS();
   let total = 0;
