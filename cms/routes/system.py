@@ -574,7 +574,7 @@ def _apply_update(task_id, task, app, python_bin):
         task_id,
         task,
         "Pull latest code",
-        ["/usr/bin/sudo", "/usr/bin/git", "pull", "origin", "master"],
+        ["/usr/bin/git", "pull", "origin", "master"],
         cwd=project_root,
     )
 
@@ -1015,14 +1015,14 @@ def rollback_update() -> flask.Response:
         if pre_sha and re.match(r"^[0-9a-f]{40}$", pre_sha):
             step(
                 "Git reset to previous commit",
-                ["/usr/bin/sudo", "/usr/bin/git", "reset", "--hard", pre_sha],
+                ["/usr/bin/git", "reset", "--hard", pre_sha],
                 cwd=project_root,
             )
         else:
             # Fallback: gebruik ORIG_HEAD
             step(
                 "Git reset to ORIG_HEAD",
-                ["/usr/bin/sudo", "/usr/bin/git", "reset", "--hard", "ORIG_HEAD"],
+                ["/usr/bin/git", "reset", "--hard", "ORIG_HEAD"],
                 cwd=project_root,
             )
 
