@@ -191,6 +191,50 @@ def _issue_trial_if_needed(conn, install_id) -> None:
     )
 
 
+def _issue_license(conn, install_id, plan="full", expires_at=None) -> dict:
+    """Issue a signed license for an install, replacing any previous one.
+
+    Shared by the CLI (cli.py license:new) and the web dashboard
+    (POST /license/issue).
+    """
+    private_key = licensing.load_private_key()
+    if private_key is None:
+        raise FileNotFoundError(
+            f"No license private key at {licensing.PRIVATE_KEY_PATH} — "
+            "run cli.py keys:generate"
+        )
+    claims, signature = licensing.build_license(
+        install_id, plan=plan, expires_at=expires_at, private_key=private_key
+    )
+    payload = json.dumps(claims, separators=(",", ":"), sort_keys=True)
+    conn.execute("DELETE FROM licenses WHERE install_id = ?", (install_id,))
+    conn.execute(
+        "INSERT INTO licenses (license_id, install_id, plan, payload, signature, status, created_at, expires_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            claims["license_id"],
+            install_id,
+            plan,
+            payload,
+            signature,
+            "active",
+            claims["issued_at"],
+            claims["expires_at"],
+        ),
+    )
+    return _license_dict(_license_row(conn, install_id))
+
+
+def _revoke_license(conn, install_id) -> int:
+    """Mark the install's license revoked. Returns the number of rows changed."""
+    cur = conn.execute(
+        "UPDATE licenses SET status = 'revoked' "
+        "WHERE install_id = ? AND status != 'revoked'",
+        (install_id,),
+    )
+    return cur.rowcount
+
+
 def _json_body():
     try:
         return request.get_json(silent=True) or {}
@@ -391,6 +435,71 @@ def api_installs():
             item["license"] = _license_dict(_license_row(conn, r["install_id"]))
             installs.append(item)
     return jsonify({"installs": installs, "now": _now()})
+
+
+def _web_expires_at(form) -> tuple[str, str | None]:
+    """Resolve expires_at from the issue form. Returns (expires_at, error)."""
+    expires = _clean(form.get("expires"), 12)
+    days = form.get("days")
+    days_int = None
+    if days not in (None, ""):
+        try:
+            days_int = int(days)
+        except (TypeError, ValueError):
+            return None, "days must be an integer"
+        if days_int <= 0 or days_int > 3650:
+            return None, "days must be between 1 and 3650"
+    if expires:
+        return expires + "T00:00:00Z", None
+    n = days_int if days_int is not None else 365
+    return (
+        (datetime.now(timezone.utc) + timedelta(days=n)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        None,
+    )
+
+
+@app.route("/license/issue", methods=["POST"])
+def web_license_issue():
+    guard = _basic_auth_guard()
+    if guard is not None:
+        return guard
+    install_id = _clean(request.form.get("install_id"), 100)
+    plan = request.form.get("plan")
+    if plan not in ("full", "trial"):
+        return jsonify(
+            {"status": "error", "message": "plan must be 'full' or 'trial'"}
+        ), 400
+    if not install_id:
+        return jsonify({"status": "error", "message": "install_id required"}), 400
+    expires_at, error = _web_expires_at(request.form)
+    if error:
+        return jsonify({"status": "error", "message": error}), 400
+    with _connect() as conn:
+        install = conn.execute(
+            "SELECT install_id FROM installs WHERE install_id = ?", (install_id,)
+        ).fetchone()
+        if install is None:
+            return jsonify(
+                {"status": "error", "message": "install not registered"}
+            ), 404
+        try:
+            lic = _issue_license(conn, install_id, plan=plan, expires_at=expires_at)
+        except FileNotFoundError as exc:
+            return jsonify({"status": "error", "message": str(exc)}), 500
+    return jsonify({"status": "ok", "license": lic})
+
+
+@app.route("/license/revoke", methods=["POST"])
+def web_license_revoke():
+    guard = _basic_auth_guard()
+    if guard is not None:
+        return guard
+    install_id = _clean(request.form.get("install_id"), 100)
+    if not install_id:
+        return jsonify({"status": "error", "message": "install_id required"}), 400
+    with _connect() as conn:
+        changed = _revoke_license(conn, install_id)
+    return jsonify({"status": "ok", "revoked": changed > 0})
 
 
 @app.route("/health")

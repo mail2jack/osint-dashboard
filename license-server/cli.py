@@ -12,7 +12,6 @@ Run as the `license` user so the key files stay owned by it:
 """
 
 import argparse
-import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -44,12 +43,6 @@ def cmd_license_new(args) -> int:
     if args.plan not in ("full", "trial"):
         print("--plan must be 'full' or 'trial'")
         return 2
-    private_key = licensing.load_private_key()
-    if private_key is None:
-        print(
-            f"No private key at {licensing.PRIVATE_KEY_PATH} — run keys:generate first"
-        )
-        return 1
     with lsapp._connect() as conn:
         install = conn.execute(
             "SELECT install_id FROM installs WHERE install_id = ?", (args.install,)
@@ -57,46 +50,24 @@ def cmd_license_new(args) -> int:
         if install is None:
             print(f"Install not registered yet: {args.install}")
             return 1
-    claims, signature = licensing.build_license(
-        args.install,
-        plan=args.plan,
-        expires_at=_expires_at(args),
-        private_key=private_key,
-    )
-    payload = json.dumps(claims, separators=(",", ":"), sort_keys=True)
-    with lsapp._connect() as conn:
-        conn.execute("DELETE FROM licenses WHERE install_id = ?", (args.install,))
-        conn.execute(
-            "INSERT INTO licenses (license_id, install_id, plan, payload, signature, status, created_at, expires_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                claims["license_id"],
-                args.install,
-                args.plan,
-                payload,
-                signature,
-                "active",
-                claims["issued_at"],
-                claims["expires_at"],
-            ),
-        )
+        try:
+            lic = lsapp._issue_license(
+                conn, args.install, plan=args.plan, expires_at=_expires_at(args)
+            )
+        except FileNotFoundError as exc:
+            print(exc)
+            return 1
     print(
-        f"License issued: {claims['license_id']}  install={args.install}  "
-        f"plan={args.plan}  expires={claims['expires_at']}"
+        f"License issued: {lic['license_id']}  install={args.install}  "
+        f"plan={lic['plan']}  expires={lic['expires_at']}"
     )
     return 0
 
 
 def cmd_license_revoke(args) -> int:
     with lsapp._connect() as conn:
-        cur = conn.execute(
-            "UPDATE licenses SET status = 'revoked' "
-            "WHERE install_id = ? AND status != 'revoked'",
-            (args.install,),
-        )
-    print(
-        "License revoked" if cur.rowcount else f"No active license for {args.install}"
-    )
+        changed = lsapp._revoke_license(conn, args.install)
+    print("License revoked" if changed else f"No active license for {args.install}")
     return 0
 
 

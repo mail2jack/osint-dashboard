@@ -50,6 +50,19 @@
     background: var(--accent); color: #fff; border: 0; border-radius: 6px;
     padding: 0.45rem 0.9rem; cursor: pointer; font-size: 0.85rem;
   }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.danger { background: var(--bad); }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  select, input {
+    background: #0f1115; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.45rem 0.6rem; font-size: 0.85rem;
+  }
+  label { color: var(--muted); font-size: 0.8rem; }
+  .panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;
+  }
+  #msg { min-height: 1.2em; font-size: 0.85rem; }
 </style>
 </head>
 <body>
@@ -60,6 +73,23 @@
   <div class="stat"><b id="count">-</b><span>installs</span></div>
   <div class="stat"><b id="online">-</b><span>online &le; 48u</span></div>
   <div class="stat"><b id="stale">-</b><span>stale &gt; 48u</span></div>
+</div>
+
+<div class="panel">
+  <b style="display:block;margin-bottom:0.6rem;">Issue license</b>
+  <div style="display:flex;gap:0.7rem;flex-wrap:wrap;align-items:flex-end;">
+    <label>Install<br><select id="issue-install" style="min-width:14rem;"></select></label>
+    <label>Plan<br>
+      <select id="issue-plan">
+        <option value="full">full</option>
+        <option value="trial">trial</option>
+      </select>
+    </label>
+    <label>Days<br><input id="issue-days" type="number" value="365" min="1" max="3650"></label>
+    <label>Expires (opt.)<br><input id="issue-expires" type="date"></label>
+    <button id="issue-btn">Issue</button>
+  </div>
+  <p id="msg" class="muted"></p>
 </div>
 
 <table>
@@ -74,12 +104,13 @@
       <th>App</th>
       <th>Platform</th>
       <th>License</th>
+      <th>Actions</th>
       <th>Registered</th>
       <th>Last seen</th>
     </tr>
   </thead>
   <tbody id="rows">
-    <tr><td colspan="11" class="muted">Loading…</td></tr>
+    <tr><td colspan="12" class="muted">Loading…</td></tr>
   </tbody>
 </table>
 
@@ -116,6 +147,54 @@
       (lic.expires_at ? '<br><span class="muted">' + esc(lic.expires_at) + '</span>' : "") +
       '</td>';
   }
+  function actionCell(it) {
+    if (!it.license || it.license.status === "revoked") return '<td><span class="muted">-</span></td>';
+    return '<td><button class="danger" onclick="revokeLicense(\'' + esc(it.install_id) + '\')">Revoke</button></td>';
+  }
+  function showMsg(text, ok) {
+    var el = document.getElementById("msg");
+    el.textContent = text;
+    el.style.color = ok ? "var(--ok)" : "var(--bad)";
+  }
+  function postAction(url, data) {
+    var fd = new FormData();
+    Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
+    return fetch(url, { method: "POST", body: fd })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (b) {
+          if (!r.ok) throw new Error(b.message || r.status);
+          return b;
+        });
+      });
+  }
+  function issueLicense() {
+    var install = document.getElementById("issue-install").value;
+    if (!install) { showMsg("Select an install", false); return; }
+    var btn = document.getElementById("issue-btn");
+    btn.disabled = true;
+    postAction("/license/issue", {
+      install_id: install,
+      plan: document.getElementById("issue-plan").value,
+      days: document.getElementById("issue-days").value,
+      expires: document.getElementById("issue-expires").value,
+    })
+      .then(function (b) {
+        showMsg("License " + b.license.plan + " issued for " + install +
+          " (expires " + b.license.expires_at + ")", true);
+        load();
+      })
+      .catch(function (e) { showMsg("Issue failed: " + e.message, false); })
+      .then(function () { btn.disabled = false; });
+  }
+  function revokeLicense(install) {
+    if (!confirm("Revoke license for " + install + "?")) return;
+    postAction("/license/revoke", { install_id: install })
+      .then(function (b) {
+        showMsg(b.revoked ? "License revoked for " + install : "No active license for " + install, true);
+        load();
+      })
+      .catch(function (e) { showMsg("Revoke failed: " + e.message, false); });
+  }
   function load() {
     fetch("/api/installs")
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
@@ -133,9 +212,23 @@
         document.getElementById("online").textContent = online;
         document.getElementById("stale").textContent = stale;
 
+        var sel = document.getElementById("issue-install");
+        var prev = sel.value;
+        sel.innerHTML = "";
+        rows.forEach(function (it) {
+          var o = document.createElement("option");
+          o.value = it.install_id;
+          o.textContent = it.install_id;
+          sel.appendChild(o);
+        });
+        if (prev && Array.prototype.some.call(sel.options, function (o) { return o.value === prev; })) {
+          sel.value = prev;
+        }
+        document.getElementById("issue-btn").disabled = rows.length === 0;
+
         var tb = document.getElementById("rows");
         tb.innerHTML = rows.length ? "" :
-          '<tr><td colspan="11" class="muted">No installs registered yet.</td></tr>';
+          '<tr><td colspan="12" class="muted">No installs registered yet.</td></tr>';
 
         rows.forEach(function (it) {
           var t = Date.parse(it.last_seen || "");
@@ -158,6 +251,7 @@
             '<td>' + esc(it.app_version || "-") + '</td>' +
             '<td>' + esc(it.platform || "-") + '</td>' +
             licCell(it.license) +
+            actionCell(it) +
             '<td class="small" title="' + full(it.registered_at) + '">' + ago(it.registered_at) + '</td>' +
             '<td class="small" title="' + full(it.last_seen) + '">' + ago(it.last_seen) + '</td>';
           tb.appendChild(tr);
@@ -167,10 +261,11 @@
       })
       .catch(function (e) {
         document.getElementById("rows").innerHTML =
-          '<tr><td colspan="10" class="muted">Failed to load: ' + esc(e.message) + '</td></tr>';
+          '<tr><td colspan="12" class="muted">Failed to load: ' + esc(e.message) + '</td></tr>';
       });
   }
   document.getElementById("refresh").addEventListener("click", load);
+  document.getElementById("issue-btn").addEventListener("click", issueLicense);
   load();
   setInterval(load, 60000);
 </script>

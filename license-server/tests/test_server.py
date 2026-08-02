@@ -265,3 +265,112 @@ class TestDashboard:
         r = client.get("/", auth=("admin", "test-secret"))
         assert r.status_code == 200
         assert "install" in r.get_data(as_text=True).lower()
+
+    def test_dashboard_page_has_actions(self, client):
+        r = client.get("/", auth=("admin", "test-secret"))
+        body = r.get_data(as_text=True)
+        assert "Issue license" in body
+        assert "Revoke" in body
+
+
+class TestWebActions:
+    def test_issue_requires_basic_auth(self, client):
+        r = client.post("/license/issue", data={"install_id": "x", "plan": "full"})
+        assert r.status_code == 401
+
+    def test_issue_full_license(self, client):
+        _register(client)
+        r = client.post(
+            "/license/issue",
+            data={"install_id": "test-install-1", "plan": "full", "days": "365"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 200
+        lic = r.get_json()["license"]
+        assert lic["plan"] == "full"
+        assert lic["status"] == "active"
+        claims = json.loads(lic["payload"])
+        assert _verify_signature(claims, lic["signature"])
+        assert claims["expires_at"].startswith("2")
+        assert r.get_json()["status"] == "ok"
+
+    def test_issue_replaces_trial(self, client):
+        _register(client)
+        r = client.post(
+            "/license/issue",
+            data={"install_id": "test-install-1", "plan": "trial", "days": "30"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 200
+        assert r.get_json()["license"]["plan"] == "trial"
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT COUNT(*) AS n FROM licenses WHERE install_id = ?",
+                ("test-install-1",),
+            ).fetchone()
+        assert rows["n"] == 1
+
+    def test_issue_accepts_expires(self, client):
+        _register(client)
+        r = client.post(
+            "/license/issue",
+            data={
+                "install_id": "test-install-1",
+                "plan": "full",
+                "expires": "2027-01-15",
+            },
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 200
+        assert r.get_json()["license"]["expires_at"] == "2027-01-15T00:00:00Z"
+
+    def test_issue_bad_plan(self, client):
+        _register(client)
+        r = client.post(
+            "/license/issue",
+            data={"install_id": "test-install-1", "plan": "bogus", "days": "365"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 400
+
+    def test_issue_bad_days(self, client):
+        _register(client)
+        r = client.post(
+            "/license/issue",
+            data={"install_id": "test-install-1", "plan": "full", "days": "abc"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 400
+
+    def test_issue_unregistered_install(self, client):
+        r = client.post(
+            "/license/issue",
+            data={"install_id": "ghost", "plan": "full", "days": "365"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 404
+
+    def test_revoke_requires_basic_auth(self, client):
+        r = client.post("/license/revoke", data={"install_id": "x"})
+        assert r.status_code == 401
+
+    def test_revoke_web(self, client):
+        _register(client)
+        r = client.post(
+            "/license/revoke",
+            data={"install_id": "test-install-1"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 200
+        assert r.get_json()["revoked"] is True
+        lic = _get_license(client).get_json()["license"]
+        assert lic["status"] == "revoked"
+
+    def test_revoke_no_active_license(self, client):
+        r = client.post(
+            "/license/revoke",
+            data={"install_id": "ghost"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 200
+        assert r.get_json()["revoked"] is False

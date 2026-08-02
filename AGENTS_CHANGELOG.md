@@ -70,6 +70,20 @@ externe integraties, AI) per install.
   rij verschijnt alleen nog in trial-modus. (Enforcement was al correct:
   `create_tenant` gated alleen in `trial_mode()`.)
 
+### Post-deploy feature: webbeheer in license-dashboard
+- Licenties zijn nu vanuit `https://license.iveras.com` te beheren (achter de
+  basic-auth login): **Issue license**-formulier (install, plan, days of
+  vervaldatum) en een **Revoke**-knop per rij. Nieuwe routes
+  `POST /license/issue` en `POST /license/revoke`.
+- Refactor: gedeelde helpers `_issue_license`/`_revoke_license` in
+  `license-server/app.py`; de CLI (`cli.py license:new`/`license:revoke`) en de
+  webroutes gebruiken dezelfde logica. Validatie op plan/days/expires in de
+  webroute (plan ∈ full|trial, 1 ≤ days ≤ 3650).
+- Tests: `license-server/tests/test_server.py` uitgebreid met
+  `TestWebActions` (11 tests: auth 401, issue full/trial/expires, slechte
+  plan/days 400, onbekende install 404, revoke + geen actieve license,
+  dashboard-pagina bevat actions). Suite: **504 passed**.
+
 ### Validatie
 - **Tests**: `tests/test_license_ui.py` (14 nieuw: state-machine, banner,
   settings-kaart, tenant-limit 403/201, gates) + `license-server/tests` (20).

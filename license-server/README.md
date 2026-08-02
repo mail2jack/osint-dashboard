@@ -14,6 +14,8 @@ verifiëren. Fase 3 voegt Stripe-betalingen toe.
 | GET    | `/api/license`   | `Bearer <token>` + `X-Install-ID` | Opgehaalde ondertekende licentie |
 | GET    | `/`              | Basic (dashboard)     | Overzicht alle installaties + licenties |
 | GET    | `/api/installs`  | Basic (dashboard)     | Registry als JSON (incl. licentie per install) |
+| POST   | `/license/issue` | Basic (dashboard)     | Licentie uitgeven/vervangen (form: install_id, plan, days/expires) |
+| POST   | `/license/revoke`| Basic (dashboard)     | Licentie intrekken (form: install_id) |
 | GET    | `/health`        | —                      | Health check                          |
 
 De client stuurt `{"install_id": "...", "info": {...}}` met
@@ -25,11 +27,13 @@ token registreert de server de install opnieuw (idempotent). Verkeerde token →
 ## Licenties (fase 2, Ed25519)
 
 Elke install krijgt automatisch een **trial-licentie** (default 30 dagen, env
-`TRIAL_DAYS`) bij registratie. Via de CLI kun je handmatig licenties
-verstrekken/vervangen/revoken. De payload is een JSON-document
-(`install_id`, `license_id`, `plan`, `issued_at`, `expires_at`) ondertekend met
-Ed25519; de app verifieert dit offline met de ingebakken publieke sleutel.
-Revocatie is online (de app krijgt `status: "revoked"` mee bij de check-in).
+`TRIAL_DAYS`) bij registratie. Licenties verstrekken/vervangen/revoken kan op
+twee manieren: via de webdashboard-acties op `https://license.iveras.com`
+(issue-formulier + per-rij revoke-knop, achter de basic-auth login) of via de
+CLI hieronder. De payload is een JSON-document (`install_id`, `license_id`,
+`plan`, `issued_at`, `expires_at`) ondertekend met Ed25519; de app verifieert
+dit offline met de ingebakken publieke sleutel. Revocatie is online (de app
+krijgt `status: "revoked"` mee bij de check-in).
 
 ### Keypair genereren (éénmalig, na deploy)
 
@@ -43,6 +47,14 @@ sleutel. Die publieke sleutel is al als default ingebakken in
 `cms/services/license.py` en via Settings → General (`license_public_key`)
 overschrijfbaar — alleen wijzigen als je de sleutels roteert. `keys/`, `data/`
 en `.env` staan in `.gitignore`, dus die gaan niet mee met `rsync --delete`.
+
+### Licenties beheren (dashboard)
+
+Op `https://license.iveras.com` (inloggen met de `ADMIN_USER`/`ADMIN_PASSWORD`
+uit `/opt/license-server/.env`) staat boven de tabel een **Issue license**
+formulier: kies de install, het plan (full/trial), het aantal dagen (default
+365) of een vaste vervaldatum. Per rij staat een **Revoke**-knop. Beide roepen
+dezelfde logica aan als de CLI (zie `app.py: _issue_license`/`_revoke_license`).
 
 ### Licenties beheren (CLI)
 
