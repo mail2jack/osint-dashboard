@@ -87,10 +87,13 @@ nieuwe bij de volgende check-in. `--days` en `--expires` zijn optioneel
 ```bash
 sudo useradd -r -s /usr/sbin/nologin license || true
 sudo mkdir -p /opt/license-server/data
-# Let op: GEEN plain `--delete` — dat wist runtime-bestanden (.env, venv/, data/)
-# die niet in git staan. De excludes houden die in stand bij updates.
+# Let op: GEEN plain `--delete` — dat wist runtime-bestanden (.env, venv/, data/,
+# keys/) die niet in git staan. De excludes houden die in stand bij updates.
+# Vooral `keys/` is kritiek: zonder de privésleutel kunnen er geen licenties
+# meer worden ondertekend (bestaande blijven wel verifieerbaar). Zorg ook dat
+# backup.sh de privésleutel meeneemt (doet het automatisch, mits leesbaar).
 sudo rsync -a --delete \
-    --exclude='.env' --exclude='venv/' --exclude='data/' --exclude='.cache/' \
+    --exclude='.env' --exclude='venv/' --exclude='data/' --exclude='keys/' --exclude='.cache/' \
     ./license-server/ /opt/license-server/
 sudo chown -R license:license /opt/license-server
 
