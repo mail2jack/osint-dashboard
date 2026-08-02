@@ -97,7 +97,12 @@ cmd_update() {
     sudo -u osint env PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
         node build.mjs || warn "Frontend build failed — static assets may be stale"
     info "Running database migrations..."
-    sudo -u osint ./venv/bin/python -m alembic upgrade head || warn "Alembic upgrade failed"
+    # Read DATABASE_URL from .env (sudo strips env vars)
+    DB_URL=""
+    if [ -f /opt/osint-dashboard/.env ]; then
+        DB_URL=$(grep -m1 '^DATABASE_URL=' /opt/osint-dashboard/.env | cut -d= -f2- || true)
+    fi
+    sudo -u osint env DATABASE_URL="$DB_URL" ./venv/bin/python -m alembic upgrade head || warn "Alembic upgrade failed"
     info "Restarting..."
     cmd_stop
     sleep 2
