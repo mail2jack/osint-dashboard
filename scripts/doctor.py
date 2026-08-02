@@ -193,9 +193,21 @@ def check_alembic(dry: bool) -> bool:
                 k, v = line.strip().split("=", 1)
                 env[k] = v
     python = VENV_PYTHON
-    r = run([python, "-m", "alembic", "check"], cwd=str(APP_DIR), env=env, timeout=30)
-    # 'alembic check' exits 0 if no pending migrations
-    if r.returncode == 0:
+
+    def revision_ids(args: list) -> set | None:
+        r = run([python, "-m", "alembic"] + args, cwd=str(APP_DIR), env=env, timeout=30)
+        if r.returncode != 0:
+            return None
+        return set(
+            line.split()[0] for line in (r.stdout or "").splitlines() if line.strip()
+        )
+
+    # Compare the database's current revision against the repo's heads. We must
+    # NOT use 'alembic check' here: it reports model-vs-DB drift, not pending
+    # migrations, so 'alembic upgrade head' could never actually fix it.
+    current = revision_ids(["current"])
+    heads = revision_ids(["heads"])
+    if current is not None and heads is not None and current == heads:
         log(OK)
         return True
     # Try upgrade

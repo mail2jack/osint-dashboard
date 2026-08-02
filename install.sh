@@ -62,24 +62,38 @@ fi
 
 # Check Python version (must be 3.12+)
 PY_VER=$(python3 --version 2>/dev/null | grep -oP '\d+\.\d+' | head -1)
+NEED_PY=0
 if [[ -z "$PY_VER" ]]; then
-    print_error "Python 3 not found. This script requires Python 3.12+."
-    exit 1
+    print_warning "Python 3 not found. This script requires Python 3.12+."
+    NEED_PY=1
+else
+    PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+    PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+    if [[ "$PY_MAJOR" -lt 3 || ( "$PY_MAJOR" -eq 3 && "$PY_MINOR" -lt 12 ) ]]; then
+        print_warning "System Python is $PY_VER, but this app requires Python 3.12+."
+        NEED_PY=1
+    fi
 fi
-PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
-PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
-if [[ "$PY_MAJOR" -lt 3 || ( "$PY_MAJOR" -eq 3 && "$PY_MINOR" -lt 12 ) ]]; then
-    print_warning "System Python is $PY_VER, but this app requires Python 3.12+."
-    print_step "Adding deadsnakes PPA for Python 3.12..."
+
+if [[ "$NEED_PY" -eq 1 ]]; then
+    print_step "Installing Python 3.12 via deadsnakes PPA..."
+    # add-apt-repository ships in software-properties-common, not installed on
+    # a clean Ubuntu 22.04 server by default.
+    if ! command -v add-apt-repository &>/dev/null; then
+        apt-get update -qq
+        apt-get install -y software-properties-common
+    fi
     if command -v add-apt-repository &>/dev/null; then
         add-apt-repository -y ppa:deadsnakes/ppa
         apt update -qq
         apt install -y python3.12 python3.12-venv python3.12-dev
         # Point python3 to 3.12
         update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+        PY_VER="3.12"
         print_success "Python 3.12 installed via deadsnakes PPA"
     else
         print_error "Cannot install Python 3.12 automatically. Install deadsnakes PPA manually:"
+        print_info "  sudo apt install software-properties-common"
         print_info "  sudo add-apt-repository ppa:deadsnakes/ppa"
         print_info "  sudo apt install python3.12 python3.12-venv python3.12-dev"
         exit 1
@@ -300,7 +314,7 @@ print_success "PostgreSQL configured"
 print_step "Creating environment configuration..."
 
 SECRET_KEY=$(openssl rand -hex 32)
-CMS_ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+CMS_ENCRYPTION_KEY=$("$APP_DIR/venv/bin/python3" -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 
 cat > "$APP_DIR/.env" << EOF
 # Environment
@@ -557,7 +571,8 @@ RestartSec=10s
 
 # Security
 NoNewPrivileges=true
-ProtectHome=true
+# NOTE: do NOT add ProtectHome=true here — SpiderFoot stores its SQLite
+# database in /home/osint/.spiderfoot and would crash-loop with EACCES.
 PrivateTmp=true
 
 [Install]
