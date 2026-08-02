@@ -440,11 +440,12 @@ def check_opsec(dry: bool) -> bool:
                 env[k] = v
     python = VENV_PYTHON
     code = (
-        "from app import app; from cms.opsec_check import run_opsec_checks, print_results; "
-        "app.app_context().push(); "
-        "r = run_opsec_checks(verbose=False); "
-        "print('PASS' if r['pass'] else 'FAIL'); "
-        'for n, c in sorted(r[\'checks\'].items()): print(f\'  {n}: {"PASS" if c["pass"] else "FAIL"} {c["detail"][:80]}\')'
+        "from app import app\n"
+        "from cms.opsec_check import run_opsec_checks\n"
+        "app.app_context().push()\n"
+        "r = run_opsec_checks(verbose=False)\n"
+        "print('PASS' if r['pass'] else 'FAIL')\n"
+        "for n, c in sorted(r['checks'].items()): print(f\"  {n}: {'PASS' if c['pass'] else 'FAIL'} {c['detail'][:80]}\")\n"
     )
     r = run([python, "-c", code], cwd=str(APP_DIR), env=env, timeout=30)
     if "PASS" in r.stdout and "FAIL" not in r.stdout:
