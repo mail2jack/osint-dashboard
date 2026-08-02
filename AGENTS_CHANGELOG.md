@@ -58,6 +58,18 @@ externe integraties, AI) per install.
 - Testhelper-fix: 2FA-POST mag niet binnen een `with c.session_transaction()`
   blok staan (cookie werd overschreven → login verloren).
 
+### Post-deploy fixes (2026-08-02, live op prod)
+- Embedded publieke sleutel vervangen door de echte prod-keypair
+  `0O8JlHxzLlOaAEnD26eG4gfPJWALL3mRPbfVpJx93zE` (`cms/services/license.py`
+  `DEFAULT_PUBLIC_KEY` + `_general_defaults` in `cms/models/__init__.py`); de
+  oude placeholder had geen privésleutel en liet signature-verificatie falen.
+  Op prod de bestaande `license_public_key`-Setting-row overschrijven met deze
+  waarde (row uit `init_default_settings` overschrijft de code-default).
+- Settings-kaart toont bij een geldige full/professional/enterprise-licentie
+  "Tenant limit: Unlimited" i.p.v. de verwarrende trial-limit; de trial-limit
+  rij verschijnt alleen nog in trial-modus. (Enforcement was al correct:
+  `create_tenant` gated alleen in `trial_mode()`.)
+
 ### Validatie
 - **Tests**: `tests/test_license_ui.py` (14 nieuw: state-machine, banner,
   settings-kaart, tenant-limit 403/201, gates) + `license-server/tests` (20).
