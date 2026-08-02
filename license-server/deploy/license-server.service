@@ -6,6 +6,7 @@ After=network.target
 User=license
 Group=license
 WorkingDirectory=/opt/license-server
+Environment=HOME=/opt/license-server
 EnvironmentFile=/opt/license-server/.env
 ExecStart=/opt/license-server/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 --timeout 30 app:app
 Restart=always
