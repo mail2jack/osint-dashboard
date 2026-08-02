@@ -125,6 +125,12 @@ fi
 # STEP 2: Install System Dependencies
 # ============================================================================
 print_step "Installing system dependencies..."
+# gdk-pixbuf renamed in Ubuntu 24.04 (libgdk-pixbuf2.0-0 -> libgdk-pixbuf-2.0-0)
+if apt-cache show libgdk-pixbuf-2.0-0 >/dev/null 2>&1; then
+    GDK_PIXBUF_PKG="libgdk-pixbuf-2.0-0"
+else
+    GDK_PIXBUF_PKG="libgdk-pixbuf2.0-0"
+fi
 apt install -y \
     curl \
     wget \
@@ -148,7 +154,7 @@ apt install -y \
     redis-server \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    "$GDK_PIXBUF_PKG" \
     libffi-dev
 print_success "System dependencies installed"
 
