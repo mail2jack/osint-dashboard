@@ -36,8 +36,9 @@ externe integraties, AI) per install.
   (`LICENSE_ENFORCEMENT=off`), `trial_mode`, `trial_blocked(feature)`
   (gated: `ai`, `spiderfoot`, `vessel`, `phone`), `trial_tenant_limit`
   (default 1), `get_public_key`. Default publieke sleutel ingebakken:
-  `0O8JlHxzLlOaAEnD26eG4gfPJWALL3mRPbfVpJx93zE` (prod-keypair van de deploy
-  van 2026-08-02; de eerdere placeholder `MiZPC_…` had geen privésleutel).
+  `4xvSvYw1F9tjTfss0e_6XpdUnPxiOaFdK0shP3cxz-U` (huidige prod-keypair; eerdere
+  sleutels `MiZPC_…` hadden geen privésleutel, `0O8J…` werd verloren door een
+  deploy-`rsync --delete` zonder `keys/`-exclude — inmiddels gefixt).
 - **`cms/services/telemetry.py`**: `_send` retourneert Response; `_consume_license`
   cachet de licentie bij register/heartbeat.
 - **Gates**: `check_feature()` (tier_limits) en `is_tool_enabled()`
@@ -59,6 +60,11 @@ externe integraties, AI) per install.
   blok staan (cookie werd overschreven → login verloren).
 
 ### Post-deploy fixes (2026-08-02, live op prod)
+- Deploy-`rsync --delete` miste de `keys/`-exclude en wist daardoor
+  `keys/private.pem` op prod → nieuwe keypair gegenereerd
+  (publieke sleutel `4xvSvYw1F9tjTfss0e_6XpdUnPxiOaFdK0shP3cxz-U`), code-default
+  bijgewerkt, bestaande installs opnieuw een full-licentie geven + Setting
+  `license_public_key` bijwerken. `--exclude='keys/'` staat nu in de README.
 - Embedded publieke sleutel vervangen door de echte prod-keypair
   `0O8JlHxzLlOaAEnD26eG4gfPJWALL3mRPbfVpJx93zE` (`cms/services/license.py`
   `DEFAULT_PUBLIC_KEY` + `_general_defaults` in `cms/models/__init__.py`); de

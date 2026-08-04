@@ -23,7 +23,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_PUBLIC_KEY = "0O8JlHxzLlOaAEnD26eG4gfPJWALL3mRPbfVpJx93zE"
+DEFAULT_PUBLIC_KEY = "4xvSvYw1F9tjTfss0e_6XpdUnPxiOaFdK0shP3cxz-U"
 
 
 def _b64dec(value: str) -> bytes:
