@@ -174,7 +174,7 @@ spiderfoot-client==1.0.0
 stack-data==0.6.3
 starlette==1.0.0
 stem==1.8.2
-svglib==1.5.1
+svglib==1.6.0
 tempora==5.8.1
 termcolor==2.5.0
 tinycss2==1.5.1
