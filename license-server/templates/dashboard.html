@@ -148,8 +148,12 @@
       '</td>';
   }
   function actionCell(it) {
-    if (!it.license || it.license.status === "revoked") return '<td><span class="muted">-</span></td>';
-    return '<td><button class="danger" onclick="revokeLicense(\'' + esc(it.install_id) + '\')">Revoke</button></td>';
+    var actions = "";
+    if (it.license && it.license.status !== "revoked") {
+      actions += '<button class="danger" onclick="revokeLicense(\'' + esc(it.install_id) + '\')">Revoke</button>';
+    }
+    actions += '<button class="danger" onclick="deleteInstall(\'' + esc(it.install_id) + '\')">Delete</button>';
+    return '<td>' + actions + '</td>';
   }
   function showMsg(text, ok) {
     var el = document.getElementById("msg");
@@ -194,6 +198,15 @@
         load();
       })
       .catch(function (e) { showMsg("Revoke failed: " + e.message, false); });
+  }
+  function deleteInstall(install) {
+    if (!confirm("DELETE install " + install + " and its licenses?\nThis cannot be undone.")) return;
+    postAction("/license/delete", { install_id: install })
+      .then(function (b) {
+        showMsg("Install " + install + " deleted", true);
+        load();
+      })
+      .catch(function (e) { showMsg("Delete failed: " + e.message, false); });
   }
   function load() {
     fetch("/api/installs")

@@ -235,6 +235,13 @@ def _revoke_license(conn, install_id) -> int:
     return cur.rowcount
 
 
+def _delete_install(conn, install_id) -> tuple[int, int]:
+    """Remove an install and its licenses. Returns (installs_deleted, licenses_deleted)."""
+    lic = conn.execute("DELETE FROM licenses WHERE install_id = ?", (install_id,))
+    ins = conn.execute("DELETE FROM installs WHERE install_id = ?", (install_id,))
+    return ins.rowcount, lic.rowcount
+
+
 def _json_body():
     try:
         return request.get_json(silent=True) or {}
@@ -500,6 +507,21 @@ def web_license_revoke():
     with _connect() as conn:
         changed = _revoke_license(conn, install_id)
     return jsonify({"status": "ok", "revoked": changed > 0})
+
+
+@app.route("/license/delete", methods=["POST"])
+def web_license_delete():
+    guard = _basic_auth_guard()
+    if guard is not None:
+        return guard
+    install_id = _clean(request.form.get("install_id"), 100)
+    if not install_id:
+        return jsonify({"status": "error", "message": "install_id required"}), 400
+    with _connect() as conn:
+        ins, lic = _delete_install(conn, install_id)
+    if ins == 0 and lic == 0:
+        return jsonify({"status": "error", "message": "install not found"}), 404
+    return jsonify({"status": "ok", "deleted": True})
 
 
 @app.route("/health")

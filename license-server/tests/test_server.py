@@ -374,3 +374,58 @@ class TestWebActions:
         )
         assert r.status_code == 200
         assert r.get_json()["revoked"] is False
+
+    def test_delete_requires_basic_auth(self, client):
+        r = client.post("/license/delete", data={"install_id": "x"})
+        assert r.status_code == 401
+
+    def test_delete_web(self, client):
+        _register(client)
+        assert _get_license(client).get_json()["license"] is not None
+        r = client.post(
+            "/license/delete",
+            data={"install_id": "test-install-1"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 200
+        assert r.get_json()["deleted"] is True
+        with _connect() as conn:
+            ins = conn.execute(
+                "SELECT COUNT(*) AS n FROM installs WHERE install_id = ?",
+                ("test-install-1",),
+            ).fetchone()["n"]
+            lic = conn.execute(
+                "SELECT COUNT(*) AS n FROM licenses WHERE install_id = ?",
+                ("test-install-1",),
+            ).fetchone()["n"]
+        assert ins == 0 and lic == 0
+
+    def test_delete_unknown_install(self, client):
+        r = client.post(
+            "/license/delete",
+            data={"install_id": "ghost"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 404
+        assert r.get_json()["status"] == "error"
+
+    def test_delete_missing_install_id(self, client):
+        r = client.post("/license/delete", data={}, auth=("admin", "test-secret"))
+        assert r.status_code == 400
+
+    def test_cli_install_delete(self, client):
+        _register(client)
+        r = _run_cli("install:delete", "--install", "test-install-1")
+        assert r.returncode == 0
+        assert "Deleted install test-install-1" in r.stdout
+        with _connect() as conn:
+            n = conn.execute(
+                "SELECT COUNT(*) AS n FROM installs WHERE install_id = ?",
+                ("test-install-1",),
+            ).fetchone()["n"]
+        assert n == 0
+
+    def test_cli_install_delete_unknown(self, client):
+        r = _run_cli("install:delete", "--install", "ghost")
+        assert r.returncode == 1
+        assert "Install not found" in r.stdout

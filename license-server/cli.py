@@ -71,6 +71,16 @@ def cmd_license_revoke(args) -> int:
     return 0
 
 
+def cmd_install_delete(args) -> int:
+    with lsapp._connect() as conn:
+        ins, lic = lsapp._delete_install(conn, args.install)
+    if ins == 0 and lic == 0:
+        print(f"Install not found: {args.install}")
+        return 1
+    print(f"Deleted install {args.install} ({ins} install row, {lic} license row)")
+    return 0
+
+
 def cmd_license_list(args) -> int:
     with lsapp._connect() as conn:
         rows = conn.execute(
@@ -106,6 +116,10 @@ def main(argv=None) -> int:
     p_rev = sub.add_parser("license:revoke", help="Revoke a license")
     p_rev.add_argument("--install", required=True)
     p_rev.set_defaults(func=cmd_license_revoke)
+
+    p_del = sub.add_parser("install:delete", help="Delete an install and its licenses")
+    p_del.add_argument("--install", required=True)
+    p_del.set_defaults(func=cmd_install_delete)
 
     p_list = sub.add_parser("license:list", help="List all licenses")
     p_list.set_defaults(func=cmd_license_list)
