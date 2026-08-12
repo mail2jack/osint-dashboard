@@ -103,6 +103,12 @@ externe integraties, AI) per install.
   `keys:generate` als `license`-user, bestaande installs een full-licentie geven
   of trial laten verlopen.
 - Kernel-reboot op `cloud` (nog openstaand).
+- **Wens (afgesproken, niet gestart):** menu-gestuurde restore-wizard
+  (`scripts/restore.sh`-achtig maar interactief) die de operator door het
+  herstellen "praat": kiezen welk archief, `--key` automatisch zoeken of
+  opgeven, backups offloaden, en per stap uitleggen wat er gebeurt.
+- **Back-up-huiswerk:** `backup-key.gpg` off-server kopiëren (password manager
+  / tweede machine) — pas doen, nog niet uitgevoerd.
 
 ---
 

@@ -109,6 +109,8 @@ def create_cms_module(app: Flask):
         try:
             from .services import license as license_service
 
+            if license_service.enforcement_off():
+                return {"license_state": None}
             state = license_service.get_license_state()
             if state.get("valid") and (state.get("plan") or "").lower() in (
                 "full",

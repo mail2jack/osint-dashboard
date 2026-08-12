@@ -328,13 +328,7 @@
     {% endif %}
 </div>
 
-{# ─── Two-column layout ───────────────────────────────── #}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-
-{# ─── LEFT COLUMN ─────────────────────────────────────── #}
-<div>
-
-{# ─── Subjects ───────────────────────────────────────── #}
+{# ─── Subjects (full width) ──────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
     <div class="card-header">
         <h2>{{ _('Subjects (%(count)s)', count=subjects|length) }}</h2>
@@ -413,6 +407,47 @@
     {% endif %}
 </div>
 
+{# ─── Comments / Reminders / Documents (3 columns) ───── #}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;align-items:start;">
+<div>
+
+{# ─── Comments ───────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;">
+    <div class="card-header">
+        <h2>{{ _('Comments') }} <span id="commentCount">({{ comments|length }})</span></h2>
+        {% if case.status not in ['closed', 'archived'] %}
+        <button data-click="openCommentModal" class="btn-cms small bg-blue">{{ _('+ Add Comment') }}</button>
+        {% endif %}
+    </div>
+    
+    {% if current_user.is_admin %}
+    <div style="padding:0.5rem 0.75rem;background:#1e1b4b;color:#c4b5fd;font-size:0.8rem;border-bottom:1px solid #312e81;">
+        <strong>{{ _('Admin Comments') }}</strong>
+    </div>
+    {% endif %}
+    
+    <div id="commentsSection" style="display:flex;flex-direction:column;gap:0.5rem;padding:0.75rem;">
+        {% for comment in comments %}
+        <div class="comment {% if comment.is_admin %}admin-comment{% endif %}" data-comment-id="{{ comment.id }}" style="padding:0.6rem;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                <strong style="font-size:0.85rem;">{{ comment.author.full_name if comment.author else _('Unknown') }}</strong>
+                <div style="display:flex;gap:0.3rem;align-items:center;">
+                    <span style="font-size:0.75rem;color:var(--text-muted);">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') if comment.created_at else '' }}</span>
+                    <button data-click="copyCommentLink" data-arg0="{{ comment.id }}" class="btn-icon" title="{{ _('Copy link to this comment') }}">🔗</button>
+                    <button data-click="deleteComment" data-arg0="{{ comment.id }}" class="btn-icon danger" title="{{ _('Delete') }}" {% if not current_user.is_admin and comment.author_id != current_user.id %}disabled{% endif %}>🗑️</button>
+                </div>
+            </div>
+            <div style="font-size:0.9rem;white-space:pre-wrap;word-break:break-word;">{{ comment.content }}</div>
+        </div>
+        {% else %}
+        <p class="text-muted" style="text-align:center;">{{ _('No comments yet.') }}</p>
+        {% endfor %}
+    </div>
+</div>
+
+</div>{# /Comments column #}
+<div>
+
 {# ─── Reminders ─────────────────────────────────────── #}
 <div class="card" style="margin-bottom:1rem;">
     <div class="card-header">
@@ -455,47 +490,11 @@
     {% endif %}
 </div>
 
-</div>{# /LEFT COLUMN #}
-
-{# ─── RIGHT COLUMN ────────────────────────────────────── #}
+</div>{# /Reminders column #}
 <div>
 
-{# ─── Comments ───────────────────────────────────────── #}
-<div class="card" style="margin-bottom:1rem;">
-    <div class="card-header">
-        <h2>{{ _('Comments') }} <span id="commentCount">({{ comments|length }})</span></h2>
-        {% if case.status not in ['closed', 'archived'] %}
-        <button data-click="openCommentModal" class="btn-cms small bg-blue">{{ _('+ Add Comment') }}</button>
-        {% endif %}
-    </div>
-    
-    {% if current_user.is_admin %}
-    <div style="padding:0.5rem 0.75rem;background:#1e1b4b;color:#c4b5fd;font-size:0.8rem;border-bottom:1px solid #312e81;">
-        <strong>{{ _('Admin Comments') }}</strong>
-    </div>
-    {% endif %}
-    
-    <div id="commentsSection" style="display:flex;flex-direction:column;gap:0.5rem;padding:0.75rem;">
-        {% for comment in comments %}
-        <div class="comment {% if comment.is_admin %}admin-comment{% endif %}" data-comment-id="{{ comment.id }}" style="padding:0.6rem;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
-                <strong style="font-size:0.85rem;">{{ comment.author.full_name if comment.author else _('Unknown') }}</strong>
-                <div style="display:flex;gap:0.3rem;align-items:center;">
-                    <span style="font-size:0.75rem;color:var(--text-muted);">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') if comment.created_at else '' }}</span>
-                    <button data-click="copyCommentLink" data-arg0="{{ comment.id }}" class="btn-icon" title="{{ _('Copy link to this comment') }}">🔗</button>
-                    <button data-click="deleteComment" data-arg0="{{ comment.id }}" class="btn-icon danger" title="{{ _('Delete') }}" {% if not current_user.is_admin and comment.author_id != current_user.id %}disabled{% endif %}>🗑️</button>
-                </div>
-            </div>
-            <div style="font-size:0.9rem;white-space:pre-wrap;word-break:break-word;">{{ comment.content }}</div>
-        </div>
-        {% else %}
-        <p class="text-muted" style="text-align:center;">{{ _('No comments yet.') }}</p>
-        {% endfor %}
-    </div>
-</div>
-
 {# ─── Documents ──────────────────────────────────────── #}
-<div class="card">
+<div class="card" style="margin-bottom:1rem;">
     <div class="card-header">
         <h2>{{ _('Documents (%(count)s)', count=documents|length) }}</h2>
         <button data-click="openUploadModal" class="btn-cms small">{{ _('+ Upload') }}</button>
@@ -532,8 +531,8 @@
     {% endif %}
 </div>
 
-</div>{# /RIGHT COLUMN #}
-</div>{# /TWO-COLUMN #}
+</div>{# /Documents column #}
+</div>{# /3-COLUMN #}
 
 <!-- Screenshots Section -->
 <div class="card">

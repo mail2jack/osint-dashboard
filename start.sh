@@ -26,6 +26,8 @@ APP_DIR="$SCRIPT_DIR"
 # Find SpiderFoot in common locations
 if [ -d "/opt/spiderfoot" ]; then
     SF_DIR="/opt/spiderfoot"
+elif [ -d "$SCRIPT_DIR/spiderfoot" ]; then
+    SF_DIR="$(cd "$SCRIPT_DIR/spiderfoot" && pwd)"
 elif [ -d "$SCRIPT_DIR/../spiderfoot" ]; then
     SF_DIR="$(cd "$SCRIPT_DIR/../spiderfoot" && pwd)"
 elif [ -d "$HOME/spiderfoot" ]; then
