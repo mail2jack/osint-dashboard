@@ -31,6 +31,11 @@ if [[ ! -d "$SRC" ]]; then
     echo "ERROR: bron $SRC niet gevonden — draai vanuit de repo-root" >&2
     exit 1
 fi
+if [[ ! -f "$TARGET/.env" ]]; then
+    echo "ERROR: $TARGET/.env ontbreekt — stop voor er iets gesynchroniseerd wordt." >&2
+    echo "         Maak hem eerst aan, zie license-server/README.md (Deployment)." >&2
+    exit 1
+fi
 
 echo "=== 1/5 Code syncen (veilige rsync --delete) ==="
 sudo rsync -a --delete \
@@ -44,11 +49,6 @@ sudo rsync -a --delete \
     "$SRC/" "$TARGET/"
 
 sudo chown -R license:license "$TARGET"
-
-if [[ ! -f "$TARGET/.env" ]]; then
-    echo "WARNING: $TARGET/.env ontbreekt — de server faalt straks fail-fast." >&2
-    echo "         Maak hem eerst aan, zie license-server/README.md (Deployment)." >&2
-fi
 
 echo "=== 2/5 venv zekerstellen ==="
 if [[ ! -x "$TARGET/venv/bin/python3" ]]; then

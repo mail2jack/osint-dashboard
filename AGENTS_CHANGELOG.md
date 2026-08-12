@@ -15,7 +15,7 @@
 - **Incident**: `rsync --delete` zonder `venv/`-exclude wist `/opt/license-server/venv/` (en `.gunicorn/`); `data/`/`keys/`/`.env` overleefden dankzij excludes. Hersteld: `LICENSE_ADMIN_SECRET` toegevoegd, venv herbouwd, service herstart, `/health` ok.
 
 ### Wijzigingen
-- `license-server/deploy/deploy.sh` (nieuw): veilige rsync met excludes (.env, venv/, data/, keys/, .cache/, .gunicorn/, __pycache__/) + zelf-herstellende venv-herbouw + unit/daemon-reload/restart/health check. README-deploy-blok verwijst nu hiernaartoe.
+- `license-server/deploy/deploy.sh` (nieuw): veilige rsync met excludes (.env, venv/, data/, keys/, .cache/, .gunicorn/, __pycache__/) + zelf-herstellende venv-herbouw + unit/daemon-reload/restart/health check, met fail-fast vóór de rsync wanneer `.env` ontbreekt. README-deploy-blok verwijst nu hiernaartoe.
 
 ## August 2 — Licenties fase 2: Ed25519 + soft trial (per install)
 
