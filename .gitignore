@@ -35,3 +35,7 @@ static/dist/
 license-server/keys/
 license-server/data/
 license-server/.env
+
+# Runtime deploy state (produced by scripts/update.sh + scripts/deploy.sh)
+.deploy.lock
+.deployed_sha

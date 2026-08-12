@@ -2,29 +2,55 @@
 #
 # Iveras OSINT Dashboard — CLI Update Script
 # ===========================================
-# Runs backup, git pull, pip install, alembic, and restart.
+# Runs pre-deploy backup, git pull, pip install, alembic, and restart.
 # Sends email notification to all superadmins upon completion.
 #
-# Usage:
-#   ./scripts/update.sh
+# Safe to run only on the production server, as root. A deploy lock (flock)
+# prevents two updates from running at the same time. Any failed step aborts
+# the release — no half-finished deploys. Never auto-rolls back.
 #
-
-set -uo pipefail
+# Usage:
+#   sudo ./scripts/update.sh
+#   sudo DEPLOY_PIN=<commit-sha|tag> ./scripts/update.sh   # skip git pull
+#
+set -euo pipefail
 
 DIR="/opt/osint-dashboard"
 VENV_PYTHON="$DIR/venv/bin/python3"
 ENV_FILE="$DIR/.env"
-OVERALL_STATUS="success"
-LATEST_BACKUP=""
+BACKUP_SCRIPT="$DIR/scripts/backup.sh"
+NOTIFY_SCRIPT="$DIR/scripts/notify_update.py"
+LOG_DIR="$DIR/logs"
+LOCK_FILE="$DIR/.deploy.lock"
 
+if [ "$(id -u)" -ne 0 ]; then
+    echo "ERROR: draai als root (sudo ./scripts/update.sh)" >&2
+    exit 1
+fi
 if [ ! -d "$DIR" ]; then
-    echo "❌ $DIR does not exist — are you on the production server?"
+    echo "ERROR: $DIR bestaat niet — ben je op de productieserver?" >&2
     exit 1
 fi
 if [ ! -f "$VENV_PYTHON" ]; then
-    echo "❌ No venv found at $VENV_PYTHON"
+    echo "ERROR: geen venv gevonden op $VENV_PYTHON" >&2
     exit 1
 fi
+
+# --- 0/7 Deploy lock — no concurrent deploys ---
+exec 9<>"$LOCK_FILE"
+if ! flock -n 9; then
+    echo "ERROR: een andere deploy draait al (lock: $LOCK_FILE)" >&2
+    exit 1
+fi
+
+# --- Deploy log with timestamp + commit SHA (added after pull) ---
+LOG_FILE="$LOG_DIR/update-$(date +%Y%m%d-%H%M%S).log"
+if [ ! -d "$LOG_DIR" ]; then
+    mkdir -p "$LOG_DIR"
+    chown osint:osint "$LOG_DIR"
+fi
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "==== update.sh start $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
 
 # Read DATABASE_URL from .env for sudo commands (sudo strips env vars)
 DB_URL=""
@@ -32,86 +58,92 @@ if [ -f "$ENV_FILE" ]; then
     DB_URL=$(grep -m1 '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2- || true)
 fi
 
-BACKUP_SCRIPT="$DIR/scripts/backup.sh"
-NOTIFY_SCRIPT="$DIR/scripts/notify_update.py"
+# Latest backup file, for the notification (best effort)
+LATEST_BACKUP=""
 
-# --- 1/5 Backup ---
-echo "=== 1/5 Creating backup ==="
-if [ -f "$BACKUP_SCRIPT" ]; then
-    sudo -u osint bash "$BACKUP_SCRIPT" "$DIR/backups" && echo "✅ backup done" || {
-        echo "⚠️  backup had warnings"
-        OVERALL_STATUS="failed"
-    }
-    LATEST_BACKUP=$(find "$DIR/backups" -maxdepth 1 -name "iveras_backup_*.tar.gz.gpg" -type f 2>/dev/null | sort -r | head -1)
-else
-    echo "⚠️  backup.sh not found — skipping backup"
-fi
-
-# --- 2/5 Git pull ---
-echo "=== 2/5 Pulling latest code ==="
-cd "$DIR"
-sudo -u osint git pull origin "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)" || {
-    echo "❌ git pull failed"
-    OVERALL_STATUS="failed"
+notify() {
+    # $1 = success|failed
+    if [ -f "$NOTIFY_SCRIPT" ]; then
+        sudo -u osint "$VENV_PYTHON" "$NOTIFY_SCRIPT" \
+            --dir "$DIR" \
+            --status "$1" \
+            --backup "$LATEST_BACKUP" \
+            || echo "WARNING: notification mislukt (alleen gelogd)"
+    else
+        echo "WARNING: notify_update.py niet gevonden — e-mail overgeslagen"
+    fi
 }
 
-# --- 3/6 Dependencies ---
-echo "=== 3/6 Installing dependencies ==="
-sudo -u osint "$VENV_PYTHON" -m pip install -r "$DIR/requirements.txt" --quiet || {
-    echo "❌ pip install failed"
-    OVERALL_STATUS="failed"
-}
-
-# --- 4/6 Frontend build ---
-echo "=== 4/6 Building frontend assets ==="
-sudo -u osint env PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-    node "$DIR/build.mjs" || {
-    echo "❌ frontend build failed"
-    OVERALL_STATUS="failed"
-}
-
-# --- 5/6 Database migrations ---
-echo "=== 5/6 Running database migrations ==="
-if [ -n "$DB_URL" ]; then
-    sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic upgrade head || {
-        echo "❌ alembic upgrade failed"
-        OVERALL_STATUS="failed"
-    }
-else
-    echo "⚠️  No DATABASE_URL in .env — falling back to SQLite"
-    sudo -u osint "$VENV_PYTHON" -m alembic upgrade head || {
-        echo "❌ alembic upgrade failed"
-        OVERALL_STATUS="failed"
-    }
-fi
-
-# --- 6/6 Restart ---
-echo "=== 6/6 Restarting server ==="
-sudo systemctl restart osint-dashboard || {
-    echo "❌ restart failed"
-    OVERALL_STATUS="failed"
-}
-
-echo ""
-
-# --- Notification ---
-echo "=== Notification ==="
-if [ -f "$NOTIFY_SCRIPT" ]; then
-    sudo -u osint "$VENV_PYTHON" "$NOTIFY_SCRIPT" \
-        --dir "$DIR" \
-        --status "$OVERALL_STATUS" \
-        --backup "$LATEST_BACKUP" || echo "⚠️  notification failed (will be logged only)"
-    echo "✅ notification sent"
-else
-    echo "⚠️  notify_update.py not found — skipping email"
-fi
-
-echo ""
-if [ "$OVERALL_STATUS" = "success" ]; then
-    echo "🎉 Update complete! Check with: sudo systemctl status osint-dashboard"
-    exit 0
-else
-    echo "❌ Update failed — check the output above."
-    echo "   Recovery possible with: sudo -u osint $DIR/scripts/restore.sh"
+fail() {
+    echo "FAIL: $1"
+    notify "failed"
+    echo "==== update.sh GEFAALD $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
     exit 1
+}
+
+# --- 1/7 Backup (must succeed — release stops otherwise) ---
+echo "=== 1/7 Backup aanmaken ==="
+if [ -f "$BACKUP_SCRIPT" ]; then
+    if sudo -u osint bash "$BACKUP_SCRIPT" "$DIR/backups"; then
+        echo "OK: backup gedaan"
+        LATEST_BACKUP=$(find "$DIR/backups" -maxdepth 1 -name "iveras_backup_*.tar.gz.gpg" -type f 2>/dev/null | sort -r | head -1)
+    else
+        fail "backup mislukt — release gestopt (geen half-afgemaakte deploy)"
+    fi
+else
+    fail "backup.sh niet gevonden"
 fi
+
+# --- 2/7 Git pull (skipped when a pinned deploy already checked out the commit) ---
+echo "=== 2/7 Code ophalen ==="
+cd "$DIR"
+if [ -n "${DEPLOY_PIN:-}" ]; then
+    echo "DEPLOY_PIN gezet — git pull overgeslagen (gepinde commit al uitgecheckt)"
+else
+    sudo -u osint git pull origin "$(sudo -u osint git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)" \
+        || fail "git pull mislukt"
+fi
+DEPLOYED_SHA=$(sudo -u osint git rev-parse HEAD)
+echo "$DEPLOYED_SHA" > "$DIR/.deployed_sha"
+echo "Gedeployed commit: $DEPLOYED_SHA"
+
+# --- 3/7 Dependencies ---
+echo "=== 3/7 Afhankelijkheden installeren ==="
+sudo -u osint "$VENV_PYTHON" -m pip install -r "$DIR/requirements.txt" --quiet \
+    || fail "pip install mislukt"
+
+# --- 4/7 Frontend build ---
+echo "=== 4/7 Frontend builden ==="
+sudo -u osint env PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    node "$DIR/build.mjs" \
+    || fail "frontend build mislukt"
+
+# --- 5/7 Database migrations ---
+echo "=== 5/7 Migraties draaien ==="
+if [ -n "$DB_URL" ]; then
+    sudo -u osint env DATABASE_URL="$DB_URL" "$VENV_PYTHON" -m alembic upgrade head \
+        || fail "alembic upgrade mislukt"
+else
+    echo "WARNING: geen DATABASE_URL in .env — SQLite fallback"
+    sudo -u osint "$VENV_PYTHON" -m alembic upgrade head \
+        || fail "alembic upgrade mislukt"
+fi
+
+# --- 6/7 Restart ---
+echo "=== 6/7 Service herstarten ==="
+sudo systemctl restart osint-dashboard || fail "restart mislukt"
+
+# --- 7/7 Health check na restart ---
+echo "=== 7/7 Health check ==="
+for i in 1 2 3 4 5; do
+    if curl -fsS http://localhost:5000/api/v1/health >/dev/null 2>&1; then
+        echo "OK: /api/v1/health bereikbaar"
+        notify "success"
+        echo "==== update.sh VOLTOOID $(date -u +%Y-%m-%dT%H:%M:%SZ) ($DEPLOYED_SHA) ===="
+        echo "Log: $LOG_FILE"
+        exit 0
+    fi
+    echo "  health nog niet bereikbaar (poging $i/5), wachten..."
+    sleep 3
+done
+fail "health check na restart mislukt — NIET automatisch teruggedraaid, zie RUNBOOK.md"

@@ -12,6 +12,32 @@ _TOR_CHECK_TIMEOUT = 10
 _TORCHECK_URL = "https://check.torproject.org"
 
 
+def check_migrations() -> str:
+    """Compare the DB's current Alembic revision against the repo's heads.
+
+    Returns ``"ok"`` when in sync, otherwise a short drift description. Uses
+    Alembic's in-process API (no subprocess), so it is safe inside a request.
+    """
+    try:
+        from pathlib import Path
+
+        from alembic.config import Config as AlembicConfig
+        from alembic.runtime.migration import MigrationContext
+        from alembic.script import ScriptDirectory
+
+        repo_root = Path(__file__).resolve().parent.parent
+        cfg = AlembicConfig(str(repo_root / "alembic.ini"))
+        script = ScriptDirectory.from_config(cfg)
+        heads = set(script.get_heads())
+        with db.engine.connect() as conn:
+            current = set(MigrationContext.configure(conn).get_current_heads())
+        if current == heads:
+            return "ok"
+        return f"pending: current={sorted(current) or ['none']} heads={sorted(heads)}"
+    except Exception as e:  # noqa: BLE001 — surface any failure in health output
+        return f"error: {e}"
+
+
 def check_external_services(quick: bool = False) -> dict:
     """Check external OSINT service health.
 

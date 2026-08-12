@@ -180,7 +180,6 @@ def send_alert_sms_whatsapp(
         return
 
     try:
-        from flask_login import current_user
         from .models import User, NotificationPreference
         from .sms_utils import send_sms, send_whatsapp
     except ImportError:

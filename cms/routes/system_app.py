@@ -181,6 +181,15 @@ def register_system_routes(app: Flask) -> None:
                 status["status"] = "degraded"
                 http_status = 503
 
+            # Alembic migration sync (readiness)
+            from cms.health_utils import check_migrations
+
+            migrations = check_migrations()
+            status["migrations"] = migrations
+            if migrations != "ok":
+                status["status"] = "degraded"
+                http_status = 503
+
         return jsonify(status), http_status
 
     @app.errorhandler(404)

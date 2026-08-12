@@ -7,4 +7,4 @@ workflow_bp = Blueprint(
     url_prefix="/cms/workflow",
 )
 
-from . import models, routes  # noqa: E402, F811
+from . import models, routes  # noqa: E402, F811, F401

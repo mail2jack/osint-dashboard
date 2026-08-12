@@ -5,7 +5,16 @@ import json
 from datetime import datetime, timezone, timedelta
 
 import stripe
-from flask import Blueprint, redirect, request, jsonify, current_app, url_for, flash
+from flask import (
+    Blueprint,
+    redirect,
+    request,
+    jsonify,
+    current_app,
+    url_for,
+    flash,
+    abort,
+)
 from flask_login import login_required, current_user
 
 from ..models import db, Tenant, Notification, ProrationLog
@@ -452,7 +461,6 @@ def _handle_invoice_payment_failed(invoice: dict):
 
     amount = invoice.get("total", 0) / 100
     currency = (invoice.get("currency") or "eur").upper()
-    due_date = invoice.get("due_date") or invoice.get("next_payment_attempt")
 
     # Notify tenant admins
     _notify_tenant_admins(
@@ -602,7 +610,7 @@ def admin_change_tier(tenant_id: str):
                 items = sub.get("items", {}).get("data", [])
                 if items:
                     sub_item_id = items[0].id
-                    updated = stripe.Subscription.modify(
+                    stripe.Subscription.modify(
                         tenant.stripe_subscription_id,
                         items=[{"id": sub_item_id, "price": new_price_id}],
                         proration_behavior="create_prorations",
