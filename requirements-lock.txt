@@ -261,6 +261,6 @@ wrapt==2.1.2
 wsproto==1.2.0
 xhtml2pdf==0.2.17
 xlsxwriter==3.2.9
-yarl==1.23.0
+yarl==1.24.2
 zc.lockfile==4.0
 zopfli==0.4.3
