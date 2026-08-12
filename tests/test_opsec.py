@@ -900,6 +900,15 @@ def test_production_config_accepts_stronger_db_ssl_mode(app, monkeypatch):
         CMS_ENCRYPTION_KEY="x",
         SECRET_KEY="y",
         SQLALCHEMY_DATABASE_URI="postgresql://u:p@h/db",
+        DB_SSL_MODE="require",
+        SQLALCHEMY_ENGINE_OPTIONS={
+            "connect_args": {"sslmode": "require"},
+        },
     )
     monkeypatch.setenv("DB_SSL_MODE", "verify-full")
     ProductionConfig.init_app(fake)  # must not raise
+    assert fake.config["DB_SSL_MODE"] == "verify-full"
+    assert (
+        fake.config["SQLALCHEMY_ENGINE_OPTIONS"]["connect_args"]["sslmode"]
+        == "verify-full"
+    )

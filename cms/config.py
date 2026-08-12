@@ -125,12 +125,21 @@ class ProductionConfig(Config):
             )
         # DB_SSL_MODE may only strengthen the TLS floor, never weaken it
         env_ssl = os.environ.get("DB_SSL_MODE", "").strip()
-        if env_ssl and env_ssl not in ProductionConfig._ALLOWED_SSL_MODES:
-            raise ValueError(
-                f"DB_SSL_MODE={env_ssl!r} is not allowed in production. "
-                f"Allowed values: {sorted(ProductionConfig._ALLOWED_SSL_MODES)}. "
-                "TLS is hard-required ('require') and cannot be downgraded."
-            )
+        if env_ssl:
+            if env_ssl not in ProductionConfig._ALLOWED_SSL_MODES:
+                raise ValueError(
+                    f"DB_SSL_MODE={env_ssl!r} is not allowed in production. "
+                    f"Allowed values: {sorted(ProductionConfig._ALLOWED_SSL_MODES)}. "
+                    "TLS is hard-required ('require') and cannot be downgraded."
+                )
+            if env_ssl != "require":
+                # Apply the stronger mode so config matches behaviour
+                app.config["DB_SSL_MODE"] = env_ssl
+                options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS") or {})
+                connect_args = dict(options.get("connect_args") or {})
+                connect_args["sslmode"] = env_ssl
+                options["connect_args"] = connect_args
+                app.config["SQLALCHEMY_ENGINE_OPTIONS"] = options
 
 
 class TestingConfig(Config):
