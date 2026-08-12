@@ -40,11 +40,11 @@ def main():
         print(f"[notify] ⚠️  Cannot load Flask app ({e}) — email skipped")
         return
 
-    if not is_smtp_configured():
-        print("[notify] ℹ️  SMTP not configured — email skipped")
-        return
-
     with app.app_context():
+        if not is_smtp_configured():
+            print("[notify] ℹ️  SMTP not configured — email skipped")
+            return
+
         admins = User.query.filter_by(is_super_admin=True).all()
 
         status_icon = "✅" if args.status == "success" else "❌"
