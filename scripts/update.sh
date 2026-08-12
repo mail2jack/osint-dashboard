@@ -64,10 +64,10 @@ LATEST_BACKUP=""
 notify() {
     # $1 = success|failed
     if [ -f "$NOTIFY_SCRIPT" ]; then
-        sudo -u osint "$VENV_PYTHON" "$NOTIFY_SCRIPT" \
+        (cd "$DIR" && sudo -u osint "$VENV_PYTHON" "$NOTIFY_SCRIPT" \
             --dir "$DIR" \
             --status "$1" \
-            --backup "$LATEST_BACKUP" \
+            --backup "$LATEST_BACKUP") \
             || echo "WARNING: notification mislukt (alleen gelogd)"
     else
         echo "WARNING: notify_update.py niet gevonden — e-mail overgeslagen"
