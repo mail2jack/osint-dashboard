@@ -101,16 +101,22 @@ echo "== 4/4 pip-audit (afhankelijkheden) =="
 if [ "$QUICK" -eq 1 ]; then
     echo "  SKIP: --quick"
 else
-    if command -v pip-audit >/dev/null 2>&1; then
-        if pip-audit -r "$APP_DIR/requirements-lock.txt" --quiet; then
-            echo "  OK: geen bekende kwetsbaarheden"
-        else
-            echo "  FAIL: kwetsbaarheden gevonden — blokkeert deploy"
-            FAILED=1
-        fi
-    else
-        echo "FAIL: pip-audit niet geïnstalleerd (install: python3 -m pip install pip-audit)" >&2
+    PIP_AUDIT=""
+    if [ -x "$APP_DIR/venv/bin/pip-audit" ]; then
+        PIP_AUDIT="$APP_DIR/venv/bin/pip-audit"
+    elif command -v pip-audit >/dev/null 2>&1; then
+        PIP_AUDIT="$(command -v pip-audit)"
+    fi
+    if [ -z "$PIP_AUDIT" ]; then
+        echo "FAIL: pip-audit niet geïnstalleerd (install: sudo -u osint $APP_DIR/venv/bin/pip install pip-audit)" >&2
         exit 2
+    fi
+    echo "  GEBRUIKT: $PIP_AUDIT"
+    if "$PIP_AUDIT" -r "$APP_DIR/requirements-lock.txt" --quiet; then
+        echo "  OK: geen bekende kwetsbaarheden"
+    else
+        echo "  FAIL: kwetsbaarheden gevonden — blokkeert deploy"
+        FAILED=1
     fi
 fi
 
