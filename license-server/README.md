@@ -92,19 +92,9 @@ nieuwe bij de volgende check-in. `--days` en `--expires` zijn optioneel
 ```bash
 sudo useradd -r -s /usr/sbin/nologin license || true
 sudo mkdir -p /opt/license-server/data
-# Let op: GEEN plain `--delete` — dat wist runtime-bestanden (.env, venv/, data/,
-# keys/) die niet in git staan. De excludes houden die in stand bij updates.
-# Vooral `keys/` is kritiek: zonder de privésleutel kunnen er geen licenties
-# meer worden ondertekend (bestaande blijven wel verifieerbaar). Zorg ook dat
-# backup.sh de privésleutel meeneemt (doet het automatisch, mits leesbaar).
-sudo rsync -a --delete \
-    --exclude='.env' --exclude='venv/' --exclude='data/' --exclude='keys/' --exclude='.cache/' \
-    ./license-server/ /opt/license-server/
-sudo chown -R license:license /opt/license-server
 
-sudo -u license python3 -m venv /opt/license-server/venv
-sudo -u license /opt/license-server/venv/bin/pip install -r /opt/license-server/requirements.txt
-
+# Eenmalig: .env met LICENSE_ENV=production en LICENSE_ADMIN_SECRET (fail-fast
+# zonder secret). Bij een update overslaan — dan blijft de bestaande .env staan.
 sudo tee /opt/license-server/.env > /dev/null <<EOF
 LICENSE_ENV=production
 LICENSE_ADMIN_SECRET=$(openssl rand -hex 32)
@@ -114,9 +104,10 @@ EOF
 sudo chmod 600 /opt/license-server/.env
 sudo cat /opt/license-server/.env   # noteer ADMIN_PASSWORD (of vervang door eigen wachtwoord)
 
-sudo cp license-server/deploy/license-server.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now license-server
+# Deploy/update (als root, vanuit de repo-root): veilige rsync --delete mét
+# excludes voor .env, venv/, data/, keys/ (zodat registry + privésleutel
+# overleven) + zelf-herstellende venv-herbouw + systemd-unit + restart + health.
+./license-server/deploy/deploy.sh
 ```
 
 Na de deploy nog eenmalig `keys:generate` draaien (zie boven) zodat
@@ -143,7 +134,7 @@ De license server is een klein los proces (localhost:8000, eigen systemd-user
 OSINT Dashboard. Nginx routeert op `server_name`, dus het bestaande prod-block
 (`server_name _` of een domein) en het license-block naast elkaar:
 
-1. Zelfde stappen als hierboven (rsync, venv, systemd).
+1. Zelfde stappen als hierboven: `./license-server/deploy/deploy.sh` draaien.
 2. Pas `license-server/deploy/nginx.conf` aan zodat de blocks niet botsen met
    de prod-config: het license-block krijgt `server_name license.iveras.com;`
    op `listen 80` (301 → https) en `listen 443 ssl`. De prod-site blijft

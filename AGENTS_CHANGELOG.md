@@ -1,5 +1,22 @@
 # Session Summaries / Changelog
 
+## August 12 — Beveiligingssprint afgerond + VPS-deploy + veilig deploy-script
+
+### Beveiliging
+- `cms/auth.py::ensure_case_access()` (tenant + `can_access_case`, audit-403); alle workflow-routes incl. archive/restore van actions/findings resolven naar de parent case met fallback `ensure_tenant_access`.
+- `cms/config.py` ProductionConfig: harde TLS-floor `require`; `verify-ca`/`verify-full` worden nu ook echt toegepast op `DB_SSL_MODE` + engine `connect_args` (niet meer alleen geaccepteerd).
+- `license-server/app.py`: `LICENSE_ENV`-marker + `LICENSE_ADMIN_SECRET` fail-fast in productie; `deploy/license-server.service` zet `Environment=LICENSE_ENV=production`.
+- `scripts/doctor.py`: schrijft bij ontbrekende/te zwakke `DB_SSL_MODE` nu `require`.
+- `requirements-lock.txt`: `backports.zstd==1.6.0` verwijderd (geen Python 3.14-wheel).
+
+### Deploy (VPS, 12 aug)
+- Dashboard: `DB_SSL_MODE=prefer`→`require` in `.env`; deps op Python 3.14; doctor 21/21; pip-audit 0.
+- License-server: fail-fast bewezen (RuntimeError bij kapotte postgres; ValueError bij `prefer`/zonder secret).
+- **Incident**: `rsync --delete` zonder `venv/`-exclude wist `/opt/license-server/venv/` (en `.gunicorn/`); `data/`/`keys/`/`.env` overleefden dankzij excludes. Hersteld: `LICENSE_ADMIN_SECRET` toegevoegd, venv herbouwd, service herstart, `/health` ok.
+
+### Wijzigingen
+- `license-server/deploy/deploy.sh` (nieuw): veilige rsync met excludes (.env, venv/, data/, keys/, .cache/, .gunicorn/, __pycache__/) + zelf-herstellende venv-herbouw + unit/daemon-reload/restart/health check. README-deploy-blok verwijst nu hiernaartoe.
+
 ## August 2 — Licenties fase 2: Ed25519 + soft trial (per install)
 
 ### Doel
