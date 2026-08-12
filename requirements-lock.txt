@@ -45,7 +45,6 @@ async-timeout==5.0.1
 attrs==25.4.0
 autopep8==2.3.2
 babel==2.18.0
-backports.zstd==1.6.0
 bandit==1.9.4
 beautifulsoup4==4.15.0
 bleach==6.4.0
