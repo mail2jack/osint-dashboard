@@ -73,7 +73,13 @@ def _ensure_column(conn, table: str, column: str, decl: str) -> None:
     """Add a column if it does not exist yet (CREATE TABLE IF NOT EXISTS cannot)."""
     cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
     if column not in cols:
-        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+        try:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+        except sqlite3.OperationalError as exc:
+            # Gunicorn workers can initialize the app concurrently. If another
+            # worker won the ALTER race, the desired schema is already present.
+            if "duplicate column name" not in str(exc).lower():
+                raise
 
 
 def _init_db() -> None:
