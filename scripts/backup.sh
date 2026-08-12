@@ -19,6 +19,7 @@ set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$SCRIPT_DIR"
 ENV_FILE="$SCRIPT_DIR/.env"
 
 # Source .env if it exists and DATABASE_URL is not already set
@@ -286,12 +287,15 @@ rm -f "$DECRYPTED"
 echo ""
 echo "--- 9. Cleanup ---"
 
-OLD_BACKUPS=$(find "$BACKUP_DIR" -name "iveras_backup_*.tar.gz.gpg" -type f -mtime +30 2>/dev/null | sort)
+OLD_BACKUPS=$(find "$BACKUP_DIR" -name "iveras_backup_*.tar.gz.gpg" -type f -mtime +30 2>/dev/null | sort || true)
 if [ -n "$OLD_BACKUPS" ]; then
     echo "  Removing backups older than 30 days:"
     echo "$OLD_BACKUPS" | while read -r old; do
-        rm -f "$old"
-        echo "    🗑️  $(basename "$old")"
+        if rm -f "$old"; then
+            echo "    🗑️  $(basename "$old")"
+        else
+            _log_warn "oud backup niet verwijderd: $(basename "$old")"
+        fi
     done
     _log_ok "Old backups cleaned"
 else
