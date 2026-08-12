@@ -819,3 +819,48 @@ def test_security_headers(client):
     assert "default-src 'self'" in csp
     assert "'unsafe-eval'" in csp  # required by TensorFlow.js
     assert "report-uri /csp-report" in csp
+
+
+# ─── Production config: fail-fast ────────────────────────────
+
+
+class _FakeProdApp:
+    def __init__(self, **cfg):
+        self.config = dict(cfg)
+
+
+def test_production_config_rejects_sqlite(app):
+    from cms.config import ProductionConfig
+
+    fake = _FakeProdApp(
+        CMS_ENCRYPTION_KEY="x",
+        SECRET_KEY="y",
+        SQLALCHEMY_DATABASE_URI="sqlite:///cms.db",
+    )
+    with pytest.raises(ValueError, match="PostgreSQL"):
+        ProductionConfig.init_app(fake)
+
+
+def test_production_config_rejects_missing_keys(app):
+    from cms.config import ProductionConfig
+
+    fake = _FakeProdApp(SQLALCHEMY_DATABASE_URI="postgresql://u:p@h/db")
+    with pytest.raises(ValueError, match="CMS_ENCRYPTION_KEY"):
+        ProductionConfig.init_app(fake)
+
+
+def test_production_config_accepts_postgres_with_keys(app):
+    from cms.config import ProductionConfig
+
+    fake = _FakeProdApp(
+        CMS_ENCRYPTION_KEY="x",
+        SECRET_KEY="y",
+        SQLALCHEMY_DATABASE_URI="postgresql://u:p@h/db",
+    )
+    ProductionConfig.init_app(fake)  # must not raise
+
+
+def test_get_config_production_maps_to_production_config(app):
+    from cms.config import ProductionConfig, get_config
+
+    assert get_config("production") is ProductionConfig

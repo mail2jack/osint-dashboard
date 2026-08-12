@@ -15,6 +15,15 @@ from ..models import Setting
 from ..auth import admin_required
 from cms.services.http_utils import jittered_get
 
+
+_GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+
+def _is_github_repo(repo: str) -> bool:
+    """Strictly validate a GitHub 'owner/repository' value (no scheme, path or traversal)."""
+    return bool(_GITHUB_REPO_RE.match(repo or "")) and ".." not in repo
+
+
 from .response import api_success, api_error
 
 logger = logging.getLogger(__name__)
@@ -238,6 +247,16 @@ def check_update() -> flask.Response:
                 "message": "Update checking is disabled. Set update_check_repo in Settings.",
             }
         )
+    if not _is_github_repo(repo):
+        return jsonify(
+            {
+                "update_available": False,
+                "current_version": current_ver,
+                "latest_version": current_ver,
+                "check_enabled": False,
+                "message": "update_check_repo is invalid. Expected format: owner/repository.",
+            }
+        )
 
     # In-memory cache on the app (bypass with ?force=1)
     cache_key = "_update_check_cache"
@@ -256,11 +275,10 @@ def check_update() -> flask.Response:
         latest_ver = r.text.strip()
 
         # Fetch remote HEAD commit SHA via GitHub API
-        # Use plain requests — GitHub API rate-limits Tor/proxy IPs hard
         remote_sha = ""
         try:
             api_url = f"https://api.github.com/repos/{repo}/commits/master"
-            api_r = requests.get(
+            api_r = jittered_get(
                 api_url,
                 timeout=10,
                 headers={"Accept": "application/vnd.github.v3.sha"},
@@ -271,7 +289,7 @@ def check_update() -> flask.Response:
                 logger.warning(
                     "GitHub API rate limited. VERSION-based update check still works."
                 )
-        except requests.RequestException as e:
+        except Exception as e:
             logger.debug(f"GitHub API request failed: {e}")
 
         # Get local HEAD SHA directly from git (authoritative), fall back to DB

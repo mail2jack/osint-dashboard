@@ -170,9 +170,11 @@ if "sqlite" in str(app.config.get("SQLALCHEMY_DATABASE_URI", "")):
 
 
 # Load security and application configuration based on FLASK_ENV
-from cms.config import get_config
+from cms.config import get_config, ProductionConfig
 
-app.config.from_object(get_config())
+_cfg = get_config()
+app.config.from_object(_cfg)
+_cfg.init_app(app)
 
 # CORS — allow same-origin by default, configurable via env var
 from flask_cors import CORS
@@ -293,7 +295,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
     app.config.pop("SQLALCHEMY_ENGINE_OPTIONS", None)
 
-# Graceful PostgreSQL fallback: if Postgres is unreachable, use SQLite
+# PostgreSQL availability probe: fail-fast in production, dev-only fallback to SQLite
 if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql"):
     try:
         from sqlalchemy import create_engine
@@ -306,6 +308,10 @@ if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql"):
         engine.connect().close()
         engine.dispose()
     except Exception as e:
+        if _cfg is ProductionConfig:
+            raise RuntimeError(
+                f"PostgreSQL unreachable at startup (production requires it): {e}"
+            ) from e
         logger.warning("PostgreSQL unreachable (%s), falling back to SQLite", e)
         CMS_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "cms.db"))
         app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{CMS_DB_PATH}"

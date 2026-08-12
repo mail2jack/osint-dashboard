@@ -56,6 +56,10 @@ class Config:
     CMS_ITEMS_PER_PAGE = 20
     CMS_MAX_SEARCH_RESULTS = 100
 
+    @classmethod
+    def init_app(cls, app):
+        """Hook for environment-specific startup validation. No-op by default."""
+
 
 class DevelopmentConfig(Config):
     """Development configuration."""
@@ -82,6 +86,15 @@ class ProductionConfig(Config):
 
     DB_SSL_MODE = os.environ.get("DB_SSL_MODE", "require")
 
+    # Engine must also enforce the SSL mode above (base Config reads env at import)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_recycle": 3600,
+        "pool_pre_ping": True,
+        "connect_args": {"sslmode": os.environ.get("DB_SSL_MODE", "require")},
+    }
+
     # Encryption key is REQUIRED in production
     @classmethod
     def init_app(cls, app):
@@ -101,6 +114,12 @@ class ProductionConfig(Config):
         if not app.config.get("SQLALCHEMY_DATABASE_URI"):
             raise ValueError(
                 "DATABASE_URL environment variable is REQUIRED in production."
+            )
+        uri = str(app.config.get("SQLALCHEMY_DATABASE_URI"))
+        if not uri.startswith("postgresql"):
+            raise ValueError(
+                "DATABASE_URL must be a PostgreSQL URL in production. "
+                "SQLite disables multi-tenant RLS isolation."
             )
 
 
