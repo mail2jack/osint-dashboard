@@ -37,6 +37,7 @@ SF_PASSWD = OSINT_HOME / ".spiderfoot" / "passwd"
 
 OK = "  OK"
 FAIL = "  FAIL"
+WARN = "  WARN"
 FIXED = "  FIXED"
 SKIP = "  SKIP"
 DRY = "  WOULD FIX"
@@ -551,13 +552,21 @@ def check_env_db_ssl_mode(dry: bool) -> bool:
     if not ENV_FILE.exists():
         log(SKIP + " (.env not found)")
         return True
-    if _env_value("DB_SSL_MODE"):
-        log(OK)
+    val = _env_value("DB_SSL_MODE")
+    if val:
+        if val in ("require", "verify-ca", "verify-full"):
+            log(OK)
+            return True
+        log(WARN + f" ({val!r} is below the production TLS floor)")
+        if dry:
+            return False
+        _set_env("DB_SSL_MODE", "require")
+        log(FIXED)
         return True
     if dry:
-        log(DRY + " (DB_SSL_MODE not set)")
+        log(DRY + " (DB_SSL_MODE not set — production defaults to 'require')")
         return False
-    _set_env("DB_SSL_MODE", "prefer")
+    _set_env("DB_SSL_MODE", "require")
     log(FIXED)
     return True
 
