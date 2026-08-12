@@ -112,7 +112,7 @@ else
         exit 2
     fi
     echo "  GEBRUIKT: $PIP_AUDIT"
-    if "$PIP_AUDIT" -r "$APP_DIR/requirements-lock.txt" --quiet; then
+    if "$PIP_AUDIT" -r "$APP_DIR/requirements-lock.txt" --progress-spinner off; then
         echo "  OK: geen bekende kwetsbaarheden"
     else
         echo "  FAIL: kwetsbaarheden gevonden — blokkeert deploy"
