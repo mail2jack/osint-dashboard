@@ -48,6 +48,21 @@ Opslag in nieuwe kolommen `ip_intel` (JSON) en `last_http` (JSON) op `installs`
 Het dashboard toont per install een IP-cel met vlag, stad/land, ISP, ASN en
 badges voor hosting/proxy/mobile, uitklapbaar naar PTR/RDAP/coördinaten/HTTP.
 
+### Cross-check: gemeld vs waargenomen IP
+
+De client meldt zijn eigen `public_ip` (via ipify, best-effort). De server
+vergelijkt dat met het daadwerkelijk waargenomen verbindings-IP en slaat het
+resultaat op in de nieuwe kolom `ip_check`:
+
+| flag | Betekenis |
+|---|---|
+| `ok` | client-gemeld IP == waargenomen IP |
+| `mismatch` | gemeld publiek IP verschilt → vermoedelijke VPN/proxy ertussen |
+| `nat` | gemeld IP is een prive-range (RFC1918) → slechte/omgezette rapportage |
+| `none` | client rapporteerde geen `public_ip` |
+
+Het dashboard toont bij `mismatch`/`nat` een badge met beide IP's.
+
 Omgevingsvariabelen (optioneel, in `/opt/license-server/.env`):
 
 ```bash

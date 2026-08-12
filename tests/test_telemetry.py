@@ -5,6 +5,8 @@ import pytest
 from cms.models import Setting, init_default_settings
 from cms.services import telemetry
 
+_real_public_ip = telemetry._public_ip
+
 
 class FakeResponse:
     def __init__(self, status_code):
@@ -27,6 +29,11 @@ def _isolate_identity(monkeypatch):
     monkeypatch.delenv("INSTALL_ID", raising=False)
     monkeypatch.delenv("INSTALL_TOKEN", raising=False)
     monkeypatch.setattr(telemetry, "_append_to_env", lambda *a, **k: None)
+
+
+@pytest.fixture(autouse=True)
+def _no_public_ip(monkeypatch):
+    monkeypatch.setattr(telemetry, "_public_ip", lambda: "1.2.3.4")
 
 
 def test_telemetry_defaults_seeded(app):
@@ -57,11 +64,23 @@ def test_collect_system_info_shape(app):
             "ram_gb",
             "disk_gb",
             "local_ips",
+            "public_ip",
         ):
             assert key in info, f"missing {key}"
         assert info["hostname"]
         assert info["platform"] in ("docker", "bare-metal")
         assert isinstance(info["local_ips"], list)
+        assert info["public_ip"] == "1.2.3.4"
+
+
+def test_public_ip_best_effort_on_failure(app, monkeypatch):
+    def _nope(*args, **kwargs):
+        raise OSError("no network")
+
+    monkeypatch.setattr(telemetry, "_public_ip", _real_public_ip)
+    monkeypatch.setattr(telemetry.requests, "get", _nope)
+    with app.app_context():
+        assert telemetry._public_ip() is None
 
 
 def test_telemetry_enabled_default_true(app):

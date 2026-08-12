@@ -168,6 +168,22 @@ def _is_docker() -> bool:
         return False
 
 
+def _public_ip() -> str | None:
+    """Best-effort: the public IP as seen by the install (for NAT/VPN checks)."""
+    try:
+        resp = requests.get(
+            "https://api.ipify.org",
+            timeout=3,
+            proxies={"http": None, "https": None},
+        )
+        if resp.status_code == 200:
+            value = resp.text.strip()
+            return value or None
+    except Exception:
+        pass
+    return None
+
+
 def collect_system_info() -> dict:
     import platform as platform_mod
 
@@ -184,6 +200,7 @@ def collect_system_info() -> dict:
         "disk_gb": 0.0,
         "local_ips": _local_ips(),
     }
+    info["public_ip"] = _public_ip()
     try:
         from version import get_version
 

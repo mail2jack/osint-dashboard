@@ -130,6 +130,7 @@ def _init_db() -> None:
         # Migrate pre-existing installs tables (CREATE TABLE IF NOT EXISTS never alters).
         _ensure_column(conn, "installs", "ip_intel", "TEXT")
         _ensure_column(conn, "installs", "last_http", "TEXT")
+        _ensure_column(conn, "installs", "ip_check", "TEXT")
 
 
 def _token_hash(token: str) -> str:
@@ -167,6 +168,7 @@ def _row_to_dict(row) -> dict:
         "last_ip": row["last_ip"],
         "ip_intel": json.loads(intel) if intel else None,
         "last_http": json.loads(http) if http else None,
+        "ip_check": json.loads(row["ip_check"]) if row["ip_check"] else None,
     }
 
 
@@ -348,6 +350,7 @@ def _apply_info(body) -> dict:
         info = {}
     fields = {
         "hostname": _clean(info.get("hostname")),
+        "public_ip": _clean(info.get("public_ip"), 64),
         "os_name": _clean(info.get("os_name")),
         "os_version": _clean(info.get("os_version")),
         "kernel": _clean(info.get("kernel")),
@@ -393,6 +396,28 @@ def _http_metadata() -> str | None:
     return json.dumps(snapshot, separators=(",", ":"))
 
 
+def _ip_check(client_ip: str, reported: str | None) -> str | None:
+    """Cross-check the client-reported public IP against the observed one.
+
+    Flags: "ok" (same), "mismatch" (reported public IP differs — likely a VPN
+    or proxy in between), "nat" (reported IP is a private/RFC1918 range), or
+    "none" when the client did not report one.
+    """
+    if not reported or reported in ("0.0.0.0", "::", "none"):
+        return json.dumps({"flag": "none"}, separators=(",", ":"))
+    if reported == client_ip:
+        return json.dumps({"flag": "ok", "reported": reported}, separators=(",", ":"))
+    if not ipintel._is_lookupable(reported):
+        return json.dumps(
+            {"flag": "nat", "reported": reported, "actual": client_ip},
+            separators=(",", ":"),
+        )
+    return json.dumps(
+        {"flag": "mismatch", "reported": reported, "actual": client_ip},
+        separators=(",", ":"),
+    )
+
+
 def _update_install(conn, install_id, token_hash, fields, is_new):
     now = _now()
     client_ip = _client_ip()
@@ -408,6 +433,7 @@ def _update_install(conn, install_id, token_hash, fields, is_new):
     data["last_ip"] = _clean(client_ip, 64)
     data["ip_intel"] = json.dumps(ip_intel, separators=(",", ":"))
     data["last_http"] = _http_metadata()
+    data["ip_check"] = _ip_check(client_ip, data.get("public_ip"))
     if is_new:
         data["registered_at"] = now
         data["token_hash"] = token_hash

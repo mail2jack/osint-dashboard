@@ -170,6 +170,15 @@
     if (intel.mobile) badges += intelBadge("mobile", "var(--muted)");
     if (intel.private) badges += intelBadge("private", "var(--muted)");
     if (badges) h += '<br>' + badges;
+    if (it.ip_check && it.ip_check.flag === "mismatch") {
+      h += '<br>' + intelBadge("IP-mismatch (VPN/proxy?)", "var(--bad)");
+      h += '<br><span class="small muted">' +
+        esc("gemeld " + (it.ip_check.reported || "-") + " vs gezien " + (it.ip_check.actual || "-")) + '</span>';
+    } else if (it.ip_check && it.ip_check.flag === "nat") {
+      h += '<br>' + intelBadge("NAT (privé-gemeld)", "var(--warn)");
+      h += '<br><span class="small muted">' +
+        esc("prive " + (it.ip_check.reported || "-") + " vs " + (it.ip_check.actual || "-")) + '</span>';
+    }
     var rows = [];
     if (intel.ptr) rows.push('<b>PTR</b> ' + esc(intel.ptr));
     if (intel.regionName) rows.push('<b>Regio</b> ' + esc(intel.regionName + (intel.postal ? " " + intel.postal : "")));

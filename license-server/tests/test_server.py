@@ -619,3 +619,57 @@ class TestWebActions:
             second = _real_enrich(conn, "9.9.9.9")
         assert "error" in first
         assert first == second
+
+    # ------------------------------------------------------------------
+    # IP cross-check (reported public_ip vs actually observed)
+    # ------------------------------------------------------------------
+
+    def _register_with_public_ip(self, client, public_ip):
+        return client.post(
+            "/api/register",
+            json={
+                "install_id": "ipcheck",
+                "info": {"hostname": "host-1", "public_ip": public_ip},
+            },
+            headers={"Authorization": "Bearer tok"},
+        )
+
+    def _stored_ip_check(self, install_id="ipcheck"):
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT ip_check FROM installs WHERE install_id = ?", (install_id,)
+            ).fetchone()
+        return json.loads(row["ip_check"])
+
+    def test_ip_check_matching_reported(self, client):
+        r = self._register_with_public_ip(client, "127.0.0.1")
+        assert r.status_code == 200
+        assert self._stored_ip_check()["flag"] == "ok"
+
+    def test_ip_check_mismatch_public(self, client):
+        r = self._register_with_public_ip(client, "8.8.8.8")
+        assert r.status_code == 200
+        check = self._stored_ip_check()
+        assert check["flag"] == "mismatch"
+        assert check["reported"] == "8.8.8.8"
+        assert check["actual"] == "127.0.0.1"
+
+    def test_ip_check_nat_private_reported(self, client):
+        r = self._register_with_public_ip(client, "192.168.1.5")
+        assert r.status_code == 200
+        assert self._stored_ip_check()["flag"] == "nat"
+
+    def test_ip_check_none_without_report(self, client):
+        _register(client)  # info has no public_ip
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT ip_check FROM installs WHERE install_id = 'test-install-1'"
+            ).fetchone()
+        assert json.loads(row["ip_check"])["flag"] == "none"
+
+    def test_api_installs_exposes_ip_check(self, client):
+        self._register_with_public_ip(client, "8.8.8.8")
+        r = client.get("/api/installs", auth=("admin", "test-secret"))
+        item = next(i for i in r.get_json()["installs"] if i["install_id"] == "ipcheck")
+        assert item["ip_check"]["flag"] == "mismatch"
+        assert item["public_ip"] == "8.8.8.8"
