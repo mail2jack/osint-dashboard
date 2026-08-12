@@ -236,6 +236,9 @@ def capture_screenshot(case_id: str) -> flask.Response:
                 page = browser.new_page(**context_kwargs)
                 if stealth:
                     apply_stealth_to_context(page.context)
+                from cms.services.ssrf_guard import install_request_guard
+
+                install_request_guard(page)
                 if not is_safe_url(url):
                     return jsonify({"error": "Invalid or blocked URL"}), 400
                 page.goto(url, wait_until="networkidle", timeout=30000)

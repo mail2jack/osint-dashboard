@@ -718,6 +718,96 @@ def test_opsec_api_verify_chain(auth_client):
 # ─── Production Hardening ────────────────────────────────────
 
 
+# ─── SSRF guard ──────────────────────────────────────────────
+
+
+def test_validate_url_blocks_private_and_reserved(app):
+    from cms.services.ssrf_guard import validate_url
+
+    blocked = [
+        "http://127.0.0.1",
+        "http://10.0.0.1",
+        "http://192.168.1.1",
+        "http://172.16.0.1",
+        "http://169.254.169.254",
+        "http://0.0.0.0",
+        "http://::1",
+        "http://[fe80::1]",
+        "http://224.0.0.1",
+        "http://255.255.255.255",
+        "ftp://example.com",
+        "file:///etc/passwd",
+    ]
+    for url in blocked:
+        ok, reason = validate_url(url)
+        assert ok is False, url
+        assert reason
+
+    ok, _ = validate_url("http://example.com")
+    assert ok is True
+
+
+def test_validate_url_blocks_dns_rebinding_to_private(app):
+    from cms.services.ssrf_guard import validate_url
+
+    with patch(
+        "cms.services.ssrf_guard.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("10.0.0.5", 80))],
+    ):
+        ok, reason = validate_url("http://rebind.example.com")
+        assert ok is False
+        assert "blocked" in reason
+
+
+def test_safe_fetch_blocks_redirect_to_private(app):
+    from cms.services.http_utils import SSRFBlockedError, _safe_fetch
+
+    redirect_resp = MagicMock()
+    redirect_resp.is_redirect = True
+    redirect_resp.status_code = 302
+    redirect_resp.headers = {"Location": "http://10.0.0.1/steal"}
+    redirect_resp.raise_for_status = MagicMock()
+
+    with patch(
+        "cms.services.http_utils._impersonated_request", return_value=redirect_resp
+    ):
+        with pytest.raises(SSRFBlockedError):
+            _safe_fetch("get", "https://example.com", {}, None)
+
+
+def test_safe_fetch_follows_safe_redirect(app):
+    from cms.services.http_utils import _safe_fetch
+
+    hop1 = MagicMock()
+    hop1.is_redirect = True
+    hop1.status_code = 302
+    hop1.headers = {"Location": "https://example.com/next"}
+
+    final = MagicMock()
+    final.is_redirect = False
+    final.status_code = 200
+    final.headers = {"Location": None}
+
+    with patch(
+        "cms.services.http_utils._impersonated_request", side_effect=[hop1, final]
+    ) as mock_req:
+        resp = _safe_fetch("get", "https://example.com", {}, None)
+        assert resp is final
+        assert mock_req.call_count == 2
+        assert mock_req.call_args[0][1] == "https://example.com/next"
+
+
+def test_jittered_get_blocks_private_url_before_request(app):
+    from cms.services.http_utils import SSRFBlockedError, jittered_get, reset_tor_state
+
+    reset_tor_state()
+    with patch("cms.services.http_utils.get_next_proxy", return_value=None):
+        with patch("curl_cffi.requests.get") as mock_get:
+            with pytest.raises(SSRFBlockedError):
+                jittered_get("http://169.254.169.254/latest/meta-data/")
+            mock_get.assert_not_called()
+
+
 def test_security_headers(client):
     """Security headers are set on every response."""
     resp = client.get("/")

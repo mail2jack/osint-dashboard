@@ -134,6 +134,10 @@ def playwright_fetch(
             if stealth:
                 apply_stealth_to_context(context)
 
+            from cms.services.ssrf_guard import install_request_guard
+
+            install_request_guard(page)
+
             resp = None
             try:
                 if not is_safe_url(url):

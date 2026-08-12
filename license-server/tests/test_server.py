@@ -9,6 +9,7 @@ the dashboard's `app` module, and the CLI is exercised as a subprocess.
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -90,6 +91,14 @@ def _get_license(client, install_id="test-install-1", token="tok"):
         "/api/license",
         headers={"Authorization": f"Bearer {token}", "X-Install-ID": install_id},
     )
+
+
+def _get_csrf_token(client):
+    r = client.get("/", auth=("admin", "test-secret"))
+    assert r.status_code == 200
+    m = re.search(r'var CSRF_TOKEN = "([^"]+)"', r.get_data(as_text=True))
+    assert m, "CSRF token not found in dashboard"
+    return m.group(1)
 
 
 def _run_cli(*args):
@@ -283,6 +292,7 @@ class TestWebActions:
         r = client.post(
             "/license/issue",
             data={"install_id": "test-install-1", "plan": "full", "days": "365"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 200
@@ -294,11 +304,21 @@ class TestWebActions:
         assert claims["expires_at"].startswith("2")
         assert r.get_json()["status"] == "ok"
 
+    def test_issue_missing_csrf(self, client):
+        _register(client)
+        r = client.post(
+            "/license/issue",
+            data={"install_id": "test-install-1", "plan": "full", "days": "365"},
+            auth=("admin", "test-secret"),
+        )
+        assert r.status_code == 403
+
     def test_issue_replaces_trial(self, client):
         _register(client)
         r = client.post(
             "/license/issue",
             data={"install_id": "test-install-1", "plan": "trial", "days": "30"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 200
@@ -319,6 +339,7 @@ class TestWebActions:
                 "plan": "full",
                 "expires": "2027-01-15",
             },
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 200
@@ -329,6 +350,7 @@ class TestWebActions:
         r = client.post(
             "/license/issue",
             data={"install_id": "test-install-1", "plan": "bogus", "days": "365"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 400
@@ -338,6 +360,7 @@ class TestWebActions:
         r = client.post(
             "/license/issue",
             data={"install_id": "test-install-1", "plan": "full", "days": "abc"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 400
@@ -346,6 +369,7 @@ class TestWebActions:
         r = client.post(
             "/license/issue",
             data={"install_id": "ghost", "plan": "full", "days": "365"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 404
@@ -359,6 +383,7 @@ class TestWebActions:
         r = client.post(
             "/license/revoke",
             data={"install_id": "test-install-1"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 200
@@ -370,6 +395,7 @@ class TestWebActions:
         r = client.post(
             "/license/revoke",
             data={"install_id": "ghost"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 200
@@ -385,6 +411,7 @@ class TestWebActions:
         r = client.post(
             "/license/delete",
             data={"install_id": "test-install-1"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 200
@@ -404,14 +431,29 @@ class TestWebActions:
         r = client.post(
             "/license/delete",
             data={"install_id": "ghost"},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
             auth=("admin", "test-secret"),
         )
         assert r.status_code == 404
         assert r.get_json()["status"] == "error"
 
     def test_delete_missing_install_id(self, client):
-        r = client.post("/license/delete", data={}, auth=("admin", "test-secret"))
+        r = client.post(
+            "/license/delete",
+            data={},
+            headers={"X-CSRF-Token": _get_csrf_token(client)},
+            auth=("admin", "test-secret"),
+        )
         assert r.status_code == 400
+
+    def test_dashboard_locked_without_password(self, client, monkeypatch):
+        monkeypatch.setattr(ls_app, "ADMIN_PASSWORD", "")
+        r = client.get("/")
+        assert r.status_code == 401
+        r2 = client.post(
+            "/license/revoke", data={"install_id": "x"}, auth=("admin", "whatever")
+        )
+        assert r2.status_code == 401
 
     def test_cli_install_delete(self, client):
         _register(client)

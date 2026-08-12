@@ -18,6 +18,10 @@ class TorNotAvailableError(Exception):
     """Raised when Tor is required but not available in strict mode."""
 
 
+class SSRFBlockedError(Exception):
+    """Raised when a URL or redirect target resolves to a blocked address."""
+
+
 _JITTER_ENABLED: bool | None = None
 _JITTER_MIN: float = 0.5
 _JITTER_MAX: float = 3.0
@@ -431,6 +435,38 @@ def _impersonated_request(
         raise
 
 
+def _safe_fetch(
+    method: str,
+    url: str,
+    kwargs: dict,
+    proxies: dict | None,
+) -> curl_requests.Response:
+    """Fetch following redirects but revalidate each hop against the SSRF guard."""
+    from urllib.parse import urljoin
+
+    from cms.services.ssrf_guard import validate_url
+
+    max_hops = int(kwargs.pop("max_redirects", 10))
+    allow_redirects = bool(kwargs.pop("allow_redirects", True))
+    current = url
+    for _ in range(max_hops + 1):
+        ok, reason = validate_url(current)
+        if not ok:
+            raise SSRFBlockedError(f"{current}: {reason}")
+        kwargs["allow_redirects"] = False
+        resp = _impersonated_request(method, current, kwargs, proxies)
+        is_redirect = getattr(resp, "is_redirect", None)
+        if is_redirect is None:
+            is_redirect = 300 <= resp.status_code < 400
+        location = getattr(resp, "headers", None)
+        location = location.get("Location") if location else None
+        if allow_redirects and is_redirect and isinstance(location, str) and location:
+            current = urljoin(current, location)
+            continue
+        return resp
+    raise SSRFBlockedError(f"too many redirects from {url}")
+
+
 def jittered_get(url: str, **kwargs: Any) -> curl_requests.Response:
     jitter_sleep(domain_hint=url)
     identity = _get_identity()
@@ -439,7 +475,7 @@ def jittered_get(url: str, **kwargs: Any) -> curl_requests.Response:
         kwargs.setdefault("proxies", proxies)
     kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        resp = _impersonated_request("get", url, kwargs, proxies)
+        resp = _safe_fetch("get", url, kwargs, proxies)
         _record_audit(url, "GET", resp.status_code, kwargs)
         return resp
     except TorNotAvailableError:
@@ -464,7 +500,7 @@ def jittered_post(url: str, **kwargs: Any) -> curl_requests.Response:
         kwargs.setdefault("proxies", proxies)
     kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        resp = _impersonated_request("post", url, kwargs, proxies)
+        resp = _safe_fetch("post", url, kwargs, proxies)
         _record_audit(url, "POST", resp.status_code, kwargs)
         return resp
     except TorNotAvailableError:
@@ -489,7 +525,7 @@ def jittered_head(url: str, **kwargs: Any) -> curl_requests.Response:
         kwargs.setdefault("proxies", proxies)
     kwargs.setdefault("impersonate", impersonate_for_domain(url))
     try:
-        resp = _impersonated_request("head", url, kwargs, proxies)
+        resp = _safe_fetch("head", url, kwargs, proxies)
         _record_audit(url, "HEAD", resp.status_code, kwargs)
         return resp
     except TorNotAvailableError:

@@ -154,7 +154,8 @@ class TestLicenseUI:
         assert "Unlimited" in body
         assert "Trial tenant limit" not in body
 
-    def test_banner_shown_when_no_license(self, app):
+    def test_banner_shown_when_no_license(self, app, monkeypatch):
+        monkeypatch.setenv("LICENSE_ENFORCEMENT", "")
         c = self._fresh_admin_client(app)
         r = c.get("/cms/dashboard")
         assert r.status_code == 200
@@ -162,7 +163,8 @@ class TestLicenseUI:
         assert "License" in body
         assert "Trial mode" in body
 
-    def test_banner_shown_for_invalid_license(self, app):
+    def test_banner_shown_for_invalid_license(self, app, monkeypatch):
+        monkeypatch.setenv("LICENSE_ENFORCEMENT", "")
         with app.app_context():
             _set_setting(
                 "license_payload", '{"plan":"trial","expires_at":"2099-01-01"}'

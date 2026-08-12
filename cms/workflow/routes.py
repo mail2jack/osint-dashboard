@@ -1401,8 +1401,15 @@ def add_screenshot(case_id, finding_id):
         notes = request.form.get("notes", "")
         file = request.files.get("file")
         if file and file.filename:
-            ext = os.path.splitext(file.filename)[1] or ".png"
-            stored_name = f"{uuid.uuid4()}{ext}"
+            from cms.image_validation import validate_upload
+
+            ext = (os.path.splitext(file.filename)[1] or ".png").lower().lstrip(".")
+            if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
+                return jsonify({"error": "Only image files are allowed"}), 400
+            is_valid, detected = validate_upload(file, ext)
+            if not is_valid:
+                return jsonify({"error": "File content does not match extension"}), 400
+            stored_name = f"{uuid.uuid4()}.{ext}"
             finding_dir = os.path.join(SCREENSHOT_DIR, finding_id)
             os.makedirs(finding_dir, exist_ok=True)
             dest = os.path.join(finding_dir, stored_name)
@@ -1452,8 +1459,25 @@ def add_screenshot(case_id, finding_id):
 @workflow_bp.route("/uploads/<finding_id>/<filename>")
 @login_required
 def serve_screenshot(finding_id, filename):
+    from werkzeug.utils import secure_filename
+
+    finding = db.session.get(WorkflowFinding, finding_id)
+    if not finding:
+        abort(404)
+    case = db.session.get(WorkflowCase, finding.case_id)
+    if case:
+        ensure_tenant_access(case)
+    else:
+        ss = WorkflowScreenshot.query.filter_by(
+            finding_id=finding_id, tenant_id=current_user.tenant_id
+        ).first()
+        if not ss:
+            abort(404)
+    safe_name = secure_filename(filename)
+    if not safe_name:
+        abort(404)
     finding_dir = os.path.join(SCREENSHOT_DIR, finding_id)
-    return send_from_directory(finding_dir, filename)
+    return send_from_directory(finding_dir, safe_name)
 
 
 # ── Archive / Restore ───────────────────────────────────────────────────────

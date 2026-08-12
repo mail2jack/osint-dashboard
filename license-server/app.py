@@ -24,14 +24,16 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, session
 
 import licensing
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("LICENSE_ADMIN_SECRET") or os.urandom(32).hex()
 
 DB_PATH = os.environ.get(
     "LICENSE_DB_PATH", os.path.join(os.path.dirname(__file__), "data", "license.db")
@@ -264,7 +266,7 @@ def _auth_install(body) -> tuple[str | None, str | None]:
 
 def _basic_auth_ok() -> bool:
     if not ADMIN_PASSWORD:
-        return True
+        return False
     auth = request.authorization
     if not auth:
         return False
@@ -281,6 +283,24 @@ def _basic_auth_guard():
         401,
         {"WWW-Authenticate": 'Basic realm="Iveras License Server"'},
     )
+
+
+def _csrf_token() -> str:
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+def _csrf_guard():
+    expected = session.get("_csrf_token")
+    if not expected:
+        return Response("CSRF token missing", 403)
+    provided = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token")
+    if not provided or not hmac.compare_digest(provided, expected):
+        return Response("CSRF token invalid", 403)
+    return None
 
 
 def _apply_info(body) -> dict:
@@ -425,8 +445,8 @@ def dashboard():
     if guard is not None:
         return guard
     if not ADMIN_PASSWORD:
-        app.logger.warning("ADMIN_PASSWORD not set — dashboard is unauthenticated")
-    return render_template("dashboard.html")
+        app.logger.warning("ADMIN_PASSWORD not set — dashboard is locked down (401)")
+    return render_template("dashboard.html", csrf_token=_csrf_token())
 
 
 @app.route("/api/installs")
@@ -470,6 +490,9 @@ def web_license_issue():
     guard = _basic_auth_guard()
     if guard is not None:
         return guard
+    csrf = _csrf_guard()
+    if csrf is not None:
+        return csrf
     install_id = _clean(request.form.get("install_id"), 100)
     plan = request.form.get("plan")
     if plan not in ("full", "trial"):
@@ -501,6 +524,9 @@ def web_license_revoke():
     guard = _basic_auth_guard()
     if guard is not None:
         return guard
+    csrf = _csrf_guard()
+    if csrf is not None:
+        return csrf
     install_id = _clean(request.form.get("install_id"), 100)
     if not install_id:
         return jsonify({"status": "error", "message": "install_id required"}), 400
@@ -514,6 +540,9 @@ def web_license_delete():
     guard = _basic_auth_guard()
     if guard is not None:
         return guard
+    csrf = _csrf_guard()
+    if csrf is not None:
+        return csrf
     install_id = _clean(request.form.get("install_id"), 100)
     if not install_id:
         return jsonify({"status": "error", "message": "install_id required"}), 400

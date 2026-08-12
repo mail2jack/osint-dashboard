@@ -118,6 +118,7 @@
 <button id="refresh">Refresh</button>
 
 <script>
+  var CSRF_TOKEN = "{{ csrf_token }}";
   function esc(s) {
     if (s === null || s === undefined) return "";
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -163,7 +164,7 @@
   function postAction(url, data) {
     var fd = new FormData();
     Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
-    return fetch(url, { method: "POST", body: fd })
+    return fetch(url, { method: "POST", body: fd, headers: { "X-CSRF-Token": CSRF_TOKEN } })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (b) {
           if (!r.ok) throw new Error(b.message || r.status);

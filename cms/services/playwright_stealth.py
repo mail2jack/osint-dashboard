@@ -59,7 +59,9 @@ def _extract_domain(url: str) -> str:
 
 def _domain_hash(domain: str, salt: str = "") -> int:
     """Deterministic hash for domain-based selection (same across Python runs)."""
-    return int(hashlib.md5((domain + salt).encode()).hexdigest(), 16)
+    return int(
+        hashlib.md5((domain + salt).encode(), usedforsecurity=False).hexdigest(), 16
+    )
 
 
 def _refresh_stealth_config() -> None:

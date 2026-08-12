@@ -2,11 +2,8 @@
 Utility functions for CMS routes.
 """
 
-import ipaddress
 import re
 import logging
-import socket
-from urllib.parse import urlparse
 
 from flask_login import current_user
 
@@ -17,28 +14,9 @@ logger = logging.getLogger(__name__)
 
 def is_safe_url(url_str: str) -> bool:
     """Validate a URL to prevent SSRF attacks: block private/loopback IPs."""
-    parsed = urlparse(url_str)
-    if parsed.scheme not in ("https", "http"):
-        return False
-    host = parsed.hostname
-    try:
-        addr = ipaddress.ip_address(host)
-        if addr.is_private or addr.is_loopback or addr.is_link_local:
-            return False
-    except ValueError:
-        pass
-    try:
-        addrs = socket.getaddrinfo(host, None)
-        for family, type, proto, canonname, sockaddr in addrs:
-            try:
-                addr = ipaddress.ip_address(sockaddr[0])
-                if addr.is_private or addr.is_loopback or addr.is_link_local:
-                    return False
-            except ValueError:
-                continue
-    except (socket.gaierror, OSError):
-        pass
-    return True
+    from cms.services.ssrf_guard import validate_url
+
+    return validate_url(url_str)[0]
 
 
 try:
