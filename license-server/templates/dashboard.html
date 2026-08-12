@@ -139,6 +139,59 @@
   function full(iso) {
     return iso ? new Date(iso).toLocaleString() : "-";
   }
+  function flagEmoji(cc) {
+    if (!cc || cc.length !== 2) return "";
+    return String.fromCodePoint.apply(null, cc.toUpperCase().split("").map(function (c) {
+      return 0x1F1E6 + (c.charCodeAt(0) - 65);
+    }));
+  }
+  function intelBadge(text, color) {
+    return '<span style="border:1px solid ' + color + ';color:' + color +
+      ';border-radius:4px;padding:0 4px;font-size:0.72rem;margin-right:3px;">' + esc(text) + '</span>';
+  }
+  function ipCell(it) {
+    var ip = it.last_ip || it.public_ip || "-";
+    var intel = it.ip_intel || {};
+    var h = '<td class="small">' + esc(ip);
+    var lines = [];
+    var cc = intel.countryCode || intel.country || "";
+    if (cc) {
+      var place = (intel.city || "") + (intel.city && intel.country ? " · " : "") + (intel.country || "");
+      lines.push(flagEmoji(intel.countryCode || "") + " " + (place || cc));
+    }
+    if (intel.isp) lines.push(esc(intel.isp));
+    if (intel.as || intel.asname) {
+      lines.push('<span class="muted">' + esc((intel.as || "") + (intel.asname ? " " + intel.asname : "")) + '</span>');
+    }
+    if (lines.length) h += '<br>' + lines.join('<br>');
+    var badges = "";
+    if (intel.hosting) badges += intelBadge("hosting", "var(--warn)");
+    if (intel.proxy) badges += intelBadge("proxy", "var(--bad)");
+    if (intel.mobile) badges += intelBadge("mobile", "var(--muted)");
+    if (intel.private) badges += intelBadge("private", "var(--muted)");
+    if (badges) h += '<br>' + badges;
+    var rows = [];
+    if (intel.ptr) rows.push('<b>PTR</b> ' + esc(intel.ptr));
+    if (intel.regionName) rows.push('<b>Regio</b> ' + esc(intel.regionName + (intel.postal ? " " + intel.postal : "")));
+    if (intel.lat && intel.lon) rows.push('<b>Coördinaten</b> ' + Number(intel.lat).toFixed(3) + ", " + Number(intel.lon).toFixed(3));
+    if (intel.timezone) rows.push('<b>TZ</b> ' + esc(intel.timezone));
+    if (intel.netname || intel.rdap_handle) {
+      rows.push('<b>RDAP</b> ' + esc((intel.netname || "-") +
+        (intel.rdap_handle ? " (" + intel.rdap_handle + ")" : "") +
+        (intel.startAddress ? " " + intel.startAddress + " – " + intel.endAddress : "")));
+    }
+    if (intel.error) rows.push('<b>Intel</b> ' + esc(intel.error));
+    if (intel.queried_at) rows.push('<b>Intel</b> ' + esc(intel.queried_at));
+    if (it.last_http && it.last_http.ua) rows.push('<b>HTTP</b> ' + esc(it.last_http.ua));
+    if (rows.length) {
+      h += '<details style="margin-top:2px;"><summary class="muted small">intel</summary>' +
+        '<div class="small muted">' + rows.join('<br>') + '</div></details>';
+    }
+    if (it.local_ips && it.local_ips.length) {
+      h += '<br><span class="muted">' + it.local_ips.map(esc).join(", ") + '</span>';
+    }
+    return h + '</td>';
+  }
   function licCell(lic) {
     if (!lic) return '<td class="small">-</td>';
     var status = esc(lic.status || "active");
@@ -254,9 +307,7 @@
             '<td><span class="dot ' + cls + '"></span>' + ago(it.last_seen) + '</td>' +
             '<td class="wrap small">' + esc(it.install_id) + '</td>' +
             '<td>' + esc(it.hostname || "-") + '</td>' +
-            '<td class="small">' + esc(it.public_ip || "-") +
-              (it.local_ips && it.local_ips.length ? '<br><span class="muted">' + it.local_ips.map(esc).join(", ") + '</span>' : "") +
-            '</td>' +
+            ipCell(it) +
             '<td class="small">' + esc(it.os_name || "-") + ' ' + esc(it.os_version || "") +
               '<br><span class="muted">' + esc(it.kernel || "") + '</span></td>' +
             '<td class="small">' + esc(it.cpu_model || "-") +

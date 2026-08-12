@@ -28,6 +28,10 @@ os.environ["LICENSE_ENV"] = "development"  # relax LICENSE_ADMIN_SECRET check in
 sys.path.insert(0, _SERVER_DIR)
 
 import licensing  # noqa: E402
+import ipintel  # noqa: E402
+
+# Keep a reference to the real enrich(); the autouse _no_network fixture replaces it.
+_real_enrich = ipintel.enrich
 
 _spec = importlib.util.spec_from_file_location(
     "ls_server_app", os.path.join(_SERVER_DIR, "app.py")
@@ -53,6 +57,27 @@ def _clean_db():
     with _connect() as conn:
         conn.execute("DELETE FROM installs")
         conn.execute("DELETE FROM licenses")
+        conn.execute("DELETE FROM ip_intel")
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _no_network(monkeypatch):
+    """Never hit external IP services during tests — mock the enrich entrypoint."""
+    monkeypatch.setattr(
+        ipintel,
+        "enrich",
+        lambda conn, ip: {
+            "country": "Netherlands",
+            "countryCode": "NL",
+            "city": "Amsterdam",
+            "isp": "Test-ISP",
+            "as": "AS1234",
+            "asname": "Test-AS",
+            "hosting": True,
+            "source": "mock",
+        },
+    )
     yield
 
 
@@ -497,3 +522,100 @@ class TestWebActions:
         r = _run_cli("install:delete", "--install", "ghost")
         assert r.returncode == 1
         assert "Install not found" in r.stdout
+
+    # ------------------------------------------------------------------
+    # IP intelligence (ipintel)
+    # ------------------------------------------------------------------
+
+    def test_register_stores_ip_intel_and_http(self, client):
+        _register(client)
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT ip_intel, last_http FROM installs WHERE install_id = ?",
+                ("test-install-1",),
+            ).fetchone()
+        intel = json.loads(row["ip_intel"])
+        assert intel["countryCode"] == "NL"
+        assert intel["hosting"] is True
+        assert intel["source"] == "mock"
+        http = json.loads(row["last_http"])
+        assert http["ua"] and isinstance(http["ua"], str)
+        assert http["protocol"] in ("HTTP/1.1", "HTTP/1.0")
+
+    def test_api_installs_exposes_ip_intel(self, client):
+        r = _register(client)
+        assert r.status_code == 200
+        r2 = client.get("/api/installs", auth=("admin", "test-secret"))
+        assert r2.status_code == 200
+        body = r2.get_json()
+        item = next(i for i in body["installs"] if i["install_id"] == "test-install-1")
+        assert item["last_ip"] == "127.0.0.1"
+        assert item["ip_intel"]["countryCode"] == "NL"
+        assert item["last_http"]["ua"]
+
+    def test_register_intel_failure_does_not_break_license(self, client, monkeypatch):
+        def _boom(conn, ip):
+            raise RuntimeError("geo service down")
+
+        monkeypatch.setattr(ipintel, "enrich", _boom)
+        r = _register(client)
+        assert r.status_code == 200
+        assert r.get_json()["registered"] is True
+        lic = _get_license(client).get_json()["license"]
+        assert lic is not None and lic["status"] == "active"
+
+    def test_ipintel_private_skips_external_lookup(self, monkeypatch):
+        monkeypatch.setattr(ipintel, "enrich", _real_enrich)
+        monkeypatch.setattr(
+            ipintel,
+            "_lookup_ptr",
+            lambda ip: pytest.fail("PTR must not run for private IP"),
+        )
+        monkeypatch.setattr(
+            ipintel,
+            "_lookup_rdap",
+            lambda ip: pytest.fail("RDAP must not run for private IP"),
+        )
+        monkeypatch.setattr(
+            ipintel,
+            "_lookup_ipapi",
+            lambda ip: pytest.fail("ip-api must not run for private IP"),
+        )
+        with _connect() as conn:
+            data = _real_enrich(conn, "192.168.1.50")
+        assert data["private"] is True
+
+    def test_ipintel_caches_per_ip(self, monkeypatch):
+        monkeypatch.setattr(ipintel, "enrich", _real_enrich)
+        calls = {"n": 0}
+
+        def fake_ptr(ip):
+            calls["n"] += 1
+            return "host.example.test"
+
+        monkeypatch.setattr(ipintel, "_lookup_ptr", fake_ptr)
+        monkeypatch.setattr(
+            ipintel, "_lookup_rdap", lambda ip: {"netname": "EXAMPLE-NET"}
+        )
+        monkeypatch.setattr(
+            ipintel,
+            "_lookup_ipapi",
+            lambda ip: {"countryCode": "NL", "source": "ip-api"},
+        )
+        with _connect() as conn:
+            first = _real_enrich(conn, "8.8.8.8")
+            second = _real_enrich(conn, "8.8.8.8")
+        assert calls["n"] == 1
+        assert first == second
+        assert first["ptr"] == "host.example.test"
+
+    def test_ipintel_failure_caches_negative(self, monkeypatch):
+        monkeypatch.setattr(ipintel, "enrich", _real_enrich)
+        monkeypatch.setattr(ipintel, "_lookup_ptr", lambda ip: None)
+        monkeypatch.setattr(ipintel, "_lookup_rdap", lambda ip: {})
+        monkeypatch.setattr(ipintel, "_lookup_ipapi", lambda ip: {})
+        with _connect() as conn:
+            first = _real_enrich(conn, "9.9.9.9")
+            second = _real_enrich(conn, "9.9.9.9")
+        assert "error" in first
+        assert first == second

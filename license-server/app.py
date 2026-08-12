@@ -32,6 +32,7 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Flask, Response, jsonify, render_template, request, session
 
+import ipintel
 import licensing
 
 app = Flask(__name__)
@@ -68,6 +69,13 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _ensure_column(conn, table: str, column: str, decl: str) -> None:
+    """Add a column if it does not exist yet (CREATE TABLE IF NOT EXISTS cannot)."""
+    cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+
+
 def _init_db() -> None:
     with _connect() as conn:
         conn.execute(
@@ -89,7 +97,9 @@ def _init_db() -> None:
                 platform        TEXT,
                 registered_at   TEXT,
                 last_seen       TEXT,
-                last_ip         TEXT
+                last_ip         TEXT,
+                ip_intel        TEXT,
+                last_http       TEXT
             )
             """
         )
@@ -107,6 +117,19 @@ def _init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ip_intel (
+                ip           TEXT PRIMARY KEY,
+                data         TEXT NOT NULL,
+                queried_at   REAL NOT NULL,
+                ttl_seconds  REAL NOT NULL
+            )
+            """
+        )
+        # Migrate pre-existing installs tables (CREATE TABLE IF NOT EXISTS never alters).
+        _ensure_column(conn, "installs", "ip_intel", "TEXT")
+        _ensure_column(conn, "installs", "last_http", "TEXT")
 
 
 def _token_hash(token: str) -> str:
@@ -123,6 +146,8 @@ def _clean(value, max_len=MAX_TEXT):
 def _row_to_dict(row) -> dict:
     if row is None:
         return None
+    intel = row["ip_intel"]
+    http = row["last_http"]
     return {
         "install_id": row["install_id"],
         "hostname": row["hostname"],
@@ -140,6 +165,8 @@ def _row_to_dict(row) -> dict:
         "registered_at": row["registered_at"],
         "last_seen": row["last_seen"],
         "last_ip": row["last_ip"],
+        "ip_intel": json.loads(intel) if intel else None,
+        "last_http": json.loads(http) if http else None,
     }
 
 
@@ -339,15 +366,48 @@ def _apply_info(body) -> dict:
     return {key: value for key, value in fields.items() if value is not None}
 
 
+def _client_ip() -> str:
+    """Real client IP: first X-Forwarded-For entry or the socket peer address.
+
+    The server only listens on 127.0.0.1 behind nginx, which appends the real
+    client IP to X-Forwarded-For.
+    """
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        first = xff.split(",")[0].strip()
+        if first:
+            return _clean(first, 64)
+    return _clean(request.remote_addr, 64)
+
+
+def _http_metadata() -> str | None:
+    """Compact JSON snapshot of the request metadata we do not store elsewhere."""
+    snapshot = {
+        "ua": _clean(request.headers.get("User-Agent"), 300),
+        "accept_language": _clean(request.headers.get("Accept-Language"), 200),
+        "protocol": request.environ.get("SERVER_PROTOCOL") or "http/1.1",
+    }
+    snapshot = {key: value for key, value in snapshot.items() if value}
+    if not snapshot:
+        return None
+    return json.dumps(snapshot, separators=(",", ":"))
+
+
 def _update_install(conn, install_id, token_hash, fields, is_new):
     now = _now()
-    client_ip = (
-        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-        or request.remote_addr
-    )
+    client_ip = _client_ip()
+    try:
+        ip_intel = ipintel.enrich(conn, client_ip)
+    except Exception:
+        app.logger.warning(
+            "IP-enrichment lookup failed for %s", client_ip, exc_info=True
+        )
+        ip_intel = {}
     data = dict(fields)
     data["last_seen"] = now
     data["last_ip"] = _clean(client_ip, 64)
+    data["ip_intel"] = json.dumps(ip_intel, separators=(",", ":"))
+    data["last_http"] = _http_metadata()
     if is_new:
         data["registered_at"] = now
         data["token_hash"] = token_hash

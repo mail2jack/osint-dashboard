@@ -29,6 +29,40 @@ alleen een SHA-256 hash van het token op. Bij een onbekend install_id + geldige
 token registreert de server de install opnieuw (idempotent). Verkeerde token →
 `403`.
 
+## IP-intelligentie (`ipintel.py`)
+
+Bij elke register/telemetry slaat de server bovenop de client-informatie het
+**echte verbindings-IP** op (`X-Forwarded-For`-eerste of socket-peer) en verrijkt
+dat best-effort — alles is gecached per IP zodat herhaalde heartbeats gratis
+zijn en een falende lookup nooit register/license-uitgifte blokkeert.
+
+| Tier | Bron | Data per IP |
+|---|---|---|
+| 0 | HTTP-request zelf | User-Agent, Accept-Language, HTTP-versie, tijdstip |
+| 1 | PTR (`socket`) | reverse-DNS hostname (b.v. `…clients.your-server.de` = datacenter) |
+| 2 | RDAP (`rdap.org`) | netname, AS-organisatie, land, CIDR, rdap-handle |
+| 3 | ip-api.com | land/regio/stad, lat/lon, timezone, ISP, ASN, `proxy`/`hosting`/`mobile`-vlaggen |
+
+Opslag in nieuwe kolommen `ip_intel` (JSON) en `last_http` (JSON) op `installs`
++ cache-tabel `ip_intel` (additieve `ALTER TABLE`-migratie voor bestaande DB's).
+Het dashboard toont per install een IP-cel met vlag, stad/land, ISP, ASN en
+badges voor hosting/proxy/mobile, uitklapbaar naar PTR/RDAP/coördinaten/HTTP.
+
+Omgevingsvariabelen (optioneel, in `/opt/license-server/.env`):
+
+```bash
+LICENSE_GEO_SOURCE=ip-api          # "ip-api" (default) | "off" — tier 3 uitschakelen
+LICENSE_GEO_TIMEOUT=4              # seconden per externe call
+LICENSE_GEO_TTL_DAYS=30            # cache-TTL succesvolle lookups
+LICENSE_GEO_NEGATIVE_TTL=3600      # cache-TTL gefaalde lookups (sec)
+```
+
+> **Privacy**: tier 3 stuurt het klant-IP naar ip-api.com (gratis laag, alleen
+> HTTP, geen key). Wil je géén derde partij, zet dan `LICENSE_GEO_SOURCE=off`
+> (PTR + RDAP blijven, volledig offline). Vermeld dit kort in je EULA/privacy —
+> het is standaard fraudepreventie ter bescherming van je licenties
+> (gerechtvaardigd belang).
+
 ## Licenties (fase 2, Ed25519)
 
 Elke install krijgt automatisch een **trial-licentie** (default 30 dagen, env
