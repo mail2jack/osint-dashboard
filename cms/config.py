@@ -84,15 +84,17 @@ class ProductionConfig(Config):
     SESSION_COOKIE_SAMESITE = "Strict"
     WTF_CSRF_ENABLED = True
 
-    DB_SSL_MODE = os.environ.get("DB_SSL_MODE", "require")
+    # Hard TLS floor: never weaker than "require", even if DB_SSL_MODE env is set.
+    _ALLOWED_SSL_MODES = {"require", "verify-ca", "verify-full"}
+    DB_SSL_MODE = "require"
 
-    # Engine must also enforce the SSL mode above (base Config reads env at import)
+    # Engine must also enforce the SSL mode above
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_size": 10,
         "max_overflow": 20,
         "pool_recycle": 3600,
         "pool_pre_ping": True,
-        "connect_args": {"sslmode": os.environ.get("DB_SSL_MODE", "require")},
+        "connect_args": {"sslmode": "require"},
     }
 
     # Encryption key is REQUIRED in production
@@ -120,6 +122,14 @@ class ProductionConfig(Config):
             raise ValueError(
                 "DATABASE_URL must be a PostgreSQL URL in production. "
                 "SQLite disables multi-tenant RLS isolation."
+            )
+        # DB_SSL_MODE may only strengthen the TLS floor, never weaken it
+        env_ssl = os.environ.get("DB_SSL_MODE", "").strip()
+        if env_ssl and env_ssl not in ProductionConfig._ALLOWED_SSL_MODES:
+            raise ValueError(
+                f"DB_SSL_MODE={env_ssl!r} is not allowed in production. "
+                f"Allowed values: {sorted(ProductionConfig._ALLOWED_SSL_MODES)}. "
+                "TLS is hard-required ('require') and cannot be downgraded."
             )
 
 

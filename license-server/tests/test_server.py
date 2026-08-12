@@ -23,6 +23,7 @@ os.environ["LICENSE_DB_PATH"] = os.path.join(_tmp_dir, "license.db")
 os.environ["LICENSE_KEY_PATH"] = os.path.join(_tmp_dir, "private.pem")
 os.environ["ADMIN_USER"] = "admin"
 os.environ["ADMIN_PASSWORD"] = "test-secret"
+os.environ["LICENSE_ENV"] = "development"  # relax LICENSE_ADMIN_SECRET check in tests
 
 sys.path.insert(0, _SERVER_DIR)
 
@@ -116,6 +117,31 @@ class TestHealth:
         assert r.status_code == 200
         assert r.get_json()["status"] == "ok"
         assert r.get_json()["time"].endswith("Z")
+
+
+class TestProductionSecret:
+    def _import_app(self, env):
+        return subprocess.run(
+            [sys.executable, "-c", "import app"],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=_SERVER_DIR,
+        )
+
+    def test_production_requires_admin_secret(self):
+        env = {k: v for k, v in os.environ.items() if k != "LICENSE_ADMIN_SECRET"}
+        env["LICENSE_ENV"] = "production"
+        r = self._import_app(env)
+        assert r.returncode != 0
+        assert "LICENSE_ADMIN_SECRET" in r.stderr
+
+    def test_production_with_secret_boots(self):
+        env = dict(os.environ)
+        env["LICENSE_ENV"] = "production"
+        env["LICENSE_ADMIN_SECRET"] = "x" * 64
+        r = self._import_app(env)
+        assert r.returncode == 0, r.stderr
 
 
 class TestRegister:

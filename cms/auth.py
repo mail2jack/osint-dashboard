@@ -410,6 +410,30 @@ def ensure_tenant_access(entity) -> None:
         abort(403)
 
 
+def ensure_case_access(case) -> None:
+    """Abort with 403 if user lacks tenant OR case-level access to a case.
+
+    Replicates the logic of ``case_access_required`` for routes that fetch the
+    case object themselves (e.g. the workflow module).
+    """
+    ensure_tenant_access(case)
+    if not current_user.can_access_case(case):
+        logger.warning(
+            f"Case access denied: User {current_user.username} "
+            f"attempted to access case {getattr(case, 'id', 'unknown')}"
+        )
+        AuditLog.log(
+            user_id=current_user.id,
+            action="case_access_denied",
+            entity_type="case",
+            entity_id=getattr(case, "id", None),
+            ip_address=request.remote_addr,
+            description="Workflow case access denied",
+        )
+        db.session.commit()
+        abort(403)
+
+
 def subject_access_required(f: Callable) -> Callable:
     """
     Decorator to check subject-level access.

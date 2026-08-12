@@ -14,10 +14,12 @@ Storage: SQLite via the stdlib sqlite3 module. Dependencies: Flask + gunicorn.
 Licenses: Ed25519-signed claims; issue/revoke via `cli.py`.
 
 Runtime config (env vars):
-    LICENSE_DB_PATH     sqlite file path (default ./data/license.db)
-    ADMIN_USER          basic-auth user for the dashboard
-    ADMIN_PASSWORD      basic-auth password for the dashboard
-    TRIAL_DAYS          trial license length in days for new installs (default 30)
+    LICENSE_ENV          development | production (default development)
+    LICENSE_ADMIN_SECRET REQUIRED in production — Flask session/CSRF secret
+    LICENSE_DB_PATH      sqlite file path (default ./data/license.db)
+    ADMIN_USER           basic-auth user for the dashboard
+    ADMIN_PASSWORD       basic-auth password for the dashboard
+    TRIAL_DAYS           trial license length in days for new installs (default 30)
 """
 
 import hashlib
@@ -33,7 +35,17 @@ from flask import Flask, Response, jsonify, render_template, request, session
 import licensing
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("LICENSE_ADMIN_SECRET") or os.urandom(32).hex()
+LICENSE_ENV = os.environ.get("LICENSE_ENV", "development")
+app.secret_key = os.environ.get("LICENSE_ADMIN_SECRET")
+if LICENSE_ENV == "production":
+    if not app.secret_key:
+        raise RuntimeError(
+            "LICENSE_ADMIN_SECRET is REQUIRED in production (LICENSE_ENV=production). "
+            'Generate with: python -c "import secrets; print(secrets.token_hex(32))"'
+        )
+if not app.secret_key:
+    # Dev/test only: random fallback (sessions/CSRF are lost on restart).
+    app.secret_key = os.urandom(32).hex()
 
 DB_PATH = os.environ.get(
     "LICENSE_DB_PATH", os.path.join(os.path.dirname(__file__), "data", "license.db")

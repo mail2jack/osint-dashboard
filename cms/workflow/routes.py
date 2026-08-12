@@ -19,7 +19,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from cms.models import db, UserRole, AuditLog
-from cms.auth import ensure_tenant_access
+from cms.auth import ensure_case_access, ensure_tenant_access
 from cms.routes.utils import normalize_phone, normalize_postcode
 from . import workflow_bp
 from .models import (
@@ -503,7 +503,7 @@ def case_detail(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
-    ensure_tenant_access(case)
+    ensure_case_access(case)
     show_archived = request.args.get("show_archived") == "1"
     actions = (
         WorkflowResearchAction.query.filter_by(case_id=case_id)
@@ -606,7 +606,7 @@ def case_edit(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
-    ensure_tenant_access(case)
+    ensure_case_access(case)
 
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     if client:
@@ -813,7 +813,7 @@ def run_action(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Case not found"}), 404
-    ensure_tenant_access(case)
+    ensure_case_access(case)
 
     body = request.get_json(silent=True) or {}
     action_type = body.get("action_type", "")
@@ -861,7 +861,7 @@ def photo_analysis_upload(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Case not found"}), 404
-    ensure_tenant_access(case)
+    ensure_case_access(case)
 
     photo = request.files.get("photo")
     if not photo:
@@ -932,7 +932,7 @@ def create_manual_finding(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Case not found"}), 404
-    ensure_tenant_access(case)
+    ensure_case_access(case)
 
     body = request.get_json(silent=True) or {}
     title = (body.get("title") or "").strip()
@@ -978,7 +978,7 @@ def case_status(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Not found"}), 404
-    ensure_tenant_access(case)
+    ensure_case_access(case)
 
     actions = WorkflowResearchAction.query.filter_by(case_id=case_id).all()
     findings = (
@@ -1069,7 +1069,7 @@ def delete_case(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Not found"}), 404
-    ensure_tenant_access(case)
+    ensure_case_access(case)
     case.soft_delete()
     AuditLog.log(
         user_id=current_user.id,
@@ -1090,7 +1090,7 @@ def pv_view(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
-    ensure_tenant_access(case)
+    ensure_case_access(case)
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
     findings = (
@@ -1157,7 +1157,7 @@ def pv_regenerate(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
-    ensure_tenant_access(case)
+    ensure_case_access(case)
 
     findings = (
         case.findings.filter_by(is_deleted=False, archived_at=None)
@@ -1223,7 +1223,7 @@ def pv_edit(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         abort(404)
-    ensure_tenant_access(case)
+    ensure_case_access(case)
 
     if request.method == "POST":
         was_empty = not case.pv_body
@@ -1258,7 +1258,7 @@ def delete_finding(case_id, finding_id):
         return jsonify({"error": "Not found"}), 404
     case = db.session.get(WorkflowCase, case_id)
     if case:
-        ensure_tenant_access(case)
+        ensure_case_access(case)
     finding.soft_delete()
     AuditLog.log(
         user_id=current_user.id,
@@ -1279,7 +1279,7 @@ def batch_delete_findings(case_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Case not found"}), 404
-    ensure_tenant_access(case)
+    ensure_case_access(case)
     body = request.get_json(silent=True) or {}
     ids = body.get("ids", [])
     if not ids or not isinstance(ids, list):
@@ -1310,7 +1310,7 @@ def verify_finding(case_id, finding_id):
         return jsonify({"error": "Not found"}), 404
     case = db.session.get(WorkflowCase, case_id)
     if case:
-        ensure_tenant_access(case)
+        ensure_case_access(case)
     body = request.get_json(silent=True) or {}
     new_val = body.get("verified", not finding.verified)
     finding.verified = new_val
@@ -1337,7 +1337,7 @@ def save_comment(case_id, finding_id):
         return jsonify({"error": "Not found"}), 404
     case = db.session.get(WorkflowCase, case_id)
     if case:
-        ensure_tenant_access(case)
+        ensure_case_access(case)
     body = request.get_json(silent=True) or {}
     new_comment = body.get("comment", "")
     finding.comment = new_comment
@@ -1360,7 +1360,7 @@ def cancel_action_api(case_id, action_id):
     case = db.session.get(WorkflowCase, case_id)
     if not case:
         return jsonify({"error": "Not found"}), 404
-    ensure_tenant_access(case)
+    ensure_case_access(case)
     action = db.session.get(WorkflowResearchAction, action_id)
     if not action or action.case_id != case_id:
         return jsonify({"error": "Not found"}), 404
@@ -1389,7 +1389,7 @@ def add_screenshot(case_id, finding_id):
         return jsonify({"error": "Not found"}), 404
     case = db.session.get(WorkflowCase, case_id)
     if case:
-        ensure_tenant_access(case)
+        ensure_case_access(case)
 
     url = ""
     source_url = ""
@@ -1466,7 +1466,7 @@ def serve_screenshot(finding_id, filename):
         abort(404)
     case = db.session.get(WorkflowCase, finding.case_id)
     if case:
-        ensure_tenant_access(case)
+        ensure_case_access(case)
     else:
         ss = WorkflowScreenshot.query.filter_by(
             finding_id=finding_id, tenant_id=current_user.tenant_id
@@ -1490,7 +1490,11 @@ def archive_action(action_id):
     from cms.models import ResearchAction, Finding, ActionFinding, db
 
     action = db.session.get(ResearchAction, action_id) or abort(404)
-    ensure_tenant_access(action)
+    case = db.session.get(WorkflowCase, action.case_id)
+    if case:
+        ensure_case_access(case)
+    else:
+        ensure_tenant_access(action)
     now = datetime.now(timezone.utc)
     action.archived_at = now
     AuditLog.log(
@@ -1524,7 +1528,11 @@ def restore_action(action_id):
     from cms.models import ResearchAction, Finding, ActionFinding, db
 
     action = db.session.get(ResearchAction, action_id) or abort(404)
-    ensure_tenant_access(action)
+    case = db.session.get(WorkflowCase, action.case_id)
+    if case:
+        ensure_case_access(case)
+    else:
+        ensure_tenant_access(action)
     AuditLog.log(
         user_id=current_user.id,
         action="restore",
@@ -1557,7 +1565,11 @@ def archive_finding(finding_id):
     from cms.models import Finding, db
 
     finding = db.session.get(Finding, finding_id) or abort(404)
-    ensure_tenant_access(finding)
+    case = db.session.get(WorkflowCase, finding.case_id)
+    if case:
+        ensure_case_access(case)
+    else:
+        ensure_tenant_access(finding)
     finding.archived_at = datetime.now(timezone.utc)
     AuditLog.log(
         user_id=current_user.id,
@@ -1583,7 +1595,11 @@ def restore_finding(finding_id):
     from cms.models import Finding, db
 
     finding = db.session.get(Finding, finding_id) or abort(404)
-    ensure_tenant_access(finding)
+    case = db.session.get(WorkflowCase, finding.case_id)
+    if case:
+        ensure_case_access(case)
+    else:
+        ensure_tenant_access(finding)
     finding.archived_at = None
     AuditLog.log(
         user_id=current_user.id,

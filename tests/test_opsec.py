@@ -864,3 +864,42 @@ def test_get_config_production_maps_to_production_config(app):
     from cms.config import ProductionConfig, get_config
 
     assert get_config("production") is ProductionConfig
+
+
+def test_production_config_tls_floor_is_require(app):
+    """Production TLS mode is hard-required and never read from env."""
+    from cms.config import ProductionConfig
+
+    assert ProductionConfig.DB_SSL_MODE == "require"
+    assert (
+        ProductionConfig.SQLALCHEMY_ENGINE_OPTIONS["connect_args"]["sslmode"]
+        == "require"
+    )
+
+
+def test_production_config_rejects_weaker_db_ssl_mode(app, monkeypatch):
+    from cms.config import ProductionConfig
+
+    fake = _FakeProdApp(
+        CMS_ENCRYPTION_KEY="x",
+        SECRET_KEY="y",
+        SQLALCHEMY_DATABASE_URI="postgresql://u:p@h/db",
+    )
+    monkeypatch.setenv("DB_SSL_MODE", "prefer")
+    with pytest.raises(ValueError, match="DB_SSL_MODE"):
+        ProductionConfig.init_app(fake)
+    monkeypatch.setenv("DB_SSL_MODE", "disable")
+    with pytest.raises(ValueError, match="DB_SSL_MODE"):
+        ProductionConfig.init_app(fake)
+
+
+def test_production_config_accepts_stronger_db_ssl_mode(app, monkeypatch):
+    from cms.config import ProductionConfig
+
+    fake = _FakeProdApp(
+        CMS_ENCRYPTION_KEY="x",
+        SECRET_KEY="y",
+        SQLALCHEMY_DATABASE_URI="postgresql://u:p@h/db",
+    )
+    monkeypatch.setenv("DB_SSL_MODE", "verify-full")
+    ProductionConfig.init_app(fake)  # must not raise

@@ -82,6 +82,114 @@ class TestWorkflowAccessControl:
         assert resp.status_code == 200
 
 
+class TestWorkflowCaseLevelAccess:
+    """Workflow routes must enforce case-level access, not just tenant."""
+
+    def _create_case(self, auth_client):
+        resp = auth_client.post(
+            "/cms/workflow/case/new",
+            data={
+                "client_name": "Access Client",
+                "title": "Restricted Workflow Case",
+                "subject_0_name": "Test Person",
+                "subject_0_type": "person",
+                "priority": "medium",
+            },
+        )
+        assert resp.status_code in (200, 302)
+        return Case.query.filter_by(title="Restricted Workflow Case").first()
+
+    def _make_investigator(self, username=None):
+        import uuid
+
+        from cms.models import User
+
+        if username is None:
+            username = f"inv_{uuid.uuid4().hex[:10]}"
+        user = User(
+            username=username,
+            email=f"{username}@localhost",
+            full_name=username,
+            role="investigator",
+            is_active=True,
+        )
+        user.set_password("Test1234!")
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+    def _login_as(self, client, user):
+        with client.session_transaction() as sess:
+            sess["_user_id"] = str(user.id)
+            sess["_fresh"] = True
+            sess["_remember"] = "set"
+        return client
+
+    def test_case_detail_403_for_unassigned_investigator(self, app, auth_client):
+        case = self._create_case(auth_client)
+        user = self._make_investigator()
+        client = self._login_as(app.test_client(), user)
+        resp = client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 403
+
+    def test_assigned_investigator_can_access_case(self, app, auth_client):
+        case = self._create_case(auth_client)
+        user = self._make_investigator()
+        case.investigators.append(user)
+        db.session.commit()
+        client = self._login_as(app.test_client(), user)
+        resp = client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200
+
+    def test_archive_action_403_for_unassigned_investigator(self, app, auth_client):
+        case = self._create_case(auth_client)
+        action = ResearchAction(
+            case_id=case.id, action_type="manual", label="Access Test Action"
+        )
+        db.session.add(action)
+        db.session.commit()
+        user = self._make_investigator()
+        client = self._login_as(app.test_client(), user)
+        resp = client.post(f"/cms/workflow/api/actions/{action.id}/archive")
+        assert resp.status_code == 403
+        db.session.refresh(action)
+        assert action.archived_at is None
+
+    def test_archive_finding_403_for_unassigned_investigator(self, app, auth_client):
+        case = self._create_case(auth_client)
+        finding = Finding(
+            case_id=case.id,
+            title="Restricted Finding",
+            content="content",
+            created_by=case.created_by,
+        )
+        db.session.add(finding)
+        db.session.commit()
+        user = self._make_investigator()
+        client = self._login_as(app.test_client(), user)
+        resp = client.post(f"/cms/workflow/api/findings/{finding.id}/archive")
+        assert resp.status_code == 403
+        db.session.refresh(finding)
+        assert finding.archived_at is None
+
+    def test_archive_action_denied_logged_in_audit_log(self, app, auth_client):
+        from cms.models import AuditLog
+
+        case = self._create_case(auth_client)
+        action = ResearchAction(
+            case_id=case.id, action_type="manual", label="Access Test Action"
+        )
+        db.session.add(action)
+        db.session.commit()
+        user = self._make_investigator()
+        client = self._login_as(app.test_client(), user)
+        resp = client.post(f"/cms/workflow/api/actions/{action.id}/archive")
+        assert resp.status_code == 403
+        entry = AuditLog.query.filter_by(action="case_access_denied").first()
+        assert entry is not None
+        assert entry.entity_id == case.id
+
+
 class TestCaseCrud:
     def test_create_case_get(self, auth_client, db_session):
         resp = auth_client.get("/cms/workflow/case/new")

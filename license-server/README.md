@@ -5,6 +5,11 @@ OSINT Dashboard installs: registratie bij install + dagelijkse heartbeat met
 systeeminfo, plus Ed25519-ondertekende licenties die de app offline kan
 verifiëren. Fase 3 voegt Stripe-betalingen toe.
 
+> **Productie**: zet `LICENSE_ENV=production` en een vaste
+> `LICENSE_ADMIN_SECRET` in `/opt/license-server/.env`. Zonder die secret weigert
+> de server te starten (fail-fast); de random fallback is alleen voor dev/tests
+> en maakt sessies/CSRF ongeldig bij elke herstart.
+
 ## Endpoints
 
 | Method | Path             | Auth                  | Doel                                  |
@@ -101,6 +106,8 @@ sudo -u license python3 -m venv /opt/license-server/venv
 sudo -u license /opt/license-server/venv/bin/pip install -r /opt/license-server/requirements.txt
 
 sudo tee /opt/license-server/.env > /dev/null <<EOF
+LICENSE_ENV=production
+LICENSE_ADMIN_SECRET=$(openssl rand -hex 32)
 ADMIN_USER=admin
 ADMIN_PASSWORD=$(openssl rand -hex 24)
 EOF
