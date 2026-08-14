@@ -36,6 +36,10 @@ controleert de actieve purge-timer en draait eenmaal `privacy:purge`.
 
 De uitrol stopt bij fouten. Er is geen automatische rollback. Het JSON-rapport
 staat in `/opt/osint-dashboard/reports/rollout/` en bevat geen secrets.
+Na afloop verstuurt het script een korte mail vanaf `server@iveras.com` naar
+`ROLLOUT_ALERT_EMAIL` (standaard `server@iveras.com`). Alleen status, commit SHA
+en rapportpad worden gemaild. Zet `ROLLOUT_REQUIRE_EMAIL=true` wanneer een
+uitrol ook moet falen als de mail niet kan worden verzonden.
 
 ## Bij Problemen
 
