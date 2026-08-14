@@ -2,8 +2,8 @@
 
 Dit is een eenmalige setup. Het script maakt twee aparte PostgreSQL-accounts:
 
-- `iveras_dr`: mag tijdelijke databases maken, maar heeft geen productie-
-  tabelrechten en geen `BYPASSRLS`.
+- `iveras_dr`: mag tijdelijke databases maken en gebruikt `BYPASSRLS` alleen
+  voor de geïsoleerde restore; het account heeft geen productie-tabelrechten.
 - `iveras_snapshot`: read-only snapshotaccount met `BYPASSRLS`, zodat alle
   tenantdata gelezen kan worden voor de before/after-controle.
 
