@@ -15,6 +15,10 @@ BACKUP_ID="unknown"
 ERRORS=0
 REPORT_WRITTEN=false
 CREATED_DB=""
+PYTHON="${DR_PYTHON:-$SCRIPT_DIR/venv/bin/python3}"
+if [ ! -x "$PYTHON" ]; then
+    PYTHON=python3
+fi
 
 record() {
     local name="$1"
@@ -42,7 +46,7 @@ finish() {
     if [ -n "$CREATED_DB" ] && {
         [ -n "${DR_VERIFY_DATABASE_URL:-}" ] || [ -n "${PGSERVICE:-}" ] || [ -n "${PGHOST:-}" ];
     }; then
-        python3 "$SCRIPT_DIR/scripts/dr_postgres.py" drop \
+        "$PYTHON" "$SCRIPT_DIR/scripts/dr_postgres.py" drop \
             --database "$CREATED_DB" \
             >/dev/null 2>&1 || true
     fi
@@ -125,13 +129,13 @@ if [ -z "$DR_VERIFY_DATABASE_URL" ] && [ -z "${PGSERVICE:-}" ] && [ -z "${PGHOST
     record database_restore fail "DR_VERIFY_DATABASE_URL or libpq connection settings are not configured"
 else
     CREATED_DB="iveras_dr_${TIMESTAMP//[^A-Za-z0-9_]/}_${RANDOM}"
-    if ! python3 "$SCRIPT_DIR/scripts/dr_postgres.py" create \
+    if ! "$PYTHON" "$SCRIPT_DIR/scripts/dr_postgres.py" create \
         --database "$CREATED_DB" \
         >/dev/null 2>&1; then
         record database_restore fail "isolated PostgreSQL database could not be created"
         exit 2
     fi
-    if ! python3 "$SCRIPT_DIR/scripts/dr_postgres.py" restore \
+    if ! "$PYTHON" "$SCRIPT_DIR/scripts/dr_postgres.py" restore \
         --database "$CREATED_DB" --sql-file "$WORK_DIR/database.sql" \
         >/dev/null 2>"$WORK_DIR/restore.err"; then
         record database_restore fail "database dump could not be restored"
@@ -140,7 +144,7 @@ else
     record database_restore pass "restored to isolated database"
 
     query_count() {
-        python3 "$SCRIPT_DIR/scripts/dr_postgres.py" query --database "$CREATED_DB" \
+        "$PYTHON" "$SCRIPT_DIR/scripts/dr_postgres.py" query --database "$CREATED_DB" \
             --sql "SELECT count(*) FROM $1" 2>/dev/null
     }
     TENANTS_COUNT="$(query_count tenants || true)"
@@ -154,7 +158,7 @@ else
         COUNTS_JSON='{}'
     fi
 
-    MIGRATION_VERSION="$(python3 "$SCRIPT_DIR/scripts/dr_postgres.py" query \
+    MIGRATION_VERSION="$("$PYTHON" "$SCRIPT_DIR/scripts/dr_postgres.py" query \
         --database "$CREATED_DB" --sql \
         "SELECT version_num FROM alembic_version LIMIT 1" 2>/dev/null || true)"
     EXPECTED_HEAD="${DR_EXPECTED_ALEMBIC_HEAD:-}"
@@ -181,7 +185,7 @@ PY
         export CMS_ENCRYPTION_KEY
     fi
     ENCRYPTED_CHECK="$(CMS_ENCRYPTION_KEY="${CMS_ENCRYPTION_KEY:-}" \
-        python3 "$SCRIPT_DIR/scripts/dr_postgres.py" encrypted-check \
+        "$PYTHON" "$SCRIPT_DIR/scripts/dr_postgres.py" encrypted-check \
         --database "$CREATED_DB" 2>/dev/null || true)"
     if [[ "$ENCRYPTED_CHECK" == *'"status": "pass"'* ]]; then
         record encrypted_fields pass "$ENCRYPTED_CHECK"

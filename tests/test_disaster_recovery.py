@@ -81,6 +81,7 @@ def test_verifier_does_not_restore_to_production():
     assert "UPLOAD_ENTRY=" in source
     assert 'tar tzf "$EXTRACT_DIR/uploads.tar.gz"' in source
     assert "!~ /\\/$/" in source
+    assert "venv/bin/python3" in source
     assert "restore.sh" not in source
 
 
