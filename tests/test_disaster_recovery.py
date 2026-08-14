@@ -110,6 +110,7 @@ def test_production_gate_requires_second_operator_and_compares_state():
     assert "production-after.json" in source
     assert "same_uploads" in source
     assert "no_temporary_database" in source
+    assert "venv/bin/python3" in source
 
 
 def test_production_pgreservice_uses_service_database(monkeypatch):

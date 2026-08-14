@@ -5,6 +5,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 EVIDENCE_DIR="${DR_DRILL_EVIDENCE_DIR:-$SCRIPT_DIR/reports/dr-drill}"
+PYTHON="${DR_PYTHON:-$SCRIPT_DIR/venv/bin/python3}"
+if [ ! -x "$PYTHON" ]; then
+    PYTHON=python3
+fi
 
 usage() {
     cat <<'EOF'
@@ -35,7 +39,7 @@ mkdir -p "$EVIDENCE_DIR"
 case "$PHASE" in
     before|after)
         [ -n "$OPERATOR" ] || { printf 'Operator is required.\n' >&2; exit 2; }
-        python3 "$SCRIPT_DIR/scripts/dr_production_snapshot.py" \
+        "$PYTHON" "$SCRIPT_DIR/scripts/dr_production_snapshot.py" \
             --phase "$PHASE" \
             --output "$EVIDENCE_DIR/production-$PHASE.json"
         printf 'Production %s snapshot written to %s\n' "$PHASE" "$EVIDENCE_DIR"
