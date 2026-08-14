@@ -46,7 +46,7 @@ jobs:
             requirements.txt
             requirements-dev.txt
       - run: pip install -r requirements.txt -r requirements-dev.txt
-      - run: python3 -m pytest tests/ -v --tb=short -q
+      - run: python3 -m pytest tests/ -v --tb=short -q -n 0
       - name: Bandit static analysis (informational — does not block)
         run: bandit -c bandit.yml -r app.py cms/ -ll -f sarif || true
       - name: Dependency vulnerability scan (blocking)
@@ -82,6 +82,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -93,5 +95,5 @@ jobs:
             requirements-dev.txt
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: >-
-          DATABASE_URL="postgresql://cms_test:cms_test@postgres:5432/cms_test"
-          python3 -m pytest tests/ -v --tb=short -q
+          DATABASE_URL="postgresql://cms_test:cms_test@localhost:5432/cms_test"
+          python3 -m pytest tests/ -v --tb=short -q -n 0
