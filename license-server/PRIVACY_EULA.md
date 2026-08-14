@@ -32,10 +32,12 @@ data-processing agreement, and customer notice before enabling it.
 ## Retention
 
 Default retention is 30 days for `ip_intel`, 7 days for `last_http`, 30 days for
-`ip_check`, and 30 days for the IP-intelligence cache. The automatic purge runs
-periodically during requests. Operators may shorten these periods through the
-documented environment variables; they should not lengthen them without a
-privacy review.
+`ip_check`, 30 days for the IP-intelligence cache, and 365 days for
+`admin_audit`. Each datatype has its own capture timestamp, so active heartbeat
+traffic cannot make older metadata appear newly collected. Purge runs during
+requests and through a scheduled CLI job. Operators may shorten these periods
+through the documented environment variables; they should not lengthen them
+without a privacy review.
 
 ## Access and Audit
 

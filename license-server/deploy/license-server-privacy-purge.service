@@ -1,0 +1,13 @@
+[Unit]
+Description=Purge expired license-server IP intelligence and admin audit data
+After=network.target
+
+[Service]
+Type=oneshot
+User=license
+Group=license
+WorkingDirectory=/opt/license-server
+EnvironmentFile=/opt/license-server/.env
+ExecStart=/opt/license-server/venv/bin/python3 /opt/license-server/cli.py privacy:purge
+NoNewPrivileges=true
+ProtectSystem=strict

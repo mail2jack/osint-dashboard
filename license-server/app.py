@@ -126,7 +126,10 @@ def _init_db() -> None:
                 last_seen       TEXT,
                 last_ip         TEXT,
                 ip_intel        TEXT,
-                last_http       TEXT
+                ip_intel_at     TEXT,
+                last_http       TEXT,
+                last_http_at    TEXT,
+                ip_check_at     TEXT
             )
             """
         )
@@ -167,8 +170,11 @@ def _init_db() -> None:
         )
         # Migrate pre-existing installs tables (CREATE TABLE IF NOT EXISTS never alters).
         _ensure_column(conn, "installs", "ip_intel", "TEXT")
+        _ensure_column(conn, "installs", "ip_intel_at", "TEXT")
         _ensure_column(conn, "installs", "last_http", "TEXT")
+        _ensure_column(conn, "installs", "last_http_at", "TEXT")
         _ensure_column(conn, "installs", "ip_check", "TEXT")
+        _ensure_column(conn, "installs", "ip_check_at", "TEXT")
 
 
 def _retention_days(name: str, default: int) -> int:
@@ -189,8 +195,8 @@ def purge_sensitive_data(conn) -> dict[str, int]:
         days = _retention_days(env_name, default)
         cursor = conn.execute(
             f"UPDATE installs SET {column} = NULL "
-            "WHERE " + column + " IS NOT NULL "
-            "AND datetime(last_seen) < datetime('now', ?)",
+            f", {column}_at = NULL WHERE {column} IS NOT NULL "
+            f"AND datetime(COALESCE({column}_at, last_seen)) < datetime('now', ?)",
             (f"-{days} days",),
         )
         counts[column] = cursor.rowcount
@@ -200,6 +206,12 @@ def purge_sensitive_data(conn) -> dict[str, int]:
         (time.time() - cache_days * 86400,),
     )
     counts["ip_intel_cache"] = cursor.rowcount
+    audit_days = _retention_days("LICENSE_ADMIN_AUDIT_RETENTION_DAYS", 365)
+    cursor = conn.execute(
+        "DELETE FROM admin_audit WHERE datetime(created_at) < datetime('now', ?)",
+        (f"-{audit_days} days",),
+    )
+    counts["admin_audit"] = cursor.rowcount
     return counts
 
 
@@ -533,8 +545,11 @@ def _update_install(conn, install_id, token_hash, fields, is_new):
     data["last_seen"] = now
     data["last_ip"] = _clean(client_ip, 64)
     data["ip_intel"] = json.dumps(ip_intel, separators=(",", ":"))
+    data["ip_intel_at"] = now
     data["last_http"] = _http_metadata()
+    data["last_http_at"] = now
     data["ip_check"] = _ip_check(client_ip, data.get("public_ip"))
+    data["ip_check_at"] = now
     if is_new:
         data["registered_at"] = now
         data["token_hash"] = token_hash

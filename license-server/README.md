@@ -81,8 +81,12 @@ LICENSE_IP_INTEL_RETENTION_DAYS=30
 LICENSE_HTTP_RETENTION_DAYS=7
 LICENSE_IP_CHECK_RETENTION_DAYS=30
 LICENSE_IP_CACHE_RETENTION_DAYS=30
+LICENSE_ADMIN_AUDIT_RETENTION_DAYS=365
 LICENSE_PURGE_INTERVAL_SECONDS=3600
 ```
+
+Automatische purge draait tijdens requests en via `privacy:purge` in de
+periodieke systemd-timer. Daardoor blijft retentie actief bij weinig verkeer.
 
 > **Privacy**: externe IP-verrijking staat standaard uit. `LICENSE_GEO_SOURCE=ip-api`,
 > `LICENSE_PTR_SOURCE=local` en `LICENSE_RDAP_SOURCE=rdap.org` zijn afzonderlijke

@@ -622,16 +622,28 @@ class TestWebActions:
         )
         assert ipintel._lookup_ipapi("8.8.8.8")["countryCode"] == "NL"
 
-    def test_purge_removes_expired_ip_data(self, monkeypatch):
+    def test_purge_removes_expired_ip_data_from_active_install(self):
         old = (datetime.now(timezone.utc) - timedelta(days=40)).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         )
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         with _connect() as conn:
             conn.execute(
                 "INSERT INTO installs "
-                "(install_id, token_hash, last_seen, ip_intel, last_http, ip_check) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                ("old", "hash", old, '{"x":1}', '{"ua":"x"}', '{"flag":"ok"}'),
+                "(install_id, token_hash, last_seen, ip_intel, ip_intel_at, "
+                "last_http, last_http_at, ip_check, ip_check_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    "old",
+                    "hash",
+                    now,
+                    '{"x":1}',
+                    old,
+                    '{"ua":"x"}',
+                    old,
+                    '{"flag":"ok"}',
+                    old,
+                ),
             )
             conn.execute(
                 "INSERT INTO ip_intel (ip, data, queried_at, ttl_seconds) VALUES (?, ?, ?, ?)",
@@ -649,6 +661,11 @@ class TestWebActions:
         assert row["last_http"] is None
         assert row["ip_check"] is None
         assert cache_count == 0
+
+    def test_cli_privacy_purge(self):
+        result = _run_cli("privacy:purge")
+        assert result.returncode == 0, result.stderr
+        assert "Privacy purge completed" in result.stdout
 
     def test_ip_intelligence_export_is_audited(self, client):
         _register(client)
