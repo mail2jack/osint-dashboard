@@ -34,8 +34,11 @@ ARCHIVE_FILE="$BACKUP_DIR/iveras_backup_$TIMESTAMP.tar.gz"
 ENCRYPTED_FILE="$ARCHIVE_FILE.gpg"
 
 KEY_FILE="${KEY_FILE:-$BACKUP_DIR/backup-key.gpg}"
+BACKUP_PGSERVICE="${BACKUP_PGSERVICE:-}"
+BACKUP_PGPASSFILE="${BACKUP_PGPASSFILE:-}"
 ERRORS=0
 WARNINGS=0
+DB_DUMP_OK=false
 
 mkdir -p "$BACKUP_PATH"
 
@@ -80,13 +83,35 @@ echo "--- 1. Database ---"
 
 if docker compose ps -q postgres 2>/dev/null | grep -q .; then
     echo "  Dumping PostgreSQL (Docker)..."
-    docker compose exec -T postgres pg_dump -U cms -d cms_db --clean --if-exists \
-        > "$BACKUP_PATH/database.sql" 2>/dev/null && _log_ok "database.sql" || _log_error "pg_dump failed"
+    if docker compose exec -T postgres pg_dump -U cms -d cms_db --clean --if-exists \
+        > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+        _log_ok "database.sql"
+        DB_DUMP_OK=true
+    else
+        _log_error "pg_dump failed"
+        rm -f "$BACKUP_PATH/database.sql"
+    fi
 
-elif command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ]; then
+elif command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ] && [ -z "$BACKUP_PGSERVICE" ]; then
     echo "  Dumping PostgreSQL (local)..."
-    pg_dump "$DATABASE_URL" --clean --if-exists > "$BACKUP_PATH/database.sql" 2>/dev/null \
-        && _log_ok "database.sql" || _log_error "pg_dump failed"
+    if pg_dump "$DATABASE_URL" --clean --if-exists > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+        _log_ok "database.sql"
+        DB_DUMP_OK=true
+    else
+        _log_error "pg_dump failed"
+        rm -f "$BACKUP_PATH/database.sql"
+    fi
+
+elif command -v pg_dump &>/dev/null && [ -n "$BACKUP_PGSERVICE" ]; then
+    echo "  Dumping PostgreSQL (PGSERVICE: $BACKUP_PGSERVICE)..."
+    if PGSERVICE="$BACKUP_PGSERVICE" PGPASSFILE="$BACKUP_PGPASSFILE" \
+        pg_dump --clean --if-exists > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+        _log_ok "database.sql"
+        DB_DUMP_OK=true
+    else
+        _log_error "pg_dump failed"
+        rm -f "$BACKUP_PATH/database.sql"
+    fi
 
 elif [ -f "$SCRIPT_DIR/cms.db" ]; then
     echo "  Copying SQLite..."
@@ -97,7 +122,7 @@ else
 fi
 
 # Compress database dump
-if [ -f "$BACKUP_PATH/database.sql" ]; then
+if [ -f "$BACKUP_PATH/database.sql" ] && [ "$DB_DUMP_OK" = true ]; then
     gzip "$BACKUP_PATH/database.sql" && _log_ok "  Compressed: database.sql.gz"
 fi
 
