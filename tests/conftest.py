@@ -5,8 +5,12 @@ import tempfile
 import atexit
 import pytest
 
-_tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False, delete_on_close=False)
-os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db.name}"
+_tmp_db = None
+if not os.environ.get("DATABASE_URL"):
+    _tmp_db = tempfile.NamedTemporaryFile(
+        suffix=".db", delete=False, delete_on_close=False
+    )
+    os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db.name}"
 os.environ["FLASK_SECRET_KEY"] = secrets.token_hex(32)
 os.environ["CMS_ENCRYPTION_KEY"] = base64.urlsafe_b64encode(
     secrets.token_bytes(32)
@@ -18,7 +22,11 @@ from cms.models import db, User, init_default_settings
 from sqlalchemy import inspect, text
 
 atexit.register(
-    lambda: os.unlink(_tmp_db.name) if os.path.exists(_tmp_db.name) else None
+    lambda: (
+        os.unlink(_tmp_db.name)
+        if _tmp_db is not None and os.path.exists(_tmp_db.name)
+        else None
+    )
 )
 
 
@@ -91,6 +99,15 @@ _app.before_request_funcs.setdefault(None, []).insert(0, _clear_g_login_user)
 def _clean_db_between_tests(app):
     """Clean all data between tests — runs before each test function."""
     db.session.rollback()  # Clear any aborted transaction from previous test
+    from cms.rate_limiting import reset_rate_limits
+
+    reset_rate_limits()
+
+    admin = User.query.filter_by(role="admin").first()
+    if admin:
+        from cms.tenant_context import set_tenant_context
+
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
 
     # Delete all tables EXCEPT seed/config tables (keep admin + tenant from app fixture)
     for t in inspect(db.engine).get_table_names():
@@ -104,7 +121,6 @@ def _clean_db_between_tests(app):
     # Flask 3.x scopes g to the app context, so this persists across tests.
     from flask import g as _g
 
-    admin = User.query.filter_by(role="admin").first()
     if admin:
         _g.tenant_id = admin.tenant_id
 
@@ -153,4 +169,8 @@ def db_session():
     if "tenant_id" not in g:
         admin = User.query.filter_by(username="admin").first()
         g.tenant_id = admin.tenant_id if admin else None
+    if g.get("tenant_id"):
+        from cms.tenant_context import set_tenant_context
+
+        set_tenant_context(db, g.tenant_id)
     return db.session

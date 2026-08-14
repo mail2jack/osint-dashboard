@@ -34,7 +34,7 @@
 - **Tests**: Altijd SQLite (`conftest.py`). Snel, geen externe services. SQLite-only gedrag wordt gemarkeerd met `@pytest.mark.skip_on_postgres`.
 - **CI** (`.github/workflows/ci.yml`):
   - `test` job: SQLite (bestaand, snel)
-  - `integration-postgres` job: PostgreSQL via GitHub Actions service, `continue-on-error: true`
+  - `integration-postgres` job: verplichte PostgreSQL 16-check met RLS-, tenant- en worker-contexttests
 
 ### Schema management
 - Schema via **Alembic** (`migrations/`):

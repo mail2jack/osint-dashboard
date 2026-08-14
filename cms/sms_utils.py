@@ -21,8 +21,8 @@ try:
 
     TWILIO_AVAILABLE = True
 except ImportError:
-    TwilioClient = None  # type: ignore
-    TwilioRestException = None  # type: ignore
+    TwilioClient = None
+    TwilioRestException = None
 
 
 def _get_twilio_config() -> dict:

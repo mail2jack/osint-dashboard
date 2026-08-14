@@ -95,7 +95,7 @@ def jitter_sleep(domain_hint: str | None = None) -> None:
     if not _JITTER_ENABLED:
         return
 
-    domain = _extract_domain(domain_hint) if domain_hint else "__global__"
+    domain = _extract_jitter_domain(domain_hint) if domain_hint else "__global__"
     now = time.time()
 
     with _domain_lock:
@@ -117,7 +117,7 @@ def jitter_sleep(domain_hint: str | None = None) -> None:
         _DOMAIN_LAST_CALL[domain] = now
 
 
-def _extract_domain(url: str | None) -> str:
+def _extract_jitter_domain(url: str | None) -> str:
     if not url:
         return "__global__"
     try:
