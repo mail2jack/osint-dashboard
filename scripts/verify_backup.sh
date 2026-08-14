@@ -1,245 +1,237 @@
-#!/bin/bash
-#
-# Iveras OSINT Dashboard — Backup Verification Script
-# ====================================================
-# Restores the latest backup to a temp directory and validates integrity.
-# Handles both encrypted (.gpg) and unencrypted archives.
-#
-# Usage:
-#   ./scripts/verify_backup.sh                    # Verify latest backup
-#   ./scripts/verify_backup.sh /path/to/archive   # Verify specific archive
-#   ./scripts/verify_backup.sh --cleanup          # Remove old verification dirs
-#
-# Exit codes:
-#   0 — Verified OK
-#   1 — No backup found
-#   2 — Verification failed (corrupt/incomplete)
-#   3 — Cleanup error
-#
+#!/usr/bin/env bash
+# Verify a backup by restoring it to an isolated PostgreSQL database.
+# This script never writes to the production database or production uploads.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BACKUP_DIR="${1:-$SCRIPT_DIR/backups}"
-VERIFY_DIR="/tmp/iveras_backup_verify"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_INPUT="${1:-${BACKUP_DIR:-$SCRIPT_DIR/backups}}"
+REPORT_DIR="${DR_REPORT_DIR:-$SCRIPT_DIR/reports/dr}"
+TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/iveras-dr-verify.XXXXXX")"
+CHECKS_FILE="$WORK_DIR/checks.tsv"
+REPORT_PATH="$REPORT_DIR/dr-verification-$TIMESTAMP.json"
+BACKUP_ID="unknown"
 ERRORS=0
-WARNINGS=0
+REPORT_WRITTEN=false
+CREATED_DB=""
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-cleanup() {
-    local exit_code=$?
-    if [ -d "$VERIFY_DIR/current" ]; then
-        rm -rf "$VERIFY_DIR/current"
+record() {
+    local name="$1"
+    local status="$2"
+    local detail="$3"
+    printf '%s\t%s\t%s\n' "$name" "$status" "$detail" >> "$CHECKS_FILE"
+    if [ "$status" != "pass" ]; then
+        ERRORS=$((ERRORS + 1))
     fi
-    exit "$exit_code"
 }
-trap cleanup EXIT
 
-# --- Cleanup mode ---
-if [ "${1:-}" = "--cleanup" ]; then
-    echo "Cleaning up verification directories older than 7 days..."
-    find /tmp -maxdepth 1 -name "iveras_backup_verify_*" -type d -mtime +7 -exec rm -rf {} \; 2>/dev/null
-    echo "Done."
+finish() {
+    local rc=$?
+    if [ "$REPORT_WRITTEN" = false ]; then
+        set +e
+        python3 "$SCRIPT_DIR/scripts/dr_report.py" \
+            --output "$REPORT_PATH" \
+            --backup-id "$BACKUP_ID" \
+            --commit-sha "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || printf unknown)" \
+            --checks-file "$CHECKS_FILE" \
+            --counts-json "${COUNTS_JSON:-{}}" >/dev/null 2>&1
+        REPORT_WRITTEN=true
+        set -e
+    fi
+    if [ -n "$CREATED_DB" ] && {
+        [ -n "${DR_VERIFY_DATABASE_URL:-}" ] || [ -n "${PGSERVICE:-}" ] || [ -n "${PGHOST:-}" ];
+    }; then
+        python3 "$SCRIPT_DIR/scripts/dr_postgres.py" drop \
+            --database "$CREATED_DB" \
+            >/dev/null 2>&1 || true
+    fi
+    rm -rf "$WORK_DIR"
+    exit "$rc"
+}
+trap finish EXIT
+
+mkdir -p "$REPORT_DIR"
+: > "$CHECKS_FILE"
+
+if [ "$BACKUP_INPUT" = "--cleanup" ]; then
+    find "${TMPDIR:-/tmp}" -maxdepth 1 -name "iveras-dr-verify.*" -type d -mtime +7 -exec rm -rf {} + 2>/dev/null || true
+    REPORT_WRITTEN=true
     exit 0
 fi
 
-echo ""
-echo "╔══════════════════════════════════════════╗"
-echo "║   Iveras Backup Verification             ║"
-echo "╚══════════════════════════════════════════╝"
-echo ""
-
-# --- Find latest archive ---
-if [ -f "$BACKUP_DIR" ]; then
-    LATEST_ARCHIVE="$BACKUP_DIR"
+if [ -f "$BACKUP_INPUT" ]; then
+    ARCHIVE="$BACKUP_INPUT"
 else
-    LATEST_ARCHIVE=$(find "$BACKUP_DIR" -maxdepth 1 \( -name "iveras_backup_*.tar.gz.gpg" -o -name "iveras_backup_*.tar.gz" \) -type f 2>/dev/null | sort -r | head -1)
+    ARCHIVE=""
+    while IFS= read -r candidate; do
+        ARCHIVE="$candidate"
+    done < <(find "$BACKUP_INPUT" -maxdepth 1 -type f \( \
+        -name 'iveras_backup_*.tar.gz.gpg' -o -name 'iveras_backup_*.tar.gz' \
+    \) -print 2>/dev/null | sort)
 fi
 
-if [ -z "$LATEST_ARCHIVE" ]; then
-    echo -e "${RED}❌ No backup archive found at: $BACKUP_DIR${NC}"
+if [ -z "$ARCHIVE" ]; then
+    record archive fail "no backup archive found"
     exit 1
 fi
+BACKUP_ID="$(basename "$ARCHIVE")"
+BACKUP_ID="${BACKUP_ID%.gpg}"
+BACKUP_ID="${BACKUP_ID%.tar.gz}"
+record archive pass "selected backup"
 
-echo "Archive: $LATEST_ARCHIVE"
-echo ""
-
-# --- Decrypt if needed ---
-WORK_ARCHIVE="$LATEST_ARCHIVE"
-IS_ENCRYPTED=false
-if [[ "$LATEST_ARCHIVE" == *.gpg ]]; then
-    IS_ENCRYPTED=true
-    KEY_FILE="$BACKUP_DIR/backup-key.gpg"
+if [[ "$ARCHIVE" == *.gpg ]]; then
+    KEY_FILE="${DR_BACKUP_KEY_FILE:-$(dirname "$ARCHIVE")/backup-key.gpg}"
     if [ ! -f "$KEY_FILE" ]; then
-        echo -e "${RED}❌ Encrypted archive but no key found at $KEY_FILE${NC}"
+        record decrypt fail "backup encryption key is missing"
         exit 2
     fi
-    DECRYPTED="/tmp/iveras_backup_decrypted_$TIMESTAMP.tar.gz"
-    echo -n "Decrypting... "
-    if gpg --decrypt --batch --passphrase-file "$KEY_FILE" --output "$DECRYPTED" "$LATEST_ARCHIVE" 2>/dev/null; then
-        echo -e "${GREEN}OK${NC}"
-        WORK_ARCHIVE="$DECRYPTED"
-    else
-        echo -e "${RED}FAILED${NC}"
+    if ! gpg --decrypt --batch --passphrase-file "$KEY_FILE" \
+        --output "$WORK_DIR/backup.tar.gz" "$ARCHIVE" >/dev/null 2>&1; then
+        record decrypt fail "encrypted archive could not be decrypted"
         exit 2
     fi
+    ARCHIVE_TO_EXTRACT="$WORK_DIR/backup.tar.gz"
+else
+    ARCHIVE_TO_EXTRACT="$ARCHIVE"
 fi
 
-# --- Extract ---
-VERIFY_TARGET="$VERIFY_DIR/iveras_backup_verify_$TIMESTAMP"
-mkdir -p "$VERIFY_TARGET"
-echo -n "Extracting... "
-if tar xzf "$WORK_ARCHIVE" -C "$VERIFY_TARGET" 2>/dev/null; then
-    echo -e "${GREEN}OK${NC}"
-else
-    echo -e "${RED}FAILED${NC}"
+if ! tar xzf "$ARCHIVE_TO_EXTRACT" -C "$WORK_DIR" >/dev/null 2>&1; then
+    record extract fail "archive could not be extracted"
     exit 2
 fi
-
-EXTRACT_DIR=$(find "$VERIFY_TARGET" -maxdepth 1 -type d | tail -1)
+EXTRACT_DIR=""
+while IFS= read -r candidate; do
+    EXTRACT_DIR="$candidate"
+    break
+done < <(find "$WORK_DIR" -mindepth 1 -maxdepth 1 -type d -print)
 if [ -z "$EXTRACT_DIR" ]; then
-    echo -e "${RED}FAILED — empty archive${NC}"
+    record extract fail "archive contains no backup directory"
     exit 2
 fi
-echo "  Extracted to: $EXTRACT_DIR"
-echo ""
+record extract pass "archive extracted to isolated temporary directory"
 
-# --- Clean up decrypted temp file ---
-if [ "$IS_ENCRYPTED" = true ] && [ -n "${DECRYPTED:-}" ]; then
-    rm -f "$DECRYPTED"
-fi
-
-# --- Check files ---
-echo "=== File Integrity ==="
-
-check_file() {
-    local file="$1"
-    local label="$2"
-    local min_size="${3:-0}"
-
-    if [ -f "$EXTRACT_DIR/$file" ]; then
-        local size
-        size=$(stat -f%z "$EXTRACT_DIR/$file" 2>/dev/null || stat -c%s "$EXTRACT_DIR/$file" 2>/dev/null)
-        if [ "$size" -gt "$min_size" ]; then
-            local human
-            human=$(numfmt --to=iec "$size" 2>/dev/null || echo "$size bytes")
-            echo -e "  ✅ $label ($human)"
-        else
-            echo -e "  ⚠️  $label — file too small (${size}b, expected >${min_size}b)"
-            WARNINGS=$((WARNINGS + 1))
-        fi
-    else
-        echo -e "  ⚠️  $label — MISSING"
-        WARNINGS=$((WARNINGS + 1))
-    fi
-}
-
-check_file "database.sql.gz" "Database dump" 100
-check_file "env.txt" "Environment config" 10
-check_file "uploads.tar.gz" "Uploads archive" 0
-check_file "sessions.tar.gz" "Session archive" 0
-check_file "BACKUP_INFO.txt" "Backup metadata" 10
-
-# Optional files — no warning if missing
-for f in "$EXTRACT_DIR"/*; do
-    name=$(basename "$f")
-    case "$name" in
-        nginx-*.conf|*.service|spiderfoot-passwd.txt|migrations.tar.gz)
-            echo -e "  ℹ️  $name present (optional)"
-            ;;
-    esac
-done
-
-echo ""
-
-# --- Validate database dump ---
-echo "=== Database Validation ==="
-
-DB_GZ="$EXTRACT_DIR/database.sql.gz"
-if [ -f "$DB_GZ" ]; then
-    DECOMPRESSED="$EXTRACT_DIR/database_verify.sql"
-
-    echo -n "Decompressing... "
-    if gunzip -c "$DB_GZ" > "$DECOMPRESSED" 2>/dev/null; then
-        echo -e "${GREEN}OK${NC}"
-    else
-        echo -e "${RED}FAILED (corrupt gzip)${NC}"
-        ERRORS=$((ERRORS + 1))
-        rm -f "$DECOMPRESSED"
-    fi
-
-    if [ -f "$DECOMPRESSED" ]; then
-        echo -n "SQL structure check... "
-        if grep -q "CREATE TABLE\|CREATE SCHEMA\|COPY\|INSERT INTO\|CREATE SEQUENCE\|ALTER TABLE" "$DECOMPRESSED" 2>/dev/null; then
-            echo -e "${GREEN}VALID${NC}"
-        else
-            echo -e "${YELLOW}NO STRUCTURE FOUND (may be empty dump)${NC}"
-            WARNINGS=$((WARNINGS + 1))
-        fi
-
-        TABLE_COUNT=$(grep -c "CREATE TABLE" "$DECOMPRESSED" 2>/dev/null || echo 0)
-        echo "  Tables in dump: $TABLE_COUNT"
-
-        if command -v psql &>/dev/null && [ -z "${PGHOST:-}" ]; then
-            echo -n "Restore dry-run (postgres)... "
-            if createdb "iveras_verify_$TIMESTAMP" 2>/dev/null; then
-                if psql -q -d "iveras_verify_$TIMESTAMP" -f "$DECOMPRESSED" > /dev/null 2>&1; then
-                    echo -e "${GREEN}PASSED${NC}"
-                else
-                    echo -e "${RED}FAILED${NC}"
-                    ERRORS=$((ERRORS + 1))
-                fi
-                dropdb "iveras_verify_$TIMESTAMP" 2>/dev/null || true
-            else
-                echo -e "${YELLOW}SKIPPED (cannot create test DB)${NC}"
-            fi
-        else
-            echo -e "  PostgreSQL restore: ${YELLOW}SKIPPED${NC}"
-        fi
-
-        rm -f "$DECOMPRESSED"
-    fi
-else
-    DB_SQLITE="$EXTRACT_DIR/cms.db"
-    if [ -f "$DB_SQLITE" ]; then
-        echo -n "SQLite integrity... "
-        if command -v sqlite3 &>/dev/null; then
-            if sqlite3 "$DB_SQLITE" "PRAGMA integrity_check;" 2>/dev/null | grep -q "^ok$"; then
-                echo -e "${GREEN}PASSED${NC}"
-            else
-                echo -e "${RED}FAILED${NC}"
-                ERRORS=$((ERRORS + 1))
-            fi
-            TABLE_COUNT=$(sqlite3 "$DB_SQLITE" ".tables" 2>/dev/null | wc -w)
-            echo "  Tables: $TABLE_COUNT"
-        else
-            echo -e "${YELLOW}SKIPPED (sqlite3 not available)${NC}"
-        fi
-    fi
-fi
-
-echo ""
-
-# --- Summary ---
-echo "=== Summary ==="
-ARCHIVE_SIZE=$(stat -f%z "$LATEST_ARCHIVE" 2>/dev/null || stat -c%s "$LATEST_ARCHIVE" 2>/dev/null || echo "?")
-HUMAN_SIZE=$(numfmt --to=iec "$ARCHIVE_SIZE" 2>/dev/null || echo "$ARCHIVE_SIZE bytes")
-echo "  Archive: $HUMAN_SIZE"
-echo "  Errors:   $ERRORS"
-echo "  Warnings: $WARNINGS"
-echo ""
-
-if [ "$ERRORS" -gt 0 ]; then
-    echo -e "${RED}❌ VERIFICATION FAILED — $ERRORS error(s), $WARNINGS warning(s)${NC}"
+if [ ! -f "$EXTRACT_DIR/database.sql.gz" ]; then
+    record database_restore fail "database.sql.gz is missing"
     exit 2
-elif [ "$WARNINGS" -gt 0 ]; then
-    echo -e "${YELLOW}⚠️  VERIFIED WITH WARNINGS — $WARNINGS warning(s)${NC}"
-    exit 0
-else
-    echo -e "${GREEN}✅ BACKUP VERIFIED OK${NC}"
 fi
+if ! gunzip -c "$EXTRACT_DIR/database.sql.gz" > "$WORK_DIR/database.sql" 2>/dev/null; then
+    record database_restore fail "database dump is not valid gzip"
+    exit 2
+fi
+
+DR_VERIFY_DATABASE_URL="${DR_VERIFY_DATABASE_URL:-}"
+if [ -z "$DR_VERIFY_DATABASE_URL" ] && [ -z "${PGSERVICE:-}" ] && [ -z "${PGHOST:-}" ]; then
+    record database_restore fail "DR_VERIFY_DATABASE_URL or libpq connection settings are not configured"
+else
+    CREATED_DB="iveras_dr_${TIMESTAMP//[^A-Za-z0-9_]/}_${RANDOM}"
+    if ! python3 "$SCRIPT_DIR/scripts/dr_postgres.py" create \
+        --database "$CREATED_DB" \
+        >/dev/null 2>&1; then
+        record database_restore fail "isolated PostgreSQL database could not be created"
+        exit 2
+    fi
+    if ! python3 "$SCRIPT_DIR/scripts/dr_postgres.py" restore \
+        --database "$CREATED_DB" --sql-file "$WORK_DIR/database.sql" \
+        >/dev/null 2>"$WORK_DIR/restore.err"; then
+        record database_restore fail "database dump could not be restored"
+        exit 2
+    fi
+    record database_restore pass "restored to isolated database"
+
+    query_count() {
+        python3 "$SCRIPT_DIR/scripts/dr_postgres.py" query --database "$CREATED_DB" \
+            --sql "SELECT count(*) FROM $1" 2>/dev/null
+    }
+    TENANTS_COUNT="$(query_count tenants || true)"
+    CASES_COUNT="$(query_count cases || true)"
+    USERS_COUNT="$(query_count users || true)"
+    if [[ "$TENANTS_COUNT" =~ ^[0-9]+$ && "$CASES_COUNT" =~ ^[0-9]+$ && "$USERS_COUNT" =~ ^[0-9]+$ ]]; then
+        record row_counts pass "tenants=$TENANTS_COUNT cases=$CASES_COUNT users=$USERS_COUNT"
+        COUNTS_JSON="{\"tenants\":$TENANTS_COUNT,\"cases\":$CASES_COUNT,\"users\":$USERS_COUNT}"
+    else
+        record row_counts fail "tenant/case/user counts could not be read"
+        COUNTS_JSON='{}'
+    fi
+
+    MIGRATION_VERSION="$(python3 "$SCRIPT_DIR/scripts/dr_postgres.py" query \
+        --database "$CREATED_DB" --sql \
+        "SELECT version_num FROM alembic_version LIMIT 1" 2>/dev/null || true)"
+    EXPECTED_HEAD="${DR_EXPECTED_ALEMBIC_HEAD:-}"
+    if [ -z "$EXPECTED_HEAD" ] && command -v alembic >/dev/null 2>&1; then
+        EXPECTED_HEAD="$(cd "$SCRIPT_DIR" && alembic heads 2>/dev/null | while read -r head _; do printf '%s' "$head"; break; done)"
+    fi
+    if [ -n "$MIGRATION_VERSION" ] && { [ -z "$EXPECTED_HEAD" ] || [ "$MIGRATION_VERSION" = "$EXPECTED_HEAD" ]; }; then
+        record migration_version pass "$MIGRATION_VERSION"
+    else
+        record migration_version fail "restored=$MIGRATION_VERSION expected=${EXPECTED_HEAD:-configured-head-required}"
+    fi
+
+    if [ -n "${CMS_ENCRYPTION_KEY:-}" ]; then
+        export CMS_ENCRYPTION_KEY
+    elif [ -f "$EXTRACT_DIR/env.txt" ]; then
+        CMS_ENCRYPTION_KEY="$(python3 - "$EXTRACT_DIR/env.txt" <<'PY'
+import sys
+for line in open(sys.argv[1], encoding="utf-8"):
+    if line.startswith("CMS_ENCRYPTION_KEY="):
+        print(line.rstrip().split("=", 1)[1].strip().strip("'\""))
+        break
+PY
+        )"
+        export CMS_ENCRYPTION_KEY
+    fi
+    ENCRYPTED_CHECK="$(CMS_ENCRYPTION_KEY="${CMS_ENCRYPTION_KEY:-}" \
+        python3 "$SCRIPT_DIR/scripts/dr_postgres.py" encrypted-check \
+        --database "$CREATED_DB" 2>/dev/null || true)"
+    if [[ "$ENCRYPTED_CHECK" == *'"status": "pass"'* ]]; then
+        record encrypted_fields pass "$ENCRYPTED_CHECK"
+    else
+        record encrypted_fields fail "restored encrypted field could not be read"
+    fi
+fi
+
+UPLOAD_ENTRY=""
+if [ -f "$EXTRACT_DIR/uploads.tar.gz" ]; then
+    UPLOAD_ENTRY="$(tar tzf "$EXTRACT_DIR/uploads.tar.gz" 2>/dev/null | \
+        awk 'NF && $0 !~ /\/$/ { print; exit }')"
+fi
+if [ -n "$UPLOAD_ENTRY" ]; then
+    record uploads pass "uploads archive contains files"
+else
+    record uploads fail "uploads archive is missing or empty"
+fi
+
+if [ -f "$EXTRACT_DIR/license.db" ] && python3 - "$EXTRACT_DIR/license.db" <<'PY'
+import sqlite3, sys
+connection = sqlite3.connect(sys.argv[1])
+assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+assert connection.execute("SELECT count(*) FROM sqlite_master WHERE type='table'").fetchone()[0] > 0
+connection.close()
+PY
+then
+    record license_database pass "SQLite integrity and schema checks passed"
+else
+    record license_database fail "license-server data/license.db is missing or unreadable"
+fi
+
+if [ -f "$EXTRACT_DIR/license-private.pem" ] && openssl pkey -in "$EXTRACT_DIR/license-private.pem" -check -noout >/dev/null 2>&1; then
+    record license_private_key pass "Ed25519 private key is readable and valid"
+else
+    record license_private_key fail "Ed25519 private key is missing or invalid"
+fi
+
+set +e
+python3 "$SCRIPT_DIR/scripts/dr_report.py" \
+    --output "$REPORT_PATH" \
+    --backup-id "$BACKUP_ID" \
+    --commit-sha "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || printf unknown)" \
+    --checks-file "$CHECKS_FILE" \
+    --counts-json "${COUNTS_JSON:-{}}" >/dev/null 2>&1
+REPORT_RC=$?
+REPORT_WRITTEN=true
+set -e
+printf 'DR report: %s\n' "$REPORT_PATH"
+if [ "$ERRORS" -gt 0 ] || [ "$REPORT_RC" -ne 0 ]; then
+    exit 2
+fi
+exit 0

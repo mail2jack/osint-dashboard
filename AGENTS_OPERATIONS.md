@@ -107,6 +107,7 @@
 - **Nginx tuning**: `proxy_buffer_size 8k`, `proxy_buffers 8 8k`, `proxy_read_timeout 120s`.
 - **SpiderFoot service**: `ProtectHome=off` (blocks access to `/home/osint/.spiderfoot`).
 - **Backup cron**: 4x daily (00:00, 06:00, 12:00, 18:00) via `/etc/cron.d/osint-dashboard-backup`.
+- **Backup recovery verification**: 4x daily via `osint-backup-verify.timer`; failures trigger the system journal and optional email alert. See `DISASTER_RECOVERY.md`.
 - **Sudoers**: `git`, `chown`, `systemctl` allowed for passwordless update from GUI.
 
 ---
