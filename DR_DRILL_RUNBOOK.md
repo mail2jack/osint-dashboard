@@ -3,6 +3,14 @@
 This drill is intentionally separate from the automatic backup verifier. It
 adds human authorization and audit controls. It does not restore to production.
 
+## Current Status
+
+The official two-person drill is **pending**. At present no independent second
+operator is available. A single-operator run may be used only as a technical
+rehearsal and must not be presented as compliance evidence or as final proof of
+the RPO/RTO targets. Schedule the official drill when the primary and an
+independent second operator are simultaneously available.
+
 ## Human Preparation
 
 1. Choose a low-traffic maintenance window and identify the primary operator.
