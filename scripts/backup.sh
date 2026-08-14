@@ -94,7 +94,7 @@ if docker compose ps -q postgres 2>/dev/null | grep -q .; then
 
 elif command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ] && [ -z "$BACKUP_PGSERVICE" ]; then
     echo "  Dumping PostgreSQL (local)..."
-    if pg_dump "$DATABASE_URL" --clean --if-exists > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+    if pg_dump "$DATABASE_URL" --clean --if-exists --no-owner --no-acl > "$BACKUP_PATH/database.sql" 2>/dev/null; then
         _log_ok "database.sql"
         DB_DUMP_OK=true
     else
@@ -105,7 +105,7 @@ elif command -v pg_dump &>/dev/null && [ -n "${DATABASE_URL:-}" ] && [ -z "$BACK
 elif command -v pg_dump &>/dev/null && [ -n "$BACKUP_PGSERVICE" ]; then
     echo "  Dumping PostgreSQL (PGSERVICE: $BACKUP_PGSERVICE)..."
     if PGSERVICE="$BACKUP_PGSERVICE" PGPASSFILE="$BACKUP_PGPASSFILE" \
-        pg_dump --clean --if-exists > "$BACKUP_PATH/database.sql" 2>/dev/null; then
+        pg_dump --clean --if-exists --no-owner --no-acl > "$BACKUP_PATH/database.sql" 2>/dev/null; then
         _log_ok "database.sql"
         DB_DUMP_OK=true
     else
