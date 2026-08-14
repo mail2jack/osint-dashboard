@@ -112,6 +112,8 @@ def test_production_gate_requires_second_operator_and_compares_state():
     assert "same_uploads" in source
     assert "no_temporary_database" in source
     assert "venv/bin/python3" in source
+    drill = (ROOT / "scripts/dr_drill.sh").read_text(encoding="utf-8")
+    assert "while IFS= read -r candidate" in drill
 
 
 def test_production_pgreservice_uses_service_database(monkeypatch):
