@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- DR production snapshots now honor the database selected by `PGSERVICE` and
+  use SHA-256 schema fingerprints.
+
+### Operations
+- Recorded the DR attestation change that was temporarily pushed directly to
+  `master` outside the protected PR flow; future DR changes must use a branch
+  and green required checks before merge or deployment.
+
 ## [3.7.1] — 2026-07-18
 
 ### Fixed
