@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import configparser
 import json
 import os
 import subprocess
@@ -11,6 +12,17 @@ import subprocess
 import psycopg2
 from psycopg2 import sql
 from sqlalchemy.engine import make_url
+
+
+def _service_values(service: str) -> dict[str, str]:
+    path = os.environ.get("PGSERVICEFILE", os.path.expanduser("~/.pg_service.conf"))
+    parser = configparser.ConfigParser()
+    if not parser.read(path) or not parser.has_section(service):
+        raise RuntimeError(f"PGSERVICE section not found: {service}")
+    values = dict(parser.items(service))
+    return {
+        key: values[key] for key in ("host", "port", "user", "sslmode") if key in values
+    }
 
 
 def _connect(database: str):
@@ -22,7 +34,9 @@ def _connect(database: str):
     if service or os.environ.get("PGHOST"):
         connection_args = {"dbname": database}
         if service:
-            connection_args["service"] = service
+            connection_args.update(_service_values(service))
+        if os.environ.get("PGPASSFILE"):
+            connection_args["passfile"] = os.environ["PGPASSFILE"]
         return psycopg2.connect(**connection_args)
     raise RuntimeError(
         "DR_VERIFY_DATABASE_URL or libpq connection settings are required"
@@ -45,6 +59,9 @@ def _libpq_environment(database: str) -> dict[str, str]:
             environment["PGPASSWORD"] = url.password
         if url.query.get("sslmode"):
             environment["PGSSLMODE"] = url.query["sslmode"]
+        environment.pop("PGSERVICE", None)
+    elif environment.get("PGSERVICE"):
+        environment.update(_service_values(environment["PGSERVICE"]))
         environment.pop("PGSERVICE", None)
     environment["PGDATABASE"] = database
     return environment
