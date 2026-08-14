@@ -40,6 +40,19 @@ record() {
     [ "$result" = pass ] || ERRORS=$((ERRORS + 1))
 }
 
+write_report() {
+    local status="$1"
+    local commit_sha
+    commit_sha="$(sudo -u osint git -C "$APP_DIR" rev-parse HEAD 2>/dev/null || printf unknown)"
+    mkdir -p "$EVIDENCE_DIR"
+    python3 "$APP_DIR/scripts/rollout_report.py" \
+        --output "$REPORT_PATH" \
+        --commit-sha "$commit_sha" \
+        --checks-file "$CHECKS_FILE" \
+        --status "$status" >/dev/null 2>&1 || true
+    printf 'Rolloutrapport: %s\n' "$REPORT_PATH"
+}
+
 if [ "$(id -u)" -ne 0 ]; then
     printf 'Run dit script op de VPS met sudo/root.\n' >&2
     exit 2
@@ -70,10 +83,17 @@ for required in \
 done
 
 if [ "$DRY_RUN" = true ]; then
+    if [ "$ERRORS" -eq 0 ] && sudo bash "$APP_DIR/scripts/deploy.sh" --dry-run >/dev/null; then
+        record existing_preflight pass "deploy.sh --dry-run completed"
+    else
+        record existing_preflight fail "deploy.sh --dry-run failed"
+    fi
     if [ "$ERRORS" -eq 0 ]; then
+        write_report pass
         printf 'DRY RUN PASSED: er wordt niets gewijzigd.\n'
         exit 0
     fi
+    write_report fail
     printf 'DRY RUN FAILED: los eerst de gemelde controles op.\n' >&2
     exit 1
 fi
@@ -87,6 +107,9 @@ if sudo bash "$APP_DIR/scripts/deploy.sh"; then
     record app_deploy pass "existing deploy flow completed"
 else
     record app_deploy fail "existing deploy flow failed; no automatic rollback"
+    write_report fail
+    printf 'Rollout gestopt: license-server wordt niet gewijzigd.\n' >&2
+    exit 1
 fi
 
 if sudo bash "$APP_DIR/license-server/deploy/deploy.sh" "$APP_DIR/license-server"; then

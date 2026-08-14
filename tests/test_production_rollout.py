@@ -17,6 +17,17 @@ def test_rollout_script_syntax_and_safety_controls():
     assert "privacy-purge.timer" in source
 
 
+def test_failed_app_deploy_stops_before_license_deploy_and_dry_run_calls_gate():
+    source = (ROOT / "scripts/production_rollout.sh").read_text(encoding="utf-8")
+    app_block = source.split('if sudo bash "$APP_DIR/scripts/deploy.sh"; then', 1)[1]
+    app_block = app_block.split(
+        'if sudo bash "$APP_DIR/license-server/deploy/deploy.sh"', 1
+    )[0]
+    assert "write_report fail" in app_block
+    assert "exit 1" in app_block
+    assert 'deploy.sh" --dry-run' in source
+
+
 def test_rollout_report_schema(tmp_path):
     checks = tmp_path / "checks.tsv"
     checks.write_text("health\tpass\thealthy\n", encoding="utf-8")
