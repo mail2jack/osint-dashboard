@@ -75,10 +75,10 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_DB: cms_test
-          POSTGRES_USER: cms_test
-          POSTGRES_PASSWORD: cms_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d cms_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -94,17 +94,21 @@ jobs:
             requirements.txt
             requirements-dev.txt
       - run: pip install -r requirements.txt -r requirements-dev.txt
-      - name: Disable PostgreSQL superuser RLS bypass
+      - name: Create non-superuser PostgreSQL test role
         run: |
           python3 - <<'PY'
           import psycopg2
 
           connection = psycopg2.connect(
-              "postgresql://cms_test:cms_test@localhost:5432/postgres"
+              "postgresql://postgres:postgres@localhost:5432/postgres"
           )
           connection.autocommit = True
           with connection.cursor() as cursor:
-              cursor.execute("ALTER ROLE cms_test NOSUPERUSER NOBYPASSRLS")
+              cursor.execute(
+                  "CREATE ROLE cms_test LOGIN PASSWORD 'cms_test' NOSUPERUSER NOBYPASSRLS"
+              )
+              cursor.execute("GRANT ALL PRIVILEGES ON DATABASE cms_test TO cms_test")
+              cursor.execute("GRANT ALL ON SCHEMA public TO cms_test")
           connection.close()
           PY
       - run: >-
