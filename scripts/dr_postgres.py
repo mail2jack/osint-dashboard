@@ -9,6 +9,7 @@ import os
 import subprocess
 
 import psycopg2
+from psycopg2 import sql
 from sqlalchemy.engine import make_url
 
 
@@ -130,6 +131,20 @@ def main() -> int:
                 cursor.execute(f'CREATE DATABASE "{database}"')
             else:
                 cursor.execute(f'DROP DATABASE IF EXISTS "{database}"')
+        if args.action == "create":
+            target = _connect(database)
+            target.autocommit = True
+            try:
+                with target.cursor() as cursor:
+                    cursor.execute("SELECT current_user")
+                    role = cursor.fetchone()[0]
+                    cursor.execute(
+                        sql.SQL("GRANT CREATE, USAGE ON SCHEMA public TO {}").format(
+                            sql.Identifier(role)
+                        )
+                    )
+            finally:
+                target.close()
     finally:
         connection.close()
     return 0
