@@ -108,6 +108,13 @@ jobs:
                   "CREATE ROLE cms_test LOGIN PASSWORD 'cms_test' NOSUPERUSER NOBYPASSRLS"
               )
               cursor.execute("GRANT ALL PRIVILEGES ON DATABASE cms_test TO cms_test")
+          connection.close()
+
+          connection = psycopg2.connect(
+              "postgresql://postgres:postgres@localhost:5432/cms_test"
+          )
+          connection.autocommit = True
+          with connection.cursor() as cursor:
               cursor.execute("GRANT ALL ON SCHEMA public TO cms_test")
           connection.close()
           PY
