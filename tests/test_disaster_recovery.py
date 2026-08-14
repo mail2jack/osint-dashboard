@@ -54,6 +54,14 @@ def test_backup_verifier_and_alert_scripts_parse():
         )
         assert result.returncode == 0, result.stderr
 
+    drill = subprocess.run(
+        ["bash", "-n", str(ROOT / "scripts/dr_drill.sh")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert drill.returncode == 0, drill.stderr
+
 
 def test_verifier_does_not_restore_to_production():
     source = (ROOT / "scripts/verify_backup.sh").read_text(encoding="utf-8")
@@ -75,3 +83,11 @@ def test_periodic_units_are_present_and_failure_alert_is_wired():
     assert "OnFailure=osint-backup-verify-alert.service" in service
     assert "OnCalendar=" in timer
     assert "backup_verification_alert.sh" in alert
+
+
+def test_drill_requires_human_safety_controls():
+    source = (ROOT / "scripts/dr_drill.sh").read_text(encoding="utf-8")
+    assert "--confirm" in source
+    assert "--production-unchanged" in source
+    assert "WRONG_KEY_STATUS" in source
+    assert "DATABASE_URL" in source
