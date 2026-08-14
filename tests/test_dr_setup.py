@@ -31,5 +31,5 @@ def test_dr_postgres_helper_grants_only_temporary_schema_access():
 def test_dr_postgres_helper_expands_service_for_psql_restore():
     source = (ROOT / "scripts/dr_postgres.py").read_text(encoding="utf-8")
     assert 'service = os.environ.get("PGSERVICE")' in source
-    assert "environment.update(_service_values(service))" in source
+    assert 'environment["PG" + key.upper()] = values[key]' in source
     assert 'service = "iveras-dr"' in source

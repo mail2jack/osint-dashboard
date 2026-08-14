@@ -65,7 +65,10 @@ def _libpq_environment(database: str) -> dict[str, str]:
         if not service and os.environ.get("PGSERVICEFILE"):
             service = "iveras-dr"
         if service:
-            environment.update(_service_values(service))
+            values = _service_values(service)
+            for key in ("host", "port", "user", "sslmode"):
+                if key in values:
+                    environment["PG" + key.upper()] = values[key]
         environment.pop("PGSERVICE", None)
     environment["PGDATABASE"] = database
     return environment
