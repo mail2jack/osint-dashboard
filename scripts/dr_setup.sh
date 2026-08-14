@@ -81,6 +81,7 @@ DR_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
 SNAPSHOT_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
 SQL_FILE="$(mktemp)"
 chmod 600 "$SQL_FILE"
+chown postgres:postgres "$SQL_FILE"
 trap 'rm -f "$SQL_FILE"' EXIT
 cat > "$SQL_FILE" <<SQL
 CREATE ROLE $DR_ROLE LOGIN NOSUPERUSER CREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD '$DR_PASSWORD';
