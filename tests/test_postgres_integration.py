@@ -73,6 +73,12 @@ class TestPostgreSQLIntegration:
         db.session.commit()
 
         set_tenant_context(db, admin.tenant_id)
+        settings = db.session.execute(
+            text(
+                "SELECT current_setting('app.tenant_id'), current_setting('app.bypass_rls')"
+            )
+        ).one()
+        assert settings == (admin.tenant_id, "false")
         assert Case.query.filter_by(id=case_a.id).count() == 1
         assert Case.query.filter_by(id=case_b.id).count() == 0
 
@@ -91,6 +97,28 @@ class TestPostgreSQLIntegration:
 
         set_tenant_context(db, "tenant-that-does-not-exist")
         assert Case.query.get(case.id) is None
+
+    def test_case_assignment_access_is_tenant_scoped(self, app):
+        admin = User.query.filter_by(username="admin").one()
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
+        investigator = User(
+            username=f"pg-inv-{uuid.uuid4().hex[:8]}",
+            email=f"pg-inv-{uuid.uuid4().hex[:8]}@localhost",
+            full_name="Postgres Investigator",
+            role="investigator",
+            is_active=True,
+            tenant_id=admin.tenant_id,
+        )
+        investigator.set_password("Test1234!")
+        db.session.add(investigator)
+        db.session.flush()
+        case = _seed_case(admin.tenant_id, admin.id)
+        db.session.commit()
+
+        assert not investigator.can_access_case(case)
+        case.investigators.append(investigator)
+        db.session.commit()
+        assert investigator.can_access_case(case)
 
     def test_worker_sets_tenant_context(self, app, monkeypatch):
         admin = User.query.filter_by(username="admin").one()
