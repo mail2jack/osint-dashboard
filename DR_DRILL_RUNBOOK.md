@@ -15,6 +15,9 @@ adds human authorization and audit controls. It does not restore to production.
    `PGSERVICE` definition, and a protected key file. Never put credentials or
    keys in command arguments or shell history.
 6. Confirm that `DR_VERIFY_DATABASE_URL` is not the production `DATABASE_URL`.
+7. Configure the read-only production snapshot connection separately with
+   `DR_PRODUCTION_DATABASE_URL` or `DR_PRODUCTION_PGSERVICE`. Do not reuse the
+   DR account for this connection unless it has only read access to production.
 
 ## Dry Run
 
@@ -33,7 +36,17 @@ The dry run does not decrypt, create databases, or modify files.
 ## Real Drill
 
 The second operator independently checks production before and after the drill.
-Only after that confirmation run:
+Create the read-only before snapshot first:
+
+```bash
+sudo -u osint /opt/osint-dashboard/scripts/dr_production_gate.sh before \
+  --operator Alice \
+  --evidence-dir /opt/osint-dashboard/reports/dr-drill
+```
+
+Put the application and worker in the agreed maintenance/read-only state. The
+second operator confirms that production is healthy and unchanged before the
+restore starts. Only then run:
 
 ```bash
 sudo -u osint /opt/osint-dashboard/scripts/dr_drill.sh \
@@ -44,6 +57,26 @@ sudo -u osint /opt/osint-dashboard/scripts/dr_drill.sh \
   --backup /opt/osint-dashboard/backups \
   --evidence-dir /opt/osint-dashboard/reports/dr-drill
 ```
+
+Return production to its normal state, then create the after snapshot:
+
+```bash
+sudo -u osint /opt/osint-dashboard/scripts/dr_production_gate.sh after \
+  --operator Alice \
+  --evidence-dir /opt/osint-dashboard/reports/dr-drill
+```
+
+The independent checker compares both snapshots and signs the result:
+
+```bash
+sudo -u osint /opt/osint-dashboard/scripts/dr_production_gate.sh attest \
+  --second-operator Bob \
+  --confirm PRODUCTION-UNCHANGED \
+  --evidence-dir /opt/osint-dashboard/reports/dr-drill
+```
+
+The gate checks database identity, schema fingerprint, tenant/case/user counts,
+upload fingerprint, service recovery, and absence of temporary DR databases.
 
 The script performs two tests:
 

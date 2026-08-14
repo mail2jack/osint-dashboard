@@ -45,6 +45,7 @@ def test_backup_verifier_and_alert_scripts_parse():
     for script in (
         "scripts/verify_backup.sh",
         "scripts/backup_verification_alert.sh",
+        "scripts/dr_production_gate.sh",
     ):
         result = subprocess.run(
             ["bash", "-n", str(ROOT / script)],
@@ -61,6 +62,14 @@ def test_backup_verifier_and_alert_scripts_parse():
         check=False,
     )
     assert drill.returncode == 0, drill.stderr
+
+    snapshot = subprocess.run(
+        ["bash", "-n", str(ROOT / "scripts/dr_production_gate.sh")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert snapshot.returncode == 0, snapshot.stderr
 
 
 def test_verifier_does_not_restore_to_production():
@@ -91,6 +100,15 @@ def test_drill_requires_human_safety_controls():
     assert "--production-unchanged" in source
     assert "WRONG_KEY_STATUS" in source
     assert "DATABASE_URL" in source
+
+
+def test_production_gate_requires_second_operator_and_compares_state():
+    source = (ROOT / "scripts/dr_production_gate.sh").read_text(encoding="utf-8")
+    assert "PRODUCTION-UNCHANGED" in source
+    assert "production-before.json" in source
+    assert "production-after.json" in source
+    assert "same_uploads" in source
+    assert "no_temporary_database" in source
 
 
 def test_postgres_restore_uses_psql_and_drill_forwards_report_directory():
