@@ -106,8 +106,11 @@ wordt geëxposeerd via HTTP 503 (nginx kan dan eigen 503-server pagina's tonen).
 # Backups: 4x per dag via /etc/cron.d/osint-dashboard-backup → /opt/osint-dashboard/backups
 sudo -u osint bash /opt/osint-dashboard/scripts/backup.sh /opt/osint-dashboard/backups
 
-# Verificatie (integrity, gzip, SQL, postgres restore dry-run):
+# Verificatie (isolated PostgreSQL restore, counts, encryption, uploads, license DB/key):
 /opt/osint-dashboard/scripts/verify_backup.sh
+
+# Rapporten staan in reports/dr/; dit wijzigt nooit productie.
+# RPO/RTO-doelen en systemd timer: DISASTER_RECOVERY.md
 /opt/osint-dashboard/scripts/verify_backup.sh --cleanup
 
 # Restore (maakt eerst een pre_restore_ backup van de huidige staat):

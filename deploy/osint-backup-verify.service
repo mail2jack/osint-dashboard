@@ -1,0 +1,17 @@
+[Unit]
+Description=Verify the latest encrypted OSINT backup by isolated restore
+After=network-online.target
+Wants=network-online.target
+OnFailure=osint-backup-verify-alert.service
+
+[Service]
+Type=oneshot
+User=osint
+Group=osint
+WorkingDirectory=/opt/osint-dashboard
+EnvironmentFile=-/etc/default/osint-backup-verify
+ExecStart=/opt/osint-dashboard/scripts/verify_backup.sh /opt/osint-dashboard/backups
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/osint-dashboard/reports /tmp

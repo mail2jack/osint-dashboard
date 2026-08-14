@@ -1,0 +1,11 @@
+[Unit]
+Description=Alert after failed OSINT backup verification
+
+[Service]
+Type=oneshot
+User=osint
+Group=osint
+EnvironmentFile=-/etc/default/osint-backup-verify
+ExecStart=/opt/osint-dashboard/scripts/backup_verification_alert.sh
+NoNewPrivileges=true
+ProtectSystem=strict
