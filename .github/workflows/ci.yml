@@ -94,6 +94,19 @@ jobs:
             requirements.txt
             requirements-dev.txt
       - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Disable PostgreSQL superuser RLS bypass
+        run: |
+          python3 - <<'PY'
+          import psycopg2
+
+          connection = psycopg2.connect(
+              "postgresql://cms_test:cms_test@localhost:5432/postgres"
+          )
+          connection.autocommit = True
+          with connection.cursor() as cursor:
+              cursor.execute("ALTER ROLE cms_test NOSUPERUSER NOBYPASSRLS")
+          connection.close()
+          PY
       - run: >-
           DATABASE_URL="postgresql://cms_test:cms_test@localhost:5432/cms_test"
           python3 -m pytest tests/test_postgres_integration.py -v --tb=short -q -n 0
