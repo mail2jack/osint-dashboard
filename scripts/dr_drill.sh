@@ -120,7 +120,10 @@ mkdir -p "$REAL_REPORT_DIR"
 DR_REPORT_DIR="$REAL_REPORT_DIR" \
     "$SCRIPT_DIR/scripts/verify_backup.sh" "$BACKUP_INPUT" > "$WORK_DIR/verify.log"
 FINISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-REPORT_PATH="$(find "$REAL_REPORT_DIR" -maxdepth 1 -type f -name 'dr-verification-*.json' -print | sort | tail -n 1)"
+REPORT_PATH=""
+while IFS= read -r candidate; do
+    REPORT_PATH="$candidate"
+done < <(find "$REAL_REPORT_DIR" -maxdepth 1 -type f -name 'dr-verification-*.json' -print | sort)
 if [ -z "$REPORT_PATH" ]; then
     printf 'The recovery verifier did not produce a JSON report.\n' >&2
     exit 2
