@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from datetime import timedelta
 
@@ -622,6 +623,58 @@ class TestWebActions:
         )
         assert ipintel._lookup_ipapi("8.8.8.8")["countryCode"] == "NL"
 
+    def test_heartbeat_cache_hit_does_not_refresh_ip_intel_timestamp(
+        self, client, monkeypatch
+    ):
+        monkeypatch.setattr(ipintel, "enrich", _real_enrich)
+        monkeypatch.setattr(ipintel, "PTR_ENABLED", True)
+        monkeypatch.setattr(ipintel, "RDAP_ENABLED", True)
+        monkeypatch.setattr(ipintel, "GEO_SOURCE", "ip-api")
+        monkeypatch.setattr(ipintel, "_lookup_ptr", lambda ip: "cached.example")
+        monkeypatch.setattr(ipintel, "_lookup_rdap", lambda ip: {"netname": "cached"})
+        monkeypatch.setattr(ipintel, "_lookup_ipapi", lambda ip: {"countryCode": "NL"})
+        request = {
+            "install_id": "cached-heartbeat",
+            "info": {"hostname": "cached-host"},
+        }
+        headers = {"Authorization": "Bearer tok"}
+        assert (
+            client.post(
+                "/api/register",
+                json=request,
+                headers=headers,
+                environ_base={"REMOTE_ADDR": "8.8.8.8"},
+            ).status_code
+            == 200
+        )
+        old = (datetime.now(timezone.utc) - timedelta(days=40)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        with _connect() as conn:
+            conn.execute(
+                "UPDATE ip_intel SET queried_at = ?, ttl_seconds = ? WHERE ip = ?",
+                (time.time() - 40 * 86400, 90 * 86400, "8.8.8.8"),
+            )
+            conn.execute(
+                "UPDATE installs SET ip_intel_at = ? WHERE install_id = ?",
+                (old, "cached-heartbeat"),
+            )
+        assert (
+            client.post(
+                "/api/telemetry",
+                json=request,
+                headers=headers,
+                environ_base={"REMOTE_ADDR": "8.8.8.8"},
+            ).status_code
+            == 200
+        )
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT ip_intel_at FROM installs WHERE install_id = ?",
+                ("cached-heartbeat",),
+            ).fetchone()
+        assert row["ip_intel_at"] == old
+
     def test_purge_removes_expired_ip_data_from_active_install(self):
         old = (datetime.now(timezone.utc) - timedelta(days=40)).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
@@ -666,6 +719,14 @@ class TestWebActions:
         result = _run_cli("privacy:purge")
         assert result.returncode == 0, result.stderr
         assert "Privacy purge completed" in result.stdout
+
+    def test_deploy_installs_and_enables_privacy_purge_timer(self):
+        source = open(
+            os.path.join(_SERVER_DIR, "deploy", "deploy.sh"), encoding="utf-8"
+        ).read()
+        assert "license-server-privacy-purge.service" in source
+        assert "license-server-privacy-purge.timer" in source
+        assert "systemctl enable --now license-server-privacy-purge.timer" in source
 
     def test_ip_intelligence_export_is_audited(self, client):
         _register(client)

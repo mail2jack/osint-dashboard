@@ -545,7 +545,7 @@ def _update_install(conn, install_id, token_hash, fields, is_new):
     data["last_seen"] = now
     data["last_ip"] = _clean(client_ip, 64)
     data["ip_intel"] = json.dumps(ip_intel, separators=(",", ":"))
-    data["ip_intel_at"] = now
+    data["ip_intel_at"] = ipintel.cached_at(conn, client_ip) or now
     data["last_http"] = _http_metadata()
     data["last_http_at"] = now
     data["ip_check"] = _ip_check(client_ip, data.get("public_ip"))

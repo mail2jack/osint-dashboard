@@ -4,7 +4,7 @@ Gathers as much public data as possible about the connecting client IP:
 
   Tier 0  request metadata     handled in app.py (User-Agent, Accept-Language, …)
   Tier 1  PTR reverse-DNS      socket.gethostbyaddr — disabled by default
-  Tier 2  RDAP                 registry bootstrap via rdap.org (RIPE/ARIN/…)
+  Tier 2  RDAP                 external registry request via rdap.org
                                 — disabled by default
                                — free, offline: netname, org, country, address range
   Tier 3  ip-api.com           geolocation, ISP, ASN, proxy/hosting/mobile flags
@@ -192,6 +192,16 @@ def get_cached(conn, ip: str) -> dict | None:
         return json.loads(row["data"])
     except Exception:
         return None
+
+
+def cached_at(conn, ip: str) -> str | None:
+    """Return the cache capture time for retention timestamps."""
+    row = conn.execute("SELECT queried_at FROM ip_intel WHERE ip = ?", (ip,)).fetchone()
+    if row is None:
+        return None
+    return datetime.fromtimestamp(row["queried_at"], timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
 
 
 def store(conn, ip: str, data: dict, ttl_seconds: float) -> None:

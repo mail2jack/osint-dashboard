@@ -57,10 +57,15 @@ if [[ ! -x "$TARGET/venv/bin/python3" ]]; then
 fi
 sudo -u license "$TARGET/venv/bin/pip" install -q -r "$TARGET/requirements.txt"
 
-echo "=== 3/5 systemd-unit installeren ==="
-sudo cp "$TARGET/deploy/license-server.service" /etc/systemd/system/
+echo "=== 3/5 systemd-units installeren ==="
+sudo cp \
+    "$TARGET/deploy/license-server.service" \
+    "$TARGET/deploy/license-server-privacy-purge.service" \
+    "$TARGET/deploy/license-server-privacy-purge.timer" \
+    /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now license-server
+sudo systemctl enable --now license-server-privacy-purge.timer
 
 echo "=== 4/5 Service herstarten ==="
 sudo systemctl restart license-server
