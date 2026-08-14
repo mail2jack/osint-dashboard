@@ -74,8 +74,13 @@ def app():
         yield _app
 
         db.session.remove()
-        for table in inspect(db.engine).get_table_names():
-            db.session.execute(text(f'DROP TABLE IF EXISTS "{table}"'))
+        tables = inspect(db.engine).get_table_names()
+        if db.engine.dialect.name == "postgresql":
+            for table in tables:
+                db.session.execute(text(f'DROP TABLE IF EXISTS "{table}" CASCADE'))
+        else:
+            for table in tables:
+                db.session.execute(text(f'DROP TABLE IF EXISTS "{table}"'))
         db.session.commit()
 
 
@@ -109,11 +114,19 @@ def _clean_db_between_tests(app):
 
         set_tenant_context(db, admin.tenant_id, bypass_rls=True)
 
-    # Delete all tables EXCEPT seed/config tables (keep admin + tenant from app fixture)
-    for t in inspect(db.engine).get_table_names():
-        if t in ("alembic_version", "users", "tenants", "service_rates"):
-            continue
-        db.session.execute(text(f'DELETE FROM "{t}"'))
+    # Delete all tables EXCEPT seed/config tables (keep admin + tenant from app fixture).
+    tables = inspect(db.engine).get_table_names()
+    preserved = {"alembic_version", "users", "tenants", "service_rates"}
+    if db.engine.dialect.name == "postgresql":
+        disposable = [f'"{t}"' for t in tables if t not in preserved]
+        if disposable:
+            db.session.execute(
+                text(f"TRUNCATE TABLE {', '.join(disposable)} RESTART IDENTITY CASCADE")
+            )
+    else:
+        for t in tables:
+            if t not in preserved:
+                db.session.execute(text(f'DELETE FROM "{t}"'))
     db.session.commit()
 
     # Re-set g.tenant_id so _fill_tenant_id can auto-populate tenant_id on ORM
