@@ -62,3 +62,10 @@ The report checks:
 These are operational targets, not guarantees. A successful scheduled
 verification proves recoverability of the tested archive, not that production
 credentials or infrastructure are available during an incident.
+
+## Open Operational Item
+
+The definitive VPS restore drill, including independent second-operator
+confirmation that production remained unchanged, is still pending. No second
+operator is currently available. Until that drill is completed, RPO/RTO remain
+targets rather than customer-facing, independently witnessed evidence.

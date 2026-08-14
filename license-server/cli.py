@@ -6,6 +6,7 @@ Usage:
     python3 cli.py license:new --install <id> [--plan full|trial] [--expires YYYY-MM-DD | --days N]
     python3 cli.py license:revoke --install <id>
     python3 cli.py license:list
+    python3 cli.py privacy:purge
 
 Run as the `license` user so the key files stay owned by it:
     sudo -u license env HOME=/opt/license-server /opt/license-server/venv/bin/python3 cli.py ...
@@ -98,6 +99,16 @@ def cmd_license_list(args) -> int:
     return 0
 
 
+def cmd_privacy_purge(args) -> int:
+    with lsapp._connect() as conn:
+        counts = lsapp.purge_sensitive_data(conn)
+    print(
+        "Privacy purge completed: "
+        + ", ".join(f"{key}={value}" for key, value in counts.items())
+    )
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Iveras license server CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -123,6 +134,11 @@ def main(argv=None) -> int:
 
     p_list = sub.add_parser("license:list", help="List all licenses")
     p_list.set_defaults(func=cmd_license_list)
+
+    p_purge = sub.add_parser(
+        "privacy:purge", help="Purge expired IP-derived and audit data"
+    )
+    p_purge.set_defaults(func=cmd_privacy_purge)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule license-server privacy purge
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+RandomizedDelaySec=30m
+Unit=license-server-privacy-purge.service
+
+[Install]
+WantedBy=timers.target

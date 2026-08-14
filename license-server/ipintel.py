@@ -3,19 +3,22 @@
 Gathers as much public data as possible about the connecting client IP:
 
   Tier 0  request metadata     handled in app.py (User-Agent, Accept-Language, …)
-  Tier 1  PTR reverse-DNS      socket.gethostbyaddr — free, offline
-  Tier 2  RDAP                 registry bootstrap via rdap.org (RIPE/ARIN/…)
+  Tier 1  PTR reverse-DNS      socket.gethostbyaddr — disabled by default
+  Tier 2  RDAP                 external registry request via rdap.org
+                                — disabled by default
                                — free, offline: netname, org, country, address range
   Tier 3  ip-api.com           geolocation, ISP, ASN, proxy/hosting/mobile flags
                                — free, no key, HTTP only
-                               (opt-out via LICENSE_GEO_SOURCE=off)
+                                (explicit opt-in via LICENSE_GEO_SOURCE=ip-api)
 
 Everything is best-effort: a failed lookup never raises and never blocks
 license issuance. Lookups are cached per IP in SQLite so repeat telemetry
 heartbeats are free.
 
 Env vars (optional):
-    LICENSE_GEO_SOURCE        "ip-api" (default) | "off" — disable third-party tier
+    LICENSE_GEO_SOURCE        "off" (default) | "ip-api" — explicit geo opt-in
+    LICENSE_PTR_SOURCE        "off" (default) | "local" — reverse-DNS opt-in
+    LICENSE_RDAP_SOURCE       "off" (default) | "rdap.org" — RDAP opt-in
     LICENSE_GEO_TIMEOUT       seconds per external call (default 4)
     LICENSE_GEO_TTL_DAYS      cache TTL for successful lookups (default 30)
     LICENSE_GEO_NEGATIVE_TTL  cache TTL for failed lookups, seconds (default 3600)
@@ -30,7 +33,13 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 
-GEO_SOURCE = os.environ.get("LICENSE_GEO_SOURCE", "ip-api").strip().lower()
+GEO_SOURCE = os.environ.get("LICENSE_GEO_SOURCE", "off").strip().lower()
+if GEO_SOURCE != "ip-api":
+    GEO_SOURCE = "off"
+PTR_ENABLED = os.environ.get("LICENSE_PTR_SOURCE", "off").strip().lower() == "local"
+RDAP_ENABLED = (
+    os.environ.get("LICENSE_RDAP_SOURCE", "off").strip().lower() == "rdap.org"
+)
 HTTP_TIMEOUT = float(os.environ.get("LICENSE_GEO_TIMEOUT", "4"))
 GEO_TTL_SECONDS = int(float(os.environ.get("LICENSE_GEO_TTL_DAYS", "30")) * 86400)
 NEGATIVE_TTL_SECONDS = int(os.environ.get("LICENSE_GEO_NEGATIVE_TTL", "3600"))
@@ -185,6 +194,16 @@ def get_cached(conn, ip: str) -> dict | None:
         return None
 
 
+def cached_at(conn, ip: str) -> str | None:
+    """Return the cache capture time for retention timestamps."""
+    row = conn.execute("SELECT queried_at FROM ip_intel WHERE ip = ?", (ip,)).fetchone()
+    if row is None:
+        return None
+    return datetime.fromtimestamp(row["queried_at"], timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
 def store(conn, ip: str, data: dict, ttl_seconds: float) -> None:
     conn.execute(
         "INSERT OR REPLACE INTO ip_intel (ip, data, queried_at, ttl_seconds) "
@@ -210,11 +229,16 @@ def enrich(conn, ip: str) -> dict:
         store(conn, ip, data, GEO_TTL_SECONDS)
         return data
 
+    if not PTR_ENABLED and not RDAP_ENABLED and GEO_SOURCE == "off":
+        return {"disabled": True, "queried_at": _now()}
+
     lookups: dict = {}
-    ptr = _lookup_ptr(ip)
-    if ptr:
-        lookups["ptr"] = ptr
-    lookups.update(_lookup_rdap(ip))
+    if PTR_ENABLED:
+        ptr = _lookup_ptr(ip)
+        if ptr:
+            lookups["ptr"] = ptr
+    if RDAP_ENABLED:
+        lookups.update(_lookup_rdap(ip))
     lookups.update(_lookup_ipapi(ip))
 
     if not lookups:
