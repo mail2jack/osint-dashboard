@@ -6,7 +6,9 @@ adds human authorization and audit controls. It does not restore to production.
 ## Human Preparation
 
 1. Choose a low-traffic maintenance window and identify the primary operator.
-2. Assign a different person as the independent production-state checker.
+2. Assign a different person as the independent production-state checker. This
+   is a procedural control: the script records two names, but cannot technically
+   prove that two humans entered them.
 3. Create a dedicated PostgreSQL DR account. Record its roles, database
    privileges, schema privileges, and `CREATEDB` status in the evidence package.
 4. Verify that the DR account cannot write to the production database. Use a

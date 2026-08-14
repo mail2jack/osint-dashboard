@@ -22,9 +22,8 @@ def _connect():
             make_url(url_value).render_as_string(hide_password=False)
         )
     service = os.environ.get("DR_PRODUCTION_PGSERVICE")
-    database = os.environ.get("DR_PRODUCTION_DATABASE", "postgres")
     if service:
-        return psycopg2.connect(service=service, dbname=database)
+        return psycopg2.connect(service=service)
     raise RuntimeError(
         "DR_PRODUCTION_DATABASE_URL or DR_PRODUCTION_PGSERVICE is required"
     )
@@ -68,13 +67,15 @@ def create_snapshot(output: Path, phase: str) -> dict:
     connection = _connect()
     try:
         with connection, connection.cursor() as cursor:
+            cursor.execute("SELECT current_database(), current_user")
+            database, _user = cursor.fetchone()
             cursor.execute(
-                "SELECT current_database(), current_user, "
-                "md5(string_agg(table_name || ':' || column_name || ':' || data_type, ',' "
-                "ORDER BY table_name, column_name)) "
-                "FROM information_schema.columns WHERE table_schema = 'public'"
+                "SELECT table_name, column_name, data_type "
+                "FROM information_schema.columns WHERE table_schema = 'public' "
+                "ORDER BY table_name, column_name"
             )
-            database, _user, schema_digest = cursor.fetchone()
+            schema_material = "\n".join(":".join(row) for row in cursor.fetchall())
+            schema_digest = hashlib.sha256(schema_material.encode()).hexdigest()
             cursor.execute("SELECT count(*) FROM tenants")
             tenants = cursor.fetchone()[0]
             cursor.execute("SELECT count(*) FROM cases")

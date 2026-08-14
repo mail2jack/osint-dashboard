@@ -4,6 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
+from scripts import dr_production_snapshot
 from scripts.dr_report import write_report
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -109,6 +110,26 @@ def test_production_gate_requires_second_operator_and_compares_state():
     assert "production-after.json" in source
     assert "same_uploads" in source
     assert "no_temporary_database" in source
+
+
+def test_production_pgreservice_uses_service_database(monkeypatch):
+    calls = {}
+
+    def fake_connect(**kwargs):
+        calls.update(kwargs)
+        return object()
+
+    monkeypatch.delenv("DR_PRODUCTION_DATABASE_URL", raising=False)
+    monkeypatch.setenv("DR_PRODUCTION_PGSERVICE", "production-readonly")
+    monkeypatch.setattr(dr_production_snapshot.psycopg2, "connect", fake_connect)
+    assert dr_production_snapshot._connect() is not None
+    assert calls == {"service": "production-readonly"}
+
+
+def test_schema_fingerprint_uses_sha256():
+    source = (ROOT / "scripts/dr_production_snapshot.py").read_text(encoding="utf-8")
+    assert "sha256" in source
+    assert "md5(" not in source
 
 
 def test_postgres_restore_uses_psql_and_drill_forwards_report_directory():
