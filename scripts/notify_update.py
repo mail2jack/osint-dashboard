@@ -35,12 +35,14 @@ def main():
     try:
         from app import app
         from cms.email_utils import send_email, is_smtp_configured
-        from cms.models import User
+        from cms.models import db, User
+        from cms.tenant_context import set_tenant_context
     except ImportError as e:
         print(f"[notify] ⚠️  Cannot load Flask app ({e}) — email skipped")
         return
 
     with app.app_context():
+        set_tenant_context(db, None, bypass_rls=True)
         if not is_smtp_configured():
             print("[notify] ℹ️  SMTP not configured — email skipped")
             return

@@ -156,6 +156,17 @@ def create_cms_module(app: Flask):
             # All schema migrations are now managed by Alembic.
         # See migrations/versions/ for the current schema revision.
 
+        # Startup data migrations run outside a request, so establish a trusted
+        # context before querying tenant-protected tables on PostgreSQL.
+        if db.engine.dialect.name == "postgresql":
+            from sqlalchemy import text
+            from .tenant_context import set_tenant_context
+
+            startup_tenant = db.session.execute(
+                text("SELECT id FROM tenants ORDER BY id LIMIT 1")
+            ).scalar()
+            set_tenant_context(db, startup_tenant, bypass_rls=True)
+
         # Data migration: Subject.notes free-text → Comment model
         try:
             from .models import Subject, Comment

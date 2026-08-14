@@ -79,7 +79,6 @@ def _init_sentry(dsn: str) -> None:
                 SqlalchemyIntegration(),
             ],
             send_default_pii=True,
-            enable_logs=True,
             traces_sample_rate=float(
                 os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "1.0")
             ),
@@ -123,8 +122,8 @@ def add_request_id():
 def set_tenant_context():
     """Set RLS tenant context for PostgreSQL Row-Level Security."""
     from flask_login import current_user
-    from sqlalchemy import text
     from cms.models import db as _db
+    from cms.tenant_context import set_tenant_context as _set_tenant_context
 
     if current_user.is_authenticated:
         tid = current_user.tenant_id
@@ -134,22 +133,23 @@ def set_tenant_context():
             tid = _session.get("switched_tenant_id") or tid
         g.tenant_id = tid
         try:
-            _db.session.execute(
-                text("SET app.tenant_id = :tid"),
-                {"tid": tid},
-            )
             # Only bypass RLS when NOT switched (super-admin viewing own tenant)
             is_switched = current_user.is_super_admin and _session.get(
                 "switched_tenant_id"
             )
-            if current_user.is_super_admin and not is_switched:
-                _db.session.execute(text("SET app.bypass_rls = 'true'"))
-            else:
-                _db.session.execute(text("SET app.bypass_rls = 'false'"))
+            _set_tenant_context(
+                _db,
+                tid,
+                bypass_rls=current_user.is_super_admin and not is_switched,
+            )
         except Exception:
             _db.session.rollback()
     else:
         g.tenant_id = None
+        try:
+            _set_tenant_context(_db, None)
+        except Exception:
+            _db.session.rollback()
 
 
 @app.before_request
@@ -797,9 +797,18 @@ Compress(app)
 # =============================================================================
 
 
+def _set_cli_tenant_context() -> None:
+    """Give trusted all-tenant CLI jobs an explicit PostgreSQL context."""
+    from cms.models import db
+    from cms.tenant_context import set_tenant_context
+
+    set_tenant_context(db, None, bypass_rls=True)
+
+
 @app.cli.command("aggregate-usage")
 def aggregate_usage():
     """Aggregate daily usage metrics for all active tenants."""
+    _set_cli_tenant_context()
     from cms.aggregation import aggregate_yesterday, check_and_alert_usage_limits
 
     count = aggregate_yesterday()
@@ -817,6 +826,7 @@ def telemetry_report():
     from cms.services import telemetry
 
     with app.app_context():
+        _set_cli_tenant_context()
         telemetry.ensure_install_identity()
         install_id = telemetry.get_install_id()
         if not install_id:
@@ -837,6 +847,7 @@ def license_status_cli():
     from cms.services import license as license_service
 
     with app.app_context():
+        _set_cli_tenant_context()
         state = license_service.get_license_state()
         for key, value in state.items():
             print(f"{key}: {value}")
@@ -845,6 +856,7 @@ def license_status_cli():
 @app.cli.command("purge-expired-tenants")
 def purge_expired_tenants_cli():
     """Hard-delete tenant data for tenants past their retention grace period."""
+    _set_cli_tenant_context()
     from cms.data_retention import purge_expired_tenants
 
     count = purge_expired_tenants()
@@ -854,6 +866,7 @@ def purge_expired_tenants_cli():
 @app.cli.command("purge-expired-tenants-dry-run")
 def purge_expired_tenants_dry_run():
     """Dry-run: show what would be purged without deleting anything."""
+    _set_cli_tenant_context()
     from cms.data_retention import purge_expired_tenants
 
     count = purge_expired_tenants(dry_run=True)
@@ -866,6 +879,7 @@ def check_overdue_invoices():
     from datetime import date
     from cms.models import db, Invoice, Notification, User
 
+    _set_cli_tenant_context()
     today = date.today()
     overdue = Invoice.query.filter(
         Invoice.status == "sent",
@@ -915,6 +929,7 @@ def opsec_check():
     """Run OPSEC validation checks (Tor, stealth, audit chain, etc.)."""
     from cms.opsec_check import run_opsec_checks, print_results
 
+    _set_cli_tenant_context()
     results = run_opsec_checks(verbose=True)
     print_results(results)
 

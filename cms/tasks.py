@@ -69,13 +69,16 @@ def send_notification_task(
             if not user:
                 logger.warning("Notification task: user %s not found", user_id)
                 return False
+            from cms.tenant_context import set_tenant_context
+
+            set_tenant_context(db, user.tenant_id)
             notification = Notification(
                 user_id=user_id,
                 tenant_id=user.tenant_id,
-                type=notification_type,
+                category=notification_type,
                 title=title,
                 message=message,
-                action_url=action_url or "",
+                link=action_url or "",
                 created_at=datetime.now(timezone.utc),
             )
             db.session.add(notification)
@@ -115,6 +118,10 @@ def run_background_task(
 
     app = _get_app()
     with app.app_context():
+        from cms.models import db
+        from cms.tenant_context import set_tenant_context
+
+        set_tenant_context(db, None, bypass_rls=True)
         _run_task(task_id, func, *args, **kwargs)
 
 
@@ -124,9 +131,13 @@ def cleanup_old_data_task(max_age_days: int = 30) -> dict:
 
     app = _get_app()
     with app.app_context():
+        from cms.models import db
+        from cms.tenant_context import set_tenant_context
+
+        set_tenant_context(db, None, bypass_rls=True)
         deleted_tasks = cleanup_old_tasks(max_age_hours=max_age_days * 24)
 
-        from cms.models import db, AuditLog
+        from cms.models import AuditLog
         from datetime import timedelta
 
         cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(

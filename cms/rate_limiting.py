@@ -509,6 +509,14 @@ def cleanup_rate_limits(max_age_seconds: int = 3600):
         _save_now()
 
 
+def reset_rate_limits() -> None:
+    """Clear in-memory rate limits for isolated test processes."""
+    with _platform_lock:
+        _platform_rate_limits.clear()
+    with _api_lock:
+        _api_rate_limits.clear()
+
+
 # Module-level: ensure we restore from DB before first request
 if not _LOADED:
     load_rate_limits()
