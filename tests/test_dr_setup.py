@@ -26,3 +26,9 @@ def test_dr_setup_script_syntax_and_safety_controls():
 def test_dr_postgres_helper_grants_only_temporary_schema_access():
     source = (ROOT / "scripts/dr_postgres.py").read_text(encoding="utf-8")
     assert "GRANT CREATE, USAGE ON SCHEMA public" in source
+
+
+def test_dr_postgres_helper_expands_service_for_psql_restore():
+    source = (ROOT / "scripts/dr_postgres.py").read_text(encoding="utf-8")
+    assert 'service = os.environ.get("PGSERVICE")' in source
+    assert "environment.update(_service_values(service))" in source

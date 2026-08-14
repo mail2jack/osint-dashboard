@@ -60,8 +60,10 @@ def _libpq_environment(database: str) -> dict[str, str]:
         if url.query.get("sslmode"):
             environment["PGSSLMODE"] = url.query["sslmode"]
         environment.pop("PGSERVICE", None)
-    elif environment.get("PGSERVICE"):
-        environment.update(_service_values(environment["PGSERVICE"]))
+    else:
+        service = os.environ.get("PGSERVICE")
+        if service:
+            environment.update(_service_values(service))
         environment.pop("PGSERVICE", None)
     environment["PGDATABASE"] = database
     return environment
