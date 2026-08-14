@@ -81,12 +81,12 @@ DR_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
 SNAPSHOT_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
 SQL_FILE="$(mktemp)"
 chmod 600 "$SQL_FILE"
-chown postgres:postgres "$SQL_FILE"
 trap 'rm -f "$SQL_FILE"' EXIT
 cat > "$SQL_FILE" <<SQL
 CREATE ROLE $DR_ROLE LOGIN NOSUPERUSER CREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD '$DR_PASSWORD';
 CREATE ROLE $SNAPSHOT_ROLE LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS PASSWORD '$SNAPSHOT_PASSWORD';
 SQL
+chown postgres:postgres "$SQL_FILE"
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d postgres -f "$SQL_FILE" >/dev/null
 
 sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" <<SQL >/dev/null
