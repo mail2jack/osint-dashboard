@@ -144,6 +144,57 @@ class TestHealth:
         assert r.get_json()["time"].endswith("Z")
 
 
+class TestClientIPTrustBoundary:
+    def test_untrusted_peer_cannot_spoof_xff(self, client):
+        r = client.post(
+            "/api/register",
+            json={
+                "install_id": "spoofed-xff",
+                "info": {"public_ip": "198.51.100.10"},
+            },
+            headers={
+                "Authorization": "Bearer tok",
+                "X-Forwarded-For": "8.8.8.8, 198.51.100.10",
+            },
+            environ_base={"REMOTE_ADDR": "198.51.100.10"},
+        )
+        assert r.status_code == 200
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT last_ip, ip_check FROM installs WHERE install_id = ?",
+                ("spoofed-xff",),
+            ).fetchone()
+        assert row["last_ip"] == "198.51.100.10"
+        assert json.loads(row["ip_check"])["flag"] == "ok"
+
+    def test_trusted_proxy_xff_is_used(self, client):
+        r = client.post(
+            "/api/register",
+            json={"install_id": "trusted-proxy", "info": {"public_ip": "8.8.8.8"}},
+            headers={
+                "Authorization": "Bearer tok",
+                "X-Forwarded-For": "8.8.8.8",
+            },
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        )
+        assert r.status_code == 200
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT last_ip, ip_check FROM installs WHERE install_id = ?",
+                ("trusted-proxy",),
+            ).fetchone()
+        assert row["last_ip"] == "8.8.8.8"
+        assert json.loads(row["ip_check"])["flag"] == "ok"
+
+    def test_nginx_overwrites_forwarded_for(self):
+        with open(
+            os.path.join(_SERVER_DIR, "deploy", "nginx.conf"), encoding="utf-8"
+        ) as config:
+            text = config.read()
+        assert "proxy_set_header X-Forwarded-For $remote_addr;" in text
+        assert "$proxy_add_x_forwarded_for" not in text
+
+
 class TestProductionSecret:
     def _import_app(self, env):
         return subprocess.run(

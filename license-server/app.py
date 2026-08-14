@@ -24,6 +24,7 @@ Runtime config (env vars):
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import secrets
@@ -56,6 +57,23 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 MAX_TEXT = 500
 MAX_JSON = 8192
+
+
+def _trusted_proxy_networks():
+    configured = os.environ.get("LICENSE_TRUSTED_PROXY_CIDRS", "127.0.0.1/32,::1/128")
+    networks = []
+    for value in configured.split(","):
+        value = value.strip()
+        if not value:
+            continue
+        try:
+            networks.append(ipaddress.ip_network(value, strict=False))
+        except ValueError:
+            raise RuntimeError(f"Invalid LICENSE_TRUSTED_PROXY_CIDRS entry: {value!r}")
+    return tuple(networks)
+
+
+TRUSTED_PROXY_NETWORKS = _trusted_proxy_networks()
 
 
 def _now() -> str:
@@ -376,17 +394,23 @@ def _apply_info(body) -> dict:
 
 
 def _client_ip() -> str:
-    """Real client IP: first X-Forwarded-For entry or the socket peer address.
+    """Return the client IP, trusting forwarding headers only from a proxy."""
+    peer = request.remote_addr
+    try:
+        peer_is_proxy = peer and any(
+            ipaddress.ip_address(peer) in network for network in TRUSTED_PROXY_NETWORKS
+        )
+    except ValueError:
+        peer_is_proxy = False
+    if not peer_is_proxy:
+        return _clean(peer, 64)
 
-    The server only listens on 127.0.0.1 behind nginx, which appends the real
-    client IP to X-Forwarded-For.
-    """
     xff = request.headers.get("X-Forwarded-For", "")
     if xff:
         first = xff.split(",")[0].strip()
         if first:
             return _clean(first, 64)
-    return _clean(request.remote_addr, 64)
+    return _clean(peer, 64)
 
 
 def _http_metadata() -> str | None:

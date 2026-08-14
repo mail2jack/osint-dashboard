@@ -32,8 +32,8 @@ token registreert de server de install opnieuw (idempotent). Verkeerde token →
 ## IP-intelligentie (`ipintel.py`)
 
 Bij elke register/telemetry slaat de server bovenop de client-informatie het
-**echte verbindings-IP** op (`X-Forwarded-For`-eerste of socket-peer) en verrijkt
-dat best-effort — alles is gecached per IP zodat herhaalde heartbeats gratis
+**echte verbindings-IP** op (XFF alleen van een vertrouwde lokale reverse proxy,
+anders de socket-peer) en verrijkt dat best-effort — alles is gecached per IP zodat herhaalde heartbeats gratis
 zijn en een falende lookup nooit register/license-uitgifte blokkeert.
 
 | Tier | Bron | Data per IP |
@@ -68,6 +68,7 @@ Omgevingsvariabelen (optioneel, in `/opt/license-server/.env`):
 ```bash
 LICENSE_GEO_SOURCE=ip-api          # "ip-api" (default) | "off" — tier 3 uitschakelen
 LICENSE_GEO_TIMEOUT=4              # seconden per externe call
+LICENSE_TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128  # peers die XFF mogen aanleveren
 LICENSE_GEO_TTL_DAYS=30            # cache-TTL succesvolle lookups
 LICENSE_GEO_NEGATIVE_TTL=3600      # cache-TTL gefaalde lookups (sec)
 ```
