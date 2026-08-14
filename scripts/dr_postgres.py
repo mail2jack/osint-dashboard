@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
+import subprocess
 
 import psycopg2
 from sqlalchemy.engine import make_url
@@ -28,6 +28,27 @@ def _connect(database: str):
     )
 
 
+def _libpq_environment(database: str) -> dict[str, str]:
+    """Build libpq environment without putting credentials in argv."""
+    environment = os.environ.copy()
+    admin_url = os.environ.get("DR_VERIFY_DATABASE_URL")
+    if admin_url:
+        url = make_url(admin_url)
+        if url.host:
+            environment["PGHOST"] = url.host
+        if url.port:
+            environment["PGPORT"] = str(url.port)
+        if url.username:
+            environment["PGUSER"] = url.username
+        if url.password:
+            environment["PGPASSWORD"] = url.password
+        if url.query.get("sslmode"):
+            environment["PGSSLMODE"] = url.query["sslmode"]
+        environment.pop("PGSERVICE", None)
+    environment["PGDATABASE"] = database
+    return environment
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -41,12 +62,14 @@ def main() -> int:
     if args.action == "restore":
         if not args.sql_file:
             raise SystemExit("--sql-file is required for restore")
-        connection = _connect(args.database)
-        try:
-            with connection, connection.cursor() as cursor:
-                cursor.execute(Path(args.sql_file).read_text(encoding="utf-8"))
-        finally:
-            connection.close()
+        subprocess.run(
+            ["psql", "-v", "ON_ERROR_STOP=1", "-q", "-f", args.sql_file],
+            check=True,
+            env=_libpq_environment(args.database),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         return 0
 
     if args.action == "query":

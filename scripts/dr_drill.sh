@@ -117,7 +117,8 @@ fi
 
 REAL_REPORT_DIR="$EVIDENCE_DIR/reports"
 mkdir -p "$REAL_REPORT_DIR"
-"$SCRIPT_DIR/scripts/verify_backup.sh" "$BACKUP_INPUT" > "$WORK_DIR/verify.log"
+DR_REPORT_DIR="$REAL_REPORT_DIR" \
+    "$SCRIPT_DIR/scripts/verify_backup.sh" "$BACKUP_INPUT" > "$WORK_DIR/verify.log"
 FINISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 REPORT_PATH="$(find "$REAL_REPORT_DIR" -maxdepth 1 -type f -name 'dr-verification-*.json' -print | sort | tail -n 1)"
 if [ -z "$REPORT_PATH" ]; then

@@ -91,3 +91,12 @@ def test_drill_requires_human_safety_controls():
     assert "--production-unchanged" in source
     assert "WRONG_KEY_STATUS" in source
     assert "DATABASE_URL" in source
+
+
+def test_postgres_restore_uses_psql_and_drill_forwards_report_directory():
+    helper = (ROOT / "scripts/dr_postgres.py").read_text(encoding="utf-8")
+    drill = (ROOT / "scripts/dr_drill.sh").read_text(encoding="utf-8")
+    assert '["psql", "-v", "ON_ERROR_STOP=1"' in helper
+    assert "subprocess.run(" in helper
+    assert "cursor.execute(Path" not in helper
+    assert 'DR_REPORT_DIR="$REAL_REPORT_DIR"' in drill
