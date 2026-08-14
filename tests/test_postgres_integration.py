@@ -70,6 +70,8 @@ class TestPostgreSQLIntegration:
         set_tenant_context(db, admin.tenant_id, bypass_rls=True)
         case_a = _seed_case(admin.tenant_id, admin.id)
         case_b = _seed_case(tenant_b.id, admin.id)
+        case_a_id = case_a.id
+        case_b_id = case_b.id
         db.session.commit()
 
         set_tenant_context(db, admin.tenant_id)
@@ -79,24 +81,29 @@ class TestPostgreSQLIntegration:
             )
         ).one()
         assert settings == (admin.tenant_id, "false")
-        assert Case.query.filter_by(id=case_a.id).count() == 1
-        assert Case.query.filter_by(id=case_b.id).count() == 0
+        db.session.expire_all()
+        assert Case.query.filter_by(id=case_a_id).count() == 1
+        assert Case.query.filter_by(id=case_b_id).count() == 0
 
         set_tenant_context(db, tenant_b.id)
-        assert Case.query.filter_by(id=case_a.id).count() == 0
-        assert Case.query.filter_by(id=case_b.id).count() == 1
+        db.session.expire_all()
+        assert Case.query.filter_by(id=case_a_id).count() == 0
+        assert Case.query.filter_by(id=case_b_id).count() == 1
 
     def test_case_access_query_is_tenant_scoped(self, app):
         admin = User.query.filter_by(username="admin").one()
         set_tenant_context(db, admin.tenant_id, bypass_rls=True)
         case = _seed_case(admin.tenant_id, admin.id)
+        case_id = case.id
         db.session.commit()
 
         set_tenant_context(db, admin.tenant_id)
-        assert Case.query.get(case.id) is not None
+        db.session.expire_all()
+        assert Case.query.filter_by(id=case_id).count() == 1
 
         set_tenant_context(db, "tenant-that-does-not-exist")
-        assert Case.query.get(case.id) is None
+        db.session.expire_all()
+        assert Case.query.filter_by(id=case_id).count() == 0
 
     def test_case_assignment_access_is_tenant_scoped(self, app):
         admin = User.query.filter_by(username="admin").one()
