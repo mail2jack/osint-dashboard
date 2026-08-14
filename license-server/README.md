@@ -36,6 +36,10 @@ Bij elke register/telemetry slaat de server bovenop de client-informatie het
 anders de socket-peer) en verrijkt dat best-effort — alles is gecached per IP zodat herhaalde heartbeats gratis
 zijn en een falende lookup nooit register/license-uitgifte blokkeert.
 
+Privacy-default: externe IP-verrijking staat uit. PTR, RDAP en ip-api zijn
+afzonderlijke configuratie-opties; `ip-api` is een expliciete opt-in naar een
+externe subprocessor. Het dashboard toont deze waarschuwing ook aan beheerders.
+
 | Tier | Bron | Data per IP |
 |---|---|---|
 | 0 | HTTP-request zelf | User-Agent, Accept-Language, HTTP-versie, tijdstip |
@@ -66,18 +70,25 @@ Het dashboard toont bij `mismatch`/`nat` een badge met beide IP's.
 Omgevingsvariabelen (optioneel, in `/opt/license-server/.env`):
 
 ```bash
-LICENSE_GEO_SOURCE=ip-api          # "ip-api" (default) | "off" — tier 3 uitschakelen
+LICENSE_GEO_SOURCE=off             # "off" (default) | "ip-api" — expliciete geo-opt-in
+LICENSE_PTR_SOURCE=off             # "off" (default) | "local" — reverse-DNS opt-in
+LICENSE_RDAP_SOURCE=off            # "off" (default) | "rdap.org" — RDAP opt-in
 LICENSE_GEO_TIMEOUT=4              # seconden per externe call
 LICENSE_TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128  # peers die XFF mogen aanleveren
 LICENSE_GEO_TTL_DAYS=30            # cache-TTL succesvolle lookups
 LICENSE_GEO_NEGATIVE_TTL=3600      # cache-TTL gefaalde lookups (sec)
+LICENSE_IP_INTEL_RETENTION_DAYS=30
+LICENSE_HTTP_RETENTION_DAYS=7
+LICENSE_IP_CHECK_RETENTION_DAYS=30
+LICENSE_IP_CACHE_RETENTION_DAYS=30
+LICENSE_PURGE_INTERVAL_SECONDS=3600
 ```
 
-> **Privacy**: tier 3 stuurt het klant-IP naar ip-api.com (gratis laag, alleen
-> HTTP, geen key). Wil je géén derde partij, zet dan `LICENSE_GEO_SOURCE=off`
-> (PTR + RDAP blijven, volledig offline). Vermeld dit kort in je EULA/privacy —
-> het is standaard fraudepreventie ter bescherming van je licenties
-> (gerechtvaardigd belang).
+> **Privacy**: externe IP-verrijking staat standaard uit. `LICENSE_GEO_SOURCE=ip-api`,
+> `LICENSE_PTR_SOURCE=local` en `LICENSE_RDAP_SOURCE=rdap.org` zijn afzonderlijke
+> opt-ins. ip-api en rdap.org ontvangen het IP wanneer de betreffende optie aan
+> staat. Beoordeel grondslag, subprocessorvoorwaarden en bewaartermijn vóór
+> inschakeling; zie `PRIVACY_EULA.md`.
 
 ## Licenties (fase 2, Ed25519)
 

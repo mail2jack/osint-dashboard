@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
+from datetime import timedelta
 
 import pytest
 
@@ -593,6 +594,72 @@ class TestWebActions:
         assert http["ua"] and isinstance(http["ua"], str)
         assert http["protocol"] in ("HTTP/1.1", "HTTP/1.0")
 
+    def test_ipintel_privacy_defaults_disable_external_sources(self):
+        assert ipintel.GEO_SOURCE == "off"
+        assert ipintel.PTR_ENABLED is False
+        assert ipintel.RDAP_ENABLED is False
+
+    def test_ipintel_privacy_default_makes_no_external_calls(self, monkeypatch):
+        monkeypatch.setattr(
+            ipintel, "_lookup_ptr", lambda ip: pytest.fail("PTR must be opt-in")
+        )
+        monkeypatch.setattr(
+            ipintel, "_lookup_rdap", lambda ip: pytest.fail("RDAP must be opt-in")
+        )
+        monkeypatch.setattr(
+            ipintel, "_lookup_ipapi", lambda ip: pytest.fail("ip-api must be opt-in")
+        )
+        with _connect() as conn:
+            data = _real_enrich(conn, "8.8.8.8")
+        assert data["disabled"] is True
+
+    def test_ipapi_is_explicit_opt_in(self, monkeypatch):
+        monkeypatch.setattr(ipintel, "GEO_SOURCE", "ip-api")
+        monkeypatch.setattr(
+            ipintel,
+            "_http_json",
+            lambda url: {"status": "success", "countryCode": "NL"},
+        )
+        assert ipintel._lookup_ipapi("8.8.8.8")["countryCode"] == "NL"
+
+    def test_purge_removes_expired_ip_data(self, monkeypatch):
+        old = (datetime.now(timezone.utc) - timedelta(days=40)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        with _connect() as conn:
+            conn.execute(
+                "INSERT INTO installs "
+                "(install_id, token_hash, last_seen, ip_intel, last_http, ip_check) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                ("old", "hash", old, '{"x":1}', '{"ua":"x"}', '{"flag":"ok"}'),
+            )
+            conn.execute(
+                "INSERT INTO ip_intel (ip, data, queried_at, ttl_seconds) VALUES (?, ?, ?, ?)",
+                ("8.8.8.8", "{}", 1, 1),
+            )
+            counts = ls_app.purge_sensitive_data(conn)
+            row = conn.execute(
+                "SELECT ip_intel, last_http, ip_check FROM installs WHERE install_id = 'old'"
+            ).fetchone()
+            cache_count = conn.execute("SELECT COUNT(*) AS n FROM ip_intel").fetchone()[
+                "n"
+            ]
+        assert counts["ip_intel"] == 1
+        assert row["ip_intel"] is None
+        assert row["last_http"] is None
+        assert row["ip_check"] is None
+        assert cache_count == 0
+
+    def test_ip_intelligence_export_is_audited(self, client):
+        _register(client)
+        r = client.get("/api/installs", auth=("admin", "test-secret"))
+        assert r.status_code == 200
+        with _connect() as conn:
+            audit = conn.execute(
+                "SELECT action, resource FROM admin_audit ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        assert (audit["action"], audit["resource"]) == ("export", "installs")
+
     def test_api_installs_exposes_ip_intel(self, client):
         r = _register(client)
         assert r.status_code == 200
@@ -638,6 +705,9 @@ class TestWebActions:
 
     def test_ipintel_caches_per_ip(self, monkeypatch):
         monkeypatch.setattr(ipintel, "enrich", _real_enrich)
+        monkeypatch.setattr(ipintel, "PTR_ENABLED", True)
+        monkeypatch.setattr(ipintel, "RDAP_ENABLED", True)
+        monkeypatch.setattr(ipintel, "GEO_SOURCE", "ip-api")
         calls = {"n": 0}
 
         def fake_ptr(ip):
@@ -662,6 +732,9 @@ class TestWebActions:
 
     def test_ipintel_failure_caches_negative(self, monkeypatch):
         monkeypatch.setattr(ipintel, "enrich", _real_enrich)
+        monkeypatch.setattr(ipintel, "PTR_ENABLED", True)
+        monkeypatch.setattr(ipintel, "RDAP_ENABLED", True)
+        monkeypatch.setattr(ipintel, "GEO_SOURCE", "ip-api")
         monkeypatch.setattr(ipintel, "_lookup_ptr", lambda ip: None)
         monkeypatch.setattr(ipintel, "_lookup_rdap", lambda ip: {})
         monkeypatch.setattr(ipintel, "_lookup_ipapi", lambda ip: {})

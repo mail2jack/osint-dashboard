@@ -29,6 +29,7 @@ import json
 import os
 import secrets
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 
 from flask import Flask, Response, jsonify, render_template, request, session
@@ -57,6 +58,8 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 
 MAX_TEXT = 500
 MAX_JSON = 8192
+PURGE_INTERVAL_SECONDS = int(os.environ.get("LICENSE_PURGE_INTERVAL_SECONDS", "3600"))
+_last_purge = 0.0
 
 
 def _trusted_proxy_networks():
@@ -151,10 +154,73 @@ def _init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS admin_audit (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                actor       TEXT NOT NULL,
+                action      TEXT NOT NULL,
+                resource    TEXT NOT NULL,
+                created_at  TEXT NOT NULL
+            )
+            """
+        )
         # Migrate pre-existing installs tables (CREATE TABLE IF NOT EXISTS never alters).
         _ensure_column(conn, "installs", "ip_intel", "TEXT")
         _ensure_column(conn, "installs", "last_http", "TEXT")
         _ensure_column(conn, "installs", "ip_check", "TEXT")
+
+
+def _retention_days(name: str, default: int) -> int:
+    try:
+        return max(0, int(os.environ.get(name, str(default))))
+    except ValueError:
+        return default
+
+
+def purge_sensitive_data(conn) -> dict[str, int]:
+    """Purge IP-derived fields and cache rows according to configured retention."""
+    counts = {}
+    for column, env_name, default in (
+        ("ip_intel", "LICENSE_IP_INTEL_RETENTION_DAYS", 30),
+        ("last_http", "LICENSE_HTTP_RETENTION_DAYS", 7),
+        ("ip_check", "LICENSE_IP_CHECK_RETENTION_DAYS", 30),
+    ):
+        days = _retention_days(env_name, default)
+        cursor = conn.execute(
+            f"UPDATE installs SET {column} = NULL "
+            "WHERE " + column + " IS NOT NULL "
+            "AND datetime(last_seen) < datetime('now', ?)",
+            (f"-{days} days",),
+        )
+        counts[column] = cursor.rowcount
+    cache_days = _retention_days("LICENSE_IP_CACHE_RETENTION_DAYS", 30)
+    cursor = conn.execute(
+        "DELETE FROM ip_intel WHERE queried_at < ?",
+        (time.time() - cache_days * 86400,),
+    )
+    counts["ip_intel_cache"] = cursor.rowcount
+    return counts
+
+
+def _maybe_purge() -> None:
+    global _last_purge
+    now = time.monotonic()
+    if now - _last_purge < PURGE_INTERVAL_SECONDS:
+        return
+    with _connect() as conn:
+        purge_sensitive_data(conn)
+    _last_purge = now
+
+
+def _audit_admin(action: str, resource: str) -> None:
+    auth = request.authorization
+    actor = _clean(auth.username if auth else ADMIN_USER, 100) or "unknown"
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO admin_audit (actor, action, resource, created_at) VALUES (?, ?, ?, ?)",
+            (actor, action, _clean(resource, 200) or "unknown", _now()),
+        )
 
 
 def _token_hash(token: str) -> str:
@@ -368,6 +434,11 @@ def _csrf_guard():
     return None
 
 
+@app.before_request
+def _privacy_maintenance():
+    _maybe_purge()
+
+
 def _apply_info(body) -> dict:
     info = body.get("info") or {}
     if not isinstance(info, dict):
@@ -574,6 +645,7 @@ def dashboard():
         return guard
     if not ADMIN_PASSWORD:
         app.logger.warning("ADMIN_PASSWORD not set — dashboard is locked down (401)")
+    _audit_admin("view", "dashboard")
     return render_template("dashboard.html", csrf_token=_csrf_token())
 
 
@@ -582,6 +654,7 @@ def api_installs():
     guard = _basic_auth_guard()
     if guard is not None:
         return guard
+    _audit_admin("export", "installs")
     with _connect() as conn:
         rows = conn.execute("SELECT * FROM installs ORDER BY last_seen DESC").fetchall()
         installs = []
