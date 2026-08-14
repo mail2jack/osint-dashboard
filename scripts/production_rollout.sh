@@ -56,6 +56,22 @@ write_report() {
     printf 'Rolloutrapport: %s\n' "$REPORT_PATH"
 }
 
+send_notification() {
+    local status="$1"
+    local recipient="${ROLLOUT_ALERT_EMAIL:-server@iveras.com}"
+    local sender="${ROLLOUT_ALERT_FROM:-server@iveras.com}"
+    if ! command -v mail >/dev/null 2>&1; then
+        printf 'WAARSCHUWING: mail ontbreekt; rolloutrapport blijft lokaal.\n' >&2
+        return 1
+    fi
+    if ! printf 'Rollout status: %s\nCommit: %s\nRapport: %s\n' \
+        "$status" "$(sudo -u osint git -C "$APP_DIR" rev-parse HEAD 2>/dev/null || printf unknown)" \
+        "$REPORT_PATH" | mail -r "$sender" -s "Iveras production rollout: $status" "$recipient"; then
+        printf 'WAARSCHUWING: rolloutmail kon niet worden verzonden.\n' >&2
+        return 1
+    fi
+}
+
 if [ "$(id -u)" -ne 0 ]; then
     printf 'Run dit script op de VPS met sudo/root.\n' >&2
     exit 2
@@ -111,6 +127,10 @@ else
     if ! write_report fail; then
         printf 'Rolloutrapport ontbreekt; license-server blijft onaangeraakt.\n' >&2
     fi
+    if ! send_notification fail && [ "${ROLLOUT_REQUIRE_EMAIL:-false}" = true ]; then
+        printf 'Rolloutmail is verplicht maar mislukt.\n' >&2
+        exit 1
+    fi
     printf 'Rollout gestopt: license-server wordt niet gewijzigd.\n' >&2
     exit 1
 fi
@@ -154,6 +174,10 @@ STATUS=pass
 [ "$ERRORS" -eq 0 ] || STATUS=fail
 if ! write_report "$STATUS"; then
     printf 'Rollout gestopt: rapportage is verplicht en kon niet worden opgeslagen.\n' >&2
+    exit 1
+fi
+if ! send_notification "$STATUS" && [ "${ROLLOUT_REQUIRE_EMAIL:-false}" = true ]; then
+    printf 'Rolloutmail is verplicht maar mislukt.\n' >&2
     exit 1
 fi
 if [ "$STATUS" != pass ]; then exit 1; fi

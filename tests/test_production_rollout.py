@@ -15,6 +15,8 @@ def test_rollout_script_syntax_and_safety_controls():
     assert "DEPLOY-MASTER" in source
     assert "no automatic rollback" in source
     assert "privacy-purge.timer" in source
+    assert 'mail -r "$sender"' in source
+    assert "server@iveras.com" in source
 
 
 def test_failed_app_deploy_stops_before_license_deploy_and_dry_run_calls_gate():
