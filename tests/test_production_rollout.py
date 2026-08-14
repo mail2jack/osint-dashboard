@@ -26,6 +26,11 @@ def test_failed_app_deploy_stops_before_license_deploy_and_dry_run_calls_gate():
     assert "write_report fail" in app_block
     assert "exit 1" in app_block
     assert 'deploy.sh" --dry-run' in source
+    dry_run_block = source.split('if [ "$DRY_RUN" = true ]; then', 1)[1].split(
+        'if [ "$CONFIRM" != true ]', 1
+    )[0]
+    assert "write_report" not in dry_run_block
+    assert "|| true" not in source.split("write_report()", 1)[1].split("}", 1)[0]
 
 
 def test_rollout_report_schema(tmp_path):

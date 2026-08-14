@@ -45,11 +45,14 @@ write_report() {
     local commit_sha
     commit_sha="$(sudo -u osint git -C "$APP_DIR" rev-parse HEAD 2>/dev/null || printf unknown)"
     mkdir -p "$EVIDENCE_DIR"
-    python3 "$APP_DIR/scripts/rollout_report.py" \
+    if ! python3 "$APP_DIR/scripts/rollout_report.py" \
         --output "$REPORT_PATH" \
         --commit-sha "$commit_sha" \
         --checks-file "$CHECKS_FILE" \
-        --status "$status" >/dev/null 2>&1 || true
+        --status "$status" >/dev/null 2>&1; then
+        printf 'FOUT: rolloutrapport kon niet worden geschreven: %s\n' "$REPORT_PATH" >&2
+        return 1
+    fi
     printf 'Rolloutrapport: %s\n' "$REPORT_PATH"
 }
 
@@ -89,11 +92,9 @@ if [ "$DRY_RUN" = true ]; then
         record existing_preflight fail "deploy.sh --dry-run failed"
     fi
     if [ "$ERRORS" -eq 0 ]; then
-        write_report pass
         printf 'DRY RUN PASSED: er wordt niets gewijzigd.\n'
         exit 0
     fi
-    write_report fail
     printf 'DRY RUN FAILED: los eerst de gemelde controles op.\n' >&2
     exit 1
 fi
@@ -107,7 +108,9 @@ if sudo bash "$APP_DIR/scripts/deploy.sh"; then
     record app_deploy pass "existing deploy flow completed"
 else
     record app_deploy fail "existing deploy flow failed; no automatic rollback"
-    write_report fail
+    if ! write_report fail; then
+        printf 'Rolloutrapport ontbreekt; license-server blijft onaangeraakt.\n' >&2
+    fi
     printf 'Rollout gestopt: license-server wordt niet gewijzigd.\n' >&2
     exit 1
 fi
@@ -149,11 +152,9 @@ fi
 COMMIT_SHA="$(sudo -u osint git -C "$APP_DIR" rev-parse HEAD)"
 STATUS=pass
 [ "$ERRORS" -eq 0 ] || STATUS=fail
-python3 "$APP_DIR/scripts/rollout_report.py" \
-    --output "$REPORT_PATH" \
-    --commit-sha "$COMMIT_SHA" \
-    --checks-file "$CHECKS_FILE" \
-    --status "$STATUS"
-printf 'Rolloutrapport: %s\n' "$REPORT_PATH"
+if ! write_report "$STATUS"; then
+    printf 'Rollout gestopt: rapportage is verplicht en kon niet worden opgeslagen.\n' >&2
+    exit 1
+fi
 if [ "$STATUS" != pass ]; then exit 1; fi
 printf 'Rollout geslaagd. Vorige commit was %s.\n' "$START_SHA"
