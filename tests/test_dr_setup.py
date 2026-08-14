@@ -21,3 +21,8 @@ def test_dr_setup_script_syntax_and_safety_controls():
     assert "CREATEDB" in source
     assert "PGPASSFILE" in source
     assert "DROP DATABASE" not in source
+
+
+def test_dr_postgres_helper_grants_only_temporary_schema_access():
+    source = (ROOT / "scripts/dr_postgres.py").read_text(encoding="utf-8")
+    assert "GRANT CREATE, USAGE ON SCHEMA public" in source
