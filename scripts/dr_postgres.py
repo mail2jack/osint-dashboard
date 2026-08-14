@@ -62,6 +62,8 @@ def _libpq_environment(database: str) -> dict[str, str]:
         environment.pop("PGSERVICE", None)
     else:
         service = os.environ.get("PGSERVICE")
+        if not service and os.environ.get("PGSERVICEFILE"):
+            service = "iveras-dr"
         if service:
             environment.update(_service_values(service))
         environment.pop("PGSERVICE", None)
