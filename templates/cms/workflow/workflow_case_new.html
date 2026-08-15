@@ -1117,6 +1117,26 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </form>
 <script nonce="{{ csp_nonce }}">
+function wfSerializeAllAddresses() {
+  document.querySelectorAll('.addresses-container').forEach(function(container) {
+    var idx = container.getAttribute('data-idx');
+    if (idx === null) return;
+    var prefix = 'subject_' + idx;
+    var addressesArr = [];
+    container.querySelectorAll('.address-entry').forEach(function(entry) {
+      var street = (entry.querySelector('.addr-street') || {}).value || '';
+      var number = (entry.querySelector('.addr-number') || {}).value || '';
+      var zipcode = (entry.querySelector('.addr-zipcode') || {}).value || '';
+      var town = (entry.querySelector('.addr-town') || {}).value || '';
+      if (!street && !number && !zipcode) return;
+      var country = (entry.querySelector('.addr-country') || {}).value || 'Netherlands';
+      addressesArr.push({ street: street.trim(), number: number.trim(), zipcode: zipcode.trim(), town: town.trim(), country: country, is_primary: !!(entry.querySelector('.addr-primary') || {}).checked });
+    });
+    var addressesInput = document.querySelector('input[name="' + prefix + '_addresses_data"]');
+    if (addressesInput) addressesInput.value = JSON.stringify(addressesArr);
+  });
+}
+
 function wfSerializeAllContacts() {
   document.querySelectorAll('.contacts-container').forEach(function(container) {
     var idx = container.getAttribute('data-idx') || container.getAttribute('data-newidx');
@@ -1142,6 +1162,7 @@ function wfSerializeAllContacts() {
 }
 
 document.querySelector('form[method="POST"]').addEventListener('submit', function(e) {
+  wfSerializeAllAddresses();
   wfSerializeAllContacts();
   var btn = document.getElementById('wfCreateBtn');
   if (btn && !btn.disabled) {

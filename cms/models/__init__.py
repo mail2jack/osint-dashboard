@@ -2966,6 +2966,14 @@ def _feature_flag_defaults():
             "value_type": "boolean",
             "display_order": 14,
         },
+        {
+            "key": "subject_first_investigations",
+            "category": "feature_flags",
+            "value": "0",
+            "description": "Subject-first investigation layout (ADR-0001)",
+            "value_type": "boolean",
+            "display_order": 15,
+        },
     ]
 
 

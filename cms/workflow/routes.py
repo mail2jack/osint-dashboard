@@ -40,6 +40,7 @@ from .research import (
 from cms.routes.dashboard import _get_cached_health
 from cms.services.invoice_service import auto_invoice_case_created
 from cms.routes.utils import find_similar_clients
+from cms.services.subject_service import subject_service
 
 
 def _investigator_required(f):
@@ -61,20 +62,6 @@ def _investigator_required(f):
     return wrapper
 
 
-def _combine_address(prefix: str) -> str:
-    """Combine separate address form fields into a single address string."""
-    parts = [
-        request.form.get(f"{prefix}_street", ""),
-        request.form.get(f"{prefix}_house_number", ""),
-        request.form.get(f"{prefix}_house_number_addition", ""),
-    ]
-    street = " ".join(p for p in parts if p)
-    pc = request.form.get(f"{prefix}_postal_code", "")
-    city = request.form.get(f"{prefix}_city", "")
-    loc = " ".join(p for p in [pc, city] if p)
-    return ", ".join(p for p in [street, loc] if p)
-
-
 def _combine_address_number(number: str, addition: str) -> str:
     """Combine house number and addition into a single field (e.g. '45A')."""
     n = number.strip()
@@ -84,16 +71,6 @@ def _combine_address_number(number: str, addition: str) -> str:
     if not a:
         return n
     return n + a
-
-
-def _set_address_fields(obj, prefix: str) -> None:
-    """Set all address fields (combined + individual) on a subject/client from form data."""
-    obj.address = _combine_address(prefix)
-    obj.street = request.form.get(f"{prefix}_street", "")
-    obj.house_number = request.form.get(f"{prefix}_house_number", "")
-    obj.house_number_addition = request.form.get(f"{prefix}_house_number_addition", "")
-    obj.postal_code = normalize_postcode(request.form.get(f"{prefix}_postal_code", ""))
-    obj.city = request.form.get(f"{prefix}_city", "")
 
 
 _VEHICLE_RDW_FIELDS = [
@@ -127,21 +104,6 @@ _VEHICLE_RDW_FIELDS = [
 ]
 
 
-def _set_vehicle_fields(obj, prefix: str) -> None:
-    """Set vehicle-specific fields from form data."""
-    obj.brand = request.form.get(f"{prefix}_brand", "")
-    obj.vehicle_type = request.form.get(f"{prefix}_vehicle_type", "")
-    obj.license_plate = request.form.get(f"{prefix}_identification", "")
-    obj.vin = request.form.get(f"{prefix}_vin", "")
-    obj.insurance_company = request.form.get(f"{prefix}_insurance_company", "")
-    rdw_data = obj.rdw_data or {}
-    for field in _VEHICLE_RDW_FIELDS:
-        val = request.form.get(f"{prefix}_{field}", "")
-        if val:
-            rdw_data[field] = val
-    obj.rdw_data = rdw_data if rdw_data else None
-
-
 def _vehicle_auto_name(prefix: str) -> str:
     """Build a display name for a vehicle from form fields."""
     brand = request.form.get(f"{prefix}_brand", "").strip()
@@ -151,6 +113,155 @@ def _vehicle_auto_name(prefix: str) -> str:
     if kenteken:
         parts.append(f"({kenteken})")
     return " ".join(parts) if parts else "Voertuig"
+
+
+def _wf_value(prefix: str, name: str, default: str = "") -> str:
+    """Read a workflow form field named ``<prefix>_<name>``."""
+    value = request.form.get(f"{prefix}_{name}", default)
+    return value if isinstance(value, str) else str(value)
+
+
+def _wf_json_list(prefix: str, name: str):
+    """Parse a JSON list from ``<prefix>_<name>``; ``None`` when absent/empty."""
+    raw = request.form.get(f"{prefix}_{name}", "")
+    if raw is None or str(raw).strip() == "":
+        return None
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return parsed if isinstance(parsed, list) else None
+
+
+def _wf_social_list(prefix: str) -> list:
+    """Comma-separated social handles from ``<prefix>_social_accounts``."""
+    raw = request.form.get(f"{prefix}_social_accounts", "").strip()
+    if not raw:
+        return []
+    return [
+        p.strip() if p.strip().startswith("@") else "@" + p.strip()
+        for p in raw.split(",")
+        if p.strip()
+    ]
+
+
+def _wf_int(prefix: str, name: str, default: int = 0) -> int:
+    """Integer value from ``<prefix>_<name>``."""
+    try:
+        return int(request.form.get(f"{prefix}_{name}", default) or default)
+    except (ValueError, TypeError):
+        return default
+
+
+def _wf_addresses(prefix: str):
+    """Address rows for a subject: serialized JSON, else the flat fields."""
+    serialized = _wf_json_list(prefix, "addresses_data")
+    if serialized is not None:
+        return serialized
+    street = _wf_value(prefix, "street")
+    number = _wf_value(prefix, "house_number")
+    zipcode = _wf_value(prefix, "postal_code")
+    town = _wf_value(prefix, "city")
+    if not (street or number or zipcode or town):
+        return None
+    return [
+        {
+            "street": street,
+            "number": number,
+            "addition": _wf_value(prefix, "house_number_addition"),
+            "zipcode": zipcode,
+            "town": town,
+            "country": "Netherlands",
+            "is_primary": True,
+        }
+    ]
+
+
+def _wf_contacts(prefix: str):
+    """Contact rows for a subject: serialized JSON, else the flat fields."""
+    serialized = _wf_json_list(prefix, "contacts_data")
+    if serialized is not None:
+        return serialized
+    email = _wf_value(prefix, "email")
+    phone = _wf_value(prefix, "phone")
+    contacts = []
+    if email:
+        contacts.append({"contact_type": "email", "value": email, "is_primary": True})
+    if phone:
+        contacts.append({"contact_type": "phone", "value": phone, "is_primary": False})
+    return contacts or None
+
+
+def _wf_subject_data(prefix: str, fallback_type: str | None = None) -> dict:
+    """Build subject data (normalizer) from workflow form fields.
+
+    Mirrors the legacy ``_make_subject`` field handling so the workflow input
+    path produces the same records as the standalone subject CRUD routes; all
+    persistence goes through ``subject_service``.
+    """
+    f = request.form
+    subject_type = (f.get(f"{prefix}_type") or "").strip() or fallback_type or "person"
+    data = {"subject_type": subject_type}
+
+    if subject_type == "person":
+        data["achternaam"] = _wf_value(prefix, "name")
+        for field in (
+            "voornamen",
+            "voorletters",
+            "tussenvoegsels",
+            "geslacht",
+            "date_of_birth",
+            "place_of_birth",
+            "nationality",
+            "bsn_number",
+            "reisdocument_type",
+            "reisdocument_nummer",
+        ):
+            data[field] = _wf_value(prefix, field)
+    else:
+        name = _wf_value(prefix, "name")
+        if subject_type == "vehicle" and not name:
+            name = _vehicle_auto_name(prefix)
+        data["name"] = name
+
+    if subject_type == "vehicle":
+        data["license_plate"] = _wf_value(prefix, "identification")
+        for field in ("brand", "vehicle_type", "vin", "insurance_company"):
+            value = _wf_value(prefix, field)
+            if value:
+                data[field] = value
+        for field in _VEHICLE_RDW_FIELDS:
+            value = _wf_value(prefix, field)
+            if value:
+                data[field] = value
+    elif subject_type == "vessel":
+        for field in ("imo_number", "mmsi", "eni_number", "vessel_nationality"):
+            value = _wf_value(prefix, field)
+            if value:
+                data[field] = value
+    elif subject_type == "company":
+        for field in ("registration_number", "legal_form", "asset_type"):
+            value = _wf_value(prefix, field)
+            if value:
+                data[field] = value
+
+    socials = _wf_social_list(prefix)
+    if socials:
+        data["social_accounts"] = socials
+
+    data["bank_account"] = _wf_value(prefix, "bank_account")
+    data["notes"] = _wf_value(prefix, "notes")
+    data["risk_score"] = _wf_int(prefix, "risk_score")
+
+    addresses = _wf_addresses(prefix)
+    if addresses is not None:
+        data["addresses_data"] = addresses
+
+    contacts = _wf_contacts(prefix)
+    if contacts is not None:
+        data["contacts_data"] = contacts
+
+    return data
 
 
 SCREENSHOT_DIR = os.path.join(
@@ -269,31 +380,6 @@ def case_new():
         client_id = str(uuid.uuid4())
         case_id = str(uuid.uuid4())
 
-        def _json_field(name, default=None):
-            raw = request.form.get(name, "")
-            if not raw or raw.strip() == "":
-                return default if default is not None else []
-            try:
-                return json.loads(raw)
-            except (json.JSONDecodeError, TypeError):
-                return []
-
-        def _social_field(name):
-            raw = request.form.get(name, "").strip()
-            if not raw:
-                return []
-            return [
-                p.strip() if p.strip().startswith("@") else "@" + p.strip()
-                for p in raw.split(",")
-                if p.strip()
-            ]
-
-        def _int_field(name, default=0):
-            try:
-                return int(request.form.get(name, default) or default)
-            except (ValueError, TypeError):
-                return default
-
         existing_client_id = request.form.get("existing_client_id", "").strip()
 
         if existing_client_id:
@@ -406,44 +492,11 @@ def case_new():
             db.session.add(client)
 
         def _make_subject(idx_str):
-            subj_type = request.form.get(f"{idx_str}_type", "person")
-            raw_name = request.form.get(f"{idx_str}_name", "").strip()
-            if not raw_name and subj_type == "vehicle":
-                raw_name = _vehicle_auto_name(idx_str)
-            # Auto-prepend @ for online entity names
-            if subj_type == "online" and raw_name and not raw_name.startswith("@"):
-                raw_name = "@" + raw_name
-            s = WorkflowSubject(
-                id=str(uuid.uuid4()),
-                name=raw_name or "Onbekend",
-                subject_type=subj_type,
-                identification_number=request.form.get(f"{idx_str}_identification", ""),
-                email=request.form.get(f"{idx_str}_email", ""),
-                phone=normalize_phone(request.form.get(f"{idx_str}_phone", "")),
-                date_of_birth=request.form.get(f"{idx_str}_date_of_birth", ""),
-                place_of_birth=request.form.get(f"{idx_str}_place_of_birth", ""),
-                nationality=request.form.get(f"{idx_str}_nationality", ""),
-                bank_account=request.form.get(f"{idx_str}_bank_account", ""),
-                workflow_social_accounts=_social_field(f"{idx_str}_social_accounts"),
-                risk_score=_int_field(f"{idx_str}_risk_score"),
-                notes=request.form.get(f"{idx_str}_notes", ""),
+            return subject_service.create(
+                _wf_subject_data(idx_str),
                 created_by=current_user.id,
                 tenant_id=current_user.tenant_id,
-                tussenvoegsels=request.form.get(f"{idx_str}_tussenvoegsels", ""),
-                voornamen=request.form.get(f"{idx_str}_voornamen", ""),
-                voorletters=request.form.get(f"{idx_str}_voorletters", ""),
-                geslacht=request.form.get(f"{idx_str}_geslacht", ""),
-                bsn_number=request.form.get(f"{idx_str}_bsn_number", ""),
-                reisdocument_type=request.form.get(f"{idx_str}_reisdocument_type", ""),
-                reisdocument_nummer=request.form.get(
-                    f"{idx_str}_reisdocument_nummer", ""
-                ),
             )
-            _set_address_fields(s, idx_str)
-            if subj_type == "vehicle":
-                _set_vehicle_fields(s, idx_str)
-            s.encrypt_identifiers()
-            return s
 
         subjects = []
         idx = 0
@@ -616,32 +669,6 @@ def case_edit(case_id):
         s.decrypt_identifiers()
 
     if request.method == "POST":
-
-        def _json_field(name, default=None):
-            raw = request.form.get(name, "")
-            if not raw or raw.strip() == "":
-                return default if default is not None else []
-            try:
-                return json.loads(raw)
-            except (json.JSONDecodeError, TypeError):
-                return []
-
-        def _social_field(name):
-            raw = request.form.get(name, "").strip()
-            if not raw:
-                return []
-            return [
-                p.strip() if p.strip().startswith("@") else "@" + p.strip()
-                for p in raw.split(",")
-                if p.strip()
-            ]
-
-        def _int_field(name, default=0):
-            try:
-                return int(request.form.get(name, default) or default)
-            except (ValueError, TypeError):
-                return default
-
         # update client
         if client:
             client.name = request.form.get("client_name", client.name)
@@ -693,89 +720,22 @@ def case_edit(case_id):
             subj = db.session.get(WorkflowSubject, sid)
             if not subj:
                 continue
-            subj.name = request.form.get(f"subj_{sid}_name", subj.name)
-            subj.subject_type = request.form.get(f"subj_{sid}_type", "person")
-            # Auto-prepend @ for online entity names
-            if (
-                subj.subject_type == "online"
-                and subj.name
-                and not subj.name.startswith("@")
-            ):
-                subj.name = "@" + subj.name
-            subj.identification_number = request.form.get(
-                f"subj_{sid}_identification", ""
+            subject_service.edit(
+                subj,
+                _wf_subject_data(f"subj_{sid}", fallback_type=subj.subject_type),
+                actor_id=current_user.id,
             )
-            subj.email = request.form.get(f"subj_{sid}_email", "")
-            subj.phone = normalize_phone(request.form.get(f"subj_{sid}_phone", ""))
-            subj.date_of_birth = request.form.get(f"subj_{sid}_date_of_birth", "")
-            subj.place_of_birth = request.form.get(f"subj_{sid}_place_of_birth", "")
-            subj.nationality = request.form.get(f"subj_{sid}_nationality", "")
-            subj.bank_account = request.form.get(f"subj_{sid}_bank_account", "")
-            subj.tussenvoegsels = request.form.get(f"subj_{sid}_tussenvoegsels", "")
-            subj.voornamen = request.form.get(f"subj_{sid}_voornamen", "")
-            subj.voorletters = request.form.get(f"subj_{sid}_voorletters", "")
-            subj.geslacht = request.form.get(f"subj_{sid}_geslacht", "")
-            subj.bsn_number = request.form.get(f"subj_{sid}_bsn_number", "")
-            subj.reisdocument_type = request.form.get(
-                f"subj_{sid}_reisdocument_type", ""
-            )
-            subj.reisdocument_nummer = request.form.get(
-                f"subj_{sid}_reisdocument_nummer", ""
-            )
-            _set_address_fields(subj, f"subj_{sid}")
-            if subj.subject_type == "vehicle":
-                _set_vehicle_fields(subj, f"subj_{sid}")
-            subj.workflow_social_accounts = _social_field(f"subj_{sid}_social_accounts")
-            subj.risk_score = _int_field(f"subj_{sid}_risk_score")
-            subj.notes = request.form.get(f"subj_{sid}_notes", "")
-            subj.encrypt_identifiers()
 
         # process new subjects
         n = 0
         while request.form.get(f"subj_new_{n}_name") or request.form.get(
             f"subj_new_{n}_type"
         ):
-            new_subj_type = request.form.get(f"subj_new_{n}_type", "person")
-            raw_name = request.form.get(f"subj_new_{n}_name", "").strip()
-            if not raw_name and new_subj_type == "vehicle":
-                raw_name = _vehicle_auto_name(f"subj_new_{n}")
-            # Auto-prepend @ for online entity names
-            if new_subj_type == "online" and raw_name and not raw_name.startswith("@"):
-                raw_name = "@" + raw_name
-            new_subj = WorkflowSubject(
-                id=str(uuid.uuid4()),
-                name=raw_name or "Onbekend",
-                subject_type=new_subj_type,
-                identification_number=request.form.get(
-                    f"subj_new_{n}_identification", ""
-                ),
-                email=request.form.get(f"subj_new_{n}_email", ""),
-                phone=normalize_phone(request.form.get(f"subj_new_{n}_phone", "")),
-                date_of_birth=request.form.get(f"subj_new_{n}_date_of_birth", ""),
-                place_of_birth=request.form.get(f"subj_new_{n}_place_of_birth", ""),
-                nationality=request.form.get(f"subj_new_{n}_nationality", ""),
-                bank_account=request.form.get(f"subj_new_{n}_bank_account", ""),
-                workflow_social_accounts=_social_field(f"subj_new_{n}_social_accounts"),
-                risk_score=_int_field(f"subj_new_{n}_risk_score"),
-                notes=request.form.get(f"subj_new_{n}_notes", ""),
+            new_subj = subject_service.create(
+                _wf_subject_data(f"subj_new_{n}"),
                 created_by=current_user.id,
-                tussenvoegsels=request.form.get(f"subj_new_{n}_tussenvoegsels", ""),
-                voornamen=request.form.get(f"subj_new_{n}_voornamen", ""),
-                voorletters=request.form.get(f"subj_new_{n}_voorletters", ""),
-                geslacht=request.form.get(f"subj_new_{n}_geslacht", ""),
-                bsn_number=request.form.get(f"subj_new_{n}_bsn_number", ""),
-                reisdocument_type=request.form.get(
-                    f"subj_new_{n}_reisdocument_type", ""
-                ),
-                reisdocument_nummer=request.form.get(
-                    f"subj_new_{n}_reisdocument_nummer", ""
-                ),
+                tenant_id=current_user.tenant_id,
             )
-            _set_address_fields(new_subj, f"subj_new_{n}")
-            if new_subj_type == "vehicle":
-                _set_vehicle_fields(new_subj, f"subj_new_{n}")
-            new_subj.encrypt_identifiers()
-            db.session.add(new_subj)
             case.subjects.append(new_subj)
             n += 1
 

@@ -7,12 +7,31 @@ from cms.workflow.actions.helpers import _first_subject
 logger = logging.getLogger(__name__)
 
 
+def _rdw_plate(subject):
+    """Resolve a subject's license plate (handles encrypted legacy data)."""
+    if subject is None:
+        return None
+    plate = getattr(subject, "license_plate", None)
+    if plate:
+        try:
+            from cms.encryption_utils import encryptor
+
+            plate = encryptor.decrypt(plate)
+        except Exception:
+            pass
+        plate = (plate or "").strip()
+        if plate:
+            return plate
+    rdw = subject.rdw_data or {}
+    return (rdw.get("kenteken") or "").strip() or None
+
+
 def _rdw_check(action):
     findings = []
     subject = _first_subject(action)
     ipc = action.data_value if action.data_value else None
     if not ipc:
-        ipc = getattr(subject, "identification_number", None) if subject else None
+        ipc = _rdw_plate(subject)
     subject_id = subject.id if subject else None
     if not ipc:
         findings.append(
