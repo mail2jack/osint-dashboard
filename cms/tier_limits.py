@@ -117,6 +117,15 @@ def check_feature(feature: str, tenant_id: str | None = None) -> bool:
     if license_service.trial_blocked(feature):
         return False
 
+    # Global kill-switch (ADR-0001 D1.8): the Setting below forces the flag
+    # off for every tenant, regardless of per-tenant overrides. It only ever
+    # applies to "subject_first_investigations"; other features are unaffected.
+    if feature == "subject_first_investigations":
+        from .models import get_setting
+
+        if get_setting("subject_first_investigations_global", "1") != "1":
+            return False
+
     from flask_login import current_user
     from .models import FeatureFlag, Tenant as TenantModel
 
