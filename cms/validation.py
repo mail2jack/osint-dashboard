@@ -584,6 +584,7 @@ class EditSubjectSchema(BaseModel):
     name: str | None = None
     subject_type: str | None = None
     risk_score: Any = None
+    risk_factors: str | None = None
     notes: str | None = None
     registration_number: str | None = None
     legal_form: str | None = None

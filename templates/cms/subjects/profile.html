@@ -63,6 +63,14 @@
   .count-chip { display: inline-block; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.2rem 0.6rem; font-size: 0.8rem; color: var(--text-secondary); margin-right: 0.4rem; margin-bottom: 0.4rem; }
   .status-ok { color: #16a34a; }
   .status-bad { color: #dc2626; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem; }
+  .form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.15rem; }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; background: var(--bg); color: var(--text); }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  .form-group input[type=checkbox] { width: auto; }
+  .form-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+  .row-actions { white-space: nowrap; }
+  .row-actions .btn-cms { margin-right: 0.35rem; }
 </style>
 
 <div class="profile-header">
@@ -101,7 +109,9 @@
 {# ────────────────────────── Overview ────────────────────────── #}
 <div class="tab-panel active" data-panel="overview">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Overview') }}</h2></div>
+    <div class="card-header"><h2>{{ _('Overview') }}</h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-toggle-form="overview-form">{{ _('Edit') }}</button>{% endif %}
+    </div>
     <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.75rem;">
       <span class="count-chip">📇 {{ profile.identifiers|length }} identifiers</span>
       <span class="count-chip">📋 {{ profile.facts|length }} facts</span>
@@ -122,6 +132,67 @@
     </div>
     {% endif %}
   </div>
+
+  {% if can_edit %}
+  <div class="card" data-form="overview-form" style="display:none;">
+    <div class="card-header"><h2>{{ _('Edit Overview') }}</h2></div>
+    <form data-base-form data-method="PATCH" data-url="{{ url_for('cms.profile_update_subject', subject_id=subject.id) }}">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Subject type</label>
+          <select name="subject_type">
+            {% for t in ['person', 'company', 'organization', 'vehicle', 'vessel', 'online', 'account'] %}
+            <option value="{{ t }}" {% if profile.subject.subject_type == t %}selected{% endif %}>{{ t|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if profile.subject.subject_type == 'person' %}
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" name="name" value="{{ profile.subject.name or '' }}" placeholder="{{ _('Rendered from legal fields') }}">
+        </div>
+        <div class="form-group">
+          <label>Surname / Family name</label>
+          <input type="text" name="achternaam" value="{{ profile.subject.achternaam or '' }}">
+        </div>
+        <div class="form-group">
+          <label>First names</label>
+          <input type="text" name="voornamen" value="{{ profile.subject.voornamen or '' }}">
+        </div>
+        <div class="form-group">
+          <label>Initials</label>
+          <input type="text" name="voorletters" value="{{ profile.subject.voorletters or '' }}">
+        </div>
+        <div class="form-group">
+          <label>Particle (tussenvoegsels)</label>
+          <input type="text" name="tussenvoegsels" value="{{ profile.subject.tussenvoegsels or '' }}">
+        </div>
+        {% else %}
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" name="name" value="{{ profile.subject.name or '' }}">
+        </div>
+        {% endif %}
+        <div class="form-group">
+          <label>Risk score</label>
+          <input type="number" step="0.01" name="risk_score" value="{{ profile.subject.risk_score if profile.subject.risk_score is not none else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Risk factors</label>
+          <input type="text" name="risk_factors" value="{{ profile.subject.risk_factors|join(', ') if profile.subject.risk_factors else '' }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="3">{{ profile.subject.notes or '' }}</textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="overview-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 
   <div class="card">
     <div class="card-header"><h2>{{ _('Linked Cases') }}</h2></div>
@@ -148,7 +219,9 @@
 {# ────────────────────────── Identity ────────────────────────── #}
 <div class="tab-panel" data-panel="identity">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Identity') }} <span class="badge badge-status-active">{{ profile.subject.subject_type }}</span></h2></div>
+    <div class="card-header"><h2>{{ _('Identity') }} <span class="badge badge-status-active">{{ profile.subject.subject_type }}</span></h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-toggle-form="identity-form">{{ _('Edit') }}</button>{% endif %}
+    </div></div>
     {% set s = profile.subject %}
     {% if s.subject_type == 'person' %}
       <div class="info-row"><span class="info-label">{{ _('Name') }}</span><span class="info-value">{{ s.name }}</span></div>
@@ -209,15 +282,68 @@
       <div class="info-row"><span class="info-label">{{ _('Name') }}</span><span class="info-value">{{ s.name }}</span></div>
     {% endif %}
   </div>
+
+  {% if can_edit %}
+  <div class="card" data-form="identity-form" style="display:none;">
+    <div class="card-header"><h2>{{ _('Edit Identity') }}</h2></div>
+    <form data-base-form data-method="PATCH" data-url="{{ url_for('cms.profile_update_subject', subject_id=subject.id) }}">
+      <div class="form-grid">
+      {% if s.subject_type == 'person' %}
+        <div class="form-group"><label>Geslacht</label>
+          <select name="geslacht">
+            {% for v in ['man', 'vrouw', 'onbekend', 'geen_opgave'] %}
+            <option value="{{ v }}" {% if s.geslacht == v %}selected{% endif %}>{{ {'man':'Man','vrouw':'Vrouw','onbekend':'Onbekend','geen_opgave':'Geen opgave'}.get(v, v) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>Date of birth</label><input type="date" name="date_of_birth" value="{{ s.date_of_birth or '' }}"></div>
+        <div class="form-group"><label>Place of birth</label><input type="text" name="place_of_birth" value="{{ s.place_of_birth or '' }}"></div>
+        <div class="form-group"><label>Nationality</label><input type="text" name="nationality" value="{{ s.nationality or '' }}"></div>
+        <div class="form-group"><label>BSN</label><input type="text" name="bsn_number" value="{{ s.bsn_number or '' }}"></div>
+        <div class="form-group"><label>Identification number</label><input type="text" name="identification_number" value="{{ s.identification_number or '' }}"></div>
+        <div class="form-group"><label>Reisdocument type</label>
+          <select name="reisdocument_type">
+            <option value="">-</option>
+            {% for v in ['paspoort', 'id-kaart', 'rijbewijs', 'overige'] %}
+            <option value="{{ v }}" {% if s.reisdocument_type == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>Reisdocument number</label><input type="text" name="reisdocument_nummer" value="{{ s.reisdocument_nummer or '' }}"></div>
+      {% elif s.subject_type in ('company', 'organization') %}
+        <div class="form-group"><label>KVK number</label><input type="text" name="registration_number" value="{{ s.registration_number or '' }}"></div>
+        <div class="form-group"><label>Legal form</label><input type="text" name="legal_form" value="{{ s.legal_form or '' }}"></div>
+      {% elif s.subject_type == 'vehicle' %}
+        <div class="form-group"><label>License plate</label><input type="text" name="license_plate" value="{{ s.license_plate or '' }}"></div>
+        <div class="form-group"><label>VIN</label><input type="text" name="vin" value="{{ s.vin or '' }}"></div>
+        <div class="form-group"><label>Brand</label><input type="text" name="brand" value="{{ s.brand or '' }}"></div>
+        <div class="form-group"><label>Vehicle type</label><input type="text" name="vehicle_type" value="{{ s.vehicle_type or '' }}"></div>
+        <div class="form-group"><label>Insurance company</label><input type="text" name="insurance_company" value="{{ s.insurance_company or '' }}"></div>
+      {% elif s.subject_type == 'vessel' %}
+        <div class="form-group"><label>IMO number</label><input type="text" name="imo_number" value="{{ s.imo_number or '' }}"></div>
+        <div class="form-group"><label>MMSI</label><input type="text" name="mmsi" value="{{ s.mmsi or '' }}"></div>
+        <div class="form-group"><label>ENI</label><input type="text" name="eni_number" value="{{ s.eni_number or '' }}"></div>
+        <div class="form-group"><label>Flag state</label><input type="text" name="vessel_nationality" value="{{ s.vessel_nationality or '' }}"></div>
+      {% endif %}
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="identity-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 {# ────────────────────────── Contact ────────────────────────── #}
 <div class="tab-panel" data-panel="contact">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Contact') }}</h2></div>
+    <div class="card-header"><h2>{{ _('Contact') }}</h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-add-form="contact-form">{{ _('Add') }}</button>{% endif %}
+    </div>
     {% if profile.contacts %}
     <table class="fact-table">
-      <thead><tr><th>Type</th><th>Value</th><th>Primary</th><th>Provenance</th></tr></thead>
+      <thead><tr><th>Type</th><th>Value</th><th>Primary</th><th>Provenance</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for c in profile.contacts %}
         <tr>
@@ -225,6 +351,12 @@
           <td>{{ c.value|redact_for_viewer }}</td>
           <td>{{ '⭐' if c.is_primary else '' }}</td>
           <td>{{ prov(c) }}</td>
+          {% if can_edit %}
+          <td class="row-actions">
+            <button class="btn-cms small" type="button" data-edit-form="contact-form" data-item='{{ c|tojson }}'>{{ _('Edit') }}</button>
+            <button class="btn-cms small danger" type="button" data-delete-url="{{ url_for('cms.profile_delete_contact', subject_id=subject.id, item_id=c.id) }}" data-delete-name="{{ c.value }}">{{ _('Delete') }}</button>
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -233,44 +365,139 @@
     <div class="empty-note">{{ _('No contact details recorded yet.') }}</div>
     {% endif %}
   </div>
+
+  {% if can_edit %}
+  <div class="card" data-form="contact-form" style="display:none;">
+    <div class="card-header"><h2 data-form-title="contact-form">{{ _('Add Contact') }}</h2></div>
+    <form data-item-form data-base-url="{{ url_for('cms.profile_add_contact', subject_id=subject.id) }}">
+      <input type="hidden" name="item_id">
+      <div class="form-grid">
+        <div class="form-group"><label>Type</label>
+          <select name="contact_type">
+            <option value="email">Email</option>
+            <option value="phone">Phone</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Value</label><input type="text" name="value" required></div>
+        <div class="form-group"><label>Primary</label><input type="checkbox" name="is_primary" style="width:auto;"></div>
+        <div class="form-group"><label>Source</label><input type="text" name="source" placeholder="{{ _('Where did you find this?') }}"></div>
+        <div class="form-group"><label>Status</label>
+          <select name="status">
+            <option value="candidate">Candidate</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+            <option value="superseded">Superseded</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Observed at</label><input type="text" name="observed_at" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="contact-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 {# ────────────────────────── Addresses ────────────────────────── #}
 <div class="tab-panel" data-panel="addresses">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Addresses') }}</h2></div>
+    <div class="card-header"><h2>{{ _('Addresses') }}</h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-add-form="address-form">{{ _('Add') }}</button>{% endif %}
+    </div>
     {% if profile.addresses %}
     {% for a in profile.addresses %}
     <div class="address-card{% if a.is_primary %} primary{% endif %}" style="margin-bottom:0.5rem;padding:0.6rem 0.75rem;border:1px solid var(--border-color);border-radius:6px;">
       <div><strong>{{ a.street or '' }}{% if a.number %} {{ a.number }}{% endif %}</strong>{% if a.is_primary %} <span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}{% if a.kadaster_verified %} <span class="badge badge-kadaster">✓ {{ _('CADASTRAL') }}</span>{% endif %}</div>
       <div style="color:var(--text-secondary);font-size:0.85rem;">{{ a.zipcode or '' }}{% if a.zipcode and a.town %}, {% endif %}{{ a.town or '' }}{% if a.country and a.country != 'Netherlands' %}, {{ a.country }}{% endif %}</div>
       {{ prov(a) }}
+      {% if can_edit %}
+      <div class="row-actions">
+        <button class="btn-cms small" type="button" data-edit-form="address-form" data-item='{{ a|tojson }}'>{{ _('Edit') }}</button>
+        <button class="btn-cms small danger" type="button" data-delete-url="{{ url_for('cms.profile_delete_address', subject_id=subject.id, item_id=a.id) }}" data-delete-name="{{ a.street or a.town or 'address' }}">{{ _('Delete') }}</button>
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
     {% else %}
     <div class="empty-note">{{ _('No addresses recorded yet.') }}</div>
     {% endif %}
   </div>
+
+  {% if can_edit %}
+  <div class="card" data-form="address-form" style="display:none;">
+    <div class="card-header"><h2 data-form-title="address-form">{{ _('Add Address') }}</h2></div>
+    <form data-item-form data-base-url="{{ url_for('cms.profile_add_address', subject_id=subject.id) }}">
+      <input type="hidden" name="item_id">
+      <div class="form-grid">
+        <div class="form-group"><label>Street</label><input type="text" name="street" required></div>
+        <div class="form-group"><label>Number</label><input type="text" name="number"></div>
+        <div class="form-group"><label>Addition</label><input type="text" name="addition"></div>
+        <div class="form-group"><label>Zipcode</label><input type="text" name="zipcode"></div>
+        <div class="form-group"><label>Town</label><input type="text" name="town"></div>
+        <div class="form-group"><label>Country</label><input type="text" name="country" value="Netherlands"></div>
+        <div class="form-group"><label>Primary</label><input type="checkbox" name="is_primary" style="width:auto;"></div>
+        <div class="form-group"><label>Source</label><input type="text" name="source" placeholder="{{ _('Where did you find this?') }}"></div>
+        <div class="form-group"><label>Status</label>
+          <select name="status">
+            <option value="candidate">Candidate</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+            <option value="superseded">Superseded</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Observed at</label><input type="text" name="observed_at" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="address-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 {# ────────────────────────── Financial ────────────────────────── #}
 <div class="tab-panel" data-panel="financial">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Financial') }}</h2></div>
+    <div class="card-header"><h2>{{ _('Financial') }}</h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-toggle-form="financial-form">{{ _('Edit') }}</button>{% endif %}
+    </div>
     {% set s = profile.subject %}
     <div class="info-row"><span class="info-label">{{ _('💳 Bank / IBAN') }}</span><span class="info-value">{{ s.bank_account|redact_for_viewer if s.bank_account else '-' }}</span></div>
     <div class="info-row"><span class="info-label">{{ _('Asset Type') }}</span><span class="info-value">{{ s.asset_type or '-' }}</span></div>
     <div class="info-row"><span class="info-label">{{ _('Estimated Value') }}</span><span class="info-value">{% if s.estimated_value %}{{ s.currency or 'EUR' }} {{ s.estimated_value }}{% else %}-{% endif %}</span></div>
   </div>
+
+  {% if can_edit %}
+  <div class="card" data-form="financial-form" style="display:none;">
+    <div class="card-header"><h2>{{ _('Edit Financial') }}</h2></div>
+    <form data-base-form data-method="PATCH" data-url="{{ url_for('cms.profile_update_subject', subject_id=subject.id) }}">
+      <div class="form-grid">
+        <div class="form-group"><label>Bank / IBAN</label><input type="text" name="bank_account" value="{{ s.bank_account or '' }}"></div>
+        <div class="form-group"><label>Asset type</label><input type="text" name="asset_type" value="{{ s.asset_type or '' }}"></div>
+        <div class="form-group"><label>Estimated value</label><input type="number" step="0.01" name="estimated_value" value="{{ s.estimated_value if s.estimated_value is not none else '' }}"></div>
+        <div class="form-group"><label>Currency</label><input type="text" name="currency" value="{{ s.currency or 'EUR' }}"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="financial-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 {# ────────────────────────── Online ────────────────────────── #}
 <div class="tab-panel" data-panel="online">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Online / Social Accounts') }}</h2></div>
+    <div class="card-header"><h2>{{ _('Online / Social Accounts') }}</h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-add-form="social-form">{{ _('Add') }}</button>{% endif %}
+    </div>
     {% if profile.social_accounts %}
     <table class="fact-table">
-      <thead><tr><th>Platform</th><th>Username</th><th>Account ID</th><th>URL</th><th>Provenance</th></tr></thead>
+      <thead><tr><th>Platform</th><th>Username</th><th>Account ID</th><th>URL</th><th>Provenance</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for sa in profile.social_accounts %}
         <tr>
@@ -279,6 +506,12 @@
           <td>{% if sa.account_id %}<code style="font-size:0.78rem;">{{ sa.account_id }}</code>{% else %}—{% endif %}</td>
           <td>{% if sa.url %}<a href="{{ sa.url }}" target="_blank" rel="noopener">🔗 link</a>{% else %}—{% endif %}</td>
           <td>{{ prov(sa) }}</td>
+          {% if can_edit %}
+          <td class="row-actions">
+            <button class="btn-cms small" type="button" data-edit-form="social-form" data-item='{{ sa|tojson }}'>{{ _('Edit') }}</button>
+            <button class="btn-cms small danger" type="button" data-delete-url="{{ url_for('cms.profile_delete_social_account', subject_id=subject.id, item_id=sa.id) }}" data-delete-name="{{ sa.platform }} {{ sa.username }}">{{ _('Delete') }}</button>
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -287,12 +520,43 @@
     <div class="empty-note">{{ _('No social accounts recorded yet.') }}</div>
     {% endif %}
   </div>
+
+  {% if can_edit %}
+  <div class="card" data-form="social-form" style="display:none;">
+    <div class="card-header"><h2 data-form-title="social-form">{{ _('Add Social Account') }}</h2></div>
+    <form data-item-form data-base-url="{{ url_for('cms.profile_add_social_account', subject_id=subject.id) }}">
+      <input type="hidden" name="item_id">
+      <div class="form-grid">
+        <div class="form-group"><label>Platform</label><input type="text" name="platform" required placeholder="twitter / instagram / ..."></div>
+        <div class="form-group"><label>Username</label><input type="text" name="username"></div>
+        <div class="form-group"><label>Account ID</label><input type="text" name="account_id"></div>
+        <div class="form-group"><label>URL</label><input type="url" name="url"></div>
+        <div class="form-group"><label>Source</label><input type="text" name="source" placeholder="{{ _('Where did you find this?') }}"></div>
+        <div class="form-group"><label>Status</label>
+          <select name="status">
+            <option value="candidate">Candidate</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+            <option value="superseded">Superseded</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Observed at</label><input type="text" name="observed_at" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="social-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 {# ────────────────────────── Relations ────────────────────────── #}
 <div class="tab-panel" data-panel="relations">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Relations') }}</h2></div>
+    <div class="card-header"><h2>{{ _('Relations') }}</h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-add-form="relation-form">{{ _('Add') }}</button>{% endif %}
+    </div>
     {% set rel_count = profile.relations.outgoing|length + profile.relations.incoming|length %}
     {% if rel_count == 0 %}
     <div class="empty-note">{{ _('No relations recorded yet.') }}</div>
@@ -312,7 +576,9 @@
             <td>{{ status_badge(r.status or 'candidate') }}</td>
             <td>{{ r.case_number or '-' }}</td>
           </tr>
-          <tr><td colspan="6" style="padding-top:0;border-bottom:none;">{{ prov(r) }}</td></tr>
+          <tr><td colspan="6" style="padding-top:0;border-bottom:none;">{{ prov(r) }}{% if can_edit %}
+            <button class="btn-cms small danger" type="button" data-delete-url="{{ url_for('cms.profile_delete_relation', subject_id=subject.id, related_subject_id=r.related_subject.id) }}" data-delete-name="relation">{{ _('Delete') }}</button>
+            {% endif %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -320,6 +586,59 @@
     {% endfor %}
     {% endif %}
   </div>
+
+  {% if can_edit %}
+  <div class="card" data-form="relation-form" style="display:none;">
+    <div class="card-header"><h2>{{ _('Add Relation') }}</h2></div>
+    <form data-base-form data-method="POST" data-url="{{ url_for('cms.profile_add_relation', subject_id=subject.id) }}">
+      <div class="form-grid">
+        <div class="form-group"><label>Related subject</label>
+          <select name="related_subject_id" required>
+            <option value="">{{ _('Select a subject…') }}</option>
+            {% for c in relation_candidates %}
+            <option value="{{ c.id }}">{{ c.name }} ({{ c.subject_type }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>Relation type</label>
+          <select name="relation_type">
+            {% for t in ['family', 'business', 'other'] %}
+            <option value="{{ t }}">{{ t|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>Direction</label>
+          <select name="direction">
+            <option value="mutual">Mutual</option>
+            <option value="outgoing">Outgoing</option>
+            <option value="incoming">Incoming</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Source</label><input type="text" name="source" placeholder="{{ _('Where did you find this?') }}"></div>
+        <div class="form-group"><label>Reliability</label>
+          <select name="reliability">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Status</label>
+          <select name="status">
+            <option value="candidate">Candidate</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+            <option value="superseded">Superseded</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Case number</label><input type="text" name="case_number"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="relation-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 {# ────────────────────────── Investigation ────────────────────────── #}
@@ -352,10 +671,12 @@
 {# ────────────────────────── Facts ────────────────────────── #}
 <div class="tab-panel" data-panel="facts">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Facts') }} <span class="badge badge-status-active">{{ profile.facts|length }}</span></h2></div>
+    <div class="card-header"><h2>{{ _('Facts') }} <span class="badge badge-status-active">{{ profile.facts|length }}</span></h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-add-form="fact-form">{{ _('Add') }}</button>{% endif %}
+    </div>
     {% if profile.facts %}
     <table class="fact-table">
-      <thead><tr><th>Fact</th><th>Value</th><th>Status</th><th>Source</th><th>Reliability</th><th>Verified</th></tr></thead>
+      <thead><tr><th>Fact</th><th>Value</th><th>Status</th><th>Source</th><th>Reliability</th><th>Verified</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for f in profile.facts %}
         <tr>
@@ -365,8 +686,14 @@
           <td>{{ f.source or '-' }}{% if f.source_url %}<a href="{{ f.source_url }}" target="_blank" rel="noopener"> 🔗</a>{% endif %}</td>
           <td>{{ f.reliability or '-' }}</td>
           <td>{% if f.verified_by_name %}{{ f.verified_by_name }}{% if f.verified_at %} ({{ f.verified_at[:10] }}){% endif %}{% else %}-{% endif %}</td>
+          {% if can_edit %}
+          <td class="row-actions">
+            <button class="btn-cms small" type="button" data-edit-form="fact-form" data-item='{{ f|tojson }}'>{{ _('Edit') }}</button>
+            <button class="btn-cms small danger" type="button" data-delete-url="{{ url_for('cms.profile_delete_fact', subject_id=subject.id, item_id=f.id) }}" data-delete-name="{{ f.fact_key }}">{{ _('Delete') }}</button>
+          </td>
+          {% endif %}
         </tr>
-        <tr><td colspan="6" style="padding-top:0;border-bottom:none;">{{ prov(f) }}</td></tr>
+        <tr><td colspan="7" style="padding-top:0;border-bottom:none;">{{ prov(f) }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -375,11 +702,48 @@
     {% endif %}
   </div>
 
+  {% if can_edit %}
+  <div class="card" data-form="fact-form" style="display:none;">
+    <div class="card-header"><h2 data-form-title="fact-form">{{ _('Add Fact') }}</h2></div>
+    <form data-item-form data-base-url="{{ url_for('cms.profile_add_fact', subject_id=subject.id) }}">
+      <input type="hidden" name="item_id">
+      <div class="form-grid">
+        <div class="form-group"><label>Fact key</label><input type="text" name="fact_key" required placeholder="e.g. occupation, residence_status"></div>
+        <div class="form-group"><label>Value</label><input type="text" name="value" required></div>
+        <div class="form-group"><label>Status</label>
+          <select name="status">
+            <option value="candidate">Candidate</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+            <option value="superseded">Superseded</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Source</label><input type="text" name="source"></div>
+        <div class="form-group"><label>Source URL</label><input type="url" name="source_url"></div>
+        <div class="form-group"><label>Reliability</label>
+          <select name="reliability">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Observed at</label><input type="text" name="observed_at" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="fact-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
   <div class="card">
-    <div class="card-header"><h2>{{ _('Identifiers') }} <span class="badge badge-status-active">{{ profile.identifiers|length }}</span></h2></div>
+    <div class="card-header"><h2>{{ _('Identifiers') }} <span class="badge badge-status-active">{{ profile.identifiers|length }}</span></h2>
+      {% if can_edit %}<button class="btn-cms small" type="button" data-add-form="identifier-form">{{ _('Add') }}</button>{% endif %}
+    </div>
     {% if profile.identifiers %}
     <table class="fact-table">
-      <thead><tr><th>Type</th><th>Value</th><th>Status</th><th>Source</th><th>Reliability</th><th>Added</th></tr></thead>
+      <thead><tr><th>Type</th><th>Value</th><th>Status</th><th>Source</th><th>Reliability</th><th>Added</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for i in profile.identifiers %}
         <tr>
@@ -389,8 +753,14 @@
           <td>{{ i.source or '-' }}{% if i.source_url %}<a href="{{ i.source_url }}" target="_blank" rel="noopener"> 🔗</a>{% endif %}</td>
           <td>{{ i.reliability or '-' }}</td>
           <td>{{ i.created_at[:10] if i.created_at else '-' }}</td>
+          {% if can_edit %}
+          <td class="row-actions">
+            <button class="btn-cms small" type="button" data-edit-form="identifier-form" data-item='{{ i|tojson }}'>{{ _('Edit') }}</button>
+            <button class="btn-cms small danger" type="button" data-delete-url="{{ url_for('cms.profile_delete_identifier', subject_id=subject.id, item_id=i.id) }}" data-delete-name="{{ i.identifier_type }}">{{ _('Delete') }}</button>
+          </td>
+          {% endif %}
         </tr>
-        <tr><td colspan="6" style="padding-top:0;border-bottom:none;">{{ prov(i) }}</td></tr>
+        <tr><td colspan="7" style="padding-top:0;border-bottom:none;">{{ prov(i) }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -398,6 +768,41 @@
     <div class="empty-note">{{ _('No identifiers recorded yet.') }}</div>
     {% endif %}
   </div>
+
+  {% if can_edit %}
+  <div class="card" data-form="identifier-form" style="display:none;">
+    <div class="card-header"><h2 data-form-title="identifier-form">{{ _('Add Identifier') }}</h2></div>
+    <form data-item-form data-base-url="{{ url_for('cms.profile_add_identifier', subject_id=subject.id) }}">
+      <input type="hidden" name="item_id">
+      <div class="form-grid">
+        <div class="form-group"><label>Type</label><input type="text" name="identifier_type" required placeholder="email / phone / iban / ..."></div>
+        <div class="form-group"><label>Value</label><input type="text" name="value" required></div>
+        <div class="form-group"><label>Status</label>
+          <select name="status">
+            <option value="candidate">Candidate</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+            <option value="superseded">Superseded</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Source</label><input type="text" name="source"></div>
+        <div class="form-group"><label>Source URL</label><input type="url" name="source_url"></div>
+        <div class="form-group"><label>Reliability</label>
+          <select name="reliability">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Observed at</label><input type="text" name="observed_at" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-cms primary small">{{ _('Save') }}</button>
+        <button type="button" class="btn-cms small" data-toggle-form="identifier-form">{{ _('Cancel') }}</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 
 {# ────────────────────────── Findings ────────────────────────── #}
@@ -442,6 +847,121 @@ document.addEventListener('DOMContentLoaded', function () {
     var name = location.hash.slice(1);
     if (document.querySelector('[data-tab="' + name + '"]')) { show(name); }
   }
+
+  var canEdit = {{ 'true' if can_edit else 'false' }};
+  if (!canEdit) { return; }
+
+  function formById(name) {
+    return document.querySelector('[data-form="' + name + '"]');
+  }
+  function toggleForm(name, force) {
+    var card = formById(name);
+    if (!card) { return; }
+    var showNow = force !== undefined ? force : card.style.display === 'none';
+    card.style.display = showNow ? '' : 'none';
+    if (showNow) { var first = card.querySelector('input,select,textarea'); if (first) { first.focus(); } }
+  }
+  function titleFor(name) {
+    return document.querySelector('[data-form-title="' + name + '"]');
+  }
+
+  // Toggle buttons (Edit/Cancel) on base forms.
+  document.querySelectorAll('[data-toggle-form]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (btn.dataset.toggleForm) { toggleForm(btn.dataset.toggleForm); }
+    });
+  });
+
+  // Add buttons -> open the matching form in create mode.
+  document.querySelectorAll('[data-add-form]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var name = btn.dataset.addForm;
+      var form = formById(name);
+      if (!form) { return; }
+      form.querySelectorAll('input,select,textarea').forEach(function (el) {
+        if (el.type === 'checkbox') { el.checked = false; }
+        else if (el.name && el.name !== 'item_id') { el.value = ''; }
+      });
+      if (form.querySelector('[name=item_id]')) { form.querySelector('[name=item_id]').value = ''; }
+      var t = titleFor(name); if (t) { t.textContent = {{ ('Add ' )|tojson }} + t.textContent.replace(/^(Edit |Add )/, ''); }
+      toggleForm(name, true);
+    });
+  });
+
+  // Edit buttons -> populate the shared form from the row's data-item.
+  document.querySelectorAll('[data-edit-form]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var name = btn.dataset.editForm;
+      var form = formById(name);
+      if (!form || !btn.dataset.item) { return; }
+      var data = JSON.parse(btn.dataset.item);
+      Object.keys(data).forEach(function (key) {
+        var el = form.querySelector('[name="' + key + '"]');
+        if (!el) { return; }
+        if (el.type === 'checkbox') { el.checked = !!data[key]; }
+        else if (el.tagName === 'SELECT') { el.value = data[key] != null ? data[key] : ''; }
+        else { el.value = data[key] != null ? data[key] : ''; }
+      });
+      if (form.querySelector('[name=item_id]')) { form.querySelector('[name=item_id]').value = data.id != null ? data.id : ''; }
+      var t = titleFor(name); if (t) { t.textContent = {{ ('Edit ')|tojson }} + t.textContent.replace(/^(Edit |Add )/, ''); }
+      toggleForm(name, true);
+    });
+  });
+
+  // Delete buttons.
+  document.querySelectorAll('[data-delete-url]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (!confirm('{{ _('Delete') }} ' + (btn.dataset.deleteName || 'this item') + '?')) { return; }
+      window.apiFetch(btn.dataset.deleteUrl, { method: 'DELETE' })
+        .then(function (r) {
+          if (!r.ok) { return r.json().then(function (j) { throw new Error(j.error || j.message || '{{ _('Delete failed') }}'); }); }
+          window.location.reload();
+        })
+        .catch(function (e) { alert(e.message); });
+    });
+  });
+
+  function serializeForm(form) {
+    var body = {};
+    new FormData(form).forEach(function (value, key) {
+      body[key] = value;
+    });
+    form.querySelectorAll('input[type=checkbox]').forEach(function (el) {
+      body[el.name] = el.checked;
+    });
+    return body;
+  }
+
+  function submitForm(form, method, url) {
+    window.apiFetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serializeForm(form))
+    })
+      .then(function (r) {
+        if (!r.ok) { return r.json().then(function (j) { throw new Error(j.error || j.message || '{{ _('Save failed') }}'); }); }
+        window.location.reload();
+      })
+      .catch(function (e) { alert(e.message); });
+  }
+
+  // Base forms (PATCH subject, POST relation) with a fixed URL.
+  document.querySelectorAll('form[data-base-form]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      submitForm(form, form.dataset.method || 'PATCH', form.dataset.url);
+    });
+  });
+
+  // Item forms (POST create / PUT update per id).
+  document.querySelectorAll('form[data-item-form]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var id = form.querySelector('[name=item_id]').value;
+      var url = form.dataset.baseUrl + (id ? '/' + encodeURIComponent(id) : '');
+      submitForm(form, id ? 'PUT' : 'POST', url);
+    });
+  });
 });
 </script>
 {% endblock %}
