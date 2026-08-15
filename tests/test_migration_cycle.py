@@ -12,6 +12,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PREV_REVISION = "e0f1a2b3c4d5"
+PREV_RESEARCH_FLOW = "f4e5d6c7b8a9"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:
@@ -104,6 +105,65 @@ class TestMigrationCycle:
         assert "subject_id" not in cols
         assert "target_kind" not in cols
         assert "target_snapshot" not in cols
+
+        _run_alembic(db_file, "upgrade", "head")
+
+    def test_finding_status_backfill_and_roundtrip(self, tmp_path):
+        """ADR-0001 D1.5: findings get status/verified_by/verified_at columns.
+
+        Legacy `verified` findings are backfilled to 'verified' with a
+        verified_at timestamp; unverified ones become 'candidate'. Downgrade
+        removes the new columns again.
+        """
+        db_file = tmp_path / "f.db"
+        _run_alembic(db_file, "upgrade", PREV_RESEARCH_FLOW)
+
+        conn = sqlite3.connect(db_file)
+        conn.execute(
+            "INSERT INTO tenants (id, name, slug, is_active, tier, join_code) "
+            "VALUES ('t1', 'T', 't', 1, 'enterprise', 'seed')"
+        )
+        conn.execute(
+            "INSERT INTO users (id, tenant_id, username, email, hashed_password, role, full_name, is_active, totp_enabled, failed_login_attempts) "
+            "VALUES ('u1', 't1', 'a', 'a@a.a', 'x', 'investigator', 'A', 1, 0, 0)"
+        )
+        conn.execute(
+            "INSERT INTO cases (id, tenant_id, case_number, client_id, title, status, start_date) "
+            "VALUES ('c1', 't1', 'C-1', 'client1', 'x', 'open', datetime('now'))"
+        )
+        conn.executemany(
+            "INSERT INTO findings "
+            "(id, case_id, tenant_id, created_by, title, content, detail, verified, confidence_level, created_at, updated_at) "
+            "VALUES (?, ?, 't1', 'u1', ?, 'c', 'd', ?, 'medium', datetime('now'), datetime('now'))",
+            [
+                ("f1", "c1", "Verified finding", 1),
+                ("f2", "c1", "Draft finding", 0),
+            ],
+        )
+        conn.commit()
+
+        _run_alembic(db_file, "upgrade", "head")
+        conn = sqlite3.connect(db_file)
+        rows = {
+            r[0]: r[1]
+            for r in conn.execute("SELECT id, status FROM findings").fetchall()
+        }
+        verified_at = {
+            r[0]: r[1]
+            for r in conn.execute("SELECT id, verified_at FROM findings").fetchall()
+        }
+        conn.close()
+        assert rows == {"f1": "verified", "f2": "candidate"}
+        assert verified_at["f1"] is not None
+        assert verified_at["f2"] is None
+
+        _run_alembic(db_file, "downgrade", PREV_RESEARCH_FLOW)
+        conn = sqlite3.connect(db_file)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(findings)")}
+        conn.close()
+        assert "status" not in cols
+        assert "verified_by" not in cols
+        assert "verified_at" not in cols
 
         _run_alembic(db_file, "upgrade", "head")
 

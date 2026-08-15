@@ -1,13 +1,15 @@
 // ── Action picker modal ──
-function showActionPicker(actionType) {
+function showActionPicker(actionType, mode) {
+  mode = mode || 'run';
   const btn = document.querySelector(`[data-action-key="${actionType}"]`);
   if (!btn || btn.classList.contains('running')) return;
 
   if (actionType === 'google_dork') {
-    showDorkPicker();
+    showDorkPicker(mode);
     return;
   }
   if (actionType === 'photo_analysis') {
+    if (mode === 'proposal') { showToast('Photo analysis cannot be proposed.', 'warning'); return; }
     showPhotoAnalysisPicker();
     return;
   }
@@ -16,7 +18,7 @@ function showActionPicker(actionType) {
   const items = buildPickerItems(actionType);
   if (items.length === 0) {
     if (actionType === 'subdomain' || actionType === 'manual_entry') {
-      showEditConfirm(actionType, '');
+      showEditConfirm(actionType, '', '', mode);
       return;
     }
     var warnings = {
@@ -83,9 +85,9 @@ function showActionPicker(actionType) {
       var val = item.value;
       var subjectId = item.subject_id;
       if (actionType === 'facebook' || actionType === 'tiktok' || actionType === 'instagram' || actionType === 'linkedin' || actionType === 'twitter' || actionType === 'vessel' || actionType === 'subdomain' || actionType === 'osint' || actionType === 'manual_entry') {
-        showEditConfirm(actionType, val, subjectId);
+        showEditConfirm(actionType, val, subjectId, mode);
       } else {
-        runAction(actionType, val, subjectId);
+        runAction(actionType, val, subjectId, mode);
       }
     });
   });
@@ -95,7 +97,8 @@ function showActionPicker(actionType) {
   });
 }
 
-function showEditConfirm(actionType, currentValue, subjectId) {
+function showEditConfirm(actionType, currentValue, subjectId, mode) {
+  mode = mode || 'run';
   const btn = document.querySelector('[data-action-key="' + actionType + '"]');
   const label = btn ? btn.dataset.label : actionType;
   var desc = 'Search by name or username:';
@@ -125,7 +128,11 @@ function showEditConfirm(actionType, currentValue, subjectId) {
       '<input id="edit-value" type="text" value="' + esc(currentValue) + '" style="width:100%;padding:0.5rem 0.6rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-bottom:1rem;box-sizing:border-box;" autofocus />' +
       '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
         '<button class="action-btn" data-action="cancel-edit" style="background:var(--border-color);color:var(--text-primary);">Cancel</button>' +
-        '<button class="action-btn" data-action="confirm-edit" style="background:#1877f2;color:#fff;font-weight:600;">Confirm and start</button>' +
+        (mode === 'proposal'
+          ? '<button class="action-btn" data-action="confirm-edit" style="background:var(--border-color);color:var(--text-primary);">▶ Start now</button>' +
+            '<button class="action-btn" data-action="confirm-propose" style="background:#1877f2;color:#fff;font-weight:600;">📌 Save as proposal</button>'
+          : '<button class="action-btn" data-action="confirm-propose" style="background:var(--border-color);color:var(--text-primary);">📌 Propose</button>' +
+            '<button class="action-btn" data-action="confirm-edit" style="background:#1877f2;color:#fff;font-weight:600;">Confirm and start</button>') +
       '</div>';
   }
 
@@ -171,12 +178,16 @@ function showEditConfirm(actionType, currentValue, subjectId) {
     input.setSelectionRange(0, input.value.length);
     overlay.querySelector('[data-action="confirm-edit"]').onclick = function() {
       overlay.remove();
-      runAction(actionType, input.value.trim() || currentValue, subjectId);
+      runAction(actionType, input.value.trim() || currentValue, subjectId, 'run');
+    };
+    overlay.querySelector('[data-action="confirm-propose"]').onclick = function() {
+      overlay.remove();
+      runAction(actionType, input.value.trim() || currentValue, subjectId, 'proposal');
     };
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
         overlay.remove();
-        runAction(actionType, input.value.trim() || currentValue, subjectId);
+        runAction(actionType, input.value.trim() || currentValue, subjectId, mode);
       }
     });
   }
@@ -242,7 +253,8 @@ function buildPickerItems(actionType) {
 
 // ── Google Dork picker (3-step: browse → variables → preview) ──
 
-function showDorkPicker() {
+function showDorkPicker(mode) {
+  mode = mode || 'run';
   var lib = typeof DORKS_LIBRARY !== 'undefined' ? DORKS_LIBRARY : null;
   if (!lib || !lib.categories || !lib.categories.length) {
     showToast('Dork library not available.', 'error');
@@ -345,7 +357,7 @@ function showDorkPicker() {
         allCats.forEach(function(cat) {
           cat.dorks.forEach(function(d) { if (d.id === dorkId) found = d; });
         });
-        if (found) { overlay.remove(); showDorkVariableForm(found); }
+        if (found) { overlay.remove(); showDorkVariableForm(found, mode); }
       });
     });
   }
@@ -357,7 +369,8 @@ function showDorkPicker() {
   rebindPickerEvents();
 }
 
-function showDorkVariableForm(dork) {
+function showDorkVariableForm(dork, mode) {
+  mode = mode || 'run';
   var vars = dork.variables || [];
 
   var fieldsHtml = '';
@@ -399,7 +412,9 @@ function showDorkVariableForm(dork) {
         '<div id="dork-preview-box" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;padding:0.6rem 0.75rem;margin-top:0.75rem;font-family:monospace;font-size:0.82rem;color:var(--text-primary);word-break:break-all;"></div>' +
         '<div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.75rem;">' +
           '<button class="action-btn" data-action="dork-back" style="background:var(--border-color);color:var(--text-primary);">← Back</button>' +
-          '<button class="action-btn" id="dork-confirm-btn" style="background:#1877f2;color:#fff;font-weight:600;">Run search</button>' +
+          (mode === 'proposal'
+            ? '<button class="action-btn" id="dork-propose-btn" style="background:#1877f2;color:#fff;font-weight:600;">📌 Save as proposal</button>'
+            : '<button class="action-btn" id="dork-confirm-btn" style="background:#1877f2;color:#fff;font-weight:600;">Run search</button>') +
         '</div>' +
       '</div>' +
     '</div>';
@@ -409,8 +424,8 @@ function showDorkVariableForm(dork) {
     var q = buildPreviewQuery();
     var previewBox = overlay.querySelector('#dork-preview-box');
     if (previewBox) previewBox.textContent = q || '(fill in variables above)';
-    var confirmBtn = overlay.querySelector('#dork-confirm-btn');
-    if (confirmBtn) confirmBtn.disabled = !q;
+    var btn = overlay.querySelector('#dork-confirm-btn') || overlay.querySelector('#dork-propose-btn');
+    if (btn) btn.disabled = !q;
   }
 
   overlay.querySelectorAll('.dork-var-input').forEach(function(inp) {
@@ -422,7 +437,7 @@ function showDorkVariableForm(dork) {
   overlay.querySelector('[data-action="dork-back"]').onclick = function() { overlay.remove(); showDorkPicker(); };
   overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 
-  overlay.querySelector('#dork-confirm-btn').onclick = function() {
+  function finishDork(btnMode) {
     var q = buildPreviewQuery();
     if (!q) return;
     overlay.remove();
@@ -431,8 +446,13 @@ function showDorkVariableForm(dork) {
       vars[inp.dataset.var] = inp.value.trim();
     });
     var payload = JSON.stringify({dork_id: dork.id, dork_label: dork.label, query: q, variables: vars});
-    runAction('google_dork', payload);
-  };
+    runAction('google_dork', payload, '', btnMode);
+  }
+
+  var confirmBtn = overlay.querySelector('#dork-confirm-btn');
+  if (confirmBtn) confirmBtn.onclick = function() { finishDork('run'); };
+  var proposeBtn = overlay.querySelector('#dork-propose-btn');
+  if (proposeBtn) proposeBtn.onclick = function() { finishDork('proposal'); };
 
   var firstInput = overlay.querySelector('.dork-var-input');
   if (firstInput) firstInput.focus();

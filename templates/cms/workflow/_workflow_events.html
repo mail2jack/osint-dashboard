@@ -40,6 +40,62 @@ document.addEventListener('DOMContentLoaded', function() {
       showActionPicker(btn.getAttribute('data-action-key'));
       return;
     }
+    var propose = e.target.closest('[data-action="propose-action"]');
+    if (propose) {
+      e.preventDefault();
+      showActionPicker(propose.getAttribute('data-action-key'), 'proposal');
+      return;
+    }
+    var startProp = e.target.closest('[data-action="start-proposal"]');
+    if (startProp) {
+      e.preventDefault();
+      var aid = startProp.getAttribute('data-action-id');
+      if (!aid) return;
+      fetch('/cms/workflow/api/case/' + CASE_ID + '/actions/' + encodeURIComponent(aid) + '/start', {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'},
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok) { pollStatus(); }
+        else if (data.error) { showToast(data.error, 'error'); }
+      })
+      .catch(function() {});
+      return;
+    }
+    var delProp = e.target.closest('[data-action="delete-proposal"]');
+    if (delProp) {
+      e.preventDefault();
+      var aid = delProp.getAttribute('data-action-id');
+      if (!aid) return;
+      if (!confirm('Delete this proposal?')) return;
+      fetch('/cms/workflow/api/case/' + CASE_ID + '/actions/' + encodeURIComponent(aid) + '/delete', {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'},
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) pollStatus();
+      }).catch(function() {});
+      return;
+    }
+    var rej = e.target.closest('[data-action="reject-finding"]');
+    if (rej) {
+      e.preventDefault();
+      var rfid = rej.getAttribute('data-finding-id');
+      if (!rfid) return;
+      if (!confirm('Reject this finding?')) return;
+      var rcsrf = '{{ csrf_token() }}';
+      fetch('/cms/workflow/api/case/' + CASE_ID + '/findings/' + rfid + '/verify', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': rcsrf, 'Accept': 'application/json'},
+        body: JSON.stringify({status: 'rejected'}),
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok) pollStatus();
+      })
+      .catch(function() {});
+      return;
+    }
     var del = e.target.closest('[data-action="delete-finding"]');
     if (del) {
       e.preventDefault();

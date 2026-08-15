@@ -77,13 +77,23 @@ def _has_credits(action_type):
     return get_remaining_credits(action_type) > 0
 
 
-def register_action(action_type, label, icon, handler, description=""):
+def register_action(action_type, label, icon, handler, description="", category="open"):
     ACTION_REGISTRY[action_type] = {
         "label": label,
         "icon": icon,
         "handler": handler,
         "description": description,
+        "category": category,
     }
+
+
+def action_category(action_type):
+    """Return the action's channel category: 'paid', 'open' or 'local'."""
+    return ACTION_REGISTRY.get(action_type, {}).get("category", "open")
+
+
+def is_paid_action(action_type):
+    return action_category(action_type) == "paid"
 
 
 def cancel_action(action_id):
