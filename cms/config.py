@@ -39,6 +39,9 @@ class Config:
     # CMS Encryption Key (REQUIRED in production)
     CMS_ENCRYPTION_KEY = os.environ.get("CMS_ENCRYPTION_KEY")
 
+    # CMS Fingerprint Key (ADR-0001 D3; REQUIRED in production)
+    CMS_FINGERPRINT_KEY = os.environ.get("CMS_FINGERPRINT_KEY")
+
     # CMS API Key (for programmatic access)
     CMS_API_KEY = os.environ.get("CMS_API_KEY")
 

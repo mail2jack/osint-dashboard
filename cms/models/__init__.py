@@ -25,6 +25,7 @@ from typing import Any
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.types import JSON as _BaseJSON
+from sqlalchemy import or_
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -219,6 +220,9 @@ case_subjects = db.Table(
     db.Column(
         "subject_id", db.String(36), db.ForeignKey("subjects.id"), primary_key=True
     ),
+    db.Column("role_in_case", db.String(50)),
+    db.Column("status", db.String(20), default="active"),
+    db.Column("note", db.Text),
 )
 
 subject_relations = db.Table(
@@ -232,9 +236,16 @@ subject_relations = db.Table(
         db.ForeignKey("subjects.id"),
         primary_key=True,
     ),
+    db.Column("relation_type", db.String(100)),  # family | business | other
     db.Column(
-        "relationship_type", db.String(100)
-    ),  # e.g., "family_member", "business_partner"
+        "direction", db.String(20), default="mutual"
+    ),  # outgoing | incoming | mutual
+    db.Column("source", db.String(200)),
+    db.Column("reliability", db.String(20)),
+    db.Column("status", db.String(20), default="candidate"),
+    db.Column("observed_at", db.DateTime),
+    db.Column("case_number", db.String(50)),
+    db.Column("created_by", db.String(36), db.ForeignKey("users.id")),
     db.Column("created_at", db.DateTime, default=lambda: datetime.now(timezone.utc)),
 )
 
@@ -1050,14 +1061,26 @@ class Subject(db.Model):
         order_by="SocialAccount.platform, SocialAccount.username",
     )
 
-    # Relations with other subjects
-    related_subjects = db.relationship(
-        "Subject",
-        secondary=subject_relations,
-        primaryjoin=id == subject_relations.c.subject_id,
-        secondaryjoin=id == subject_relations.c.related_subject_id,
-        backref="related_to",
-    )
+    # Relations with other subjects. Single canonical row per pair
+    # (ADR-0001 PR3) — a relation is stored once with either subject on
+    # `subject_id`/`related_subject_id`, so resolution must check both sides.
+    @property
+    def related_subjects(self):
+        rows = db.session.execute(
+            subject_relations.select().where(
+                or_(
+                    subject_relations.c.subject_id == self.id,
+                    subject_relations.c.related_subject_id == self.id,
+                )
+            )
+        ).fetchall()
+        other_ids = [
+            row.related_subject_id if row.subject_id == self.id else row.subject_id
+            for row in rows
+        ]
+        if not other_ids:
+            return []
+        return Subject.query.filter(Subject.id.in_(other_ids)).all()
 
     ENCRYPTED_FIELDS = [
         "date_of_birth",
@@ -1267,6 +1290,22 @@ class Address(db.Model):
     kadaster_data = db.Column(SafeJSON)  # Full BAG response
     kadaster_checked_at = db.Column(db.DateTime)
 
+    # Provenance (ADR-0001 PR3)
+    source = db.Column(db.String(200))
+    status = db.Column(db.String(20), default="candidate", server_default="candidate")
+    observed_at = db.Column(db.DateTime)
+    action_id = db.Column(
+        db.String(36), db.ForeignKey("research_actions.id"), nullable=True, index=True
+    )
+    finding_id = db.Column(
+        db.String(36), db.ForeignKey("findings.id"), nullable=True, index=True
+    )
+    updated_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+
+    action = db.relationship("ResearchAction", foreign_keys=[action_id])
+    finding = db.relationship("Finding", foreign_keys=[finding_id])
+    updated_by_user = db.relationship("User", foreign_keys=[updated_by])
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -1314,6 +1353,12 @@ class Address(db.Model):
             "kadaster_checked_at": self.kadaster_checked_at.isoformat()
             if self.kadaster_checked_at
             else None,
+            "source": self.source,
+            "status": self.status,
+            "observed_at": self.observed_at.isoformat() if self.observed_at else None,
+            "action_id": self.action_id,
+            "finding_id": self.finding_id,
+            "updated_by": self.updated_by,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -1363,6 +1408,22 @@ class Contact(db.Model):
     value = db.Column(db.String(500))  # Encrypted
     is_primary = db.Column(db.Boolean, default=False)
 
+    # Provenance (ADR-0001 PR3)
+    source = db.Column(db.String(200))
+    status = db.Column(db.String(20), default="candidate", server_default="candidate")
+    observed_at = db.Column(db.DateTime)
+    action_id = db.Column(
+        db.String(36), db.ForeignKey("research_actions.id"), nullable=True, index=True
+    )
+    finding_id = db.Column(
+        db.String(36), db.ForeignKey("findings.id"), nullable=True, index=True
+    )
+    updated_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+
+    action = db.relationship("ResearchAction", foreign_keys=[action_id])
+    finding = db.relationship("Finding", foreign_keys=[finding_id])
+    updated_by_user = db.relationship("User", foreign_keys=[updated_by])
+
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -1402,6 +1463,12 @@ class Contact(db.Model):
             "contact_type": self.contact_type,
             "value": self.value,
             "is_primary": self.is_primary,
+            "source": self.source,
+            "status": self.status,
+            "observed_at": self.observed_at.isoformat() if self.observed_at else None,
+            "action_id": self.action_id,
+            "finding_id": self.finding_id,
+            "updated_by": self.updated_by,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -2369,7 +2436,18 @@ class SocialAccount(db.Model):
         db.String(36), db.ForeignKey("findings.id"), nullable=True, index=True
     )
 
+    # Provenance (ADR-0001 PR3)
+    source = db.Column(db.String(200))
+    status = db.Column(db.String(20), default="candidate", server_default="candidate")
+    observed_at = db.Column(db.DateTime)
+    action_id = db.Column(
+        db.String(36), db.ForeignKey("research_actions.id"), nullable=True, index=True
+    )
+    updated_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+
     finding = db.relationship("Finding", foreign_keys=[finding_id])
+    action = db.relationship("ResearchAction", foreign_keys=[action_id])
+    updated_by_user = db.relationship("User", foreign_keys=[updated_by])
 
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -2390,6 +2468,207 @@ class SocialAccount(db.Model):
             "url": self.url,
             "account_id": self.account_id,
             "finding_id": self.finding_id,
+            "source": self.source,
+            "status": self.status,
+            "observed_at": self.observed_at.isoformat() if self.observed_at else None,
+            "action_id": self.action_id,
+            "updated_by": self.updated_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# =============================================================================
+# Subject Identifier / Fact Models (ADR-0001 PR3)
+# =============================================================================
+
+
+class SubjectIdentifier(db.Model):
+    """Canonical identifier for a subject (fact-layer source of truth, D2).
+
+    The value is Fernet-encrypted in ``value_enc`` with a keyed HMAC
+    fingerprint in ``fingerprint_keyed`` (D3) for duplicate detection and
+    encrypted search. Search and dedupe must only use the fingerprint —
+    never plaintext indexes, never ILIKE on ciphertext.
+    """
+
+    __tablename__ = "subject_identifiers"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    subject_id = db.Column(
+        db.String(36), db.ForeignKey("subjects.id"), nullable=False, index=True
+    )
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    identifier_type = db.Column(db.String(50), nullable=False)
+    value_enc = db.Column(db.Text)
+    fingerprint_keyed = db.Column(db.String(64), index=True)
+    status = db.Column(
+        db.String(20),
+        nullable=False,
+        default="candidate",
+        server_default="candidate",
+    )
+    source = db.Column(db.String(200))
+    source_url = db.Column(db.Text)
+    observed_at = db.Column(db.DateTime)
+    reliability = db.Column(db.String(20))
+    action_id = db.Column(
+        db.String(36), db.ForeignKey("research_actions.id"), nullable=True, index=True
+    )
+    finding_id = db.Column(
+        db.String(36), db.ForeignKey("findings.id"), nullable=True, index=True
+    )
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        db.Index(
+            "ix_subject_identifiers_tenant_fingerprint",
+            "tenant_id",
+            "fingerprint_keyed",
+        ),
+    )
+
+    subject = db.relationship(
+        "Subject", foreign_keys=[subject_id], backref="identifiers"
+    )
+    action = db.relationship("ResearchAction", foreign_keys=[action_id])
+    finding = db.relationship("Finding", foreign_keys=[finding_id])
+    creator = db.relationship("User", foreign_keys=[created_by])
+
+    def set_value(self, plaintext: str | None) -> None:
+        """Encrypt the canonical value and derive its keyed fingerprint (D3)."""
+        from ..fingerprint_utils import fingerprint_identifier
+
+        if plaintext:
+            self.value_enc = encryptor.encrypt(plaintext)
+            self.fingerprint_keyed = fingerprint_identifier(
+                self.identifier_type, plaintext
+            )
+        else:
+            self.value_enc = None
+            self.fingerprint_keyed = None
+
+    def get_value(self) -> str | None:
+        if not self.value_enc:
+            return None
+        try:
+            return encryptor.decrypt(self.value_enc)
+        except Exception:
+            logger.warning(
+                "Decrypt failed for %s.value_enc (id=%s)",
+                self.__class__.__name__,
+                self.id,
+            )
+            return None
+
+    def to_dict(self, decrypted: bool = True) -> dict:
+        return {
+            "id": self.id,
+            "subject_id": self.subject_id,
+            "identifier_type": self.identifier_type,
+            "value": self.get_value() if decrypted else self.value_enc,
+            "fingerprint_keyed": self.fingerprint_keyed,
+            "status": self.status,
+            "source": self.source,
+            "source_url": self.source_url,
+            "observed_at": self.observed_at.isoformat() if self.observed_at else None,
+            "reliability": self.reliability,
+            "action_id": self.action_id,
+            "finding_id": self.finding_id,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class SubjectFact(db.Model):
+    """Fact-layer fact for a subject (D2: source of truth for new data)."""
+
+    __tablename__ = "subject_facts"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    subject_id = db.Column(
+        db.String(36), db.ForeignKey("subjects.id"), nullable=False, index=True
+    )
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    fact_key = db.Column(db.String(100), nullable=False)
+    value_enc = db.Column(db.Text)
+    status = db.Column(
+        db.String(20),
+        nullable=False,
+        default="candidate",
+        server_default="candidate",
+    )
+    source = db.Column(db.String(200))
+    source_url = db.Column(db.Text)
+    observed_at = db.Column(db.DateTime)
+    reliability = db.Column(db.String(20))
+    verified_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+    verified_at = db.Column(db.DateTime)
+    action_id = db.Column(
+        db.String(36), db.ForeignKey("research_actions.id"), nullable=True, index=True
+    )
+    finding_id = db.Column(
+        db.String(36), db.ForeignKey("findings.id"), nullable=True, index=True
+    )
+    created_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        db.Index("ix_subject_facts_subject_key", "subject_id", "fact_key"),
+    )
+
+    subject = db.relationship("Subject", foreign_keys=[subject_id], backref="facts")
+    action = db.relationship("ResearchAction", foreign_keys=[action_id])
+    finding = db.relationship("Finding", foreign_keys=[finding_id])
+    verifier = db.relationship("User", foreign_keys=[verified_by])
+    creator = db.relationship("User", foreign_keys=[created_by])
+
+    def set_value(self, plaintext: str | None) -> None:
+        self.value_enc = encryptor.encrypt(plaintext) if plaintext else None
+
+    def get_value(self) -> str | None:
+        if not self.value_enc:
+            return None
+        try:
+            return encryptor.decrypt(self.value_enc)
+        except Exception:
+            logger.warning(
+                "Decrypt failed for %s.value_enc (id=%s)",
+                self.__class__.__name__,
+                self.id,
+            )
+            return None
+
+    def to_dict(self, decrypted: bool = True) -> dict:
+        return {
+            "id": self.id,
+            "subject_id": self.subject_id,
+            "fact_key": self.fact_key,
+            "value": self.get_value() if decrypted else self.value_enc,
+            "status": self.status,
+            "source": self.source,
+            "source_url": self.source_url,
+            "observed_at": self.observed_at.isoformat() if self.observed_at else None,
+            "reliability": self.reliability,
+            "verified_by": self.verified_by,
+            "verified_at": self.verified_at.isoformat() if self.verified_at else None,
+            "action_id": self.action_id,
+            "finding_id": self.finding_id,
+            "created_by": self.created_by,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -3890,6 +4169,8 @@ _TENANT_MODELS = [
     ResearchAction,
     FindingScreenshot,
     ServiceRate,
+    SubjectIdentifier,
+    SubjectFact,
 ]
 
 
