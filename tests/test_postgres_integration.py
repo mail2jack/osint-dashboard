@@ -40,7 +40,7 @@ class TestPostgreSQLIntegration:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "f4e5d6c7b8a9"
+        assert revision == "b1f2e3d4c5a6"
 
         protected = db.session.execute(
             text(

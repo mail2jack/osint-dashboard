@@ -1,6 +1,6 @@
 """Register all action handlers with the registry."""
 
-from cms.workflow.actions.registry import register_action
+from cms.workflow.actions.registry import ACTION_REGISTRY, register_action
 from cms.workflow.actions.email_action import _email_check
 from cms.workflow.actions.phone_action import _phone_check
 from cms.workflow.actions.address_action import _address_check
@@ -29,6 +29,7 @@ register_action(
     "Searches the email address in public sources (HIBP, PGP keyservers, SpiderFoot) and checks whether it "
     "appears in data breaches, has a PGP key, is linked to social media, "
     "or leaves other online traces (web context).",
+    category="open",
 )
 register_action(
     "phone",
@@ -158,3 +159,14 @@ register_action(
     "privacy/OPSEC risks, and generate reverse image search links. "
     "Includes AI geolocation fallback when no GPS data is found.",
 )
+
+# Channel categories (ADR-0001 PR5): paid channels require explicit opt-in and
+# are never proposed by default; local/open actions are the default research
+# path and ready as proposals.
+_PAID = {"facebook", "instagram", "tiktok", "linkedin", "twitter"}
+_LOCAL = {"photo_analysis", "manual_entry"}
+for _action_type in ACTION_REGISTRY:
+    if _action_type in _PAID:
+        ACTION_REGISTRY[_action_type]["category"] = "paid"
+    elif _action_type in _LOCAL:
+        ACTION_REGISTRY[_action_type]["category"] = "local"

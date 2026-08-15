@@ -57,6 +57,33 @@
   z-index: 2; transition: background 0.15s;
 }
 .action-cancel:hover { background: #dc2626; }
+.action-propose {
+  position: absolute; bottom: 4px; right: 4px;
+  background: var(--bg-secondary); color: var(--accent-primary);
+  border: 1px solid var(--border-color); border-radius: 6px;
+  width: 26px; height: 22px; font-size: 0.8rem; line-height: 1;
+  cursor: pointer; z-index: 2; transition: all 0.15s; opacity: 0;
+}
+.action-btn:hover .action-propose { opacity: 1; }
+.action-propose:hover { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+.cat-badge { position: absolute; top: 4px; left: 4px; font-size: 0.7rem; line-height: 1; z-index: 2; }
+.proposals-section {
+  margin-top: 1rem; border: 1px dashed var(--border-color);
+  border-radius: 8px; padding: 0.6rem 0.75rem; background: var(--bg-secondary);
+}
+.proposals-header { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.4rem; }
+.proposal-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+  padding: 0.35rem 0; border-bottom: 1px dashed var(--border-color);
+  font-size: 0.82rem;
+}
+.proposal-item:last-child { border-bottom: none; }
+.proposal-start, .proposal-delete {
+  background: none; border: 1px solid var(--border-color); border-radius: 4px;
+  padding: 0.15rem 0.45rem; cursor: pointer; font-size: 0.8rem; line-height: 1;
+}
+.proposal-start { color: #10b981; }
+.proposal-delete { color: #ef4444; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 .finding-item {
   padding: 0.75rem 3rem 0.75rem 0.75rem; border: 1px solid var(--border-color);
@@ -333,16 +360,28 @@ input:-webkit-autofill:focus {
       {% set rem = action_credits.get(key, 0) if action_credits else 0 %}
       {% set limits = {'tiktok': 50, 'instagram': 10, 'linkedin': 50, 'twitter': 1000} %}
       {% set limit = limits.get(key, 0) %}
-      <div class="action-btn" data-action="run-action" data-action-key="{{ key }}" data-icon="{{ info.icon }}" data-label="{{ info.label }}"{% if limit > 0 %} data-credits="{{ rem }}" data-credit-limit="{{ limit }}"{% endif %} title="{{ info.description }}">
+      <div class="action-btn" data-action="run-action" data-action-key="{{ key }}" data-icon="{{ info.icon }}" data-label="{{ info.label }}" data-category="{{ info.category }}"{% if limit > 0 %} data-credits="{{ rem }}" data-credit-limit="{{ limit }}"{% endif %} title="{{ info.description }}">
         <div class="icon">{{ info.icon }}</div>
         <div class="label">{{ info.label }}</div>
+        {% if info.category == 'paid' %}
+        <span class="cat-badge cat-paid" title="Paid channel — requires explicit opt-in">💰</span>
+        {% elif info.category == 'local' %}
+        <span class="cat-badge cat-local" title="Local analysis">🖥️</span>
+        {% else %}
+        <span class="cat-badge cat-open" title="Open/public source">🌐</span>
+        {% endif %}
         <div class="desc">{{ info.label }} run{% if limit > 0 and rem <= 5 and rem > 0 %} — {{ rem }}/{{ limit }} credits left{% elif limit > 0 and rem == 0 %} — 🚫 exhausted{% endif %}</div>
         {% if limit > 0 %}
         <span class="credit-badge" style="position:absolute;top:-4px;right:-4px;background:{% if rem == 0 %}#ef4444{% elif rem <= 5 %}#f59e0b{% else %}#22c55e{% endif %};color:#fff;font-size:0.65rem;font-weight:700;padding:1px 5px;border-radius:8px;line-height:1.4;">{{ rem }}/{{ limit }}</span>
         {% endif %}
         <button type="button" class="action-cancel" data-action="cancel-action" data-action-key="{{ key }}" title="Cancel" style="display:none;">✕</button>
+        <button type="button" class="action-propose" data-action="propose-action" data-action-key="{{ key }}" title="Save as proposal (start later)">📌</button>
       </div>
       {% endfor %}
+    </div>
+    <div id="proposalsSection" class="proposals-section" style="display:none;">
+      <div class="proposals-header">📌 Proposals <span id="proposalsCount"></span></div>
+      <div id="proposalsList"></div>
     </div>
   </div>
 </div>

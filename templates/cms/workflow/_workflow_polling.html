@@ -13,16 +13,19 @@ function stopTimer() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-function runAction(actionType, dataValue, subjectId) {
+function runAction(actionType, dataValue, subjectId, mode) {
+  mode = mode || 'run';
   const btn = document.querySelector(`[data-action-key="${actionType}"]`);
-  if (!btn || btn.classList.contains('running')) return;
-  btn.classList.remove('done', 'failed');
-  btn.classList.add('running');
-  btn.dataset.runningSince = Date.now();
-  delete btn.dataset.actionId;
-  var cancelBtn = btn.querySelector('.action-cancel');
-  if (cancelBtn) cancelBtn.style.display = 'inline-flex';
-  startTimer();
+  if (mode === 'run') {
+    if (!btn || btn.classList.contains('running')) return;
+    btn.classList.remove('done', 'failed');
+    btn.classList.add('running');
+    btn.dataset.runningSince = Date.now();
+    delete btn.dataset.actionId;
+    var cancelBtn = btn.querySelector('.action-cancel');
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    startTimer();
+  }
 
   fetch(`/cms/workflow/api/case/${CASE_ID}/run-action`, {
     method: 'POST',
@@ -31,14 +34,22 @@ function runAction(actionType, dataValue, subjectId) {
       action_type: actionType,
       data_value: dataValue || '',
       subject_id: subjectId || null,
+      mode: mode,
     }),
   })
   .then(r => r.json())
   .then(data => {
     if (data.error) {
-      btn.classList.remove('running');
-      btn.classList.add('failed');
+      if (mode === 'run') {
+        btn.classList.remove('running');
+        btn.classList.add('failed');
+      }
       document.getElementById('actionsStatus').textContent = '❌ ' + btn.dataset.label + ' failed: ' + data.error;
+      return;
+    }
+    if (mode === 'proposal') {
+      document.getElementById('actionsStatus').textContent = '📌 ' + btn.dataset.label + ' saved as proposal';
+      pollStatus();
       return;
     }
     btn.dataset.actionId = data.id;
@@ -47,8 +58,10 @@ function runAction(actionType, dataValue, subjectId) {
     setTimeout(pollStatus, 300);
   })
   .catch(err => {
-    btn.classList.remove('running');
-    btn.classList.add('failed');
+    if (mode === 'run') {
+      btn.classList.remove('running');
+      btn.classList.add('failed');
+    }
     document.getElementById('actionsStatus').textContent = '❌ Network error: ' + err.message;
   });
 }
@@ -110,8 +123,39 @@ function pollStatus() {
       var hasRunning = data.actions.some(function(a) { return a.status === 'running' || a.status === 'pending'; });
       if (!hasRunning) { stopPolling(); }
       updateFindings(data.findings || [], data.actions || []);
+      updateProposals(data.actions || []);
     })
     .catch(function() { /* polling error — will retry */ });
+}
+
+function proposalHtml(a) {
+  var icon = a.dork_label ? '🔎' : (a.icon || '📄');
+  var subjectName = '';
+  if (a.subject_id) {
+    var subj = SUBJECTS.find(function(s) { return String(s.id) === String(a.subject_id); });
+    if (subj) subjectName = subj.name;
+  }
+  var label = (a.label || a.action_type) + (a.dork_label ? ' — ' + a.dork_label : '');
+  var cat = a.category || '';
+  return '<div class="proposal-item">' +
+    '<span class="pi-subject">' + esc(icon) + ' ' + esc(label) + (subjectName ? ' · ' + esc(subjectName) : '') + '</span>' +
+    '<div style="display:flex;gap:0.35rem;align-items:center;">' +
+      '<button type="button" class="proposal-start" data-action="start-proposal" data-action-id="' + esc(a.id) + '" title="Start now">▶</button>' +
+      '<button type="button" class="proposal-delete" data-action="delete-proposal" data-action-id="' + esc(a.id) + '" title="Delete">&times;</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function updateProposals(actions) {
+  const section = document.getElementById('proposalsSection');
+  const listEl = document.getElementById('proposalsList');
+  const countEl = document.getElementById('proposalsCount');
+  if (!section || !listEl) return;
+  var proposals = actions.filter(function(a) { return a.status === 'proposal'; });
+  if (!proposals.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  if (countEl) countEl.textContent = '(' + proposals.length + ')';
+  listEl.innerHTML = proposals.map(proposalHtml).join('');
 }
 
 function rdwCardHtml(data) {
@@ -224,6 +268,12 @@ function findingHtml(f) {
 
   var dateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
   var confClass = f.confidence_level === 'high' || f.confidence_level === 'verified' ? 'badge-status-success' : f.confidence_level === 'medium' ? 'badge-status-warning' : 'badge-status-default';
+  var statusLabel = f.status || (f.verified ? 'verified' : 'candidate');
+  var statusClass = statusLabel === 'verified' ? 'badge-status-success' : statusLabel === 'rejected' ? 'badge-status-danger' : statusLabel === 'superseded' ? 'badge-status-warning' : 'badge-status-default';
+  var verifiedInfo = '';
+  if (statusLabel === 'verified' && f.verifier_name) {
+    verifiedInfo = '<span style="font-size:0.72rem;color:var(--text-muted);margin-left:0.4rem;">by ' + esc(f.verifier_name) + (f.verified_at ? ' · ' + new Date(f.verified_at).toLocaleString('en-GB') : '') + '</span>';
+  }
 
   return '<div class="finding-item" data-finding-id="' + esc(f.id) + '">' +
     '<div class="finding-check-wrap"><input type="checkbox" class="finding-check" data-finding-id="' + esc(f.id) + '"></div>' +
@@ -231,10 +281,11 @@ function findingHtml(f) {
       '<div>' +
         '<strong>' + esc(f.title) + '</strong>' +
         '<span class="badge badge-info" style="margin-left:0.5rem;">' + esc(f.source_type || 'manual') + '</span>' +
+        '<span class="badge ' + statusClass + '" style="margin-left:0.25rem;">' + esc(statusLabel) + '</span>' +
         (f.confidence_level ? '<span class="badge ' + confClass + '" style="margin-left:0.25rem;">' + esc(f.confidence_level) + '</span>' : '') +
         (f.content_hash ? '<span class="badge ' + (f.integrity_verified ? 'badge-status-success' : 'badge-status-danger') + '" style="margin-left:0.25rem;cursor:help;" title="' + esc(f.content_hash) + '">🔒 ' + (f.integrity_verified ? 'Intact' : 'Tampered') + '</span>' : '') +
       '</div>' +
-      '<span style="color:var(--text-muted);font-size:0.75rem;">' + dateStr + '</span>' +
+      '<span style="color:var(--text-muted);font-size:0.75rem;">' + dateStr + verifiedInfo + '</span>' +
     '</div>' +
     (f.detail ? '<div class="finding-content">' + linkify(f.detail) + '</div>' : '') +
     (f.source_url ? '<div style="margin-top:0.25rem;"><a href="' + esc(f.source_url) + '" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 ' + esc(f.source_url) + '</a></div>' : '') +
@@ -245,6 +296,7 @@ function findingHtml(f) {
     '</div>' +
     '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">' +
       '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="' + (f.verified ? 'true' : 'false') + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? '✅ Verified' : '⏳ Pending verification') + '</button>' +
+      (f.verified ? '<button type="button" data-action="reject-finding" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#ef4444;">✕ Reject</button>' : '') +
       '<button type="button" data-action="add-screenshot-btn" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + Screenshot</button>' +
     '</div>' +
     '<div class="ss-upload-form" data-finding-id="' + esc(f.id) + '" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">' +

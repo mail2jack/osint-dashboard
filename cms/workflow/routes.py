@@ -38,6 +38,7 @@ from .research import (
     start_action_async,
     get_remaining_credits,
 )
+from cms.workflow.actions.registry import action_category
 from cms.routes.dashboard import _get_cached_health
 from cms.services.invoice_service import auto_invoice_case_created
 from cms.routes.utils import find_similar_clients
@@ -782,7 +783,10 @@ def run_action(case_id):
     action_type = body.get("action_type", "")
     data_value = body.get("data_value") or ""
     subject_id = body.get("subject_id") or None
+    mode = body.get("mode") or "run"
 
+    if mode not in ("run", "proposal"):
+        return jsonify({"error": "Unknown mode"}), 400
     if action_type not in ACTION_REGISTRY:
         return jsonify({"error": f"Unknown action: {action_type}"}), 400
 
@@ -795,6 +799,25 @@ def run_action(case_id):
             return jsonify({"error": "Subject not found"}), 404
         if not case.subjects.filter_by(id=subject_id).first():
             return jsonify({"error": "Subject is not linked to this case"}), 400
+
+    if mode == "proposal":
+        action = WorkflowResearchAction(
+            id=str(uuid.uuid4()),
+            case_id=case_id,
+            subject_id=subject_id,
+            target_kind="subject" if subject_id else "case",
+            action_type=action_type,
+            data_value=data_value,
+            label=ACTION_REGISTRY[action_type]["label"],
+            status="proposal",
+            tenant_id=current_user.tenant_id,
+        )
+        action.target_snapshot = json.dumps(
+            action.build_target_snapshot(subject, data_value)
+        )
+        db.session.add(action)
+        db.session.commit()
+        return jsonify({"id": action.id, "status": "proposal"})
 
     _STALE_TIMEOUT = 600  # 10 minutes
     existing_query = WorkflowResearchAction.query.filter_by(
@@ -834,6 +857,88 @@ def run_action(case_id):
 
     start_action_async(action_id)
     return jsonify({"id": action_id, "status": "started"})
+
+
+@workflow_bp.route("/api/case/<case_id>/proposals", methods=["POST"])
+@login_required
+@_investigator_required
+def create_proposals(case_id):
+    """Create one or more investigation proposals without starting them.
+
+    Body: {"subject_id": optional, "action_types": ["osint", "email", ...]}
+    Free/local/open actions are ready as proposals; paid channels are never
+    silently proposed (ADR-0001 D1.5/D1.6).
+    """
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    ensure_case_access(case)
+
+    body = request.get_json(silent=True) or {}
+    subject_id = body.get("subject_id") or None
+    action_types = body.get("action_types") or []
+
+    if not action_types:
+        return jsonify({"error": "No actions proposed"}), 400
+    unknown = [t for t in action_types if t not in ACTION_REGISTRY]
+    if unknown:
+        return jsonify({"error": f"Unknown action: {unknown[0]}"}), 400
+
+    subject = None
+    if subject_id:
+        subject = db.session.get(WorkflowSubject, subject_id)
+        if not subject:
+            return jsonify({"error": "Subject not found"}), 404
+        if not case.subjects.filter_by(id=subject_id).first():
+            return jsonify({"error": "Subject is not linked to this case"}), 400
+
+    created = []
+    for action_type in action_types:
+        action = WorkflowResearchAction(
+            id=str(uuid.uuid4()),
+            case_id=case_id,
+            subject_id=subject_id,
+            target_kind="subject" if subject_id else "case",
+            action_type=action_type,
+            label=ACTION_REGISTRY[action_type]["label"],
+            status="proposal",
+            tenant_id=current_user.tenant_id,
+        )
+        action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
+        db.session.add(action)
+        created.append(action.id)
+    db.session.commit()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="create",
+        entity_type="research_action",
+        entity_id=",".join(created),
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Proposed {len(created)} investigation action(s) for the case",
+    )
+    return jsonify({"ok": True, "ids": created})
+
+
+@workflow_bp.route("/api/case/<case_id>/actions/<action_id>/start", methods=["POST"])
+@login_required
+@_investigator_required
+def start_proposal(case_id, action_id):
+    """Start a saved proposal action."""
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    ensure_case_access(case)
+    action = db.session.get(WorkflowResearchAction, action_id)
+    if not action or action.case_id != case_id:
+        return jsonify({"error": "Not found"}), 404
+    if action.status != "proposal":
+        return jsonify({"error": "Action is not a proposal"}), 409
+    action.status = "pending"
+    db.session.commit()
+    start_action_async(action_id)
+    return jsonify({"ok": True, "id": action_id})
 
 
 @workflow_bp.route("/api/case/<case_id>/photo-analysis", methods=["POST"])
@@ -1016,6 +1121,12 @@ def case_status(case_id):
             "source_type": f.source_type,
             "icon": f.icon,
             "verified": f.verified,
+            "status": f.status,
+            "verified_by": f.verified_by,
+            "verified_at": f.verified_at.isoformat() if f.verified_at else None,
+            "verifier_name": f.verifier.full_name if f.verifier else None,
+            "content_hash": f.content_hash,
+            "integrity_verified": f.verify_integrity() if f.content_hash else None,
             "comment": f.comment,
             "raw_data": raw,
             "created_at": f.created_at.isoformat() if f.created_at else None,
@@ -1040,6 +1151,8 @@ def case_status(case_id):
                     "id": a.id,
                     "action_type": a.action_type,
                     "label": a.label,
+                    "icon": ACTION_REGISTRY.get(a.action_type, {}).get("icon"),
+                    "category": action_category(a.action_type),
                     "status": a.status,
                     "error": a.error,
                     "data_value": a.data_value,
@@ -1312,18 +1425,40 @@ def verify_finding(case_id, finding_id):
     if case:
         ensure_case_access(case)
     body = request.get_json(silent=True) or {}
-    new_val = body.get("verified", not finding.verified)
-    finding.verified = new_val
+    status = body.get("status")
+    if status not in (None, "verified", "rejected", "candidate", "superseded"):
+        return jsonify({"error": "Unknown status"}), 400
+    if status:
+        if status == "verified":
+            finding.promote_to_verified(current_user)
+        elif status == "rejected":
+            finding.reject(current_user)
+        else:
+            finding.demote_to_candidate()
+    else:
+        # Legacy boolean toggle.
+        new_val = body.get("verified", not finding.verified)
+        if new_val:
+            finding.promote_to_verified(current_user)
+        else:
+            finding.demote_to_candidate()
     AuditLog.log(
         user_id=current_user.id,
         action="verify",
         entity_type="finding",
         entity_id=finding.id,
         ip_address=request.remote_addr,
-        description=f"Workflow {'verified' if new_val else 'unverified'} finding: {finding.title}",
+        case_id=case_id,
+        description=f"Workflow set finding status to {finding.status}: {finding.title}",
     )
     db.session.commit()
-    return jsonify({"ok": True, "verified": new_val})
+    return jsonify(
+        {
+            "ok": True,
+            "verified": finding.verified,
+            "status": finding.status,
+        }
+    )
 
 
 @workflow_bp.route(
@@ -1375,6 +1510,34 @@ def cancel_action_api(case_id, action_id):
         ip_address=request.remote_addr,
         description=f"Workflow cancelled action: {action.label}",
     )
+    return jsonify({"ok": True})
+
+
+@workflow_bp.route("/api/case/<case_id>/actions/<action_id>/delete", methods=["POST"])
+@login_required
+@_investigator_required
+def delete_action_api(case_id, action_id):
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Not found"}), 404
+    ensure_case_access(case)
+    action = db.session.get(WorkflowResearchAction, action_id)
+    if not action or action.case_id != case_id:
+        return jsonify({"error": "Not found"}), 404
+    if action.status != "proposal":
+        return jsonify({"error": "Only proposals can be deleted"}), 400
+    label = action.label
+    db.session.delete(action)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="delete",
+        entity_type="research_action",
+        entity_id=action_id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Workflow deleted proposal: {label}",
+    )
+    db.session.commit()
     return jsonify({"ok": True})
 
 

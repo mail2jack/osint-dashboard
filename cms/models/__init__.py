@@ -319,7 +319,12 @@ class User(UserMixin, db.Model):
     created_cases = db.relationship(
         "Case", foreign_keys="Case.created_by", backref="creator", lazy="dynamic"
     )
-    findings = db.relationship("Finding", backref="author", lazy="dynamic")
+    findings = db.relationship(
+        "Finding",
+        backref="author",
+        lazy="dynamic",
+        foreign_keys="Finding.created_by",
+    )
     audit_logs = db.relationship("AuditLog", backref="user", lazy="dynamic")
 
     def set_password(self, password: str) -> None:
@@ -1659,6 +1664,15 @@ class Finding(db.Model):
     raw_data = db.Column(SafeJSON)
     archived_at = db.Column(db.DateTime, nullable=True, index=True)
 
+    # Verification lifecycle (ADR-0001 PR5): status is the source of truth
+    # (candidate|verified|rejected|superseded); `verified` mirrors it for
+    # compatibility. verified_by/verified_at record who and when.
+    status = db.Column(db.String(20), nullable=True, index=True)
+    verified_by = db.Column(db.String(36), db.ForeignKey("users.id"), index=True)
+    verified_at = db.Column(db.DateTime)
+
+    verifier = db.relationship("User", foreign_keys=[verified_by])
+
     finding_screenshots = db.relationship(
         "FindingScreenshot",
         back_populates="finding",
@@ -1740,6 +1754,27 @@ class Finding(db.Model):
             return False
         return self.content_hash == self.compute_hash()
 
+    def promote_to_verified(self, user) -> None:
+        """Promote candidate to verified fact (ADR-0001 D7)."""
+        self.status = "verified"
+        self.verified = True
+        self.verified_by = user.id if user else None
+        self.verified_at = datetime.now(timezone.utc)
+
+    def demote_to_candidate(self) -> None:
+        """Return to candidate (un-verified) state."""
+        self.status = "candidate"
+        self.verified = False
+        self.verified_by = None
+        self.verified_at = None
+
+    def reject(self, user) -> None:
+        """Reject the finding as not a valid fact."""
+        self.status = "rejected"
+        self.verified = False
+        self.verified_by = user.id if user else None
+        self.verified_at = datetime.now(timezone.utc)
+
     def to_dict(self) -> dict:
         """Serialize finding."""
         return {
@@ -1758,6 +1793,11 @@ class Finding(db.Model):
             "integrity_verified": self.verify_integrity()
             if self.content_hash
             else None,
+            "status": self.status,
+            "verified": self.verified,
+            "verified_by": self.verified_by,
+            "verified_at": self.verified_at.isoformat() if self.verified_at else None,
+            "verifier_name": self.verifier.full_name if self.verifier else None,
             "created_by": self.created_by,
             "author_name": self.author.full_name if self.author else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
