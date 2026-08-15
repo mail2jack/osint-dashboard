@@ -1,14 +1,15 @@
 import logging
-from cms.services.http_utils import jittered_get
 
 import flask
-from flask import request, jsonify, abort
+from flask import abort, jsonify, request
 from flask_login import login_required
 
+from cms.services.http_utils import jittered_get
+
+from ..auth import apply_tenant_filter, ensure_tenant_access
+from ..models import Finding, SocialAccount, Subject, db
+from ..validation import ExtractSocialIdSchema, UpdateSocialIdsSchema, validate
 from . import cms_bp
-from ..models import db, Subject, Finding, SocialAccount
-from ..auth import ensure_tenant_access
-from ..validation import validate, ExtractSocialIdSchema, UpdateSocialIdsSchema
 from .utils import is_safe_url
 
 logger = logging.getLogger(__name__)
@@ -35,9 +36,10 @@ def _extract_social_ids_from_url(url, subject=None):
     try:
         try:
             from playwright.sync_api import sync_playwright
+
             from cms.services.playwright_stealth import (
-                stealth_for_domain,
                 apply_stealth_to_context,
+                stealth_for_domain,
             )
 
             with sync_playwright() as p:
@@ -200,10 +202,14 @@ def extract_social_id() -> flask.Response:
     subject = db.session.get(Subject, subject_id) if subject_id else None
     if subject:
         ensure_tenant_access(subject)
+    if finding_id:
+        finding = db.session.get(Finding, finding_id) or abort(404)
+        ensure_tenant_access(finding)
 
     extracted = _extract_social_ids_from_url(url, subject=subject)
 
-    from ..social_extractor import detect_platform, extract_username as ext_username
+    from ..social_extractor import detect_platform
+    from ..social_extractor import extract_username as ext_username
 
     sl_platform = detect_platform(url)
     sl_username = ext_username(url, platform=sl_platform)
@@ -282,12 +288,12 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
     if not subject:
         abort(404)
     ensure_tenant_access(subject)
-    findings = (
+    findings = apply_tenant_filter(
         Finding.query.filter_by(subject_id=subject_id)
         .filter(Finding.source_url.isnot(None))
-        .filter(Finding.source_url != "")
-        .all()
-    )
+        .filter(Finding.source_url != ""),
+        Finding,
+    ).all()
 
     if not findings:
         return jsonify(
@@ -303,7 +309,9 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
 
     existing_accounts = {
         (a.platform, a.url)
-        for a in SocialAccount.query.filter_by(subject_id=subject_id).all()
+        for a in apply_tenant_filter(
+            SocialAccount.query.filter_by(subject_id=subject_id), SocialAccount
+        ).all()
     }
 
     for finding in findings:

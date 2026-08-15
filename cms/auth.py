@@ -12,29 +12,27 @@ Design Decisions:
 
 import functools
 import logging
-from datetime import datetime, timezone
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 import flask
-
 from flask import (
     Blueprint,
-    request,
+    abort,
+    flash,
+    g,
     jsonify,
     redirect,
+    request,
     url_for,
-    flash,
-    abort,
-    g,
 )
 from flask_login import (
+    AnonymousUserMixin,
     LoginManager,
     current_user,
-    AnonymousUserMixin,
 )
 
-from .models import db, User, ApiKey, AuditLog, Case, Subject
-
+from .models import ApiKey, AuditLog, Case, Subject, User, db
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +84,7 @@ def load_user_from_request(request: flask.Request) -> User | None:
     key_record = ApiKey.query.filter_by(key_prefix=prefix, is_active=True).first()
     if not key_record or not key_record.verify_key(api_key):
         return None
-    key_record.last_used_at = datetime.now(timezone.utc)
+    key_record.last_used_at = datetime.now(UTC)
     db.session.commit()
     user = db.session.get(User, key_record.user_id)
     if user:
@@ -444,7 +442,7 @@ def ensure_subject_for_case(subject_id, case):
     if not subject_id:
         return None
     subject = db.session.get(Subject, subject_id)
-    if not subject:
+    if not subject or subject.is_deleted:
         abort(404)
     ensure_tenant_access(subject)
     if subject.tenant_id != case.tenant_id:
@@ -478,6 +476,10 @@ def subject_access_required(f: Callable) -> Callable:
         subject = db.session.get(Subject, subject_id)
         if not subject:
             return f(*args, **kwargs)
+        if subject.is_deleted:
+            if request.is_json:
+                return jsonify({"error": "Subject not found"}), 404
+            abort(404)
 
         # Tenant isolation: non-super-admin must match tenant
         if (
@@ -646,7 +648,6 @@ users_bp = Blueprint("users", __name__, url_prefix="/users")
 # Import routes to register them on the blueprints
 from .routes import auth_routes  # noqa: F401
 
-
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -686,9 +687,9 @@ def get_accessible_case_ids(user) -> list[str]:
     Return all case IDs the user can access within their tenant.
     Replicates can_access_case() logic but in bulk.
     """
-    from .models import Case, case_assignments
-
     from flask import session as _auth_session
+
+    from .models import Case, case_assignments
 
     # Super admin: use switched_tenant_id if active, otherwise own tenant_id
     if user.is_super_admin:

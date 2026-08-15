@@ -3,22 +3,25 @@ import re
 from urllib.parse import urlparse
 
 import flask
-from flask import request, jsonify, abort
-from flask_login import login_required, current_user
+from flask import abort, jsonify, request
+from flask_login import current_user, login_required
 
-from . import cms_bp
-from ..auth import apply_tenant_filter, ensure_tenant_access
-from ..models import db, Subject, Finding, AuditLog
+from ..auth import (
+    apply_tenant_filter,
+    ensure_tenant_access,
+    subject_access_required,
+)
+from ..models import AuditLog, Finding, Subject, db
 from ..validation import (
-    validate,
-    CheckExistingUrlsSchema,
     AddSocialAccountSchema,
+    CheckExistingUrlsSchema,
+    CreateSubjectFromUsernameSchema,
     SaveFindingAsSocialAccountSchema,
     SaveUsernameFindingsSchema,
-    CreateSubjectFromUsernameSchema,
+    validate,
 )
-
-from .response import api_success, api_error
+from . import cms_bp
+from .response import api_error, api_success
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,7 @@ def check_existing_finding_urls() -> flask.Response:
 
 @cms_bp.route("/api/subjects/<subject_id>/social-accounts", methods=["POST"])
 @login_required
+@subject_access_required
 @validate(AddSocialAccountSchema)
 def add_social_account(subject_id: str) -> flask.Response:
     """Add a social account (username) to a subject."""
@@ -81,6 +85,7 @@ def add_social_account(subject_id: str) -> flask.Response:
     "/api/subjects/<subject_id>/social-accounts/<account_id>", methods=["DELETE"]
 )
 @login_required
+@subject_access_required
 def delete_social_account(subject_id: str, account_id: str) -> flask.Response:
     """Delete a social account."""
     from ..models import SocialAccount
@@ -119,15 +124,20 @@ def save_finding_as_social_account() -> flask.Response:
         if not finding.subject_id:
             return api_error("Finding not linked to a subject", 400)
         subject_id = finding.subject_id
+        subj = db.session.get(Subject, subject_id) or abort(404)
+        ensure_tenant_access(subj)
+        if subj.is_deleted:
+            abort(404)
         if not url:
             url = finding.source_url
         if not username:
-            subj = db.session.get(Subject, subject_id)
-            if subj:
-                ensure_tenant_access(subj)
-            username = data.get("username") or (
-                subj.name if subj else finding.title.strip()
-            )
+            username = data.get("username") or subj.name
+
+    elif subject_id:
+        subj = db.session.get(Subject, subject_id) or abort(404)
+        ensure_tenant_access(subj)
+        if subj.is_deleted:
+            abort(404)
 
     if not username and url:
         username = extract_username(url, platform=platform)
@@ -178,6 +188,8 @@ def save_username_findings(subject_id: str) -> flask.Response:
 
         case = db.session.get(Case, case_id) or abort(404)
         ensure_tenant_access(case)
+        if not current_user.can_access_case(case):
+            return api_error("No access to this case", 403)
 
     # Batch-load existing social accounts for dedup
     existing_accounts = {
@@ -293,6 +305,8 @@ def create_subject_from_username() -> flask.Response:
         case = db.session.get(Case, case_id)
         if case:
             ensure_tenant_access(case)
+            if not current_user.can_access_case(case):
+                return api_error("No access to this case", 403)
             subject.cases.append(case)
 
     db.session.commit()
