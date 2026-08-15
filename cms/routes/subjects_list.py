@@ -1,12 +1,14 @@
 import logging
 
 import flask
-from flask import request, jsonify, render_template, abort
+from flask import request, jsonify, render_template, redirect, url_for, abort
 from flask_login import login_required, current_user
 from . import cms_bp
 from ..models import db, Subject, Case, Finding, SocialAccount, case_subjects
 from .utils import find_similar_subjects, find_similar_clients, check_for_exact_match
 from ..auth import subject_access_required, audit_read, apply_tenant_filter
+from ..tier_limits import check_feature
+from ..services.subject_service import subject_service
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +220,7 @@ def _get_accessible_case_ids():
 @subject_access_required
 @audit_read("subject")
 def view_subject(subject_id: str) -> str:
-    """View subject details."""
+    """View subject details (legacy screen; PR8 fallback)."""
     subject = Subject.query.filter_by(id=subject_id).first() or abort(404)
     subject.decrypt_identifiers()
     subject.vessel_data = subject.vessel_data or {}
@@ -263,6 +265,32 @@ def view_subject(subject_id: str) -> str:
         findings_pagination=findings_pagination,
         linked_cases=linked_cases,
         first_case_id=first_case_id,
+        profile_enabled=check_feature(
+            "subject_first_investigations", current_user.tenant_id
+        ),
+    )
+
+
+@cms_bp.route("/subjects/<subject_id>/profile")
+@login_required
+@subject_access_required
+@audit_read("subject")
+def subject_profile(subject_id: str) -> str:
+    """Tabbed Subject Profile (ADR-0001 PR7a, behind the feature flag).
+
+    Rendered from the ``SubjectService.profile_view`` read-model. The legacy
+    ``view_subject`` screen stays available as the fallback until rollout (PR8).
+    """
+    if not check_feature("subject_first_investigations", current_user.tenant_id):
+        return redirect(url_for("cms.view_subject", subject_id=subject_id))
+
+    subject = Subject.query.filter_by(id=subject_id).first() or abort(404)
+    profile = subject_service.profile_view(subject)
+
+    return render_template(
+        "cms/subjects/profile.html",
+        subject=subject,
+        profile=profile,
     )
 
 

@@ -151,6 +151,9 @@
     </div>
     <div>
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
+            {% if profile_enabled %}
+            <a href="{{ url_for('cms.subject_profile', subject_id=subject.id) }}" class="btn-cms small bg-purple" style="margin-left: 0.5rem; text-decoration: none;" title="{{ _('New tabbed profile (subject-first investigations)') }}">{{ _('👤 Subject Profile') }}</a>
+            {% endif %}
             <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary" style="margin-left: 0.5rem; text-decoration: none;">{{ _('✏️ Edit') }}</a>
             <button data-click="confirmDeleteSubject" class="btn-cms small danger" style="margin-left: 0.25rem;">{{ _('🗑️ Delete') }}</button>
         </h1>
