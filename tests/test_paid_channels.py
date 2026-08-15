@@ -8,6 +8,7 @@ import json
 import time
 from datetime import datetime
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 from cms.models import (
     Case,
@@ -266,10 +267,12 @@ class TestBrowserSearch:
         ).all()
         assert len(findings) == 3
         urls = [f.source_url for f in findings]
-        assert any("google.com/search" in u for u in urls)
-        assert any("bing.com/search" in u for u in urls)
-        assert any("duckduckgo.com" in u for u in urls)
-        assert all("facebook.com" in u for u in urls)
+        hosts = {urlparse(u).netloc for u in urls}
+        assert hosts == {"www.google.com", "www.bing.com", "duckduckgo.com"}
+        for u in urls:
+            query = parse_qs(urlparse(u).query).get("q", [""])[0]
+            assert "PR6 Person" in query
+            assert "facebook.com" in query
 
     def test_no_queries_at_subject_creation(self, auth_client):
         """Creating a case/subject must not start or propose any queries."""
@@ -334,5 +337,5 @@ class TestFacebookCreditMetering:
     def test_no_credits_returns_dork_only(self, mock_credit, mock_dork, mock_key):
         findings = _facebook_check(MockAction(data_value="Jan van Dijk"))
         assert len(findings) == 1
-        assert "facebook.com" in findings[0]["source_url"]
+        assert urlparse(findings[0]["source_url"]).netloc == "www.facebook.com"
         assert get_remaining_credits("facebook") == 0
