@@ -15,6 +15,7 @@ BACKUP_ID="unknown"
 ERRORS=0
 REPORT_WRITTEN=false
 CREATED_DB=""
+COUNTS_JSON='{}'
 PYTHON="${DR_PYTHON:-$SCRIPT_DIR/venv/bin/python3}"
 if [ ! -x "$PYTHON" ]; then
     PYTHON=python3
@@ -39,7 +40,7 @@ finish() {
             --backup-id "$BACKUP_ID" \
             --commit-sha "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || printf unknown)" \
             --checks-file "$CHECKS_FILE" \
-            --counts-json "${COUNTS_JSON:-{}}" >/dev/null 2>&1
+            --counts-json "$COUNTS_JSON" >/dev/null 2>&1
         REPORT_WRITTEN=true
         set -e
     fi
@@ -230,7 +231,7 @@ python3 "$SCRIPT_DIR/scripts/dr_report.py" \
     --backup-id "$BACKUP_ID" \
     --commit-sha "$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || printf unknown)" \
     --checks-file "$CHECKS_FILE" \
-    --counts-json "${COUNTS_JSON:-{}}" >/dev/null 2>&1
+    --counts-json "$COUNTS_JSON" >/dev/null 2>&1
 REPORT_RC=$?
 REPORT_WRITTEN=true
 set -e
