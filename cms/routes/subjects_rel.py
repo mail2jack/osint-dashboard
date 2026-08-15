@@ -13,6 +13,60 @@ from .response import api_success, api_error
 
 logger = logging.getLogger(__name__)
 
+# ADR-0001 PR3: relations are stored as a single canonical row per pair with a
+# direction and a relation_type in the family|business|other vocabulary.
+_FAMILY_TYPES = {
+    "family",
+    "family_member",
+    "relative",
+    "parent",
+    "child",
+    "spouse",
+    "partner",
+    "sibling",
+    "cousin",
+    "in_law",
+    "stepfamily",
+    "grandparent",
+    "grandchild",
+    "uncle",
+    "aunt",
+    "nephew",
+    "niece",
+}
+_BUSINESS_TYPES = {
+    "business",
+    "business_partner",
+    "businesspartner",
+    "colleague",
+    "coworker",
+    "work",
+    "employer",
+    "employee",
+    "company",
+    "co_owner",
+    "client",
+    "supplier",
+    "accountant",
+}
+
+
+def _normalize_relation_type(relationship_type: str | None) -> str:
+    value = (relationship_type or "related").strip().lower()
+    if value in _FAMILY_TYPES:
+        return "family"
+    if value in _BUSINESS_TYPES:
+        return "business"
+    return "other"
+
+
+def _other_id(subject_id: str, row) -> str:
+    return row.related_subject_id if row.subject_id == subject_id else row.subject_id
+
+
+def _sorted_pair_id(a: str, b: str) -> str:
+    return f"{min(a, b)}-{max(a, b)}"
+
 
 @cms_bp.route("/subjects/<subject_id>/relationships")
 @login_required
@@ -22,15 +76,16 @@ def get_subject_relationships(subject_id: str) -> flask.Response:
     try:
         subject = db.session.get(Subject, subject_id) or abort(404)
 
-        # Get ALL relationships for this subject (both directions now)
+        # Single-row storage per pair (ADR-0001 PR3): a relation may be stored
+        # with this subject on either side of the canonical pair.
         related_rows = db.session.execute(
             subject_relations.select().where(
-                subject_relations.c.subject_id == subject.id
+                (subject_relations.c.subject_id == subject.id)
+                | (subject_relations.c.related_subject_id == subject.id)
             )
         ).fetchall()
 
-        # Build a map of related subjects
-        related_ids = [row.related_subject_id for row in related_rows]
+        related_ids = list({_other_id(subject.id, row) for row in related_rows})
         related = (
             apply_tenant_filter(
                 Subject.query.filter(
@@ -41,6 +96,7 @@ def get_subject_relationships(subject_id: str) -> flask.Response:
             if related_ids
             else []
         )
+        related_by_id = {s.id: s for s in related}
 
         # Build nodes and edges for visualization
         nodes = [
@@ -53,120 +109,103 @@ def get_subject_relationships(subject_id: str) -> flask.Response:
         ]
 
         edges = []
-        edge_ids = set()  # Use sorted IDs to avoid duplicates
+        edge_ids = set()
 
-        # Helper to get sorted edge ID
-        def sorted_edge_id(a, b):
-            return f"{min(a, b)}-{max(a, b)}"
-
-        for rel in related:
-            nodes.append(
-                {
-                    "id": rel.id,
-                    "name": rel.name,
-                    "type": rel.subject_type,
-                    "isMain": False,
-                }
-            )
-
-            # Get relationship type from either direction
-            rel_type = "related"
-            type_rows = db.session.execute(
-                subject_relations.select().where(
-                    (subject_relations.c.subject_id == subject.id)
-                    & (subject_relations.c.related_subject_id == rel.id)
+        for row in related_rows:
+            rel_id = _other_id(subject.id, row)
+            rel = related_by_id.get(rel_id)
+            if rel is None:
+                continue
+            if not any(n["id"] == rel.id for n in nodes):
+                nodes.append(
+                    {
+                        "id": rel.id,
+                        "name": rel.name,
+                        "type": rel.subject_type,
+                        "isMain": False,
+                    }
                 )
-            ).fetchall()
-            if not type_rows:
-                # Check reverse direction
-                type_rows = db.session.execute(
-                    subject_relations.select().where(
-                        (subject_relations.c.subject_id == rel.id)
-                        & (subject_relations.c.related_subject_id == subject.id)
-                    )
-                ).fetchall()
-            if type_rows:
-                rel_type = type_rows[0].relationship_type or "related"
-
-            edge_id = sorted_edge_id(subject.id, rel.id)
+            edge_id = _sorted_pair_id(subject.id, rel.id)
             if edge_id not in edge_ids:
                 edges.append(
                     {
                         "id": edge_id,
                         "source": subject.id,
                         "target": rel.id,
-                        "type": rel_type,
+                        "type": row.relation_type or "related",
                     }
                 )
                 edge_ids.add(edge_id)
 
         # Get second-degree connections (friends of friends)
-        for rel in related:
-            second_degree_rows = db.session.execute(
-                subject_relations.select().where(
-                    subject_relations.c.subject_id == rel.id
-                )
-            ).fetchall()
-
-            second_degree_ids = [
-                row.related_subject_id
-                for row in second_degree_rows
-                if row.related_subject_id != subject.id
-            ]
-            rel_related = (
-                apply_tenant_filter(
-                    Subject.query.filter(
-                        Subject.id.in_(second_degree_ids),
-                        Subject.is_deleted == False,
-                        Subject.id != subject.id,
-                    ),
-                    Subject,
-                ).all()
-                if second_degree_ids
-                else []
+        second_degree_rows = []
+        for row in related_rows:
+            rel_id = _other_id(subject.id, row)
+            if rel_id not in related_by_id:
+                continue
+            second_degree_rows.extend(
+                db.session.execute(
+                    subject_relations.select().where(
+                        (subject_relations.c.subject_id == rel_id)
+                        | (subject_relations.c.related_subject_id == rel_id)
+                    )
+                ).fetchall()
             )
 
-            for rr in rel_related:
-                # Check if node already exists
-                if not any(n["id"] == rr.id for n in nodes):
-                    nodes.append(
-                        {
-                            "id": rr.id,
-                            "name": rr.name,
-                            "type": rr.subject_type,
-                            "isMain": False,
-                        }
-                    )
+        second_ids = {
+            _other_id(row.subject_id, row)
+            for row in second_degree_rows
+            if _other_id(row.subject_id, row) not in (subject.id, *related_ids)
+        }
+        rel_related = (
+            apply_tenant_filter(
+                Subject.query.filter(
+                    Subject.id.in_(second_ids),
+                    Subject.is_deleted == False,
+                ),
+                Subject,
+            ).all()
+            if second_ids
+            else []
+        )
+        rel_related_by_id = {s.id: s for s in rel_related}
 
-                edge_id = sorted_edge_id(rel.id, rr.id)
-                if edge_id not in edge_ids:
-                    rel_type = "connected"
-                    type_rows = db.session.execute(
-                        subject_relations.select().where(
-                            (subject_relations.c.subject_id == rel.id)
-                            & (subject_relations.c.related_subject_id == rr.id)
-                        )
-                    ).fetchall()
-                    if not type_rows:
-                        # Check reverse direction
-                        type_rows = db.session.execute(
-                            subject_relations.select().where(
-                                (subject_relations.c.subject_id == rr.id)
-                                & (subject_relations.c.related_subject_id == rel.id)
-                            )
-                        ).fetchall()
-                    if type_rows:
-                        rel_type = type_rows[0].relationship_type or "connected"
+        for row in second_degree_rows:
+            pair_a = row.subject_id
+            pair_b = row.related_subject_id
+            # Only draw edges that involve a first-degree subject
+            first_degree = None
+            other = None
+            for candidate in (pair_a, pair_b):
+                if candidate in related_by_id:
+                    first_degree = candidate
+                elif candidate in rel_related_by_id:
+                    other = candidate
+            if first_degree is None or other is None:
+                continue
 
-                    edges.append(
-                        {
-                            "id": edge_id,
-                            "source": rel.id,
-                            "target": rr.id,
-                            "type": rel_type,
-                        }
-                    )
-                    edge_ids.add(edge_id)
+            rr = rel_related_by_id.get(other)
+            if not any(n["id"] == rr.id for n in nodes):
+                nodes.append(
+                    {
+                        "id": rr.id,
+                        "name": rr.name,
+                        "type": rr.subject_type,
+                        "isMain": False,
+                    }
+                )
+
+            edge_id = _sorted_pair_id(first_degree, rr.id)
+            if edge_id not in edge_ids:
+                edges.append(
+                    {
+                        "id": edge_id,
+                        "source": first_degree,
+                        "target": rr.id,
+                        "type": row.relation_type or "connected",
+                    }
+                )
+                edge_ids.add(edge_id)
 
         return jsonify(
             {
@@ -197,6 +236,7 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
         subject = db.session.get(Subject, subject_id) or abort(404)
         related_id = request.validated_data.get("related_subject_id")
         relationship_type = request.validated_data.get("relationship_type", "related")
+        relation_type = _normalize_relation_type(relationship_type)
 
         if not related_id:
             return api_error("Related subject ID required", 400)
@@ -210,35 +250,25 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
         if related.tenant_id != current_user.tenant_id:
             return api_error("Related subject not found", 404)
 
-        existing_a = db.session.execute(
+        # Single canonical row per pair (ADR-0001 PR3); direction = mutual.
+        canonical_a, canonical_b = sorted([subject.id, related_id])
+        existing = db.session.execute(
             subject_relations.select().where(
-                (subject_relations.c.subject_id == subject.id)
-                & (subject_relations.c.related_subject_id == related_id)
+                (subject_relations.c.subject_id == canonical_a)
+                & (subject_relations.c.related_subject_id == canonical_b)
             )
         ).first()
 
-        existing_b = db.session.execute(
-            subject_relations.select().where(
-                (subject_relations.c.subject_id == related_id)
-                & (subject_relations.c.related_subject_id == subject.id)
-            )
-        ).first()
-
-        if existing_a or existing_b:
+        if existing:
             return api_error("Relationship already exists", 400)
 
         db.session.execute(
             subject_relations.insert().values(
-                subject_id=subject.id,
-                related_subject_id=related_id,
-                relationship_type=relationship_type,
-            )
-        )
-        db.session.execute(
-            subject_relations.insert().values(
-                subject_id=related_id,
-                related_subject_id=subject.id,
-                relationship_type=relationship_type,
+                subject_id=canonical_a,
+                related_subject_id=canonical_b,
+                relation_type=relation_type,
+                direction="mutual",
+                status="candidate",
             )
         )
 
@@ -246,9 +276,9 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
             user_id=current_user.id,
             action="create",
             entity_type="subject_relation",
-            entity_id=f"{subject.id}-{related_id}",
+            entity_id=f"{canonical_a}-{canonical_b}",
             ip_address=request.remote_addr,
-            description=f"Added bidirectional {relationship_type} relationship between {subject.name} and {related.name}",
+            description=f"Added bidirectional {relation_type} relationship between {subject.name} and {related.name}",
         )
         db.session.commit()
 
@@ -258,7 +288,7 @@ def add_subject_relationship(subject_id: str) -> flask.Response:
                 "relationship": {
                     "subject_id": subject.id,
                     "related_subject_id": related_id,
-                    "type": relationship_type,
+                    "type": relation_type,
                     "bidirectional": True,
                 },
             }

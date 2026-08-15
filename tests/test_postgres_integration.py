@@ -40,20 +40,23 @@ class TestPostgreSQLIntegration:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "e0f1a2b3c4d5"
+        assert revision == "f0a1b2c3d4e5"
 
         protected = db.session.execute(
             text(
                 """
                 SELECT count(*)
                 FROM pg_class
-                WHERE relname IN ('cases', 'clients', 'notifications')
+                WHERE relname IN (
+                    'cases', 'clients', 'notifications',
+                    'subject_identifiers', 'subject_facts'
+                )
                   AND relrowsecurity
                   AND relforcerowsecurity
                 """
             )
         ).scalar()
-        assert protected == 3
+        assert protected == 5
 
     def test_rls_hides_other_tenant_cases(self, app):
         admin = User.query.filter_by(username="admin").one()
