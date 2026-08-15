@@ -272,7 +272,7 @@ class TestBrowserSearch:
         for u in urls:
             query = parse_qs(urlparse(u).query).get("q", [""])[0]
             assert "PR6 Person" in query
-            assert "facebook.com" in query
+            assert query.endswith("site:facebook.com")
 
     def test_no_queries_at_subject_creation(self, auth_client):
         """Creating a case/subject must not start or propose any queries."""
