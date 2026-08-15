@@ -9,6 +9,7 @@ from flask_login import current_user, login_required
 from ..auth import (
     apply_tenant_filter,
     ensure_tenant_access,
+    staff_required,
     subject_access_required,
 )
 from ..models import AuditLog, Finding, Subject, db
@@ -55,6 +56,7 @@ def check_existing_finding_urls() -> flask.Response:
 @cms_bp.route("/api/subjects/<subject_id>/social-accounts", methods=["POST"])
 @login_required
 @subject_access_required
+@staff_required
 @validate(AddSocialAccountSchema)
 def add_social_account(subject_id: str) -> flask.Response:
     """Add a social account (username) to a subject."""
@@ -86,6 +88,7 @@ def add_social_account(subject_id: str) -> flask.Response:
 )
 @login_required
 @subject_access_required
+@staff_required
 def delete_social_account(subject_id: str, account_id: str) -> flask.Response:
     """Delete a social account."""
     from ..models import SocialAccount
@@ -101,6 +104,7 @@ def delete_social_account(subject_id: str, account_id: str) -> flask.Response:
 
 @cms_bp.route("/api/findings/save-as-social-account", methods=["POST"])
 @login_required
+@staff_required
 @validate(SaveFindingAsSocialAccountSchema)
 def save_finding_as_social_account() -> flask.Response:
     """Save an OSINT finding's source URL as a social account on the linked subject."""
@@ -121,6 +125,8 @@ def save_finding_as_social_account() -> flask.Response:
     if finding_id:
         finding = db.session.get(Finding, finding_id) or abort(404)
         ensure_tenant_access(finding)
+        if finding.case_id and not current_user.can_access_case(finding.case):
+            return api_error("No access to this case", 403)
         if not finding.subject_id:
             return api_error("Finding not linked to a subject", 400)
         subject_id = finding.subject_id
@@ -172,6 +178,7 @@ def save_finding_as_social_account() -> flask.Response:
 
 @cms_bp.route("/api/subjects/<subject_id>/save-username-findings", methods=["POST"])
 @login_required
+@staff_required
 @validate(SaveUsernameFindingsSchema)
 def save_username_findings(subject_id: str) -> flask.Response:
     """Save RapidAPI username check results as Findings + Social Accounts."""
@@ -257,6 +264,7 @@ def save_username_findings(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/api/subjects/create-from-username", methods=["POST"])
 @login_required
+@staff_required
 @validate(CreateSubjectFromUsernameSchema)
 def create_subject_from_username() -> flask.Response:
     """Create a subject from just a username (no full name needed)."""

@@ -2,11 +2,11 @@ import logging
 
 import flask
 from flask import abort, jsonify, request
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from cms.services.http_utils import jittered_get
 
-from ..auth import apply_tenant_filter, ensure_tenant_access
+from ..auth import apply_tenant_filter, ensure_tenant_access, staff_required
 from ..models import Finding, SocialAccount, Subject, db
 from ..validation import ExtractSocialIdSchema, UpdateSocialIdsSchema, validate
 from . import cms_bp
@@ -191,6 +191,7 @@ def _extract_social_ids_from_url(url, subject=None):
 
 @cms_bp.route("/extract-social-id", methods=["POST"])
 @login_required
+@staff_required
 @validate(ExtractSocialIdSchema)
 def extract_social_id() -> flask.Response:
     """Extract social media IDs from a URL using socid_extractor + Playwright."""
@@ -201,10 +202,14 @@ def extract_social_id() -> flask.Response:
     finding_id = data.get("finding_id")
     subject = db.session.get(Subject, subject_id) if subject_id else None
     if subject:
+        if subject.is_deleted:
+            abort(404)
         ensure_tenant_access(subject)
     if finding_id:
         finding = db.session.get(Finding, finding_id) or abort(404)
         ensure_tenant_access(finding)
+        if finding.case_id and not current_user.can_access_case(finding.case):
+            return jsonify({"error": "No access to this case"}), 403
 
     extracted = _extract_social_ids_from_url(url, subject=subject)
 
@@ -280,12 +285,15 @@ def extract_social_id() -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/bulk-extract-social-ids", methods=["POST"])
 @login_required
+@staff_required
 def bulk_extract_social_ids(subject_id: str) -> flask.Response:
     """Extract social media IDs from all findings linked to a subject."""
     from ..social_extractor import detect_platform
 
     subject = db.session.get(Subject, subject_id)
     if not subject:
+        abort(404)
+    if subject.is_deleted:
         abort(404)
     ensure_tenant_access(subject)
     findings = apply_tenant_filter(
@@ -381,10 +389,13 @@ def get_subject_social_ids(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/social-ids", methods=["PUT"])
 @login_required
+@staff_required
 @validate(UpdateSocialIdsSchema)
 def update_subject_social_ids(subject_id: str) -> flask.Response:
     """Update social media IDs for a subject (manual entry)."""
     subject = db.session.get(Subject, subject_id) or abort(404)
+    if subject.is_deleted:
+        abort(404)
     ensure_tenant_access(subject)
     data = request.validated_data
 

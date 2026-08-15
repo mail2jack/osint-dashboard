@@ -361,6 +361,183 @@ class TestExtractSocialIdFindingAccess:
         assert resp.status_code == 403
 
 
+class TestViewerCannotMutate:
+    """Viewers may read subjects but never mutate social data (P1 review).
+
+    ``staff_required`` gates every mutating social-account/extract route:
+    a viewer with full case access still gets 403 and nothing is written.
+    """
+
+    def _viewer_with_subject(self, app, subject=None, social_media_ids=None):
+        if subject is None:
+            subject = Subject(
+                name="Subject",
+                subject_type="person",
+                social_media_ids=social_media_ids,
+            )
+        db.session.add(subject)
+        viewer = _make_user(f"viewer_{uuid.uuid4().hex[:8]}", role="viewer")
+        case = _make_case(owner=viewer)
+        case.subjects.append(subject)
+        db.session.commit()
+        return viewer, case, subject
+
+    def test_viewer_add_social_account_403(self, app, auth_client):
+        viewer, _case, subject = self._viewer_with_subject(app)
+        client = _login_as(app.test_client(), viewer)
+
+        before = SocialAccount.query.count()
+        resp = client.post(
+            f"/cms/api/subjects/{subject.id}/social-accounts",
+            json={"platform": "GitHub", "username": "ghost"},
+        )
+        assert resp.status_code == 403
+        assert SocialAccount.query.count() == before
+
+    def test_viewer_delete_social_account_403(self, app, auth_client):
+        subject = Subject(name="Subject", subject_type="person")
+        db.session.add(subject)
+        db.session.flush()
+        account = SocialAccount(
+            subject_id=subject.id, platform="github", username="testuser"
+        )
+        db.session.add(account)
+        viewer, _case, subject = self._viewer_with_subject(app, subject=subject)
+        client = _login_as(app.test_client(), viewer)
+
+        resp = client.delete(
+            f"/cms/api/subjects/{subject.id}/social-accounts/{account.id}"
+        )
+        assert resp.status_code in (302, 403)
+        assert resp.status_code != 200
+        assert db.session.get(SocialAccount, account.id) is not None
+
+    def test_viewer_save_finding_as_social_account_403(self, app, auth_client):
+        viewer, _case, subject = self._viewer_with_subject(app)
+        client = _login_as(app.test_client(), viewer)
+
+        before = SocialAccount.query.count()
+        resp = client.post(
+            "/cms/api/findings/save-as-social-account",
+            json={"subject_id": str(subject.id), "url": "https://github.com/x"},
+        )
+        assert resp.status_code == 403
+        assert SocialAccount.query.count() == before
+
+    def test_viewer_save_username_findings_403(self, app, auth_client):
+        viewer, case, subject = self._viewer_with_subject(app)
+        client = _login_as(app.test_client(), viewer)
+
+        resp = client.post(
+            f"/cms/api/subjects/{subject.id}/save-username-findings",
+            json={
+                "case_id": str(case.id),
+                "results": [
+                    {
+                        "platform": "GitHub",
+                        "url": "https://github.com/testuser",
+                        "username": "testuser",
+                    }
+                ],
+            },
+        )
+        assert resp.status_code == 403
+        assert Finding.query.filter_by(subject_id=subject.id).count() == 0
+
+    def test_viewer_create_subject_from_username_403(self, app, auth_client):
+        viewer = _make_user(f"viewer_{uuid.uuid4().hex[:8]}", role="viewer")
+        client = _login_as(app.test_client(), viewer)
+
+        before = Subject.query.count()
+        resp = client.post(
+            "/cms/api/subjects/create-from-username",
+            json={"username": "testuser", "platform": "GitHub"},
+        )
+        assert resp.status_code == 403
+        assert Subject.query.count() == before
+
+    def test_viewer_extract_social_id_403(self, app, auth_client):
+        viewer, _case, subject = self._viewer_with_subject(app)
+        client = _login_as(app.test_client(), viewer)
+
+        resp = client.post(
+            "/cms/extract-social-id",
+            json={"url": "https://example.com", "subject_id": str(subject.id)},
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_bulk_extract_social_ids_403(self, app, auth_client):
+        viewer, _case, subject = self._viewer_with_subject(app)
+        client = _login_as(app.test_client(), viewer)
+
+        resp = client.post(
+            f"/cms/subjects/{subject.id}/bulk-extract-social-ids", json={}
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_update_subject_social_ids_403(self, app, auth_client):
+        viewer, _case, subject = self._viewer_with_subject(
+            app, social_media_ids={"instagram": "old"}
+        )
+        client = _login_as(app.test_client(), viewer)
+
+        resp = client.put(
+            f"/cms/subjects/{subject.id}/social-ids",
+            json={"social_media_ids": {"instagram": "new"}},
+        )
+        assert resp.status_code == 403
+        assert subject.social_media_ids == {"instagram": "old"}
+
+
+class TestCaseExportJsonFiltersFindings:
+    def test_export_json_excludes_deleted_and_archived_findings(self, app, auth_client):
+        user = _make_user(f"senior_{uuid.uuid4().hex[:8]}", role="senior_investigator")
+        client = _login_as(app.test_client(), user)
+        case = _make_case(owner=user)
+        subject = Subject(name="Subject", subject_type="person")
+        db.session.add(subject)
+        db.session.flush()
+        case.subjects.append(subject)
+        db.session.flush()
+
+        active = Finding(
+            case_id=case.id,
+            subject_id=subject.id,
+            title="Active",
+            content="content",
+            source_type="osint",
+            finding_type="identity",
+            created_by=user.id,
+        )
+        deleted = Finding(
+            case_id=case.id,
+            subject_id=subject.id,
+            title="Deleted",
+            content="content",
+            source_type="osint",
+            finding_type="identity",
+            created_by=user.id,
+        )
+        deleted.is_deleted = True
+        archived = Finding(
+            case_id=case.id,
+            subject_id=subject.id,
+            title="Archived",
+            content="content",
+            source_type="osint",
+            finding_type="identity",
+            created_by=user.id,
+            archived_at=datetime.now(UTC),
+        )
+        db.session.add_all([active, deleted, archived])
+        db.session.commit()
+
+        resp = client.get(f"/cms/cases/{case.id}/export-json")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert [f["title"] for f in data["findings"]] == ["Active"]
+
+
 class TestCaseMembershipDeletedSubject:
     def test_add_subject_to_case_deleted_404(self, auth_client):
         case = _make_case(owner=None)

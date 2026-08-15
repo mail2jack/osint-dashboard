@@ -36,16 +36,24 @@ def export_case_json(case_id: str) -> flask.Response:
         s.to_dict() for s in case.subjects.filter(Subject.is_deleted == False)
     ]
     export_data["findings"] = [
-        f.to_dict() for f in Finding.query.filter_by(case_id=case_id).all()
+        f.to_dict()
+        for f in Finding.query.filter_by(case_id=case_id)
+        .filter(Finding.is_deleted == False, Finding.archived_at.is_(None))
+        .all()
     ]
     export_data["documents"] = [
-        d.to_dict() for d in Document.query.filter_by(case_id=case_id).all()
+        d.to_dict()
+        for d in Document.query.filter_by(case_id=case_id, is_deleted=False).all()
     ]
     export_data["comments"] = [
-        c.to_dict() for c in Comment.query.filter_by(case_id=case_id).all()
+        c.to_dict()
+        for c in Comment.query.filter_by(case_id=case_id, is_deleted=False).all()
     ]
     export_data["financials"] = [
-        r.to_dict() for r in FinancialRecord.query.filter_by(case_id=case_id).all()
+        r.to_dict()
+        for r in FinancialRecord.query.filter_by(
+            case_id=case_id, is_deleted=False
+        ).all()
     ]
     return flask.Response(
         json_mod.dumps(export_data, indent=2, default=str),
