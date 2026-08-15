@@ -1,10 +1,9 @@
 import json
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import bleach
-
 import sqlalchemy as sa
 from flask import (
     abort,
@@ -18,9 +17,14 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
-from cms.models import db, UserRole, AuditLog
 from cms.auth import ensure_case_access, ensure_tenant_access
-from cms.routes.utils import normalize_phone, normalize_postcode
+from cms.models import AuditLog, UserRole, db
+from cms.routes.dashboard import _get_cached_health
+from cms.routes.utils import find_similar_clients, normalize_phone, normalize_postcode
+from cms.services.invoice_service import auto_invoice_case_created
+from cms.services.subject_service import subject_service
+from cms.workflow.actions.registry import action_category
+
 from . import workflow_bp
 from .models import (
     WorkflowActionFinding,
@@ -35,16 +39,11 @@ from .research import (
     ACTION_REGISTRY,
     SUBJECT_TYPE_PRESETS,
     cancel_action,
-    start_action_async,
     get_remaining_credits,
     is_paid_action,
     paid_channels_enabled,
+    start_action_async,
 )
-from cms.workflow.actions.registry import action_category
-from cms.routes.dashboard import _get_cached_health
-from cms.services.invoice_service import auto_invoice_case_created
-from cms.routes.utils import find_similar_clients
-from cms.services.subject_service import subject_service
 
 
 def _investigator_required(f):
@@ -282,6 +281,7 @@ def dashboard():
     cases = (
         WorkflowCase.query.filter(
             WorkflowCase.archived_at.is_(None),
+            WorkflowCase.is_deleted == False,
             WorkflowCase.tenant_id == current_user.tenant_id,
         )
         .order_by(WorkflowCase.created_at.desc())
@@ -1721,7 +1721,7 @@ def serve_screenshot(finding_id, filename):
 @login_required
 def archive_action(action_id):
     """Archive a single research action and its linked findings."""
-    from cms.models import ResearchAction, Finding, ActionFinding, db
+    from cms.models import ActionFinding, Finding, ResearchAction, db
 
     action = db.session.get(ResearchAction, action_id) or abort(404)
     case = db.session.get(WorkflowCase, action.case_id)
@@ -1729,7 +1729,7 @@ def archive_action(action_id):
         ensure_case_access(case)
     else:
         ensure_tenant_access(action)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     action.archived_at = now
     AuditLog.log(
         user_id=current_user.id,
@@ -1759,7 +1759,7 @@ def archive_action(action_id):
 @login_required
 def restore_action(action_id):
     """Restore a research action and its linked findings."""
-    from cms.models import ResearchAction, Finding, ActionFinding, db
+    from cms.models import ActionFinding, Finding, ResearchAction, db
 
     action = db.session.get(ResearchAction, action_id) or abort(404)
     case = db.session.get(WorkflowCase, action.case_id)
@@ -1804,7 +1804,7 @@ def archive_finding(finding_id):
         ensure_case_access(case)
     else:
         ensure_tenant_access(finding)
-    finding.archived_at = datetime.now(timezone.utc)
+    finding.archived_at = datetime.now(UTC)
     AuditLog.log(
         user_id=current_user.id,
         action="archive",

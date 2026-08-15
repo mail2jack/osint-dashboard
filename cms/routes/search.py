@@ -1,24 +1,24 @@
 import logging
 
 import flask
-from flask import abort, request, jsonify, render_template
-from flask_login import login_required, current_user
+from flask import abort, jsonify, render_template, request
+from flask_login import current_user, login_required
 
-from . import cms_bp
+from ..auth import apply_tenant_filter, get_accessible_case_ids, viewer_required
 from ..models import (
-    db,
+    AuditLog,
     Case,
     Client,
-    Subject,
-    Finding,
-    FinancialRecord,
     Comment,
+    FinancialRecord,
+    Finding,
+    Subject,
     Tenant,
-    AuditLog,
     case_subjects,
+    db,
 )
-from ..auth import get_accessible_case_ids, apply_tenant_filter, viewer_required
 from ..notifications import notify_search_restricted
+from . import cms_bp
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,7 @@ def search() -> str:
                 .join(Client)
                 .filter(
                     Case.is_deleted == False,
+                    Case.archived_at.is_(None),
                     db.or_(
                         Case.title.ilike(f"%{query}%"),
                         Case.case_number.ilike(f"%{query}%"),
@@ -188,6 +189,7 @@ def search() -> str:
                 .join(Case)
                 .filter(
                     Finding.is_deleted == False,
+                    Finding.archived_at.is_(None),
                     db.or_(
                         Finding.title.ilike(f"%{query}%"),
                         Finding.content.ilike(f"%{query}%"),
@@ -214,6 +216,7 @@ def search() -> str:
             if len(findings) < total_count and not current_user.is_admin:
                 restricted_q = Finding.query.join(Case).filter(
                     Finding.is_deleted == False,
+                    Finding.archived_at.is_(None),
                     ~Case.id.in_(accessible_ids),
                     db.or_(
                         Finding.title.ilike(f"%{query}%"),
@@ -493,6 +496,7 @@ def global_search():
                 .join(Client)
                 .filter(
                     Case.is_deleted == False,
+                    Case.archived_at.is_(None),
                     db.or_(
                         Case.title.ilike(f"%{q}%"),
                         Case.case_number.ilike(f"%{q}%"),
@@ -575,6 +579,7 @@ def global_search():
                 .join(Case)
                 .filter(
                     Finding.is_deleted == False,
+                    Finding.archived_at.is_(None),
                     db.or_(
                         Finding.title.ilike(f"%{q}%"),
                         Finding.content.ilike(f"%{q}%"),
