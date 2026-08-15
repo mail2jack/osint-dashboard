@@ -24,6 +24,7 @@ CREDIT_LIMITS = {
     "instagram": 10,
     "linkedin": 50,
     "twitter": 1000,
+    "facebook": 30,
 }
 
 
@@ -77,13 +78,16 @@ def _has_credits(action_type):
     return get_remaining_credits(action_type) > 0
 
 
-def register_action(action_type, label, icon, handler, description="", category="open"):
+def register_action(
+    action_type, label, icon, handler, description="", category="open", cost_label=""
+):
     ACTION_REGISTRY[action_type] = {
         "label": label,
         "icon": icon,
         "handler": handler,
         "description": description,
         "category": category,
+        "cost_label": cost_label,
     }
 
 
@@ -94,6 +98,44 @@ def action_category(action_type):
 
 def is_paid_action(action_type):
     return action_category(action_type) == "paid"
+
+
+def paid_channels_enabled(tenant_id=None):
+    """Paid research channels are OFF by default (ADR-0001 D1.6).
+
+    They are only enabled for a tenant via an explicit ``FeatureFlag``
+    override named ``paid_channels`` (super-admin config). Without an
+    override the channels stay disabled regardless of tier.
+    """
+    from cms.models import FeatureFlag
+
+    tid = tenant_id
+    if not tid:
+        from flask import g, has_app_context
+
+        if has_app_context():
+            tid = getattr(g, "tenant_id", None)
+        if not tid:
+            try:
+                from flask_login import current_user
+
+                if (
+                    current_user.is_authenticated
+                    and getattr(current_user, "tenant", None) is not None
+                ):
+                    tid = current_user.tenant.id
+            except Exception:
+                pass
+    if not tid:
+        return False
+    try:
+        override = FeatureFlag.query.filter_by(
+            tenant_id=tid, flag_name="paid_channels"
+        ).first()
+    except Exception:
+        logger.debug("FeatureFlag lookup failed", exc_info=True)
+        return False
+    return bool(override.enabled) if override is not None else False
 
 
 def cancel_action(action_id):
@@ -126,6 +168,17 @@ def run_action(action_id):
     try:
         action = db.session.get(WorkflowResearchAction, action_id)
         if not action:
+            return
+
+        # ADR-0001 D1.6: paid channels are off by default behind explicit tenant
+        # config. Re-checked at execution time so a flag that was switched off
+        # after proposal creation still blocks the run.
+        if is_paid_action(action.action_type) and not paid_channels_enabled(
+            action.tenant_id
+        ):
+            action.status = "error"
+            action.error = "Paid channels are disabled for this tenant"
+            db.session.commit()
             return
 
         action.status = "running"

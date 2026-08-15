@@ -37,6 +37,8 @@ from .research import (
     cancel_action,
     start_action_async,
     get_remaining_credits,
+    is_paid_action,
+    paid_channels_enabled,
 )
 from cms.workflow.actions.registry import action_category
 from cms.routes.dashboard import _get_cached_health
@@ -653,6 +655,7 @@ def case_detail(case_id):
         brave_health=brave_health,
         show_archived=show_archived,
         dorks_library=dorks_library,
+        paid_enabled=paid_channels_enabled(),
     )
 
 
@@ -790,6 +793,22 @@ def run_action(case_id):
     if action_type not in ACTION_REGISTRY:
         return jsonify({"error": f"Unknown action: {action_type}"}), 400
 
+    # ADR-0001 D1.6: paid channels are off by default behind explicit tenant
+    # config (FeatureFlag "paid_channels"). Block both immediate runs and
+    # proposals when the tenant has not opted in.
+    if is_paid_action(action_type) and not paid_channels_enabled():
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Paid research channels are disabled for this tenant. "
+                        "A super-admin must enable them via Feature Flags."
+                    )
+                }
+            ),
+            409,
+        )
+
     # Explicit target subject (ADR-0001 PR4): a non-null subject_id must be a
     # subject linked to this case. None means an explicit case-wide scope.
     subject = None
@@ -867,7 +886,8 @@ def create_proposals(case_id):
 
     Body: {"subject_id": optional, "action_types": ["osint", "email", ...]}
     Free/local/open actions are ready as proposals; paid channels are never
-    silently proposed (ADR-0001 D1.5/D1.6).
+    silently proposed (ADR-0001 D1.5/D1.6) and are filtered out here — they
+    are only startable via an explicit per-action opt-in by the investigator.
     """
     case = db.session.get(WorkflowCase, case_id)
     if not case:
@@ -880,9 +900,27 @@ def create_proposals(case_id):
 
     if not action_types:
         return jsonify({"error": "No actions proposed"}), 400
+    if not isinstance(action_types, list):
+        return jsonify({"error": "action_types must be a list"}), 400
     unknown = [t for t in action_types if t not in ACTION_REGISTRY]
     if unknown:
         return jsonify({"error": f"Unknown action: {unknown[0]}"}), 400
+
+    skipped = [t for t in action_types if is_paid_action(t)]
+    action_types = [t for t in action_types if not is_paid_action(t)]
+    if not action_types:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Only paid channels were proposed; paid channels are "
+                        "never auto-proposed (ADR-0001 D1.6)."
+                    ),
+                    "skipped": skipped,
+                }
+            ),
+            422,
+        )
 
     subject = None
     if subject_id:
@@ -918,7 +956,7 @@ def create_proposals(case_id):
         case_id=case_id,
         description=f"Proposed {len(created)} investigation action(s) for the case",
     )
-    return jsonify({"ok": True, "ids": created})
+    return jsonify({"ok": True, "ids": created, "skipped": skipped})
 
 
 @workflow_bp.route("/api/case/<case_id>/actions/<action_id>/start", methods=["POST"])
@@ -935,6 +973,18 @@ def start_proposal(case_id, action_id):
         return jsonify({"error": "Not found"}), 404
     if action.status != "proposal":
         return jsonify({"error": "Action is not a proposal"}), 409
+    if is_paid_action(action.action_type) and not paid_channels_enabled():
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Paid research channels are disabled for this tenant. "
+                        "A super-admin must enable them via Feature Flags."
+                    )
+                }
+            ),
+            409,
+        )
     action.status = "pending"
     db.session.commit()
     start_action_async(action_id)

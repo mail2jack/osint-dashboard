@@ -37,6 +37,10 @@ document.addEventListener('DOMContentLoaded', function() {
     var btn = e.target.closest('[data-action-key]');
     if (btn) {
       e.preventDefault();
+      if (btn.dataset.paidLocked === '1') {
+        showToast('🔒 Paid research channels are disabled for this tenant. A super-admin must enable them via Feature Flags.', 'warning');
+        return;
+      }
       showActionPicker(btn.getAttribute('data-action-key'));
       return;
     }
