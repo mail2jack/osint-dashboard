@@ -242,6 +242,11 @@ class TestPostgreSQLIntegration:
             run_action(action.id)
             db.session.expire_all()
 
+            # run_action() resets the connection context afterwards (no leak
+            # into the pool); re-scope to the action's tenant to verify.
+            set_tenant_context(db, tenant_a)
+            db.session.expire_all()
+
             # Ciphertext at rest, verifiable via raw SQL (no ORM decrypts).
             stored = db.session.execute(
                 text("SELECT email FROM subjects WHERE id = :id"),
@@ -250,8 +255,6 @@ class TestPostgreSQLIntegration:
             assert stored != "pg-enc@example.com"
             assert encryptor.decrypt(stored) == "pg-enc@example.com"
 
-            set_tenant_context(db, tenant_a)
-            db.session.expire_all()
             finding = (
                 Finding.query.filter_by(case_id=case.id)
                 .order_by(Finding.created_at.desc())
