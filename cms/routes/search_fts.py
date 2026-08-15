@@ -1,17 +1,16 @@
 import logging
 
 import flask
-from flask import request, jsonify
-from flask_login import login_required, current_user
+from flask import jsonify, request
+from flask_login import current_user, login_required
 from sqlalchemy import or_
 
-from . import cms_bp
 from .. import csrf
-from ..models import db, Subject, Case, Finding, case_subjects
-from ..validation import validate, FTSSearchSchema
 from ..api_key_auth import api_key_required
-from ..auth import get_accessible_case_ids, apply_tenant_filter
-
+from ..auth import apply_tenant_filter, get_accessible_case_ids
+from ..models import Case, Finding, Subject, case_subjects, db
+from ..validation import FTSSearchSchema, validate
+from . import cms_bp
 from .response import api_error
 
 logger = logging.getLogger(__name__)
@@ -22,11 +21,13 @@ def _fts_query(model, columns, query: str, limit: int = 20) -> list:
     conditions = [col.ilike(f"%{query}%") for col in columns if col is not None]
     if not conditions:
         return []
+    base = model.query.filter(or_(*conditions))
+    if hasattr(model, "is_deleted"):
+        base = base.filter(model.is_deleted == False)
+    if hasattr(model, "archived_at"):
+        base = base.filter(model.archived_at.is_(None))
     return (
-        apply_tenant_filter(
-            model.query.filter(or_(*conditions)),
-            model,
-        )
+        apply_tenant_filter(base, model)
         .order_by(
             model.updated_at.desc()
             if hasattr(model, "updated_at")

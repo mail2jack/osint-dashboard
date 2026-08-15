@@ -1,14 +1,21 @@
 import logging
-from cms.services.http_utils import jittered_get
 
 import flask
-from flask import request, jsonify, abort
-from flask_login import login_required
+from flask import abort, jsonify, request
+from flask_login import current_user, login_required
 
+from cms.services.http_utils import jittered_get
+
+from ..auth import (
+    apply_tenant_filter,
+    ensure_subject_access,
+    ensure_tenant_access,
+    staff_required,
+    subject_access_required,
+)
+from ..models import Finding, SocialAccount, Subject, db
+from ..validation import ExtractSocialIdSchema, UpdateSocialIdsSchema, validate
 from . import cms_bp
-from ..models import db, Subject, Finding, SocialAccount
-from ..auth import ensure_tenant_access
-from ..validation import validate, ExtractSocialIdSchema, UpdateSocialIdsSchema
 from .utils import is_safe_url
 
 logger = logging.getLogger(__name__)
@@ -35,9 +42,10 @@ def _extract_social_ids_from_url(url, subject=None):
     try:
         try:
             from playwright.sync_api import sync_playwright
+
             from cms.services.playwright_stealth import (
-                stealth_for_domain,
                 apply_stealth_to_context,
+                stealth_for_domain,
             )
 
             with sync_playwright() as p:
@@ -189,6 +197,7 @@ def _extract_social_ids_from_url(url, subject=None):
 
 @cms_bp.route("/extract-social-id", methods=["POST"])
 @login_required
+@staff_required
 @validate(ExtractSocialIdSchema)
 def extract_social_id() -> flask.Response:
     """Extract social media IDs from a URL using socid_extractor + Playwright."""
@@ -199,11 +208,36 @@ def extract_social_id() -> flask.Response:
     finding_id = data.get("finding_id")
     subject = db.session.get(Subject, subject_id) if subject_id else None
     if subject:
-        ensure_tenant_access(subject)
+        if subject.is_deleted:
+            abort(404)
+        deny = ensure_subject_access(subject)
+        if deny is not None:
+            return deny
+    if finding_id:
+        finding = db.session.get(Finding, finding_id) or abort(404)
+        ensure_tenant_access(finding)
+        if finding.case_id and not current_user.can_access_case(finding.case):
+            return jsonify({"error": "No access to this case"}), 403
+        # A body-supplied subject must match the finding's linked subject or,
+        # when the finding has none, belong to the finding's case
+        if (
+            subject
+            and finding.subject_id
+            and str(finding.subject_id) != str(subject.id)
+        ):
+            return jsonify({"error": "Subject does not match the finding"}), 400
+        if (
+            subject
+            and not finding.subject_id
+            and finding.case_id
+            and subject not in finding.case.subjects.all()
+        ):
+            return jsonify({"error": "Subject not linked to the finding's case"}), 400
 
     extracted = _extract_social_ids_from_url(url, subject=subject)
 
-    from ..social_extractor import detect_platform, extract_username as ext_username
+    from ..social_extractor import detect_platform
+    from ..social_extractor import extract_username as ext_username
 
     sl_platform = detect_platform(url)
     sl_username = ext_username(url, platform=sl_platform)
@@ -274,6 +308,8 @@ def extract_social_id() -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/bulk-extract-social-ids", methods=["POST"])
 @login_required
+@subject_access_required
+@staff_required
 def bulk_extract_social_ids(subject_id: str) -> flask.Response:
     """Extract social media IDs from all findings linked to a subject."""
     from ..social_extractor import detect_platform
@@ -281,13 +317,16 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
     subject = db.session.get(Subject, subject_id)
     if not subject:
         abort(404)
+    if subject.is_deleted:
+        abort(404)
     ensure_tenant_access(subject)
-    findings = (
+    findings = apply_tenant_filter(
         Finding.query.filter_by(subject_id=subject_id)
         .filter(Finding.source_url.isnot(None))
         .filter(Finding.source_url != "")
-        .all()
-    )
+        .filter(Finding.is_deleted == False, Finding.archived_at.is_(None)),
+        Finding,
+    ).all()
 
     if not findings:
         return jsonify(
@@ -303,7 +342,9 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
 
     existing_accounts = {
         (a.platform, a.url)
-        for a in SocialAccount.query.filter_by(subject_id=subject_id).all()
+        for a in apply_tenant_filter(
+            SocialAccount.query.filter_by(subject_id=subject_id), SocialAccount
+        ).all()
     }
 
     for finding in findings:
@@ -361,6 +402,7 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/social-ids", methods=["GET"])
 @login_required
+@subject_access_required
 def get_subject_social_ids(subject_id: str) -> flask.Response:
     """Get social media IDs for a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)
@@ -373,10 +415,14 @@ def get_subject_social_ids(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/social-ids", methods=["PUT"])
 @login_required
+@subject_access_required
+@staff_required
 @validate(UpdateSocialIdsSchema)
 def update_subject_social_ids(subject_id: str) -> flask.Response:
     """Update social media IDs for a subject (manual entry)."""
     subject = db.session.get(Subject, subject_id) or abort(404)
+    if subject.is_deleted:
+        abort(404)
     ensure_tenant_access(subject)
     data = request.validated_data
 

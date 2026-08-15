@@ -1,21 +1,20 @@
 import logging
 
 import flask
-from flask import request, jsonify, redirect, url_for, flash, abort
-from flask_login import login_required, current_user
+from flask import abort, flash, jsonify, redirect, request, url_for
+from flask_login import current_user, login_required
 
-from . import cms_bp
-from ..validation import validate, AddSubjectToCaseSchema, BulkAddSubjectsSchema
-from ..models import db, Case, Subject, AuditLog
 from ..auth import (
-    roles_required,
-    case_edit_required,
     apply_tenant_filter,
-    ensure_tenant_access,
     case_access_required,
+    case_edit_required,
+    ensure_tenant_access,
+    roles_required,
 )
-
-from .response import api_success, api_error
+from ..models import AuditLog, Case, Subject, db
+from ..validation import AddSubjectToCaseSchema, BulkAddSubjectsSchema, validate
+from . import cms_bp
+from .response import api_error, api_success
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +39,8 @@ def add_subject_to_case(case_id: str) -> flask.Response:
 
     subject = db.session.get(Subject, subject_id) or abort(404)
     ensure_tenant_access(subject)
+    if subject.is_deleted:
+        abort(404)
 
     if subject in case.subjects.all():
         return api_error("Subject already linked to this case", 400)
@@ -88,7 +89,10 @@ def bulk_add_subjects_to_case(case_id: str) -> flask.Response:
     subjects = {
         s.id: s
         for s in apply_tenant_filter(
-            Subject.query.filter(Subject.id.in_(subject_ids)), Subject
+            Subject.query.filter(
+                Subject.id.in_(subject_ids), Subject.is_deleted.is_(False)
+            ),
+            Subject,
         ).all()
     }
     existing_linked_ids = {s.id for s in case.subjects.all()}

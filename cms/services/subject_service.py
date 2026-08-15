@@ -13,7 +13,7 @@ save() -> reopen edit -> view shows value.
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from cms.encryption_utils import EncryptionError, encryptor
 from cms.models import (
@@ -53,7 +53,7 @@ def _sync_verification(obj, status, actor_id):
         if not obj.verified_by:
             obj.verified_by = actor_id
         if not obj.verified_at:
-            obj.verified_at = datetime.now(timezone.utc)
+            obj.verified_at = datetime.now(UTC)
     else:
         obj.verified_by = None
         obj.verified_at = None
@@ -143,6 +143,7 @@ EDIT_RDW_FIELDS = [
     "aantal_zitplaatsen",
     "cilinderinhoud",
     "aantal_cilinders",
+    "vermogen",
     "massa_ledig",
     "maximum_massa",
     "vervaldatum_apk",
@@ -153,6 +154,9 @@ EDIT_RDW_FIELDS = [
     "zuinigheidsclassificatie",
     "catalogusprijs",
     "datum_eerste_toelating",
+    "datum_tenaamstelling",
+    "bruto_bpm",
+    "openstaande_terugroepactie",
     "rdw_type",
     "variant",
     "uitvoering",
@@ -242,10 +246,15 @@ def _coerce_risk_factors(value):
 
 
 def extract_rdw_data(data, fields):
-    """Pull RDW-specific fields from form data into a dict."""
+    """Pull RDW-specific fields from form data into a dict.
+
+    A key that is *present* in ``data`` (even with an empty string) is copied
+    so that clearing a field persists as empty instead of being silently
+    skipped; absent keys are left untouched.
+    """
     rdw_data = {}
     for field in fields:
-        if data.get(field):
+        if field in data:
             rdw_data[field] = data.get(field)
     return rdw_data
 
@@ -661,7 +670,7 @@ class SubjectService:
             )
             changes["social_accounts"] = {"old": "updated", "new": "Updated"}
 
-        subject.updated_at = datetime.now(timezone.utc)
+        subject.updated_at = datetime.now(UTC)
         return changes
 
     def set_social_accounts(

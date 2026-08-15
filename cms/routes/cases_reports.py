@@ -2,22 +2,22 @@ import logging
 from datetime import datetime, timedelta
 
 import flask
-from flask import request, jsonify, render_template, abort
+from flask import abort, jsonify, render_template, request
 from flask_login import login_required
 
-from . import cms_bp
+from ..auth import apply_tenant_filter, audit_read, can_export, case_access_required
 from ..models import (
-    db,
-    Case,
-    Subject,
-    Finding,
-    Comment,
-    FinancialRecord,
     AuditLog,
+    Case,
+    Comment,
     Document,
+    FinancialRecord,
+    Finding,
     Reminder,
+    Subject,
+    db,
 )
-from ..auth import case_access_required, audit_read, apply_tenant_filter, can_export
+from . import cms_bp
 
 logger = logging.getLogger(__name__)
 
@@ -32,18 +32,28 @@ def export_case_json(case_id: str) -> flask.Response:
 
     case = db.session.get(Case, case_id) or abort(404)
     export_data = case.to_dict()
-    export_data["subjects"] = [s.to_dict() for s in case.subjects]
+    export_data["subjects"] = [
+        s.to_dict() for s in case.subjects.filter(Subject.is_deleted == False)
+    ]
     export_data["findings"] = [
-        f.to_dict() for f in Finding.query.filter_by(case_id=case_id).all()
+        f.to_dict()
+        for f in Finding.query.filter_by(case_id=case_id)
+        .filter(Finding.is_deleted == False, Finding.archived_at.is_(None))
+        .all()
     ]
     export_data["documents"] = [
-        d.to_dict() for d in Document.query.filter_by(case_id=case_id).all()
+        d.to_dict()
+        for d in Document.query.filter_by(case_id=case_id, is_deleted=False).all()
     ]
     export_data["comments"] = [
-        c.to_dict() for c in Comment.query.filter_by(case_id=case_id).all()
+        c.to_dict()
+        for c in Comment.query.filter_by(case_id=case_id, is_deleted=False).all()
     ]
     export_data["financials"] = [
-        r.to_dict() for r in FinancialRecord.query.filter_by(case_id=case_id).all()
+        r.to_dict()
+        for r in FinancialRecord.query.filter_by(
+            case_id=case_id, is_deleted=False
+        ).all()
     ]
     return flask.Response(
         json_mod.dumps(export_data, indent=2, default=str),
@@ -61,7 +71,7 @@ def export_case_json(case_id: str) -> flask.Response:
 def view_case(case_id: str) -> str:
     """View case details with subjects, findings, and financials."""
     case = db.session.get(Case, case_id) or abort(404)
-    subjects = case.subjects.all()
+    subjects = case.subjects.filter(Subject.is_deleted == False).all()
     child_cases = case.child_cases.filter_by(is_deleted=False).all()
 
     findings_page = request.args.get("findings_page", 1, type=int)

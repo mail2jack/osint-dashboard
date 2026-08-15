@@ -1,9 +1,10 @@
 import logging
 import re
 from functools import wraps
-from flask import request, jsonify, flash, redirect
-from pydantic import BaseModel, Field, field_validator
 from typing import Any
+
+from flask import flash, jsonify, redirect, request
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -570,6 +571,11 @@ class CreateSubjectSchema(BaseModel):
     zuinigheidsclassificatie: str | None = None
     catalogusprijs: str | None = None
     datum_eerste_toelating: str | None = None
+    datum_tenaamstelling: str | None = None
+    vermogen: str | None = None
+    bruto_bpm: str | None = None
+    openstaande_terugroepactie: str | None = None
+    rdw_type: str | None = None
     type_: str | None = Field(None, alias="type")
     variant: str | None = None
     uitvoering: str | None = None
@@ -636,6 +642,11 @@ class EditSubjectSchema(BaseModel):
     zuinigheidsclassificatie: str | None = None
     catalogusprijs: str | None = None
     datum_eerste_toelating: str | None = None
+    datum_tenaamstelling: str | None = None
+    vermogen: str | None = None
+    bruto_bpm: str | None = None
+    openstaande_terugroepactie: str | None = None
+    rdw_type: str | None = None
     type_: str | None = Field(None, alias="type")
     variant: str | None = None
     uitvoering: str | None = None

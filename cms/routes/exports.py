@@ -3,25 +3,24 @@ import io
 import logging
 from datetime import datetime
 
+from flask import Response, abort, request
 from flask_babel import gettext
-from flask import Response, request, abort
-from flask_login import login_required, current_user
+from flask_login import current_user, login_required
 from sqlalchemy import func
 
-from . import cms_bp
+from ..auth import apply_tenant_filter, can_export, case_access_required
 from ..models import (
-    db,
+    Address,
+    AuditLog,
     Case,
-    Subject,
     Client,
     Finding,
-    Address,
+    Subject,
     case_subjects,
-    AuditLog,
+    db,
 )
-from ..auth import can_export, case_access_required, apply_tenant_filter
-from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
-
+from ..rate_limiting import STRICT_RATE_LIMIT, rate_limit
+from . import cms_bp
 from .response import api_error
 
 logger = logging.getLogger(__name__)
@@ -83,7 +82,7 @@ def export_case_csv(case: Case) -> Response:
     # Subjects
     writer.writerow(["Subjects"])
     writer.writerow(["Name", "Type", "Risk Score", "Email", "Phone", "Address"])
-    for subject in case.subjects.all():
+    for subject in case.subjects.filter_by(is_deleted=False).all():
         subject.decrypt_identifiers()
         writer.writerow(
             [
