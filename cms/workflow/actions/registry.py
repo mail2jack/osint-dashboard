@@ -170,18 +170,36 @@ def is_action_cancelled(action_id):
 
 
 def run_action(action_id):
+    from cms.tenant_context import set_tenant_context
+
     try:
-        action = db.session.get(WorkflowResearchAction, action_id)
+        # Cold worker: no request context, so there is no flask.g tenant for
+        # RLS to scope the first read. Look the action up under a temporary
+        # bypass and read only its tenant_id, then drop the bypass.
+        set_tenant_context(db, None, bypass_rls=True)
+        try:
+            action = db.session.get(WorkflowResearchAction, action_id)
+        finally:
+            set_tenant_context(db, None)
         if not action:
             return
 
-        # Workers run outside a request context, so there is no flask.g tenant
-        # to scope inserts. Set the RLS context explicitly and use the action's
-        # tenant for every row created below.
-        from cms.tenant_context import set_tenant_context
-
         tenant_id = action.tenant_id
+        if not tenant_id:
+            # Fail closed: an action without a tenant must never run or create
+            # unattributed rows.
+            action.status = "error"
+            action.error = "Action has no tenant_id"
+            db.session.commit()
+            return
+
+        # Scope the whole run to the action's tenant and reload the row under
+        # that context (the bypass lookup above loaded it un-scoped).
         set_tenant_context(db, tenant_id)
+        db.session.expire(action)
+        action = db.session.get(WorkflowResearchAction, action_id)
+        if not action:
+            return
 
         # ADR-0001 D1.6: paid channels are off by default behind explicit tenant
         # config. Re-checked at execution time so a flag that was switched off
@@ -330,6 +348,11 @@ def run_action(action_id):
             action.status = "error"
             action.error = str(e)
             db.session.commit()
+    finally:
+        # A pooled worker connection must not carry a tenant context (or a
+        # bypass flag) into the next task; always reset it. On PostgreSQL this
+        # also guarantees app.tenant_id exists for any following RLS query.
+        set_tenant_context(db, None)
 
 
 def start_action_async(action_id):

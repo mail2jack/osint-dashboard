@@ -273,3 +273,111 @@ class TestPostgreSQLIntegration:
         finally:
             ACTION_REGISTRY.pop("test_pg_enc_probe", None)
             set_tenant_context(db, admin.tenant_id)
+
+    def test_run_action_cold_worker_resets_tenant_context(self, app):
+        """A worker that starts with NO tenant context (no request/flask.g)
+        must still run: run_action() first looks the action up under a
+        temporary RLS bypass, then scopes the run to the action's tenant, and
+        finally resets the connection context so nothing leaks to the pool."""
+        import uuid
+
+        from cms.models import Finding, ResearchAction, Subject, Case
+        from cms.workflow.actions.registry import (
+            ACTION_REGISTRY,
+            register_action,
+            run_action,
+        )
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+
+        set_tenant_context(db, tenant_a, bypass_rls=True)
+        client = Client(tenant_id=tenant_a, name="PG cold client")
+        db.session.add(client)
+        db.session.flush()
+        case = Case(
+            tenant_id=tenant_a,
+            case_number=f"PG-COLD-{uuid.uuid4().hex[:8]}",
+            client_id=client.id,
+            title="PG cold case",
+            start_date=date.today(),
+            created_by=admin.id,
+        )
+        db.session.add(case)
+        db.session.flush()
+        subject = Subject(
+            name="PG cold person",
+            subject_type="person",
+            tenant_id=tenant_a,
+            email="pg-cold@example.com",
+        )
+        subject.encrypt_identifiers()
+        db.session.add(subject)
+        db.session.flush()
+        case.subjects.append(subject)
+        action = ResearchAction(
+            case_id=case.id,
+            tenant_id=tenant_a,
+            action_type="test_pg_cold_probe",
+            status="pending",
+            created_by=admin.id,
+        )
+        db.session.add(action)
+        db.session.commit()
+
+        # Simulate a cold worker: start with NO tenant context at all.
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert (
+            db.session.execute(text("SELECT current_setting('app.tenant_id')")).scalar()
+            == ""
+        )
+
+        def _handler(act):
+            c = db.session.get(Case, act.case_id)
+            for s in c.subjects:
+                s.decrypt_identifiers()
+            return [
+                {
+                    "title": "PG cold finding",
+                    "detail": "cold",
+                    "subject_id": c.subjects[0].id if c.subjects else None,
+                }
+            ]
+
+        register_action(
+            "test_pg_cold_probe",
+            "PG Cold Probe",
+            "cold",
+            _handler,
+            category="open",
+        )
+        try:
+            run_action(action.id)
+            db.session.expire_all()
+
+            # Context must be reset afterwards: no tenant and no bypass leak
+            # into the next task on the pooled connection.
+            tenant_id, bypass = db.session.execute(
+                text(
+                    "SELECT current_setting('app.tenant_id'), "
+                    "current_setting('app.bypass_rls')"
+                )
+            ).one()
+            assert tenant_id == ""
+            assert bypass == "false"
+
+            set_tenant_context(db, tenant_a)
+            db.session.expire_all()
+            reloaded = db.session.get(ResearchAction, action.id)
+            assert reloaded.status == "completed"
+            finding = (
+                Finding.query.filter_by(case_id=case.id)
+                .order_by(Finding.created_at.desc())
+                .first()
+            )
+            assert finding is not None
+            assert finding.tenant_id == tenant_a
+        finally:
+            ACTION_REGISTRY.pop("test_pg_cold_probe", None)
+            set_tenant_context(db, admin.tenant_id)
