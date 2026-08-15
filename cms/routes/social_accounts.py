@@ -8,6 +8,7 @@ from flask_login import current_user, login_required
 
 from ..auth import (
     apply_tenant_filter,
+    ensure_subject_access,
     ensure_tenant_access,
     staff_required,
     subject_access_required,
@@ -127,11 +128,20 @@ def save_finding_as_social_account() -> flask.Response:
         ensure_tenant_access(finding)
         if finding.case_id and not current_user.can_access_case(finding.case):
             return api_error("No access to this case", 403)
+        # A body-supplied subject must match the finding's linked subject
+        if (
+            subject_id
+            and finding.subject_id
+            and str(subject_id) != str(finding.subject_id)
+        ):
+            return api_error("Subject does not match the finding", 400)
         if not finding.subject_id:
             return api_error("Finding not linked to a subject", 400)
         subject_id = finding.subject_id
         subj = db.session.get(Subject, subject_id) or abort(404)
-        ensure_tenant_access(subj)
+        deny = ensure_subject_access(subj)
+        if deny is not None:
+            return deny
         if subj.is_deleted:
             abort(404)
         if not url:
@@ -141,7 +151,9 @@ def save_finding_as_social_account() -> flask.Response:
 
     elif subject_id:
         subj = db.session.get(Subject, subject_id) or abort(404)
-        ensure_tenant_access(subj)
+        deny = ensure_subject_access(subj)
+        if deny is not None:
+            return deny
         if subj.is_deleted:
             abort(404)
 
@@ -178,6 +190,7 @@ def save_finding_as_social_account() -> flask.Response:
 
 @cms_bp.route("/api/subjects/<subject_id>/save-username-findings", methods=["POST"])
 @login_required
+@subject_access_required
 @staff_required
 @validate(SaveUsernameFindingsSchema)
 def save_username_findings(subject_id: str) -> flask.Response:

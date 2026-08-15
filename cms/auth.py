@@ -456,6 +456,68 @@ def ensure_subject_for_case(subject_id, case):
     return subject
 
 
+def _subject_access_deny(subject) -> flask.Response | None:
+    """Return a deny response for *subject*, or ``None`` when access is allowed.
+
+    Shared core of ``subject_access_required`` and ``ensure_subject_access``:
+    soft-deleted subjects are hidden (404), tenant isolation applies, admins
+    bypass the case-linkage check, and non-admins need case-level access to at
+    least one linked case. Subjects without any case link remain accessible
+    (e.g. a newly created subject).
+    """
+    if subject.is_deleted:
+        if request.is_json:
+            return jsonify({"error": "Subject not found"}), 404
+        abort(404)
+
+    # Tenant isolation: non-super-admin must match tenant
+    if not current_user.is_super_admin and subject.tenant_id != current_user.tenant_id:
+        logger.warning(
+            f"Subject tenant mismatch: User {current_user.username} (tenant={current_user.tenant_id}) "
+            f"tried to access subject {subject.id} (tenant={subject.tenant_id})"
+        )
+        if request.is_json:
+            return jsonify({"error": "No access to this subject"}), 403
+        flash("You do not have access to this subject.", "warning")
+        return redirect(url_for("cms.subjects"))
+
+    # Same-tenant admin bypasses case-linkage check
+    if current_user.is_admin:
+        return None
+
+    from .models import case_subjects
+
+    linked_case_ids = [
+        row.case_id
+        for row in db.session.query(case_subjects.c.case_id)
+        .filter(case_subjects.c.subject_id == subject.id)
+        .all()
+    ]
+
+    if not linked_case_ids:
+        # No case links yet — allow same-tenant access (e.g. newly created subject)
+        return None
+
+    for cid in linked_case_ids:
+        case = db.session.get(Case, cid)
+        if case and current_user.can_access_case(case):
+            return None
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="access_denied",
+        entity_type="subject",
+        entity_id=subject.id,
+        ip_address=request.remote_addr,
+        description="Subject access denied: no case access",
+    )
+    db.session.commit()
+    if request.is_json:
+        return jsonify({"error": "No access to this subject"}), 403
+    flash("You do not have access to this subject.", "warning")
+    return redirect(url_for("cms.subjects"))
+
+
 def subject_access_required(f: Callable) -> Callable:
     """
     Decorator to check subject-level access.
@@ -476,67 +538,26 @@ def subject_access_required(f: Callable) -> Callable:
         subject = db.session.get(Subject, subject_id)
         if not subject:
             return f(*args, **kwargs)
-        if subject.is_deleted:
-            if request.is_json:
-                return jsonify({"error": "Subject not found"}), 404
-            abort(404)
 
-        # Tenant isolation: non-super-admin must match tenant
-        if (
-            not current_user.is_super_admin
-            and subject.tenant_id != current_user.tenant_id
-        ):
-            logger.warning(
-                f"Subject tenant mismatch: User {current_user.username} (tenant={current_user.tenant_id}) "
-                f"tried to access subject {subject_id} (tenant={subject.tenant_id})"
-            )
-            if request.is_json:
-                return jsonify({"error": "No access to this subject"}), 403
-            flash("You do not have access to this subject.", "warning")
-            return redirect(url_for("cms.subjects"))
-
-        # Same-tenant admin bypasses case-linkage check
-        if current_user.is_admin:
-            return f(*args, **kwargs)
-
-        from .models import case_subjects
-
-        linked_case_ids = [
-            row.case_id
-            for row in db.session.query(case_subjects.c.case_id)
-            .filter(case_subjects.c.subject_id == subject_id)
-            .all()
-        ]
-
-        if not linked_case_ids:
-            # No case links yet — allow same-tenant access (e.g. newly created subject)
-            return f(*args, **kwargs)
-
-        has_access = False
-        for cid in linked_case_ids:
-            case = db.session.get(Case, cid)
-            if case and current_user.can_access_case(case):
-                has_access = True
-                break
-
-        if not has_access:
-            AuditLog.log(
-                user_id=current_user.id,
-                action="access_denied",
-                entity_type="subject",
-                entity_id=subject_id,
-                ip_address=request.remote_addr,
-                description="Subject access denied: no case access",
-            )
-            db.session.commit()
-            if request.is_json:
-                return jsonify({"error": "No access to this subject"}), 403
-            flash("You do not have access to this subject.", "warning")
-            return redirect(url_for("cms.subjects"))
-
+        deny = _subject_access_deny(subject)
+        if deny is not None:
+            return deny
         return f(*args, **kwargs)
 
     return decorated_function
+
+
+def ensure_subject_access(subject) -> flask.Response | None:
+    """Return a deny response when *subject* is not accessible to the user.
+
+    Same semantics as ``subject_access_required`` for routes that receive the
+    ``subject_id`` in the request body instead of the URL path. Returns
+    ``None`` (or, for JSON requests, allows the caller to continue) when the
+    subject may be accessed.
+    """
+    if not current_user.is_authenticated:
+        return unauthorized()
+    return _subject_access_deny(subject)
 
 
 def audit_read(entity_type: str) -> Callable:

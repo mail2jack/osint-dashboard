@@ -568,3 +568,175 @@ class TestCaseMembershipDeletedSubject:
         assert resp.status_code == 200
         assert data["added"] == ["Alive Subject"]
         assert any(s["id"] == str(gone.id) for s in data["skipped"])
+
+
+class TestStaffCrossCaseSubjectAccess:
+    """Staff may not mutate a same-tenant subject they have no case access to.
+
+    An investigator assigned to case A must get 403 when mutating (or
+    extracting on) a subject linked only to case B — the routes must check
+    case-level subject access, not just tenant ownership.
+    """
+
+    def _inv_with_case_a_and_subject_b(self, app):
+        inv = _make_user(f"inv_{uuid.uuid4().hex[:8]}")
+        case_a = _make_case(owner=inv)
+        owner_b = _make_user(f"inv_b_{uuid.uuid4().hex[:8]}")
+        case_b = _make_case(owner=owner_b)
+        subject_b = Subject(name="Case B Subject", subject_type="person")
+        db.session.add(subject_b)
+        case_b.subjects.append(subject_b)
+        db.session.commit()
+        return inv, case_a, case_b, subject_b
+
+    def test_save_finding_as_social_account_cross_case_403(self, app, auth_client):
+        inv, _case_a, _case_b, subject_b = self._inv_with_case_a_and_subject_b(app)
+        client = _login_as(app.test_client(), inv)
+
+        before = SocialAccount.query.count()
+        resp = client.post(
+            "/cms/api/findings/save-as-social-account",
+            json={"subject_id": str(subject_b.id), "url": "https://github.com/x"},
+        )
+        assert resp.status_code == 403
+        assert SocialAccount.query.count() == before
+
+    def test_save_username_findings_cross_case_403(self, app, auth_client):
+        inv, _case_a, _case_b, subject_b = self._inv_with_case_a_and_subject_b(app)
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.post(
+            f"/cms/api/subjects/{subject_b.id}/save-username-findings",
+            json={
+                "results": [
+                    {
+                        "platform": "GitHub",
+                        "url": "https://github.com/testuser",
+                        "username": "testuser",
+                    }
+                ]
+            },
+        )
+        assert resp.status_code == 403
+        assert Finding.query.filter_by(subject_id=subject_b.id).count() == 0
+
+    def test_extract_social_id_cross_case_403(self, app, auth_client):
+        inv, _case_a, _case_b, subject_b = self._inv_with_case_a_and_subject_b(app)
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.post(
+            "/cms/extract-social-id",
+            json={"url": "https://example.com", "subject_id": str(subject_b.id)},
+        )
+        assert resp.status_code == 403
+
+    def test_bulk_extract_social_ids_cross_case_403(self, app, auth_client):
+        inv, _case_a, _case_b, subject_b = self._inv_with_case_a_and_subject_b(app)
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.post(
+            f"/cms/subjects/{subject_b.id}/bulk-extract-social-ids", json={}
+        )
+        assert resp.status_code == 403
+        assert SocialAccount.query.filter_by(subject_id=subject_b.id).count() == 0
+
+    def test_update_subject_social_ids_cross_case_403(self, app, auth_client):
+        inv, _case_a, _case_b, subject_b = self._inv_with_case_a_and_subject_b(app)
+        subject_b.social_media_ids = {"instagram": "old"}
+        db.session.commit()
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.put(
+            f"/cms/subjects/{subject_b.id}/social-ids",
+            json={"social_media_ids": {"instagram": "new"}},
+        )
+        assert resp.status_code == 403
+        assert subject_b.social_media_ids == {"instagram": "old"}
+
+    def test_access_allowed_with_case_access(self, app, auth_client):
+        inv = _make_user(f"inv_{uuid.uuid4().hex[:8]}")
+        case = _make_case(owner=inv)
+        subject = Subject(name="Case A Subject", subject_type="person")
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.post(
+            "/cms/api/findings/save-as-social-account",
+            json={"subject_id": str(subject.id), "url": "https://github.com/positive"},
+        )
+        assert resp.status_code == 201
+
+
+class TestFindingSubjectConsistency:
+    """A body-supplied subject_id must match the finding/case when finding_id is used."""
+
+    def _finding_with_subject(self, app, owner):
+        case = _make_case(owner=owner)
+        sx = Subject(name="SX", subject_type="person")
+        sy = Subject(name="SY", subject_type="person")
+        db.session.add_all([sx, sy])
+        case.subjects.append(sx)
+        case.subjects.append(sy)
+        db.session.flush()
+        finding = Finding(
+            case_id=case.id,
+            subject_id=sx.id,
+            title="Finding",
+            content="content",
+            source_url="https://example.com",
+            source_type="osint",
+            finding_type="identity",
+            created_by=owner.id,
+        )
+        db.session.add(finding)
+        db.session.commit()
+        return case, sx, sy, finding
+
+    def test_save_finding_as_social_account_mismatch_400(self, app, auth_client):
+        inv = _make_user(f"inv_{uuid.uuid4().hex[:8]}")
+        _case, _sx, sy, finding = self._finding_with_subject(app, inv)
+        client = _login_as(app.test_client(), inv)
+
+        before = SocialAccount.query.count()
+        resp = client.post(
+            "/cms/api/findings/save-as-social-account",
+            json={
+                "finding_id": str(finding.id),
+                "subject_id": str(sy.id),
+                "url": "https://github.com/x",
+            },
+        )
+        assert resp.status_code == 400
+        assert SocialAccount.query.count() == before
+
+    def test_save_finding_as_social_account_match_allowed(self, app, auth_client):
+        inv = _make_user(f"inv_{uuid.uuid4().hex[:8]}")
+        _case, sx, _sy, finding = self._finding_with_subject(app, inv)
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.post(
+            "/cms/api/findings/save-as-social-account",
+            json={
+                "finding_id": str(finding.id),
+                "subject_id": str(sx.id),
+                "url": "https://github.com/x",
+            },
+        )
+        assert resp.status_code == 201
+
+    def test_extract_social_id_mismatch_400(self, app, auth_client):
+        inv = _make_user(f"inv_{uuid.uuid4().hex[:8]}")
+        _case, _sx, sy, finding = self._finding_with_subject(app, inv)
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.post(
+            "/cms/extract-social-id",
+            json={
+                "url": "https://example.com",
+                "finding_id": str(finding.id),
+                "subject_id": str(sy.id),
+            },
+        )
+        assert resp.status_code == 400

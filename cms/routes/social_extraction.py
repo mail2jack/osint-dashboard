@@ -6,7 +6,13 @@ from flask_login import current_user, login_required
 
 from cms.services.http_utils import jittered_get
 
-from ..auth import apply_tenant_filter, ensure_tenant_access, staff_required
+from ..auth import (
+    apply_tenant_filter,
+    ensure_subject_access,
+    ensure_tenant_access,
+    staff_required,
+    subject_access_required,
+)
 from ..models import Finding, SocialAccount, Subject, db
 from ..validation import ExtractSocialIdSchema, UpdateSocialIdsSchema, validate
 from . import cms_bp
@@ -204,12 +210,29 @@ def extract_social_id() -> flask.Response:
     if subject:
         if subject.is_deleted:
             abort(404)
-        ensure_tenant_access(subject)
+        deny = ensure_subject_access(subject)
+        if deny is not None:
+            return deny
     if finding_id:
         finding = db.session.get(Finding, finding_id) or abort(404)
         ensure_tenant_access(finding)
         if finding.case_id and not current_user.can_access_case(finding.case):
             return jsonify({"error": "No access to this case"}), 403
+        # A body-supplied subject must match the finding's linked subject or,
+        # when the finding has none, belong to the finding's case
+        if (
+            subject
+            and finding.subject_id
+            and str(finding.subject_id) != str(subject.id)
+        ):
+            return jsonify({"error": "Subject does not match the finding"}), 400
+        if (
+            subject
+            and not finding.subject_id
+            and finding.case_id
+            and subject not in finding.case.subjects.all()
+        ):
+            return jsonify({"error": "Subject not linked to the finding's case"}), 400
 
     extracted = _extract_social_ids_from_url(url, subject=subject)
 
@@ -285,6 +308,7 @@ def extract_social_id() -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/bulk-extract-social-ids", methods=["POST"])
 @login_required
+@subject_access_required
 @staff_required
 def bulk_extract_social_ids(subject_id: str) -> flask.Response:
     """Extract social media IDs from all findings linked to a subject."""
@@ -389,6 +413,7 @@ def get_subject_social_ids(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/social-ids", methods=["PUT"])
 @login_required
+@subject_access_required
 @staff_required
 @validate(UpdateSocialIdsSchema)
 def update_subject_social_ids(subject_id: str) -> flask.Response:
