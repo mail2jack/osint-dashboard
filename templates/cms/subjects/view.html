@@ -244,7 +244,7 @@
 
             {# ── Personal Details (person only) ── #}
             {% if subject.subject_type == 'person' %}
-            {% set has_personal = subject.geslacht or subject.nationality or subject.date_of_birth or subject.place_of_birth or subject.bsn_number or subject.reisdocument_type %}
+            {% set has_personal = subject.geslacht or subject.nationality or subject.date_of_birth or subject.place_of_birth or subject.bsn_number or subject.reisdocument_type or subject.identification_number %}
             <div class="collapsible-section{% if has_personal %} open{% endif %}">
                 <div class="collapsible-header" role="button" tabindex="0" aria-expanded="{% if has_personal %}true{% else %}false{% endif %}"><span class="collapsible-chevron">▶</span><strong style="font-size:0.9rem;">Personal Details</strong></div>
                 <div class="collapsible-body">
@@ -268,6 +268,12 @@
                         <span class="info-label">{{ _('BSN nummer') }}</span>
                         <span class="info-value">{{ subject.bsn_number|redact_for_viewer if subject.bsn_number else '-' }}</span>
                     </div>
+                    {% if subject.identification_number %}
+                    <div class="info-row">
+                        <span class="info-label">{{ _('Identification') }}</span>
+                        <span class="info-value">{{ subject.identification_number|redact_for_viewer }}</span>
+                    </div>
+                    {% endif %}
                     {% if subject.reisdocument_type %}
                     <div class="info-row">
                         <span class="info-label">{{ _('Reisdocument') }}</span>

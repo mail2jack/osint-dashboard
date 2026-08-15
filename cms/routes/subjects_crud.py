@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import datetime, timezone
 
@@ -13,342 +12,21 @@ from ..validation import (
     EditSubjectSchema,
     BulkDeleteSchema,
 )
-from ..models import db, Subject, Case, Address, Contact, AuditLog, case_subjects
+from ..models import db, Subject, Case, AuditLog, case_subjects
 from ..auth import (
     roles_required,
     subject_access_required,
     apply_tenant_filter,
     ensure_tenant_access,
 )
-from ..encryption_utils import encryptor, EncryptionError
-from .utils import normalize_phone, find_similar_subjects, check_for_exact_match
+from .utils import find_similar_subjects, check_for_exact_match
+from ..services.subject_service import subject_service, compute_display_name
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
 from ..tier_limits import check_resource_limit
 
 from .response import api_success, api_error
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Field constants
-# ---------------------------------------------------------------------------
-
-_CREATE_RDW_FIELDS = [
-    "handelsbenaming",
-    "voertuigsoort",
-    "eerste_kleur",
-    "tweede_kleur",
-    "aantal_deuren",
-    "aantal_zitplaatsen",
-    "cilinderinhoud",
-    "aantal_cilinders",
-    "vermogen",
-    "massa_ledig",
-    "maximum_massa",
-    "wielbasis",
-    "vervaldatum_apk",
-    "wam_verzekerd",
-    "taxi_indicator",
-    "export_indicator",
-    "europese_voertuigcategorie",
-    "zuinigheidsclassificatie",
-    "catalogusprijs",
-    "bruto_bpm",
-    "datum_eerste_toelating",
-    "datum_tenaamstelling",
-    "rdw_type",
-    "variant",
-    "uitvoering",
-    "typegoedkeuringsnummer",
-    "openstaande_terugroepactie",
-]
-
-_EDIT_RDW_FIELDS = [
-    "handelsbenaming",
-    "voertuigsoort",
-    "eerste_kleur",
-    "tweede_kleur",
-    "aantal_deuren",
-    "aantal_zitplaatsen",
-    "cilinderinhoud",
-    "aantal_cilinders",
-    "massa_ledig",
-    "maximum_massa",
-    "vervaldatum_apk",
-    "wam_verzekerd",
-    "taxi_indicator",
-    "export_indicator",
-    "europese_voertuigcategorie",
-    "zuinigheidsclassificatie",
-    "catalogusprijs",
-    "datum_eerste_toelating",
-    "rdw_type",
-    "variant",
-    "uitvoering",
-    "typegoedkeuringsnummer",
-    "wielbasis",
-]
-
-_PERSON_TEXT_FIELDS = [
-    "achternaam",
-    "voornamen",
-    "voorletters",
-    "tussenvoegsels",
-    "geslacht",
-    "reisdocument_type",
-]
-
-_PERSON_ENCRYPTED_FIELDS = [
-    "date_of_birth",
-    "place_of_birth",
-    "nationality",
-    "identification_number",
-    "address",
-    "phone",
-    "email",
-    "bank_account",
-    "bsn_number",
-    "reisdocument_nummer",
-]
-
-_VEHICLE_ENCRYPTED_FIELDS = ["license_plate", "vin", "insurance_company"]
-
-_VEHICLE_PLAIN_FIELDS = ["brand", "vehicle_type"]
-
-_VESSEL_ENCRYPTED_FIELDS = [
-    "imo_number",
-    "mmsi",
-    "eni_number",
-    "vessel_nationality",
-]
-
-
-# ---------------------------------------------------------------------------
-# Private helpers
-# ---------------------------------------------------------------------------
-
-
-def _parse_json_data(raw):
-    """Parse a JSON string or return a list/dict as-is."""
-    if isinstance(raw, str):
-        return json.loads(raw)
-    return raw
-
-
-def _build_subject_from_data(data, created_by):
-    """Construct a Subject from validated form data."""
-    return Subject(
-        name=data["name"],
-        subject_type=data["subject_type"],
-        risk_score=data.get("risk_score", 0),
-        risk_factors=data.get("risk_factors"),
-        notes=data.get("notes"),
-        registration_number=data.get("registration_number"),
-        legal_form=data.get("legal_form"),
-        asset_type=data.get("asset_type"),
-        estimated_value=data.get("estimated_value"),
-        currency=data.get("currency", "EUR"),
-        license_plate=data.get("license_plate"),
-        vin=data.get("vin"),
-        insurance_company=data.get("insurance_company"),
-        brand=data.get("brand"),
-        vehicle_type=data.get("vehicle_type"),
-        imo_number=data.get("imo_number"),
-        mmsi=data.get("mmsi"),
-        eni_number=data.get("eni_number"),
-        vessel_nationality=data.get("vessel_nationality"),
-        date_of_birth=data.get("date_of_birth"),
-        place_of_birth=data.get("place_of_birth"),
-        identification_number=data.get("identification_number"),
-        bank_account=data.get("bank_account"),
-        created_by=created_by,
-        achternaam=data.get("achternaam"),
-        voornamen=data.get("voornamen"),
-        voorletters=data.get("voorletters"),
-        tussenvoegsels=data.get("tussenvoegsels"),
-        geslacht=data.get("geslacht"),
-        nationality=data.get("nationality"),
-        bsn_number=data.get("bsn_number"),
-        reisdocument_type=data.get("reisdocument_type"),
-        reisdocument_nummer=data.get("reisdocument_nummer"),
-    )
-
-
-def _extract_rdw_data(data, fields):
-    """Pull RDW-specific fields from form data into a dict."""
-    rdw_data = {}
-    for field in fields:
-        if data.get(field):
-            rdw_data[field] = data.get(field)
-    return rdw_data
-
-
-def _sync_primary_address_to_subject(subject, primary_addr):
-    """Write the primary address back to legacy Subject columns."""
-    parts = []
-    if primary_addr.get("street"):
-        parts.append(primary_addr["street"])
-    if primary_addr.get("number"):
-        parts.append(primary_addr["number"])
-    street_loc = " ".join(parts)
-    pc = primary_addr.get("zipcode", "")
-    town = primary_addr.get("town", "")
-    subject.address = ", ".join(p for p in [street_loc, f"{pc} {town}".strip()] if p)
-    subject.street = (
-        encryptor.encrypt(primary_addr["street"])
-        if primary_addr.get("street")
-        else None
-    )
-    subject.house_number = (
-        encryptor.encrypt(primary_addr["number"])
-        if primary_addr.get("number")
-        else None
-    )
-    subject.house_number_addition = (
-        encryptor.encrypt(primary_addr.get("addition", ""))
-        if primary_addr.get("addition")
-        else None
-    )
-    subject.postal_code = encryptor.encrypt(pc) if pc else None
-    subject.city = encryptor.encrypt(town) if town else None
-
-
-def _save_addresses(subject, addresses_data, replace_existing=False):
-    """Create Address records and sync primary to legacy fields.
-
-    When *replace_existing* is ``True`` all prior addresses are deleted first.
-    Returns the count of removed addresses (0 when not replacing).
-    """
-    old_count = 0
-    if replace_existing and addresses_data:
-        old_addresses = list(subject.addresses)
-        old_count = len(old_addresses)
-        for addr in old_addresses:
-            db.session.delete(addr)
-
-    primary_addr = None
-    for addr_data in addresses_data:
-        if addr_data.get("street") or addr_data.get("zipcode"):
-            address = Address(
-                subject_id=subject.id,
-                street=addr_data.get("street"),
-                number=addr_data.get("number"),
-                zipcode=addr_data.get("zipcode"),
-                town=addr_data.get("town"),
-                country=addr_data.get("country", "Netherlands"),
-                is_primary=addr_data.get("is_primary", False),
-            )
-            address.encrypt_fields()
-            db.session.add(address)
-            if addr_data.get("is_primary") or not primary_addr:
-                primary_addr = addr_data
-
-    if primary_addr:
-        _sync_primary_address_to_subject(subject, primary_addr)
-
-    return old_count
-
-
-def _sync_legacy_contact_fields(subject, c_data):
-    """Set the primary email/phone on the Subject for backward compat."""
-    if c_data.get("contact_type") == "email" and c_data.get("is_primary"):
-        new_val = c_data.get("value")
-        try:
-            current = encryptor.decrypt(subject.email) if subject.email else None
-        except Exception:
-            current = subject.email
-        if new_val != current:
-            subject.email = encryptor.encrypt(new_val) if new_val else None
-    elif c_data.get("contact_type") == "phone" and c_data.get("is_primary"):
-        new_val = normalize_phone(c_data.get("value"))
-        try:
-            current = encryptor.decrypt(subject.phone) if subject.phone else None
-        except Exception:
-            current = subject.phone
-        if new_val != current:
-            subject.phone = encryptor.encrypt(new_val) if new_val else None
-
-
-def _save_contacts(subject, contacts_data, replace_existing=False):
-    """Create Contact records and sync primary to legacy fields.
-
-    When *replace_existing* is ``True`` all prior contacts are deleted first.
-    Returns the count of removed contacts (0 when not replacing).
-    """
-    old_count = 0
-    if replace_existing and contacts_data:
-        old_contacts = list(subject.contacts)
-        old_count = len(old_contacts)
-        for c in old_contacts:
-            db.session.delete(c)
-
-    for c_data in contacts_data:
-        if c_data.get("value"):
-            contact = Contact(
-                subject_id=subject.id,
-                contact_type=c_data.get("contact_type", "email"),
-                value=c_data.get("value"),
-                is_primary=c_data.get("is_primary", False),
-            )
-            contact.encrypt_fields()
-            db.session.add(contact)
-            _sync_legacy_contact_fields(subject, c_data)
-
-    return old_count
-
-
-def _update_encrypted_fields(subject, data, fields, changes, sensitive=True):
-    """Update encrypted fields on *subject*, recording diffs in *changes*.
-
-    When *sensitive* is ``True`` the change log shows ``[encrypted]`` for both
-    old and new values.  When ``False`` the (decrypted) values are stored.
-    """
-    for field in fields:
-        if field in data:
-            new_value = data[field] if data[field] else None
-            old_value = getattr(subject, field)
-            try:
-                if old_value:
-                    old_value = encryptor.decrypt(old_value)
-            except EncryptionError:
-                logger.debug(
-                    "Could not decrypt %s (may already be plaintext or key changed)",
-                    field,
-                )
-            if field == "phone" and new_value:
-                new_value = normalize_phone(new_value)
-            if new_value != old_value:
-                if sensitive:
-                    changes[field] = {"old": "[encrypted]", "new": "[encrypted]"}
-                else:
-                    changes[field] = {
-                        "old": old_value or "[empty]",
-                        "new": new_value or "[empty]",
-                    }
-                if new_value:
-                    setattr(subject, field, encryptor.encrypt(new_value))
-                else:
-                    setattr(subject, field, None)
-
-
-def _update_plain_fields(subject, data, fields, changes=None):
-    """Update non-encrypted fields.
-
-    When *changes* is ``None`` the value is set unconditionally (create).
-    When a dict is provided only actual changes are recorded (edit).
-    """
-    for field in fields:
-        if field in data:
-            if changes is not None:
-                new_value = data[field] if data[field] else None
-                if new_value != getattr(subject, field):
-                    changes[field] = {
-                        "old": getattr(subject, field) or "[empty]",
-                        "new": new_value or "[empty]",
-                    }
-                    setattr(subject, field, new_value)
-            else:
-                setattr(subject, field, data[field])
 
 
 # ---------------------------------------------------------------------------
@@ -378,13 +56,10 @@ def create_subject() -> flask.Response:
                 flash(f"{field} is required.", "danger")
                 return render_template("cms/subjects/create.html")
 
-        # Compute name from split fields if not provided
+        # Compute name from split fields if not provided (server-side,
+        # shared with the service).
         if not data.get("name"):
-            parts = []
-            for f in ("voorletters", "voornamen", "tussenvoegsels", "achternaam"):
-                if data.get(f):
-                    parts.append(data[f].strip())
-            data["name"] = " ".join(parts)
+            data["name"] = compute_display_name(data)
 
         if not data.get("name"):
             if request.is_json:
@@ -459,43 +134,10 @@ def create_subject() -> flask.Response:
             )
             return render_template("cms/subjects/create.html")
 
-        subject = _build_subject_from_data(data, current_user.id)
-
-        if data["subject_type"] == "vehicle":
-            rdw_data = _extract_rdw_data(data, _CREATE_RDW_FIELDS)
-            if rdw_data or data.get("license_plate"):
-                rdw_data["kenteken"] = data.get("license_plate", "").upper()
-                rdw_data["merk"] = data.get("brand", "")
-                rdw_data["inrichting"] = data.get("vehicle_type", "")
-                if data.get("eerste_kleur"):
-                    rdw_data["kleur"] = data.get("eerste_kleur")
-                subject.rdw_data = rdw_data
-
-        if data["subject_type"] == "vessel" and data.get("vessel_data"):
-            try:
-                subject.vessel_data = json.loads(data["vessel_data"])
-            except (json.JSONDecodeError, TypeError):
-                subject.vessel_data = data["vessel_data"]
-
-        # Encrypt all identifying fields (person + vehicle + vessel)
-        subject.encrypt_identifiers()
-
-        db.session.add(subject)
-        db.session.flush()  # Get subject ID before adding addresses
-
-        # Handle structured addresses
-        if data.get("addresses_data"):
-            try:
-                _save_addresses(subject, _parse_json_data(data["addresses_data"]))
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.warning(f"Failed to parse addresses_data: {e}")
-
-        # Handle structured contacts
-        if data.get("contacts_data"):
-            try:
-                _save_contacts(subject, _parse_json_data(data["contacts_data"]))
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.warning(f"Failed to parse contacts_data: {e}")
+        # Build + persist through the shared service (single write path).
+        subject = subject_service.create(
+            data, created_by=current_user.id, tenant_id=current_user.tenant_id
+        )
 
         # Link to case if specified
         if data.get("case_id"):
@@ -503,22 +145,6 @@ def create_subject() -> flask.Response:
             if case:
                 ensure_tenant_access(case)
                 case.subjects.append(subject)
-
-        # Create social account for online entities
-        if data["subject_type"] == "online" and data.get("online_platform"):
-            from ..models import SocialAccount
-
-            platform = data["online_platform"].strip().lower()
-            username = name.lstrip("@")
-            profile_url = (data.get("online_profile_url") or "").strip()
-            sa = SocialAccount(
-                tenant_id=current_user.tenant_id,
-                subject_id=subject.id,
-                platform=platform,
-                username=username,
-                url=profile_url,
-            )
-            db.session.add(sa)
 
         AuditLog.log(
             user_id=current_user.id,
@@ -594,114 +220,10 @@ def edit_subject(subject_id: str) -> flask.Response:
         data = request.validated_data
         if "type_" in data:
             data["type"] = data.pop("type_")
-        changes = {}
 
-        # Update basic fields
-        if data.get("name") and data["name"] != subject.name:
-            new_name = data["name"].strip()
-            # Auto-prepend @ for online entity names
-            if (
-                subject.subject_type == "online"
-                and new_name
-                and not new_name.startswith("@")
-            ):
-                new_name = "@" + new_name
-            changes["name"] = {"old": subject.name, "new": new_name}
-            subject.name = new_name
-
-        # Update subject_type if provided
-        if (
-            "subject_type" in data
-            and data["subject_type"]
-            and data["subject_type"] != subject.subject_type
-        ):
-            changes["subject_type"] = {
-                "old": subject.subject_type,
-                "new": data["subject_type"],
-            }
-            subject.subject_type = data["subject_type"]
-
-        if "risk_score" in data:
-            changes["risk_score"] = {
-                "old": subject.risk_score,
-                "new": data["risk_score"],
-            }
-            subject.risk_score = int(data["risk_score"])
-
-        if "notes" in data:
-            subject.notes = data["notes"]
-
-        # Update non-encrypted person fields
-        _update_plain_fields(subject, data, _PERSON_TEXT_FIELDS)
-
-        # Update encrypted fields for persons, vehicles, and vessels
-        _update_encrypted_fields(subject, data, _PERSON_ENCRYPTED_FIELDS, changes)
-        _update_encrypted_fields(subject, data, _VEHICLE_ENCRYPTED_FIELDS, changes)
-        _update_encrypted_fields(
-            subject, data, _VESSEL_ENCRYPTED_FIELDS, changes, sensitive=False
-        )
-
-        # Update non-encrypted vehicle fields
-        _update_plain_fields(subject, data, _VEHICLE_PLAIN_FIELDS, changes)
-
-        # Handle structured addresses
-        if data.get("addresses_data"):
-            try:
-                addresses_data = _parse_json_data(data["addresses_data"])
-                if addresses_data:
-                    old_count = _save_addresses(
-                        subject, addresses_data, replace_existing=True
-                    )
-                    changes["addresses"] = {
-                        "old": f"{old_count} address(es)",
-                        "new": f"{len(addresses_data)} address(es)",
-                    }
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.warning(f"Failed to parse addresses_data: {e}")
-
-        # Handle structured contacts
-        if data.get("contacts_data"):
-            try:
-                contacts_data = _parse_json_data(data["contacts_data"])
-                if contacts_data:
-                    old_count = _save_contacts(
-                        subject, contacts_data, replace_existing=True
-                    )
-                    changes["contacts"] = {
-                        "old": f"{old_count} contact(s)",
-                        "new": f"{len(contacts_data)} contact(s)",
-                    }
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.warning(f"Failed to parse contacts_data: {e}")
-
-        # Update RDW data if provided
-        rdw_data = _extract_rdw_data(data, _EDIT_RDW_FIELDS)
-
-        # Also store basic vehicle fields in RDW data
-        if data.get("license_plate"):
-            rdw_data["kenteken"] = data["license_plate"]
-        if data.get("brand"):
-            rdw_data["merk"] = data["brand"]
-        if data.get("vehicle_type"):
-            rdw_data["inrichting"] = data["vehicle_type"]
-        if data.get("vin"):
-            rdw_data["chassisnummer"] = data["vin"]
-
-        if rdw_data:
-            existing_rdw = subject.rdw_data or {}
-            existing_rdw.update(rdw_data)
-            subject.rdw_data = existing_rdw
-            changes["rdw_data"] = {"old": "updated", "new": "RDW fields updated"}
-
-        # Update vessel data if provided
-        if data.get("vessel_data"):
-            try:
-                subject.vessel_data = json.loads(data["vessel_data"])
-            except (json.JSONDecodeError, TypeError):
-                subject.vessel_data = data["vessel_data"]
-            changes["vessel_data"] = {"old": "updated", "new": "Vessel data updated"}
-
-        subject.updated_at = datetime.now(timezone.utc)
+        # Apply through the shared service (single write path); returns the
+        # audit diff for every changed field.
+        changes = subject_service.edit(subject, data, actor_id=current_user.id)
 
         AuditLog.log(
             user_id=current_user.id,

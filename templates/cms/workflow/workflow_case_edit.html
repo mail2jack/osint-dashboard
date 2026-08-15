@@ -200,7 +200,7 @@ input:-webkit-autofill:focus {
           <div class="sf-all">
             <div class="form-group">
               <label>{{ _('Achternaam') }} *</label>
-              <input type="text" name="subj_{{ sid }}_name" value="{{ subject.name or '' }}">
+              <input type="text" name="subj_{{ sid }}_name" value="{{ subject.achternaam or subject.name or '' }}">
               <div class="duplicate-alert" style="display:none;margin-top:0.5rem;padding:0.5rem;background:#fef3c7;border-radius:4px;font-size:0.875rem;"></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 0.7fr;gap:1rem;">
@@ -391,7 +391,7 @@ input:-webkit-autofill:focus {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
               <div class="form-group">
                 <label>{{ _('License Plate') }}</label>
-                <input type="text" name="subj_{{ sid }}_identification" value="{{ subject.identification_number or '' }}" style="text-transform:uppercase;" placeholder="{{ _('XX-XX-XX') }}">
+                <input type="text" name="subj_{{ sid }}_identification" value="{{ subject.license_plate or '' }}" style="text-transform:uppercase;" placeholder="{{ _('XX-XX-XX') }}">
               </div>
               <div class="form-group">
                 <label>{{ _('VIN (Chassis Number)') }}</label>
@@ -597,6 +597,26 @@ input:-webkit-autofill:focus {
   </div>
 </form>
 <script nonce="{{ csp_nonce }}">
+function wfSerializeAllAddresses() {
+  document.querySelectorAll('.addresses-container').forEach(function(container) {
+    var idx = container.getAttribute('data-sid') || container.getAttribute('data-newidx');
+    if (!idx) return;
+    var prefix = container.hasAttribute('data-newidx') ? 'subj_new_' + idx : 'subj_' + idx;
+    var addressesArr = [];
+    container.querySelectorAll('.address-entry').forEach(function(entry) {
+      var street = (entry.querySelector('.addr-street') || {}).value || '';
+      var number = (entry.querySelector('.addr-number') || {}).value || '';
+      var zipcode = (entry.querySelector('.addr-zipcode') || {}).value || '';
+      var town = (entry.querySelector('.addr-town') || {}).value || '';
+      if (!street && !number && !zipcode) return;
+      var country = (entry.querySelector('.addr-country') || {}).value || 'Netherlands';
+      addressesArr.push({ street: street.trim(), number: number.trim(), zipcode: zipcode.trim(), town: town.trim(), country: country, is_primary: !!(entry.querySelector('.addr-primary') || {}).checked });
+    });
+    var addressesInput = document.querySelector('input[name="' + prefix + '_addresses_data"]');
+    if (addressesInput) addressesInput.value = JSON.stringify(addressesArr);
+  });
+}
+
 function wfSerializeAllContacts() {
   document.querySelectorAll('.contacts-container').forEach(function(container) {
     var idx = container.getAttribute('data-sid') || container.getAttribute('data-newidx');
@@ -622,6 +642,7 @@ function wfSerializeAllContacts() {
 }
 
 document.querySelector('form[method="POST"]').addEventListener('submit', function() {
+  wfSerializeAllAddresses();
   wfSerializeAllContacts();
   var btn = document.getElementById('wfSaveBtn');
   if (btn && !btn.disabled) {

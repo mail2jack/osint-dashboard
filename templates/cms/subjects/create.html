@@ -32,6 +32,10 @@
                     <span style="font-size: 2rem;">🚢</span>
                     <span>{{ _('Vessel') }}</span>
                 </button>
+                <button type="button" data-click="selectType" data-arg0="online" class="type-card" id="card-online">
+                    <span style="font-size: 2rem;">🌐</span>
+                    <span>{{ _('Online entity') }}</span>
+                </button>
             </div>
 </div>
 
@@ -218,6 +222,10 @@
         <div class="form-group">
             <label for="bsn_number">{{ _('BSN nummer') }}</label>
             <input type="text" name="bsn_number" id="bsn_number" placeholder="{{ _('Burgerservicenummer') }}">
+        </div>
+        <div class="form-group">
+            <label for="identification_number">{{ _('Identification') }}</label>
+            <input type="text" name="identification_number" id="identification_number" placeholder="{{ _('Optional identifier / document number') }}">
         </div>
         <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
             <div class="form-group">
