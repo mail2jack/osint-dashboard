@@ -73,6 +73,26 @@ def test_uploads_listing_pipeline_ignores_sigpipe(tmp_path):
     assert "|| true" in script
 
 
+def test_counts_json_expansion_does_not_double_close_brace():
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            'COUNTS_JSON=\'{"tenants":3,"cases":7,"users":5}\'; '
+            'printf "%s" "$COUNTS_JSON"',
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.stdout == '{"tenants":3,"cases":7,"users":5}'
+
+    source = (ROOT / "scripts/verify_backup.sh").read_text(encoding="utf-8")
+    assert 'counts-json "$COUNTS_JSON"' in source
+    assert 'counts-json "${COUNTS_JSON:-{}}"' not in source
+    assert "COUNTS_JSON='{}'" in source
+
+
 def test_backup_verifier_and_alert_scripts_parse():
     for script in (
         "scripts/verify_backup.sh",
