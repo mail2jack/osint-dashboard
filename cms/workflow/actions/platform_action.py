@@ -3,7 +3,11 @@ import logging
 import re
 
 from cms.services.http_utils import jittered_get
-from cms.workflow.actions.helpers import _first_subject, _get_api_key, _site_dork_search
+from cms.workflow.actions.helpers import (
+    _action_subject,
+    _get_api_key,
+    _site_dork_search,
+)
 from cms.workflow.actions.registry import _use_credit, _has_credits
 
 logger = logging.getLogger(__name__)
@@ -26,7 +30,7 @@ PLATFORM_API_URLS = {
 
 def _resolve_query(action):
     query = action.data_value if action.data_value else None
-    subject = _first_subject(action)
+    subject = _action_subject(action)
     if not query:
         query = subject.name if subject else ""
     if not query:

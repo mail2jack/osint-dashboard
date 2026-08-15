@@ -1,6 +1,8 @@
 import json
 import logging
 
+from cms.models import db, Subject
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,12 @@ def _social_scan(action):
             pass
 
     if not accounts_with_subject:
-        for subject in action.case.subjects or []:
+        if getattr(action, "subject_id", None):
+            sub = db.session.get(Subject, action.subject_id)
+            subjects = [sub] if sub else []
+        else:
+            subjects = list(action.case.subjects or [])
+        for subject in subjects:
             sa_query = getattr(subject, "social_accounts", None)
             has_social = False
             if sa_query is not None:

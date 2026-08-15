@@ -13,7 +13,7 @@ function stopTimer() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
-function runAction(actionType, dataValue) {
+function runAction(actionType, dataValue, subjectId) {
   const btn = document.querySelector(`[data-action-key="${actionType}"]`);
   if (!btn || btn.classList.contains('running')) return;
   btn.classList.remove('done', 'failed');
@@ -27,7 +27,11 @@ function runAction(actionType, dataValue) {
   fetch(`/cms/workflow/api/case/${CASE_ID}/run-action`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
-    body: JSON.stringify({ action_type: actionType, data_value: dataValue || '' }),
+    body: JSON.stringify({
+      action_type: actionType,
+      data_value: dataValue || '',
+      subject_id: subjectId || null,
+    }),
   })
   .then(r => r.json())
   .then(data => {
@@ -306,6 +310,10 @@ function updateFindings(findings, actions) {
     var icon = '📄';
     var statusClass = a.status === 'completed' ? 'fg-done' : (a.status === 'error' || a.status === 'failed') ? 'fg-failed' : a.status === 'running' ? 'fg-running' : '';
     var groupLabel = a.label || a.action_type;
+    if (a.subject_id) {
+      var subj = SUBJECTS.find(function(s) { return String(s.id) === String(a.subject_id); });
+      if (subj) groupLabel = groupLabel + ' · ' + subj.name;
+    }
     if (a.dork_label) {
       groupLabel = groupLabel + ' — ' + a.dork_label;
     } else if (a.action_type === 'google_dork' && a.data_value) {

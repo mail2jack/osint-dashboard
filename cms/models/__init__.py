@@ -1845,6 +1845,11 @@ class ResearchAction(db.Model):
     case_id = db.Column(
         db.String(36), db.ForeignKey("cases.id"), nullable=False, index=True
     )
+    subject_id = db.Column(
+        db.String(36), db.ForeignKey("subjects.id"), nullable=True, index=True
+    )
+    target_kind = db.Column(db.String(20))
+    target_snapshot = db.Column(db.Text)
     action_type = db.Column(db.String(50), nullable=False)
     data_value = db.Column(db.Text)
     label = db.Column(db.String(200))
@@ -1862,9 +1867,36 @@ class ResearchAction(db.Model):
     )
 
     case = db.relationship("Case", backref="research_actions")
+    subject = db.relationship("Subject", foreign_keys=[subject_id])
     findings = db.relationship(
         "Finding", secondary="action_findings", backref="research_actions"
     )
+
+    @property
+    def target_snapshot_data(self):
+        if not self.target_snapshot:
+            return None
+        try:
+            data = json.loads(self.target_snapshot)
+            return data if isinstance(data, dict) else None
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+    def build_target_snapshot(self, subject, data_value=None):
+        """Capture the normalized target input at action creation (ADR-0001 PR4).
+
+        Stores the explicit target subject identity plus the raw query so the
+        action stays reproducible. Subject-scoped (subject_id set) or explicit
+        case-wide (subject_id None) depending on the caller.
+        """
+        snapshot = {
+            "subject_id": subject.id if subject is not None else None,
+            "data_value": data_value or "",
+        }
+        if subject is not None:
+            snapshot["name"] = subject.name
+            snapshot["subject_type"] = subject.subject_type
+        return snapshot
 
     @property
     def dork_label(self):
@@ -1882,6 +1914,9 @@ class ResearchAction(db.Model):
         return {
             "id": self.id,
             "case_id": self.case_id,
+            "subject_id": self.subject_id,
+            "target_kind": self.target_kind,
+            "target_snapshot": self.target_snapshot_data,
             "action_type": self.action_type,
             "data_value": self.data_value,
             "label": self.label,

@@ -3,7 +3,7 @@ import logging
 import uuid
 from datetime import datetime
 
-from cms.models import db
+from cms.models import db, Subject
 from cms.workflow.models import (
     WorkflowResearchAction,
     WorkflowActionFinding,
@@ -36,9 +36,60 @@ def _get_api_key(key_name):
     return None
 
 
-def _first_subject(action):
-    subs = action.case.subjects
-    return subs.first() if subs else None
+def _action_subject(action):
+    """Resolve the explicit target subject for an action (ADR-0001 PR4).
+
+    Returns the subject linked to ``action.subject_id`` when set (subject-
+    scoped action), else ``None`` for an explicit case-wide action. Handlers
+    must never guess a subject from ``action.case.subjects``.
+    """
+    subject_id = getattr(action, "subject_id", None)
+    if not subject_id:
+        return None
+    return db.session.get(Subject, subject_id)
+
+
+# Recommended action presets per subject type. Actions are grouped/ordered for
+# the investigation picker; unknown or absent types fall back to all actions.
+SUBJECT_TYPE_PRESETS = {
+    "person": [
+        "email",
+        "phone",
+        "address",
+        "social",
+        "osint",
+        "google_dork",
+        "facebook",
+        "instagram",
+        "linkedin",
+        "tiktok",
+        "twitter",
+        "photo_analysis",
+    ],
+    "company": [
+        "kvk",
+        "financial",
+        "subdomain",
+        "osint",
+        "google_dork",
+        "address",
+    ],
+    "organization": [
+        "financial",
+        "subdomain",
+        "osint",
+        "google_dork",
+        "address",
+    ],
+    "vehicle": ["rdw"],
+    "vessel": ["vessel", "osint", "google_dork"],
+    "online": ["social", "osint", "google_dork"],
+}
+
+
+def presets_for_subject(subject_type):
+    """Return the ordered preset action keys for a subject type."""
+    return SUBJECT_TYPE_PRESETS.get(subject_type or "", [])
 
 
 def _site_dork_search(platform_domain, query, subject_id=None, icon="🔍"):

@@ -79,11 +79,13 @@ function showActionPicker(actionType) {
       var idx = parseInt(el.dataset.idx);
       if (isNaN(idx)) return;
       overlay.remove();
-      var val = items[parseInt(el.dataset.idx)].value;
+      var item = items[parseInt(el.dataset.idx)];
+      var val = item.value;
+      var subjectId = item.subject_id;
       if (actionType === 'facebook' || actionType === 'tiktok' || actionType === 'instagram' || actionType === 'linkedin' || actionType === 'twitter' || actionType === 'vessel' || actionType === 'subdomain' || actionType === 'osint' || actionType === 'manual_entry') {
-        showEditConfirm(actionType, val);
+        showEditConfirm(actionType, val, subjectId);
       } else {
-        runAction(actionType, val);
+        runAction(actionType, val, subjectId);
       }
     });
   });
@@ -93,7 +95,7 @@ function showActionPicker(actionType) {
   });
 }
 
-function showEditConfirm(actionType, currentValue) {
+function showEditConfirm(actionType, currentValue, subjectId) {
   const btn = document.querySelector('[data-action-key="' + actionType + '"]');
   const label = btn ? btn.dataset.label : actionType;
   var desc = 'Search by name or username:';
@@ -169,12 +171,12 @@ function showEditConfirm(actionType, currentValue) {
     input.setSelectionRange(0, input.value.length);
     overlay.querySelector('[data-action="confirm-edit"]').onclick = function() {
       overlay.remove();
-      runAction(actionType, input.value.trim() || currentValue);
+      runAction(actionType, input.value.trim() || currentValue, subjectId);
     };
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
         overlay.remove();
-        runAction(actionType, input.value.trim() || currentValue);
+        runAction(actionType, input.value.trim() || currentValue, subjectId);
       }
     });
   }
@@ -187,51 +189,51 @@ function buildPickerItems(actionType) {
   var items = [];
   SUBJECTS.forEach(function(s) {
     if (actionType === 'email' && s.email) {
-      items.push({ subject: s.name, label: 'Email', value: s.email, display: s.email });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Email', value: s.email, display: s.email });
     } else if (actionType === 'phone' && s.phone) {
-      items.push({ subject: s.name, label: 'Phone', value: s.phone, display: s.phone });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Phone', value: s.phone, display: s.phone });
     } else if (actionType === 'address' && (s.street || s.city)) {
       var addr = [s.street, s.house_number, s.house_number_addition].filter(Boolean).join(' ');
       var loc = [s.postal_code, s.city].filter(Boolean).join(' ');
       var full = [addr, loc].filter(Boolean).join(', ');
-      if (full) items.push({ subject: s.name, label: 'Address', value: full, display: full });
+      if (full) items.push({ subject_id: s.id, subject: s.name, label: 'Address', value: full, display: full });
     } else if (actionType === 'social') {
       if (s.workflow_social_accounts && s.workflow_social_accounts.length) {
         var vals = s.workflow_social_accounts.map(function(a) { return (typeof a === 'object' ? a.platform || a.url : a); }).filter(Boolean);
-        items.push({ subject: s.name, label: 'Social media', value: JSON.stringify(s.workflow_social_accounts), display: vals.join(', ') });
+        items.push({ subject_id: s.id, subject: s.name, label: 'Social media', value: JSON.stringify(s.workflow_social_accounts), display: vals.join(', ') });
       } else if (s.name) {
-        items.push({ subject: s.name, label: 'Username', value: JSON.stringify([s.name]), display: s.name });
+        items.push({ subject_id: s.id, subject: s.name, label: 'Username', value: JSON.stringify([s.name]), display: s.name });
       }
     } else if (actionType === 'kvk' && s.name) {
-      items.push({ subject: s.name, label: 'Company name', value: s.name, display: s.name });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Company name', value: s.name, display: s.name });
     } else if (actionType === 'rdw' && s.identification_number) {
-      items.push({ subject: s.name, label: 'License plate', value: s.identification_number, display: s.identification_number });
+      items.push({ subject_id: s.id, subject: s.name, label: 'License plate', value: s.identification_number, display: s.identification_number });
     } else if (actionType === 'facebook' && s.name) {
-      items.push({ subject: s.name, label: 'Name', value: s.name, display: s.name });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Name', value: s.name, display: s.name });
     } else if (actionType === 'tiktok' && s.name) {
-      items.push({ subject: s.name, label: 'Name', value: s.name, display: s.name });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Name', value: s.name, display: s.name });
     } else if (actionType === 'instagram' && s.name) {
-      items.push({ subject: s.name, label: 'Name', value: s.name, display: s.name });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Name', value: s.name, display: s.name });
     } else if (actionType === 'linkedin' && s.name) {
-      items.push({ subject: s.name, label: 'Name', value: s.name, display: s.name });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Name', value: s.name, display: s.name });
     } else if (actionType === 'twitter' && s.name) {
-      items.push({ subject: s.name, label: 'Name', value: s.name, display: s.name });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Name', value: s.name, display: s.name });
     } else if (actionType === 'osint' && s.name) {
-      items.push({ subject: s.name, label: 'Name', value: s.name, display: s.name });
+      items.push({ subject_id: s.id, subject: s.name, label: 'Name', value: s.name, display: s.name });
     } else if (actionType === 'vessel') {
-      if (s.imo_number) items.push({ subject: s.name, label: 'IMO', value: s.imo_number, display: s.imo_number });
-      if (s.mmsi) items.push({ subject: s.name, label: 'MMSI', value: s.mmsi, display: s.mmsi });
-      if (s.eni_number) items.push({ subject: s.name, label: 'ENI', value: s.eni_number, display: s.eni_number });
-      if (s.identification_number) items.push({ subject: s.name, label: 'ID Number', value: s.identification_number, display: s.identification_number });
-      if (s.name) items.push({ subject: s.name, label: 'Name', value: s.name, display: s.name });
+      if (s.imo_number) items.push({ subject_id: s.id, subject: s.name, label: 'IMO', value: s.imo_number, display: s.imo_number });
+      if (s.mmsi) items.push({ subject_id: s.id, subject: s.name, label: 'MMSI', value: s.mmsi, display: s.mmsi });
+      if (s.eni_number) items.push({ subject_id: s.id, subject: s.name, label: 'ENI', value: s.eni_number, display: s.eni_number });
+      if (s.identification_number) items.push({ subject_id: s.id, subject: s.name, label: 'ID Number', value: s.identification_number, display: s.identification_number });
+      if (s.name) items.push({ subject_id: s.id, subject: s.name, label: 'Name', value: s.name, display: s.name });
     } else if (actionType === 'subdomain') {
       if (s.email && s.email.indexOf('@') !== -1) {
         var domain = s.email.split('@')[1];
-        items.push({ subject: s.name, label: 'Domain (from email)', value: domain, display: domain });
+        items.push({ subject_id: s.id, subject: s.name, label: 'Domain (from email)', value: domain, display: domain });
       }
     } else if (actionType === 'photo_analysis') {
       if (s.photo_path) {
-        items.push({ subject: s.name, label: 'Photo', value: s.photo_path, display: s.photo_path });
+        items.push({ subject_id: s.id, subject: s.name, label: 'Photo', value: s.photo_path, display: s.photo_path });
       }
     }
   });
@@ -553,6 +555,7 @@ function runPhotoAnalysis(file) {
 
   var formData = new FormData();
   formData.append('photo', file);
+  if (subjectId) formData.append('subject_id', subjectId);
 
   fetch('/cms/workflow/api/case/' + CASE_ID + '/photo-analysis', {
     method: 'POST',

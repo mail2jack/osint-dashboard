@@ -17,9 +17,11 @@ from .registry import (  # noqa: F401
 )
 from .helpers import (  # noqa: F401
     _get_api_key,
-    _first_subject,
+    _action_subject,
     _site_dork_search,
     link_finding_to_manual_action,
+    SUBJECT_TYPE_PRESETS,
+    presets_for_subject,
 )
 from .email_action import _email_check  # noqa: F401
 from .phone_action import _phone_check  # noqa: F401
@@ -64,9 +66,11 @@ __all__ = [
     "run_action",
     "start_action_async",
     "_get_api_key",
-    "_first_subject",
+    "_action_subject",
     "_site_dork_search",
     "link_finding_to_manual_action",
+    "SUBJECT_TYPE_PRESETS",
+    "presets_for_subject",
     "_email_check",
     "_phone_check",
     "_address_check",
