@@ -23,6 +23,8 @@ from cms.models import (
     ResearchAction,
     SocialAccount,
     Subject,
+    SubjectFact,
+    SubjectIdentifier,
     User,
     case_subjects,
     db,
@@ -31,6 +33,31 @@ from cms.models import (
 from cms.routes.utils import normalize_phone
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_dt(value):
+    """Parse an ISO-8601 date/datetime string (or passthrough a datetime)."""
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            return datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return None
+
+
+def _sync_verification(obj, status, actor_id):
+    """Set/clear verified_by/verified_at from the status transition (D7)."""
+    if status == "verified":
+        if not obj.verified_by:
+            obj.verified_by = actor_id
+        if not obj.verified_at:
+            obj.verified_at = datetime.now(timezone.utc)
+    else:
+        obj.verified_by = None
+        obj.verified_at = None
+
 
 # ---------------------------------------------------------------------------
 # Field groups (single source of truth for both input paths)
@@ -907,6 +934,348 @@ class SubjectService:
             "actions": action_rows,
             "findings": finding_rows,
         }
+
+    # -------------------------------------------------------------------
+    # PR7b: fact-layer + structured writes (inline profile editing)
+    # -------------------------------------------------------------------
+
+    @staticmethod
+    def _apply_encrypted(instance, field, value):
+        """Encrypt a plaintext value into an encrypted column (empty -> None)."""
+        plain = (value or "").strip()
+        setattr(instance, field, encryptor.encrypt(plain) if plain else None)
+
+    def save_identifier(self, subject, data, *, actor_id, identifier_id=None):
+        """Create or update a ``SubjectIdentifier`` (fact-layer, D2)."""
+        identifier_type = (data.get("identifier_type") or "").strip()
+        if not identifier_type:
+            raise ValueError("identifier_type is required")
+
+        if identifier_id:
+            ident = db.session.get(SubjectIdentifier, identifier_id)
+            if not ident or str(ident.subject_id) != str(subject.id):
+                raise ValueError("Identifier not found")
+            ident.identifier_type = identifier_type
+            if data.get("value") is not None:
+                ident.set_value(data["value"])
+            ident.status = data.get("status") or ident.status
+            ident.source = data.get("source") or ident.source
+            ident.source_url = data.get("source_url") or ident.source_url
+            ident.reliability = data.get("reliability") or ident.reliability
+            if data.get("observed_at"):
+                ident.observed_at = _parse_dt(data["observed_at"])
+            return ident
+
+        if not data.get("value"):
+            raise ValueError("value is required")
+        ident = SubjectIdentifier(
+            subject_id=subject.id,
+            tenant_id=subject.tenant_id,
+            identifier_type=identifier_type,
+            status=data.get("status") or "candidate",
+            source=data.get("source"),
+            source_url=data.get("source_url"),
+            reliability=data.get("reliability"),
+            created_by=actor_id,
+        )
+        if data.get("observed_at"):
+            ident.observed_at = _parse_dt(data["observed_at"])
+        ident.set_value(data["value"])
+        db.session.add(ident)
+        return ident
+
+    def delete_identifier(self, subject, identifier_id, *, actor_id):
+        ident = db.session.get(SubjectIdentifier, identifier_id)
+        if not ident or str(ident.subject_id) != str(subject.id):
+            raise ValueError("Identifier not found")
+        if ident.finding_id:
+            raise ValueError("Cannot delete identifier linked to a finding")
+        db.session.delete(ident)
+
+    def save_fact(self, subject, data, *, actor_id, fact_id=None):
+        """Create or update a ``SubjectFact`` with verification transitions (D7)."""
+        fact_key = (data.get("fact_key") or "").strip()
+        if not fact_key:
+            raise ValueError("fact_key is required")
+        status = data.get("status") or "candidate"
+
+        if fact_id:
+            fact = db.session.get(SubjectFact, fact_id)
+            if not fact or str(fact.subject_id) != str(subject.id):
+                raise ValueError("Fact not found")
+            fact.fact_key = fact_key
+            if data.get("value") is not None:
+                fact.set_value(data["value"])
+            fact.status = status
+            fact.source = data.get("source") or fact.source
+            fact.source_url = data.get("source_url") or fact.source_url
+            fact.reliability = data.get("reliability") or fact.reliability
+            if data.get("observed_at"):
+                fact.observed_at = _parse_dt(data["observed_at"])
+            _sync_verification(fact, status, actor_id)
+            return fact
+
+        if not data.get("value"):
+            raise ValueError("value is required")
+        fact = SubjectFact(
+            subject_id=subject.id,
+            tenant_id=subject.tenant_id,
+            fact_key=fact_key,
+            status=status,
+            source=data.get("source"),
+            source_url=data.get("source_url"),
+            reliability=data.get("reliability"),
+            created_by=actor_id,
+        )
+        if data.get("observed_at"):
+            fact.observed_at = _parse_dt(data["observed_at"])
+        fact.set_value(data["value"])
+        _sync_verification(fact, status, actor_id)
+        db.session.add(fact)
+        return fact
+
+    def delete_fact(self, subject, fact_id, *, actor_id):
+        fact = db.session.get(SubjectFact, fact_id)
+        if not fact or str(fact.subject_id) != str(subject.id):
+            raise ValueError("Fact not found")
+        if fact.finding_id:
+            raise ValueError("Cannot delete fact linked to a finding")
+        db.session.delete(fact)
+
+    def _sync_primary_address(self, subject, primary, data):
+        """Unset other primaries and mirror the primary to legacy columns."""
+        for addr in subject.addresses:
+            if addr.id != primary.id:
+                addr.is_primary = False
+        sync_primary_address_to_subject(
+            subject,
+            {
+                "street": data.get("street"),
+                "number": data.get("number"),
+                "addition": "",
+                "zipcode": data.get("zipcode"),
+                "town": data.get("town"),
+                "country": data.get("country"),
+            },
+        )
+
+    def save_address(self, subject, data, *, actor_id, address_id=None):
+        """Create or update an ``Address``; primary mirrors to legacy columns."""
+        if address_id:
+            addr = db.session.get(Address, address_id)
+            if not addr or str(addr.subject_id) != str(subject.id):
+                raise ValueError("Address not found")
+            for field in Address.ENCRYPTED_FIELDS:
+                if field in data:
+                    self._apply_encrypted(addr, field, data.get(field))
+            if "is_primary" in data:
+                addr.is_primary = bool(data.get("is_primary"))
+            addr.source = data.get("source") or addr.source
+            addr.status = data.get("status") or addr.status
+            if data.get("observed_at"):
+                addr.observed_at = _parse_dt(data["observed_at"])
+            addr.updated_by = actor_id
+            if addr.is_primary:
+                self._sync_primary_address(subject, addr, data)
+            return addr
+
+        if not any(data.get(f) for f in ("street", "zipcode")):
+            raise ValueError("street or zipcode is required")
+        addr = Address(
+            subject_id=subject.id,
+            tenant_id=subject.tenant_id,
+            is_primary=bool(data.get("is_primary")),
+            source=data.get("source"),
+            status=data.get("status") or "candidate",
+        )
+        for field in Address.ENCRYPTED_FIELDS:
+            self._apply_encrypted(addr, field, data.get(field))
+        if data.get("observed_at"):
+            addr.observed_at = _parse_dt(data["observed_at"])
+        db.session.add(addr)
+        if addr.is_primary:
+            self._sync_primary_address(subject, addr, data)
+        return addr
+
+    def delete_address(self, subject, address_id, *, actor_id):
+        addr = db.session.get(Address, address_id)
+        if not addr or str(addr.subject_id) != str(subject.id):
+            raise ValueError("Address not found")
+        if addr.finding_id:
+            raise ValueError("Cannot delete address linked to a finding")
+        db.session.delete(addr)
+
+    def save_contact(self, subject, data, *, actor_id, contact_id=None):
+        """Create or update a ``Contact``; primary mirrors to legacy fields."""
+        contact_type = (data.get("contact_type") or "").strip()
+        if contact_type not in ("email", "phone"):
+            raise ValueError("contact_type must be email or phone")
+
+        if contact_id:
+            contact = db.session.get(Contact, contact_id)
+            if not contact or str(contact.subject_id) != str(subject.id):
+                raise ValueError("Contact not found")
+            contact.contact_type = contact_type
+            if data.get("value") is not None:
+                self._apply_encrypted(contact, "value", data.get("value"))
+            if "is_primary" in data:
+                contact.is_primary = bool(data.get("is_primary"))
+            contact.source = data.get("source") or contact.source
+            contact.status = data.get("status") or contact.status
+            if data.get("observed_at"):
+                contact.observed_at = _parse_dt(data["observed_at"])
+            contact.updated_by = actor_id
+        else:
+            if not data.get("value"):
+                raise ValueError("value is required")
+            contact = Contact(
+                subject_id=subject.id,
+                tenant_id=subject.tenant_id,
+                contact_type=contact_type,
+                is_primary=bool(data.get("is_primary")),
+                source=data.get("source"),
+                status=data.get("status") or "candidate",
+            )
+            self._apply_encrypted(contact, "value", data.get("value"))
+            if data.get("observed_at"):
+                contact.observed_at = _parse_dt(data["observed_at"])
+            db.session.add(contact)
+
+        if contact.is_primary:
+            for other in subject.contacts:
+                if other.id != contact.id:
+                    other.is_primary = False
+            if data.get("value") is not None:
+                plain = (data["value"] or "").strip()
+            else:
+                try:
+                    plain = encryptor.decrypt(contact.value) if contact.value else ""
+                except Exception:
+                    plain = contact.value or ""
+            sync_legacy_contact_fields(
+                subject,
+                {
+                    "contact_type": contact_type,
+                    "value": plain,
+                    "is_primary": True,
+                },
+            )
+        return contact
+
+    def delete_contact(self, subject, contact_id, *, actor_id):
+        contact = db.session.get(Contact, contact_id)
+        if not contact or str(contact.subject_id) != str(subject.id):
+            raise ValueError("Contact not found")
+        if contact.finding_id:
+            raise ValueError("Cannot delete contact linked to a finding")
+        db.session.delete(contact)
+
+    def save_social_account(self, subject, data, *, actor_id, account_id=None):
+        """Create or update a ``SocialAccount`` with provenance."""
+        platform = (data.get("platform") or "").strip().lower()
+        username = (data.get("username") or "").strip()
+        if not platform or not username:
+            raise ValueError("platform and username are required")
+
+        if account_id:
+            account = db.session.get(SocialAccount, account_id)
+            if not account or str(account.subject_id) != str(subject.id):
+                raise ValueError("Social account not found")
+            account.platform = platform
+            account.username = username
+            account.url = data.get("url") or account.url
+            account.account_id = data.get("account_id") or account.account_id
+            account.source = data.get("source") or account.source
+            account.status = data.get("status") or account.status
+            if data.get("observed_at"):
+                account.observed_at = _parse_dt(data["observed_at"])
+            account.updated_by = actor_id
+            return account
+
+        account = SocialAccount(
+            tenant_id=subject.tenant_id,
+            subject_id=subject.id,
+            platform=platform,
+            username=username,
+            url=data.get("url"),
+            account_id=data.get("account_id"),
+            source=data.get("source"),
+            status=data.get("status") or "candidate",
+            updated_by=actor_id,
+        )
+        if data.get("observed_at"):
+            account.observed_at = _parse_dt(data["observed_at"])
+        db.session.add(account)
+        return account
+
+    def delete_social_account(self, subject, account_id, *, actor_id):
+        account = db.session.get(SocialAccount, account_id)
+        if not account or str(account.subject_id) != str(subject.id):
+            raise ValueError("Social account not found")
+        if account.finding_id:
+            raise ValueError("Cannot delete social account linked to a finding")
+        db.session.delete(account)
+
+    def save_relation(self, subject, data, *, actor_id):
+        """Create or update a canonical relation row (ADR-0001 PR3)."""
+        related_id = data.get("related_subject_id")
+        if not related_id:
+            raise ValueError("related_subject_id is required")
+        if str(related_id) == str(subject.id):
+            raise ValueError("Cannot relate a subject to itself")
+        related = db.session.get(Subject, related_id)
+        if not related or related.tenant_id != subject.tenant_id or related.is_deleted:
+            raise ValueError("Related subject not found")
+
+        relation_type = data.get("relation_type") or "other"
+        if relation_type not in ("family", "business", "other"):
+            relation_type = "other"
+        direction = data.get("direction") or "mutual"
+        if direction not in ("outgoing", "incoming", "mutual"):
+            direction = "mutual"
+
+        a, b = sorted([str(subject.id), str(related_id)])
+        values = {
+            "relation_type": relation_type,
+            "direction": direction,
+            "source": data.get("source"),
+            "reliability": data.get("reliability"),
+            "status": data.get("status") or "candidate",
+            "case_number": data.get("case_number"),
+        }
+        existing = db.session.execute(
+            subject_relations.select().where(
+                (subject_relations.c.subject_id == a)
+                & (subject_relations.c.related_subject_id == b)
+            )
+        ).first()
+        if existing:
+            db.session.execute(
+                subject_relations.update()
+                .where(
+                    (subject_relations.c.subject_id == a)
+                    & (subject_relations.c.related_subject_id == b)
+                )
+                .values(**values)
+            )
+        else:
+            db.session.execute(
+                subject_relations.insert().values(
+                    subject_id=a, related_subject_id=b, created_by=actor_id, **values
+                )
+            )
+        return {"subject_id": a, "related_subject_id": b}
+
+    def delete_relation(self, subject, related_subject_id, *, actor_id):
+        a, b = sorted([str(subject.id), str(related_subject_id)])
+        result = db.session.execute(
+            subject_relations.delete().where(
+                (subject_relations.c.subject_id == a)
+                & (subject_relations.c.related_subject_id == b)
+            )
+        )
+        if result.rowcount == 0:
+            raise ValueError("Relationship not found")
 
 
 subject_service = SubjectService()

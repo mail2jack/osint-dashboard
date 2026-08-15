@@ -85,6 +85,7 @@ def register_modules() -> None:
     from . import osint_search  # noqa: F401
     from . import subjects_list  # noqa: F401
     from . import subjects_crud  # noqa: F401
+    from . import subject_profile_api  # noqa: F401
     from . import subjects_faces  # noqa: F401
     from . import subjects_rel  # noqa: F401
     from . import spiderfoot  # noqa: F401

@@ -4,7 +4,15 @@ import flask
 from flask import request, jsonify, render_template, redirect, url_for, abort
 from flask_login import login_required, current_user
 from . import cms_bp
-from ..models import db, Subject, Case, Finding, SocialAccount, case_subjects
+from ..models import (
+    db,
+    Subject,
+    Case,
+    Finding,
+    SocialAccount,
+    case_subjects,
+    subject_relations,
+)
 from .utils import find_similar_subjects, find_similar_clients, check_for_exact_match
 from ..auth import subject_access_required, audit_read, apply_tenant_filter
 from ..tier_limits import check_feature
@@ -287,10 +295,41 @@ def subject_profile(subject_id: str) -> str:
     subject = Subject.query.filter_by(id=subject_id).first() or abort(404)
     profile = subject_service.profile_view(subject)
 
+    # Candidate subjects for the Relations tab add-form (same tenant,
+    # excluding this subject and subjects already related).
+    related_ids = {
+        row.related_subject_id if row.subject_id == subject.id else row.subject_id
+        for row in db.session.execute(
+            subject_relations.select().where(
+                db.or_(
+                    subject_relations.c.subject_id == subject.id,
+                    subject_relations.c.related_subject_id == subject.id,
+                )
+            )
+        ).fetchall()
+    }
+    candidates = (
+        Subject.query.filter(
+            Subject.is_deleted.is_(False),
+            Subject.tenant_id == current_user.tenant_id,
+            Subject.id != subject.id,
+            ~Subject.id.in_(related_ids or [""]),
+        )
+        .order_by(Subject.name)
+        .limit(500)
+        .with_entities(Subject.id, Subject.name, Subject.subject_type)
+        .all()
+    )
+
     return render_template(
         "cms/subjects/profile.html",
         subject=subject,
         profile=profile,
+        can_edit=current_user.role != "viewer",
+        relation_candidates=[
+            {"id": c.id, "name": c.name, "subject_type": c.subject_type}
+            for c in candidates
+        ],
     )
 
 
