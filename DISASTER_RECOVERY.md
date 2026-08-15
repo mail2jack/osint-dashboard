@@ -66,7 +66,9 @@ credentials or infrastructure are available during an incident.
 ## Drill Evidence (2026-08-15)
 
 An official drill was completed on 2026-08-15 with two independent operators.
-Evidence is archived outside the VPS in `dr-evidence-2026-08-15/`:
+Evidence is archived outside the VPS and laptop in the private repository
+`mail2jack/osint-dashboard-evidence` (private by design; it contains production
+row counts and operator names), directory `2026-08-15/`:
 
 - `dr-drill-2026-08-15T07:53:18Z.json` — drill `status: pass` (wrong-key test +
   isolated restore), commit `90f7685`.
@@ -87,7 +89,7 @@ it does not prove end-to-end RTO under a real incident.
 - **Owner:** Ivan Versteegh (primary operator); Perry Couprie (independent
   second operator for attestation).
 - **Recurrence:** run the drill monthly, or after any change to backup, restore,
-  schema, or DR configuration. Archive each drill's three JSON reports outside
-  the VPS after every run.
+  schema, or DR configuration. After every run, copy the three JSON reports from
+  the VPS into a new date-stamped directory in the private evidence repository.
 - **Alerting:** the scheduled verifier (`osint-backup-verify.timer`, four times
   daily) catches regressions between drills.
