@@ -234,9 +234,8 @@ def _wf_subject_data(prefix: str, fallback_type: str | None = None) -> dict:
             if value:
                 data[field] = value
         for field in _VEHICLE_RDW_FIELDS:
-            value = _wf_value(prefix, field)
-            if value:
-                data[field] = value
+            # Set unconditionally so cleared inputs persist as empty (round-trip).
+            data[field] = _wf_value(prefix, field)
     elif subject_type == "vessel":
         for field in ("imo_number", "mmsi", "eni_number", "vessel_nationality"):
             value = _wf_value(prefix, field)
