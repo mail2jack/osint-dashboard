@@ -5,13 +5,13 @@ from cms.services.phone_service import (
     _whatsapp_check_internal,
     _telegram_check_internal,
 )
-from cms.workflow.actions.helpers import _first_subject
+from cms.workflow.actions.helpers import _action_subject
 
 logger = logging.getLogger(__name__)
 
 
 def _phone_check(action):
-    subject = _first_subject(action)
+    subject = _action_subject(action)
     phone = action.data_value if action.data_value else None
     if not phone:
         phone = subject.phone if subject else None

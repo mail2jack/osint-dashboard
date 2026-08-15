@@ -2,7 +2,7 @@ import logging
 import re
 
 from cms.services.http_utils import jittered_get
-from cms.workflow.actions.helpers import _first_subject
+from cms.workflow.actions.helpers import _action_subject
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ def _rdw_plate(subject):
 
 def _rdw_check(action):
     findings = []
-    subject = _first_subject(action)
+    subject = _action_subject(action)
     ipc = action.data_value if action.data_value else None
     if not ipc:
         ipc = _rdw_plate(subject)
@@ -119,7 +119,7 @@ def _vessel_check(action):
     findings = []
 
     identifier = action.data_value if action.data_value else None
-    subject = _first_subject(action)
+    subject = _action_subject(action)
 
     imo = mmsi = eni = name = None
     if identifier:

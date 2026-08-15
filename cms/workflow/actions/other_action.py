@@ -6,14 +6,14 @@ import threading
 import requests
 from cms.models import db
 from cms.services.http_utils import jittered_get
-from cms.workflow.actions.helpers import _first_subject, _get_api_key
+from cms.workflow.actions.helpers import _action_subject, _get_api_key
 
 logger = logging.getLogger(__name__)
 
 
 def _financial_check(action):
     """Placeholder — financieel onderzoek is handmatig in deze fase."""
-    subject = _first_subject(action)
+    subject = _action_subject(action)
     return [
         {
             "title": "Financial research — manual action",
@@ -137,7 +137,7 @@ def _subdomain_check(action):
     domain = action.data_value if action.data_value else None
     subject = None
     if not domain:
-        subject = _first_subject(action)
+        subject = _action_subject(action)
         if subject and subject.email and "@" in subject.email:
             domain = subject.email.split("@")[1]
     if not domain:
@@ -145,7 +145,7 @@ def _subdomain_check(action):
 
     subject_id = subject.id if subject else None
     if not subject_id:
-        subject = _first_subject(action)
+        subject = _action_subject(action)
         subject_id = subject.id if subject else None
 
     try:
@@ -172,7 +172,7 @@ def _photo_analysis(action):
         format_analysis_finding,
     )
 
-    subject = _first_subject(action)
+    subject = _action_subject(action)
     findings = []
 
     # Determine photo path

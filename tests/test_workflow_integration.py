@@ -693,6 +693,8 @@ class TestSubdomainCheck:
         db.session.flush()
         action = ResearchAction(
             case_id=case.id,
+            subject_id=subject.id,
+            target_kind="subject",
             action_type="subdomain",
             data_value="",
             label="From Subject",

@@ -89,6 +89,24 @@ class TestMigrationCycle:
 
         _run_alembic(db_file, "upgrade", "head")
 
+    def test_research_actions_subject_columns_roundtrip(self, tmp_path):
+        db_file = tmp_path / "ra.db"
+        _run_alembic(db_file, "upgrade", "head")
+        conn = sqlite3.connect(db_file)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(research_actions)")}
+        conn.close()
+        assert {"subject_id", "target_kind", "target_snapshot"} <= cols
+
+        _run_alembic(db_file, "downgrade", "f0a1b2c3d4e5")
+        conn = sqlite3.connect(db_file)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(research_actions)")}
+        conn.close()
+        assert "subject_id" not in cols
+        assert "target_kind" not in cols
+        assert "target_snapshot" not in cols
+
+        _run_alembic(db_file, "upgrade", "head")
+
     def test_legacy_relations_collapse_and_restore(self, tmp_path):
         db_file = tmp_path / "seed.db"
         _seed_legacy_relations(db_file)

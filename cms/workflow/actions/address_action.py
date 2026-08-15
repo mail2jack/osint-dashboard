@@ -1,14 +1,14 @@
 import logging
 
 from cms.services.http_utils import jittered_get
-from cms.workflow.actions.helpers import _first_subject
+from cms.workflow.actions.helpers import _action_subject
 
 logger = logging.getLogger(__name__)
 
 
 def _address_check(action):
     findings = []
-    subject = _first_subject(action)
+    subject = _action_subject(action)
     subject_id = subject.id if subject else None
     address_query = action.data_value if action.data_value else None
     if not address_query:

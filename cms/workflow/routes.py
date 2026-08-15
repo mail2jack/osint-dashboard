@@ -33,6 +33,7 @@ from .models import (
 )
 from .research import (
     ACTION_REGISTRY,
+    SUBJECT_TYPE_PRESETS,
     cancel_action,
     start_action_async,
     get_remaining_credits,
@@ -599,6 +600,7 @@ def case_detail(case_id):
         s.decrypt_identifiers()
     subjects_data = [
         {
+            "id": s.id,
             "name": s.name,
             "subject_type": s.subject_type,
             "email": s.email,
@@ -646,6 +648,7 @@ def case_detail(case_id):
         finding_actions=finding_actions,
         action_types=ACTION_REGISTRY,
         action_credits=action_credits,
+        subject_presets=SUBJECT_TYPE_PRESETS,
         brave_health=brave_health,
         show_archived=show_archived,
         dorks_library=dorks_library,
@@ -778,14 +781,28 @@ def run_action(case_id):
     body = request.get_json(silent=True) or {}
     action_type = body.get("action_type", "")
     data_value = body.get("data_value") or ""
+    subject_id = body.get("subject_id") or None
 
     if action_type not in ACTION_REGISTRY:
         return jsonify({"error": f"Unknown action: {action_type}"}), 400
 
+    # Explicit target subject (ADR-0001 PR4): a non-null subject_id must be a
+    # subject linked to this case. None means an explicit case-wide scope.
+    subject = None
+    if subject_id:
+        subject = db.session.get(WorkflowSubject, subject_id)
+        if not subject:
+            return jsonify({"error": "Subject not found"}), 404
+        if not case.subjects.filter_by(id=subject_id).first():
+            return jsonify({"error": "Subject is not linked to this case"}), 400
+
     _STALE_TIMEOUT = 600  # 10 minutes
-    existing = WorkflowResearchAction.query.filter_by(
+    existing_query = WorkflowResearchAction.query.filter_by(
         case_id=case_id, action_type=action_type, status="running"
-    ).first()
+    )
+    if subject_id:
+        existing_query = existing_query.filter_by(subject_id=subject_id)
+    existing = existing_query.first()
     if existing:
         if (
             existing.started_at
@@ -800,11 +817,16 @@ def run_action(case_id):
     action = WorkflowResearchAction(
         id=str(uuid.uuid4()),
         case_id=case_id,
+        subject_id=subject_id,
+        target_kind="subject" if subject_id else "case",
         action_type=action_type,
         data_value=data_value,
         label=ACTION_REGISTRY[action_type]["label"],
         status="pending",
         tenant_id=current_user.tenant_id,
+    )
+    action.target_snapshot = json.dumps(
+        action.build_target_snapshot(subject, data_value)
     )
     db.session.add(action)
     db.session.commit()
@@ -853,10 +875,22 @@ def photo_analysis_upload(case_id):
 
     data_value = filepath
 
+    subject_id = request.form.get("subject_id") or None
+    subject = None
+    if subject_id:
+        subject = db.session.get(WorkflowSubject, subject_id)
+        if not subject:
+            return jsonify({"error": "Subject not found"}), 404
+        if not case.subjects.filter_by(id=subject_id).first():
+            return jsonify({"error": "Subject is not linked to this case"}), 400
+
     _STALE_TIMEOUT = 600
-    existing = WorkflowResearchAction.query.filter_by(
+    existing_query = WorkflowResearchAction.query.filter_by(
         case_id=case_id, action_type="photo_analysis", status="running"
-    ).first()
+    )
+    if subject_id:
+        existing_query = existing_query.filter_by(subject_id=subject_id)
+    existing = existing_query.first()
     if existing:
         if (
             existing.started_at
@@ -871,12 +905,15 @@ def photo_analysis_upload(case_id):
     action = WorkflowResearchAction(
         id=str(uuid.uuid4()),
         case_id=case_id,
+        subject_id=subject_id,
+        target_kind="subject" if subject_id else "case",
         action_type="photo_analysis",
         data_value=data_value,
         label=ACTION_REGISTRY["photo_analysis"]["label"],
         status="pending",
         tenant_id=current_user.tenant_id,
     )
+    action.target_snapshot = json.dumps(action.build_target_snapshot(subject, None))
     db.session.add(action)
     db.session.commit()
     action_id = action.id
@@ -1006,6 +1043,9 @@ def case_status(case_id):
                     "status": a.status,
                     "error": a.error,
                     "data_value": a.data_value,
+                    "subject_id": a.subject_id,
+                    "target_kind": a.target_kind,
+                    "target_snapshot": a.target_snapshot_data,
                     "dork_label": a.dork_label,
                     "result_summary": a.result_summary,
                     "created_at": a.created_at.isoformat() if a.created_at else None,
