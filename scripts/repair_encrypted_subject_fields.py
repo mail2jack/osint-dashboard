@@ -14,9 +14,12 @@ Safety properties:
   fails decryption but still looks like a Fernet token is left alone and
   reported as ``unrecognized`` instead of being mangled).
 * No values are logged — only row ids, field names and counts.
-* Each tenant is processed with an explicit RLS context; a manifest of every
-  affected row (ids only) is written before any change so a DB-level restore
-  can be targeted.
+* RLS-aware: the tenant inventory runs under a temporary bypass (a tenantless
+  query with FORCE RLS would otherwise return nothing and look like a no-op),
+  then each tenant is processed under its own explicit RLS context. The
+  context is always reset in ``finally`` so no connection is left scoped.
+* A durable manifest (ids only) is written *before* the first write and
+  rewritten as rows change, so a crash mid-run still leaves a restorable trace.
 
 Usage:
     python3 scripts/repair_encrypted_subject_fields.py                    # dry-run
@@ -69,6 +72,11 @@ def _iter_tenant_ids():
     return sorted(t for t in tenant_ids if t)
 
 
+def _write_manifest(manifest_path, manifest):
+    with open(manifest_path, "w") as fh:
+        json.dump(manifest, fh, indent=2, default=str)
+
+
 def repair(
     apply: bool = False,
     manifest_dir: str | None = None,
@@ -93,63 +101,79 @@ def repair(
             "backup_path": backup_path,
             "affected": [],
         }
+        # Durable manifest BEFORE the first write: if the process dies mid-run
+        # there is still a restorable record. It is rewritten as rows change.
+        _write_manifest(manifest_path, manifest)
     else:
         manifest = {"dry_run": True, "affected": []}
 
-    for tenant_id in _iter_tenant_ids():
+    # Tenant inventory: with FORCE RLS a tenantless query returns nothing,
+    # which would look like a successful no-op. Bypass RLS for the inventory
+    # only, read ids, then drop the bypass before any real work.
+    try:
+        set_tenant_context(db, None, bypass_rls=True)
+        tenant_ids = _iter_tenant_ids()
+    finally:
+        set_tenant_context(db, None)
+
+    for tenant_id in tenant_ids:
         # Explicit tenant context so Postgres RLS permits reads/writes per tenant.
         set_tenant_context(db, tenant_id)
-        tenant_hits = []
-        for model_name, model, fields in MODELS:
-            for row in model.query.filter(model.tenant_id == tenant_id).all():
-                row_hits = []
-                for field in fields:
-                    value = getattr(row, field)
-                    state = _field_state(value)
-                    totals[state] = totals.get(state, 0) + 1
-                    if state == "plaintext":
-                        row_hits.append(field)
-                        if apply:
-                            setattr(row, field, encryptor.encrypt(value))
-                if row_hits:
-                    tenant_hits.append((model_name, row.id, row_hits))
-        if tenant_hits:
-            per_tenant[tenant_id] = tenant_hits
-            totals["encrypted"] += sum(len(h[2]) for h in tenant_hits)
-            if apply:
-                db.session.flush()
-                db.session.add(
-                    AuditLog(
-                        tenant_id=tenant_id,
-                        user_id=None,
-                        action="security_remediation",
-                        entity_type="encrypted_fields",
-                        description=(
-                            "Re-encrypted plaintext-at-rest values in "
-                            f"{len(tenant_hits)} row(s) "
-                            f"({sum(len(h[2]) for h in tenant_hits)} field(s)) "
-                            "after the workflow/action decryption bug."
-                        ),
+        try:
+            tenant_hits = []
+            for model_name, model, fields in MODELS:
+                for row in model.query.filter(model.tenant_id == tenant_id).all():
+                    row_hits = []
+                    for field in fields:
+                        value = getattr(row, field)
+                        state = _field_state(value)
+                        totals[state] = totals.get(state, 0) + 1
+                        if state == "plaintext":
+                            row_hits.append(field)
+                            if apply:
+                                setattr(row, field, encryptor.encrypt(value))
+                    if row_hits:
+                        tenant_hits.append((model_name, row.id, row_hits))
+            if tenant_hits:
+                per_tenant[tenant_id] = tenant_hits
+                totals["encrypted"] += sum(len(h[2]) for h in tenant_hits)
+                if apply:
+                    db.session.flush()
+                    db.session.add(
+                        AuditLog(
+                            tenant_id=tenant_id,
+                            user_id=None,
+                            action="security_remediation",
+                            entity_type="encrypted_fields",
+                            description=(
+                                "Re-encrypted plaintext-at-rest values in "
+                                f"{len(tenant_hits)} row(s) "
+                                f"({sum(len(h[2]) for h in tenant_hits)} field(s)) "
+                                "after the workflow/action decryption bug."
+                            ),
+                        )
                     )
-                )
-                db.session.commit()
-            for model_name, row_id, fields in tenant_hits:
-                manifest["affected"].append(
-                    {
-                        "tenant_id": tenant_id,
-                        "model": model_name,
-                        "id": row_id,
-                        "fields": fields,
-                    }
-                )
-                print(
-                    f"  [{tenant_id[:8]}] {model_name} {row_id}: "
-                    f"{'RE-ENCRYPT' if apply else 'WOULD RE-ENCRYPT'} {', '.join(fields)}"
-                )
+                    db.session.commit()
+                for model_name, row_id, fields in tenant_hits:
+                    manifest["affected"].append(
+                        {
+                            "tenant_id": tenant_id,
+                            "model": model_name,
+                            "id": row_id,
+                            "fields": fields,
+                        }
+                    )
+                    print(
+                        f"  [{tenant_id[:8]}] {model_name} {row_id}: "
+                        f"{'RE-ENCRYPT' if apply else 'WOULD RE-ENCRYPT'} {', '.join(fields)}"
+                    )
+                if apply and manifest_path:
+                    _write_manifest(manifest_path, manifest)
+        finally:
+            set_tenant_context(db, None)
 
     if apply and manifest_path:
-        with open(manifest_path, "w") as fh:
-            json.dump(manifest, fh, indent=2, default=str)
+        _write_manifest(manifest_path, manifest)
         print(f"\nManifest written: {manifest_path}")
 
     print("\n=== Summary ===")
