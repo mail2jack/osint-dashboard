@@ -97,6 +97,8 @@ class TestRepairScript:
         assert fresh.email == "repair@example.com"
 
     def test_apply_reencrypts_only_plaintext(self, app, db_session, tmp_path):
+        import json
+
         from sqlalchemy import update
         from scripts.repair_encrypted_subject_fields import repair
 
@@ -123,4 +125,17 @@ class TestRepairScript:
         assert encryptor.decrypt(fresh.email) == "repair@example.com"
         assert encryptor.decrypt(fresh.phone) == "0611111111"
         assert fresh.email != "repair@example.com"
-        assert (tmp_path / "affected").exists() or any(tmp_path.iterdir())
+
+        # The manifest must durably record every affected row (ids only).
+        manifests = list(tmp_path.glob("plaintext_repair_*.json"))
+        assert len(manifests) == 1
+        data = json.loads(manifests[0].read_text())
+        assert data["backup_path"] == str(tmp_path)
+        affected = [
+            row
+            for row in data["affected"]
+            if row["model"] == "subject" and row["id"] == subject.id
+        ]
+        assert affected, "manifest does not record the affected subject"
+        assert "email" in affected[0]["fields"]
+        assert "phone" in affected[0]["fields"]

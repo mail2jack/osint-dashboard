@@ -20,6 +20,9 @@ Safety properties:
   context is always reset in ``finally`` so no connection is left scoped.
 * A durable manifest (ids only) is written *before* the first write and
   rewritten as rows change, so a crash mid-run still leaves a restorable trace.
+  Per tenant, the affected rows are fsynced to the manifest (via atomic
+  replace) **before** that tenant's encrypt + commit — an empty manifest with
+  changed data is impossible.
 
 Usage:
     python3 scripts/repair_encrypted_subject_fields.py                    # dry-run
@@ -73,8 +76,14 @@ def _iter_tenant_ids():
 
 
 def _write_manifest(manifest_path, manifest):
-    with open(manifest_path, "w") as fh:
+    """Write the manifest atomically and durably: write to a temp file, fsync,
+    then os.replace() so a reader/crash never sees a half-written manifest."""
+    tmp_path = f"{manifest_path}.tmp"
+    with open(tmp_path, "w") as fh:
         json.dump(manifest, fh, indent=2, default=str)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp_path, manifest_path)
 
 
 def repair(
@@ -130,14 +139,37 @@ def repair(
                         totals[state] = totals.get(state, 0) + 1
                         if state == "plaintext":
                             row_hits.append(field)
-                            if apply:
-                                setattr(row, field, encryptor.encrypt(value))
                     if row_hits:
-                        tenant_hits.append((model_name, row.id, row_hits))
+                        tenant_hits.append((model_name, row, row_hits))
             if tenant_hits:
-                per_tenant[tenant_id] = tenant_hits
+                per_tenant[tenant_id] = [(m, row.id, f) for m, row, f in tenant_hits]
                 totals["encrypted"] += sum(len(h[2]) for h in tenant_hits)
+
+                # 1) Record every affected row in the manifest FIRST and persist
+                #    it durably — before any DB write. A crash between commit
+                #    and manifest-append would otherwise leave an empty manifest
+                #    while data was already changed.
+                for model_name, row, fields in tenant_hits:
+                    manifest["affected"].append(
+                        {
+                            "tenant_id": tenant_id,
+                            "model": model_name,
+                            "id": row.id,
+                            "fields": fields,
+                        }
+                    )
+                    print(
+                        f"  [{tenant_id[:8]}] {model_name} {row.id}: "
+                        f"{'RE-ENCRYPT' if apply else 'WOULD RE-ENCRYPT'} {', '.join(fields)}"
+                    )
+                if apply and manifest_path:
+                    _write_manifest(manifest_path, manifest)
+
+                # 2) Only then encrypt and persist this tenant's rows.
                 if apply:
+                    for model_name, row, fields in tenant_hits:
+                        for field in fields:
+                            setattr(row, field, encryptor.encrypt(getattr(row, field)))
                     db.session.flush()
                     db.session.add(
                         AuditLog(
@@ -154,21 +186,6 @@ def repair(
                         )
                     )
                     db.session.commit()
-                for model_name, row_id, fields in tenant_hits:
-                    manifest["affected"].append(
-                        {
-                            "tenant_id": tenant_id,
-                            "model": model_name,
-                            "id": row_id,
-                            "fields": fields,
-                        }
-                    )
-                    print(
-                        f"  [{tenant_id[:8]}] {model_name} {row_id}: "
-                        f"{'RE-ENCRYPT' if apply else 'WOULD RE-ENCRYPT'} {', '.join(fields)}"
-                    )
-                if apply and manifest_path:
-                    _write_manifest(manifest_path, manifest)
         finally:
             set_tenant_context(db, None)
 
