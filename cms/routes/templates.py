@@ -182,7 +182,7 @@ def generate_case_report(case_id: str) -> flask.Response:
                 ), 400
             flash("Please select a template.", "danger")
             return render_template(
-                "cms/reports/generate.html", case=case, templates=templates
+                "cms/templates/generate_report.html", case=case, templates=templates
             )
 
         custom_fields = {
