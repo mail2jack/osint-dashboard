@@ -197,7 +197,7 @@ fi
 UPLOAD_ENTRY=""
 if [ -f "$EXTRACT_DIR/uploads.tar.gz" ]; then
     UPLOAD_ENTRY="$(tar tzf "$EXTRACT_DIR/uploads.tar.gz" 2>/dev/null | \
-        awk 'NF && $0 !~ /\/$/ { print; exit }')"
+        awk 'NF && $0 !~ /\/$/ { print; exit }' || true)"
 fi
 if [ -n "$UPLOAD_ENTRY" ]; then
     record uploads pass "uploads archive contains files"

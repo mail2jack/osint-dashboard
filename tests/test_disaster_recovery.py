@@ -42,6 +42,37 @@ def test_dr_report_failure_status(tmp_path):
     assert report["status"] == "fail"
 
 
+def test_uploads_listing_pipeline_ignores_sigpipe(tmp_path):
+    import tarfile
+
+    uploads_dir = tmp_path / "uploads"
+    uploads_dir.mkdir()
+    (uploads_dir / "first.txt").write_text("x", encoding="utf-8")
+    for index in range(200):
+        (uploads_dir / f"blob_{index}.bin").write_bytes(b"y" * 65536)
+    archive = tmp_path / "uploads.tar.gz"
+    with tarfile.open(archive, "w:gz") as handle:
+        handle.add(uploads_dir, arcname="uploads")
+
+    script = (ROOT / "scripts/verify_backup.sh").read_text(encoding="utf-8")
+    pipeline = (
+        'tar tzf "$EXTRACT_DIR/uploads.tar.gz" 2>/dev/null | '
+        "awk 'NF && $0 !~ /\\/$/ { print; exit }'"
+    )
+    command = (
+        "set -o pipefail; EXTRACT_DIR={dir}; ENTRY=$({pipeline} || true); "
+        'test -n "$ENTRY"; echo "entry=$ENTRY rc=$?"'
+    ).format(dir=tmp_path, pipeline=pipeline)
+    result = subprocess.run(
+        ["bash", "-c", command], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert (
+        result.stdout.strip().startswith("entry=uploads/") and "rc=0" in result.stdout
+    )
+    assert "|| true" in script
+
+
 def test_backup_verifier_and_alert_scripts_parse():
     for script in (
         "scripts/verify_backup.sh",
