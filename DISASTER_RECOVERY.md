@@ -63,9 +63,31 @@ These are operational targets, not guarantees. A successful scheduled
 verification proves recoverability of the tested archive, not that production
 credentials or infrastructure are available during an incident.
 
-## Open Operational Item
+## Drill Evidence (2026-08-15)
 
-The definitive VPS restore drill, including independent second-operator
-confirmation that production remained unchanged, is still pending. No second
-operator is currently available. Until that drill is completed, RPO/RTO remain
-targets rather than customer-facing, independently witnessed evidence.
+An official drill was completed on 2026-08-15 with two independent operators.
+Evidence is archived outside the VPS in `dr-evidence-2026-08-15/`:
+
+- `dr-drill-2026-08-15T07:53:18Z.json` — drill `status: pass` (wrong-key test +
+  isolated restore), commit `90f7685`.
+- `dr-verification-20260815T075318Z.json` — isolated restore verification
+  `status: pass` (9/9 checks). The restore portion completed in seconds; this is
+  **not** a full application RTO claim, which also covers infrastructure,
+  secrets, services, and DNS.
+- `production-unchanged-attestation.json` — independent second operator
+  (Perry Couprie) confirmed `status: pass` on all six checks; production
+  counts, schema, and uploads were unchanged after the drill.
+
+RPO/RTO remain 6 h / 4 h operational targets. The drill proves the tested
+archive is recoverable and that an isolated restore does not touch production;
+it does not prove end-to-end RTO under a real incident.
+
+## Ownership and Recurrence
+
+- **Owner:** Ivan Versteegh (primary operator); Perry Couprie (independent
+  second operator for attestation).
+- **Recurrence:** run the drill monthly, or after any change to backup, restore,
+  schema, or DR configuration. Archive each drill's three JSON reports outside
+  the VPS after every run.
+- **Alerting:** the scheduled verifier (`osint-backup-verify.timer`, four times
+  daily) catches regressions between drills.
