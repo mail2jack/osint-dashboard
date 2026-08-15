@@ -13,6 +13,7 @@ providing:
 """
 
 import os
+from collections.abc import Callable
 from datetime import timedelta
 
 from flask import Flask
@@ -24,6 +25,47 @@ from .models import db, User
 
 migrate = Migrate()
 csrf = CSRFProtect()
+
+# Fixed id for the cross-worker startup migration lock (PostgreSQL advisory lock).
+ALEMBIC_LOCK_ID = 762710001
+
+
+def _run_schema_upgrade_serialized(fn: Callable[[], None], app: Flask) -> None:
+    """Run a boot-time schema migration under a cross-process lock.
+
+    gunicorn forks N workers that all call create_cms_module() concurrently.
+    Without a lock, concurrent `alembic upgrade` runs deadlock on DDL and
+    leave alembic_version in an inconsistent state. PostgreSQL workers
+    serialize on a session-scoped advisory lock; other databases use an
+    exclusive file lock so a lost lock holder cannot block workers forever.
+    """
+    from sqlalchemy import text
+
+    if db.engine.dialect.name == "postgresql":
+        conn = db.engine.connect()
+        try:
+            conn.execute(
+                text("SELECT pg_advisory_lock(:lock_id)"),
+                {"lock_id": ALEMBIC_LOCK_ID},
+            )
+            fn()
+        finally:
+            conn.execute(
+                text("SELECT pg_advisory_unlock(:lock_id)"),
+                {"lock_id": ALEMBIC_LOCK_ID},
+            )
+            conn.close()
+    else:
+        import fcntl
+
+        os.makedirs(app.instance_path, exist_ok=True)
+        lock_path = os.path.join(app.instance_path, "alembic.lock")
+        with open(lock_path, "w") as lock_file:
+            fcntl.flock(lock_file, fcntl.LOCK_EX)
+            try:
+                fn()
+            finally:
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 
 def create_cms_module(app: Flask):
@@ -125,35 +167,43 @@ def create_cms_module(app: Flask):
             db.session.rollback()
             return {"license_state": None}
 
-    # Schema management via Alembic
+    # Schema management via Alembic — serialized across gunicorn workers so
+    # concurrent `upgrade` calls cannot deadlock on DDL or corrupt the
+    # alembic_version table.
     with app.app_context():
-        from alembic.config import Config
         from alembic import command
+        from alembic.config import Config
+        from sqlalchemy import inspect
 
         alembic_cfg = Config(
             os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
         )
 
-        from sqlalchemy import inspect
+        def _upgrade() -> None:
+            inspector = inspect(db.engine)
+            has_alembic = "alembic_version" in inspector.get_table_names()
+            has_app_tables = bool(
+                [
+                    t
+                    for t in inspector.get_table_names()
+                    if t not in ("alembic_version",)
+                ]
+            )
 
-        inspector = inspect(db.engine)
-        has_alembic = "alembic_version" in inspector.get_table_names()
-        has_app_tables = bool(
-            [t for t in inspector.get_table_names() if t not in ("alembic_version",)]
-        )
+            if has_alembic:
+                # Normal incremental migration path
+                command.upgrade(alembic_cfg, "head")
+            elif has_app_tables:
+                # Existing DB (pre-Alembic) — stamp head without running migrations
+                app.logger.info("Existing DB detected — stamping Alembic head")
+                command.stamp(alembic_cfg, "head")
+            else:
+                # Fresh DB — create all tables from migration
+                command.upgrade(alembic_cfg, "head")
 
-        if has_alembic:
-            # Normal incremental migration path
-            command.upgrade(alembic_cfg, "head")
-        elif has_app_tables:
-            # Existing DB (pre-Alembic) — stamp head without running migrations
-            app.logger.info("Existing DB detected — stamping Alembic head")
-            command.stamp(alembic_cfg, "head")
-        else:
-            # Fresh DB — create all tables from migration
-            command.upgrade(alembic_cfg, "head")
+        _run_schema_upgrade_serialized(_upgrade, app)
 
-            # All schema migrations are now managed by Alembic.
+        # All schema migrations are now managed by Alembic.
         # See migrations/versions/ for the current schema revision.
 
         # Startup data migrations run outside a request, so establish a trusted
