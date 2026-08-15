@@ -65,13 +65,21 @@ def _run_dork_search(domain, name_for_dork, subject_id, icon, extra_domains=None
 
 
 def _make_add_api_finding(
-    findings, seen_urls, platform_name, source_type, icon, subject_id
+    findings,
+    seen_urls,
+    platform_name,
+    source_type,
+    icon,
+    subject_id,
+    credit_action_type=None,
 ):
     def add_api_finding(name, url, detail=""):
         if url and url in seen_urls:
             return
         if url:
             seen_urls.add(url)
+        if credit_action_type:
+            _use_credit(credit_action_type)
         findings.append(
             {
                 "title": f"{platform_name}: {name}",
@@ -105,11 +113,17 @@ def _facebook_check(action):
         "facebook.com", name_for_dork, subject_id, icon="📘"
     )
     add_api_finding = _make_add_api_finding(
-        findings, seen_urls, "Facebook", "facebook", "📘", subject_id
+        findings,
+        seen_urls,
+        "Facebook",
+        "facebook",
+        "📘",
+        subject_id,
+        credit_action_type="facebook",
     )
 
     api_key = _get_api_key("rapidapi_username_key")
-    if not api_key:
+    if not api_key or not _has_credits("facebook"):
         return findings
 
     is_url = query.startswith("http://") or query.startswith("https://")

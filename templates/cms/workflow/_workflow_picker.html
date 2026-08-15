@@ -412,6 +412,7 @@ function showDorkVariableForm(dork, mode) {
         '<div id="dork-preview-box" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;padding:0.6rem 0.75rem;margin-top:0.75rem;font-family:monospace;font-size:0.82rem;color:var(--text-primary);word-break:break-all;"></div>' +
         '<div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.75rem;">' +
           '<button class="action-btn" data-action="dork-back" style="background:var(--border-color);color:var(--text-primary);">← Back</button>' +
+          '<button class="action-btn" id="dork-browser-btn" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color);">🔗 Open in browser (proposal)</button>' +
           (mode === 'proposal'
             ? '<button class="action-btn" id="dork-propose-btn" style="background:#1877f2;color:#fff;font-weight:600;">📌 Save as proposal</button>'
             : '<button class="action-btn" id="dork-confirm-btn" style="background:#1877f2;color:#fff;font-weight:600;">Run search</button>') +
@@ -446,6 +447,10 @@ function showDorkVariableForm(dork, mode) {
       vars[inp.dataset.var] = inp.value.trim();
     });
     var payload = JSON.stringify({dork_id: dork.id, dork_label: dork.label, query: q, variables: vars});
+    if (btnMode === 'browser') {
+      runAction('browser_search', payload, '', 'proposal');
+      return;
+    }
     runAction('google_dork', payload, '', btnMode);
   }
 
@@ -453,6 +458,8 @@ function showDorkVariableForm(dork, mode) {
   if (confirmBtn) confirmBtn.onclick = function() { finishDork('run'); };
   var proposeBtn = overlay.querySelector('#dork-propose-btn');
   if (proposeBtn) proposeBtn.onclick = function() { finishDork('proposal'); };
+  var browserBtn = overlay.querySelector('#dork-browser-btn');
+  if (browserBtn) browserBtn.onclick = function() { finishDork('browser'); };
 
   var firstInput = overlay.querySelector('.dork-var-input');
   if (firstInput) firstInput.focus();

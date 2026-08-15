@@ -269,3 +269,79 @@ def _google_dork_search(action):
         )
 
     return findings
+
+
+def _compose_browser_urls(query):
+    """Build per-engine browser search URLs for a composed query.
+
+    Used by ``browser_search``: the investigator opens the resulting link in
+    their own browser — there is no automated browser and no bulk querying.
+    """
+    from urllib.parse import quote
+
+    q = str(query or "").strip()
+    if not q:
+        return {}
+    return {
+        "google": f"https://www.google.com/search?q={quote(q)}",
+        "bing": f"https://www.bing.com/search?q={quote(q)}",
+        "duckduckgo": f"https://duckduckgo.com/?q={quote(q)}",
+    }
+
+
+def _browser_search(action):
+    """Compose an open-in-browser search as a proposal the investigator starts.
+
+    Mirrors the dork payload shape ({dork_id, dork_label, query, variables}) so
+    the dork picker can offer 'Open in browser' directly. Starting the action
+    only records the composed engine links as findings — no automation.
+    """
+    raw_value = action.data_value if action.data_value else None
+    subject = _action_subject(action)
+    subject_id = subject.id if subject else None
+    query = raw_value
+    dork_label = ""
+    dork_id = ""
+    if raw_value:
+        try:
+            payload = json.loads(raw_value)
+            if isinstance(payload, dict) and payload.get("query"):
+                query = payload["query"]
+                dork_label = payload.get("dork_label", "")
+                dork_id = payload.get("dork_id", "")
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    urls = _compose_browser_urls(query)
+    if not urls:
+        return []
+
+    engine_labels = {
+        "google": "Google",
+        "bing": "Bing",
+        "duckduckgo": "DuckDuckGo",
+    }
+    findings = []
+    for engine, url in urls.items():
+        prefix = f"[{dork_label}] " if dork_label else ""
+        title = f"Browser search — {prefix}{engine_labels[engine]}: {str(query)[:80]}"
+        detail = (
+            f"Composed browser query for manual review (ADR-0001 D1.6).\n"
+            f"Dork: {dork_label or '-'} ({dork_id or '-'})\n"
+            f"Query: {query}\n"
+            f"Engine: {engine_labels[engine]}\n"
+            f"Open the link in your own browser to run the search: {url}"
+        )
+        findings.append(
+            {
+                "title": title,
+                "detail": detail,
+                "source_url": url,
+                "source_type": "browser_search",
+                "icon": "🔗",
+                "verified": False,
+                "subject_id": subject_id,
+                "screenshots": [{"url": None, "source_url": url}],
+            }
+        )
+    return findings

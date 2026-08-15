@@ -7,7 +7,11 @@ from cms.workflow.actions.address_action import _address_check
 from cms.workflow.actions.social_action import _social_scan
 from cms.workflow.actions.company_action import _kvk_check
 from cms.workflow.actions.vehicle_action import _rdw_check, _vessel_check
-from cms.workflow.actions.osint_action import _osint_deep_search, _google_dork_search
+from cms.workflow.actions.osint_action import (
+    _osint_deep_search,
+    _google_dork_search,
+    _browser_search,
+)
 from cms.workflow.actions.platform_action import (
     _facebook_check,
     _instagram_check,
@@ -58,6 +62,7 @@ register_action(
     "📘",
     _facebook_check,
     "Searches for public Facebook profiles, pages, and posts by name. Returns profile photo, bio, and public interactions.",
+    cost_label="~€0.25 / lookup",
 )
 register_action(
     "instagram",
@@ -65,6 +70,7 @@ register_action(
     "📸",
     _instagram_check,
     "Searches Instagram for public profiles and posts. Finds username, profile photo, biography, and recent posts.",
+    cost_label="~€0.25 / lookup",
 )
 register_action(
     "tiktok",
@@ -72,6 +78,7 @@ register_action(
     "🎵",
     _tiktok_check,
     "Searches for public TikTok profiles and content. Returns username, avatar, bio, and video data. (50 credits)",
+    cost_label="~€0.25 / lookup",
 )
 register_action(
     "linkedin",
@@ -79,6 +86,7 @@ register_action(
     "💼",
     _linkedin_check,
     "Searches for public LinkedIn profiles by name. Finds work experience, education, location, and network size. (50 credits)",
+    cost_label="~€1.00 / lookup",
 )
 register_action(
     "twitter",
@@ -86,6 +94,7 @@ register_action(
     "🐦",
     _twitter_check,
     "Searches X/Twitter for public profiles and posts. Returns username, bio, followers, and recent tweets. (1000 credits)",
+    cost_label="~€1.00 / lookup",
 )
 register_action(
     "kvk",
@@ -143,6 +152,16 @@ register_action(
 )
 
 register_action(
+    "browser_search",
+    "Browser search",
+    "🔗",
+    _browser_search,
+    "Composes an open-in-browser search query (Google, Bing, DuckDuckGo) as a proposal "
+    "the investigator starts manually. No silent browser automation and no bulk queries — "
+    "the composed links are recorded and opened in your own browser.",
+)
+
+register_action(
     "manual_entry",
     "Manual entry",
     "📝",
@@ -160,7 +179,8 @@ register_action(
     "Includes AI geolocation fallback when no GPS data is found.",
 )
 
-# Channel categories (ADR-0001 PR5): paid channels require explicit opt-in and
+# Channel categories (ADR-0001 PR5/D1.6): paid channels require explicit
+# opt-in behind a per-tenant FeatureFlag (paid_channels, off by default) and
 # are never proposed by default; local/open actions are the default research
 # path and ready as proposals.
 _PAID = {"facebook", "instagram", "tiktok", "linkedin", "twitter"}

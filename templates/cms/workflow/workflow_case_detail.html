@@ -358,24 +358,34 @@ input:-webkit-autofill:focus {
     <div class="action-grid">
       {% for key, info in action_types.items() %}
       {% set rem = action_credits.get(key, 0) if action_credits else 0 %}
-      {% set limits = {'tiktok': 50, 'instagram': 10, 'linkedin': 50, 'twitter': 1000} %}
+      {% set limits = {'tiktok': 50, 'instagram': 10, 'linkedin': 50, 'twitter': 1000, 'facebook': 30} %}
       {% set limit = limits.get(key, 0) %}
-      <div class="action-btn" data-action="run-action" data-action-key="{{ key }}" data-icon="{{ info.icon }}" data-label="{{ info.label }}" data-category="{{ info.category }}"{% if limit > 0 %} data-credits="{{ rem }}" data-credit-limit="{{ limit }}"{% endif %} title="{{ info.description }}">
+      {% set is_paid = info.category == 'paid' %}
+      {% set paid_locked = is_paid and not paid_enabled %}
+      <div class="action-btn" data-action="run-action" data-action-key="{{ key }}" data-icon="{{ info.icon }}" data-label="{{ info.label }}" data-category="{{ info.category }}"{% if limit > 0 %} data-credits="{{ rem }}" data-credit-limit="{{ limit }}"{% endif %}{% if paid_locked %} data-paid-locked="1"{% endif %} title="{{ info.description }}">
         <div class="icon">{{ info.icon }}</div>
         <div class="label">{{ info.label }}</div>
-        {% if info.category == 'paid' %}
-        <span class="cat-badge cat-paid" title="Paid channel — requires explicit opt-in">💰</span>
+        {% if is_paid %}
+        <span class="cat-badge cat-paid" title="Paid channel — off by default, enabled per tenant (Feature Flags)">💰</span>
         {% elif info.category == 'local' %}
         <span class="cat-badge cat-local" title="Local analysis">🖥️</span>
         {% else %}
         <span class="cat-badge cat-open" title="Open/public source">🌐</span>
         {% endif %}
-        <div class="desc">{{ info.label }} run{% if limit > 0 and rem <= 5 and rem > 0 %} — {{ rem }}/{{ limit }} credits left{% elif limit > 0 and rem == 0 %} — 🚫 exhausted{% endif %}</div>
+        {% if is_paid and info.cost_label %}
+        <div class="cost-label" title="Estimated cost per lookup">💰 {{ info.cost_label }}</div>
+        {% endif %}
+        <div class="desc">{{ info.label }} run{% if limit > 0 and rem <= 5 and rem > 0 %} — {{ rem }}/{{ limit }} credits left{% elif limit > 0 and rem == 0 %} — 🚫 exhausted{% endif %}{% if paid_locked %} — 🔒 disabled{% endif %}</div>
         {% if limit > 0 %}
         <span class="credit-badge" style="position:absolute;top:-4px;right:-4px;background:{% if rem == 0 %}#ef4444{% elif rem <= 5 %}#f59e0b{% else %}#22c55e{% endif %};color:#fff;font-size:0.65rem;font-weight:700;padding:1px 5px;border-radius:8px;line-height:1.4;">{{ rem }}/{{ limit }}</span>
         {% endif %}
+        {% if paid_locked %}
+        <span class="cat-badge cat-paid" title="Paid channels disabled for this tenant — a super-admin must enable them via Feature Flags">🔒</span>
+        {% endif %}
         <button type="button" class="action-cancel" data-action="cancel-action" data-action-key="{{ key }}" title="Cancel" style="display:none;">✕</button>
+        {% if not paid_locked %}
         <button type="button" class="action-propose" data-action="propose-action" data-action-key="{{ key }}" title="Save as proposal (start later)">📌</button>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

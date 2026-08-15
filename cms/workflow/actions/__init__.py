@@ -14,6 +14,9 @@ from .registry import (  # noqa: F401
     is_action_cancelled,
     run_action,
     start_action_async,
+    action_category,
+    is_paid_action,
+    paid_channels_enabled,
 )
 from .helpers import (  # noqa: F401
     _get_api_key,
@@ -32,6 +35,8 @@ from .vehicle_action import _rdw_check, _vessel_check  # noqa: F401
 from .osint_action import (  # noqa: F401
     _osint_deep_search,
     _google_dork_search,
+    _browser_search,
+    _compose_browser_urls,
     _strip_dork_syntax,
     _is_junk_url,
     _JUNK_DOMAINS,
@@ -65,6 +70,9 @@ __all__ = [
     "is_action_cancelled",
     "run_action",
     "start_action_async",
+    "action_category",
+    "is_paid_action",
+    "paid_channels_enabled",
     "_get_api_key",
     "_action_subject",
     "_site_dork_search",
@@ -80,6 +88,8 @@ __all__ = [
     "_vessel_check",
     "_osint_deep_search",
     "_google_dork_search",
+    "_browser_search",
+    "_compose_browser_urls",
     "_strip_dork_syntax",
     "_is_junk_url",
     "_JUNK_DOMAINS",

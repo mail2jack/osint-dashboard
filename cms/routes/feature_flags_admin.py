@@ -13,9 +13,24 @@ FEATURE_FLAG_NAMES = {
     "ai": "🤖 AI Summarization",
     "spiderfoot": "🕷️ SpiderFoot OSINT",
     "api_keys": "🔑 API Key Access",
+    "paid_channels": "💰 Paid Channels",
 }
 
-FEATURE_FLAG_ORDER = ["export", "ai", "spiderfoot", "api_keys"]
+FEATURE_FLAG_ORDER = ["export", "ai", "spiderfoot", "api_keys", "paid_channels"]
+
+
+def _flag_tier_default(flag_name: str, tenant) -> bool:
+    """The tier default a flag resolves to without a super-admin override.
+
+    ``paid_channels`` is off by default for every tier (ADR-0001 D1.6);
+    the tier flags use their plan default.
+    """
+    if flag_name == "paid_channels":
+        return False
+    tier_default = tenant.tier in ("professional", "enterprise")
+    if flag_name == "export":
+        tier_default = tenant.tier in ("starter", "professional", "enterprise")
+    return tier_default
 
 
 @cms_bp.route("/admin/feature-flags")
@@ -77,9 +92,7 @@ def admin_feature_flag_toggle():
         tenant_id=tenant_id, flag_name=flag_name
     ).first()
 
-    tier_default = tenant.tier in ("professional", "enterprise")
-    if flag_name == "export":
-        tier_default = tenant.tier in ("starter", "professional", "enterprise")
+    tier_default = _flag_tier_default(flag_name, tenant)
 
     if enabled == tier_default:
         # Matches tier default — remove the override
