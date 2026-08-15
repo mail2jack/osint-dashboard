@@ -34,11 +34,12 @@ def upgrade() -> None:
 
     # Backfill the lifecycle for existing findings: verified rows keep their
     # last-updated timestamp as verification moment, everything else is a
-    # candidate.
+    # candidate. The bare `WHERE verified` predicate is dialect-agnostic
+    # (BOOLEAN on PostgreSQL, truthy integer on SQLite).
     op.execute(
         "UPDATE findings SET status = 'verified', "
         "verified_at = COALESCE(updated_at, created_at) "
-        "WHERE verified = 1 AND status IS NULL"
+        "WHERE verified AND status IS NULL"
     )
     op.execute("UPDATE findings SET status = 'candidate' WHERE status IS NULL")
 
