@@ -528,11 +528,9 @@ class Client(db.Model):
     ]
 
     def encrypt_naw(self) -> None:
-        """Encrypt all NAW fields before saving."""
+        """Encrypt all NAW fields before saving (idempotent)."""
         for field in self.ENCRYPTED_FIELDS:
-            value = getattr(self, field)
-            if value:
-                setattr(self, field, encryptor.encrypt(value))
+            setattr(self, field, _encrypt_if_plaintext(getattr(self, field)))
 
     def decrypt_naw(self) -> None:
         """Decrypt all NAW fields for display."""
@@ -1113,10 +1111,15 @@ class Subject(db.Model):
     ]
 
     def encrypt_identifiers(self) -> None:
+        """Encrypt any plaintext encrypted fields.
+
+        Idempotent: values that are already valid ciphertext are left alone,
+        so calling this after an in-place ``decrypt_identifiers()`` re-encrypts
+        only the fields that were actually decrypted. Values that look like
+        corrupt Fernet tokens are preserved untouched.
+        """
         for field in self.ENCRYPTED_FIELDS:
-            value = getattr(self, field)
-            if value:
-                setattr(self, field, encryptor.encrypt(value))
+            setattr(self, field, _encrypt_if_plaintext(getattr(self, field)))
 
     def decrypt_identifiers(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
@@ -1322,9 +1325,7 @@ class Address(db.Model):
 
     def encrypt_fields(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
-            value = getattr(self, field)
-            if value:
-                setattr(self, field, encryptor.encrypt(value))
+            setattr(self, field, _encrypt_if_plaintext(getattr(self, field)))
 
     def decrypt_fields(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
@@ -1440,9 +1441,7 @@ class Contact(db.Model):
 
     def encrypt_fields(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
-            value = getattr(self, field)
-            if value:
-                setattr(self, field, encryptor.encrypt(value))
+            setattr(self, field, _encrypt_if_plaintext(getattr(self, field)))
 
     def decrypt_fields(self) -> None:
         for field in self.ENCRYPTED_FIELDS:
@@ -1546,11 +1545,9 @@ class FinancialRecord(db.Model):
     ]
 
     def encrypt_details(self) -> None:
-        """Encrypt counterparty information."""
+        """Encrypt counterparty information (idempotent)."""
         for field in self.ENCRYPTED_FIELDS:
-            value = getattr(self, field)
-            if value:
-                setattr(self, field, encryptor.encrypt(value))
+            setattr(self, field, _encrypt_if_plaintext(getattr(self, field)))
 
     def decrypt_details(self) -> None:
         """Decrypt counterparty information for display."""
@@ -3622,6 +3619,28 @@ class SpiderFootScan(db.Model):
 logger = logging.getLogger(__name__)
 
 
+def _encrypt_if_plaintext(value):
+    """Return ``value`` unchanged unless it is clear plaintext.
+
+    Idempotent: values that already decrypt as valid ciphertext are left
+    alone, and values that look like corrupt Fernet tokens (``gAAAA`` prefix
+    that fails to decrypt) are preserved untouched. Only values that clearly
+    fail decryption and do not carry the Fernet marker are encrypted, so a
+    partial/in-memory decrypt that later hits a commit can never persist
+    plaintext and never mangles unrecognized values.
+    """
+    if not value or not isinstance(value, str):
+        return value
+    try:
+        encryptor.decrypt(value)
+        return value
+    except Exception:
+        pass
+    if value.startswith("gAAAA"):
+        return value
+    return encryptor.encrypt(value)
+
+
 class OsintSearch(db.Model):
     """DB-backed OSINT search state — survives gunicorn worker restarts and multi-worker setups."""
 
@@ -4258,7 +4277,11 @@ _TENANT_MODELS = [
 
 
 def _fill_tenant_id(mapper, connection, target):
-    """Auto-fill tenant_id from flask.g or the owning user when a new row is inserted."""
+    """Auto-fill tenant_id from flask.g or the owning user when a new row is inserted.
+
+    Fails closed: when no tenant can be resolved the insert raises instead of
+    silently attributing the row to an arbitrary tenant (e.g. the first admin).
+    """
     if hasattr(target, "tenant_id") and target.tenant_id is None:
         from flask import g as _g
 
@@ -4273,12 +4296,10 @@ def _fill_tenant_id(mapper, connection, target):
             except Exception:
                 pass
         if not tid:
-            try:
-                _admin = User.query.filter_by(role="admin").first()
-                if _admin and _admin.tenant_id:
-                    tid = _admin.tenant_id
-            except Exception:
-                pass
+            raise ValueError(
+                f"Cannot determine tenant_id for new {target.__class__.__name__}: "
+                "set tenant_id explicitly or set the tenant context before inserting"
+            )
         if tid:
             try:
                 from flask import g as _g2
@@ -4313,3 +4334,46 @@ def _stamp_integrity_hash(_mapper, _connection, target):
 from sqlalchemy import event as _event
 
 _event.listen(Finding, "before_insert", _stamp_integrity_hash)
+
+
+_ENCRYPT_METHODS = (
+    "encrypt_identifiers",
+    "encrypt_naw",
+    "encrypt_details",
+    "encrypt_fields",
+)
+
+
+def _reencrypt_plaintext_at_flush(_session, _flush_context, _instances):
+    """Fail-closed guard against plaintext at rest.
+
+    Read paths legitimately decrypt in place (``decrypt_identifiers``,
+    ``decrypt_naw``, ``decrypt_fields``, ``decrypt_details``) to render
+    templates/JSON, and later commits — e.g. the ``audit_read`` decorator's
+    ``db.session.commit()`` — would otherwise flush those decrypted values back
+    to the database. Any entity carrying ENCRYPTED_FIELDS that is dirty at
+    flush time is re-encrypted through the (idempotent) encrypt methods, so a
+    GET view can never persist plaintext. Errors propagate: encryption must not
+    silently degrade into a plaintext write.
+
+    Render paths must not re-query dynamic relationships (``subject.addresses``
+    etc.) after decrypting: the SELECT autoflushes and the guard re-encrypts
+    mid-render, which shows ciphertext. Such paths wrap the decrypt+render in
+    ``db.session.no_autoflush()`` so templates read the in-memory decrypted
+    instances and the guard still fires on the final commit.
+    """
+    for obj in list(_session.new) + list(_session.dirty):
+        method = next((m for m in _ENCRYPT_METHODS if hasattr(obj, m)), None)
+        if method is None:
+            continue
+        fields = getattr(type(obj), "ENCRYPTED_FIELDS", ())
+        if not fields:
+            continue
+        if not any(getattr(obj, f, None) for f in fields):
+            continue
+        getattr(obj, method)()
+
+
+from sqlalchemy import event as _session_event
+
+_session_event.listen(db.session, "before_flush", _reencrypt_plaintext_at_flush)

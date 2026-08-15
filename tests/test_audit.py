@@ -73,6 +73,13 @@ class TestAuditLogFiltering:
 
 
 class TestAuditLogPurge:
+    @staticmethod
+    def _tenant():
+        from cms.models import User
+
+        admin = User.query.filter_by(username="admin").first()
+        return admin.tenant_id if admin else None
+
     def test_purge_old_deletes_expired(self, app, db_session):
         from cms.models import AuditLog
 
@@ -84,6 +91,7 @@ class TestAuditLogPurge:
                 entity_type="case",
                 entity_id="old-id",
                 ip_address="127.0.0.1",
+                tenant_id=self._tenant(),
             )
             entry = AuditLog.query.filter_by(entity_id="old-id").first()
             entry.timestamp = old_time
@@ -103,6 +111,7 @@ class TestAuditLogPurge:
                 entity_type="case",
                 entity_id="recent-id",
                 ip_address="127.0.0.1",
+                tenant_id=self._tenant(),
             )
             db_session.commit()
             count = AuditLog.purge_old(days=365)
@@ -121,6 +130,7 @@ class TestAuditLogPurge:
                 entity_type="case",
                 entity_id="nocommit",
                 ip_address="127.0.0.1",
+                tenant_id=self._tenant(),
             )
             count = AuditLog.purge_old(days=365)
             assert count >= 0
@@ -137,6 +147,7 @@ class TestAuditLogPurge:
                 entity_type="case",
                 entity_id="setting-old",
                 ip_address="127.0.0.1",
+                tenant_id=self._tenant(),
             )
             entry = AuditLog.query.filter_by(entity_id="setting-old").first()
             entry.timestamp = old_time

@@ -138,9 +138,12 @@ class ProfileRelationSchema(BaseModel):
 def profile_update_subject(subject_id: str) -> flask.Response:
     """Update base subject fields (Overview/Identity/Financial tabs)."""
     subject = _get_subject(subject_id)
-    changes = subject_service.edit(
-        subject, request.validated_data, actor_id=current_user.id
-    )
+    try:
+        changes = subject_service.edit(
+            subject, request.validated_data, actor_id=current_user.id
+        )
+    except ValueError as e:
+        return api_error(str(e), 400)
     _audit(
         "subject",
         subject_id,

@@ -434,6 +434,30 @@ def ensure_case_access(case) -> None:
         abort(403)
 
 
+def ensure_subject_for_case(subject_id, case):
+    """Validate a ``subject_id`` against a case; return the subject or ``None``.
+
+    When ``subject_id`` is falsy (case-wide findings) ``None`` is returned.
+    Otherwise the subject must exist (404), belong to the case's tenant (403)
+    and be linked to the case (400). Aborts with the matching HTTP code.
+    """
+    if not subject_id:
+        return None
+    subject = db.session.get(Subject, subject_id)
+    if not subject:
+        abort(404)
+    ensure_tenant_access(subject)
+    if subject.tenant_id != case.tenant_id:
+        logger.warning(
+            f"Tenant mismatch: subject {subject.id} (tenant={subject.tenant_id}) "
+            f"vs case {case.id} (tenant={case.tenant_id})"
+        )
+        abort(403)
+    if subject not in case.subjects.all():
+        abort(400)
+    return subject
+
+
 def subject_access_required(f: Callable) -> Callable:
     """
     Decorator to check subject-level access.
@@ -529,7 +553,14 @@ def audit_read(entity_type: str) -> Callable:
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         def decorated_function(*args, **kwargs):
-            response = f(*args, **kwargs)
+            # Render with autoflush off: read views decrypt identifiers in
+            # place for display, and a template relationship re-query (e.g.
+            # ``subject.addresses``) would otherwise autoflush and the
+            # before_flush guard would re-encrypt mid-render, showing
+            # ciphertext. The commit below still flushes, so the guard
+            # re-encrypts before anything is persisted.
+            with db.session.no_autoflush:
+                response = f(*args, **kwargs)
 
             if current_user.is_authenticated:
                 entity_id = None

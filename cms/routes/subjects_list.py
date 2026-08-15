@@ -240,7 +240,7 @@ def view_subject(subject_id: str) -> str:
     findings_page = request.args.get("findings_page", 1, type=int)
     findings_per_page = 20
     findings_pagination = (
-        subject.findings.filter_by(is_deleted=False)
+        subject.findings.filter_by(is_deleted=False, archived_at=None)
         .order_by(Finding.created_at.desc())
         .paginate(page=findings_page, per_page=findings_per_page, error_out=False)
     )

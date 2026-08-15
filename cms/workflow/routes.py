@@ -342,35 +342,39 @@ def client_lookup():
         client = db.session.get(CmsClient, cid)
         if not client:
             continue
-        client.decrypt_naw()
-        raw = client.to_dict(decrypted=True)
-        # Also search by contact person
-        contact = raw.get("contact_person", "") or ""
-        contact_score = 0
-        if contact and q.lower() in contact.lower():
-            contact_score = 90
-        results.append(
-            {
-                "id": client.id,
-                "name": client.name,
-                "contact_person": contact,
-                "contact_email": raw.get("contact_email", ""),
-                "contact_phone": raw.get("contact_phone", ""),
-                "address": raw.get("address", {}),
-                "contract_number": raw.get("contract_number", ""),
-                "contract_info": raw.get("contract_info", ""),
-                "vat_number": client.vat_number or "",
-                "bank_account": client.bank_account or "",
-                "financial_notes": client.financial_notes or "",
-                "score": max(
-                    next(
-                        (s["similarity"] for s in similar if s["id"] == client.id),
-                        100 if exact and exact["id"] == client.id else 0,
+        # Build inside no_autoflush: to_dict()'s contacts relationship load
+        # would autoflush and re-encrypt the freshly decrypted client, turning
+        # the bank_account/financial_notes reads below into ciphertext.
+        with db.session.no_autoflush:
+            client.decrypt_naw()
+            raw = client.to_dict(decrypted=True)
+            # Also search by contact person
+            contact = raw.get("contact_person", "") or ""
+            contact_score = 0
+            if contact and q.lower() in contact.lower():
+                contact_score = 90
+            results.append(
+                {
+                    "id": client.id,
+                    "name": client.name,
+                    "contact_person": contact,
+                    "contact_email": raw.get("contact_email", ""),
+                    "contact_phone": raw.get("contact_phone", ""),
+                    "address": raw.get("address", {}),
+                    "contract_number": raw.get("contract_number", ""),
+                    "contract_info": raw.get("contract_info", ""),
+                    "vat_number": client.vat_number or "",
+                    "bank_account": client.bank_account or "",
+                    "financial_notes": client.financial_notes or "",
+                    "score": max(
+                        next(
+                            (s["similarity"] for s in similar if s["id"] == client.id),
+                            100 if exact and exact["id"] == client.id else 0,
+                        ),
+                        contact_score,
                     ),
-                    contact_score,
-                ),
-            }
-        )
+                }
+            )
 
     results.sort(key=lambda r: r["score"], reverse=True)
     return jsonify({"results": results[:10]})
@@ -596,37 +600,42 @@ def case_detail(case_id):
         finding_actions.setdefault(link.finding_id, []).append(link.action_id)
 
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
-    if client:
-        client.decrypt_naw()
-    subjects = list(case.subjects)
-    for s in subjects:
-        s.decrypt_identifiers()
-    subjects_data = [
-        {
-            "id": s.id,
-            "name": s.name,
-            "subject_type": s.subject_type,
-            "email": s.email,
-            "phone": s.phone,
-            "date_of_birth": s.date_of_birth,
-            "place_of_birth": s.place_of_birth,
-            "nationality": s.nationality,
-            "bank_account": s.bank_account,
-            "street": s.street,
-            "house_number": s.house_number,
-            "house_number_addition": s.house_number_addition,
-            "postal_code": s.postal_code,
-            "city": s.city,
-            "workflow_social_accounts": s.workflow_social_accounts,
-            "identification_number": s.identification_number,
-            "imo_number": s.imo_number,
-            "mmsi": s.mmsi,
-            "eni_number": s.eni_number,
-            "vessel_nationality": s.vessel_nationality,
-        }
-        for s in subjects
-        if s
-    ]
+    with db.session.no_autoflush:
+        if client:
+            client.decrypt_naw()
+        subjects = list(case.subjects)
+        for s in subjects:
+            s.decrypt_identifiers()
+        # Build inside no_autoflush: ``workflow_social_accounts`` below lazily
+        # SELECTs; an autoflush there would re-encrypt the freshly decrypted
+        # identifiers before the later fields (identification_number, ...) are
+        # read, returning ciphertext in this response.
+        subjects_data = [
+            {
+                "id": s.id,
+                "name": s.name,
+                "subject_type": s.subject_type,
+                "email": s.email,
+                "phone": s.phone,
+                "date_of_birth": s.date_of_birth,
+                "place_of_birth": s.place_of_birth,
+                "nationality": s.nationality,
+                "bank_account": s.bank_account,
+                "street": s.street,
+                "house_number": s.house_number,
+                "house_number_addition": s.house_number_addition,
+                "postal_code": s.postal_code,
+                "city": s.city,
+                "workflow_social_accounts": s.workflow_social_accounts,
+                "identification_number": s.identification_number,
+                "imo_number": s.imo_number,
+                "mmsi": s.mmsi,
+                "eni_number": s.eni_number,
+                "vessel_nationality": s.vessel_nationality,
+            }
+            for s in subjects
+            if s
+        ]
     brave_health = _get_cached_health().get("brave", "no key configured")
     action_credits = {}
     for key in ACTION_REGISTRY:
@@ -669,13 +678,20 @@ def case_edit(case_id):
     ensure_case_access(case)
 
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
-    if client:
-        client.decrypt_naw()
     subjects = list(case.subjects)
-    for s in subjects:
-        s.decrypt_identifiers()
+    # Decrypt only for the GET render. The POST branch edits + commits the same
+    # subject ORM objects; decrypting them in-place here would persist plaintext.
+    if request.method == "GET":
+        if client:
+            client.decrypt_naw()
+        for s in subjects:
+            s.decrypt_identifiers()
 
     if request.method == "POST":
+        # Client NAW fields are safe to decrypt: encrypt_naw() below re-encrypts
+        # every field after the form mutations, before the commit.
+        if client:
+            client.decrypt_naw()
         # update client
         if client:
             client.name = request.form.get("client_name", client.name)
@@ -721,17 +737,22 @@ def case_edit(case_id):
             removed_ids = set()
 
         # process existing subjects
-        for sid in list(keep_ids):
-            if not sid:
-                continue
-            subj = db.session.get(WorkflowSubject, sid)
-            if not subj:
-                continue
-            subject_service.edit(
-                subj,
-                _wf_subject_data(f"subj_{sid}", fallback_type=subj.subject_type),
-                actor_id=current_user.id,
-            )
+        try:
+            for sid in list(keep_ids):
+                if not sid:
+                    continue
+                subj = db.session.get(WorkflowSubject, sid)
+                if not subj:
+                    continue
+                subject_service.edit(
+                    subj,
+                    _wf_subject_data(f"subj_{sid}", fallback_type=subj.subject_type),
+                    actor_id=current_user.id,
+                )
+        except ValueError as e:
+            db.session.rollback()
+            flash(str(e), "danger")
+            return redirect(url_for("workflow.case_edit", case_id=case_id))
 
         # process new subjects
         n = 0

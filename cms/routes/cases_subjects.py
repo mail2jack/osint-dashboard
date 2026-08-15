@@ -25,11 +25,13 @@ logger = logging.getLogger(__name__)
 @roles_required(
     "admin", "owner", "senior_investigator", "investigator", "junior_investigator"
 )
+@case_access_required
 @case_edit_required
 @validate(AddSubjectToCaseSchema)
 def add_subject_to_case(case_id: str) -> flask.Response:
     """Add an existing subject to a case."""
     case = db.session.get(Case, case_id) or abort(404)
+    ensure_tenant_access(case)
     data = request.validated_data
 
     subject_id = data.get("subject_id")
@@ -138,10 +140,12 @@ def bulk_add_subjects_to_case(case_id: str) -> flask.Response:
 @cms_bp.route("/cases/<case_id>/remove-subject/<subject_id>", methods=["POST"])
 @login_required
 @roles_required("admin", "owner", "senior_investigator")
+@case_access_required
 @case_edit_required
 def remove_subject_from_case(case_id: str, subject_id: str) -> flask.Response:
     """Remove a subject from a case."""
     case = db.session.get(Case, case_id) or abort(404)
+    ensure_tenant_access(case)
     subject = db.session.get(Subject, subject_id) or abort(404)
     ensure_tenant_access(subject)
 

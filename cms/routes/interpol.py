@@ -13,7 +13,7 @@ from .. import csrf
 from ..models import db, Case, Finding, AuditLog
 from ..validation import validate, CheckPolicieDataSchema, InterpolFindingSchema
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
-from ..auth import ensure_tenant_access
+from ..auth import ensure_subject_for_case, ensure_tenant_access
 from ..api_key_auth import api_key_required
 from ..feature_flags import tool_enabled
 from curl_cffi.requests import Session
@@ -376,6 +376,9 @@ def create_findings_from_interpol() -> flask.Response:
     if not case:
         return api_error("Case not found", 404)
     ensure_tenant_access(case)
+
+    subject = ensure_subject_for_case(subject_id, case)
+    subject_id = subject.id if subject else None
 
     created = []
     for p in wanted:

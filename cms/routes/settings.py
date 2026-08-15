@@ -1584,19 +1584,23 @@ def tenant_export(tenant_id: str) -> flask.Response:
 
         # Subjects
         subjects = Subject.query.filter_by(tenant_id=tenant_id).all()
-        for s in subjects:
-            try:
-                s.decrypt_identifiers()
-            except Exception:
-                logger.warning(
-                    "Failed to decrypt identifiers for subject %s during export",
-                    s.id,
-                    exc_info=True,
-                )
-        zf.writestr(
-            "subjects.json",
-            json.dumps([s.to_dict() for s in subjects], indent=2, default=str),
-        )
+        # Export intentionally carries decrypted identifiers; run with autoflush
+        # off so the to_dict() relationship loads below don't autoflush and
+        # re-encrypt them mid-export.
+        with db.session.no_autoflush:
+            for s in subjects:
+                try:
+                    s.decrypt_identifiers()
+                except Exception:
+                    logger.warning(
+                        "Failed to decrypt identifiers for subject %s during export",
+                        s.id,
+                        exc_info=True,
+                    )
+            zf.writestr(
+                "subjects.json",
+                json.dumps([s.to_dict() for s in subjects], indent=2, default=str),
+            )
 
         # Clients
         clients = Client.query.filter_by(tenant_id=tenant_id).all()

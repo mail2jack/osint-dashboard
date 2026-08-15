@@ -147,13 +147,18 @@ def cancel_action(action_id):
         action.status = "cancelled"
         action.completed_at = datetime.now()
         action.result_summary = "Cancelled"
+        # Soft-delete the produced findings instead of hard-deleting them: the
+        # evidence (screenshots, links, integrity hashes) must survive for
+        # audit/integrity purposes. Soft-deleted findings are filtered out of
+        # every list view.
         links = WorkflowActionFinding.query.filter_by(action_id=action_id).all()
         if links:
             finding_ids = [link.finding_id for link in links]
-            WorkflowFinding.query.filter(
+            findings = WorkflowFinding.query.filter(
                 WorkflowFinding.id.in_(finding_ids),
-            ).delete(synchronize_session=False)
-            WorkflowActionFinding.query.filter_by(action_id=action_id).delete()
+            ).all()
+            for finding in findings:
+                finding.soft_delete()
         db.session.commit()
 
 
@@ -169,6 +174,14 @@ def run_action(action_id):
         action = db.session.get(WorkflowResearchAction, action_id)
         if not action:
             return
+
+        # Workers run outside a request context, so there is no flask.g tenant
+        # to scope inserts. Set the RLS context explicitly and use the action's
+        # tenant for every row created below.
+        from cms.tenant_context import set_tenant_context
+
+        tenant_id = action.tenant_id
+        set_tenant_context(db, tenant_id)
 
         # ADR-0001 D1.6: paid channels are off by default behind explicit tenant
         # config. Re-checked at execution time so a flag that was switched off
@@ -198,20 +211,40 @@ def run_action(action_id):
             case = db.session.get(WorkflowCase, action.case_id)
             action_creator_id = case.created_by if case else None
 
-        # Decrypt subject identifiers so handlers can read plaintext
-        _case = db.session.get(WorkflowCase, action.case_id)
+        # Decrypt subject identifiers so handlers can read plaintext. Keep
+        # autoflush off across the handler: a handler query (e.g. resolving the
+        # target subject or recording an OSINT call) would otherwise autoflush
+        # and the before_flush guard would re-encrypt the decrypted identifiers
+        # mid-handler.
+        with db.session.no_autoflush:
+            _case = db.session.get(WorkflowCase, action.case_id)
+            if _case:
+                for _s in _case.subjects:
+                    try:
+                        _s.decrypt_identifiers()
+                    except Exception:
+                        logger.debug(
+                            "Failed to decrypt identifiers for subject %s",
+                            _s.id,
+                            exc_info=True,
+                        )
+
+            findings_data = entry["handler"](action)
+
+        # Re-encrypt identifiers the handlers may have decrypted in-place before
+        # any commit. encrypt_identifiers() is idempotent, so untouched fields
+        # stay as-is. Without this the same ORM subjects would be persisted
+        # as plaintext on the commits below.
         if _case:
             for _s in _case.subjects:
                 try:
-                    _s.decrypt_identifiers()
+                    _s.encrypt_identifiers()
                 except Exception:
                     logger.debug(
-                        "Failed to decrypt identifiers for subject %s",
+                        "Failed to re-encrypt identifiers for subject %s",
                         _s.id,
                         exc_info=True,
                     )
-
-        findings_data = entry["handler"](action)
 
         if is_action_cancelled(action_id):
             action.status = "cancelled"
@@ -226,6 +259,7 @@ def run_action(action_id):
             subject_id = fd.get("subject_id")
             finding = WorkflowFinding(
                 id=str(uuid.uuid4()),
+                tenant_id=tenant_id,
                 case_id=action.case_id,
                 subject_id=subject_id,
                 title=fd["title"],
@@ -248,6 +282,7 @@ def run_action(action_id):
             for ss in fd.get("screenshots", []):
                 screenshot = WorkflowScreenshot(
                     id=str(uuid.uuid4()),
+                    tenant_id=tenant_id,
                     finding_id=finding.id,
                     url=ss.get("url"),
                     source_url=ss.get("source_url"),
@@ -267,6 +302,7 @@ def run_action(action_id):
                     db.session.add(
                         SocialAccount(
                             subject_id=subject_id,
+                            tenant_id=tenant_id,
                             platform=sa_data["platform"],
                             username=sa_data["username"],
                             url=sa_data.get("url"),

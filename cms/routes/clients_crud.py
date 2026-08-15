@@ -465,12 +465,17 @@ def edit_client(client_id: str) -> flask.Response:
         flash("Client updated successfully.", "success")
         return redirect(url_for("cms.view_client", client_id=client.id))
 
-    client.decrypt_naw()
-    for c in client.contacts:
-        c.decrypt_fields()
-    for addr in client.addresses:
-        addr.decrypt_fields()
-    return render_template("cms/clients/edit.html", client=client)
+    # Render with autoflush off: the template re-queries client.addresses/
+    # contacts; an autoflush would re-encrypt the freshly decrypted values
+    # mid-render and show ciphertext. The view's commit still flushes, so the
+    # before_flush guard re-encrypts before anything persists.
+    with db.session.no_autoflush:
+        client.decrypt_naw()
+        for c in client.contacts:
+            c.decrypt_fields()
+        for addr in client.addresses:
+            addr.decrypt_fields()
+        return render_template("cms/clients/edit.html", client=client)
 
 
 @cms_bp.route("/clients/<client_id>/delete", methods=["POST"])
