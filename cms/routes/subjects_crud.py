@@ -22,7 +22,7 @@ from ..auth import (
 from .utils import find_similar_subjects, check_for_exact_match
 from ..services.subject_service import subject_service, compute_display_name
 from ..rate_limiting import rate_limit, STRICT_RATE_LIMIT
-from ..tier_limits import check_resource_limit
+from ..tier_limits import check_resource_limit, check_feature
 
 from .response import api_success, api_error
 
@@ -43,6 +43,19 @@ logger = logging.getLogger(__name__)
 @validate(CreateSubjectSchema)
 def create_subject() -> flask.Response:
     """Create a new subject with duplicate detection."""
+    # ADR-0001 rollout: standalone legacy create is gated once a tenant is on
+    # Subject-First. Adds from a workflow case (case_id in query or form) stay
+    # active.
+    case_id = request.args.get("case_id") or request.validated_data.get("case_id")
+    if not case_id and check_feature("subject_first_investigations"):
+        if request.is_json:
+            return api_error("Use the Subject Profile to add a subject.", 403)
+        flash(
+            "Subject-First is enabled for this tenant; add subjects from the Subject Profile.",
+            "info",
+        )
+        return redirect(url_for("cms.subjects"))
+
     if request.method == "POST":
         data = request.validated_data
         if "type_" in data:
@@ -214,6 +227,18 @@ def create_subject() -> flask.Response:
 @validate(EditSubjectSchema)
 def edit_subject(subject_id: str) -> flask.Response:
     """Edit subject details."""
+    # ADR-0001 rollout: once a tenant is on Subject-First, the legacy edit
+    # screen is replaced by the Subject Profile tabs (identity/contact edits
+    # happen there).
+    if check_feature("subject_first_investigations"):
+        if request.is_json:
+            return api_error("Use the subject profile API to edit this subject.", 403)
+        flash(
+            "Subject details are edited on the Subject Profile.",
+            "info",
+        )
+        return redirect(url_for("cms.subject_profile", subject_id=subject_id))
+
     subject = db.session.get(Subject, subject_id) or abort(404)
 
     if request.method == "POST":

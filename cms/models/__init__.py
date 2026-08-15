@@ -3328,6 +3328,14 @@ def _feature_flag_defaults():
             "value_type": "boolean",
             "display_order": 15,
         },
+        {
+            "key": "subject_first_investigations_global",
+            "category": "feature_flags",
+            "value": "1",
+            "description": "Global kill-switch for Subject-First Investigations. Set to 0 to force the flag off for all tenants (ADR-0001 D1.8 rollout).",
+            "value_type": "boolean",
+            "display_order": 16,
+        },
     ]
 
 

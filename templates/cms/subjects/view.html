@@ -153,8 +153,9 @@
         <h1 style="margin: 0 0 0.5rem 0;">{{ subject.name }}
             {% if profile_enabled %}
             <a href="{{ url_for('cms.subject_profile', subject_id=subject.id) }}" class="btn-cms small bg-purple" style="margin-left: 0.5rem; text-decoration: none;" title="{{ _('New tabbed profile (subject-first investigations)') }}">{{ _('👤 Subject Profile') }}</a>
-            {% endif %}
+            {% else %}
             <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary" style="margin-left: 0.5rem; text-decoration: none;">{{ _('✏️ Edit') }}</a>
+            {% endif %}
             <button data-click="confirmDeleteSubject" class="btn-cms small danger" style="margin-left: 0.25rem;">{{ _('🗑️ Delete') }}</button>
         </h1>
         {% if subject.subject_type == 'person' and subject.achternaam %}
@@ -510,7 +511,7 @@
                             {% endif %}
                         </div>
                         <div style="margin-top: 0.75rem;">
-                            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small bg-blue">{{ _('✏️ Edit RDW Data') }}</a>
+                            {% if not profile_enabled %}<a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small bg-blue">{{ _('✏️ Edit RDW Data') }}</a>{% endif %}
                         </div>
                     </div>
                     {% endif %}
@@ -555,7 +556,7 @@
                             {% endfor %}
                         </div>
                         <div style="margin-top: 0.75rem;">
-                            <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small teal">{{ _('✏️ Edit Vessel Data') }}</a>
+                            {% if not profile_enabled %}<a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small teal">{{ _('✏️ Edit Vessel Data') }}</a>{% endif %}
                         </div>
                     </div>
                     {% endif %}
