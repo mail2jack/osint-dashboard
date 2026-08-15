@@ -16,7 +16,18 @@ import logging
 from datetime import datetime, timezone
 
 from cms.encryption_utils import EncryptionError, encryptor
-from cms.models import Address, Contact, SocialAccount, Subject, db
+from cms.models import (
+    Address,
+    Contact,
+    Finding,
+    ResearchAction,
+    SocialAccount,
+    Subject,
+    User,
+    case_subjects,
+    db,
+    subject_relations,
+)
 from cms.routes.utils import normalize_phone
 
 logger = logging.getLogger(__name__)
@@ -665,6 +676,237 @@ class SubjectService:
             subject.updated_at.isoformat() if subject.updated_at else None
         )
         return data
+
+    # -------------------------------------------------------------------
+    # PR7a: profile read-model (single view surface for the tabbed profile)
+    # -------------------------------------------------------------------
+
+    def _usernames(self, user_ids):
+        """Resolve a set of user ids to {id: username}."""
+        ids = {uid for uid in user_ids if uid}
+        if not ids:
+            return {}
+        rows = User.query.filter(User.id.in_(ids)).with_entities(User.id, User.username)
+        return {r.id: r.username for r in rows}
+
+    def profile_view(self, subject):
+        """Build the full read-model for the tabbed Subject Profile (PR7a).
+
+        Renders exactly what the database stores: the base subject plus every
+        provenance-carrying child (identifiers, facts, relations, addresses,
+        contacts, social accounts) and the subject's investigation surface
+        (linked cases, research actions, findings). Nothing is taken from
+        browser state.
+        """
+        base = subject.to_dict(decrypted=True)
+        base["photo_path"] = subject.photo_path
+        base["face_encoding_present"] = bool(subject.face_encoding)
+        base["created_at"] = (
+            subject.created_at.isoformat() if subject.created_at else None
+        )
+        base["updated_at"] = (
+            subject.updated_at.isoformat() if subject.updated_at else None
+        )
+
+        # to_dict(decrypted=True) decrypts addresses/contacts in place; read the
+        # already-decrypted values without re-decrypting (avoids decrypt noise).
+        addresses = [a.to_dict(decrypted=False) for a in subject.addresses]
+        contacts = [c.to_dict(decrypted=False) for c in subject.contacts]
+        social_accounts = [sa.to_dict() for sa in subject.social_accounts]
+        identifiers = [i.to_dict() for i in subject.identifiers]
+        facts = [f.to_dict() for f in subject.facts]
+
+        # Relations: single canonical row per pair, resolve both directions.
+        relation_rows = db.session.execute(
+            subject_relations.select().where(
+                db.or_(
+                    subject_relations.c.subject_id == subject.id,
+                    subject_relations.c.related_subject_id == subject.id,
+                )
+            )
+        ).fetchall()
+        related_ids = {
+            row.related_subject_id if row.subject_id == subject.id else row.subject_id
+            for row in relation_rows
+        }
+        related_map = {}
+        if related_ids:
+            related_map = {
+                s.id: {"id": s.id, "name": s.name, "subject_type": s.subject_type}
+                for s in Subject.query.filter(Subject.id.in_(related_ids)).all()
+            }
+        outgoing, incoming = [], []
+        for row in relation_rows:
+            other_id = (
+                row.related_subject_id
+                if row.subject_id == subject.id
+                else row.subject_id
+            )
+            entry = {
+                "relation_type": row.relation_type,
+                "direction": row.direction,
+                "source": row.source,
+                "reliability": row.reliability,
+                "status": row.status,
+                "observed_at": row.observed_at.isoformat() if row.observed_at else None,
+                "case_number": row.case_number,
+                "created_by": row.created_by,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "related_subject": related_map.get(other_id),
+            }
+            (outgoing if row.subject_id == subject.id else incoming).append(entry)
+
+        # Linked cases with role/status/note from the association row.
+        case_rows = db.session.execute(
+            db.select(
+                case_subjects.c.case_id,
+                case_subjects.c.role_in_case,
+                case_subjects.c.status,
+                case_subjects.c.note,
+            ).where(case_subjects.c.subject_id == subject.id)
+        ).fetchall()
+        case_ids = [r.case_id for r in case_rows]
+        case_map = {}
+        if case_ids:
+            from cms.models import Case
+
+            case_map = {
+                c.id: c
+                for c in Case.query.filter(
+                    Case.id.in_(case_ids), Case.is_deleted.is_(False)
+                ).all()
+            }
+        cases = []
+        for r in case_rows:
+            case = case_map.get(r.case_id)
+            if not case:
+                continue
+            cases.append(
+                {
+                    "id": case.id,
+                    "case_number": case.case_number,
+                    "title": case.title,
+                    "role_in_case": r.role_in_case,
+                    "status": r.status,
+                    "note": r.note,
+                }
+            )
+        cases.sort(key=lambda c: c["case_number"])
+
+        # Research actions explicitly scoped to this subject (PR4).
+        actions = (
+            ResearchAction.query.filter_by(
+                subject_id=subject.id, tenant_id=subject.tenant_id
+            )
+            .filter(ResearchAction.archived_at.is_(None))
+            .order_by(ResearchAction.created_at.desc())
+            .limit(200)
+            .all()
+        )
+        action_rows = []
+        for a in actions:
+            snap = a.target_snapshot_data or {}
+            action_rows.append(
+                {
+                    "id": a.id,
+                    "case_id": a.case_id,
+                    "case_number": a.case.case_number if a.case else "",
+                    "action_type": a.action_type,
+                    "label": a.label or a.action_type,
+                    "status": a.status,
+                    "error": a.error,
+                    "result_summary": a.result_summary,
+                    "target_snapshot": snap,
+                    "findings_count": len(a.findings),
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                    "started_at": a.started_at.isoformat() if a.started_at else None,
+                    "completed_at": (
+                        a.completed_at.isoformat() if a.completed_at else None
+                    ),
+                }
+            )
+
+        # Findings linked to the subject (non-deleted), with verification state.
+        findings = (
+            subject.findings.filter_by(is_deleted=False)
+            .order_by(Finding.created_at.desc())
+            .limit(200)
+            .all()
+        )
+        finding_rows = []
+        for f in findings:
+            first_action = f.research_actions[0] if f.research_actions else None
+            finding_rows.append(
+                {
+                    "id": f.id,
+                    "title": f.title,
+                    "content": f.content,
+                    "detail": f.detail,
+                    "source_url": f.source_url,
+                    "source_type": f.source_type,
+                    "status": f.status or ("verified" if f.verified else "candidate"),
+                    "verified": f.verified,
+                    "verified_by": f.verified_by,
+                    "verified_at": f.verified_at.isoformat() if f.verified_at else None,
+                    "integrity_ok": f.verify_integrity(),
+                    "created_at": f.created_at.isoformat() if f.created_at else None,
+                    "action_id": first_action.id if first_action else None,
+                    "action_label": (
+                        first_action.label or first_action.action_type
+                        if first_action
+                        else None
+                    ),
+                }
+            )
+
+        user_ids = set()
+        for rows in (
+            addresses,
+            contacts,
+            social_accounts,
+            identifiers,
+            facts,
+            outgoing,
+            incoming,
+        ):
+            for r in rows:
+                user_ids.update(
+                    v
+                    for k, v in r.items()
+                    if k in ("created_by", "updated_by", "verified_by")
+                )
+        usernames = self._usernames(user_ids)
+
+        def _names(entry):
+            entry["created_by_name"] = usernames.get(entry.get("created_by")) or "—"
+            if "verified_by" in entry:
+                entry["verified_by_name"] = (
+                    usernames.get(entry.get("verified_by")) or "—"
+                )
+            if "updated_by" in entry:
+                entry["updated_by_name"] = usernames.get(entry.get("updated_by")) or "—"
+
+        for rows in (addresses, contacts, social_accounts, identifiers, facts):
+            for r in rows:
+                _names(r)
+        for rows in (outgoing, incoming):
+            for r in rows:
+                _names(r)
+        for r in finding_rows:
+            r["verified_by_name"] = usernames.get(r.get("verified_by")) or "—"
+
+        return {
+            "subject": base,
+            "addresses": addresses,
+            "contacts": contacts,
+            "social_accounts": social_accounts,
+            "identifiers": identifiers,
+            "facts": facts,
+            "relations": {"outgoing": outgoing, "incoming": incoming},
+            "cases": cases,
+            "actions": action_rows,
+            "findings": finding_rows,
+        }
 
 
 subject_service = SubjectService()

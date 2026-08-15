@@ -1,0 +1,447 @@
+{% extends "cms/base.html" %}
+
+{% block title %}{{ profile.subject.name }} - {{ _('Subject Profile') }}{% endblock %}
+
+{% block content %}
+{% macro status_badge(status) %}
+{%- set map = {
+  'candidate': '#2563eb', 'verified': '#16a34a', 'rejected': '#dc2626',
+  'superseded': '#6b7280', 'proposal': '#7c3aed', 'pending': '#6b7280',
+  'running': '#2563eb', 'completed': '#16a34a', 'error': '#dc2626',
+  'cancelled': '#6b7280'
+} -%}
+{%- set color = map.get(status, '#6b7280') -%}
+<span class="profile-status" style="background:{{ color }};color:#fff;padding:1px 8px;border-radius:10px;font-size:0.72rem;font-weight:600;display:inline-block;">{{ status|capitalize }}</span>
+{% endmacro %}
+
+{% macro prov(entry) %}
+{%- if entry.status or entry.source or entry.reliability or entry.observed_at or entry.updated_by_name or entry.created_by_name -%}
+<div class="prov-chips">
+  {% if entry.status %}<span class="prov-chip"><b>status</b> {{ entry.status }}</span>{% endif %}
+  {% if entry.source %}<span class="prov-chip"><b>source</b> {{ entry.source }}{% if entry.source_url %}<a href="{{ entry.source_url }}" target="_blank" rel="noopener"> 🔗</a>{% endif %}</span>{% endif %}
+  {% if entry.reliability %}<span class="prov-chip"><b>reliability</b> {{ entry.reliability }}</span>{% endif %}
+  {% if entry.observed_at %}<span class="prov-chip"><b>observed</b> {{ entry.observed_at[:10] }}</span>{% endif %}
+  {% if entry.updated_by_name %}<span class="prov-chip"><b>updated by</b> {{ entry.updated_by_name }}</span>{% endif %}
+  {% if entry.created_by_name and not entry.updated_by_name %}<span class="prov-chip"><b>added by</b> {{ entry.created_by_name }}</span>{% endif %}
+  {% if entry.created_at %}<span class="prov-chip"><b>added</b> {{ entry.created_at[:10] }}</span>{% endif %}
+  {% if entry.verified_by_name %}<span class="prov-chip"><b>verified by</b> {{ entry.verified_by_name }}{% if entry.verified_at %} on {{ entry.verified_at[:10] }}{% endif %}</span>{% endif %}
+</div>
+{%- endif %}
+{% endmacro %}
+
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+  <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+  <span style="margin:0 0.35rem;">›</span>
+  <a href="{{ url_for('cms.subjects') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Subjects') }}</a>
+  <span style="margin:0 0.35rem;">›</span>
+  <a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}" style="color:var(--text-secondary);text-decoration:none;">{{ profile.subject.name }}</a>
+  <span style="margin:0 0.35rem;">›</span>
+  <span style="color:var(--text-primary);">{{ _('Profile') }}</span>
+</nav>
+
+<div class="back"><a href="{{ url_for('cms.view_subject', subject_id=subject.id) }}">← {{ _('Back to Subjects') }}</a></div>
+
+<style>
+  .profile-header { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+  .profile-photo { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; font-size: 2rem; flex-shrink: 0; }
+  .profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-meta { color: var(--text-muted); font-size: 0.8rem; margin-top: 0.35rem; }
+  .tabs { display: flex; gap: 0.35rem; flex-wrap: wrap; border-bottom: 2px solid var(--border-color); margin-bottom: 1rem; }
+  .tab-btn { padding: 0.5rem 0.85rem; border: none; background: none; color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .prov-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
+  .prov-chip { font-size: 0.7rem; color: var(--text-secondary); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 1px 7px; }
+  .prov-chip b { color: var(--text-muted); font-weight: 600; margin-right: 2px; }
+  .fact-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .fact-table th, .fact-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+  .fact-table th { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .empty-note { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; }
+  .subhead { font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.5rem; color: var(--text-primary); }
+  .count-chip { display: inline-block; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.2rem 0.6rem; font-size: 0.8rem; color: var(--text-secondary); margin-right: 0.4rem; margin-bottom: 0.4rem; }
+  .status-ok { color: #16a34a; }
+  .status-bad { color: #dc2626; }
+</style>
+
+<div class="profile-header">
+  <div class="profile-photo">
+    {% if profile.subject.photo_path %}<img src="/static{{ profile.subject.photo_path }}" alt="">{% else %}👤{% endif %}
+  </div>
+  <div style="flex:1;">
+    <h1 style="margin:0 0 0.25rem 0;">{{ profile.subject.name }}</h1>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+      <span class="badge badge-status-active">{{ profile.subject.subject_type }}</span>
+      {% if profile.subject.risk_score %}<span class="count-chip">⚠️ Risk {{ profile.subject.risk_score }}/100</span>{% endif %}
+      {% if profile.subject.face_encoding_present %}<span class="badge badge-status-success">✅ Face encoded</span>{% endif %}
+      <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary">{{ _('✏️ Edit') }}</a>
+      {% if profile.cases %}<a href="{{ url_for('cms.view_case', case_id=profile.cases[0].id) }}" class="btn-cms small">{{ _('📂 Open case') }}</a>{% endif %}
+    </div>
+    <div class="profile-meta">
+      {% if subject.creator %}Added by {{ subject.creator.username }} on {{ profile.subject.created_at[:10] if profile.subject.created_at else '—' }}.{% endif %}
+      {% if profile.subject.updated_at %}Last changed {{ profile.subject.updated_at[:10] }}.{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="tabs" id="profileTabs" role="tablist">
+  <button class="tab-btn active" data-tab="overview" role="tab">Overview</button>
+  <button class="tab-btn" data-tab="identity" role="tab">Identity</button>
+  <button class="tab-btn" data-tab="contact" role="tab">Contact</button>
+  <button class="tab-btn" data-tab="addresses" role="tab">Addresses</button>
+  <button class="tab-btn" data-tab="financial" role="tab">Financial</button>
+  <button class="tab-btn" data-tab="online" role="tab">Online</button>
+  <button class="tab-btn" data-tab="relations" role="tab">Relations</button>
+  <button class="tab-btn" data-tab="investigation" role="tab">Investigation</button>
+  <button class="tab-btn" data-tab="facts" role="tab">Facts</button>
+  <button class="tab-btn" data-tab="findings" role="tab">Findings</button>
+</div>
+
+{# ────────────────────────── Overview ────────────────────────── #}
+<div class="tab-panel active" data-panel="overview">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Overview') }}</h2></div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.75rem;">
+      <span class="count-chip">📇 {{ profile.identifiers|length }} identifiers</span>
+      <span class="count-chip">📋 {{ profile.facts|length }} facts</span>
+      <span class="count-chip">📧 {{ profile.contacts|selectattr('contact_type', 'equalto', 'email')|list|length }} emails</span>
+      <span class="count-chip">📞 {{ profile.contacts|selectattr('contact_type', 'equalto', 'phone')|list|length }} phones</span>
+      <span class="count-chip">🏠 {{ profile.addresses|length }} addresses</span>
+      <span class="count-chip">🌐 {{ profile.social_accounts|length }} social accounts</span>
+      <span class="count-chip">🔗 {{ (profile.relations.outgoing|length + profile.relations.incoming|length) }} relations</span>
+      <span class="count-chip">🔎 {{ profile.actions|length }} research actions</span>
+      <span class="count-chip">📄 {{ profile.findings|length }} findings</span>
+    </div>
+    <div class="info-row"><span class="info-label">{{ _('Risk factors') }}</span>
+      <span class="info-value">{{ profile.subject.risk_factors|join(', ') if profile.subject.risk_factors else '-' }}</span>
+    </div>
+    {% if profile.subject.notes %}
+    <div class="info-row"><span class="info-label">{{ _('Notes') }}</span>
+      <span class="info-value" style="white-space:pre-wrap;">{{ profile.subject.notes }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Linked Cases') }}</h2></div>
+    {% if profile.cases %}
+    <table class="fact-table">
+      <thead><tr><th>Case</th><th>Role in case</th><th>Status</th><th>Note</th></tr></thead>
+      <tbody>
+        {% for c in profile.cases %}
+        <tr>
+          <td><a href="{{ url_for('cms.view_case', case_id=c.id) }}">{{ c.case_number }}</a><div style="font-size:0.78rem;color:var(--text-muted);">{{ c.title }}</div></td>
+          <td>{{ c.role_in_case or '-' }}</td>
+          <td>{{ status_badge(c.status or 'active') }}</td>
+          <td>{{ c.note or '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-note">{{ _('This subject is not linked to any case yet.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ────────────────────────── Identity ────────────────────────── #}
+<div class="tab-panel" data-panel="identity">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Identity') }} <span class="badge badge-status-active">{{ profile.subject.subject_type }}</span></h2></div>
+    {% set s = profile.subject %}
+    {% if s.subject_type == 'person' %}
+      <div class="info-row"><span class="info-label">{{ _('Name') }}</span><span class="info-value">{{ s.name }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Achternaam') }}</span><span class="info-value">{{ s.achternaam or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Voornamen') }}</span><span class="info-value">{{ s.voornamen or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Voorletters') }}</span><span class="info-value">{{ s.voorletters or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Tussenvoegsels') }}</span><span class="info-value">{{ s.tussenvoegsels or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Geslacht') }}</span><span class="info-value">{{ {'man':'Man','vrouw':'Vrouw','onbekend':'Onbekend','geen_opgave':'Geen opgave'}.get(s.geslacht, s.geslacht or '-') }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Date of Birth') }}</span><span class="info-value">{{ s.date_of_birth or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Place of Birth') }}</span><span class="info-value">{{ s.place_of_birth or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Nationality') }}</span><span class="info-value">{{ s.nationality or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('BSN') }}</span><span class="info-value">{{ s.bsn_number|redact_for_viewer if s.bsn_number else '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Identification') }}</span><span class="info-value">{{ s.identification_number|redact_for_viewer if s.identification_number else '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Reisdocument') }}</span><span class="info-value">{% if s.reisdocument_type %}{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overige'}.get(s.reisdocument_type, s.reisdocument_type) }}{% if s.reisdocument_nummer %} — {{ s.reisdocument_nummer|redact_for_viewer }}{% endif %}{% else %}-{% endif %}</span></div>
+    {% elif s.subject_type in ('company', 'organization') %}
+      <div class="info-row"><span class="info-label">{{ _('Legal Name') }}</span><span class="info-value">{{ s.name }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('KVK number') }}</span><span class="info-value">{{ s.registration_number or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Legal Form') }}</span><span class="info-value">{{ s.legal_form or '-' }}</span></div>
+    {% elif s.subject_type == 'vehicle' %}
+      <div class="info-row"><span class="info-label">{{ _('License Plate') }}</span><span class="info-value" style="font-weight:bold;">{{ s.license_plate|redact_for_viewer if s.license_plate else '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('VIN') }}</span><span class="info-value">{{ s.vin|redact_for_viewer if s.vin else '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Brand') }}</span><span class="info-value">{{ s.brand or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Vehicle Type') }}</span><span class="info-value">{{ s.vehicle_type or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Insurance Company') }}</span><span class="info-value">{{ s.insurance_company or '-' }}</span></div>
+      {% if s.rdw_data %}
+      <div class="subhead">{{ _('RDW data') }}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem;">
+        {% for k in ['handelsbenaming','voertuigsoort','eerste_kleur','tweede_kleur','aantal_deuren','aantal_zitplaatsen','vermogen','massa_ledig','vervaldatum_apk','wam_verzekerd','europese_voertuigcategorie','catalogusprijs','datum_eerste_toelating'] %}
+        {% if s.rdw_data.get(k) %}
+        <div class="info-row"><span class="info-label">{{ k|replace('_', ' ')|capitalize }}</span><span class="info-value">{{ s.rdw_data[k] }}</span></div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% elif s.subject_type == 'vessel' %}
+      <div class="info-row"><span class="info-label">{{ _('IMO Number') }}</span><span class="info-value">{{ s.imo_number or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('MMSI') }}</span><span class="info-value">{{ s.mmsi or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('ENI') }}</span><span class="info-value">{{ s.eni_number or '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Flag State') }}</span><span class="info-value">{{ s.vessel_nationality or '-' }}</span></div>
+      {% if s.vessel_data %}
+      <div class="subhead">{{ _('Vessel data') }}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem;">
+        {% for source_key, source_val in s.vessel_data.items() if source_val is mapping %}
+          {% for k, v in source_val.items() if v and k not in ('source', 'source_url') %}
+          <div class="info-row"><span class="info-label">{{ k|replace('_', ' ')|capitalize }}</span><span class="info-value">{{ v }}</span></div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% elif s.subject_type in ('online', 'account') %}
+      {% set sa0 = profile.social_accounts[0] if profile.social_accounts else none %}
+      <div class="info-row"><span class="info-label">{{ _('Platform') }}</span><span class="info-value">{{ sa0.platform if sa0 else '-' }}</span></div>
+      <div class="info-row"><span class="info-label">{{ _('Username') }}</span><span class="info-value">{{ sa0.username if sa0 else '-' }}</span></div>
+      {% if sa0 and sa0.url %}
+      <div class="info-row"><span class="info-label">{{ _('Profile URL') }}</span><span class="info-value"><a href="{{ sa0.url }}" target="_blank" rel="noopener">{{ sa0.url }}</a></span></div>
+      {% endif %}
+    {% else %}
+      <div class="info-row"><span class="info-label">{{ _('Name') }}</span><span class="info-value">{{ s.name }}</span></div>
+    {% endif %}
+  </div>
+</div>
+
+{# ────────────────────────── Contact ────────────────────────── #}
+<div class="tab-panel" data-panel="contact">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Contact') }}</h2></div>
+    {% if profile.contacts %}
+    <table class="fact-table">
+      <thead><tr><th>Type</th><th>Value</th><th>Primary</th><th>Provenance</th></tr></thead>
+      <tbody>
+        {% for c in profile.contacts %}
+        <tr>
+          <td>{{ '✉️ Email' if c.contact_type == 'email' else '📞 Phone' }}</td>
+          <td>{{ c.value|redact_for_viewer }}</td>
+          <td>{{ '⭐' if c.is_primary else '' }}</td>
+          <td>{{ prov(c) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-note">{{ _('No contact details recorded yet.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ────────────────────────── Addresses ────────────────────────── #}
+<div class="tab-panel" data-panel="addresses">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Addresses') }}</h2></div>
+    {% if profile.addresses %}
+    {% for a in profile.addresses %}
+    <div class="address-card{% if a.is_primary %} primary{% endif %}" style="margin-bottom:0.5rem;padding:0.6rem 0.75rem;border:1px solid var(--border-color);border-radius:6px;">
+      <div><strong>{{ a.street or '' }}{% if a.number %} {{ a.number }}{% endif %}</strong>{% if a.is_primary %} <span class="badge badge-primary">{{ _('PRIMARY') }}</span>{% endif %}{% if a.kadaster_verified %} <span class="badge badge-kadaster">✓ {{ _('CADASTRAL') }}</span>{% endif %}</div>
+      <div style="color:var(--text-secondary);font-size:0.85rem;">{{ a.zipcode or '' }}{% if a.zipcode and a.town %}, {% endif %}{{ a.town or '' }}{% if a.country and a.country != 'Netherlands' %}, {{ a.country }}{% endif %}</div>
+      {{ prov(a) }}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-note">{{ _('No addresses recorded yet.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ────────────────────────── Financial ────────────────────────── #}
+<div class="tab-panel" data-panel="financial">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Financial') }}</h2></div>
+    {% set s = profile.subject %}
+    <div class="info-row"><span class="info-label">{{ _('💳 Bank / IBAN') }}</span><span class="info-value">{{ s.bank_account|redact_for_viewer if s.bank_account else '-' }}</span></div>
+    <div class="info-row"><span class="info-label">{{ _('Asset Type') }}</span><span class="info-value">{{ s.asset_type or '-' }}</span></div>
+    <div class="info-row"><span class="info-label">{{ _('Estimated Value') }}</span><span class="info-value">{% if s.estimated_value %}{{ s.currency or 'EUR' }} {{ s.estimated_value }}{% else %}-{% endif %}</span></div>
+  </div>
+</div>
+
+{# ────────────────────────── Online ────────────────────────── #}
+<div class="tab-panel" data-panel="online">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Online / Social Accounts') }}</h2></div>
+    {% if profile.social_accounts %}
+    <table class="fact-table">
+      <thead><tr><th>Platform</th><th>Username</th><th>Account ID</th><th>URL</th><th>Provenance</th></tr></thead>
+      <tbody>
+        {% for sa in profile.social_accounts %}
+        <tr>
+          <td style="text-transform:capitalize;">{{ sa.platform }}</td>
+          <td><strong>{{ sa.username }}</strong></td>
+          <td>{% if sa.account_id %}<code style="font-size:0.78rem;">{{ sa.account_id }}</code>{% else %}—{% endif %}</td>
+          <td>{% if sa.url %}<a href="{{ sa.url }}" target="_blank" rel="noopener">🔗 link</a>{% else %}—{% endif %}</td>
+          <td>{{ prov(sa) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-note">{{ _('No social accounts recorded yet.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ────────────────────────── Relations ────────────────────────── #}
+<div class="tab-panel" data-panel="relations">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Relations') }}</h2></div>
+    {% set rel_count = profile.relations.outgoing|length + profile.relations.incoming|length %}
+    {% if rel_count == 0 %}
+    <div class="empty-note">{{ _('No relations recorded yet.') }}</div>
+    {% else %}
+    {% for direction, rows in [('outgoing', profile.relations.outgoing), ('incoming', profile.relations.incoming)] %}
+      {% if rows %}
+      <div class="subhead">{{ '→ Outgoing' if direction == 'outgoing' else '← Incoming' }}</div>
+      <table class="fact-table">
+        <thead><tr><th>Related subject</th><th>Relation</th><th>Source</th><th>Reliability</th><th>Status</th><th>Case</th></tr></thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td>{% if r.related_subject %}<a href="{{ url_for('cms.subject_profile', subject_id=r.related_subject.id) }}">{{ r.related_subject.name }}</a> <span class="badge badge-status-active">{{ r.related_subject.subject_type }}</span>{% else %}—{% endif %}</td>
+            <td>{{ r.relation_type or '-' }}</td>
+            <td>{{ r.source or '-' }}</td>
+            <td>{{ r.reliability or '-' }}</td>
+            <td>{{ status_badge(r.status or 'candidate') }}</td>
+            <td>{{ r.case_number or '-' }}</td>
+          </tr>
+          <tr><td colspan="6" style="padding-top:0;border-bottom:none;">{{ prov(r) }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>
+
+{# ────────────────────────── Investigation ────────────────────────── #}
+<div class="tab-panel" data-panel="investigation">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Investigation') }} <span class="badge badge-status-active">{{ profile.actions|length }} actions</span></h2></div>
+    {% if profile.actions %}
+    <table class="fact-table">
+      <thead><tr><th>Action</th><th>Type</th><th>Case</th><th>Status</th><th>Findings</th><th>Created</th><th>Completed</th></tr></thead>
+      <tbody>
+        {% for a in profile.actions %}
+        <tr>
+          <td><strong>{{ a.label }}</strong>{% if a.error %}<div style="font-size:0.75rem;color:#dc2626;">{{ a.error[:120] }}</div>{% endif %}</td>
+          <td><code style="font-size:0.78rem;">{{ a.action_type }}</code></td>
+          <td><a href="{{ url_for('cms.view_case', case_id=a.case_id) }}">{{ a.case_number }}</a></td>
+          <td>{{ status_badge(a.status) }}</td>
+          <td>{{ a.findings_count }}</td>
+          <td>{{ a.created_at[:10] if a.created_at else '-' }}</td>
+          <td>{{ a.completed_at[:10] if a.completed_at else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-note">{{ _('No research actions for this subject yet. Start from the case workflow screen.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ────────────────────────── Facts ────────────────────────── #}
+<div class="tab-panel" data-panel="facts">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Facts') }} <span class="badge badge-status-active">{{ profile.facts|length }}</span></h2></div>
+    {% if profile.facts %}
+    <table class="fact-table">
+      <thead><tr><th>Fact</th><th>Value</th><th>Status</th><th>Source</th><th>Reliability</th><th>Verified</th></tr></thead>
+      <tbody>
+        {% for f in profile.facts %}
+        <tr>
+          <td><strong>{{ f.fact_key }}</strong></td>
+          <td>{{ f.value|redact_for_viewer if f.value else '-' }}</td>
+          <td>{{ status_badge(f.status) }}</td>
+          <td>{{ f.source or '-' }}{% if f.source_url %}<a href="{{ f.source_url }}" target="_blank" rel="noopener"> 🔗</a>{% endif %}</td>
+          <td>{{ f.reliability or '-' }}</td>
+          <td>{% if f.verified_by_name %}{{ f.verified_by_name }}{% if f.verified_at %} ({{ f.verified_at[:10] }}){% endif %}{% else %}-{% endif %}</td>
+        </tr>
+        <tr><td colspan="6" style="padding-top:0;border-bottom:none;">{{ prov(f) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-note">{{ _('No facts recorded yet.') }}</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Identifiers') }} <span class="badge badge-status-active">{{ profile.identifiers|length }}</span></h2></div>
+    {% if profile.identifiers %}
+    <table class="fact-table">
+      <thead><tr><th>Type</th><th>Value</th><th>Status</th><th>Source</th><th>Reliability</th><th>Added</th></tr></thead>
+      <tbody>
+        {% for i in profile.identifiers %}
+        <tr>
+          <td><code style="font-size:0.78rem;">{{ i.identifier_type }}</code></td>
+          <td>{{ i.value|redact_for_viewer if i.value else '-' }}</td>
+          <td>{{ status_badge(i.status) }}</td>
+          <td>{{ i.source or '-' }}{% if i.source_url %}<a href="{{ i.source_url }}" target="_blank" rel="noopener"> 🔗</a>{% endif %}</td>
+          <td>{{ i.reliability or '-' }}</td>
+          <td>{{ i.created_at[:10] if i.created_at else '-' }}</td>
+        </tr>
+        <tr><td colspan="6" style="padding-top:0;border-bottom:none;">{{ prov(i) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-note">{{ _('No identifiers recorded yet.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# ────────────────────────── Findings ────────────────────────── #}
+<div class="tab-panel" data-panel="findings">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Findings') }} <span class="badge badge-status-active">{{ profile.findings|length }}</span></h2></div>
+    {% if profile.findings %}
+    <table class="fact-table">
+      <thead><tr><th>Finding</th><th>Source</th><th>Status</th><th>Integrity</th><th>Action</th><th>Created</th></tr></thead>
+      <tbody>
+        {% for f in profile.findings %}
+        <tr>
+          <td><strong>{{ f.title }}</strong>{% if f.detail %}<div style="font-size:0.78rem;color:var(--text-muted);">{{ f.detail[:120] }}</div>{% endif %}</td>
+          <td>{{ f.source_type or '-' }}{% if f.source_url %}<a href="{{ f.source_url }}" target="_blank" rel="noopener"> 🔗</a>{% endif %}</td>
+          <td>{{ status_badge(f.status) }}{% if f.verified_by_name %} <span style="font-size:0.72rem;color:var(--text-muted);">by {{ f.verified_by_name }}{% if f.verified_at %} {{ f.verified_at[:10] }}{% endif %}</span>{% endif %}</td>
+          <td>{% if f.integrity_ok %}<span class="status-ok">✓ intact</span>{% else %}<span class="status-bad">✗ tampered</span>{% endif %}</td>
+          <td>{{ f.action_label or '-' }}</td>
+          <td>{{ f.created_at[:10] if f.created_at else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-note">{{ _('No findings for this subject yet.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var tabs = document.querySelectorAll('#profileTabs .tab-btn');
+  var panels = document.querySelectorAll('[data-panel]');
+  function show(name) {
+    tabs.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+    panels.forEach(function (p) { p.classList.toggle('active', p.dataset.panel === name); });
+    if (history.replaceState) { history.replaceState(null, '', '#' + name); }
+  }
+  tabs.forEach(function (b) {
+    b.addEventListener('click', function () { show(b.dataset.tab); });
+  });
+  if (location.hash && location.hash.length > 1) {
+    var name = location.hash.slice(1);
+    if (document.querySelector('[data-tab="' + name + '"]')) { show(name); }
+  }
+});
+</script>
+{% endblock %}
