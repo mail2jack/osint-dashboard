@@ -1,9 +1,9 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _make_client_and_case():
     from cms import db
-    from cms.models import Client, Case
+    from cms.models import Case, Client
 
     client = Client(
         name="Test Client",
@@ -19,7 +19,7 @@ def _make_client_and_case():
         title="Test Case",
         status="open",
         priority="medium",
-        start_date=datetime.now(timezone.utc).date(),
+        start_date=datetime.now(UTC).date(),
     )
     db.session.add(case)
     db.session.flush()
@@ -78,7 +78,7 @@ class TestFindingsCRUD:
 
     def test_check_existing_urls(self, auth_client, app):
         from cms import db
-        from cms.models import Subject, Finding, Client, Case
+        from cms.models import Case, Client, Finding, Subject
 
         client = Client(
             name="Test Client",
@@ -94,7 +94,7 @@ class TestFindingsCRUD:
             title="Test Case",
             status="open",
             priority="medium",
-            start_date=datetime.now(timezone.utc).date(),
+            start_date=datetime.now(UTC).date(),
         )
         db.session.add(case)
         db.session.flush()
@@ -133,11 +133,13 @@ class TestSocialFindings:
 
     def test_save_username_findings(self, auth_client, app):
         from cms import db
-        from cms.models import Subject
+        from cms.models import Case, Subject
 
         _, case_id = _make_client_and_case()
+        case = db.session.get(Case, case_id)
         subject = Subject(name="testuser", subject_type="person")
         db.session.add(subject)
+        case.subjects.append(subject)
         db.session.commit()
 
         resp = auth_client.post(
@@ -164,11 +166,13 @@ class TestSocialFindings:
 
     def test_save_username_findings_no_duplicate_social(self, auth_client, app):
         from cms import db
-        from cms.models import Subject, SocialAccount
+        from cms.models import Case, SocialAccount, Subject
 
         _, case_id = _make_client_and_case()
+        case = db.session.get(Case, case_id)
         subject = Subject(name="testuser", subject_type="person")
         db.session.add(subject)
+        case.subjects.append(subject)
         db.session.commit()
 
         resp = auth_client.post(
@@ -206,7 +210,7 @@ class TestSocialFindings:
 
     def test_save_finding_as_social_account(self, auth_client, app):
         from cms import db
-        from cms.models import Subject, Finding, SocialAccount, Client, Case
+        from cms.models import Case, Client, Finding, SocialAccount, Subject
 
         client = Client(
             name="Test Client",
@@ -222,7 +226,7 @@ class TestSocialFindings:
             title="Test Case",
             status="open",
             priority="medium",
-            start_date=datetime.now(timezone.utc).date(),
+            start_date=datetime.now(UTC).date(),
         )
         db.session.add(case)
         db.session.flush()

@@ -286,6 +286,7 @@ class TestUsernameFindingsCaseAccess:
         case = _make_case(owner=None)
         subject = Subject(name="Subject", subject_type="person")
         db.session.add(subject)
+        case.subjects.append(subject)
         db.session.commit()
 
         user = _make_user(f"inv_{uuid.uuid4().hex[:8]}")
@@ -740,3 +741,145 @@ class TestFindingSubjectConsistency:
             },
         )
         assert resp.status_code == 400
+
+
+class TestSaveUsernameFindingsCaseLink:
+    """The subject must be linked to the case the findings are saved into."""
+
+    def test_subject_not_in_case_400(self, app, auth_client):
+        inv = _make_user(f"inv_{uuid.uuid4().hex[:8]}")
+        case_a = _make_case(owner=inv)
+        case_b = _make_case(owner=inv)
+        subject = Subject(name="Subject A", subject_type="person")
+        db.session.add(subject)
+        case_a.subjects.append(subject)
+        db.session.commit()
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.post(
+            f"/cms/api/subjects/{subject.id}/save-username-findings",
+            json={
+                "case_id": str(case_b.id),
+                "results": [
+                    {
+                        "platform": "GitHub",
+                        "url": "https://github.com/testuser",
+                        "username": "testuser",
+                    }
+                ],
+            },
+        )
+        assert resp.status_code == 400
+        assert Finding.query.filter_by(subject_id=subject.id).count() == 0
+
+    def test_subject_in_case_allowed(self, app, auth_client):
+        inv = _make_user(f"inv_{uuid.uuid4().hex[:8]}")
+        case = _make_case(owner=inv)
+        subject = Subject(name="Subject A", subject_type="person")
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+        client = _login_as(app.test_client(), inv)
+
+        resp = client.post(
+            f"/cms/api/subjects/{subject.id}/save-username-findings",
+            json={
+                "case_id": str(case.id),
+                "results": [
+                    {
+                        "platform": "GitHub",
+                        "url": "https://github.com/testuser",
+                        "username": "testuser",
+                    }
+                ],
+            },
+        )
+        assert resp.status_code == 201
+        assert Finding.query.filter_by(subject_id=subject.id).count() == 1
+
+
+class TestBulkExtractFiltersFindings:
+    def test_bulk_extract_skips_deleted_and_archived_findings(self, app, auth_client):
+        case = _make_case(owner=None)
+        subject = Subject(name="Subject", subject_type="person")
+        db.session.add(subject)
+        db.session.flush()
+
+        active = Finding(
+            case_id=case.id,
+            subject_id=subject.id,
+            title="Active",
+            content="content",
+            source_url="https://instagram.com/active",
+            source_type="osint",
+            finding_type="identity",
+            created_by=1,
+        )
+        deleted = Finding(
+            case_id=case.id,
+            subject_id=subject.id,
+            title="Deleted",
+            content="content",
+            source_url="https://twitter.com/deleted",
+            source_type="osint",
+            finding_type="identity",
+            created_by=1,
+        )
+        deleted.is_deleted = True
+        archived = Finding(
+            case_id=case.id,
+            subject_id=subject.id,
+            title="Archived",
+            content="content",
+            source_url="https://facebook.com/archived",
+            source_type="osint",
+            finding_type="identity",
+            created_by=1,
+            archived_at=datetime.now(UTC),
+        )
+        db.session.add_all([active, deleted, archived])
+        db.session.commit()
+
+        resp = auth_client.post(f"/cms/subjects/{subject.id}/bulk-extract-social-ids")
+        data = resp.get_json()
+        assert resp.status_code == 200
+        assert data["total"] == 1
+        assert data["found"] == 1
+        accounts = SocialAccount.query.filter_by(subject_id=subject.id).all()
+        assert len(accounts) == 1
+        assert accounts[0].url == "https://instagram.com/active"
+
+
+class TestGetSocialIdsAccess:
+    def test_get_social_ids_no_case_access_denied(self, app, auth_client):
+        owner = _make_user(f"owner_{uuid.uuid4().hex[:8]}")
+        case = _make_case(owner=owner)
+        subject = Subject(name="Subject", subject_type="person")
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+
+        viewer = _make_user(f"viewer_{uuid.uuid4().hex[:8]}", role="viewer")
+        client = _login_as(app.test_client(), viewer)
+
+        resp = client.get(f"/cms/subjects/{subject.id}/social-ids")
+        assert resp.status_code in (302, 403)
+        assert resp.status_code != 200
+
+    def test_get_social_ids_viewer_with_case_access_allowed(self, app, auth_client):
+        viewer = _make_user(f"viewer_{uuid.uuid4().hex[:8]}", role="viewer")
+        case = _make_case(owner=viewer)
+        subject = Subject(
+            name="Subject",
+            subject_type="person",
+            social_media_ids={"twitter": "abc"},
+        )
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+        client = _login_as(app.test_client(), viewer)
+
+        resp = client.get(f"/cms/subjects/{subject.id}/social-ids")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["social_media_ids"] == {"twitter": "abc"}

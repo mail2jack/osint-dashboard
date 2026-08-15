@@ -323,7 +323,8 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
     findings = apply_tenant_filter(
         Finding.query.filter_by(subject_id=subject_id)
         .filter(Finding.source_url.isnot(None))
-        .filter(Finding.source_url != ""),
+        .filter(Finding.source_url != "")
+        .filter(Finding.is_deleted == False, Finding.archived_at.is_(None)),
         Finding,
     ).all()
 
@@ -401,6 +402,7 @@ def bulk_extract_social_ids(subject_id: str) -> flask.Response:
 
 @cms_bp.route("/subjects/<subject_id>/social-ids", methods=["GET"])
 @login_required
+@subject_access_required
 def get_subject_social_ids(subject_id: str) -> flask.Response:
     """Get social media IDs for a subject."""
     subject = db.session.get(Subject, subject_id) or abort(404)

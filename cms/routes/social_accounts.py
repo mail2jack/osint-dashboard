@@ -9,6 +9,7 @@ from flask_login import current_user, login_required
 from ..auth import (
     apply_tenant_filter,
     ensure_subject_access,
+    ensure_subject_for_case,
     ensure_tenant_access,
     staff_required,
     subject_access_required,
@@ -202,7 +203,6 @@ def save_username_findings(subject_id: str) -> flask.Response:
 
     case_id = data.get("case_id") or ""
     subject = db.session.get(Subject, subject_id) or abort(404)
-    ensure_tenant_access(subject)
     if case_id:
         from ..models import Case
 
@@ -210,6 +210,7 @@ def save_username_findings(subject_id: str) -> flask.Response:
         ensure_tenant_access(case)
         if not current_user.can_access_case(case):
             return api_error("No access to this case", 403)
+        subject = ensure_subject_for_case(subject_id, case)
 
     # Batch-load existing social accounts for dedup
     existing_accounts = {
