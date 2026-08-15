@@ -53,6 +53,7 @@ def _ensure_draft_invoice(client_id: str, tenant_id: str) -> Invoice | None:
     invoice = Invoice(
         client_id=client_id,
         case_id=None,
+        tenant_id=tenant_id,
         issue_date=today,
         due_date=date(today.year, today.month + 1, today.day)
         if today.month < 12
@@ -69,10 +70,15 @@ def _ensure_draft_invoice(client_id: str, tenant_id: str) -> Invoice | None:
 
 
 def _add_invoice_line(
-    invoice: Invoice, description: str, rate: ServiceRate, quantity: int = 1
+    invoice: Invoice,
+    description: str,
+    rate: ServiceRate,
+    tenant_id: str | None = None,
+    quantity: int = 1,
 ) -> None:
     item = InvoiceItem(
         invoice_id=invoice.id,
+        tenant_id=tenant_id or invoice.tenant_id,
         description=description,
         quantity=quantity,
         unit_price=rate.unit_price,
@@ -89,6 +95,10 @@ def seed_service_rates() -> None:
     """Seed default service rates if none exist."""
     if ServiceRate.query.first():
         return
+    from cms.models import User
+
+    admin = User.query.filter_by(role="admin").order_by(User.created_at).first()
+    tenant_id = admin.tenant_id if admin else None
     defaults = [
         ("case_creation", "Create investigation", 75, 21.00),
         ("research_action", "Search action (per platform)", 15, 21.00),
@@ -96,6 +106,7 @@ def seed_service_rates() -> None:
     ]
     for stype, desc, price, vat in defaults:
         rate = ServiceRate(
+            tenant_id=tenant_id,
             service_type=stype,
             description=desc,
             unit_price=price,
@@ -166,27 +177,30 @@ def auto_invoice_pv_created(case: Case) -> None:
 def generate_invoice_pdf(invoice: Invoice) -> bytes:
     """Render invoice as PDF bytes via WeasyPrint."""
     client = db.session.get(Client, invoice.client_id)
-    if client:
-        client.decrypt_naw()
-    items = (
-        InvoiceItem.query.filter_by(invoice_id=invoice.id)
-        .order_by(InvoiceItem.sort_order)
-        .all()
-    )
-    payments = (
-        Payment.query.filter_by(invoice_id=invoice.id)
-        .order_by(Payment.payment_date)
-        .all()
-    )
+    # Render with autoflush off: the item/payment queries below would autoflush
+    # and re-encrypt the freshly decrypted client, showing ciphertext in the PDF.
+    with db.session.no_autoflush:
+        if client:
+            client.decrypt_naw()
+        items = (
+            InvoiceItem.query.filter_by(invoice_id=invoice.id)
+            .order_by(InvoiceItem.sort_order)
+            .all()
+        )
+        payments = (
+            Payment.query.filter_by(invoice_id=invoice.id)
+            .order_by(Payment.payment_date)
+            .all()
+        )
 
-    html = flask.render_template(
-        "cms/invoicing/invoice_pdf.html",
-        invoice=invoice,
-        client=client,
-        items=items,
-        payments=payments,
-        now=datetime.now,
-    )
+        html = flask.render_template(
+            "cms/invoicing/invoice_pdf.html",
+            invoice=invoice,
+            client=client,
+            items=items,
+            payments=payments,
+            now=datetime.now,
+        )
     try:
         from weasyprint import HTML as WPHTML
 

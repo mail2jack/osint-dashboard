@@ -11,7 +11,7 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..validation import validate, StartOSINTSearchSchema, AddOSINTFindingsSchema
 from ..models import db, Case, Subject, AuditLog, Finding, Setting, OsintSearch
-from ..auth import case_access_required
+from ..auth import case_access_required, ensure_subject_for_case
 from ..search_manager import search_manager
 
 from .response import api_error
@@ -421,7 +421,8 @@ def add_osint_findings(case_id: str) -> flask.Response:
     if not selected_results:
         return api_error("No results selected", 400)
 
-    subject_id = data.get("subject_id")
+    subject = ensure_subject_for_case(data.get("subject_id"), case)
+    subject_id = subject.id if subject else None
     created_findings = []
 
     # Batch dedup: collect URLs, check which ones already exist

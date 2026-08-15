@@ -288,7 +288,10 @@ class TestAddressCrud:
         assert addr is not None
         assert addr.to_dict(decrypted=True)["street"] == "Teststraat"
         db.session.refresh(subject)
-        assert "Teststraat 12" in subject.address
+        # The legacy combined column is an encrypted field: at rest it must be
+        # ciphertext that decrypts back to the mirrored address.
+        assert subject.address != "Teststraat 12"
+        assert "Teststraat 12" in encryptor.decrypt(subject.address)
 
     def test_update_switches_primary(self, auth_client):
         admin = _admin()
@@ -319,7 +322,8 @@ class TestAddressCrud:
         assert second.is_primary is True
 
         db.session.refresh(subject)
-        assert "Tweede 2" in subject.address
+        assert subject.address != "Tweede 2"
+        assert "Tweede 2" in encryptor.decrypt(subject.address)
 
     def test_delete_address(self, auth_client):
         admin = _admin()

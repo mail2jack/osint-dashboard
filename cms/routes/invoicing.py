@@ -245,29 +245,32 @@ def invoice_view(invoice_id: str):
     ensure_tenant_access(invoice)
     client = db.session.get(Client, invoice.client_id) or abort(404)
     ensure_tenant_access(client)
-    client.decrypt_naw()
-    items = (
-        InvoiceItem.query.filter_by(invoice_id=invoice_id)
-        .order_by(InvoiceItem.sort_order)
-        .all()
-    )
-    payments = (
-        Payment.query.filter_by(invoice_id=invoice_id)
-        .order_by(Payment.payment_date)
-        .all()
-    )
-    case = db.session.get(Case, invoice.case_id) if invoice.case_id else None
-    if case:
-        ensure_tenant_access(case)
+    # Render with autoflush off: the queries below would autoflush and
+    # re-encrypt the freshly decrypted client, showing ciphertext in the view.
+    with db.session.no_autoflush:
+        client.decrypt_naw()
+        items = (
+            InvoiceItem.query.filter_by(invoice_id=invoice_id)
+            .order_by(InvoiceItem.sort_order)
+            .all()
+        )
+        payments = (
+            Payment.query.filter_by(invoice_id=invoice_id)
+            .order_by(Payment.payment_date)
+            .all()
+        )
+        case = db.session.get(Case, invoice.case_id) if invoice.case_id else None
+        if case:
+            ensure_tenant_access(case)
 
-    return render_template(
-        "cms/invoicing/view.html",
-        invoice=invoice,
-        client=client,
-        items=items,
-        payments=payments,
-        case=case,
-    )
+        return render_template(
+            "cms/invoicing/view.html",
+            invoice=invoice,
+            client=client,
+            items=items,
+            payments=payments,
+            case=case,
+        )
 
 
 # ── Edit ────────────────────────────────────────────────────────────────

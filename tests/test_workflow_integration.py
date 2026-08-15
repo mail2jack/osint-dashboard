@@ -687,6 +687,7 @@ class TestSubdomainCheck:
             subject_type="person",
             email="user@mailhost.nl",
         )
+        subject.encrypt_identifiers()
         db.session.add(subject)
         db.session.flush()
         case.subjects.append(subject)
@@ -712,8 +713,15 @@ class TestSubdomainCheck:
         import curl_cffi.requests as curl_req
 
         monkeypatch.setattr(curl_req, "get", lambda *a, **kw: MockCrtSh())
-        from cms.workflow.research import _subdomain_check
+        from cms.workflow.actions.other_action import _subdomain_check
 
+        # Handlers read decrypted identifiers (run_action decrypts subjects
+        # before invoking handlers) — simulate that here. run_action re-loads
+        # the action first, so the handler's attribute reads hit loaded state
+        # and never trigger an autoflush that would re-encrypt the freshly
+        # decrypted subject identifiers mid-handler.
+        action = db.session.get(ResearchAction, action.id)
+        subject.decrypt_identifiers()
         findings = _subdomain_check(action)
         sub_findings = [f for f in findings if f.get("source_type") == "subdomain"]
         assert len(sub_findings) == 1

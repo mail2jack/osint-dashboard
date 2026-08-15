@@ -147,13 +147,18 @@ def cancel_action(action_id):
         action.status = "cancelled"
         action.completed_at = datetime.now()
         action.result_summary = "Cancelled"
+        # Soft-delete the produced findings instead of hard-deleting them: the
+        # evidence (screenshots, links, integrity hashes) must survive for
+        # audit/integrity purposes. Soft-deleted findings are filtered out of
+        # every list view.
         links = WorkflowActionFinding.query.filter_by(action_id=action_id).all()
         if links:
             finding_ids = [link.finding_id for link in links]
-            WorkflowFinding.query.filter(
+            findings = WorkflowFinding.query.filter(
                 WorkflowFinding.id.in_(finding_ids),
-            ).delete(synchronize_session=False)
-            WorkflowActionFinding.query.filter_by(action_id=action_id).delete()
+            ).all()
+            for finding in findings:
+                finding.soft_delete()
         db.session.commit()
 
 
@@ -165,7 +170,33 @@ def is_action_cancelled(action_id):
 
 
 def run_action(action_id):
+    from cms.tenant_context import set_tenant_context
+
     try:
+        # Cold worker: no request context, so there is no flask.g tenant for
+        # RLS to scope the first read. Look the action up under a temporary
+        # bypass and read only its tenant_id, then drop the bypass.
+        set_tenant_context(db, None, bypass_rls=True)
+        try:
+            action = db.session.get(WorkflowResearchAction, action_id)
+        finally:
+            set_tenant_context(db, None)
+        if not action:
+            return
+
+        tenant_id = action.tenant_id
+        if not tenant_id:
+            # Fail closed: an action without a tenant must never run or create
+            # unattributed rows.
+            action.status = "error"
+            action.error = "Action has no tenant_id"
+            db.session.commit()
+            return
+
+        # Scope the whole run to the action's tenant and reload the row under
+        # that context (the bypass lookup above loaded it un-scoped).
+        set_tenant_context(db, tenant_id)
+        db.session.expire(action)
         action = db.session.get(WorkflowResearchAction, action_id)
         if not action:
             return
@@ -198,20 +229,40 @@ def run_action(action_id):
             case = db.session.get(WorkflowCase, action.case_id)
             action_creator_id = case.created_by if case else None
 
-        # Decrypt subject identifiers so handlers can read plaintext
-        _case = db.session.get(WorkflowCase, action.case_id)
+        # Decrypt subject identifiers so handlers can read plaintext. Keep
+        # autoflush off across the handler: a handler query (e.g. resolving the
+        # target subject or recording an OSINT call) would otherwise autoflush
+        # and the before_flush guard would re-encrypt the decrypted identifiers
+        # mid-handler.
+        with db.session.no_autoflush:
+            _case = db.session.get(WorkflowCase, action.case_id)
+            if _case:
+                for _s in _case.subjects:
+                    try:
+                        _s.decrypt_identifiers()
+                    except Exception:
+                        logger.debug(
+                            "Failed to decrypt identifiers for subject %s",
+                            _s.id,
+                            exc_info=True,
+                        )
+
+            findings_data = entry["handler"](action)
+
+        # Re-encrypt identifiers the handlers may have decrypted in-place before
+        # any commit. encrypt_identifiers() is idempotent, so untouched fields
+        # stay as-is. Without this the same ORM subjects would be persisted
+        # as plaintext on the commits below.
         if _case:
             for _s in _case.subjects:
                 try:
-                    _s.decrypt_identifiers()
+                    _s.encrypt_identifiers()
                 except Exception:
                     logger.debug(
-                        "Failed to decrypt identifiers for subject %s",
+                        "Failed to re-encrypt identifiers for subject %s",
                         _s.id,
                         exc_info=True,
                     )
-
-        findings_data = entry["handler"](action)
 
         if is_action_cancelled(action_id):
             action.status = "cancelled"
@@ -226,6 +277,7 @@ def run_action(action_id):
             subject_id = fd.get("subject_id")
             finding = WorkflowFinding(
                 id=str(uuid.uuid4()),
+                tenant_id=tenant_id,
                 case_id=action.case_id,
                 subject_id=subject_id,
                 title=fd["title"],
@@ -248,6 +300,7 @@ def run_action(action_id):
             for ss in fd.get("screenshots", []):
                 screenshot = WorkflowScreenshot(
                     id=str(uuid.uuid4()),
+                    tenant_id=tenant_id,
                     finding_id=finding.id,
                     url=ss.get("url"),
                     source_url=ss.get("source_url"),
@@ -267,6 +320,7 @@ def run_action(action_id):
                     db.session.add(
                         SocialAccount(
                             subject_id=subject_id,
+                            tenant_id=tenant_id,
                             platform=sa_data["platform"],
                             username=sa_data["username"],
                             url=sa_data.get("url"),
@@ -294,6 +348,11 @@ def run_action(action_id):
             action.status = "error"
             action.error = str(e)
             db.session.commit()
+    finally:
+        # A pooled worker connection must not carry a tenant context (or a
+        # bypass flag) into the next task; always reset it. On PostgreSQL this
+        # also guarantees app.tenant_id exists for any following RLS query.
+        set_tenant_context(db, None)
 
 
 def start_action_async(action_id):

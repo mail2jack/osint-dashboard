@@ -286,11 +286,19 @@ def save_addresses(subject, addresses_data, replace_existing=False):
     """Create Address records and sync primary to legacy fields.
 
     When *replace_existing* is ``True`` all prior addresses are deleted first.
+    Addresses linked to a finding are never deleted by a bulk replace — that
+    would silently destroy evidence, so the operation raises instead.
     Returns the count of removed addresses (0 when not replacing).
     """
     old_count = 0
     if replace_existing and addresses_data:
         old_addresses = list(subject.addresses)
+        linked = [a for a in old_addresses if a.finding_id]
+        if linked:
+            raise ValueError(
+                f"Cannot replace addresses: {len(linked)} address(es) are "
+                "linked to findings. Unlink them first."
+            )
         old_count = len(old_addresses)
         for addr in old_addresses:
             db.session.delete(addr)
@@ -344,11 +352,19 @@ def save_contacts(subject, contacts_data, replace_existing=False):
     """Create Contact records and sync primary to legacy fields.
 
     When *replace_existing* is ``True`` all prior contacts are deleted first.
+    Contacts linked to a finding are never deleted by a bulk replace — that
+    would silently destroy evidence, so the operation raises instead.
     Returns the count of removed contacts (0 when not replacing).
     """
     old_count = 0
     if replace_existing and contacts_data:
         old_contacts = list(subject.contacts)
+        linked = [c for c in old_contacts if c.finding_id]
+        if linked:
+            raise ValueError(
+                f"Cannot replace contacts: {len(linked)} contact(s) are "
+                "linked to findings. Unlink them first."
+            )
         old_count = len(old_contacts)
         for c in old_contacts:
             db.session.delete(c)
@@ -735,10 +751,12 @@ class SubjectService:
             subject.updated_at.isoformat() if subject.updated_at else None
         )
 
-        # to_dict(decrypted=True) decrypts addresses/contacts in place; read the
-        # already-decrypted values without re-decrypting (avoids decrypt noise).
-        addresses = [a.to_dict(decrypted=False) for a in subject.addresses]
-        contacts = [c.to_dict(decrypted=False) for c in subject.contacts]
+        # to_dict(decrypted=True) decrypts the subject's addresses/contacts in
+        # place and returns them decrypted; reuse those values directly instead
+        # of re-querying the dynamic relationships (a second query would flush
+        # the decrypted in-memory values through the session before returning).
+        addresses = base["addresses"]
+        contacts = base["contacts"]
         social_accounts = [sa.to_dict() for sa in subject.social_accounts]
         identifiers = [i.to_dict() for i in subject.identifiers]
         facts = [f.to_dict() for f in subject.facts]
@@ -760,7 +778,9 @@ class SubjectService:
         if related_ids:
             related_map = {
                 s.id: {"id": s.id, "name": s.name, "subject_type": s.subject_type}
-                for s in Subject.query.filter(Subject.id.in_(related_ids)).all()
+                for s in Subject.query.filter(
+                    Subject.id.in_(related_ids), Subject.is_deleted.is_(False)
+                ).all()
             }
         outgoing, incoming = [], []
         for row in relation_rows:
@@ -844,7 +864,9 @@ class SubjectService:
                     "error": a.error,
                     "result_summary": a.result_summary,
                     "target_snapshot": snap,
-                    "findings_count": len(a.findings),
+                    "findings_count": sum(
+                        1 for f in a.findings if not f.is_deleted and not f.archived_at
+                    ),
                     "created_at": a.created_at.isoformat() if a.created_at else None,
                     "started_at": a.started_at.isoformat() if a.started_at else None,
                     "completed_at": (
@@ -853,9 +875,10 @@ class SubjectService:
                 }
             )
 
-        # Findings linked to the subject (non-deleted), with verification state.
+        # Findings linked to the subject (non-deleted, non-archived), with
+        # verification state.
         findings = (
-            subject.findings.filter_by(is_deleted=False)
+            subject.findings.filter_by(is_deleted=False, archived_at=None)
             .order_by(Finding.created_at.desc())
             .limit(200)
             .all()
@@ -1006,6 +1029,9 @@ class SubjectService:
             fact.fact_key = fact_key
             if data.get("value") is not None:
                 fact.set_value(data["value"])
+            # Preserve the existing verification status when the payload does
+            # not send one — a partial update must never demote a verified fact.
+            status = (data.get("status") or "").strip() or fact.status or "candidate"
             fact.status = status
             fact.source = data.get("source") or fact.source
             fact.source_url = data.get("source_url") or fact.source_url

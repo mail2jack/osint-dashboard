@@ -248,7 +248,14 @@ def edit_subject(subject_id: str) -> flask.Response:
 
         # Apply through the shared service (single write path); returns the
         # audit diff for every changed field.
-        changes = subject_service.edit(subject, data, actor_id=current_user.id)
+        try:
+            changes = subject_service.edit(subject, data, actor_id=current_user.id)
+        except ValueError as e:
+            db.session.rollback()
+            if request.is_json:
+                return api_error(str(e), 400)
+            flash(str(e), "danger")
+            return redirect(url_for("cms.edit_subject", subject_id=subject_id))
 
         AuditLog.log(
             user_id=current_user.id,
@@ -275,19 +282,24 @@ def edit_subject(subject_id: str) -> flask.Response:
         flash("Subject updated successfully.", "success")
         return redirect(url_for("cms.view_subject", subject_id=subject.id))
 
-    subject.decrypt_identifiers()
-    addresses = list(subject.addresses)
-    for addr in addresses:
-        addr.decrypt_fields()
-    contacts = list(subject.contacts)
-    for c in contacts:
-        c.decrypt_fields()
-    return render_template(
-        "cms/subjects/edit.html",
-        subject=subject,
-        addresses=addresses,
-        contacts=contacts,
-    )
+    # Render with autoflush off: the template re-queries dynamic relationships
+    # (subject.addresses/contacts); an autoflush would re-encrypt the freshly
+    # decrypted values mid-render and show ciphertext. The view's commit still
+    # flushes, so the before_flush guard re-encrypts before anything persists.
+    with db.session.no_autoflush:
+        subject.decrypt_identifiers()
+        addresses = list(subject.addresses)
+        for addr in addresses:
+            addr.decrypt_fields()
+        contacts = list(subject.contacts)
+        for c in contacts:
+            c.decrypt_fields()
+        return render_template(
+            "cms/subjects/edit.html",
+            subject=subject,
+            addresses=addresses,
+            contacts=contacts,
+        )
 
 
 @cms_bp.route("/api/subjects/bulk-delete", methods=["POST"])

@@ -895,7 +895,6 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
     """Scan a subject with SpiderFoot."""
     subject = db.session.get(Subject, subject_id) or abort(404)
     ensure_tenant_access(subject)
-    subject.decrypt_identifiers()
 
     if request.method == "POST":
         data = request.validated_data
@@ -928,8 +927,11 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
         use_case = data.get("use_case", "passive")
         case_id = data.get("case_id")
 
-        # Try to determine target from subject
-        target_info = ScanTarget.from_subject(subject.to_dict())
+        # Try to determine target from subject. to_dict(decrypted=True) decrypts
+        # in place; keep autoflush off so its address/contact relationship loads
+        # don't re-encrypt the target values mid-build.
+        with db.session.no_autoflush:
+            target_info = ScanTarget.from_subject(subject.to_dict())
 
         if not target_info:
             if request.is_json:
@@ -1011,10 +1013,16 @@ def spiderfoot_scan_subject(subject_id: str) -> str:
         .all()
     )
 
-    return render_template(
-        "cms/spiderfoot/scan_subject.html",
-        subject=subject,
-        cases=cases,
-        profiles=SpiderFootService.INVESTIGATION_PROFILES if SpiderFootService else {},
-        use_cases=SpiderFootService.USE_CASES if SpiderFootService else {},
-    )
+    # Render with autoflush off: the cases query above would autoflush and
+    # re-encrypt the freshly decrypted subject, showing ciphertext in the form.
+    with db.session.no_autoflush:
+        subject.decrypt_identifiers()
+        return render_template(
+            "cms/spiderfoot/scan_subject.html",
+            subject=subject,
+            cases=cases,
+            profiles=SpiderFootService.INVESTIGATION_PROFILES
+            if SpiderFootService
+            else {},
+            use_cases=SpiderFootService.USE_CASES if SpiderFootService else {},
+        )

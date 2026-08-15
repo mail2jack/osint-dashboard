@@ -149,3 +149,238 @@ class TestPostgreSQLIntegration:
     def test_cli_context_is_explicit(self):
         source = open("scripts/notify_update.py", encoding="utf-8").read()
         assert "set_tenant_context(db, None, bypass_rls=True)" in source
+
+    def test_run_action_scopes_rows_under_rls_and_keeps_encryption(self, app):
+        """run_action() sets an explicit RLS context; findings/screenshots it
+        creates must be visible in the action's tenant and invisible to other
+        tenants under real PostgreSQL RLS, and subject identifiers must stay
+        ciphertext at rest."""
+        import uuid
+
+        from cms.encryption_utils import encryptor
+        from cms.models import (
+            Finding,
+            ResearchAction,
+            Subject,
+            Case,
+            db as _db,
+        )
+        from cms.workflow.actions.registry import (
+            ACTION_REGISTRY,
+            register_action,
+            run_action,
+        )
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = Tenant(
+            name="Postgres Enc Tenant B",
+            slug=f"pg-enc-b-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.flush()
+
+        set_tenant_context(db, tenant_a, bypass_rls=True)
+        client = Client(tenant_id=tenant_a, name="PG enc client")
+        db.session.add(client)
+        db.session.flush()
+        case = Case(
+            tenant_id=tenant_a,
+            case_number=f"PG-ENC-{uuid.uuid4().hex[:8]}",
+            client_id=client.id,
+            title="PG enc case",
+            start_date=date.today(),
+            created_by=admin.id,
+        )
+        db.session.add(case)
+        db.session.flush()
+        subject = Subject(
+            name="PG enc person",
+            subject_type="person",
+            tenant_id=tenant_a,
+            email="pg-enc@example.com",
+        )
+        subject.encrypt_identifiers()
+        db.session.add(subject)
+        db.session.flush()
+        case.subjects.append(subject)
+        action = ResearchAction(
+            case_id=case.id,
+            tenant_id=tenant_a,
+            action_type="test_pg_enc_probe",
+            status="pending",
+            created_by=admin.id,
+        )
+        db.session.add(action)
+        db.session.commit()
+
+        def _handler(act):
+            c = _db.session.get(Case, act.case_id)
+            for s in c.subjects:
+                s.decrypt_identifiers()
+            target = c.subjects[0] if c.subjects else None
+            return [
+                {
+                    "title": "PG probe finding",
+                    "detail": "probe",
+                    "subject_id": target.id if target else None,
+                    "screenshots": [{"url": None, "source_url": "https://pg.example"}],
+                }
+            ]
+
+        register_action(
+            "test_pg_enc_probe",
+            "PG Probe",
+            "probe",
+            _handler,
+            category="open",
+        )
+        try:
+            run_action(action.id)
+            db.session.expire_all()
+
+            # run_action() resets the connection context afterwards (no leak
+            # into the pool); re-scope to the action's tenant to verify.
+            set_tenant_context(db, tenant_a)
+            db.session.expire_all()
+
+            # Ciphertext at rest, verifiable via raw SQL (no ORM decrypts).
+            stored = db.session.execute(
+                text("SELECT email FROM subjects WHERE id = :id"),
+                {"id": subject.id},
+            ).scalar_one()
+            assert stored != "pg-enc@example.com"
+            assert encryptor.decrypt(stored) == "pg-enc@example.com"
+
+            finding = (
+                Finding.query.filter_by(case_id=case.id)
+                .order_by(Finding.created_at.desc())
+                .first()
+            )
+            assert finding is not None
+            assert finding.tenant_id == tenant_a
+            finding_id = finding.id
+            db.session.expire_all()
+
+            # RLS must hide the produced evidence from another tenant.
+            set_tenant_context(db, tenant_b.id)
+            db.session.expire_all()
+            assert Finding.query.filter_by(id=finding_id).count() == 0
+
+            set_tenant_context(db, tenant_a)
+            db.session.expire_all()
+            assert Finding.query.filter_by(id=finding_id).count() == 1
+        finally:
+            ACTION_REGISTRY.pop("test_pg_enc_probe", None)
+            set_tenant_context(db, admin.tenant_id)
+
+    def test_run_action_cold_worker_resets_tenant_context(self, app):
+        """A worker that starts with NO tenant context (no request/flask.g)
+        must still run: run_action() first looks the action up under a
+        temporary RLS bypass, then scopes the run to the action's tenant, and
+        finally resets the connection context so nothing leaks to the pool."""
+        import uuid
+
+        from cms.models import Finding, ResearchAction, Subject, Case
+        from cms.workflow.actions.registry import (
+            ACTION_REGISTRY,
+            register_action,
+            run_action,
+        )
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+
+        set_tenant_context(db, tenant_a, bypass_rls=True)
+        client = Client(tenant_id=tenant_a, name="PG cold client")
+        db.session.add(client)
+        db.session.flush()
+        case = Case(
+            tenant_id=tenant_a,
+            case_number=f"PG-COLD-{uuid.uuid4().hex[:8]}",
+            client_id=client.id,
+            title="PG cold case",
+            start_date=date.today(),
+            created_by=admin.id,
+        )
+        db.session.add(case)
+        db.session.flush()
+        subject = Subject(
+            name="PG cold person",
+            subject_type="person",
+            tenant_id=tenant_a,
+            email="pg-cold@example.com",
+        )
+        subject.encrypt_identifiers()
+        db.session.add(subject)
+        db.session.flush()
+        case.subjects.append(subject)
+        action = ResearchAction(
+            case_id=case.id,
+            tenant_id=tenant_a,
+            action_type="test_pg_cold_probe",
+            status="pending",
+            created_by=admin.id,
+        )
+        db.session.add(action)
+        db.session.commit()
+
+        # Simulate a cold worker: start with NO tenant context at all.
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert (
+            db.session.execute(text("SELECT current_setting('app.tenant_id')")).scalar()
+            == ""
+        )
+
+        def _handler(act):
+            c = db.session.get(Case, act.case_id)
+            for s in c.subjects:
+                s.decrypt_identifiers()
+            return [
+                {
+                    "title": "PG cold finding",
+                    "detail": "cold",
+                    "subject_id": c.subjects[0].id if c.subjects else None,
+                }
+            ]
+
+        register_action(
+            "test_pg_cold_probe",
+            "PG Cold Probe",
+            "cold",
+            _handler,
+            category="open",
+        )
+        try:
+            run_action(action.id)
+            db.session.expire_all()
+
+            # Context must be reset afterwards: no tenant and no bypass leak
+            # into the next task on the pooled connection.
+            tenant_id, bypass = db.session.execute(
+                text(
+                    "SELECT current_setting('app.tenant_id'), "
+                    "current_setting('app.bypass_rls')"
+                )
+            ).one()
+            assert tenant_id == ""
+            assert bypass == "false"
+
+            set_tenant_context(db, tenant_a)
+            db.session.expire_all()
+            reloaded = db.session.get(ResearchAction, action.id)
+            assert reloaded.status == "completed"
+            finding = (
+                Finding.query.filter_by(case_id=case.id)
+                .order_by(Finding.created_at.desc())
+                .first()
+            )
+            assert finding is not None
+            assert finding.tenant_id == tenant_a
+        finally:
+            ACTION_REGISTRY.pop("test_pg_cold_probe", None)
+            set_tenant_context(db, admin.tenant_id)

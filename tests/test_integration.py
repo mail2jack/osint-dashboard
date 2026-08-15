@@ -191,11 +191,13 @@ class TestApiKeys:
         from cms.models import db, User
 
         with app.app_context():
+            admin = User.query.filter_by(username="admin").first()
             user = User(
                 username="junior",
                 email="junior@test.nl",
                 full_name="Junior",
                 role="junior_investigator",
+                tenant_id=admin.tenant_id if admin else None,
                 is_active=True,
             )
             user.set_password("Test1234!")
