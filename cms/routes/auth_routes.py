@@ -63,6 +63,7 @@ from ..validation import (
     ChangePasswordSchema,
 )
 from ..geo_utils import log_login_attempt
+from ..tenant_context import set_tenant_context
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,7 @@ def signup() -> flask.Response:
         if is_first_user:
             tenant.owner_id = user.id
 
+        set_tenant_context(db, tenant.id)
         AuditLog.log(
             user_id=user.id,
             action="privacy_consent",
@@ -187,6 +189,7 @@ def signup() -> flask.Response:
 
         notify_signup(username=username, email=email, org_name=tenant.name)
 
+        set_tenant_context(db, tenant.id)
         AuditLog.log(
             user_id=user.id,
             action="signup",
@@ -250,6 +253,7 @@ def login() -> flask.Response:
                 tenant = db.session.get(Tenant, user.tenant_id)
                 if user.is_active and tenant and tenant.is_active:
                     login_failed = False
+                    set_tenant_context(db, user.tenant_id)
                     AuditLog.log(
                         user_id=user.id,
                         action="password_verified",
@@ -291,6 +295,7 @@ def login() -> flask.Response:
                 ip_address=request.remote_addr or "",
                 is_success=False,
                 user_agent=request.user_agent.string or "",
+                tenant_id=user.tenant_id,
             )
 
         rate_limit_after_n(rate_key, max_attempts=3, retry_after=15)
@@ -425,6 +430,7 @@ def verify_2fa() -> flask.Response:
                 ip_address=request.remote_addr or "",
                 is_success=False,
                 user_agent=request.user_agent.string or "",
+                tenant_id=user.tenant_id,
             )
 
         flash("Invalid code. Please try again.", "danger")
@@ -434,6 +440,7 @@ def verify_2fa() -> flask.Response:
 
 def _complete_2fa_login(user) -> flask.Response:
     """Complete the second-factor login and clear the pending session."""
+    set_tenant_context(db, user.tenant_id)
     user.last_login = datetime.now(timezone.utc)
     remember = session.pop("_2fa_remember", False)
     session.pop("_2fa_user_id", None)
@@ -457,6 +464,7 @@ def _complete_2fa_login(user) -> flask.Response:
         ip_address=request.remote_addr or "",
         is_success=True,
         user_agent=request.user_agent.string or "",
+        tenant_id=user.tenant_id,
     )
 
     next_page = request.args.get("next") or session.pop("_2fa_next", None)
@@ -532,6 +540,7 @@ def setup_2fa() -> flask.Response:
         if partial_login:
             _complete_2fa_login(user)
 
+        set_tenant_context(db, user.tenant_id)
         AuditLog.log(
             user_id=user.id,
             action="2fa_enabled",
@@ -1296,6 +1305,7 @@ def accept_invite(token: str):
         inv.accept()
         db.session.commit()
 
+        set_tenant_context(db, inv.tenant_id)
         AuditLog.log(
             user_id=user.id,
             action="accept_invite",

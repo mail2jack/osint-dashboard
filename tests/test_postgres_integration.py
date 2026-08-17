@@ -7,7 +7,7 @@ import uuid
 import pytest
 from sqlalchemy import text
 
-from cms.models import Case, Client, Notification, Tenant, User, db
+from cms.models import AuditLog, Case, Client, LoginLog, Notification, Tenant, User, db
 from cms.tenant_context import set_tenant_context
 
 
@@ -40,7 +40,7 @@ class TestPostgreSQLIntegration:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "b1f2e3d4c5a6"
+        assert revision == "d2e3f4a5b6c7"
 
         protected = db.session.execute(
             text(
@@ -384,3 +384,74 @@ class TestPostgreSQLIntegration:
         finally:
             ACTION_REGISTRY.pop("test_pg_cold_probe", None)
             set_tenant_context(db, admin.tenant_id)
+
+    def test_login_under_force_rls(self, app, client):
+        """Login must succeed under FORCE RLS — audit_logs INSERT must carry
+        tenant context set by the auth route before writing."""
+        with app.app_context():
+            force = db.session.execute(
+                text(
+                    "SELECT relforcerowsecurity FROM pg_class "
+                    "WHERE relname = 'audit_logs'"
+                )
+            ).scalar()
+            assert force is True, "FORCE RLS must be active for this test"
+
+            admin = User.query.filter_by(role="admin").first()
+            admin.totp_secret = None
+            admin.totp_enabled = False
+            db.session.commit()
+            tenant_id = admin.tenant_id
+
+        resp = client.post(
+            "/auth/login",
+            data={"email": "admin@localhost", "password": "Test1234!"},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (
+            302,
+            200,
+        ), f"login returned {resp.status_code} — FORCE RLS blocked audit_logs INSERT"
+
+        with app.app_context():
+            entry = AuditLog.query.filter_by(
+                user_id=admin.id, action="password_verified"
+            ).first()
+            assert entry is not None, "audit_logs entry not created after login"
+            assert entry.tenant_id == tenant_id
+
+    def test_async_login_log_under_force_rls(self, app):
+        """log_login_attempt(run_async=True) must persist a LoginLog record
+        with the correct tenant_id under FORCE RLS.  The background thread
+        receives the Flask app object explicitly so it can create its own
+        app context — it must NOT rely on current_app from the parent."""
+        import time
+
+        with app.app_context():
+            admin = User.query.filter_by(role="admin").first()
+            tenant_id = admin.tenant_id
+
+            from cms.geo_utils import log_login_attempt
+
+            log_login_attempt(
+                user_id=admin.id,
+                ip_address="127.0.0.1",
+                is_success=False,
+                user_agent="test-agent",
+                tenant_id=tenant_id,
+                run_async=True,
+            )
+
+            deadline = time.time() + 5
+            while time.time() < deadline:
+                if LoginLog.query.filter_by(user_id=admin.id).count() > 0:
+                    break
+                time.sleep(0.1)
+
+            entry = LoginLog.query.filter_by(user_id=admin.id).first()
+            assert entry is not None, (
+                "login_logs INSERT did not complete in background thread"
+            )
+            assert entry.tenant_id == tenant_id
+            assert entry.ip_address == "127.0.0.1"
+            assert entry.is_success is False
