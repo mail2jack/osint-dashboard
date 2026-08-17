@@ -202,6 +202,7 @@ def log_login_attempt(
     ip_address: str,
     is_success: bool,
     user_agent: str = "",
+    tenant_id: str | None = None,
     run_async: bool = True,
 ) -> None:
     """Create a LoginLog entry with geolocation and anomaly detection.
@@ -214,12 +215,12 @@ def log_login_attempt(
 
         t = threading.Thread(
             target=_log_login_sync,
-            args=(user_id, ip_address, is_success, user_agent),
+            args=(user_id, ip_address, is_success, user_agent, tenant_id),
             daemon=True,
         )
         t.start()
     else:
-        _log_login_sync(user_id, ip_address, is_success, user_agent)
+        _log_login_sync(user_id, ip_address, is_success, user_agent, tenant_id)
 
 
 def _log_login_sync(
@@ -227,6 +228,7 @@ def _log_login_sync(
     ip_address: str,
     is_success: bool,
     user_agent: str = "",
+    tenant_id: str | None = None,
 ) -> None:
     from flask import current_app
 
@@ -238,6 +240,11 @@ def _log_login_sync(
 
         ctx = app.app_context()
     with ctx:
+        if tenant_id is not None:
+            from .tenant_context import set_tenant_context
+
+            set_tenant_context(db, tenant_id)
+
         geo = get_ip_geo(ip_address)
 
         anomaly = False

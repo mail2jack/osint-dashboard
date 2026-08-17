@@ -7,7 +7,7 @@ import uuid
 import pytest
 from sqlalchemy import text
 
-from cms.models import Case, Client, Notification, Tenant, User, db
+from cms.models import AuditLog, Case, Client, Notification, Tenant, User, db
 from cms.tenant_context import set_tenant_context
 
 
@@ -40,7 +40,7 @@ class TestPostgreSQLIntegration:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "b1f2e3d4c5a6"
+        assert revision == "d2e3f4a5b6c7"
 
         protected = db.session.execute(
             text(
@@ -384,3 +384,38 @@ class TestPostgreSQLIntegration:
         finally:
             ACTION_REGISTRY.pop("test_pg_cold_probe", None)
             set_tenant_context(db, admin.tenant_id)
+
+    def test_login_under_force_rls(self, app, client):
+        """Login must succeed under FORCE RLS — audit_logs INSERT must carry
+        tenant context set by the auth route before writing."""
+        with app.app_context():
+            force = db.session.execute(
+                text(
+                    "SELECT relforcerowsecurity FROM pg_class "
+                    "WHERE relname = 'audit_logs'"
+                )
+            ).scalar()
+            assert force is True, "FORCE RLS must be active for this test"
+
+            admin = User.query.filter_by(role="admin").first()
+            admin.totp_secret = None
+            admin.totp_enabled = False
+            db.session.commit()
+            tenant_id = admin.tenant_id
+
+        resp = client.post(
+            "/auth/login",
+            data={"email": "admin@localhost", "password": "Test1234!"},
+            follow_redirects=False,
+        )
+        assert resp.status_code in (
+            302,
+            200,
+        ), f"login returned {resp.status_code} — FORCE RLS blocked audit_logs INSERT"
+
+        with app.app_context():
+            entry = AuditLog.query.filter_by(
+                user_id=admin.id, action="password_verified"
+            ).first()
+            assert entry is not None, "audit_logs entry not created after login"
+            assert entry.tenant_id == tenant_id
