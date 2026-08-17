@@ -210,12 +210,22 @@ def log_login_attempt(
     If run_async is True, geo lookup runs in a background thread so the
     login response is not delayed.
     """
+    flask_app = None
     if run_async:
+        from flask import current_app
+
+        try:
+            flask_app = current_app._get_current_object()
+        except RuntimeError:
+            from app import app
+
+            flask_app = app
+
         import threading
 
         t = threading.Thread(
             target=_log_login_sync,
-            args=(user_id, ip_address, is_success, user_agent, tenant_id),
+            args=(user_id, ip_address, is_success, user_agent, tenant_id, flask_app),
             daemon=True,
         )
         t.start()
@@ -229,17 +239,16 @@ def _log_login_sync(
     is_success: bool,
     user_agent: str = "",
     tenant_id: str | None = None,
+    flask_app=None,
 ) -> None:
-    from flask import current_app
-
     from .models import db, LoginLog
 
-    ctx = current_app.app_context() if current_app._get_current_object() else None
-    if ctx is None:
+    if flask_app is None:
         from app import app
 
-        ctx = app.app_context()
-    with ctx:
+        flask_app = app
+
+    with flask_app.app_context():
         if tenant_id is not None:
             from .tenant_context import set_tenant_context
 

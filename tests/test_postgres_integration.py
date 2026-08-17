@@ -7,7 +7,7 @@ import uuid
 import pytest
 from sqlalchemy import text
 
-from cms.models import AuditLog, Case, Client, Notification, Tenant, User, db
+from cms.models import AuditLog, Case, Client, LoginLog, Notification, Tenant, User, db
 from cms.tenant_context import set_tenant_context
 
 
@@ -419,3 +419,39 @@ class TestPostgreSQLIntegration:
             ).first()
             assert entry is not None, "audit_logs entry not created after login"
             assert entry.tenant_id == tenant_id
+
+    def test_async_login_log_under_force_rls(self, app):
+        """log_login_attempt(run_async=True) must persist a LoginLog record
+        with the correct tenant_id under FORCE RLS.  The background thread
+        receives the Flask app object explicitly so it can create its own
+        app context — it must NOT rely on current_app from the parent."""
+        import time
+
+        with app.app_context():
+            admin = User.query.filter_by(role="admin").first()
+            tenant_id = admin.tenant_id
+
+            from cms.geo_utils import log_login_attempt
+
+            log_login_attempt(
+                user_id=admin.id,
+                ip_address="127.0.0.1",
+                is_success=False,
+                user_agent="test-agent",
+                tenant_id=tenant_id,
+                run_async=True,
+            )
+
+            deadline = time.time() + 5
+            while time.time() < deadline:
+                if LoginLog.query.filter_by(user_id=admin.id).count() > 0:
+                    break
+                time.sleep(0.1)
+
+            entry = LoginLog.query.filter_by(user_id=admin.id).first()
+            assert entry is not None, (
+                "login_logs INSERT did not complete in background thread"
+            )
+            assert entry.tenant_id == tenant_id
+            assert entry.ip_address == "127.0.0.1"
+            assert entry.is_success is False
