@@ -684,6 +684,8 @@ def case_edit(case_id):
                 client.decrypt_naw()
             for s in subjects:
                 s.decrypt_identifiers()
+                for c in s.contacts.all():
+                    c.decrypt_fields()
             return render_template(
                 "cms/workflow/workflow_case_edit.html",
                 case=case,
