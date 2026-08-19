@@ -605,10 +605,6 @@ def case_detail(case_id):
         subjects = list(case.subjects)
         for s in subjects:
             s.decrypt_identifiers()
-        # Build inside no_autoflush: ``workflow_social_accounts`` below lazily
-        # SELECTs; an autoflush there would re-encrypt the freshly decrypted
-        # identifiers before the later fields (identification_number, ...) are
-        # read, returning ciphertext in this response.
         subjects_data = [
             {
                 "id": s.id,
@@ -635,36 +631,36 @@ def case_detail(case_id):
             for s in subjects
             if s
         ]
-    brave_health = _get_cached_health().get("brave", "no key configured")
-    action_credits = {}
-    for key in ACTION_REGISTRY:
-        action_credits[key] = get_remaining_credits(key)
+        brave_health = _get_cached_health().get("brave", "no key configured")
+        action_credits = {}
+        for key in ACTION_REGISTRY:
+            action_credits[key] = get_remaining_credits(key)
 
-    dorks_library = {}
-    dorks_path = os.path.join(os.path.dirname(__file__), "dorks.json")
-    try:
-        with open(dorks_path, "r", encoding="utf-8") as _f:
-            dorks_library = json.load(_f)
-    except Exception:
-        pass
+        dorks_library = {}
+        dorks_path = os.path.join(os.path.dirname(__file__), "dorks.json")
+        try:
+            with open(dorks_path, "r", encoding="utf-8") as _f:
+                dorks_library = json.load(_f)
+        except Exception:
+            pass
 
-    return render_template(
-        "cms/workflow/workflow_case_detail.html",
-        case=case,
-        client=client,
-        subjects=subjects,
-        subjects_data=subjects_data,
-        actions=actions,
-        findings=findings,
-        finding_actions=finding_actions,
-        action_types=ACTION_REGISTRY,
-        action_credits=action_credits,
-        subject_presets=SUBJECT_TYPE_PRESETS,
-        brave_health=brave_health,
-        show_archived=show_archived,
-        dorks_library=dorks_library,
-        paid_enabled=paid_channels_enabled(),
-    )
+        return render_template(
+            "cms/workflow/workflow_case_detail.html",
+            case=case,
+            client=client,
+            subjects=subjects,
+            subjects_data=subjects_data,
+            actions=actions,
+            findings=findings,
+            finding_actions=finding_actions,
+            action_types=ACTION_REGISTRY,
+            action_credits=action_credits,
+            subject_presets=SUBJECT_TYPE_PRESETS,
+            brave_health=brave_health,
+            show_archived=show_archived,
+            dorks_library=dorks_library,
+            paid_enabled=paid_channels_enabled(),
+        )
 
 
 @workflow_bp.route("/case/<case_id>/edit", methods=["GET", "POST"])
@@ -678,119 +674,121 @@ def case_edit(case_id):
 
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
-    # Decrypt only for the GET render. The POST branch edits + commits the same
-    # subject ORM objects; decrypting them in-place here would persist plaintext.
+    # Decrypt + render inside no_autoflush: the before_flush guard
+    # (_reencrypt_plaintext_at_flush) re-encrypts dirty encrypted objects.
+    # Template rendering triggers lazy loads which autoflush, silently
+    # re-encrypting decrypted values back to ciphertext mid-render.
     if request.method == "GET":
-        if client:
-            client.decrypt_naw()
-        for s in subjects:
-            s.decrypt_identifiers()
-
-    if request.method == "POST":
-        # Client NAW fields are safe to decrypt: encrypt_naw() below re-encrypts
-        # every field after the form mutations, before the commit.
-        if client:
-            client.decrypt_naw()
-        # update client
-        if client:
-            client.name = request.form.get("client_name", client.name)
-            client.contact_person = request.form.get("client_contact", "")
-            client.contact_email = request.form.get("client_email", "")
-            client.contact_phone = normalize_phone(request.form.get("client_phone", ""))
-            client.reference = request.form.get("reference", "")
-            client.address_street = request.form.get("client_street", "")
-            client.address_number = _combine_address_number(
-                request.form.get("client_house_number", ""),
-                request.form.get("client_house_number_addition", ""),
+        with db.session.no_autoflush:
+            if client:
+                client.decrypt_naw()
+            for s in subjects:
+                s.decrypt_identifiers()
+            return render_template(
+                "cms/workflow/workflow_case_edit.html",
+                case=case,
+                client=client,
+                subjects=subjects,
             )
-            client.address_city = request.form.get("client_city", "")
-            client.address_postal = normalize_postcode(
-                request.form.get("client_postal_code", "")
-            )
-            client.address_country = request.form.get("client_country", "Nederland")
-            client.vat_number = request.form.get("client_vat_number", "")
-            client.bank_account = request.form.get("client_bank_account", "")
-            client.contract_number = request.form.get("client_contract_number", "")
-            client.contract_info = request.form.get("client_contract_info", "")
-            client.financial_notes = request.form.get("client_notes", "")
-            client.encrypt_naw()
 
-        # update case
-        case.case_number = request.form.get("case_number", case.case_number)
-        case.title = request.form.get("title", case.title)
-        case.status = request.form.get("status", case.status)
-        case.priority = request.form.get("priority", case.priority)
-        case.description = request.form.get("description", "")
+    # POST handling below
+    # Client NAW fields are safe to decrypt: encrypt_naw() below re-encrypts
+    # every field after the form mutations, before the commit.
+    if client:
+        client.decrypt_naw()
+    # update client
+    if client:
+        client.name = request.form.get("client_name", client.name)
+        client.contact_person = request.form.get("client_contact", "")
+        client.contact_email = request.form.get("client_email", "")
+        client.contact_phone = normalize_phone(request.form.get("client_phone", ""))
+        client.reference = request.form.get("reference", "")
+        client.address_street = request.form.get("client_street", "")
+        client.address_number = _combine_address_number(
+            request.form.get("client_house_number", ""),
+            request.form.get("client_house_number_addition", ""),
+        )
+        client.address_city = request.form.get("client_city", "")
+        client.address_postal = normalize_postcode(
+            request.form.get("client_postal_code", "")
+        )
+        client.address_country = request.form.get("client_country", "Nederland")
+        client.vat_number = request.form.get("client_vat_number", "")
+        client.bank_account = request.form.get("client_bank_account", "")
+        client.contract_number = request.form.get("client_contract_number", "")
+        client.contract_info = request.form.get("client_contract_info", "")
+        client.financial_notes = request.form.get("client_notes", "")
+        client.encrypt_naw()
 
-        # figure out which subject IDs to keep
-        existing_ids_raw = request.form.get("existing_subject_ids", "[]")
-        try:
-            keep_ids = set(json.loads(existing_ids_raw))
-        except (json.JSONDecodeError, TypeError):
-            keep_ids = set()
+    # update case
+    case.case_number = request.form.get("case_number", case.case_number)
+    case.title = request.form.get("title", case.title)
+    case.status = request.form.get("status", case.status)
+    case.priority = request.form.get("priority", case.priority)
+    case.description = request.form.get("description", "")
 
-        removed_ids_raw = request.form.get("removed_subject_ids", "[]")
-        try:
-            removed_ids = set(json.loads(removed_ids_raw))
-        except (json.JSONDecodeError, TypeError):
-            removed_ids = set()
+    # figure out which subject IDs to keep
+    existing_ids_raw = request.form.get("existing_subject_ids", "[]")
+    try:
+        keep_ids = set(json.loads(existing_ids_raw))
+    except (json.JSONDecodeError, TypeError):
+        keep_ids = set()
 
-        # process existing subjects
-        try:
-            for sid in list(keep_ids):
-                if not sid:
-                    continue
-                subj = db.session.get(WorkflowSubject, sid)
-                if not subj:
-                    continue
-                subject_service.edit(
-                    subj,
-                    _wf_subject_data(f"subj_{sid}", fallback_type=subj.subject_type),
-                    actor_id=current_user.id,
-                )
-        except ValueError as e:
-            db.session.rollback()
-            flash(str(e), "danger")
-            return redirect(url_for("workflow.case_edit", case_id=case_id))
+    removed_ids_raw = request.form.get("removed_subject_ids", "[]")
+    try:
+        removed_ids = set(json.loads(removed_ids_raw))
+    except (json.JSONDecodeError, TypeError):
+        removed_ids = set()
 
-        # process new subjects
-        n = 0
-        while request.form.get(f"subj_new_{n}_name") or request.form.get(
-            f"subj_new_{n}_type"
-        ):
-            new_subj = subject_service.create(
-                _wf_subject_data(f"subj_new_{n}"),
-                created_by=current_user.id,
-                tenant_id=current_user.tenant_id,
-            )
-            case.subjects.append(new_subj)
-            n += 1
-
-        # remove unlinked subjects
-        for sid in list(removed_ids):
+    # process existing subjects
+    try:
+        for sid in list(keep_ids):
             if not sid:
                 continue
             subj = db.session.get(WorkflowSubject, sid)
-            if subj and subj in case.subjects:
-                case.subjects.remove(subj)
+            if not subj:
+                continue
+            subject_service.edit(
+                subj,
+                _wf_subject_data(f"subj_{sid}", fallback_type=subj.subject_type),
+                actor_id=current_user.id,
+            )
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), "danger")
+        return redirect(url_for("workflow.case_edit", case_id=case_id))
 
-        AuditLog.log(
-            user_id=current_user.id,
-            action="update",
-            entity_type="case",
-            entity_id=case.id,
-            ip_address=request.remote_addr,
-            description=f"Workflow edited case: {case.case_number}",
+    # process new subjects
+    n = 0
+    while request.form.get(f"subj_new_{n}_name") or request.form.get(
+        f"subj_new_{n}_type"
+    ):
+        new_subj = subject_service.create(
+            _wf_subject_data(f"subj_new_{n}"),
+            created_by=current_user.id,
+            tenant_id=current_user.tenant_id,
         )
-        db.session.commit()
-        return redirect(url_for("workflow.case_detail", case_id=case_id))
+        case.subjects.append(new_subj)
+        n += 1
 
-    return render_template(
-        "cms/workflow/workflow_case_edit.html",
-        case=case,
-        client=client,
-        subjects=subjects,
+    # remove unlinked subjects
+    for sid in list(removed_ids):
+        if not sid:
+            continue
+        subj = db.session.get(WorkflowSubject, sid)
+        if subj and subj in case.subjects:
+            case.subjects.remove(subj)
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="case",
+        entity_id=case.id,
+        ip_address=request.remote_addr,
+        description=f"Workflow edited case: {case.case_number}",
     )
+    db.session.commit()
+    return redirect(url_for("workflow.case_detail", case_id=case_id))
 
 
 @workflow_bp.route("/api/case/<case_id>/run-action", methods=["POST"])
