@@ -305,17 +305,26 @@ input:-webkit-autofill:focus {
           <div class="lbl">Risk Score</div>
           <div class="val" style="color:{% if subject.risk_score > 70 %}#dc2626{% elif subject.risk_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">{{ subject.risk_score }}/100 — {% if subject.risk_score > 70 %}High{% elif subject.risk_score > 30 %}Medium{% else %}Low{% endif %}</div>
         </div>
-        {% if subject.email %}
+        {% set contacts_list = subject.contacts.all() if subject.contacts is defined else [] %}
+        {% for c in contacts_list %}
         <div class="subject-info-item">
-          <div class="lbl">📧 Email</div>
-          <div class="val">{{ subject.email }}</div>
+          <div class="lbl">{% if c.contact_type == 'email' %}📧 Email{% else %}📞 Phone{% endif %}</div>
+          <div class="val">{{ c.value }}{% if c.is_primary %} <small style="color:var(--text-muted);">(primary)</small>{% endif %}</div>
         </div>
-        {% endif %}
-        {% if subject.phone %}
-        <div class="subject-info-item">
-          <div class="lbl">📞 Phone</div>
-          <div class="val">{{ subject.phone }}</div>
-        </div>
+        {% endfor %}
+        {% if not contacts_list %}
+          {% if subject.email %}
+          <div class="subject-info-item">
+            <div class="lbl">📧 Email</div>
+            <div class="val">{{ subject.email }}</div>
+          </div>
+          {% endif %}
+          {% if subject.phone %}
+          <div class="subject-info-item">
+            <div class="lbl">📞 Phone</div>
+            <div class="val">{{ subject.phone }}</div>
+          </div>
+          {% endif %}
         {% endif %}
         {% if subject.street or subject.city %}
         <div class="subject-info-item" style="grid-column:1/-1;">

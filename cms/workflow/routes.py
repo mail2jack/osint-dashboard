@@ -605,6 +605,8 @@ def case_detail(case_id):
         subjects = list(case.subjects)
         for s in subjects:
             s.decrypt_identifiers()
+            for c in s.contacts.all():
+                c.decrypt_fields()
         subjects_data = [
             {
                 "id": s.id,
