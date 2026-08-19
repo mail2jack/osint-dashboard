@@ -60,6 +60,7 @@
                 {% set current_value = override.enabled if is_overridden else tier_default %}
                 <td style="text-align:center;">
                     <form method="POST" action="{{ url_for('cms.admin_feature_flag_toggle') }}" style="display:inline;" class="ff-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="tenant_id" value="{{ row.tenant.id }}">
                         <input type="hidden" name="flag_name" value="{{ name }}">
                         <input type="hidden" name="enabled" value="{{ '0' if current_value else '1' }}">
