@@ -269,42 +269,26 @@ input:-webkit-autofill:focus {
     <div style="margin-bottom:{% if not loop.last %}1rem{% endif %};padding-bottom:{% if not loop.last %}1rem{% endif %};border-bottom:{% if not loop.last %}1px solid var(--border-color){% endif %};">
       <strong style="font-size:0.85rem;display:block;margin-bottom:0.5rem;">Subject {{ loop.index }}</strong>
       <div class="subject-info-grid">
+        {# ── Common fields ── #}
         <div class="subject-info-item">
-        <div class="lbl">{{ _('Naam') }}</div>
-        <div class="val">{{ subject.compute_name() if subject.compute_name is defined else subject.name }}</div>
-      </div>
-      <div class="subject-info-item">
-        <div class="lbl">{{ _('Type') }}</div>
+          <div class="lbl">{{ _('Naam') }}</div>
+          <div class="val">{{ subject.compute_name() if subject.compute_name is defined else subject.name }}</div>
+        </div>
+        <div class="subject-info-item">
+          <div class="lbl">{{ _('Type') }}</div>
           <div class="val">{{ subject.subject_type }}</div>
         </div>
-        {% if subject.identification_number %}
-        <div class="subject-info-item">
-          <div class="lbl">{{ _('ID Number') }}</div>
-          <div class="val">{{ subject.identification_number }}</div>
-        </div>
-        {% endif %}
         {% if subject.geslacht %}
         <div class="subject-info-item">
           <div class="lbl">{{ _('Geslacht') }}</div>
           <div class="val">{{ subject.geslacht }}</div>
         </div>
         {% endif %}
-        {% if subject.bsn_number %}
-        <div class="subject-info-item">
-          <div class="lbl">{{ _('BSN') }}</div>
-          <div class="val">{{ subject.bsn_number[:4] }}****{{ subject.bsn_number[-2:] }}</div>
-        </div>
-        {% endif %}
-        {% if subject.reisdocument_type %}
-        <div class="subject-info-item">
-          <div class="lbl">{{ _('Reisdocument') }}</div>
-          <div class="val">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overig'}.get(subject.reisdocument_type, subject.reisdocument_type) }}{{ ' — ' + subject.reisdocument_nummer if subject.reisdocument_nummer else '' }}</div>
-        </div>
-        {% endif %}
         <div class="subject-info-item">
           <div class="lbl">Risk Score</div>
           <div class="val" style="color:{% if subject.risk_score > 70 %}#dc2626{% elif subject.risk_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">{{ subject.risk_score }}/100 — {% if subject.risk_score > 70 %}High{% elif subject.risk_score > 30 %}Medium{% else %}Low{% endif %}</div>
         </div>
+        {# ── Contacts ── #}
         {% set contacts_list = subject.contacts.all() if subject.contacts is defined else [] %}
         {% for c in contacts_list %}
         <div class="subject-info-item">
@@ -326,10 +310,126 @@ input:-webkit-autofill:focus {
           </div>
           {% endif %}
         {% endif %}
+        {# ── Address ── #}
         {% if subject.street or subject.city %}
         <div class="subject-info-item" style="grid-column:1/-1;">
           <div class="lbl">🏠 Address</div>
           <div class="val">{{ subject.street or '' }} {{ subject.house_number or '' }}{{ subject.house_number_addition or '' }}{% if subject.postal_code or subject.city %}<br>{% endif %}{{ subject.postal_code or '' }} {{ subject.city or '' }}</div>
+        </div>
+        {% endif %}
+        {# ── Person-specific fields ── #}
+        {% if subject.subject_type == 'person' %}
+          {% if subject.date_of_birth %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('Date of Birth') }}</div>
+            <div class="val">{{ subject.date_of_birth }}</div>
+          </div>
+          {% endif %}
+          {% if subject.place_of_birth %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('Place of Birth') }}</div>
+            <div class="val">{{ subject.place_of_birth }}</div>
+          </div>
+          {% endif %}
+          {% if subject.nationality %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('Nationality') }}</div>
+            <div class="val">{{ subject.nationality }}</div>
+          </div>
+          {% endif %}
+          {% if subject.bsn_number %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('BSN') }}</div>
+            <div class="val">{{ subject.bsn_number[:4] }}****{{ subject.bsn_number[-2:] }}</div>
+          </div>
+          {% endif %}
+          {% if subject.reisdocument_type %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('Reisdocument') }}</div>
+            <div class="val">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overig'}.get(subject.reisdocument_type, subject.reisdocument_type) }}{{ ' — ' + subject.reisdocument_nummer if subject.reisdocument_nummer else '' }}</div>
+          </div>
+          {% endif %}
+          {% if subject.identification_number %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('ID Number') }}</div>
+            <div class="val">{{ subject.identification_number }}</div>
+          </div>
+          {% endif %}
+        {% endif %}
+        {# ── Company-specific fields ── #}
+        {% if subject.subject_type == 'company' %}
+          {% if subject.registration_number %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('KVK Number') }}</div>
+            <div class="val">{{ subject.registration_number }}</div>
+          </div>
+          {% endif %}
+          {% if subject.legal_form %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('Legal Form') }}</div>
+            <div class="val">{{ subject.legal_form }}</div>
+          </div>
+          {% endif %}
+        {% endif %}
+        {# ── Vehicle-specific fields ── #}
+        {% if subject.subject_type == 'vehicle' %}
+          {% if subject.license_plate %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('License Plate') }}</div>
+            <div class="val">{{ subject.license_plate }}</div>
+          </div>
+          {% endif %}
+          {% if subject.vin %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('VIN') }}</div>
+            <div class="val">{{ subject.vin }}</div>
+          </div>
+          {% endif %}
+          {% if subject.brand %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('Brand') }}</div>
+            <div class="val">{{ subject.brand }}</div>
+          </div>
+          {% endif %}
+          {% if subject.vehicle_type %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('Body Type') }}</div>
+            <div class="val">{{ subject.vehicle_type }}</div>
+          </div>
+          {% endif %}
+        {% endif %}
+        {# ── Vessel-specific fields ── #}
+        {% if subject.subject_type == 'vessel' %}
+          {% if subject.imo_number %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('IMO Number') }}</div>
+            <div class="val">{{ subject.imo_number }}</div>
+          </div>
+          {% endif %}
+          {% if subject.mmsi %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('MMSI') }}</div>
+            <div class="val">{{ subject.mmsi }}</div>
+          </div>
+          {% endif %}
+          {% if subject.eni_number %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('ENI Number') }}</div>
+            <div class="val">{{ subject.eni_number }}</div>
+          </div>
+          {% endif %}
+          {% if subject.vessel_nationality %}
+          <div class="subject-info-item">
+            <div class="lbl">{{ _('Flag State') }}</div>
+            <div class="val">{{ subject.vessel_nationality }}</div>
+          </div>
+          {% endif %}
+        {% endif %}
+        {# ── Common encrypted + extra fields ── #}
+        {% if subject.bank_account %}
+        <div class="subject-info-item">
+          <div class="lbl">💳 {{ _('Bank / IBAN') }}</div>
+          <div class="val">{{ subject.bank_account }}</div>
         </div>
         {% endif %}
         {% if subject.workflow_social_accounts %}

@@ -603,6 +603,7 @@ def case_detail(case_id):
         if client:
             client.decrypt_naw()
         subjects = list(case.subjects)
+        subjects.sort(key=lambda s: (s.name or "").lower())
         for s in subjects:
             s.decrypt_identifiers()
             for c in s.contacts.all():
@@ -676,6 +677,7 @@ def case_edit(case_id):
 
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     subjects = list(case.subjects)
+    subjects.sort(key=lambda s: (s.name or "").lower())
     # Decrypt + render inside no_autoflush: the before_flush guard
     # (_reencrypt_plaintext_at_flush) re-encrypts dirty encrypted objects.
     # Template rendering triggers lazy loads which autoflush, silently
