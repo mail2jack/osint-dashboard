@@ -259,193 +259,192 @@ input:-webkit-autofill:focus {
 <div class="workflow-step">
   <div class="workflow-step-header">
     <span class="step-nr">2</span>
-    Subject{% if subjects|length != 1 %}s{% endif %}
-    {% if subjects %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ subjects|length }} subject{% if subjects|length > 1 %}s{% endif %} ✓</span>{% endif %}
+    Subject{% if subjects_data|length != 1 %}s{% endif %}
+    {% if subjects_data %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ subjects_data|length }} subject{% if subjects_data|length > 1 %}s{% endif %} ✓</span>{% endif %}
     <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ add</a>
   </div>
   <div class="workflow-step-body">
-    {% if subjects %}
-    {% for subject in subjects %}
+    {% if subjects_data %}
+    {% for sd in subjects_data %}
     <div style="margin-bottom:{% if not loop.last %}1rem{% endif %};padding-bottom:{% if not loop.last %}1rem{% endif %};border-bottom:{% if not loop.last %}1px solid var(--border-color){% endif %};">
       <strong style="font-size:0.85rem;display:block;margin-bottom:0.5rem;">Subject {{ loop.index }}</strong>
       <div class="subject-info-grid">
         {# ── Common fields ── #}
         <div class="subject-info-item">
           <div class="lbl">{{ _('Naam') }}</div>
-          <div class="val">{{ subject.compute_name() if subject.compute_name is defined else subject.name }}</div>
+          <div class="val">{{ sd.display_name }}</div>
         </div>
         <div class="subject-info-item">
           <div class="lbl">{{ _('Type') }}</div>
-          <div class="val">{{ subject.subject_type }}</div>
+          <div class="val">{{ sd.subject_type }}</div>
         </div>
-        {% if subject.geslacht %}
+        {% if sd.geslacht %}
         <div class="subject-info-item">
           <div class="lbl">{{ _('Geslacht') }}</div>
-          <div class="val">{{ subject.geslacht }}</div>
+          <div class="val">{{ sd.geslacht }}</div>
         </div>
         {% endif %}
         <div class="subject-info-item">
           <div class="lbl">Risk Score</div>
-          <div class="val" style="color:{% if subject.risk_score > 70 %}#dc2626{% elif subject.risk_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">{{ subject.risk_score }}/100 — {% if subject.risk_score > 70 %}High{% elif subject.risk_score > 30 %}Medium{% else %}Low{% endif %}</div>
+          <div class="val" style="color:{% if sd.risk_score > 70 %}#dc2626{% elif sd.risk_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">{{ sd.risk_score }}/100 — {% if sd.risk_score > 70 %}High{% elif sd.risk_score > 30 %}Medium{% else %}Low{% endif %}</div>
         </div>
         {# ── Contacts ── #}
-        {% set contacts_list = subject.contacts.all() if subject.contacts is defined else [] %}
-        {% for c in contacts_list %}
+        {% for c in sd.contacts %}
         <div class="subject-info-item">
           <div class="lbl">{% if c.contact_type == 'email' %}📧 Email{% else %}📞 Phone{% endif %}</div>
           <div class="val">{{ c.value }}{% if c.is_primary %} <small style="color:var(--text-muted);">(primary)</small>{% endif %}</div>
         </div>
         {% endfor %}
-        {% if not contacts_list %}
-          {% if subject.email %}
+        {% if not sd.contacts %}
+          {% if sd.email %}
           <div class="subject-info-item">
             <div class="lbl">📧 Email</div>
-            <div class="val">{{ subject.email }}</div>
+            <div class="val">{{ sd.email }}</div>
           </div>
           {% endif %}
-          {% if subject.phone %}
+          {% if sd.phone %}
           <div class="subject-info-item">
             <div class="lbl">📞 Phone</div>
-            <div class="val">{{ subject.phone }}</div>
+            <div class="val">{{ sd.phone }}</div>
           </div>
           {% endif %}
         {% endif %}
         {# ── Address ── #}
-        {% if subject.street or subject.city %}
+        {% if sd.street or sd.city %}
         <div class="subject-info-item" style="grid-column:1/-1;">
           <div class="lbl">🏠 Address</div>
-          <div class="val">{{ subject.street or '' }} {{ subject.house_number or '' }}{{ subject.house_number_addition or '' }}{% if subject.postal_code or subject.city %}<br>{% endif %}{{ subject.postal_code or '' }} {{ subject.city or '' }}</div>
+          <div class="val">{{ sd.street or '' }} {{ sd.house_number or '' }}{{ sd.house_number_addition or '' }}{% if sd.postal_code or sd.city %}<br>{% endif %}{{ sd.postal_code or '' }} {{ sd.city or '' }}</div>
         </div>
         {% endif %}
         {# ── Person-specific fields ── #}
-        {% if subject.subject_type == 'person' %}
-          {% if subject.date_of_birth %}
+        {% if sd.subject_type == 'person' %}
+          {% if sd.date_of_birth %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('Date of Birth') }}</div>
-            <div class="val">{{ subject.date_of_birth }}</div>
+            <div class="val">{{ sd.date_of_birth }}</div>
           </div>
           {% endif %}
-          {% if subject.place_of_birth %}
+          {% if sd.place_of_birth %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('Place of Birth') }}</div>
-            <div class="val">{{ subject.place_of_birth }}</div>
+            <div class="val">{{ sd.place_of_birth }}</div>
           </div>
           {% endif %}
-          {% if subject.nationality %}
+          {% if sd.nationality %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('Nationality') }}</div>
-            <div class="val">{{ subject.nationality }}</div>
+            <div class="val">{{ sd.nationality }}</div>
           </div>
           {% endif %}
-          {% if subject.bsn_number %}
+          {% if sd.bsn_number %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('BSN') }}</div>
-            <div class="val">{{ subject.bsn_number[:4] }}****{{ subject.bsn_number[-2:] }}</div>
+            <div class="val">{{ sd.bsn_number[:4] }}****{{ sd.bsn_number[-2:] }}</div>
           </div>
           {% endif %}
-          {% if subject.reisdocument_type %}
+          {% if sd.reisdocument_type %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('Reisdocument') }}</div>
-            <div class="val">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overig'}.get(subject.reisdocument_type, subject.reisdocument_type) }}{{ ' — ' + subject.reisdocument_nummer if subject.reisdocument_nummer else '' }}</div>
+            <div class="val">{{ {'paspoort':'Paspoort','id-kaart':'ID-kaart','rijbewijs':'Rijbewijs','overige':'Overig'}.get(sd.reisdocument_type, sd.reisdocument_type) }}{{ ' — ' + sd.reisdocument_nummer if sd.reisdocument_nummer else '' }}</div>
           </div>
           {% endif %}
-          {% if subject.identification_number %}
+          {% if sd.identification_number %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('ID Number') }}</div>
-            <div class="val">{{ subject.identification_number }}</div>
+            <div class="val">{{ sd.identification_number }}</div>
           </div>
           {% endif %}
         {% endif %}
         {# ── Company-specific fields ── #}
-        {% if subject.subject_type == 'company' %}
-          {% if subject.registration_number %}
+        {% if sd.subject_type == 'company' %}
+          {% if sd.registration_number %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('KVK Number') }}</div>
-            <div class="val">{{ subject.registration_number }}</div>
+            <div class="val">{{ sd.registration_number }}</div>
           </div>
           {% endif %}
-          {% if subject.legal_form %}
+          {% if sd.legal_form %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('Legal Form') }}</div>
-            <div class="val">{{ subject.legal_form }}</div>
+            <div class="val">{{ sd.legal_form }}</div>
           </div>
           {% endif %}
         {% endif %}
         {# ── Vehicle-specific fields ── #}
-        {% if subject.subject_type == 'vehicle' %}
-          {% if subject.license_plate %}
+        {% if sd.subject_type == 'vehicle' %}
+          {% if sd.license_plate %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('License Plate') }}</div>
-            <div class="val">{{ subject.license_plate }}</div>
+            <div class="val">{{ sd.license_plate }}</div>
           </div>
           {% endif %}
-          {% if subject.vin %}
+          {% if sd.vin %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('VIN') }}</div>
-            <div class="val">{{ subject.vin }}</div>
+            <div class="val">{{ sd.vin }}</div>
           </div>
           {% endif %}
-          {% if subject.brand %}
+          {% if sd.brand %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('Brand') }}</div>
-            <div class="val">{{ subject.brand }}</div>
+            <div class="val">{{ sd.brand }}</div>
           </div>
           {% endif %}
-          {% if subject.vehicle_type %}
+          {% if sd.vehicle_type %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('Body Type') }}</div>
-            <div class="val">{{ subject.vehicle_type }}</div>
+            <div class="val">{{ sd.vehicle_type }}</div>
           </div>
           {% endif %}
         {% endif %}
         {# ── Vessel-specific fields ── #}
-        {% if subject.subject_type == 'vessel' %}
-          {% if subject.imo_number %}
+        {% if sd.subject_type == 'vessel' %}
+          {% if sd.imo_number %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('IMO Number') }}</div>
-            <div class="val">{{ subject.imo_number }}</div>
+            <div class="val">{{ sd.imo_number }}</div>
           </div>
           {% endif %}
-          {% if subject.mmsi %}
+          {% if sd.mmsi %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('MMSI') }}</div>
-            <div class="val">{{ subject.mmsi }}</div>
+            <div class="val">{{ sd.mmsi }}</div>
           </div>
           {% endif %}
-          {% if subject.eni_number %}
+          {% if sd.eni_number %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('ENI Number') }}</div>
-            <div class="val">{{ subject.eni_number }}</div>
+            <div class="val">{{ sd.eni_number }}</div>
           </div>
           {% endif %}
-          {% if subject.vessel_nationality %}
+          {% if sd.vessel_nationality %}
           <div class="subject-info-item">
             <div class="lbl">{{ _('Flag State') }}</div>
-            <div class="val">{{ subject.vessel_nationality }}</div>
+            <div class="val">{{ sd.vessel_nationality }}</div>
           </div>
           {% endif %}
         {% endif %}
         {# ── Common encrypted + extra fields ── #}
-        {% if subject.bank_account %}
+        {% if sd.bank_account %}
         <div class="subject-info-item">
           <div class="lbl">💳 {{ _('Bank / IBAN') }}</div>
-          <div class="val">{{ subject.bank_account }}</div>
+          <div class="val">{{ sd.bank_account }}</div>
         </div>
         {% endif %}
-        {% if subject.workflow_social_accounts %}
+        {% if sd.workflow_social_accounts %}
         <div class="subject-info-item" style="grid-column:1/-1;">
           <div class="lbl">🌐 Social media</div>
           <div class="val" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.2rem;">
-            {% for acct in subject.workflow_social_accounts %}
+            {% for acct in sd.workflow_social_accounts %}
             <span style="padding:0.15rem 0.5rem;background:#e8f4ff;border-radius:4px;">{{ acct }}</span>
             {% endfor %}
           </div>
         </div>
         {% endif %}
-        {% if subject.notes %}
+        {% if sd.notes %}
         <div class="subject-info-item" style="grid-column:1/-1;">
           <div class="lbl">Notes</div>
-          <div class="val">{{ subject.notes }}</div>
+          <div class="val">{{ sd.notes }}</div>
         </div>
         {% endif %}
       </div>

@@ -606,34 +606,60 @@ def case_detail(case_id):
         subjects.sort(key=lambda s: (s.name or "").lower())
         for s in subjects:
             s.decrypt_identifiers()
+        subjects_data = []
+        for s in subjects:
+            if not s:
+                continue
+            decrypted_contacts = []
             for c in s.contacts.all():
                 c.decrypt_fields()
-        subjects_data = [
-            {
-                "id": s.id,
-                "name": s.name,
-                "subject_type": s.subject_type,
-                "email": s.email,
-                "phone": s.phone,
-                "date_of_birth": s.date_of_birth,
-                "place_of_birth": s.place_of_birth,
-                "nationality": s.nationality,
-                "bank_account": s.bank_account,
-                "street": s.street,
-                "house_number": s.house_number,
-                "house_number_addition": s.house_number_addition,
-                "postal_code": s.postal_code,
-                "city": s.city,
-                "workflow_social_accounts": s.workflow_social_accounts,
-                "identification_number": s.identification_number,
-                "imo_number": s.imo_number,
-                "mmsi": s.mmsi,
-                "eni_number": s.eni_number,
-                "vessel_nationality": s.vessel_nationality,
-            }
-            for s in subjects
-            if s
-        ]
+                decrypted_contacts.append(
+                    {
+                        "contact_type": c.contact_type,
+                        "value": c.value,
+                        "is_primary": c.is_primary,
+                    }
+                )
+            subjects_data.append(
+                {
+                    "id": s.id,
+                    "display_name": s.compute_name()
+                    if callable(getattr(s, "compute_name", None))
+                    else (s.name or ""),
+                    "name": s.name,
+                    "subject_type": s.subject_type,
+                    "geslacht": s.geslacht,
+                    "risk_score": s.risk_score,
+                    "email": s.email,
+                    "phone": s.phone,
+                    "date_of_birth": s.date_of_birth,
+                    "place_of_birth": s.place_of_birth,
+                    "nationality": s.nationality,
+                    "bsn_number": s.bsn_number,
+                    "reisdocument_type": s.reisdocument_type,
+                    "reisdocument_nummer": s.reisdocument_nummer,
+                    "identification_number": s.identification_number,
+                    "bank_account": s.bank_account,
+                    "street": s.street,
+                    "house_number": s.house_number,
+                    "house_number_addition": s.house_number_addition,
+                    "postal_code": s.postal_code,
+                    "city": s.city,
+                    "workflow_social_accounts": s.workflow_social_accounts,
+                    "registration_number": s.registration_number,
+                    "legal_form": s.legal_form,
+                    "license_plate": s.license_plate,
+                    "vin": s.vin,
+                    "brand": s.brand,
+                    "vehicle_type": s.vehicle_type,
+                    "imo_number": s.imo_number,
+                    "mmsi": s.mmsi,
+                    "eni_number": s.eni_number,
+                    "vessel_nationality": s.vessel_nationality,
+                    "notes": s.notes,
+                    "contacts": decrypted_contacts,
+                }
+            )
         brave_health = _get_cached_health().get("brave", "no key configured")
         action_credits = {}
         for key in ACTION_REGISTRY:
