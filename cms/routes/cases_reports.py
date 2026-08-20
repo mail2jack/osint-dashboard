@@ -74,6 +74,11 @@ def view_case(case_id: str) -> str:
     subjects = case.subjects.filter(Subject.is_deleted == False).all()
     child_cases = case.child_cases.filter_by(is_deleted=False).all()
 
+    # Decrypt subject identifiers so the template shows plaintext, not ciphertext
+    with db.session.no_autoflush:
+        for s in subjects:
+            s.decrypt_identifiers()
+
     findings_page = request.args.get("findings_page", 1, type=int)
     findings_per_page = 20
     findings_pagination = (
@@ -115,6 +120,8 @@ def view_case(case_id: str) -> str:
         .limit(500)
         .all()
     )
+    for s in all_subjects:
+        s.decrypt_identifiers()
     available_subjects = all_subjects
 
     return render_template(
