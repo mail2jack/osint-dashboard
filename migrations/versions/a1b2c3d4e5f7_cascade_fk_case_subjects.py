@@ -8,8 +8,8 @@ Create Date: 2026-08-20 12:00:00.000000
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
 from alembic import op
-from sqlalchemy import inspect
 
 
 revision: str = "a1b2c3d4e5f7"
@@ -18,16 +18,27 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def _get_fk_constraints(table: str, constraint_name: str) -> list[str]:
-    """Find FK constraint names matching a pattern on a table."""
-    bind = op.get_context().bind
-    inspector = inspect(bind)
-    fks = inspector.get_foreign_keys(table)
-    return [fk["name"] for fk in fks if fk["name"] and constraint_name in fk["name"]]
-
-
 def upgrade() -> None:
-    # case_subjects: drop old FKs and re-create with ON DELETE CASCADE
+    conn = op.get_bind()
+
+    # ── Clean up orphan rows that violate FK integrity ──
+    # These accumulated before cascade constraints were in place.
+    conn.execute(
+        sa.text(
+            "DELETE FROM case_subjects "
+            "WHERE case_id NOT IN (SELECT id FROM cases) "
+            "OR subject_id NOT IN (SELECT id FROM subjects)"
+        )
+    )
+    conn.execute(
+        sa.text(
+            "DELETE FROM subject_relations "
+            "WHERE subject_id NOT IN (SELECT id FROM subjects) "
+            "OR related_subject_id NOT IN (SELECT id FROM subjects)"
+        )
+    )
+
+    # ── case_subjects: drop old FKs and re-create with ON DELETE CASCADE ──
     for col in ("case_id", "subject_id"):
         old_name = f"case_subjects_{col}_fkey"
         try:
@@ -52,7 +63,7 @@ def upgrade() -> None:
         ondelete="CASCADE",
     )
 
-    # subject_relations: drop old FKs and re-create with ON DELETE CASCADE
+    # ── subject_relations: drop old FKs and re-create with ON DELETE CASCADE ──
     for col in ("subject_id", "related_subject_id"):
         old_name = f"subject_relations_{col}_fkey"
         try:
