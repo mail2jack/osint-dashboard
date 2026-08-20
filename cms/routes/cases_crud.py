@@ -8,7 +8,17 @@ from flask_login import login_required, current_user
 from . import cms_bp
 from ..validation import validate, CreateCaseSchema, EditCaseSchema, BulkDeleteSchema
 from sqlalchemy.orm import joinedload
-from ..models import db, Case, Client, Subject, AuditLog, User, CaseStatus, CasePriority
+from ..models import (
+    db,
+    Case,
+    Client,
+    Subject,
+    AuditLog,
+    User,
+    CaseStatus,
+    CasePriority,
+    case_subjects,
+)
 from ..auth import (
     roles_required,
     case_access_required,
@@ -39,6 +49,8 @@ def bulk_delete_cases() -> flask.Response:
         Case.is_deleted == False,
         Case.tenant_id == current_user.tenant_id,
     ).update({"is_deleted": True, "deleted_at": now}, synchronize_session=False)
+    # Clean up junction table rows to prevent orphan entries (#55)
+    db.session.execute(case_subjects.delete().where(case_subjects.c.case_id.in_(ids)))
     db.session.commit()
     AuditLog.log(
         user_id=current_user.id,

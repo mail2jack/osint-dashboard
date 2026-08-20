@@ -317,6 +317,10 @@ def bulk_delete_subjects() -> flask.Response:
         Subject.query.filter(Subject.id.in_(ids), Subject.is_deleted == False),
         Subject,
     ).update({"is_deleted": True, "deleted_at": now}, synchronize_session=False)
+    # Clean up junction table rows to prevent orphan entries (#55)
+    db.session.execute(
+        case_subjects.delete().where(case_subjects.c.subject_id.in_(ids))
+    )
     try:
         db.session.commit()
     except Exception:
@@ -365,6 +369,10 @@ def delete_subject(subject_id: str) -> flask.Response:
         ), 400
 
     subject.soft_delete()
+    # Clean up junction table rows to prevent orphan entries (#55)
+    db.session.execute(
+        case_subjects.delete().where(case_subjects.c.subject_id == subject_id)
+    )
 
     AuditLog.log(
         user_id=current_user.id,

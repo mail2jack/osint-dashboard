@@ -216,9 +216,17 @@ case_assignments = db.Table(
 
 case_subjects = db.Table(
     "case_subjects",
-    db.Column("case_id", db.String(36), db.ForeignKey("cases.id"), primary_key=True),
     db.Column(
-        "subject_id", db.String(36), db.ForeignKey("subjects.id"), primary_key=True
+        "case_id",
+        db.String(36),
+        db.ForeignKey("cases.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    db.Column(
+        "subject_id",
+        db.String(36),
+        db.ForeignKey("subjects.id", ondelete="CASCADE"),
+        primary_key=True,
     ),
     db.Column("role_in_case", db.String(50)),
     db.Column("status", db.String(20), default="active"),
@@ -228,12 +236,15 @@ case_subjects = db.Table(
 subject_relations = db.Table(
     "subject_relations",
     db.Column(
-        "subject_id", db.String(36), db.ForeignKey("subjects.id"), primary_key=True
+        "subject_id",
+        db.String(36),
+        db.ForeignKey("subjects.id", ondelete="CASCADE"),
+        primary_key=True,
     ),
     db.Column(
         "related_subject_id",
         db.String(36),
-        db.ForeignKey("subjects.id"),
+        db.ForeignKey("subjects.id", ondelete="CASCADE"),
         primary_key=True,
     ),
     db.Column("relation_type", db.String(100)),  # family | business | other
