@@ -43,9 +43,12 @@ def session():
     assert resp.status_code == 200, f"Login page returned {resp.status_code}"
 
     csrf = _extract_csrf(resp.text)
+    session_val = resp.cookies.get("session", "")
+
     resp = s.post(
         f"{BASE_URL}/auth/login",
         data={"email": EMAIL, "password": PASSWORD, "csrf_token": csrf},
+        headers={"Cookie": f"session={session_val}"},
         allow_redirects=True,
         timeout=15,
     )
@@ -54,10 +57,12 @@ def session():
         if not TOTP_SECRET:
             pytest.skip("2FA required but TEST_TOTP_SECRET not set")
         csrf2 = _extract_csrf(resp.text)
+        session_val = resp.cookies.get("session", session_val)
         code = pyotp.TOTP(TOTP_SECRET).now()
         resp = s.post(
             f"{BASE_URL}/auth/2fa/verify",
             data={"code": code, "csrf_token": csrf2},
+            headers={"Cookie": f"session={session_val}"},
             allow_redirects=True,
             timeout=15,
         )
