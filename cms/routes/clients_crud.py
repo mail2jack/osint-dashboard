@@ -88,34 +88,37 @@ def view_client(client_id: str) -> str:
     """View client details with all associated cases."""
     client = db.session.get(Client, client_id) or abort(404)
     ensure_tenant_access(client)
-    client.decrypt_naw()
-    contacts = list(client.contacts)
-    for c in contacts:
-        c.decrypt_fields()
-    addresses = list(client.addresses)
-    for addr in addresses:
-        addr.decrypt_fields()
+    # Wrap in no_autoflush to prevent before_flush from re-encrypting
+    # freshly decrypted values during the queries and template render.
+    with db.session.no_autoflush:
+        client.decrypt_naw()
+        contacts = list(client.contacts)
+        for c in contacts:
+            c.decrypt_fields()
+        addresses = list(client.addresses)
+        for addr in addresses:
+            addr.decrypt_fields()
 
-    cases_q = Case.query.filter_by(client_id=client_id, is_deleted=False).options(
-        joinedload(Case.lead_investigator)
-    )
-    cases_q = apply_tenant_filter(cases_q, Case)
-    cases = cases_q.order_by(Case.created_at.desc()).all()
+        cases_q = Case.query.filter_by(client_id=client_id, is_deleted=False).options(
+            joinedload(Case.lead_investigator)
+        )
+        cases_q = apply_tenant_filter(cases_q, Case)
+        cases = cases_q.order_by(Case.created_at.desc()).all()
 
-    active_cases_count_q = Case.query.filter(
-        Case.client_id == client_id,
-        Case.is_deleted == False,
-        Case.status.in_(["open", "active", "suspended"]),
-    )
-    active_cases_count_q = apply_tenant_filter(active_cases_count_q, Case)
-    active_cases_count = active_cases_count_q.count()
+        active_cases_count_q = Case.query.filter(
+            Case.client_id == client_id,
+            Case.is_deleted == False,
+            Case.status.in_(["open", "active", "suspended"]),
+        )
+        active_cases_count_q = apply_tenant_filter(active_cases_count_q, Case)
+        active_cases_count = active_cases_count_q.count()
 
-    return render_template(
-        "cms/clients/view.html",
-        client=client,
-        cases=cases,
-        active_cases_count=active_cases_count,
-    )
+        return render_template(
+            "cms/clients/view.html",
+            client=client,
+            cases=cases,
+            active_cases_count=active_cases_count,
+        )
 
 
 @cms_bp.route("/clients/create", methods=["GET", "POST"])

@@ -230,53 +230,56 @@ def _get_accessible_case_ids():
 def view_subject(subject_id: str) -> str:
     """View subject details (legacy screen; PR8 fallback)."""
     subject = Subject.query.filter_by(id=subject_id).first() or abort(404)
-    subject.decrypt_identifiers()
-    subject.vessel_data = subject.vessel_data or {}
-    for addr in list(subject.addresses):
-        addr.decrypt_fields()
-    for c in list(subject.contacts):
-        c.decrypt_fields()
+    # ADR-0001: wrap in no_autoflush to prevent before_flush from
+    # re-encrypting freshly decrypted identifiers during template render.
+    with db.session.no_autoflush:
+        subject.decrypt_identifiers()
+        subject.vessel_data = subject.vessel_data or {}
+        for addr in list(subject.addresses):
+            addr.decrypt_fields()
+        for c in list(subject.contacts):
+            c.decrypt_fields()
 
-    findings_page = request.args.get("findings_page", 1, type=int)
-    findings_per_page = 20
-    findings_pagination = (
-        subject.findings.filter_by(is_deleted=False, archived_at=None)
-        .order_by(Finding.created_at.desc())
-        .paginate(page=findings_page, per_page=findings_per_page, error_out=False)
-    )
+        findings_page = request.args.get("findings_page", 1, type=int)
+        findings_per_page = 20
+        findings_pagination = (
+            subject.findings.filter_by(is_deleted=False, archived_at=None)
+            .order_by(Finding.created_at.desc())
+            .paginate(page=findings_page, per_page=findings_per_page, error_out=False)
+        )
 
-    linked_case_ids = [
-        row.case_id
-        for row in db.session.query(case_subjects.c.case_id)
-        .filter(case_subjects.c.subject_id == subject.id)
-        .all()
-    ]
-    linked_cases = []
-    first_case_id = None
-    if linked_case_ids:
-        for case in Case.query.filter(
-            Case.id.in_(linked_case_ids), Case.is_deleted.is_(False)
-        ).all():
-            case_info = {
-                "id": case.id,
-                "case_number": case.case_number,
-                "title": case.title,
-            }
-            linked_cases.append(case_info)
-            if first_case_id is None:
-                first_case_id = case.id
+        linked_case_ids = [
+            row.case_id
+            for row in db.session.query(case_subjects.c.case_id)
+            .filter(case_subjects.c.subject_id == subject.id)
+            .all()
+        ]
+        linked_cases = []
+        first_case_id = None
+        if linked_case_ids:
+            for case in Case.query.filter(
+                Case.id.in_(linked_case_ids), Case.is_deleted.is_(False)
+            ).all():
+                case_info = {
+                    "id": case.id,
+                    "case_number": case.case_number,
+                    "title": case.title,
+                }
+                linked_cases.append(case_info)
+                if first_case_id is None:
+                    first_case_id = case.id
 
-    return render_template(
-        "cms/subjects/view.html",
-        subject=subject,
-        findings=findings_pagination.items,
-        findings_pagination=findings_pagination,
-        linked_cases=linked_cases,
-        first_case_id=first_case_id,
-        profile_enabled=check_feature(
-            "subject_first_investigations", current_user.tenant_id
-        ),
-    )
+        return render_template(
+            "cms/subjects/view.html",
+            subject=subject,
+            findings=findings_pagination.items,
+            findings_pagination=findings_pagination,
+            linked_cases=linked_cases,
+            first_case_id=first_case_id,
+            profile_enabled=check_feature(
+                "subject_first_investigations", current_user.tenant_id
+            ),
+        )
 
 
 @cms_bp.route("/subjects/<subject_id>/profile")
