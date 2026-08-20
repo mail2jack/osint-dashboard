@@ -73,19 +73,19 @@ def find_similar_subjects(name: str, threshold: float = 0.7) -> list:
     normalized_input = normalize_name(name)
     similar = []
 
-    # Filter by first letter in DB to avoid loading all records
-    first_letter = normalized_input[0]
+    # Load all subjects in tenant and decrypt names, then filter in Python.
+    # Encrypted names cannot be searched with SQL ILIKE.
     candidates = (
         Subject.query.filter(
             Subject.is_deleted == False,
             Subject.tenant_id == current_user.tenant_id,
-            Subject.name.ilike(f"{first_letter}%"),
         )
         .limit(500)
         .all()
     )
 
     for subject in candidates:
+        subject.decrypt_identifiers()
         if normalize_name(subject.name) == normalized_input:
             continue
 
@@ -148,18 +148,22 @@ def check_for_exact_match(name: str, entity_type: str) -> dict | None:
     normalized = normalize_name(name)
 
     if entity_type == "subject":
-        subject = Subject.query.filter(
+        # Encrypted names cannot be searched with SQL ILIKE.
+        # Load all subjects in tenant and decrypt to find exact match.
+        subjects = Subject.query.filter(
             Subject.is_deleted == False,
             Subject.tenant_id == current_user.tenant_id,
-            Subject.name.ilike(normalized),
-        ).first()
-        if subject:
-            return {
-                "id": subject.id,
-                "name": subject.name,
-                "type": subject.subject_type,
-                "exact": normalize_name(subject.name) == normalized,
-            }
+        ).all()
+        for subject in subjects:
+            subject.decrypt_identifiers()
+            if normalize_name(subject.name) == normalized:
+                return {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "type": subject.subject_type,
+                    "exact": True,
+                }
+        return None
     elif entity_type == "client":
         client = Client.query.filter(
             Client.is_deleted == False,

@@ -28,6 +28,7 @@ from ..auth import (
     apply_tenant_filter,
     ensure_tenant_access,
 )
+from .subjects_list import _search_subjects_by_name
 
 try:
     from ..spiderfoot_service import SpiderFootService, ScanTarget
@@ -245,7 +246,11 @@ def spiderfoot_scan() -> str | flask.Response:
         )
         if search_q:
             case_query = case_query.filter(Case.title.ilike(f"%{search_q}%"))
-            subject_query = subject_query.filter(Subject.name.ilike(f"%{search_q}%"))
+            matched_ids = _search_subjects_by_name(search_q, current_user.tenant_id)
+            if matched_ids:
+                subject_query = subject_query.filter(Subject.id.in_(matched_ids))
+            else:
+                subject_query = subject_query.filter(db.text("1=0"))
         cases = case_query.order_by(Case.case_number.desc()).limit(500).all()
         subjects = subject_query.order_by(Subject.name).limit(500).all()
 

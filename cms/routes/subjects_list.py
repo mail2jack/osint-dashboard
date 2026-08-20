@@ -1,4 +1,5 @@
 import logging
+import re
 
 import flask
 from flask import request, jsonify, render_template, redirect, url_for, abort
@@ -19,6 +20,26 @@ from ..tier_limits import check_feature
 from ..services.subject_service import subject_service
 from ..workflow.actions.helpers import presets_for_subject
 from ..workflow.research import ACTION_REGISTRY
+
+
+def _search_subjects_by_name(search_term: str, tenant_id: str = None) -> list[str]:
+    """Decrypt names and return IDs of subjects matching search_term (case-insensitive).
+
+    This is O(n) in the number of subjects in the tenant but acceptable at pilot scale.
+    """
+    q = Subject.query.filter_by(is_deleted=False)
+    if tenant_id:
+        q = q.filter(Subject.tenant_id == tenant_id)
+    all_subjects = q.all()
+
+    pattern = re.compile(re.escape(search_term), re.IGNORECASE)
+    matched_ids = []
+    for s in all_subjects:
+        s.decrypt_identifiers()
+        if pattern.search(s.name or ""):
+            matched_ids.append(s.id)
+    return matched_ids
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,20 +82,25 @@ def subjects() -> str:
             query = query.filter(db.text("1=0"))
 
     if search:
+        # Encrypted search: decrypt names in Python, filter in Python
         from sqlalchemy import exists as sa_exists
 
+        matched_name_ids = _search_subjects_by_name(search, current_user.tenant_id)
         social_match = sa_exists().where(
             db.and_(
                 SocialAccount.subject_id == Subject.id,
                 SocialAccount.username.ilike(f"%{search}%"),
             )
         )
-        query = query.filter(
-            db.or_(
-                Subject.name.ilike(f"%{search}%"),
-                social_match,
+        if matched_name_ids:
+            query = query.filter(
+                db.or_(
+                    Subject.id.in_(matched_name_ids),
+                    social_match,
+                )
             )
-        )
+        else:
+            query = query.filter(social_match)
 
         # Non-admin: detect restricted search results and notify case owners
         if not current_user.is_admin and linked_subject_ids is not None:
@@ -82,27 +108,20 @@ def subjects() -> str:
 
             accessible_count = query.count()
             restricted_case_numbers = set()
-            restricted = 0
-            total_q = Subject.query.filter(Subject.is_deleted == False).filter(
-                db.or_(
-                    Subject.name.ilike(f"%{search}%"),
-                    sa_exists().where(
-                        db.and_(
-                            SocialAccount.subject_id == Subject.id,
-                            SocialAccount.username.ilike(f"%{search}%"),
-                        )
-                    ),
-                )
+            # Total matches (accessible + restricted) = name matches + social matches
+            total_social_q = Subject.query.filter(
+                Subject.is_deleted == False,
+                social_match,
             )
-            total_q = apply_tenant_filter(total_q, Subject)
-            total_count = total_q.count()
+            total_social_q = apply_tenant_filter(total_social_q, Subject)
+            total_count = len(matched_name_ids) + total_social_q.count()
             restricted = total_count - accessible_count
             if restricted > 0:
                 if linked_subject_ids:
                     restricted_subjects = (
                         Subject.query.filter(
                             Subject.is_deleted == False,
-                            Subject.name.ilike(f"%{search}%"),
+                            Subject.id.in_(matched_name_ids),
                             ~Subject.id.in_(linked_subject_ids),
                         )
                         .filter(Subject.tenant_id == current_user.tenant_id)
@@ -112,7 +131,7 @@ def subjects() -> str:
                     restricted_subjects = (
                         Subject.query.filter(
                             Subject.is_deleted == False,
-                            Subject.name.ilike(f"%{search}%"),
+                            Subject.id.in_(matched_name_ids),
                         )
                         .filter(Subject.tenant_id == current_user.tenant_id)
                         .all()
@@ -173,7 +192,11 @@ def subjects() -> str:
     if fmt == "json":
         search_q = request.args.get("q", "").strip()
         if search_q:
-            query = query.filter(Subject.name.ilike(f"%{search_q}%"))
+            matched_ids = _search_subjects_by_name(search_q, current_user.tenant_id)
+            if matched_ids:
+                query = query.filter(Subject.id.in_(matched_ids))
+            else:
+                query = query.filter(db.text("1=0"))
         subjects_list = query.order_by(sort_col).limit(200).all()
         return jsonify(
             {

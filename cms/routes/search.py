@@ -19,6 +19,7 @@ from ..models import (
 )
 from ..notifications import notify_search_restricted
 from . import cms_bp
+from .subjects_list import _search_subjects_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -153,12 +154,10 @@ def search() -> str:
             ]
 
         if entity_type in ["all", "subjects"]:
+            matched_ids = _search_subjects_by_name(query, current_user.tenant_id)
             subjects_q = Subject.query.filter(
                 Subject.is_deleted == False,
-                db.or_(
-                    Subject.name.ilike(f"%{query}%"),
-                    Subject.identification_number.ilike(f"%{query}%"),
-                ),
+                Subject.id.in_(matched_ids) if matched_ids else db.text("1=0"),
             )
             subjects_q = apply_tenant_filter(subjects_q, Subject)
             if not current_user.is_admin:
@@ -439,9 +438,10 @@ def api_search() -> flask.Response:
         ]
 
     if not entity_type or entity_type == "subjects":
+        matched_ids = _search_subjects_by_name(query, current_user.tenant_id)
         subjects_q = Subject.query.filter(
             Subject.is_deleted == False,
-            Subject.name.ilike(f"%{query}%"),
+            Subject.id.in_(matched_ids) if matched_ids else db.text("1=0"),
         )
         subjects_q = apply_tenant_filter(subjects_q, Subject)
         if not current_user.is_admin:
@@ -547,13 +547,11 @@ def global_search():
             ]
 
         if entity_type in ("all", "subjects"):
+            matched_ids = _search_subjects_by_name(q, current_user.tenant_id)
             subjects = (
                 Subject.query.filter(
                     Subject.is_deleted == False,
-                    db.or_(
-                        Subject.name.ilike(f"%{q}%"),
-                        Subject.identification_number.ilike(f"%{q}%"),
-                    ),
+                    Subject.id.in_(matched_ids) if matched_ids else db.text("1=0"),
                 )
                 .limit(20)
                 .all()
