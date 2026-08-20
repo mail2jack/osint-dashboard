@@ -27,22 +27,23 @@ from ..workflow.research import ACTION_REGISTRY
 
 
 def _search_subjects_by_name(search_term: str, tenant_id: str = None) -> list[str]:
-    """Decrypt names and return IDs of subjects matching search_term (case-insensitive).
+    """Search subjects by name using SQL ILIKE on plaintext name fields.
 
-    This is O(n) in the number of subjects in the tenant but acceptable at pilot scale.
+    Subject.name, achternaam, voornamen are plaintext columns with indexes.
+    No decryption needed — this is an O(log n) database lookup.
     """
-    q = Subject.query.filter_by(is_deleted=False)
+    pattern = f"%{search_term}%"
+    q = Subject.query.filter(
+        Subject.is_deleted == False,
+        db.or_(
+            Subject.name.ilike(pattern),
+            Subject.achternaam.ilike(pattern),
+            Subject.voornamen.ilike(pattern),
+        ),
+    )
     if tenant_id:
         q = q.filter(Subject.tenant_id == tenant_id)
-    all_subjects = q.all()
-
-    pattern = re.compile(re.escape(search_term), re.IGNORECASE)
-    matched_ids = []
-    for s in all_subjects:
-        s.decrypt_identifiers()
-        if pattern.search(s.name or ""):
-            matched_ids.append(s.id)
-    return matched_ids
+    return [row[0] for row in q.with_entities(Subject.id).all()]
 
 
 logger = logging.getLogger(__name__)

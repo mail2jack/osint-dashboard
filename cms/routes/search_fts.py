@@ -61,10 +61,8 @@ def full_text_search() -> flask.Response:
             Subject,
             [
                 Subject.name,
-                Subject.email,
-                Subject.phone,
-                Subject.identification_number,
-                Subject.license_plate,
+                Subject.achternaam,
+                Subject.voornamen,
                 Subject.notes,
             ],
             query,
