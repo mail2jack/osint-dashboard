@@ -29,6 +29,11 @@ def _curl(method, url, data=None, cookie_file=None, follow=False):
     if method == "POST" and data:
         for k, v in data.items():
             cmd += ["-d", f"{k}={v}"]
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        cmd += ["-H", f"Origin: {origin}", "-H", f"Referer: {url}"]
     if cookie_file:
         cmd += ["-b", cookie_file, "-c", cookie_file]
     if follow:
