@@ -1133,18 +1133,43 @@ class Subject(db.Model):
             setattr(self, field, _encrypt_if_plaintext(getattr(self, field)))
 
     def decrypt_identifiers(self) -> None:
+        """Decrypt encrypted fields in-place.
+
+        Populates ``self._decryption_errors`` with a list of dicts for any
+        fields that failed to decrypt, so callers (templates, API) can surface
+        the issue instead of silently showing ciphertext.
+        """
+        self._decryption_errors = []
         for field in self.ENCRYPTED_FIELDS:
             value = getattr(self, field)
             if value:
                 try:
                     setattr(self, field, encryptor.decrypt(value))
-                except Exception:
-                    logger.warning(
-                        "Decrypt failed for %s.%s (id=%s)",
+                except Exception as exc:
+                    logger.error(
+                        "DECRYPT FAIL: %s.%s (id=%s) — %s",
                         self.__class__.__name__,
                         field,
                         getattr(self, "id", "?"),
+                        type(exc).__name__,
                     )
+                    self._decryption_errors.append(
+                        {
+                            "field": field,
+                            "error": type(exc).__name__,
+                            "prefix": str(value)[:30],
+                        }
+                    )
+
+    @property
+    def has_decryption_errors(self) -> bool:
+        """True if any encrypted fields failed to decrypt."""
+        return bool(getattr(self, "_decryption_errors", None))
+
+    @property
+    def decryption_errors(self) -> list:
+        """List of failed decryption details from last decrypt_identifiers() call."""
+        return getattr(self, "_decryption_errors", [])
 
     def soft_delete(self) -> None:
         """Soft delete the subject."""
