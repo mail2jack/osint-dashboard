@@ -9,8 +9,10 @@ fact-layer models (identifiers/facts) and the structured children
 canonical single-row storage (PR3).
 """
 
+import json
 import logging
 import functools
+import uuid
 from typing import Any
 
 import flask
@@ -582,3 +584,110 @@ def profile_delete_relation(subject_id: str, related_subject_id: str) -> flask.R
     )
     db.session.commit()
     return api_success({}, "Relationship removed")
+
+
+# ── Run Action from Subject Profile ─────────────────────────────────────────
+
+
+@cms_bp.route(
+    "/api/profile/subjects/<subject_id>/run-action",
+    methods=["POST"],
+)
+@login_required
+@subject_access_required
+@roles_required(*_PROFILE_WRITE_ROLES)
+@_profile_required
+def profile_run_action(subject_id: str) -> flask.Response:
+    """Start an OSINT research action directly from the subject profile.
+
+    Body JSON: {"action_type": "email", "data_value": "...", "case_id": "..."}
+    The subject must be linked to the specified case.
+    """
+    from cms.workflow.actions.registry import ACTION_REGISTRY
+    from cms.workflow.research import (
+        is_paid_action,
+        paid_channels_enabled,
+        start_action_async,
+    )
+    from cms.workflow.models import WorkflowCase, WorkflowResearchAction
+    from cms.auth import ensure_case_access
+
+    subject = _get_subject(subject_id)
+
+    body = request.get_json(silent=True) or {}
+    action_type = body.get("action_type", "")
+    data_value = body.get("data_value") or ""
+    case_id = body.get("case_id") or ""
+
+    if not action_type:
+        return api_error("action_type is required", 400)
+    if action_type not in ACTION_REGISTRY:
+        return api_error(f"Unknown action: {action_type}", 400)
+    if not case_id:
+        return api_error("case_id is required", 400)
+
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return api_error("Case not found", 404)
+    ensure_case_access(case)
+
+    # Verify subject is linked to this case
+    from cms.workflow.models import WorkflowSubject as WSubject
+
+    ws = db.session.get(WSubject, subject_id)
+    if not ws:
+        return api_error("WorkflowSubject not found", 404)
+    if not case.subjects.filter_by(id=subject_id).first():
+        return api_error("Subject is not linked to this case", 400)
+
+    if is_paid_action(action_type) and not paid_channels_enabled():
+        return api_error("Paid research channels are disabled for this tenant.", 409)
+
+    # Check for stale running action
+    from datetime import datetime
+
+    _STALE_TIMEOUT = 600
+    existing = WorkflowResearchAction.query.filter_by(
+        case_id=case_id,
+        action_type=action_type,
+        subject_id=subject_id,
+        status="running",
+    ).first()
+    if existing:
+        if (
+            existing.started_at
+            and (datetime.now() - existing.started_at).total_seconds() > _STALE_TIMEOUT
+        ):
+            existing.status = "error"
+            existing.error = "Stale action auto-reset (timed out)"
+            db.session.commit()
+        else:
+            return api_error("Action already running", 409)
+
+    action = WorkflowResearchAction(
+        id=str(uuid.uuid4()),
+        case_id=case_id,
+        subject_id=subject_id,
+        target_kind="subject",
+        action_type=action_type,
+        data_value=data_value,
+        label=ACTION_REGISTRY[action_type]["label"],
+        status="pending",
+        tenant_id=current_user.tenant_id,
+    )
+    action.target_snapshot = json.dumps(action.build_target_snapshot(ws, data_value))
+    db.session.add(action)
+    db.session.commit()
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="create",
+        entity_type="research_action",
+        entity_id=action.id,
+        ip_address=request.remote_addr,
+        description=f"Started {action_type} action from subject profile on {subject.name}",
+    )
+    db.session.commit()
+
+    start_action_async(action.id)
+    return jsonify({"id": action.id, "status": "started"}), 201

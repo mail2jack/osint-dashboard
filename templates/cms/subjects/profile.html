@@ -643,6 +643,97 @@
 
 {# ────────────────────────── Investigation ────────────────────────── #}
 <div class="tab-panel" data-panel="investigation">
+  {# ── Start Action Form ── #}
+  {% if can_edit and profile.cases %}
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-header"><h2>{{ _('Start Research Action') }}</h2></div>
+    <div style="padding:1rem;">
+      <div class="form-grid" style="gap:0.75rem;">
+        <div class="form-group">
+          <label>{{ _('Case') }}</label>
+          <select id="action-case-id" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;">
+            {% for c in profile.cases %}
+            <option value="{{ c.id }}">{{ c.case_number }} — {{ c.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>{{ _('Action Type') }}</label>
+          <select id="action-type" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;">
+            {% for key in action_presets %}
+            <option value="{{ key }}">{{ action_labels.get(key, key) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>{{ _('Data Value') }}</label>
+          <input type="text" id="action-data-value" style="width:100%;padding:0.5rem;border:1px solid var(--border-color);border-radius:6px;" placeholder="{{ _('e.g. email, phone number, URL') }}">
+        </div>
+      </div>
+      <div style="margin-top:0.75rem;">
+        <button class="btn-cms primary" type="button" id="btn-run-action">{{ _('Run Action') }}</button>
+        <span id="action-status" style="margin-left:0.75rem;font-size:0.85rem;color:var(--text-muted);"></span>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function() {
+    const SUBJECT_TYPE = {{ subject.subject_type|tojson }};
+    const DATA = {
+      email: {{ (subject.email or '')|tojson }},
+      phone: {{ (subject.phone or '')|tojson }},
+      address: {{ [subject.street, subject.house_number, subject.house_number_addition, subject.postal_code, subject.city]|select|join(', ')|tojson }},
+      license_plate: {{ (subject.license_plate or '')|tojson }},
+      name: {{ (subject.name or '')|tojson }},
+    };
+    const ACTION_DEFAULTS = {
+      email: 'email', phone: 'phone', address: 'address',
+      social: 'social', osint: 'osint', google_dork: 'google_dork',
+      rdw: 'license_plate', kvk: 'registration_number',
+      vessel: 'imo_number', financial: 'bank_account',
+      facebook: 'social', instagram: 'social', linkedin: 'social',
+      tiktok: 'social', twitter: 'social', subdomain: 'name',
+      photo_analysis: 'photo',
+    };
+    const typeEl = document.getElementById('action-type');
+    const valueEl = document.getElementById('action-data-value');
+    function autoFill() {
+      const key = ACTION_DEFAULTS[typeEl.value] || 'name';
+      valueEl.value = DATA[key] || '';
+    }
+    typeEl.addEventListener('change', autoFill);
+    autoFill();
+
+    document.getElementById('btn-run-action').addEventListener('click', function() {
+      const statusEl = document.getElementById('action-status');
+      const caseId = document.getElementById('action-case-id').value;
+      const actionType = typeEl.value;
+      const dataValue = valueEl.value.trim();
+      if (!actionType) { statusEl.textContent = 'Select an action type'; return; }
+      statusEl.textContent = 'Starting...';
+      statusEl.style.color = 'var(--text-muted)';
+      fetch('/cms/workflow/api/subject/' + {{ subject.id|tojson }} + '/run-action', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action_type: actionType, data_value: dataValue, case_id: caseId}),
+      })
+      .then(function(r) { return r.json().then(function(d) { return {status: r.status, body: d}; }); })
+      .then(function(res) {
+        if (res.status === 201) {
+          statusEl.textContent = 'Action started! Reloading...';
+          statusEl.style.color = '#16a34a';
+          setTimeout(function() { location.reload(); }, 1000);
+        } else {
+          statusEl.textContent = res.body.error || 'Error';
+          statusEl.style.color = '#dc2626';
+        }
+      })
+      .catch(function(e) { statusEl.textContent = 'Network error'; statusEl.style.color = '#dc2626'; });
+    });
+  })();
+  </script>
+  {% endif %}
+
   <div class="card">
     <div class="card-header"><h2>{{ _('Investigation') }} <span class="badge badge-status-active">{{ profile.actions|length }} actions</span></h2></div>
     {% if profile.actions %}

@@ -209,6 +209,77 @@
 <!-- Vessel check results container -->
 <div id="vesselResults" class="card hidden"></div>
 
+{# ── Start Action from Subject (legacy view) ── #}
+{% if linked_cases %}
+<div class="card" style="margin-bottom:1rem;">
+    <div class="card-header"><h2>{{ _('Start Research Action') }}</h2></div>
+    <div style="padding:1rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:0.75rem;align-items:end;">
+            <div>
+                <label style="font-size:0.75rem;font-weight:600;">{{ _('Case') }}</label>
+                <select id="legacy-action-case" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    {% for lc in linked_cases %}
+                    <option value="{{ lc.id }}">{{ lc.case_number }} — {{ lc.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.75rem;font-weight:600;">{{ _('Action') }}</label>
+                <select id="legacy-action-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                    {% for key in action_presets %}
+                    <option value="{{ key }}">{{ action_labels.get(key, key) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.75rem;font-weight:600;">{{ _('Data Value') }}</label>
+                <input type="text" id="legacy-action-data" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;" placeholder="{{ _('e.g. email, phone, URL') }}">
+            </div>
+            <button class="btn-cms primary small" type="button" id="btn-legacy-run-action" style="white-space:nowrap;">{{ _('Run') }}</button>
+        </div>
+        <div id="legacy-action-status" style="margin-top:0.5rem;font-size:0.85rem;"></div>
+    </div>
+</div>
+<script>
+(function() {
+    var DATA = {
+        email: {{ (subject.email or '')|tojson }},
+        phone: {{ (subject.phone or '')|tojson }},
+        address: {{ [subject.street, subject.house_number, subject.house_number_addition, subject.postal_code, subject.city]|select|join(', ')|tojson }},
+        license_plate: {{ (subject.license_plate or '')|tojson }},
+        name: {{ (subject.name or '')|tojson }},
+    };
+    var DEFAULTS = {
+        email:'email',phone:'phone',address:'address',social:'social',
+        osint:'osint',google_dork:'google_dork',rdw:'license_plate',
+        kvk:'registration_number',vessel:'imo_number',financial:'bank_account',
+        facebook:'social',instagram:'social',linkedin:'social',
+        tiktok:'social',twitter:'social',subdomain:'name',photo_analysis:'photo',
+    };
+    var typeEl = document.getElementById('legacy-action-type');
+    var valueEl = document.getElementById('legacy-action-data');
+    function autoFill() { valueEl.value = DATA[DEFAULTS[typeEl.value]||'name']||''; }
+    typeEl.addEventListener('change', autoFill);
+    autoFill();
+    document.getElementById('btn-legacy-run-action').addEventListener('click', function() {
+        var st = document.getElementById('legacy-action-status');
+        var caseId = document.getElementById('legacy-action-case').value;
+        st.textContent = 'Starting...'; st.style.color = '#888';
+        fetch('/cms/workflow/api/subject/' + {{ subject.id|tojson }} + '/run-action', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({action_type:typeEl.value, data_value:valueEl.value.trim(), case_id:caseId}),
+        })
+        .then(function(r){return r.json().then(function(d){return {s:r.status,b:d};});})
+        .then(function(r){
+            if(r.s===201){st.textContent='Action started!';st.style.color='#16a34a';setTimeout(function(){location.reload();},1000);}
+            else{st.textContent=r.b.error||'Error';st.style.color='#dc2626';}
+        })
+        .catch(function(){st.textContent='Network error';st.style.color='#dc2626';});
+    });
+})();
+</script>
+{% endif %}
+
 <div class="card">
     <div class="card-header">
         <h2>

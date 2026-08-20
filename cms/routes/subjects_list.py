@@ -17,6 +17,8 @@ from .utils import find_similar_subjects, find_similar_clients, check_for_exact_
 from ..auth import subject_access_required, audit_read, apply_tenant_filter
 from ..tier_limits import check_feature
 from ..services.subject_service import subject_service
+from ..workflow.actions.helpers import presets_for_subject
+from ..workflow.research import ACTION_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +281,8 @@ def view_subject(subject_id: str) -> str:
             profile_enabled=check_feature(
                 "subject_first_investigations", current_user.tenant_id
             ),
+            action_presets=presets_for_subject(subject.subject_type),
+            action_labels={k: v["label"] for k, v in ACTION_REGISTRY.items()},
         )
 
 
@@ -333,6 +337,8 @@ def subject_profile(subject_id: str) -> str:
             {"id": c.id, "name": c.name, "subject_type": c.subject_type}
             for c in candidates
         ],
+        action_presets=presets_for_subject(subject.subject_type),
+        action_labels={k: v["label"] for k, v in ACTION_REGISTRY.items()},
     )
 
 
