@@ -40,3 +40,4 @@ license-server/.env
 .deploy.lock
 .deployed_sha
 dr-evidence-2026-08-15/
+.cms_fp_key
