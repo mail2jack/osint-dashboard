@@ -23,6 +23,8 @@ import threading
 import uuid as uuid_mod
 import contextlib
 
+import click
+
 from flask import Flask, redirect, request, g
 from dotenv import load_dotenv
 
@@ -932,6 +934,212 @@ def opsec_check():
     _set_cli_tenant_context()
     results = run_opsec_checks(verbose=True)
     print_results(results)
+
+
+@app.cli.command("rotate-encryption")
+@click.option("--dry-run", is_flag=True, help="Show what would be re-encrypted without making changes.")
+@click.option("--new-key", help="New Fernet key. If omitted, a new key is generated.")
+@click.option("--verbose", is_flag=True, help="Show per-record details.")
+def rotate_encryption(dry_run, new_key, verbose):
+    """Re-encrypt all encrypted fields with the current CMS_ENCRYPTION_KEY.
+
+    Usage:
+        flask rotate-encryption --dry-run          # Preview
+        flask rotate-encryption                     # Re-encrypt + generate new key
+        flask rotate-encryption --new-key <key>     # Re-encrypt with specific key
+    """
+    import time
+    from cryptography.fernet import Fernet
+    from cms.encryption_utils import encryptor, EncryptionError
+    from cms.models import (
+        db, Subject, Client, Address, Contact, FinancialRecord,
+    )
+
+    current_key = os.environ.get("CMS_ENCRYPTION_KEY", "")
+    if not current_key:
+        click.echo("ERROR: CMS_ENCRYPTION_KEY not set", err=True)
+        raise SystemExit(1)
+
+    if new_key:
+        target_key = new_key
+    elif dry_run:
+        target_key = current_key
+    else:
+        target_key = Fernet.generate_key().decode()
+
+    models_to_rotate = [
+        ("Subject", Subject, Subject.ENCRYPTED_FIELDS),
+        ("Client", Client, Client.ENCRYPTED_FIELDS),
+        ("Address", Address, Address.ENCRYPTED_FIELDS),
+        ("Contact", Contact, Contact.ENCRYPTED_FIELDS),
+        ("FinancialRecord", FinancialRecord, FinancialRecord.ENCRYPTED_FIELDS),
+    ]
+
+    click.echo(f"Current key: {current_key[:12]}...")
+    if target_key != current_key:
+        click.echo(f"Target key:  {target_key[:12]}...")
+    else:
+        click.echo("Target key:  same as current (re-encrypt in place)")
+    click.echo(f"Dry run: {dry_run}")
+    click.echo()
+
+    total_reencrypted = 0
+    total_failed = 0
+    total_skipped = 0
+
+    for model_name, model_cls, fields in models_to_rotate:
+        try:
+            count = model_cls.query.filter_by(is_deleted=False).count()
+        except Exception:
+            count = 0
+        if count == 0:
+            click.echo(f"  {model_name}: 0 records (skipped)")
+            continue
+
+        click.echo(f"  {model_name}: {count} records...", nl=False)
+        reencrypted = 0
+        failed = 0
+        skipped = 0
+
+        for record in model_cls.query.filter_by(is_deleted=False).all():
+            for field in fields:
+                value = getattr(record, field, None)
+                if not value:
+                    continue
+
+                try:
+                    decrypted = encryptor.decrypt(value)
+                except EncryptionError:
+                    failed += 1
+                    if verbose:
+                        click.echo(f"\n    FAIL: {model_name}.{field} id={record.id} (cannot decrypt)")
+                    continue
+
+                # Already encrypted with current key and target is current key
+                if target_key == current_key and encryptor.is_encrypted_with_current_key(value):
+                    skipped += 1
+                    continue
+
+                try:
+                    new_fernet = Fernet(target_key.encode() if isinstance(target_key, str) else target_key)
+                    re_encrypted = new_fernet.encrypt(decrypted.encode("utf-8")).decode("utf-8")
+                    setattr(record, field, re_encrypted)
+                    reencrypted += 1
+                except Exception as e:
+                    failed += 1
+                    if verbose:
+                        click.echo(f"\n    FAIL: {model_name}.{field} id={record.id}: {e}")
+
+            if reencrypted > 0 and not dry_run:
+                db.session.commit()
+
+        total_reencrypted += reencrypted
+        total_failed += failed
+        total_skipped += skipped
+        status = f"{reencrypted} re-encrypted, {skipped} unchanged, {failed} failed"
+        click.echo(f" {status}")
+
+    click.echo()
+    click.echo(f"Total: {total_reencrypted} re-encrypted, {total_skipped} unchanged, {total_failed} failed")
+
+    if not dry_run and target_key != current_key:
+        click.echo()
+        click.echo("Next steps:")
+        click.echo(f"  1. Update .env: CMS_ENCRYPTION_KEY={target_key}")
+        click.echo(f"  2. Add old key to CMS_ENCRYPTION_KEYS (if not already there)")
+        click.echo("  3. Restart the application")
+        click.echo("  4. Verify: flask verify-encryption")
+    elif dry_run:
+        click.echo()
+        click.echo("This was a dry run. Run without --dry-run to apply changes.")
+
+
+@app.cli.command("verify-encryption")
+@click.option("--verbose", is_flag=True, help="Show each field checked.")
+def verify_encryption(verbose):
+    """Verify all encrypted fields can be decrypted with the current key.
+
+    Reports fields that are:
+    - Encrypted with a legacy key (need re-encryption)
+    - Undecryptable (wrong key or corrupted data)
+    """
+    from cms.encryption_utils import encryptor, EncryptionError
+    from cms.models import (
+        db, Subject, Client, Address, Contact, FinancialRecord,
+    )
+
+    models_to_check = [
+        ("Subject", Subject, Subject.ENCRYPTED_FIELDS),
+        ("Client", Client, Client.ENCRYPTED_FIELDS),
+        ("Address", Address, Address.ENCRYPTED_FIELDS),
+        ("Contact", Contact, Contact.ENCRYPTED_FIELDS),
+        ("FinancialRecord", FinancialRecord, FinancialRecord.ENCRYPTED_FIELDS),
+    ]
+
+    total_ok = 0
+    total_legacy = 0
+    total_failed = 0
+    total_empty = 0
+
+    for model_name, model_cls, fields in models_to_check:
+        try:
+            count = model_cls.query.filter_by(is_deleted=False).count()
+        except Exception:
+            count = 0
+        if count == 0:
+            if verbose:
+                click.echo(f"  {model_name}: 0 records")
+            continue
+
+        ok = 0
+        legacy = 0
+        failed = 0
+        empty = 0
+
+        for record in model_cls.query.filter_by(is_deleted=False).all():
+            for field in fields:
+                value = getattr(record, field, None)
+                if not value:
+                    empty += 1
+                    continue
+
+                try:
+                    encryptor.decrypt(value)
+                except EncryptionError:
+                    failed += 1
+                    if verbose:
+                        click.echo(f"    FAIL: {model_name}.{field} id={record.id}")
+                    continue
+
+                if not encryptor.is_encrypted_with_current_key(value):
+                    legacy += 1
+                    if verbose:
+                        click.echo(f"    LEGACY: {model_name}.{field} id={record.id}")
+                else:
+                    ok += 1
+
+        total_ok += ok
+        total_legacy += legacy
+        total_failed += failed
+        total_empty += empty
+
+        parts = [f"{ok} OK"]
+        if legacy:
+            parts.append(f"{legacy} legacy key")
+        if failed:
+            parts.append(f"{failed} FAILED")
+        parts.append(f"{empty} empty")
+        click.echo(f"  {model_name}: {', '.join(parts)}")
+
+    click.echo()
+    click.echo(f"Summary: {total_ok} OK, {total_legacy} legacy key, {total_failed} FAILED, {total_empty} empty")
+
+    if total_legacy > 0:
+        click.echo()
+        click.echo("Run `flask rotate-encryption` to re-encrypt legacy fields with the current key.")
+    if total_failed > 0:
+        click.echo()
+        click.echo("WARNING: Some fields cannot be decrypted. Check if the correct key is set.")
 
 
 # =============================================================================

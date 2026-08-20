@@ -330,6 +330,24 @@ def check_env_encryption_key(dry: bool) -> bool:
     return False
 
 
+def check_env_encryption_keys(dry: bool) -> bool:
+    log("Checking CMS_ENCRYPTION_KEYS (legacy keys)...", end=" ")
+    if not ENV_FILE.exists():
+        log(FAIL + " (.env not found)")
+        return False
+    content = ENV_FILE.read_text()
+    for line in content.splitlines():
+        line = line.strip()
+        if line.startswith("CMS_ENCRYPTION_KEYS="):
+            value = line.split("=", 1)[1].strip().strip('"').strip("'")
+            if value and not value.startswith("#"):
+                keys = [k.strip() for k in value.split(",") if k.strip()]
+                log(f"{OK} ({len(keys)} legacy key(s) configured)")
+                return True
+    log(OK + " (no legacy keys — all data encrypted with current key)")
+    return True
+
+
 def check_spiderfoot_url_settings(dry: bool) -> bool:
     log("Checking spiderfoot_url setting in DB...", end=" ")
     env = {**os.environ}
@@ -648,6 +666,7 @@ def main():
         ("flask_session/ writable", check_flask_session),
         ("Python dependencies", check_pip_deps),
         (".env CMS_ENCRYPTION_KEY", check_env_encryption_key),
+        (".env CMS_ENCRYPTION_KEYS", check_env_encryption_keys),
         ("Alembic migrations", check_alembic),
         ("spiderfoot.service", check_spiderfoot_service),
         ("Flask health", check_flask_health),

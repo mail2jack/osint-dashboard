@@ -1,14 +1,24 @@
 """
 Field-Level Encryption Utilities for Sensitive Data
-================================================
+===============================================
 Uses Fernet symmetric encryption for GDPR/AVG compliance.
 Encryption keys are managed externally via environment variables.
+
+Key Rotation:
+    CMS_ENCRYPTION_KEY  = current key (used for new encryptions)
+    CMS_ENCRYPTION_KEYS = comma-separated previous keys (used for decryption fallback)
+
+    Rotation process:
+    1. Move old key to CMS_ENCRYPTION_KEYS
+    2. Set new key as CMS_ENCRYPTION_KEY
+    3. Restart app (decrypts with fallback, encrypts with new key)
+    4. Run `flask rotate-encryption` to re-encrypt all data
+    5. Verify, then remove old key from CMS_ENCRYPTION_KEYS
 
 Security Design Decisions:
 - Fernet is based on AES-128-CBC with PKCS7 padding and HMAC verification
 - Keys are NEVER stored in code or database
 - Each encrypted field uses the same key (symmetric encryption)
-- For high-security scenarios, consider key rotation and key derivation functions (KDF)
 """
 
 import base64
@@ -30,6 +40,9 @@ class FieldEncryptor:
     """
     Handles field-level encryption and decryption for sensitive data.
 
+    Supports multi-key rotation: the current key encrypts, while previous
+    keys (from CMS_ENCRYPTION_KEYS) are tried for decryption.
+
     Usage:
         encryptor = FieldEncryptor()
         encrypted = encryptor.encrypt("sensitive data")
@@ -38,6 +51,7 @@ class FieldEncryptor:
 
     _instance: Optional["FieldEncryptor"] = None
     _fernet: Fernet | None = None
+    _legacy_fernets: list[Fernet] | None = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -96,15 +110,40 @@ class FieldEncryptor:
                 f"Invalid encryption key format: {e}. Must be a valid Fernet key."
             )
 
+    def _get_legacy_keys(self) -> list[bytes]:
+        """Parse comma-separated legacy keys from CMS_ENCRYPTION_KEYS."""
+        raw = os.environ.get("CMS_ENCRYPTION_KEYS", "").strip()
+        if not raw:
+            return []
+        keys = []
+        for k in raw.split(","):
+            k = k.strip()
+            if not k:
+                continue
+            try:
+                key_bytes = k.encode() if isinstance(k, str) else k
+                base64.urlsafe_b64decode(key_bytes)
+                keys.append(key_bytes)
+            except (ValueError, TypeError):
+                logger.warning("Skipping invalid legacy key: %s...", k[:8])
+        return keys
+
     def _get_fernet(self) -> Fernet:
-        """Get or create Fernet instance."""
+        """Get or create Fernet instance for the current key."""
         if self._fernet is None:
             self._fernet = Fernet(self._get_key())
         return self._fernet
 
+    def _get_legacy_fernets(self) -> list[Fernet]:
+        """Get Fernet instances for legacy keys (lazy-loaded, cached)."""
+        if self._legacy_fernets is None:
+            keys = self._get_legacy_keys()
+            self._legacy_fernets = [Fernet(k) for k in keys]
+        return self._legacy_fernets
+
     def encrypt(self, data: str | bytes | None) -> str | None:
         """
-        Encrypt sensitive data.
+        Encrypt sensitive data with the current key.
 
         Args:
             data: String or bytes to encrypt. None returns None.
@@ -131,6 +170,8 @@ class FieldEncryptor:
         """
         Decrypt previously encrypted data.
 
+        Tries the current key first, then falls back to legacy keys.
+
         Args:
             encrypted_data: Base64-encoded encrypted string.
 
@@ -138,21 +179,70 @@ class FieldEncryptor:
             Decrypted string, or None if input was None.
 
         Raises:
-            EncryptionError: If decryption fails (e.g., wrong key, corrupted data).
+            EncryptionError: If decryption fails with all known keys.
         """
         if encrypted_data is None:
             return None
 
-        try:
-            if isinstance(encrypted_data, str):
-                encrypted_data = encrypted_data.encode("utf-8")
+        if isinstance(encrypted_data, str):
+            encrypted_data_bytes = encrypted_data.encode("utf-8")
+        else:
+            encrypted_data_bytes = encrypted_data
 
-            decrypted = self._get_fernet().decrypt(encrypted_data)
+        # Try current key first
+        try:
+            decrypted = self._get_fernet().decrypt(encrypted_data_bytes)
             return decrypted.decode("utf-8")
         except InvalidToken:
-            raise EncryptionError("Decryption failed: Invalid token or wrong key")
+            pass
         except Exception as e:
             raise EncryptionError(f"Decryption failed: {str(e)}")
+
+        # Try legacy keys
+        for fern in self._get_legacy_fernets():
+            try:
+                decrypted = fern.decrypt(encrypted_data_bytes)
+                logger.debug("Decrypted with legacy key")
+                return decrypted.decode("utf-8")
+            except InvalidToken:
+                continue
+            except Exception:
+                continue
+
+        raise EncryptionError("Decryption failed: Invalid token or wrong key")
+
+    def re_encrypt(self, encrypted_data: str | bytes | None) -> str | None:
+        """
+        Decrypt with any known key, then re-encrypt with the current key.
+        Returns the original value if it's already encrypted with the current key.
+        Returns None for None values.
+        """
+        if encrypted_data is None:
+            return None
+
+        decrypted = self.decrypt(encrypted_data)
+        if decrypted is None:
+            return None
+
+        # Check if it looks like it was already encrypted with current key
+        # by checking if encrypt(decrypt(x)) == x (it should be)
+        return self.encrypt(decrypted)
+
+    def is_encrypted_with_current_key(self, encrypted_data: str | bytes | None) -> bool:
+        """Check if data is encrypted with the current key (not a legacy key)."""
+        if encrypted_data is None:
+            return True
+        if isinstance(encrypted_data, str):
+            encrypted_data_bytes = encrypted_data.encode("utf-8")
+        else:
+            encrypted_data_bytes = encrypted_data
+        try:
+            self._get_fernet().decrypt(encrypted_data_bytes)
+            return True
+        except InvalidToken:
+            return False
+        except Exception:
+            return False
 
     def rotate_key(self, new_key: str) -> bool:
         """
@@ -179,6 +269,7 @@ class FieldEncryptor:
         """Reset singleton instance (useful for testing)."""
         cls._instance = None
         cls._fernet = None
+        cls._legacy_fernets = None
 
 
 # Global instance for convenience
