@@ -280,6 +280,79 @@
 </script>
 {% endif %}
 
+{% if current_user.is_admin %}
+<div class="card" style="margin-bottom:1rem;">
+    <div class="card-header"><h2>{{ _('Merge Duplicate Subject') }}</h2></div>
+    <div style="padding:1rem;">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:0.75rem;align-items:end;">
+            <div>
+                <label style="font-size:0.75rem;font-weight:600;">{{ _('Source subject to merge INTO this one') }}</label>
+                <input type="text" id="merge-search" placeholder="{{ _('Search subject name...') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;" autocomplete="off">
+                <div id="merge-results" style="border:1px solid #ddd;border-radius:6px;display:none;max-height:200px;overflow-y:auto;background:#fff;"></div>
+            </div>
+            <button class="btn-cms danger small" id="btn-merge" disabled>{{ _('Merge Into This Subject') }}</button>
+        </div>
+        <input type="hidden" id="merge-source-id" value="">
+        <div id="merge-source-info" style="margin-top:0.25rem;font-size:0.82rem;color:#666;"></div>
+        <div id="merge-status" style="margin-top:0.5rem;font-size:0.85rem;"></div>
+    </div>
+</div>
+<script>
+(function() {
+    var searchEl = document.getElementById('merge-search');
+    var resultsEl = document.getElementById('merge-results');
+    var sourceIdEl = document.getElementById('merge-source-id');
+    var sourceInfoEl = document.getElementById('merge-source-info');
+    var btnEl = document.getElementById('btn-merge');
+    var debounce;
+    searchEl.addEventListener('input', function() {
+        clearTimeout(debounce);
+        var q = searchEl.value.trim();
+        if (q.length < 2) { resultsEl.style.display = 'none'; return; }
+        debounce = setTimeout(function() {
+            fetch('/cms/subjects?format=json&q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                var subjects = (d.subjects || []).filter(function(s) { return s.id !== {{ subject.id|tojson }}; });
+                if (!subjects.length) { resultsEl.style.display = 'none'; return; }
+                resultsEl.innerHTML = subjects.map(function(s) {
+                    return '<div class="merge-option" data-id="' + s.id + '" data-name="' + s.name + '" data-type="' + s.subject_type + '" style="padding:0.5rem;cursor:pointer;border-bottom:1px solid #ddd;">' + s.name + ' <span style="color:#666;font-size:0.75rem;">(' + s.subject_type + ')</span></div>';
+                }).join('');
+                resultsEl.style.display = 'block';
+                resultsEl.querySelectorAll('.merge-option').forEach(function(el) {
+                    el.addEventListener('click', function() {
+                        sourceIdEl.value = el.dataset.id;
+                        sourceInfoEl.textContent = 'Will merge "' + el.dataset.name + '" (' + el.dataset.type + ') into this subject.';
+                        searchEl.value = el.dataset.name;
+                        resultsEl.style.display = 'none';
+                        btnEl.disabled = false;
+                    });
+                });
+            });
+        }, 300);
+    });
+    btnEl.addEventListener('click', function() {
+        var st = document.getElementById('merge-status');
+        var sourceId = sourceIdEl.value;
+        if (!sourceId) return;
+        if (!confirm('This will move all data from the source subject into this subject and soft-delete the source. Continue?')) return;
+        st.textContent = 'Merging...'; st.style.color = '#888';
+        btnEl.disabled = true;
+        fetch('/cms/subjects/{{ subject.id }}/merge', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({source_id: sourceId}),
+        })
+        .then(function(r){return r.json().then(function(d){return {s:r.status,b:d};});})
+        .then(function(r){
+            if(r.s===200 && r.b.ok){st.textContent='Merge complete! Reloading...';st.style.color='#16a34a';setTimeout(function(){location.reload();},1000);}
+            else{st.textContent=r.b.error||'Error';st.style.color='#dc2626';btnEl.disabled=false;}
+        })
+        .catch(function(){st.textContent='Network error';st.style.color='#dc2626';btnEl.disabled=false;});
+    });
+})();
+</script>
+{% endif %}
+
 <div class="card">
     <div class="card-header">
         <h2>

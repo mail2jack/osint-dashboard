@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import datetime, timezone
 
 import flask
 from flask import request, jsonify, render_template, redirect, url_for, abort
@@ -11,6 +12,9 @@ from ..models import (
     Case,
     Finding,
     SocialAccount,
+    Address,
+    Contact,
+    AuditLog,
     case_subjects,
     subject_relations,
 )
@@ -383,3 +387,148 @@ def check_duplicate() -> flask.Response:
         exact = check_for_exact_match(name, "client")
         similar = find_similar_clients(name)[:5]
         return jsonify({"duplicates": similar, "exact": exact})
+
+
+@cms_bp.route("/subjects/<target_id>/merge", methods=["POST"])
+@login_required
+@subject_access_required
+def merge_subjects(target_id: str):
+    """Merge a source subject into a target subject.
+
+    Transfers case links, relations, addresses, contacts, social accounts,
+    and findings from source to target. Merges non-empty fields (target wins).
+    Soft-deletes the source subject. Logs the merge in AuditLog.
+    """
+    data = request.get_json(force=True)
+    source_id = data.get("source_id")
+    if not source_id:
+        return jsonify({"error": "source_id required"}), 400
+
+    target = Subject.query.filter_by(id=target_id, is_deleted=False).first()
+    source = Subject.query.filter_by(id=source_id, is_deleted=False).first()
+
+    if not target or not source:
+        return jsonify({"error": "Subject not found"}), 404
+
+    if target.tenant_id != current_user.tenant_id:
+        return jsonify({"error": "Access denied"}), 403
+
+    if target_id == source_id:
+        return jsonify({"error": "Cannot merge a subject into itself"}), 400
+
+    # Decrypt both subjects for field comparison
+    with db.session.no_autoflush:
+        target.decrypt_identifiers()
+        source.decrypt_identifiers()
+
+        # --- Merge encrypted fields (target wins: only fill blanks) ---
+        merged_fields = []
+        for field in Subject.ENCRYPTED_FIELDS:
+            source_val = getattr(source, field, None)
+            target_val = getattr(target, field, None)
+            if source_val and not target_val:
+                setattr(target, field, source_val)
+                merged_fields.append(field)
+
+        # --- Merge plain fields (target wins) ---
+        for field in [
+            "subject_type",
+            "risk_score",
+            "photo_path",
+            "vessel_data",
+            "rdw_data",
+        ]:
+            source_val = getattr(source, field, None)
+            target_val = getattr(target, field, None)
+            if source_val and not target_val:
+                setattr(target, field, source_val)
+                merged_fields.append(field)
+
+        # --- Re-parent case_subjects ---
+        existing_target_case_ids = set(
+            row.case_id
+            for row in db.session.query(case_subjects.c.case_id)
+            .filter(case_subjects.c.case_id == target_id)
+            .all()
+        )
+        source_case_rows = (
+            db.session.query(case_subjects)
+            .filter(case_subjects.c.subject_id == source_id)
+            .all()
+        )
+        case_links_transferred = 0
+        case_links_skipped = 0
+        for row in source_case_rows:
+            if row.case_id in existing_target_case_ids:
+                case_links_skipped += 1
+            else:
+                db.session.execute(
+                    case_subjects.insert().values(
+                        case_id=row.case_id,
+                        subject_id=target_id,
+                        role_in_case=row.role_in_case,
+                        status=row.status,
+                        note=row.note,
+                    )
+                )
+                case_links_transferred += 1
+        # Delete source case links
+        db.session.execute(
+            case_subjects.delete().where(case_subjects.c.subject_id == source_id)
+        )
+
+        # --- Re-parent subject_relations ---
+        # Relations where source is subject_id → update to target
+        db.session.execute(
+            subject_relations.update()
+            .where(subject_relations.c.subject_id == source_id)
+            .values(subject_id=target_id)
+        )
+        # Relations where source is related_subject_id → update to target
+        db.session.execute(
+            subject_relations.update()
+            .where(subject_relations.c.related_subject_id == source_id)
+            .values(related_subject_id=target_id)
+        )
+
+        # --- Re-parent child records ---
+        Address.query.filter_by(subject_id=source_id).update({"subject_id": target_id})
+        Contact.query.filter_by(subject_id=source_id).update({"subject_id": target_id})
+        SocialAccount.query.filter_by(subject_id=source_id).update(
+            {"subject_id": target_id}
+        )
+        Finding.query.filter_by(subject_id=source_id).update({"subject_id": target_id})
+
+        # --- Soft-delete source ---
+        source.is_deleted = True
+        source.deleted_at = datetime.now(timezone.utc)
+
+        # --- Audit log ---
+        AuditLog.log(
+            user_id=current_user.id,
+            action="merge_subjects",
+            entity_type="subject",
+            entity_id=target_id,
+            ip_address=request.remote_addr,
+            description=(
+                f"Merged subject {source_id} ({source.name}) into {target_id} ({target.name}). "
+                f"Fields merged: {', '.join(merged_fields) or 'none'}. "
+                f"Case links transferred: {case_links_transferred}, skipped: {case_links_skipped}."
+            ),
+        )
+
+        db.session.commit()
+
+    flask.flash(
+        f"Subject '{source.name}' merged into '{target.name}'. "
+        f"({len(merged_fields)} field(s) filled, {case_links_transferred} case link(s) transferred)",
+        "success",
+    )
+    return jsonify(
+        {
+            "ok": True,
+            "merged_fields": merged_fields,
+            "case_links_transferred": case_links_transferred,
+            "case_links_skipped": case_links_skipped,
+        }
+    )
