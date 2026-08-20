@@ -413,6 +413,9 @@ def merge_subjects(target_id: str):
     if target.tenant_id != current_user.tenant_id:
         return jsonify({"error": "Access denied"}), 403
 
+    if source.tenant_id != current_user.tenant_id:
+        return jsonify({"error": "Source subject not found"}), 404
+
     if target_id == source_id:
         return jsonify({"error": "Cannot merge a subject into itself"}), 400
 
