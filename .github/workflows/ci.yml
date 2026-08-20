@@ -120,4 +120,4 @@ jobs:
           PY
       - run: >-
           DATABASE_URL="postgresql://cms_test:cms_test@localhost:5432/cms_test"
-          python3 -m pytest tests/test_postgres_integration.py tests/test_postgres_repair_integration.py -v --tb=short -q -n 0
+          python3 -m pytest tests/test_postgres_integration.py tests/test_postgres_repair_integration.py tests/test_postgres_migration_rls.py -v --tb=short -q -n 0
