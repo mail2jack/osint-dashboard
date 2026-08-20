@@ -676,7 +676,7 @@
       </div>
     </div>
   </div>
-  <script>
+  <script nonce="{{ csp_nonce }}">
   (function() {
     const SUBJECT_TYPE = {{ subject.subject_type|tojson }};
     const DATA = {
@@ -752,7 +752,7 @@
       <div id="merge-status" style="margin-top:0.5rem;font-size:0.85rem;"></div>
     </div>
   </div>
-  <script>
+  <script nonce="{{ csp_nonce }}">
   (function() {
     var searchEl = document.getElementById('merge-search');
     var resultsEl = document.getElementById('merge-results');
@@ -1004,7 +1004,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function () {
   var tabs = document.querySelectorAll('#profileTabs .tab-btn');
   var panels = document.querySelectorAll('[data-panel]');
