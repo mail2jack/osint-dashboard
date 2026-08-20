@@ -74,11 +74,6 @@ def view_case(case_id: str) -> str:
     subjects = case.subjects.filter(Subject.is_deleted == False).all()
     child_cases = case.child_cases.filter_by(is_deleted=False).all()
 
-    # Decrypt subject identifiers so the template shows plaintext, not ciphertext
-    with db.session.no_autoflush:
-        for s in subjects:
-            s.decrypt_identifiers()
-
     findings_page = request.args.get("findings_page", 1, type=int)
     findings_per_page = 20
     findings_pagination = (
@@ -120,24 +115,27 @@ def view_case(case_id: str) -> str:
         .limit(500)
         .all()
     )
-    for s in all_subjects:
-        s.decrypt_identifiers()
-    available_subjects = all_subjects
 
-    return render_template(
-        "cms/cases/view.html",
-        case=case,
-        subjects=subjects,
-        findings=findings_pagination.items,
-        findings_pagination=findings_pagination,
-        financials=financials_pagination.items,
-        financials_pagination=financials_pagination,
-        documents=documents_pagination.items,
-        documents_pagination=documents_pagination,
-        all_subjects=available_subjects,
-        case_reminders=case_reminders,
-        child_cases=child_cases,
-    )
+    with db.session.no_autoflush:
+        for s in subjects:
+            s.decrypt_identifiers()
+        for s in all_subjects:
+            s.decrypt_identifiers()
+
+        return render_template(
+            "cms/cases/view.html",
+            case=case,
+            subjects=subjects,
+            findings=findings_pagination.items,
+            findings_pagination=findings_pagination,
+            financials=financials_pagination.items,
+            financials_pagination=financials_pagination,
+            documents=documents_pagination.items,
+            documents_pagination=documents_pagination,
+            all_subjects=all_subjects,
+            case_reminders=case_reminders,
+            child_cases=child_cases,
+        )
 
 
 @cms_bp.route("/cases/<case_id>/timeline")
