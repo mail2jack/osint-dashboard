@@ -230,7 +230,7 @@ input:-webkit-autofill:focus {
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Number') }}</label>
                       <input type="text" name="subj_{{ sid }}_house_number" class="addr-number" value="{{ subject.house_number or '' }}" placeholder="{{ _('1') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
-                      <input type="text" name="subj_{{ sid }}_house_number_addition" value="{{ subject.house_number_addition or '' }}" placeholder="{{ _('Addition') }}" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:6px;margin-top:0.25rem;font-size:0.8rem;">
+                      <input type="text" name="subj_{{ sid }}_house_number_addition" class="addr-addition" value="{{ subject.house_number_addition or '' }}" placeholder="{{ _('Addition') }}" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:6px;margin-top:0.25rem;font-size:0.8rem;">
                     </div>
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Street') }}</label>
@@ -635,7 +635,8 @@ function wfSerializeAllAddresses() {
       var town = (entry.querySelector('.addr-town') || {}).value || '';
       if (!street && !number && !zipcode) return;
       var country = (entry.querySelector('.addr-country') || {}).value || 'Netherlands';
-      addressesArr.push({ street: street.trim(), number: number.trim(), zipcode: zipcode.trim(), town: town.trim(), country: country, is_primary: !!(entry.querySelector('.addr-primary') || {}).checked });
+      var addition = (entry.querySelector('.addr-addition') || {}).value || '';
+      addressesArr.push({ street: street.trim(), number: number.trim(), addition: addition.trim(), zipcode: zipcode.trim(), town: town.trim(), country: country, is_primary: !!(entry.querySelector('.addr-primary') || {}).checked });
     });
     var addressesInput = document.querySelector('input[name="' + prefix + '_addresses_data"]');
     if (addressesInput) addressesInput.value = JSON.stringify(addressesArr);
@@ -760,7 +761,7 @@ document.addEventListener('DOMContentLoaded', function() {
               '<div class="address-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">' +
                 '<div style="display:grid;grid-template-columns:1fr 0.7fr 2fr 1fr auto;gap:0.5rem;align-items:end;">' +
                   '<div><label style="font-size:0.75rem;">Zip</label><input type="text" name="subj_new_' + i + '_postal_code" class="addr-zipcode" placeholder="1234 AB" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
-                  '<div><label style="font-size:0.75rem;">Number</label><input type="text" name="subj_new_' + i + '_house_number" class="addr-number" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><input type="text" name="subj_new_' + i + '_house_number_addition" placeholder="Addition" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:6px;margin-top:0.25rem;font-size:0.8rem;"></div>' +
+                  '<div><label style="font-size:0.75rem;">Number</label><input type="text" name="subj_new_' + i + '_house_number" class="addr-number" placeholder="1" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><input type="text" name="subj_new_' + i + '_house_number_addition" class="addr-addition" placeholder="Addition" style="width:100%;padding:0.3rem;border:1px solid #ddd;border-radius:6px;margin-top:0.25rem;font-size:0.8rem;"></div>' +
                   '<div><label style="font-size:0.75rem;">Street</label><input type="text" name="subj_new_' + i + '_street" class="addr-street" placeholder="Street name" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
                   '<div><label style="font-size:0.75rem;">Town</label><input type="text" name="subj_new_' + i + '_city" class="addr-town" placeholder="Amsterdam" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
                   '<div style="display:flex;align-items:center;gap:0.25rem;">' +
