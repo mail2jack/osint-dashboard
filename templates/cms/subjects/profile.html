@@ -717,7 +717,7 @@
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action_type: actionType, data_value: dataValue, case_id: caseId}),
       })
-      .then(function(r) { return r.json().then(function(d) { return {status: r.status, body: d}; }); })
+      .then(function(r) { return r.text().then(function(t) { var d; try { d = JSON.parse(t); } catch(e) { d = {_raw: t.substring(0,300)}; } return {status: r.status, body: d}; }); })
       .then(function(res) {
         if (res.status === 201) {
           statusEl.textContent = 'Action started! Reloading...';
@@ -728,7 +728,7 @@
           statusEl.style.color = '#dc2626';
         }
       })
-      .catch(function(e) { statusEl.textContent = 'Network error'; statusEl.style.color = '#dc2626'; });
+      .catch(function(e) { statusEl.textContent = 'Error: ' + (e.message || e); statusEl.style.color = '#dc2626'; });
     });
   })();
   </script>
