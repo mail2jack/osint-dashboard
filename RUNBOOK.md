@@ -130,12 +130,48 @@ secundaire back-up (zie `license-server/README.md`).
 
 | Secret | Waar | Rotatie-impact |
 |---|---|---|
-| `CMS_ENCRYPTION_KEY` | `.env` / `.cms_key` | **Destructief**: versleutelde velden (telefoons, tokens, API-credentials, `install_token`) worden onleesbaar. Alleen roteren bij vermoeden van compromittatie; daarna data herstellen uit backup. |
+| `CMS_ENCRYPTION_KEY` | `.env` / `.cms_key` | **Met multi-key fallback**: voeg nieuwe key toe aan `CMS_ENCRYPTION_KEYS` (comma-separated), draai `flask rotate-encryption`, dan `CMS_ENCRYPTION_KEY` updaten. Zie procedure hieronder. |
+| `TOTP secret` | Database (`users.totp_secret`) | Via database update: `psql -c "UPDATE users SET totp_secret = '<new>' WHERE email = '<user>'"`. Gebruiker moet 2FA opnieuw instellen. |
 | `SECRET_KEY` | `.env` | Logt alle sessies uit (onschuldig, wenselijk bij verdachte activiteit). |
 | `FLASK_ENV` / `DB_SSL_MODE` | `.env` | `DB_SSL_MODE` mag alleen sterker (require/verify-ca/verify-full); doctor.py zet `require`. |
 | `ADMIN_PASSWORD` | `.env` (license-server) | Via `license-server/README.md`. |
 | `LICENSE_ADMIN_SECRET` | `.env` (license-server) | Roteren = herstarten; oude secret vervalt direct. |
 | Stripe/API-keys | `.env` + Settings | Stripe: `STRIPE_*`; overige (overheid/brave/rdw) in Settings → General; roteer daar en update `Setting`. |
+
+### CMS_ENCRYPTION_KEY rotatie (multi-key)
+
+Zero-downtime rotatie met behoud van toegang tot met oude sleutel versleutelde data:
+
+```bash
+# Stap 1: Nieuwe key genereren
+NEW_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+
+# Stap 2: Nieuwe key toevoegen aan CMS_ENCRYPTION_KEYS (bestaande key behouden)
+# In .env: CMS_ENCRYPTION_KEY=<nieuwe-key>
+# In .env: CMS_ENCRYPTION_KEYS=<oude-key>,<eventuele-andere-oude-keys>
+
+# Stap 3: Data re-encrypten met nieuwe sleutel
+cd /opt/osint-dashboard && source venv/bin/activate
+flask rotate-encryption --verbose
+
+# Stap 4: Verifiëren dat alles werkt
+flask verify-encryption --verbose
+
+# Stap 5: Herstarten
+./start.sh restart
+```
+
+Na verificatie: verwijder oude key uit `CMS_ENCRYPTION_KEYS`.
+
+### TOTP secret rotatie
+
+```bash
+# Via psql (vanaf VPS als development of osint user)
+psql 'postgresql://osint:<password>@localhost:5432/osint_db' -c \
+  "UPDATE users SET totp_secret = '<nieuw-secret>' WHERE email = '<email>' RETURNING email;"
+```
+
+Gebruiker moet daarna 2FA opnieuw instellen in authenticator app.
 
 Rotatie-stappen in algemeen: (1) nieuwe waarde genereren, (2) in `.env` zetten
 (`chmod 600`), (3) testen via preflight + `/health`, (4) opnieuw deployen of

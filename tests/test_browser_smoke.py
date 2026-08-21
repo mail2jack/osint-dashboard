@@ -2,8 +2,13 @@
 HTTP-based smoke tests for #54-#58 features.
 Uses requests.Session with Origin/Referer headers (POST only) for CSRF.
 
-Usage:
+⚠️ SECURITY: These tests should run against a STAGING environment, NOT production.
+Production data should never be used as test fixtures.
+
+Usage (staging):
     BASE_URL=http://localhost:5002 TEST_PASSWORD=smoketest123 pytest tests/test_browser_smoke.py -v
+
+Usage (production — ONLY for final verification, never for development):
     BASE_URL=https://joost.iveras.com TEST_PASSWORD=xxx TEST_TOTP_SECRET=xxx pytest tests/test_browser_smoke.py -v
 """
 
@@ -20,6 +25,14 @@ BASE_URL = os.environ.get("BASE_URL", "http://localhost:5002")
 EMAIL = os.environ.get("TEST_EMAIL", "admin@localhost")
 PASSWORD = os.environ.get("TEST_PASSWORD", "smoketest123")
 TOTP_SECRET = os.environ.get("TEST_TOTP_SECRET", "")
+
+if "joost.iveras.com" in BASE_URL:
+    import warnings
+    warnings.warn(
+        "Running browser smoke tests against PRODUCTION. "
+        "This should only be done for final verification, never during development.",
+        stacklevel=2,
+    )
 
 CASE_ID_PROD = "82d071da-8af9-487d-8c9d-1f50fa89ca5d"
 

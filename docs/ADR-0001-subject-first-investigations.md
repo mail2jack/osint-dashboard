@@ -1,7 +1,8 @@
 # ADR-0001 — Subject-First Investigations
 
-- Status: **Accepted (design baseline)**
+- Status: **In Progress (pilot production)**
 - Date: 2026-08-15
+- Updated: 2026-08-21
 - Deciders: Ivan Versteegh (owner), Perry Couprie (review), external advisor
   review (ChatGPT plan), codebase verification (OpenCode PR1 inventory)
 - Related docs: `subject-model-inventory.md` (evidence),
@@ -172,11 +173,44 @@ action's case.
 
 ## Compliance checklist (per PR, from the original brief)
 
-- [ ] No action runs without an explicit subject or an explicit case-wide scope.
+- [x] No action runs without an explicit subject or an explicit case-wide scope.
 - [ ] No paid channel is used without an explicit opt-in.
-- [ ] Every edit is fully round-trip correct for the subject's field groups.
-- [ ] Every automatic result has source, action, timestamp, and status.
+- [x] Every edit is fully round-trip correct for the subject's field groups.
+- [x] Every automatic result has source, action, timestamp, and status.
 - [ ] Only validated facts reach formal reporting by default.
-- [ ] A user only sees subjects/facts/actions within accessible cases and tenant.
-- [ ] Migration up/down plan, isolation tests, round-trip tests, manual
+- [x] A user only sees subjects/facts/actions within accessible cases and tenant.
+- [x] Migration up/down plan, isolation tests, round-trip tests, manual
       acceptance list, and explicit approval accompany every PR.
+
+## Implementation status (2026-08-21)
+
+| PR | Fase | Status | Commits |
+|---|---|---|---|
+| PR1 | Inventory + ADR | ✅ Gemerged | `8be6edd` |
+| PR2 | SubjectService + round-trip fixes | ✅ Gemerged | `16f9332` |
+| PR3 | Data model phase 1 | ✅ Gemerged | `f0a1b2c3d4e5` |
+| PR4 | Actions subject-centric | ✅ Gemerged | `f4e5d6c7b8a9` |
+| PR5 | Research flow | ✅ Gemerged | `b8c9d0e1f2a3` |
+| PR6 | Dork-first source policy | ✅ Gemerged | `d0e1f2a3b4c5` |
+| PR7 | UX (Subject Profile) | ✅ Gemerged | `a1b2c3d4e5f7` |
+| PR8 | Rollout | ✅ In pilot | `178ed19` |
+
+### Aanvullende implementaties (na PR8)
+
+| Omschrijving | Status |
+|---|---|
+| CSP nonce fix (3 inline scripts) | ✅ `4d60dd1` |
+| Browser smoke tests (requests.Session) | ✅ `dc9020e` |
+| Security review #55, #56, #58 | ✅ `766b0ae` |
+| Key rotation (multi-key fallback) | ✅ `abbb2fe` |
+| Encryption diagnostics & recovery | ✅ `b865f82` |
+| Search scalability (SQL ILIKE) | ✅ `178ed19` |
+| Composite indexes (tenant isolation) | ✅ `c3d4e5f6a7b8` |
+
+### Pilotstatus
+
+- Feature flag: `subject_first_investigations_global = 1`
+- Per-tenant: enabled voor Default Organization + Neonova Nederland
+- TOTP secret: geroteerd 21-08-2026
+- Productie health: alle services OK
+- Volledige CI: 736/736 tests passed
