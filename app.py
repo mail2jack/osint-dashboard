@@ -745,23 +745,6 @@ def set_lang(lang: str):
 
 logger.info("App-level routes registered")
 
-
-@app.teardown_appcontext
-def _cleanup_db_session(exc=None):
-    """Ensure the ORM session is cleaned up after every request.
-
-    Without an explicit teardown the implicit transaction opened by the
-    context-processor queries (Setting.get, Notification.query, etc.) stays
-    in *idle-in-transaction* state on the PostgreSQL connection, eventually
-    blocking the single gunicorn worker.
-    """
-    from cms.models import db
-
-    with contextlib.suppress(Exception):
-        db.session.rollback()
-    db.session.remove()
-
-
 # ── Security headers ──────────────────────────────────────────────────────────
 
 
