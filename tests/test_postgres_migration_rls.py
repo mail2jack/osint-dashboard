@@ -113,7 +113,7 @@ def _seed_junction_data(tenant_id: str, created_by: str) -> dict:
         subject_relations.insert().values(
             subject_id=subj1.id,
             related_subject_id=subj2.id,
-            relationship_type="associate",
+            relation_type="associate",
             created_at=date.today(),
         )
     )
