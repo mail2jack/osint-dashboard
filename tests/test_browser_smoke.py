@@ -5,11 +5,16 @@ Uses requests.Session with Origin/Referer headers (POST only) for CSRF.
 ⚠️ SECURITY: These tests should run against a STAGING environment, NOT production.
 Production data should never be used as test fixtures.
 
+These tests are SKIPPED when no server URL is configured.
+Set BROWSER_SMOKE_BASE_URL (or BASE_URL) to run them:
+
 Usage (staging):
-    BASE_URL=http://localhost:5002 TEST_PASSWORD=smoketest123 pytest tests/test_browser_smoke.py -v
+    BROWSER_SMOKE_BASE_URL=http://localhost:5002 TEST_PASSWORD=smoketest123 \\
+        pytest tests/test_browser_smoke.py -v
 
 Usage (production — ONLY for final verification, never for development):
-    BASE_URL=https://joost.iveras.com TEST_PASSWORD=xxx TEST_TOTP_SECRET=xxx pytest tests/test_browser_smoke.py -v
+    BROWSER_SMOKE_BASE_URL=https://joost.iveras.com TEST_PASSWORD=xxx TEST_TOTP_SECRET=xxx \\
+        pytest tests/test_browser_smoke.py -v
 """
 
 import os
@@ -17,11 +22,17 @@ import re
 import time
 import urllib.parse
 
-import pyotp
 import pytest
-import requests
 
-BASE_URL = os.environ.get("BASE_URL", "http://localhost:5002")
+BASE_URL = os.environ.get("BROWSER_SMOKE_BASE_URL") or os.environ.get("BASE_URL", "")
+
+if not BASE_URL:
+    pytest.skip(
+        "Browser smoke tests require a running server.\n"
+        "Set BROWSER_SMOKE_BASE_URL (e.g. http://localhost:5002) to run them.",
+        allow_module_level=True,
+    )
+
 EMAIL = os.environ.get("TEST_EMAIL", "admin@localhost")
 PASSWORD = os.environ.get("TEST_PASSWORD", "smoketest123")
 TOTP_SECRET = os.environ.get("TEST_TOTP_SECRET", "")
@@ -35,6 +46,9 @@ if "joost.iveras.com" in BASE_URL:
     )
 
 CASE_ID_PROD = "82d071da-8af9-487d-8c9d-1f50fa89ca5d"
+
+import pyotp
+import requests
 
 
 def _get(s, url):
