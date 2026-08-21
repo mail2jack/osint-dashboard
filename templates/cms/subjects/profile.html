@@ -83,16 +83,16 @@
       <span class="badge badge-status-active">{{ profile.subject.subject_type }}</span>
       {% if profile.subject.risk_score %}<span class="count-chip">⚠️ Risk {{ profile.subject.risk_score }}/100</span>{% endif %}
       {% if profile.subject.face_encoding_present %}<span class="badge badge-status-success">✅ Face encoded</span>{% endif %}
-      <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary" onclick="event.preventDefault(); var p=document.querySelector('[data-panel=overview]'); if(p){p.scrollIntoView({behavior:'smooth'}); var b=p.querySelector('[data-toggle-form=overview-form]'); if(b)b.click();}">{{ _('✏️ Edit') }}</a>
+      <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary" id="btn-edit-profile">{{ _('✏️ Edit') }}</a>
       {% if profile.cases %}
         {% if profile.cases|length == 1 %}
-        <a href="{{ url_for('cms.view_case', case_id=profile.cases[0].id) }}" class="btn-cms small">{{ _('📂 Open case') }}</a>
+        <a href="{{ url_for('workflow.case_detail', case_id=profile.cases[0].id) }}" class="btn-cms small">{{ _('📂 Open case') }}</a>
         {% else %}
         <div style="position:relative;display:inline-block;">
-          <select onchange="if(this.value)window.location.href=this.value" style="padding:0.35rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.82rem;background:var(--bg-card);color:var(--text);">
+          <select id="case-picker" style="padding:0.35rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.82rem;background:var(--bg-card);color:var(--text);">
             <option value="" disabled selected>📂 {{ profile.cases|length }} cases</option>
             {% for c in profile.cases %}
-            <option value="{{ url_for('cms.view_case', case_id=c.id) }}">{{ c.case_number }} — {{ c.title }}</option>
+            <option value="{{ url_for('workflow.case_detail', case_id=c.id) }}">{{ c.case_number }} — {{ c.title }}</option>
             {% endfor %}
           </select>
         </div>
@@ -215,7 +215,7 @@
       <tbody>
         {% for c in profile.cases %}
         <tr>
-          <td><a href="{{ url_for('cms.view_case', case_id=c.id) }}">{{ c.case_number }}</a><div style="font-size:0.78rem;color:var(--text-muted);">{{ c.title }}</div></td>
+          <td><a href="{{ url_for('workflow.case_detail', case_id=c.id) }}">{{ c.case_number }}</a><div style="font-size:0.78rem;color:var(--text-muted);">{{ c.title }}</div></td>
           <td>{{ c.role_in_case or '-' }}</td>
           <td>{{ status_badge(c.status or 'active') }}</td>
           <td>{{ c.note or '-' }}</td>
@@ -693,11 +693,13 @@
   <script nonce="{{ csp_nonce }}">
   (function() {
     document.getElementById('btn-propose').addEventListener('click', function() {
+      var btn = this;
       var statusEl = document.getElementById('propose-status');
       var caseId = document.getElementById('propose-case-id').value;
       var checked = document.querySelectorAll('#propose-actions input[name="propose_action"]:checked');
       var types = Array.from(checked).map(function(cb) { return cb.value; });
       if (!types.length) { statusEl.textContent = 'Select at least one action type'; statusEl.style.color = '#dc2626'; return; }
+      btn.disabled = true;
       statusEl.textContent = 'Proposing...';
       statusEl.style.color = 'var(--text-muted)';
       window.apiFetch('/cms/workflow/api/case/' + caseId + '/proposals', {
@@ -709,15 +711,21 @@
       .then(function(res) {
         if (res.status === 200 && res.body.ok) {
           var n = (res.body.ids || []).length;
-          statusEl.innerHTML = n + ' proposal(s) created. <a href="/cms/workflow/case/' + caseId + '">Open case workflow →</a>';
+          statusEl.textContent = '';
+          statusEl.appendChild(document.createTextNode(n + ' proposal(s) created. '));
+          var link = document.createElement('a');
+          link.href = '/cms/workflow/case/' + encodeURIComponent(caseId);
+          link.textContent = 'Open case workflow \u2192';
+          statusEl.appendChild(link);
           statusEl.style.color = '#16a34a';
           checked.forEach(function(cb) { cb.checked = false; });
         } else {
           statusEl.textContent = res.body.error || 'Error';
           statusEl.style.color = '#dc2626';
+          btn.disabled = false;
         }
       })
-      .catch(function(e) { statusEl.textContent = 'Error: ' + (e.message || e); statusEl.style.color = '#dc2626'; });
+      .catch(function(e) { statusEl.textContent = 'Error: ' + (e.message || e); statusEl.style.color = '#dc2626'; btn.disabled = false; });
     });
   })();
   </script>
@@ -906,7 +914,7 @@
         <tr>
           <td><strong>{{ a.label }}</strong>{% if a.error %}<div style="font-size:0.75rem;color:#dc2626;">{{ a.error[:120] }}</div>{% endif %}</td>
           <td><code style="font-size:0.78rem;">{{ a.action_type }}</code></td>
-          <td><a href="{{ url_for('cms.view_case', case_id=a.case_id) }}">{{ a.case_number }}</a></td>
+          <td><a href="{{ url_for('workflow.case_detail', case_id=a.case_id) }}">{{ a.case_number }}</a></td>
           <td>{{ status_badge(a.status) }}</td>
           <td>{{ a.findings_count }}</td>
           <td>{{ a.created_at[:10] if a.created_at else '-' }}</td>
@@ -1125,6 +1133,25 @@ document.addEventListener('DOMContentLoaded', function () {
   if (location.hash && location.hash.length > 1) {
     var name = location.hash.slice(1);
     if (document.querySelector('[data-tab="' + name + '"]')) { show(name); }
+  }
+
+  var btnEdit = document.getElementById('btn-edit-profile');
+  if (btnEdit) {
+    btnEdit.addEventListener('click', function (e) {
+      e.preventDefault();
+      var panel = document.querySelector('[data-panel=overview]');
+      if (panel) {
+        panel.scrollIntoView({behavior: 'smooth'});
+        var toggle = panel.querySelector('[data-toggle-form=overview-form]');
+        if (toggle) { toggle.click(); }
+      }
+    });
+  }
+  var casePicker = document.getElementById('case-picker');
+  if (casePicker) {
+    casePicker.addEventListener('change', function () {
+      if (this.value) { window.location.href = this.value; }
+    });
   }
 
   var canEdit = {{ 'true' if can_edit else 'false' }};
