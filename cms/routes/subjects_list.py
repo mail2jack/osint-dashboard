@@ -327,7 +327,8 @@ def subject_profile(subject_id: str) -> str:
         return redirect(url_for("cms.view_subject", subject_id=subject_id))
 
     subject = Subject.query.filter_by(id=subject_id).first() or abort(404)
-    profile = subject_service.profile_view(subject)
+    include_archived = request.args.get("show_archived", "").strip() == "1"
+    profile = subject_service.profile_view(subject, include_archived=include_archived)
 
     # Candidate subjects for the Relations tab add-form (same tenant,
     # excluding this subject and subjects already related).
