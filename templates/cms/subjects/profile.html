@@ -83,8 +83,21 @@
       <span class="badge badge-status-active">{{ profile.subject.subject_type }}</span>
       {% if profile.subject.risk_score %}<span class="count-chip">⚠️ Risk {{ profile.subject.risk_score }}/100</span>{% endif %}
       {% if profile.subject.face_encoding_present %}<span class="badge badge-status-success">✅ Face encoded</span>{% endif %}
-      <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary">{{ _('✏️ Edit') }}</a>
-      {% if profile.cases %}<a href="{{ url_for('cms.view_case', case_id=profile.cases[0].id) }}" class="btn-cms small">{{ _('📂 Open case') }}</a>{% endif %}
+      <a href="{{ url_for('cms.edit_subject', subject_id=subject.id) }}" class="btn-cms small primary" onclick="event.preventDefault(); var p=document.querySelector('[data-panel=overview]'); if(p){p.scrollIntoView({behavior:'smooth'}); var b=p.querySelector('[data-toggle-form=overview-form]'); if(b)b.click();}">{{ _('✏️ Edit') }}</a>
+      {% if profile.cases %}
+        {% if profile.cases|length == 1 %}
+        <a href="{{ url_for('cms.view_case', case_id=profile.cases[0].id) }}" class="btn-cms small">{{ _('📂 Open case') }}</a>
+        {% else %}
+        <div style="position:relative;display:inline-block;">
+          <select onchange="if(this.value)window.location.href=this.value" style="padding:0.35rem 0.5rem;border:1px solid var(--border-color);border-radius:6px;font-size:0.82rem;background:var(--bg-card);color:var(--text);">
+            <option value="" disabled selected>📂 {{ profile.cases|length }} cases</option>
+            {% for c in profile.cases %}
+            <option value="{{ url_for('cms.view_case', case_id=c.id) }}">{{ c.case_number }} — {{ c.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+      {% endif %}
     </div>
     <div class="profile-meta">
       {% if subject.creator %}Added by {{ subject.creator.username }} on {{ profile.subject.created_at[:10] if profile.subject.created_at else '—' }}.{% endif %}
