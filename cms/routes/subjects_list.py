@@ -328,7 +328,36 @@ def subject_profile(subject_id: str) -> str:
 
     subject = Subject.query.filter_by(id=subject_id).first() or abort(404)
     include_archived = request.args.get("show_archived", "").strip() == "1"
-    profile = subject_service.profile_view(subject, include_archived=include_archived)
+
+    # Case isolation: compute accessible case IDs for this user.
+    # Admins/super_admins see everything; investigators see only assigned cases.
+    accessible_case_ids = None
+    if not current_user.is_admin and not current_user.is_super_admin:
+        from cms.models import Case as _Case
+
+        subject_case_ids = [
+            r.case_id
+            for r in db.session.execute(
+                case_subjects.select().where(
+                    case_subjects.c.subject_id == subject.id
+                )
+            ).fetchall()
+        ]
+        if subject_case_ids:
+            all_cases = _Case.query.filter(
+                _Case.id.in_(subject_case_ids), _Case.is_deleted.is_(False)
+            ).all()
+            accessible_case_ids = {
+                c.id for c in all_cases if current_user.can_access_case(c)
+            }
+        else:
+            accessible_case_ids = set()
+
+    profile = subject_service.profile_view(
+        subject,
+        include_archived=include_archived,
+        accessible_case_ids=accessible_case_ids,
+    )
 
     # Candidate subjects for the Relations tab add-form (same tenant,
     # excluding this subject and subjects already related).
