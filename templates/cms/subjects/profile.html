@@ -712,7 +712,7 @@
       if (!actionType) { statusEl.textContent = 'Select an action type'; return; }
       statusEl.textContent = 'Starting...';
       statusEl.style.color = 'var(--text-muted)';
-      window.apiFetch('/cms/workflow/api/subject/' + {{ subject.id|tojson }} + '/run-action', {
+      window.apiFetch('/cms/api/profile/subjects/' + {{ subject.id|tojson }} + '/run-action', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action_type: actionType, data_value: dataValue, case_id: caseId}),
