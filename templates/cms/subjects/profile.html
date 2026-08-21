@@ -712,7 +712,7 @@
       if (!actionType) { statusEl.textContent = 'Select an action type'; return; }
       statusEl.textContent = 'Starting...';
       statusEl.style.color = 'var(--text-muted)';
-      fetch('/cms/workflow/api/subject/' + {{ subject.id|tojson }} + '/run-action', {
+      window.apiFetch('/cms/workflow/api/subject/' + {{ subject.id|tojson }} + '/run-action', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action_type: actionType, data_value: dataValue, case_id: caseId}),
@@ -793,7 +793,7 @@
       if (!confirm('This will move all data from the source subject into this subject and soft-delete the source. Continue?')) return;
       statusEl.textContent = 'Merging...'; statusEl.style.color = 'var(--text-muted)';
       btnEl.disabled = true;
-      fetch('/cms/subjects/{{ profile.subject.id }}/merge', {
+      window.apiFetch('/cms/subjects/{{ profile.subject.id }}/merge', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({source_id: sourceId}),

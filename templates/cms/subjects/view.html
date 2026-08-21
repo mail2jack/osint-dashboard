@@ -265,7 +265,7 @@
         var st = document.getElementById('legacy-action-status');
         var caseId = document.getElementById('legacy-action-case').value;
         st.textContent = 'Starting...'; st.style.color = '#888';
-        fetch('/cms/workflow/api/subject/' + {{ subject.id|tojson }} + '/run-action', {
+        window.apiFetch('/cms/workflow/api/subject/' + {{ subject.id|tojson }} + '/run-action', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({action_type:typeEl.value, data_value:valueEl.value.trim(), case_id:caseId}),
         })
