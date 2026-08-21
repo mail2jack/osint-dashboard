@@ -59,12 +59,11 @@ def _extract_csrf(html: str) -> str:
 
 
 @pytest.fixture(scope="session")
-def case_id():
-    s = requests.Session()
-    status, body, _ = _get(s, f"{BASE_URL}/cms/cases/{CASE_ID_PROD}")
+def case_id(session):
+    status, body, _ = _get(session, f"{BASE_URL}/cms/cases/{CASE_ID_PROD}")
     if status == 200:
         return CASE_ID_PROD
-    status, body, _ = _get(s, f"{BASE_URL}/cms/cases")
+    status, body, _ = _get(session, f"{BASE_URL}/cms/cases")
     m = re.search(r"/cms/cases/([0-9a-f-]{36})", body)
     if m:
         return m.group(1)
