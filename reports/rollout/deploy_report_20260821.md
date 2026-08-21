@@ -1,6 +1,6 @@
-# Deploy Report — Search Scalability + Composite Indexes
+# Deploy Report — Search Scalability + Composite Indexes + Data Recovery
 **Datum:** 21 augustus 2026
-**Operator:** Ivan Versteegh (via development@joost.iveras.com)
+**Operator:** Ivan Versteegh (via development@joost.iveras.com + osint@joost.iveras.com)
 
 ## Wat werd gedeployd
 
@@ -61,3 +61,38 @@ Herstel: `pg_restore -d osint_db /tmp/pre_rollout_20260821.dump`
 - Backup is naar `/tmp` geschreven (development user had geen schrijfrecht op `/opt/osint-dashboard/backups/`)
 - RLS werd tijdelijk uitgeschakeld voor pg_dump, daarna direct hersteld
 - Memory usage is hoog (80.4%) — SpiderFoot is de grootverbruiker
+
+## Data Recovery (10:24 UTC)
+
+Bij pilot-inventarisatie bleek dat **alle subjects en cases weg waren** (0 rijen).
+De case_subjects junction data (22 rijen) verwees naar niet-bestaande entities.
+
+### Oorzaak
+Waarschijnlijk verloren gegaan tijdens het CASCADE TRUNCATE incident op 20 augustus 2026
+of de daaropvolgende hersteloperaties. De `manual_20260819.dump` en `post_recovery_20260820.dump`
+bevatten alleen junction data, geen subjects/cases.
+
+### Herstelprocedure
+1. Gedecrypteerde backup `iveras_backup_20260819_120001.tar.gz.gpg` (3.5MB)
+2. `database.sql.gz` bevatte volledige SQL dump met subjects + cases
+3. COPY FROM faalde door RLS → INSERT statements met ON CONFLICT DO NOTHING gegenereerd
+4. RLS tijdelijk uitgeschakeld (`ALTER TABLE ... DISABLE ROW LEVEL SECURITY`)
+5. Data ingevoerd + RLS weer ingeschakeld
+6. Alembic migratie opnieuw uitgevoerd (full restore had version gereset)
+
+### Resultaat
+| Entiteit | Aantal |
+|---|---|
+| Subjects (actief) | 26 |
+| Cases (actief) | 8 |
+| Case_subjects | 22 |
+| Subject_relations | 2 |
+| Research_actions | 80 |
+| Alembic version | `c3d4e5f6a7b8` ✅ |
+| Health status | `ok` ✅ |
+
+### LESSON LEARNED
+- Full SQL restore herstelt ook het schema + policies → Alembic versie wordt gereset
+- `COPY FROM` blokkeert op tabellen met RLS policies (zelfs met NO FORCE)
+- `INSERT ... ON CONFLICT DO NOTHING` toont "INSERT 0 0" maar voert wél uit (misleidend)
+- CASCADE TRUNCATE op `cases` verwijdert ook `research_actions` → gebruik TRUNCATE zonder CASCADE of TRUNCATE specifieke tabellen
