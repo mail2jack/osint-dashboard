@@ -15,6 +15,7 @@ from cms.models import (
     Finding,
     Subject,
     User,
+    case_assignments,
     db,
 )
 
@@ -203,8 +204,187 @@ class TestFindingReviewAuth:
         )
         assert resp.status_code == 403
 
+    def test_missing_subject_case_link_returns_403(self, auth_client):
+        """Finding in case B, subject only linked to case A → 403."""
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case_a = _make_case(admin)
+        case_b = _make_case(admin)
+        subject = Subject(name="Link Subject", subject_type="person")
+        db.session.add(subject)
+        case_a.subjects.append(subject)
+        db.session.commit()
+        finding = _make_finding(case_b, subject)
 
-# ── Archive / restore ──────────────────────────────────────────────────────
+        resp = auth_client.post(
+            f"{_profile_url(subject.id)}/{finding.id}/review",
+            json={"status": "verified"},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).status == "candidate"
+
+
+# ── Archive auth ────────────────────────────────────────────────────────────
+
+
+class TestFindingArchiveAuth:
+    def _archive_url(self, subject_id, finding_id):
+        return f"{_profile_url(subject_id)}/{finding_id}/archive"
+
+    def test_viewer_gets_403_on_archive(self, app):
+        viewer = _make_user(role="viewer")
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case = _make_case(admin)
+        subject = Subject(name="Arch Viewer", subject_type="person")
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+        finding = _make_finding(case, subject)
+
+        resp = _login_as(app.test_client(), viewer).post(
+            self._archive_url(subject.id, finding.id),
+            json={},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).archived_at is None
+
+    def test_investigator_without_case_access_gets_403(self, app):
+        outsider = _make_user(role="investigator")
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case = _make_case(admin)
+        subject = Subject(name="Arch Locked", subject_type="person")
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+        finding = _make_finding(case, subject)
+
+        resp = _login_as(app.test_client(), outsider).post(
+            self._archive_url(subject.id, finding.id),
+            json={},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).archived_at is None
+
+    def test_wrong_subject_returns_403(self, auth_client):
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case = _make_case(admin)
+        subject_a = Subject(name="Arch A", subject_type="person")
+        subject_b = Subject(name="Arch B", subject_type="person")
+        db.session.add_all([subject_a, subject_b])
+        case.subjects.extend([subject_a, subject_b])
+        db.session.commit()
+        finding = _make_finding(case, subject_a)
+
+        resp = auth_client.post(
+            self._archive_url(subject_b.id, finding.id),
+            json={},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).archived_at is None
+
+    def test_missing_subject_case_link_returns_403(self, auth_client):
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case_a = _make_case(admin)
+        case_b = _make_case(admin)
+        subject = Subject(name="Arch Link", subject_type="person")
+        db.session.add(subject)
+        case_a.subjects.append(subject)
+        db.session.commit()
+        finding = _make_finding(case_b, subject)
+
+        resp = auth_client.post(
+            self._archive_url(subject.id, finding.id),
+            json={},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).archived_at is None
+
+
+# ── Restore auth ────────────────────────────────────────────────────────────
+
+
+class TestFindingRestoreAuth:
+    def _restore_url(self, subject_id, finding_id):
+        return f"{_profile_url(subject_id)}/{finding_id}/restore"
+
+    def test_viewer_gets_403_on_restore(self, app):
+        viewer = _make_user(role="viewer")
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case = _make_case(admin)
+        subject = Subject(name="Rest Viewer", subject_type="person")
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+        finding = _make_finding(case, subject, archived=True)
+
+        resp = _login_as(app.test_client(), viewer).post(
+            self._restore_url(subject.id, finding.id),
+            json={},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).archived_at is not None
+
+    def test_investigator_without_case_access_gets_403(self, app):
+        outsider = _make_user(role="investigator")
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case = _make_case(admin)
+        subject = Subject(name="Rest Locked", subject_type="person")
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+        finding = _make_finding(case, subject, archived=True)
+
+        resp = _login_as(app.test_client(), outsider).post(
+            self._restore_url(subject.id, finding.id),
+            json={},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).archived_at is not None
+
+    def test_wrong_subject_returns_403(self, auth_client):
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case = _make_case(admin)
+        subject_a = Subject(name="Rest A", subject_type="person")
+        subject_b = Subject(name="Rest B", subject_type="person")
+        db.session.add_all([subject_a, subject_b])
+        case.subjects.extend([subject_a, subject_b])
+        db.session.commit()
+        finding = _make_finding(case, subject_a, archived=True)
+
+        resp = auth_client.post(
+            self._restore_url(subject_b.id, finding.id),
+            json={},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).archived_at is not None
+
+    def test_missing_subject_case_link_returns_403(self, auth_client):
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case_a = _make_case(admin)
+        case_b = _make_case(admin)
+        subject = Subject(name="Rest Link", subject_type="person")
+        db.session.add(subject)
+        case_a.subjects.append(subject)
+        db.session.commit()
+        finding = _make_finding(case_b, subject, archived=True)
+
+        resp = auth_client.post(
+            self._restore_url(subject.id, finding.id),
+            json={},
+        )
+        assert resp.status_code == 403
+        assert db.session.get(Finding, finding.id).archived_at is not None
+
+
+# ── Archive / restore happy path ────────────────────────────────────────────
 
 
 class TestFindingArchive:
@@ -313,3 +493,40 @@ class TestFindingAudit:
             entity_type="finding", entity_id=finding.id, action="archive"
         ).first()
         assert log is not None
+
+
+# ── Case isolation ──────────────────────────────────────────────────────────
+
+
+class TestCaseIsolation:
+    def test_investigator_sees_only_accessible_findings(self, app):
+        """Investigator with access to case A but not B on a shared subject
+        must NOT see findings from case B in the profile."""
+        investigator = _make_user(role="investigator")
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+
+        case_a = _make_case(admin)
+        case_b = _make_case(admin)
+        subject = Subject(name="Shared Subject", subject_type="person")
+        db.session.add(subject)
+        case_a.subjects.append(subject)
+        case_b.subjects.append(subject)
+
+        # Assign investigator to case A only
+        db.session.execute(
+            case_assignments.insert().values(case_id=case_a.id, user_id=investigator.id)
+        )
+
+        finding_a = _make_finding(case_a, subject, status="candidate")
+        finding_b = _make_finding(case_b, subject, status="verified")
+        db.session.commit()
+
+        resp = _login_as(app.test_client(), investigator).get(
+            f"/cms/subjects/{subject.id}/profile"
+        )
+        assert resp.status_code == 200
+        # Finding from case A should be visible
+        assert finding_a.id.encode() in resp.data
+        # Finding from case B must NOT be visible
+        assert finding_b.id.encode() not in resp.data
