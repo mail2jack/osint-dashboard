@@ -16,3 +16,4 @@ def set_tenant_context(db, tenant_id: str | None, *, bypass_rls: bool = False) -
         text("SELECT set_config('app.bypass_rls', :bypass_rls, false)"),
         {"bypass_rls": "true" if bypass_rls else "false"},
     )
+    db.session.commit()
