@@ -1,5 +1,4 @@
 import logging
-import re
 from datetime import datetime, timezone
 
 import flask
@@ -19,7 +18,7 @@ from ..models import (
     subject_relations,
 )
 from .utils import find_similar_subjects, find_similar_clients, check_for_exact_match
-from ..auth import subject_access_required, audit_read, apply_tenant_filter
+from ..auth import admin_required, subject_access_required, audit_read, apply_tenant_filter
 from ..tier_limits import check_feature
 from ..services.subject_service import subject_service
 from ..workflow.actions.helpers import presets_for_subject
@@ -393,6 +392,7 @@ def check_duplicate() -> flask.Response:
 @cms_bp.route("/subjects/<target_id>/merge", methods=["POST"])
 @login_required
 @subject_access_required
+@admin_required
 def merge_subjects(target_id: str):
     """Merge a source subject into a target subject.
 
@@ -452,7 +452,7 @@ def merge_subjects(target_id: str):
         existing_target_case_ids = set(
             row.case_id
             for row in db.session.query(case_subjects.c.case_id)
-            .filter(case_subjects.c.case_id == target_id)
+            .filter(case_subjects.c.subject_id == target_id)
             .all()
         )
         source_case_rows = (

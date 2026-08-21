@@ -1,7 +1,5 @@
 """Tests for encryption key rotation support."""
-import base64
 import os
-import secrets
 
 import pytest
 from cryptography.fernet import Fernet

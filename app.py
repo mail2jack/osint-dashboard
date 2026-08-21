@@ -948,7 +948,6 @@ def rotate_encryption(dry_run, new_key, verbose):
         flask rotate-encryption                     # Re-encrypt + generate new key
         flask rotate-encryption --new-key <key>     # Re-encrypt with specific key
     """
-    import time
     from cryptography.fernet import Fernet
     from cms.encryption_utils import encryptor, EncryptionError
     from cms.models import (
@@ -1046,7 +1045,7 @@ def rotate_encryption(dry_run, new_key, verbose):
         click.echo()
         click.echo("Next steps:")
         click.echo(f"  1. Update .env: CMS_ENCRYPTION_KEY={target_key}")
-        click.echo(f"  2. Add old key to CMS_ENCRYPTION_KEYS (if not already there)")
+        click.echo("  2. Add old key to CMS_ENCRYPTION_KEYS (if not already there)")
         click.echo("  3. Restart the application")
         click.echo("  4. Verify: flask verify-encryption")
     elif dry_run:
@@ -1065,7 +1064,7 @@ def verify_encryption(verbose):
     """
     from cms.encryption_utils import encryptor, EncryptionError
     from cms.models import (
-        db, Subject, Client, Address, Contact, FinancialRecord,
+        Subject, Client, Address, Contact, FinancialRecord,
     )
 
     models_to_check = [

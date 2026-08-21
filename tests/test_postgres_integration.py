@@ -40,7 +40,10 @@ class TestPostgreSQLIntegration:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        assert revision == "d2e3f4a5b6c7"
+        # Keep this assertion aligned with the current Alembic head.  The
+        # following migration adds subject-search indexes after FORCE RLS and
+        # the cascade-FK safety migration.
+        assert revision == "c3d4e5f6a7b8"
 
         protected = db.session.execute(
             text(

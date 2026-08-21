@@ -17,6 +17,7 @@ from datetime import date
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from cms.models import (
     Case,
@@ -113,7 +114,7 @@ def _seed_junction_data(tenant_id: str, created_by: str) -> dict:
         subject_relations.insert().values(
             subject_id=subj1.id,
             related_subject_id=subj2.id,
-            relationship_type="associate",
+            relation_type="associate",
             created_at=date.today(),
         )
     )
@@ -257,49 +258,32 @@ class TestMigrationRLSBypass:
         # Clean up — restore tenant context for other tests
         set_tenant_context(db, tenant_id, bypass_rls=True)
 
-    def test_true_orphans_are_deleted(self, app):
-        """The cleanup should correctly delete rows with invalid FKs
-        when RLS bypass is active (subquery returns actual data)."""
+    def test_foreign_keys_prevent_new_orphans(self, app):
+        """Cascade foreign keys prevent a new orphan before cleanup runs."""
         admin = User.query.filter_by(username="admin").one()
         tenant_id = admin.tenant_id
 
         set_tenant_context(db, tenant_id, bypass_rls=True)
         ids = _seed_junction_data(tenant_id, admin.id)
 
-        # Insert an orphan: case_subjects pointing to non-existent case
+        # The cascade-FK migration means a new orphan cannot be created.
         fake_case_id = str(uuid.uuid4())
-        db.session.execute(
-            text(
-                "INSERT INTO case_subjects "
-                "(case_id, subject_id, role_in_case, status) "
-                "VALUES (:case_id, :subject_id, 'subject', 'active')"
-            ),
-            {"case_id": fake_case_id, "subject_id": ids["subj1_id"]},
-        )
-        cs_before = db.session.execute(
-            text("SELECT count(*) FROM case_subjects")
-        ).scalar()
-        assert cs_before == 4  # 3 valid + 1 orphan
-
-        # Run cleanup WITH bypass
-        db.session.execute(text("SET LOCAL app.bypass_rls = 'true'"))
-        db.session.execute(
-            text(
-                "DELETE FROM case_subjects "
-                "WHERE case_id NOT IN (SELECT id FROM cases) "
-                "OR subject_id NOT IN (SELECT id FROM subjects)"
+        with pytest.raises(IntegrityError):
+            db.session.execute(
+                text(
+                    "INSERT INTO case_subjects "
+                    "(case_id, subject_id, role_in_case, status) "
+                    "VALUES (:case_id, :subject_id, 'subject', 'active')"
+                ),
+                {"case_id": fake_case_id, "subject_id": ids["subj1_id"]},
             )
-        )
-        db.session.execute(text("SET LOCAL app.bypass_rls = 'false'"))
-        db.session.commit()
+            db.session.flush()
+        db.session.rollback()
 
         cs_after = db.session.execute(
             text("SELECT count(*) FROM case_subjects")
         ).scalar()
-        assert cs_after == 3, (
-            f"Expected 3 after orphan cleanup, got {cs_after} — "
-            "true orphan was not deleted or valid rows were also deleted"
-        )
+        assert cs_after == 3
 
     def test_referential_integrity_after_cleanup(self, app):
         """After cleanup, all junction rows must reference existing parents."""
