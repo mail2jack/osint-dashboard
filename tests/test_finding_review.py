@@ -8,11 +8,13 @@ import uuid
 from datetime import UTC, datetime
 
 from cms.models import (
+    ActionFinding,
     AuditLog,
     Case,
     Client,
     FeatureFlag,
     Finding,
+    ResearchAction,
     Subject,
     User,
     case_assignments,
@@ -530,3 +532,42 @@ class TestCaseIsolation:
         assert finding_a.id.encode() in resp.data
         # Finding from case B must NOT be visible
         assert finding_b.id.encode() not in resp.data
+
+
+# ── Action label provenance ────────────────────────────────────────────────
+
+
+class TestFindingActionLabel:
+    def test_action_label_visible_when_linked(self, auth_client):
+        """A finding with a linked ResearchAction must show action_label."""
+        admin = User.query.filter_by(role="admin").first()
+        _enable_flag(admin.tenant_id)
+        case = _make_case(admin)
+        subject = Subject(name="Action Label Subject", subject_type="person")
+        db.session.add(subject)
+        case.subjects.append(subject)
+        db.session.commit()
+
+        action = ResearchAction(
+            tenant_id=admin.tenant_id,
+            case_id=case.id,
+            subject_id=subject.id,
+            action_type="google_dork",
+            label="person dork search",
+            status="completed",
+            created_by=admin.id,
+        )
+        db.session.add(action)
+        db.session.flush()
+
+        finding = _make_finding(case, subject, status="verified")
+        db.session.add(ActionFinding(action_id=action.id, finding_id=finding.id))
+        db.session.commit()
+
+        resp = auth_client.get(f"/cms/subjects/{subject.id}/profile")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        assert "person dork search" in html
+        # Action label links back to the workflow case detail with anchor
+        assert f"#findings-{action.id}" in html
