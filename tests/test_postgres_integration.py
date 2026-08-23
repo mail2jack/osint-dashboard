@@ -458,3 +458,80 @@ class TestPostgreSQLIntegration:
             assert entry.tenant_id == tenant_id
             assert entry.ip_address == "127.0.0.1"
             assert entry.is_success is False
+
+    def test_set_tenant_context_recovers_from_failed_session(self, app):
+        """After a SQL error that puts the PostgreSQL transaction in a failed
+        state, set_tenant_context() must recover by rolling back first, then
+        re-establish the RLS context so writes succeed under FORCE RLS."""
+        admin = User.query.filter_by(username="admin").one()
+        tenant_id = admin.tenant_id
+
+        set_tenant_context(db, tenant_id, bypass_rls=True)
+        db.session.commit()
+
+        with pytest.raises(Exception):
+            db.session.execute(text("SELECT 1 / 0"))
+
+        set_tenant_context(db, tenant_id)
+
+        tenant_id_now, bypass_now = db.session.execute(
+            text(
+                "SELECT current_setting('app.tenant_id'), "
+                "current_setting('app.bypass_rls')"
+            )
+        ).one()
+        assert tenant_id_now == tenant_id
+        assert bypass_now == "false"
+
+        client = Client(tenant_id=tenant_id, name="PG recovery client")
+        db.session.add(client)
+        db.session.commit()
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG recovery client").count() == 0
+
+        set_tenant_context(db, tenant_id)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG recovery client").count() == 1
+
+    def test_tenant_context_does_not_leak_across_sessions(self, app):
+        """GUC values must not persist beyond the connection's use: after
+        committing and starting a fresh logical transaction, the previous
+        tenant context must not be visible."""
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = Tenant(
+            name="PG Leak Tenant B",
+            slug=f"pg-leak-b-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.commit()
+
+        set_tenant_context(db, tenant_a, bypass_rls=True)
+        client = Client(tenant_id=tenant_a, name="PG leak client A")
+        db.session.add(client)
+        db.session.commit()
+
+        set_tenant_context(db, tenant_b.id, bypass_rls=True)
+        client = Client(tenant_id=tenant_b.id, name="PG leak client B")
+        db.session.add(client)
+        db.session.commit()
+
+        set_tenant_context(db, tenant_a)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG leak client A").count() == 1
+        assert Client.query.filter_by(name="PG leak client B").count() == 0
+
+        set_tenant_context(db, tenant_b.id)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG leak client A").count() == 0
+        assert Client.query.filter_by(name="PG leak client B").count() == 1
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG leak client A").count() == 0
+        assert Client.query.filter_by(name="PG leak client B").count() == 0
