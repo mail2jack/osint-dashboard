@@ -1,6 +1,7 @@
 """PostgreSQL tenant session context shared by web, worker, and CLI paths."""
 
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 
 def set_tenant_context(db, tenant_id: str | None, *, bypass_rls: bool = False) -> None:
@@ -16,10 +17,11 @@ def set_tenant_context(db, tenant_id: str | None, *, bypass_rls: bool = False) -
 
     If the underlying PostgreSQL connection is in a failed transaction
     state (e.g. after a prior SQL error), ``set_config()`` would fail
-    with *InFailedSqlTransaction*.  We detect this on the first attempt
-    and recover with ``rollback()`` before retrying.  We never rollback
-    unconditionally because that would discard pending ORM state from a
-    healthy session.
+    with *InFailedSqlTransaction* (SQLSTATE ``25P02``).  We detect this
+    on the first attempt and recover with ``rollback()`` before retrying.
+    All other exceptions propagate immediately — we never swallow
+    permission errors, connection failures, or programming bugs by
+    rolling back a healthy transaction.
     """
     if db.engine.dialect.name != "postgresql":
         return
@@ -35,8 +37,8 @@ def set_tenant_context(db, tenant_id: str | None, *, bypass_rls: bool = False) -
                 {"bypass_rls": "true" if bypass_rls else "false"},
             )
             return
-        except Exception:
-            if _attempt == 0:
+        except DBAPIError as exc:
+            if _attempt == 0 and getattr(exc.orig, "pgcode", None) == "25P02":
                 db.session.rollback()
             else:
                 raise
