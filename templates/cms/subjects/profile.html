@@ -1106,13 +1106,14 @@
     </div>
     {% if profile.findings %}
     <table class="fact-table">
-      <thead><tr><th>Finding</th><th>Source</th><th>Case</th><th>Status</th><th>Integrity</th><th>Created</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+      <thead><tr><th>Finding</th><th>Source</th><th>Case</th><th>Action</th><th>Status</th><th>Integrity</th><th>Created</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for f in profile.findings %}
         <tr data-finding-id="{{ f.id }}" data-archived="{{ 'true' if f.archived else 'false' }}" style="{% if f.archived %}opacity:0.55;{% endif %}">
           <td><strong>{{ f.title }}</strong>{% if f.detail %}<div style="font-size:0.78rem;color:var(--text-muted);">{{ f.detail[:120] }}</div>{% endif %}</td>
           <td>{{ f.source_type or '-' }}{% if f.source_url %}<a href="{{ f.source_url }}" target="_blank" rel="noopener"> 🔗</a>{% endif %}</td>
           <td>{% if f.case_id %}<a href="{{ url_for('workflow.case_detail', case_id=f.case_id) }}">{{ f.case_number if f.case_number else f.case_id[:8] }}</a>{% else %}-{% endif %}</td>
+          <td>{% if f.action_label %}{% if f.case_id %}<a href="{{ url_for('workflow.case_detail', case_id=f.case_id) }}#findings-{{ f.action_id }}">{{ f.action_label }}</a>{% else %}{{ f.action_label }}{% endif %}{% else %}-{% endif %}</td>
           <td>{{ status_badge(f.status) }}{% if f.verified_by_name and f.verified_by_name != '—' %} <span style="font-size:0.72rem;color:var(--text-muted);">by {{ f.verified_by_name }}{% if f.verified_at %} {{ f.verified_at[:10] }}{% endif %}</span>{% endif %}</td>
           <td>{% if f.integrity_ok %}<span class="status-ok">✓ intact</span>{% else %}<span class="status-bad">✗ tampered</span>{% endif %}</td>
           <td>{{ f.created_at[:10] if f.created_at else '-' }}</td>
