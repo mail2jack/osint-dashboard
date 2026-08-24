@@ -669,7 +669,7 @@ def profile_relation_candidates(subject_id: str) -> flask.Response:
 
     # Subjects in the same case first, then alphabetical
     same_case_subq = sa_case(
-        (Subject.id.in_(same_case_ids), 0),
+        (Subject.id.in_(same_case_subject_ids), 0),
         else_=1,
     )
     results = (
