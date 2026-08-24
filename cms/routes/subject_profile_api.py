@@ -611,14 +611,17 @@ def profile_relation_candidates(subject_id: str) -> flask.Response:
     limit = min(request.args.get("limit", 30, type=int), 100)
 
     # Case IDs this subject belongs to
-    same_case_ids = {
-        row.case_id
-        for row in db.session.execute(
-            case_subjects.select().where(
-                case_subjects.c.subject_id == subject.id
-            )
-        ).fetchall()
-    }
+    _cs_rows = db.session.execute(
+        case_subjects.select().where(
+            case_subjects.c.subject_id == subject.id
+        )
+    ).fetchall()
+    import logging as _lg
+    _lg.getLogger(__name__).warning(
+        "DEBUG relation-candidates: subject=%s cs_rows=%d raw=%s",
+        subject.id, len(_cs_rows), [(r.case_id,) for r in _cs_rows],
+    )
+    same_case_ids = {r.case_id for r in _cs_rows}
 
     # Already-related subject IDs (exclude from candidates)
     from ..models import subject_relations
