@@ -458,3 +458,132 @@ class TestPostgreSQLIntegration:
             assert entry.tenant_id == tenant_id
             assert entry.ip_address == "127.0.0.1"
             assert entry.is_success is False
+
+    def test_set_tenant_context_recovers_from_failed_session(self, app):
+        """After a SQL error that puts the PostgreSQL transaction in a failed
+        state, set_tenant_context() must recover by rolling back first, then
+        re-establish the RLS context so writes succeed under FORCE RLS."""
+        admin = User.query.filter_by(username="admin").one()
+        tenant_id = admin.tenant_id
+
+        set_tenant_context(db, tenant_id, bypass_rls=True)
+        db.session.commit()
+
+        with pytest.raises(Exception):
+            db.session.execute(text("SELECT 1 / 0"))
+
+        set_tenant_context(db, tenant_id)
+
+        tenant_id_now, bypass_now = db.session.execute(
+            text(
+                "SELECT current_setting('app.tenant_id'), "
+                "current_setting('app.bypass_rls')"
+            )
+        ).one()
+        assert tenant_id_now == tenant_id
+        assert bypass_now == "false"
+
+        client = Client(tenant_id=tenant_id, name="PG recovery client")
+        db.session.add(client)
+        db.session.commit()
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG recovery client").count() == 0
+
+        set_tenant_context(db, tenant_id)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG recovery client").count() == 1
+
+    def test_set_tenant_context_does_not_swallow_non_25p02_errors(
+        self, app, monkeypatch
+    ):
+        """Only InFailedSqlTransaction (25P02) may trigger rollback + retry.
+        Other DBAPIErrors — e.g. permission denied, connection lost — must
+        propagate immediately without rolling back a healthy transaction."""
+        admin = User.query.filter_by(username="admin").one()
+        tenant_id = admin.tenant_id
+
+        set_tenant_context(db, tenant_id, bypass_rls=True)
+        client = Client(tenant_id=tenant_id, name="PG pre-error client")
+        db.session.add(client)
+        db.session.flush()
+
+        original_execute = db.session.execute
+        rollback_called = False
+        call_count = 0
+
+        class _FakePGError(Exception):
+            pgcode = "42501"
+
+        def _intercepting_execute(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                from sqlalchemy.exc import DBAPIError
+
+                raise DBAPIError("stmt", "params", _FakePGError("denied"))
+            return original_execute(*args, **kwargs)
+
+        monkeypatch.setattr(db.session, "execute", _intercepting_execute)
+
+        original_rollback = db.session.rollback
+
+        def _tracking_rollback(*a, **kw):
+            nonlocal rollback_called
+            rollback_called = True
+            return original_rollback(*a, **kw)
+
+        monkeypatch.setattr(db.session, "rollback", _tracking_rollback)
+
+        with pytest.raises(Exception) as exc_info:
+            set_tenant_context(db, tenant_id)
+        assert getattr(exc_info.value.orig, "pgcode", None) == "42501"
+        assert not rollback_called
+
+        monkeypatch.undo()
+        db.session.rollback()
+
+    def test_tenant_context_switching_overrides_previous_values(self, app):
+        """set_tenant_context() must fully replace the previous GUC values:
+        calling it with a different tenant makes the old tenant's rows
+        invisible under RLS, and calling with bypass_rls=False disables
+        the bypass.  Pool-level isolation (different connection, clean
+        slate) is an entrypoint concern — every web before_request, worker
+        task, and CLI script must call set_tenant_context() explicitly."""
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = Tenant(
+            name="PG Switch Tenant B",
+            slug=f"pg-switch-b-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.commit()
+
+        set_tenant_context(db, tenant_a, bypass_rls=True)
+        client = Client(tenant_id=tenant_a, name="PG switch client A")
+        db.session.add(client)
+        db.session.commit()
+
+        set_tenant_context(db, tenant_b.id, bypass_rls=True)
+        client = Client(tenant_id=tenant_b.id, name="PG switch client B")
+        db.session.add(client)
+        db.session.commit()
+
+        set_tenant_context(db, tenant_a)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG switch client A").count() == 1
+        assert Client.query.filter_by(name="PG switch client B").count() == 0
+
+        set_tenant_context(db, tenant_b.id)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG switch client A").count() == 0
+        assert Client.query.filter_by(name="PG switch client B").count() == 1
+
+        set_tenant_context(db, None)
+        db.session.expire_all()
+        assert Client.query.filter_by(name="PG switch client A").count() == 0
+        assert Client.query.filter_by(name="PG switch client B").count() == 0
