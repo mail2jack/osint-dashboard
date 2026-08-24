@@ -1095,19 +1095,43 @@
 {# ────────────────────────── Findings ────────────────────────── #}
 <div class="tab-panel" data-panel="findings">
   <div class="card">
-    <div class="card-header"><h2>{{ _('Findings') }} <span class="badge badge-status-active">{{ profile.findings|length }}</span></h2></div>
+    <div class="card-header" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <h2>{{ _('Findings') }} <span class="badge badge-status-active">{{ profile.findings|length }}</span></h2>
+      {% if can_edit and profile.findings %}
+      <label style="font-size:0.8rem;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:0.3rem;">
+        <input type="checkbox" id="findings-toggle-archived" {% if request.args.get('show_archived') == '1' %}checked{% endif %}>
+        {{ _('Show archived') }}
+      </label>
+      {% endif %}
+    </div>
     {% if profile.findings %}
     <table class="fact-table">
-      <thead><tr><th>Finding</th><th>Source</th><th>Status</th><th>Integrity</th><th>Action</th><th>Created</th></tr></thead>
+      <thead><tr><th>Finding</th><th>Source</th><th>Case</th><th>Action</th><th>Status</th><th>Integrity</th><th>Created</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for f in profile.findings %}
-        <tr>
+        <tr data-finding-id="{{ f.id }}" data-archived="{{ 'true' if f.archived else 'false' }}" style="{% if f.archived %}opacity:0.55;{% endif %}">
           <td><strong>{{ f.title }}</strong>{% if f.detail %}<div style="font-size:0.78rem;color:var(--text-muted);">{{ f.detail[:120] }}</div>{% endif %}</td>
           <td>{{ f.source_type or '-' }}{% if f.source_url %}<a href="{{ f.source_url }}" target="_blank" rel="noopener"> 🔗</a>{% endif %}</td>
-          <td>{{ status_badge(f.status) }}{% if f.verified_by_name %} <span style="font-size:0.72rem;color:var(--text-muted);">by {{ f.verified_by_name }}{% if f.verified_at %} {{ f.verified_at[:10] }}{% endif %}</span>{% endif %}</td>
+          <td>{% if f.case_id %}<a href="{{ url_for('workflow.case_detail', case_id=f.case_id) }}">{{ f.case_number if f.case_number else f.case_id[:8] }}</a>{% else %}-{% endif %}</td>
+          <td>{% if f.action_label %}{% if f.case_id %}<a href="{{ url_for('workflow.case_detail', case_id=f.case_id) }}#findings-{{ f.action_id }}">{{ f.action_label }}</a>{% else %}{{ f.action_label }}{% endif %}{% else %}-{% endif %}</td>
+          <td>{{ status_badge(f.status) }}{% if f.verified_by_name and f.verified_by_name != '—' %} <span style="font-size:0.72rem;color:var(--text-muted);">by {{ f.verified_by_name }}{% if f.verified_at %} {{ f.verified_at[:10] }}{% endif %}</span>{% endif %}</td>
           <td>{% if f.integrity_ok %}<span class="status-ok">✓ intact</span>{% else %}<span class="status-bad">✗ tampered</span>{% endif %}</td>
-          <td>{{ f.action_label or '-' }}</td>
           <td>{{ f.created_at[:10] if f.created_at else '-' }}</td>
+          {% if can_edit %}
+          <td style="white-space:nowrap;">
+            {% if not f.archived %}
+              {% if f.status != 'verified' %}
+              <button class="btn-cms small finding-review-btn" data-finding="{{ f.id }}" data-status="verified" title="{{ _('Validate') }}">✓ {{ _('Validate') }}</button>
+              {% endif %}
+              {% if f.status != 'rejected' %}
+              <button class="btn-cms small finding-review-btn" data-finding="{{ f.id }}" data-status="rejected" title="{{ _('Reject') }}">✗ {{ _('Reject') }}</button>
+              {% endif %}
+              <button class="btn-cms small finding-archive-btn" data-finding="{{ f.id }}" title="{{ _('Archive') }}">-archive</button>
+            {% else %}
+              <button class="btn-cms small finding-restore-btn" data-finding="{{ f.id }}" title="{{ _('Restore') }}">{{ _('Restore') }}</button>
+            {% endif %}
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -1156,6 +1180,78 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var canEdit = {{ 'true' if can_edit else 'false' }};
   if (!canEdit) { return; }
+
+  /* ── Finding review / archive / restore ────────────────────────────── */
+  var subjectId = {{ subject.id|tojson }};
+
+  document.querySelectorAll('.finding-review-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var findingId = this.dataset.finding;
+      var newStatus = this.dataset.status;
+      var row = this.closest('tr');
+      var badge = row.querySelector('.badge');
+      var btns = row.querySelectorAll('button');
+      btns.forEach(function(b) { b.disabled = true; });
+      window.apiFetch('/cms/api/profile/subjects/' + subjectId + '/findings/' + findingId + '/review', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({status: newStatus}),
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) { window.location.reload(); }
+        else { btns.forEach(function(b) { b.disabled = false; }); }
+      })
+      .catch(function() { btns.forEach(function(b) { b.disabled = false; }); });
+    });
+  });
+
+  document.querySelectorAll('.finding-archive-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var findingId = this.dataset.finding;
+      var row = this.closest('tr');
+      var btns = row.querySelectorAll('button');
+      btns.forEach(function(b) { b.disabled = true; });
+      window.apiFetch('/cms/api/profile/subjects/' + subjectId + '/findings/' + findingId + '/archive', {
+        method: 'POST',
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) { window.location.reload(); }
+        else { btns.forEach(function(b) { b.disabled = false; }); }
+      })
+      .catch(function() { btns.forEach(function(b) { b.disabled = false; }); });
+    });
+  });
+
+  document.querySelectorAll('.finding-restore-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var findingId = this.dataset.finding;
+      var row = this.closest('tr');
+      var btns = row.querySelectorAll('button');
+      btns.forEach(function(b) { b.disabled = true; });
+      window.apiFetch('/cms/api/profile/subjects/' + subjectId + '/findings/' + findingId + '/restore', {
+        method: 'POST',
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) { window.location.reload(); }
+        else { btns.forEach(function(b) { b.disabled = false; }); }
+      })
+      .catch(function() { btns.forEach(function(b) { b.disabled = false; }); });
+    });
+  });
+
+  /* ── Archived findings toggle ──────────────────────────────────────── */
+  var archivedToggle = document.getElementById('findings-toggle-archived');
+  if (archivedToggle) {
+    archivedToggle.addEventListener('change', function() {
+      var url = new URL(window.location);
+      if (this.checked) { url.searchParams.set('show_archived', '1'); }
+      else { url.searchParams.delete('show_archived'); }
+      window.location.href = url.toString();
+    });
+  }
 
   function formById(name) {
     return document.querySelector('[data-form="' + name + '"]');

@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from cms.encryption_utils import EncryptionError, encryptor
 from cms.models import (
     Address,
+    Case,
     Contact,
     Finding,
     ResearchAction,
@@ -741,7 +742,9 @@ class SubjectService:
         rows = User.query.filter(User.id.in_(ids)).with_entities(User.id, User.username)
         return {r.id: r.username for r in rows}
 
-    def profile_view(self, subject):
+    def profile_view(
+        self, subject, include_archived=False, accessible_case_ids=None
+    ):
         """Build the full read-model for the tabbed Subject Profile (PR7a).
 
         Renders exactly what the database stores: the base subject plus every
@@ -749,6 +752,9 @@ class SubjectService:
         contacts, social accounts) and the subject's investigation surface
         (linked cases, research actions, findings). Nothing is taken from
         browser state.
+
+        When *accessible_case_ids* is provided, findings and actions are
+        filtered to only those belonging to accessible cases (case isolation).
         """
         base = subject.to_dict(decrypted=True)
         base["photo_path"] = subject.photo_path
@@ -822,10 +828,10 @@ class SubjectService:
             ).where(case_subjects.c.subject_id == subject.id)
         ).fetchall()
         case_ids = [r.case_id for r in case_rows]
+        if accessible_case_ids is not None:
+            case_ids = [cid for cid in case_ids if cid in accessible_case_ids]
         case_map = {}
         if case_ids:
-            from cms.models import Case
-
             case_map = {
                 c.id: c
                 for c in Case.query.filter(
@@ -850,12 +856,15 @@ class SubjectService:
         cases.sort(key=lambda c: c["case_number"])
 
         # Research actions explicitly scoped to this subject (PR4).
-        actions = (
-            ResearchAction.query.filter_by(
-                subject_id=subject.id, tenant_id=subject.tenant_id
+        actions_q = ResearchAction.query.filter_by(
+            subject_id=subject.id, tenant_id=subject.tenant_id
+        ).filter(ResearchAction.archived_at.is_(None))
+        if accessible_case_ids is not None:
+            actions_q = actions_q.filter(
+                ResearchAction.case_id.in_(accessible_case_ids)
             )
-            .filter(ResearchAction.archived_at.is_(None))
-            .order_by(ResearchAction.created_at.desc())
+        actions = (
+            actions_q.order_by(ResearchAction.created_at.desc())
             .limit(200)
             .all()
         )
@@ -884,20 +893,33 @@ class SubjectService:
                 }
             )
 
-        # Findings linked to the subject (non-deleted, non-archived), with
-        # verification state.
+        # Findings linked to the subject (non-deleted), optionally including
+        # archived ones. Filter by accessible cases when case isolation is on.
+        findings_q = subject.findings.filter_by(is_deleted=False)
+        if not include_archived:
+            findings_q = findings_q.filter_by(archived_at=None)
+        if accessible_case_ids is not None:
+            findings_q = findings_q.filter(Finding.case_id.in_(accessible_case_ids))
         findings = (
-            subject.findings.filter_by(is_deleted=False, archived_at=None)
-            .order_by(Finding.created_at.desc())
+            findings_q.order_by(Finding.created_at.desc())
             .limit(200)
             .all()
         )
         finding_rows = []
+        case_ids = {f.case_id for f in findings if f.case_id}
+        case_numbers = {}
+        if case_ids:
+            for c in Case.query.filter(Case.id.in_(case_ids)).with_entities(
+                Case.id, Case.case_number
+            ).all():
+                case_numbers[c.id] = c.case_number
         for f in findings:
             first_action = f.research_actions[0] if f.research_actions else None
             finding_rows.append(
                 {
                     "id": f.id,
+                    "case_id": f.case_id,
+                    "case_number": case_numbers.get(f.case_id),
                     "title": f.title,
                     "content": f.content,
                     "detail": f.detail,
@@ -908,6 +930,7 @@ class SubjectService:
                     "verified_by": f.verified_by,
                     "verified_at": f.verified_at.isoformat() if f.verified_at else None,
                     "integrity_ok": f.verify_integrity(),
+                    "archived": f.archived_at is not None,
                     "created_at": f.created_at.isoformat() if f.created_at else None,
                     "action_id": first_action.id if first_action else None,
                     "action_label": (

@@ -691,3 +691,155 @@ def profile_run_action(subject_id: str) -> flask.Response:
 
     start_action_async(action.id)
     return jsonify({"id": action.id, "status": "started"}), 201
+
+
+# ── Finding review from Subject Profile ──────────────────────────────────────
+
+
+class _FindingMutationOk:
+    """Sentinel return type for _validate_finding_mutation success."""
+
+    __slots__ = ("finding", "case")
+
+    def __init__(self, finding, case):
+        self.finding = finding
+        self.case = case
+
+
+def _validate_finding_mutation(subject_id: str, finding_id: str):
+    """Shared validation for all finding mutations (review/archive/restore).
+
+    Returns _FindingMutationOk on success or a Flask Response (error) on failure.
+    Checks: finding exists, not deleted, belongs to subject, case exists,
+    user has case access, subject is linked to the case.
+    """
+    from cms.models import Finding, Case
+    from cms.auth import ensure_case_access
+
+    finding = db.session.get(Finding, finding_id)
+    if not finding or finding.is_deleted:
+        return api_error("Finding not found", 404)
+
+    if finding.subject_id != subject_id:
+        return api_error("Finding does not belong to this subject", 403)
+
+    case = db.session.get(Case, finding.case_id)
+    if not case:
+        return api_error("Case not found", 404)
+    ensure_case_access(case)
+
+    from cms.models import case_subjects
+
+    link = db.session.execute(
+        case_subjects.select().where(
+            case_subjects.c.case_id == case.id,
+            case_subjects.c.subject_id == subject_id,
+        )
+    ).first()
+    if not link:
+        return api_error("Subject is not linked to this case", 403)
+
+    return _FindingMutationOk(finding, case)
+
+
+@cms_bp.route(
+    "/api/profile/subjects/<subject_id>/findings/<finding_id>/review",
+    methods=["POST"],
+)
+@login_required
+@subject_access_required
+@roles_required(*_PROFILE_WRITE_ROLES)
+@_profile_required
+def profile_review_finding(subject_id: str, finding_id: str) -> flask.Response:
+    """Review (verify/reject/restore) a finding from the Subject Profile.
+
+    Body JSON: {"status": "verified"|"rejected"|"candidate"}
+    """
+    result = _validate_finding_mutation(subject_id, finding_id)
+    if not isinstance(result, _FindingMutationOk):
+        return result
+    finding, case = result.finding, result.case
+
+    body = request.get_json(silent=True) or {}
+    new_status = (body.get("status") or "").strip()
+    if new_status not in ("verified", "rejected", "candidate", "superseded"):
+        return api_error("Invalid status", 400)
+
+    old_status = finding.status or ("verified" if finding.verified else "candidate")
+
+    if new_status == "verified":
+        finding.promote_to_verified(current_user)
+    elif new_status == "rejected":
+        finding.reject(current_user)
+    elif new_status == "superseded":
+        finding.status = "superseded"
+        finding.verified = False
+    else:
+        finding.demote_to_candidate()
+
+    _audit(
+        "finding",
+        finding.id,
+        "review",
+        f"Finding status {old_status} → {finding.status}: {finding.title}",
+        case_id=case.id,
+        changes={"status": {"old": old_status, "new": finding.status}},
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "status": finding.status})
+
+
+@cms_bp.route(
+    "/api/profile/subjects/<subject_id>/findings/<finding_id>/archive",
+    methods=["POST"],
+)
+@login_required
+@subject_access_required
+@roles_required(*_PROFILE_WRITE_ROLES)
+@_profile_required
+def profile_archive_finding(subject_id: str, finding_id: str) -> flask.Response:
+    """Archive a finding from the Subject Profile."""
+    result = _validate_finding_mutation(subject_id, finding_id)
+    if not isinstance(result, _FindingMutationOk):
+        return result
+    finding, case = result.finding, result.case
+
+    from datetime import datetime, timezone
+
+    finding.archived_at = datetime.now(timezone.utc)
+    _audit(
+        "finding",
+        finding.id,
+        "archive",
+        f"Archived finding from subject profile: {finding.title}",
+        case_id=case.id,
+    )
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@cms_bp.route(
+    "/api/profile/subjects/<subject_id>/findings/<finding_id>/restore",
+    methods=["POST"],
+)
+@login_required
+@subject_access_required
+@roles_required(*_PROFILE_WRITE_ROLES)
+@_profile_required
+def profile_restore_finding(subject_id: str, finding_id: str) -> flask.Response:
+    """Restore an archived finding from the Subject Profile."""
+    result = _validate_finding_mutation(subject_id, finding_id)
+    if not isinstance(result, _FindingMutationOk):
+        return result
+    finding, case = result.finding, result.case
+
+    finding.archived_at = None
+    _audit(
+        "finding",
+        finding.id,
+        "restore",
+        f"Restored finding from subject profile: {finding.title}",
+        case_id=case.id,
+    )
+    db.session.commit()
+    return jsonify({"ok": True})
