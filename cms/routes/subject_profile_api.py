@@ -586,6 +586,104 @@ def profile_delete_relation(subject_id: str, related_subject_id: str) -> flask.R
     return api_success({}, "Relationship removed")
 
 
+# ---------------------------------------------------------------------------
+# Relation candidates (searchable picker)
+# ---------------------------------------------------------------------------
+
+
+@cms_bp.route(
+    "/api/profile/subjects/<subject_id>/relation-candidates",
+    methods=["GET"],
+)
+@login_required
+@subject_access_required
+@_profile_required
+def profile_relation_candidates(subject_id: str) -> flask.Response:
+    """Searchable subject picker for the Add Relation form.
+
+    Returns subjects from the same tenant, optionally filtered by ``q``.
+    Subjects in the same case(s) as the current subject are ranked first.
+    """
+    from ..models import case_subjects, Case
+
+    subject = _get_subject(subject_id)
+    q_param = request.args.get("q", "").strip()
+    limit = min(request.args.get("limit", 30, type=int), 100)
+
+    # Case IDs this subject belongs to
+    same_case_ids = {
+        row.case_id
+        for row in db.session.execute(
+            case_subjects.select().where(
+                case_subjects.c.subject_id == subject.id
+            )
+        ).fetchall()
+    }
+
+    # Already-related subject IDs (exclude from candidates)
+    from ..models import subject_relations
+
+    related_ids = {
+        row.related_subject_id if row.subject_id == subject.id else row.subject_id
+        for row in db.session.execute(
+            subject_relations.select().where(
+                db.or_(
+                    subject_relations.c.subject_id == subject.id,
+                    subject_relations.c.related_subject_id == subject.id,
+                )
+            )
+        ).fetchall()
+    }
+
+    query = Subject.query.filter(
+        Subject.is_deleted.is_(False),
+        Subject.tenant_id == current_user.tenant_id,
+        Subject.id != subject.id,
+    )
+
+    if related_ids:
+        query = query.filter(~Subject.id.in_(related_ids))
+
+    if q_param:
+        pattern = f"%{q_param}%"
+        query = query.filter(
+            db.or_(
+                Subject.name.ilike(pattern),
+                Subject.achternaam.ilike(pattern),
+                Subject.voornamen.ilike(pattern),
+            )
+        )
+
+    from sqlalchemy import case as sa_case
+
+    # Subjects in the same case first, then alphabetical
+    same_case_subq = sa_case(
+        (Subject.id.in_(same_case_ids), 0),
+        else_=1,
+    )
+    results = (
+        query.order_by(same_case_subq, Subject.name)
+        .limit(limit)
+        .with_entities(Subject.id, Subject.name, Subject.subject_type)
+        .all()
+    )
+
+    candidates = [
+        {"id": r.id, "name": r.name, "subject_type": r.subject_type}
+        for r in results
+    ]
+
+    # Mark same-case subjects
+    candidate_ids = {c["id"] for c in candidates}
+    return jsonify(
+        {
+            "candidates": candidates,
+            "same_case_ids": list(same_case_ids & candidate_ids),
+            "total": len(candidates),
+        }
+    )
+
+
 # ── Run Action from Subject Profile ─────────────────────────────────────────
 
 
