@@ -329,6 +329,12 @@ function updateFindings(findings, actions) {
   if (hash === _lastFindingsHash && !hasRunning) return;
   _lastFindingsHash = hash;
 
+  // Remember which groups were open before the rebuild
+  var openGroups = {};
+  container.querySelectorAll('.finding-group.open .finding-group-body').forEach(function(body) {
+    openGroups[body.id] = true;
+  });
+
   if (findings.length === 0) {
     container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Run investigation actions in Step 3 to generate findings.</p></div>';
     return;
@@ -404,6 +410,14 @@ function updateFindings(findings, actions) {
   }
 
   container.innerHTML = html;
+
+  // Restore previously open groups after rebuild
+  Object.keys(openGroups).forEach(function(bodyId) {
+    var body = document.getElementById(bodyId);
+    if (body && body.parentElement) {
+      body.parentElement.classList.add('open');
+    }
+  });
 }
 
 var _escMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
