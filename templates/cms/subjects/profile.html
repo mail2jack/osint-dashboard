@@ -117,6 +117,7 @@
   <button class="tab-btn" data-tab="investigation" role="tab">Investigation</button>
   <button class="tab-btn" data-tab="facts" role="tab">Facts</button>
   <button class="tab-btn" data-tab="findings" role="tab">Findings</button>
+  <button class="tab-btn" data-tab="activity" role="tab">Activity</button>
 </div>
 
 {# ────────────────────────── Overview ────────────────────────── #}
@@ -1142,6 +1143,16 @@
   </div>
 </div>
 
+{# ────────────────────────── Activity ────────────────────────── #}
+<div class="tab-panel" data-panel="activity">
+  <div class="card">
+    <div class="card-header"><h2>{{ _('Activity Trail') }}</h2></div>
+    <div id="activity-timeline" style="font-size:0.85rem;">
+      <div class="empty-note" id="activity-loading">{{ _('Loading…') }}</div>
+    </div>
+  </div>
+</div>
+
 <script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function () {
   var tabs = document.querySelectorAll('#profileTabs .tab-btn');
@@ -1158,6 +1169,62 @@ document.addEventListener('DOMContentLoaded', function () {
     var name = location.hash.slice(1);
     if (document.querySelector('[data-tab="' + name + '"]')) { show(name); }
   }
+
+  // ── Activity trail lazy-loading ──────────────────────────────────────────
+  var activityLoaded = false;
+  function loadActivity() {
+    if (activityLoaded) return;
+    activityLoaded = true;
+    var container = document.getElementById('activity-timeline');
+    var loading = document.getElementById('activity-loading');
+    window.apiFetch("{{ url_for('cms.profile_activity_trail', subject_id=subject.id) }}")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (loading) loading.remove();
+        if (!data.items || data.items.length === 0) {
+          container.innerHTML = '<div class="empty-note">{{ _("No activity recorded yet.") }}</div>';
+          return;
+        }
+        var html = '<table class="fact-table"><thead><tr>'
+          + '<th>{{ _("Date") }}</th><th>{{ _("User") }}</th>'
+          + '<th>{{ _("Action") }}</th><th>{{ _("Details") }}</th>'
+          + '<th>{{ _("Case") }}</th>'
+          + '</tr></thead><tbody>';
+        data.items.forEach(function (item) {
+          var date = item.timestamp ? item.timestamp.replace('T', ' ').slice(0, 16) : '—';
+          var actionMap = {
+            'create': '<span style="color:#16a34a;">+ created</span>',
+            'update': '<span style="color:#2563eb;">✎ updated</span>',
+            'delete': '<span style="color:#dc2626;">✗ deleted</span>',
+            'review': '<span style="color:#7c3aed;">◉ reviewed</span>',
+            'archive': '<span style="color:#6b7280;">📦 archived</span>',
+            'restore': '<span style="color:#2563eb;">♻ restored</span>',
+            'pending': '<span style="color:#6b7280;">⏳ pending</span>',
+            'running': '<span style="color:#2563eb;">▶ running</span>',
+            'completed': '<span style="color:#16a34a;">✓ completed</span>',
+            'error': '<span style="color:#dc2626;">✗ error</span>',
+          };
+          var actionHtml = actionMap[item.action] || item.action;
+          var caseHtml = item.case_id
+            ? '<a href="' + '{{ url_for("workflow.case_detail", case_id="PLACEHOLDER") }}'.replace('PLACEHOLDER', item.case_id) + '">' + item.case_id.slice(0, 8) + '</a>'
+            : '—';
+          html += '<tr>'
+            + '<td style="white-space:nowrap;">' + date + '</td>'
+            + '<td>' + (item.user_name || '—') + '</td>'
+            + '<td>' + actionHtml + '</td>'
+            + '<td>' + (item.description || '—') + '</td>'
+            + '<td>' + caseHtml + '</td>'
+            + '</tr>';
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      })
+      .catch(function () {
+        if (loading) loading.textContent = '{{ _("Failed to load activity.") }}';
+      });
+  }
+  document.querySelector('[data-tab="activity"]').addEventListener('click', loadActivity);
+  if (location.hash === '#activity') { loadActivity(); }
 
   var btnEdit = document.getElementById('btn-edit-profile');
   if (btnEdit) {

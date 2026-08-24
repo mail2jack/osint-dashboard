@@ -843,3 +843,125 @@ def profile_restore_finding(subject_id: str, finding_id: str) -> flask.Response:
     )
     db.session.commit()
     return jsonify({"ok": True})
+
+
+# ── Read-only Activity / Audit Trail ─────────────────────────────────────────
+
+
+@cms_bp.route(
+    "/api/profile/subjects/<subject_id>/activity",
+    methods=["GET"],
+)
+@login_required
+@subject_access_required
+@_profile_required
+def profile_activity_trail(subject_id: str) -> flask.Response:
+    """Return a unified activity timeline for a subject.
+
+    Merges AuditLog entries (profile writes, review actions, case links)
+    and ResearchAction entries (OSINT probes) into a single chronologically
+    ordered list.  Read-only — no feature-flag gate beyond the profile
+    decorator (the trail is visible whenever the profile itself is).
+    """
+    from ..models import ResearchAction, User
+
+    subject = _get_subject(subject_id)
+
+    # --- AuditLog entries referencing this subject or its children -----------
+    entity_types = (
+        "subject",
+        "subject_identifier",
+        "subject_fact",
+        "address",
+        "contact",
+        "social_account",
+        "subject_relation",
+        "finding",
+        "research_action",
+    )
+    audit_entries = (
+        AuditLog.query.filter(
+            AuditLog.tenant_id == subject.tenant_id,
+            AuditLog.entity_type.in_(entity_types),
+            AuditLog.entity_id.isnot(None),
+        )
+        .filter(
+            db.or_(
+                # Direct match on entity_id (most profile writes)
+                AuditLog.entity_id == subject_id,
+                # Entries whose description mentions the subject name
+                AuditLog.description.ilike(f"%{subject.name}%"),
+            )
+        )
+        .order_by(AuditLog.timestamp.desc())
+        .limit(200)
+        .all()
+    )
+
+    # --- ResearchActions targeting this subject ------------------------------
+    action_entries = (
+        ResearchAction.query.filter(
+            ResearchAction.tenant_id == subject.tenant_id,
+            ResearchAction.subject_id == subject_id,
+        )
+        .order_by(ResearchAction.created_at.desc())
+        .limit(200)
+        .all()
+    )
+
+    # --- Merge into a unified timeline --------------------------------------
+    timeline: list[dict] = []
+    seen_ids: set[str] = set()
+
+    for a in audit_entries:
+        if a.id in seen_ids:
+            continue
+        seen_ids.add(a.id)
+        user_name = "System"
+        if a.user_id:
+            user = db.session.get(User, a.user_id)
+            if user:
+                user_name = user.full_name or user.username
+        timeline.append(
+            {
+                "id": a.id,
+                "source": "audit",
+                "timestamp": a.timestamp.isoformat() if a.timestamp else None,
+                "action": a.action,
+                "entity_type": a.entity_type,
+                "entity_id": a.entity_id,
+                "description": a.description or "",
+                "user_name": user_name,
+                "case_id": a.case_id,
+                "changes": a.changes_made,
+            }
+        )
+
+    for ra in action_entries:
+        dedup_key = f"ra:{ra.id}"
+        if dedup_key in seen_ids:
+            continue
+        seen_ids.add(dedup_key)
+        user_name = "System"
+        if ra.created_by:
+            user = db.session.get(User, ra.created_by)
+            if user:
+                user_name = user.full_name or user.username
+        timeline.append(
+            {
+                "id": ra.id,
+                "source": "action",
+                "timestamp": ra.created_at.isoformat() if ra.created_at else None,
+                "action": ra.status or "created",
+                "entity_type": "research_action",
+                "entity_id": ra.id,
+                "description": f"{ra.label or ra.action_type} — {ra.status}",
+                "user_name": user_name,
+                "case_id": ra.case_id,
+                "changes": None,
+            }
+        )
+
+    timeline.sort(key=lambda e: e.get("timestamp") or "", reverse=True)
+
+    return jsonify({"items": timeline[:200], "total": len(timeline)})
