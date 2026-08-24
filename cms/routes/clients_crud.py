@@ -69,6 +69,9 @@ def clients() -> str:
         page=page, per_page=per_page, error_out=False
     )
 
+    for client in pagination.items:
+        client.decrypt_naw()
+
     return render_template(
         "cms/clients/list.html",
         clients=pagination.items,
