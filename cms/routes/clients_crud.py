@@ -69,18 +69,19 @@ def clients() -> str:
         page=page, per_page=per_page, error_out=False
     )
 
-    for client in pagination.items:
-        client.decrypt_naw()
+    with db.session.no_autoflush:
+        for client in pagination.items:
+            client.decrypt_naw()
 
-    return render_template(
-        "cms/clients/list.html",
-        clients=pagination.items,
-        pagination=pagination,
-        search=search,
-        sort=sort,
-        order=order,
-        show_archived=show_archived,
-    )
+        return render_template(
+            "cms/clients/list.html",
+            clients=pagination.items,
+            pagination=pagination,
+            search=search,
+            sort=sort,
+            order=order,
+            show_archived=show_archived,
+        )
 
 
 @cms_bp.route("/clients/<client_id>")
