@@ -616,12 +616,20 @@ def profile_relation_candidates(subject_id: str) -> flask.Response:
             case_subjects.c.subject_id == subject.id
         )
     ).fetchall()
-    import logging as _lg
-    _lg.getLogger(__name__).warning(
-        "DEBUG relation-candidates: subject=%s cs_rows=%d raw=%s",
-        subject.id, len(_cs_rows), [(r.case_id,) for r in _cs_rows],
-    )
     same_case_ids = {r.case_id for r in _cs_rows}
+
+    if same_case_ids:
+        # Subject IDs that share at least one case with the current subject
+        same_case_subject_ids = {
+            row.subject_id
+            for row in db.session.execute(
+                case_subjects.select().where(
+                    case_subjects.c.case_id.in_(same_case_ids)
+                )
+            ).fetchall()
+        }
+    else:
+        same_case_subject_ids = set()
 
     # Already-related subject IDs (exclude from candidates)
     from ..models import subject_relations
@@ -681,7 +689,7 @@ def profile_relation_candidates(subject_id: str) -> flask.Response:
     return jsonify(
         {
             "candidates": candidates,
-            "same_case_ids": list(same_case_ids & candidate_ids),
+            "same_case_ids": list(candidate_ids & same_case_subject_ids),
             "total": len(candidates),
         }
     )
