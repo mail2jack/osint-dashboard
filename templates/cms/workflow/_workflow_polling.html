@@ -334,6 +334,11 @@ function updateFindings(findings, actions) {
   container.querySelectorAll('.finding-group.open .finding-group-body').forEach(function(body) {
     openGroups[body.id] = true;
   });
+  // Remember which findings were checked
+  var checkedIds = [];
+  container.querySelectorAll('.finding-check:checked').forEach(function(cb) {
+    checkedIds.push(cb.getAttribute('data-finding-id'));
+  });
 
   if (findings.length === 0) {
     container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Run investigation actions in Step 3 to generate findings.</p></div>';
@@ -418,6 +423,17 @@ function updateFindings(findings, actions) {
       body.parentElement.classList.add('open');
     }
   });
+  // Restore checked checkboxes
+  checkedIds.forEach(function(fid) {
+    var cb = container.querySelector('.finding-check[data-finding-id="' + fid + '"]');
+    if (cb) cb.checked = true;
+  });
+  // Update batch actions bar
+  var bar = document.getElementById('findingsBatchActions');
+  if (bar) {
+    var count = container.querySelectorAll('.finding-check:checked').length;
+    bar.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
 }
 
 var _escMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
