@@ -1802,11 +1802,12 @@ class Finding(db.Model):
         self.verified_at = None
 
     def reject(self, user) -> None:
-        """Reject the finding as not a valid fact."""
+        """Reject the finding and soft-delete it."""
         self.status = "rejected"
         self.verified = False
         self.verified_by = user.id if user else None
         self.verified_at = datetime.now(timezone.utc)
+        self.soft_delete()
 
     def to_dict(self) -> dict:
         """Serialize finding."""

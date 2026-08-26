@@ -315,6 +315,7 @@ function findingHtml(f) {
 }
 
 var _lastFindingsHash = '';
+var _forceFindingsUpdate = false;
 function updateFindings(findings, actions) {
   const container = document.getElementById('findingsContainer');
   const countEl = document.getElementById('findingsCount');
@@ -326,7 +327,9 @@ function updateFindings(findings, actions) {
 
   var hash = findings.length + ':' + actions.length + ':' + (findings.length > 0 ? findings[0].id + ':' + findings[findings.length - 1].id : '');
   var hasRunning = actions.some(function(a) { return a.status === 'running' || a.status === 'pending'; });
-  if (hash === _lastFindingsHash && !hasRunning) return;
+  var force = _forceFindingsUpdate;
+  _forceFindingsUpdate = false;
+  if (hash === _lastFindingsHash && !hasRunning && !force) return;
   _lastFindingsHash = hash;
 
   // Remember which groups were open before the rebuild

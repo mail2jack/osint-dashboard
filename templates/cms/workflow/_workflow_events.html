@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.ok) pollStatus();
+        if (data.ok) { _forceFindingsUpdate = true; pollStatus(); }
       })
       .catch(function() {});
       return;
@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .then(function(data) {
         if (data.ok) {
+          _forceFindingsUpdate = true;
           pollStatus();
         }
       })
