@@ -1525,6 +1525,8 @@ def verify_finding(case_id, finding_id):
     if case:
         ensure_case_access(case)
     body = request.get_json(silent=True) or {}
+    import logging as _log
+    _log.warning("VERIFY_DEBUG body=%s finding_id=%s user=%s", body, finding_id, current_user.id)
     status = body.get("status")
     if status not in (None, "verified", "rejected", "candidate", "superseded"):
         return jsonify({"error": "Unknown status"}), 400
@@ -1552,6 +1554,8 @@ def verify_finding(case_id, finding_id):
         description=f"Workflow set finding status to {finding.status}: {finding.title}",
     )
     db.session.commit()
+    import logging as _log
+    _log.warning("VERIFY_DEBUG result finding_id=%s verified=%s status=%s", finding.id, finding.verified, finding.status)
     return jsonify(
         {
             "ok": True,
