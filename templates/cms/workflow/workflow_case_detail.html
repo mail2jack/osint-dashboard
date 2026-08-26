@@ -147,6 +147,49 @@
 }
 .subject-info-item .lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
 .subject-info-item .val { font-weight: 500; margin-top: 0.1rem; }
+.subject-card {
+  background: var(--bg, #fff);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.subject-card:last-child { margin-bottom: 0; }
+.subject-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.subject-card-nr {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--accent-primary, #2563eb);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.subject-card-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.subject-card-type {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  margin-left: auto;
+}
 .findings-counter {
   display: inline-flex; align-items: center; gap: 0.3rem;
   padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem;
@@ -266,18 +309,14 @@ input:-webkit-autofill:focus {
   <div class="workflow-step-body">
     {% if subjects_data %}
     {% for sd in subjects_data %}
-    <div style="margin-bottom:{% if not loop.last %}1rem{% endif %};padding-bottom:{% if not loop.last %}1rem{% endif %};border-bottom:{% if not loop.last %}1px solid var(--border-color){% endif %};">
-      <strong style="font-size:0.85rem;display:block;margin-bottom:0.5rem;">Subject {{ loop.index }}</strong>
+    <div class="subject-card">
+      <div class="subject-card-header">
+        <span class="subject-card-nr">{{ loop.index }}</span>
+        <span class="subject-card-name">{{ sd.display_name }}</span>
+        <span class="subject-card-type">{{ sd.subject_type }}</span>
+      </div>
       <div class="subject-info-grid">
         {# ── Common fields ── #}
-        <div class="subject-info-item">
-          <div class="lbl">{{ _('Naam') }}</div>
-          <div class="val">{{ sd.display_name }}</div>
-        </div>
-        <div class="subject-info-item">
-          <div class="lbl">{{ _('Type') }}</div>
-          <div class="val">{{ sd.subject_type }}</div>
-        </div>
         {% if sd.geslacht %}
         <div class="subject-info-item">
           <div class="lbl">{{ _('Geslacht') }}</div>
