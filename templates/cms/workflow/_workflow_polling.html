@@ -339,6 +339,30 @@ function updateFindings(findings, actions) {
   container.querySelectorAll('.finding-check:checked').forEach(function(cb) {
     checkedIds.push(cb.getAttribute('data-finding-id'));
   });
+  // Remember comment textarea values
+  var commentValues = {};
+  container.querySelectorAll('[data-action="comment-input"]').forEach(function(ta) {
+    var fid = ta.getAttribute('data-finding-id');
+    if (ta.value) commentValues[fid] = ta.value;
+  });
+  // Remember open screenshot upload forms and their input values
+  var openSsForms = {};
+  container.querySelectorAll('.ss-upload-form').forEach(function(form) {
+    if (form.style.display !== 'none') {
+      var fid = form.getAttribute('data-finding-id');
+      openSsForms[fid] = {
+        file: form.querySelector('.ss-file-input') ? form.querySelector('.ss-file-input').value : '',
+        source: form.querySelector('.ss-source-input') ? form.querySelector('.ss-source-input').value : '',
+        notes: form.querySelector('.ss-notes-input') ? form.querySelector('.ss-notes-input').value : '',
+      };
+    }
+  });
+  // Remember open RDW raw data tables
+  var openRdw = {};
+  container.querySelectorAll('.rdw-raw-table.rdw-raw-open').forEach(function(tbl) {
+    var fid = tbl.closest('.finding-item');
+    if (fid) openRdw[fid.getAttribute('data-finding-id')] = true;
+  });
 
   if (findings.length === 0) {
     container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:2rem;color:var(--text-muted);"><div style="font-size:2rem;margin-bottom:0.5rem;">🔍</div><p>Run investigation actions in Step 3 to generate findings.</p></div>';
@@ -427,6 +451,31 @@ function updateFindings(findings, actions) {
   checkedIds.forEach(function(fid) {
     var cb = container.querySelector('.finding-check[data-finding-id="' + fid + '"]');
     if (cb) cb.checked = true;
+  });
+  // Restore comment textarea values
+  Object.keys(commentValues).forEach(function(fid) {
+    var ta = container.querySelector('[data-action="comment-input"][data-finding-id="' + fid + '"]');
+    if (ta && ta.value !== commentValues[fid]) ta.value = commentValues[fid];
+  });
+  // Restore open screenshot upload forms
+  Object.keys(openSsForms).forEach(function(fid) {
+    var form = container.querySelector('.ss-upload-form[data-finding-id="' + fid + '"]');
+    if (form) {
+      form.style.display = 'block';
+      var vals = openSsForms[fid];
+      var srcInput = form.querySelector('.ss-source-input');
+      var notesInput = form.querySelector('.ss-notes-input');
+      if (srcInput) srcInput.value = vals.source;
+      if (notesInput) notesInput.value = vals.notes;
+    }
+  });
+  // Restore RDW raw data toggle state
+  Object.keys(openRdw).forEach(function(fid) {
+    var item = container.querySelector('.finding-item[data-finding-id="' + fid + '"]');
+    if (item) {
+      var tbl = item.querySelector('.rdw-raw-table');
+      if (tbl) tbl.classList.add('rdw-raw-open');
+    }
   });
   // Update batch actions bar
   var bar = document.getElementById('findingsBatchActions');
