@@ -325,7 +325,8 @@ function updateFindings(findings, actions) {
   countEl.textContent = findings.length + ' findings';
   if (totalEl) totalEl.innerHTML = '📋 ' + findings.length + ' findings';
 
-  var hash = findings.length + ':' + actions.length + ':' + (findings.length > 0 ? findings[0].id + ':' + findings[findings.length - 1].id : '');
+  var statusSig = findings.map(function(f) { return f.id + ':' + (f.status || '') + ':' + (f.verified ? '1' : '0'); }).join(',');
+  var hash = findings.length + ':' + actions.length + ':' + statusSig;
   var hasRunning = actions.some(function(a) { return a.status === 'running' || a.status === 'pending'; });
   var force = _forceFindingsUpdate;
   _forceFindingsUpdate = false;
