@@ -98,7 +98,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.ok) {
           var item = rej.closest('.finding-item');
           if (item) item.remove();
-          _lastFindingsHash = '';
           var cnt = document.getElementById('findingsCount');
           if (cnt) {
             var n = document.querySelectorAll('.finding-item').length;
@@ -167,7 +166,6 @@ document.addEventListener('DOMContentLoaded', function() {
             var oldRej = vfy.parentNode.querySelector('[data-action="reject-finding"][data-finding-id="' + fid + '"]');
             if (oldRej) oldRej.remove();
           }
-          _lastFindingsHash = '';
         }
       })
       .catch(function() { /* verify failed — user can retry */ });
