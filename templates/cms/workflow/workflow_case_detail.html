@@ -253,44 +253,49 @@ input:-webkit-autofill:focus {
   </div>
   <div class="workflow-step-body">
     {% if client %}
-    <div class="subject-info-grid">
-      <div class="subject-info-item">
-        <div class="lbl">Name</div>
-        <div class="val">{{ client.name }}</div>
+    <div class="subject-card">
+      <div class="subject-card-header">
+        <span class="subject-card-nr">1</span>
+        <span class="subject-card-name">{{ client.name }}</span>
+        <span class="subject-card-type">client</span>
       </div>
-      <div class="subject-info-item">
-        <div class="lbl">Contact person</div>
-        <div class="val">{{ client.contact_person or '—' }}</div>
-      </div>
-      <div class="subject-info-item">
-        <div class="lbl">Email</div>
-        <div class="val">{{ client.contact_email or '—' }}</div>
-      </div>
-      <div class="subject-info-item">
-        <div class="lbl">Phone</div>
-        <div class="val">{{ client.contact_phone or '—' }}</div>
-      </div>
-      {% if client.address_street or client.address_city %}
-      <div class="subject-info-item" style="grid-column:1/-1;">
-        <div class="lbl">🏠 Address</div>
-        <div class="val">{{ client.address_street or '' }} {{ client.address_number or '' }}{% if client.address_postal or client.address_city %}<br>{% endif %}{{ client.address_postal or '' }} {{ client.address_city or '' }}</div>
-      </div>
-      {% endif %}
-      {% if client.reference %}
-      <div class="subject-info-item">
-        <div class="lbl">Reference</div>
-        <div class="val">{{ client.reference }}</div>
-      </div>
-      {% endif %}
-      {% if client.financial_notes %}
-      <div class="subject-info-item" style="grid-column:1/-1;">
-        <div class="lbl">Notes</div>
-        <div class="val">{{ client.financial_notes }}</div>
-      </div>
-      {% endif %}
-      <div class="subject-info-item">
-        <div class="lbl">Request date</div>
-        <div class="val">{{ case.created_at.strftime('%d-%m-%Y') if case.created_at else '-' }}</div>
+      <div class="subject-info-grid">
+        {% if client.contact_person %}
+        <div class="subject-info-item">
+          <div class="lbl">Contact person</div>
+          <div class="val">{{ client.contact_person }}</div>
+        </div>
+        {% endif %}
+        <div class="subject-info-item">
+          <div class="lbl">📧 Email</div>
+          <div class="val">{{ client.contact_email or '—' }}</div>
+        </div>
+        <div class="subject-info-item">
+          <div class="lbl">📞 Phone</div>
+          <div class="val">{{ client.contact_phone or '—' }}</div>
+        </div>
+        {% if client.address_street or client.address_city %}
+        <div class="subject-info-item" style="grid-column:1/-1;">
+          <div class="lbl">🏠 Address</div>
+          <div class="val">{{ client.address_street or '' }} {{ client.address_number or '' }}{% if client.address_postal or client.address_city %}<br>{% endif %}{{ client.address_postal or '' }} {{ client.address_city or '' }}</div>
+        </div>
+        {% endif %}
+        {% if client.reference %}
+        <div class="subject-info-item">
+          <div class="lbl">Reference</div>
+          <div class="val">{{ client.reference }}</div>
+        </div>
+        {% endif %}
+        {% if client.financial_notes %}
+        <div class="subject-info-item" style="grid-column:1/-1;">
+          <div class="lbl">Notes</div>
+          <div class="val">{{ client.financial_notes }}</div>
+        </div>
+        {% endif %}
+        <div class="subject-info-item">
+          <div class="lbl">Request date</div>
+          <div class="val">{{ case.created_at.strftime('%d-%m-%Y') if case.created_at else '-' }}</div>
+        </div>
       </div>
     </div>
     {% else %}
