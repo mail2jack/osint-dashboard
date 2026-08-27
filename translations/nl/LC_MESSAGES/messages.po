@@ -999,6 +999,25 @@ msgstr "Totaalbedrag"
 msgid "Transactions"
 msgstr "Acties"
 
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Verify"
+msgstr "Verifiëren"
+
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Back to pending"
+msgstr "Terug naar in afwachting"
+
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Reject"
+msgstr "Afwijzen"
+
+#: templates/cms/workflow/_workflow_events.html
+msgid "Reject this finding? It will be removed from this case."
+msgstr "Dit bevind afwijzen? Het wordt verwijderd van deze zaak."
+
 #: templates/cms/cases/view.html:505 templates/cms/subjects/view.html:2578
 #: templates/cms/subjects/view.html:2601
 msgid "Verified"
@@ -4373,4 +4392,68 @@ msgstr "Controleren op updates"
 
 #~ msgid "🔄 Update"
 #~ msgstr "Update"
+
+# Findings register + report flag (ADR-0001 optie b)
+msgid "In report"
+msgstr "In rapport"
+
+msgid "Exclude"
+msgstr "Uitsluiten"
+
+msgid "Included in official reports"
+msgstr "Opgenomen in officiële rapporten"
+
+msgid "Excluded from official reports"
+msgstr "Uitgesloten van officiële rapporten"
+
+msgid "All cases"
+msgstr "Alle zaken"
+
+msgid "All subjects"
+msgstr "Alle subjecten"
+
+msgid "All statuses"
+msgstr "Alle statussen"
+
+msgid "Report: all"
+msgstr "Rapport: alle"
+
+msgid "Excluded from report"
+msgstr "Uitgesloten van rapport"
+
+msgid "Search title/content..."
+msgstr "Zoek titel/inhoud..."
+
+msgid "Show archived"
+msgstr "Toon gearchiveerd"
+
+msgid "Delete selected"
+msgstr "Selectie verwijderen"
+
+msgid "findings"
+msgstr "bevindingen"
+
+msgid "No findings match"
+msgstr "Geen bevindingen gevonden"
+
+msgid "Adjust the filters or refresh investigations in the workflow."
+msgstr "Pas de filters aan of vernieuw onderzoeken in de workflow."
+
+msgid "Running actions — auto-refreshing"
+msgstr "Acties lopen — automatisch vernieuwen"
+
+msgid "Note / comment..."
+msgstr "Notitie / opmerking..."
+
+msgid "Restore"
+msgstr "Herstellen"
+
+msgid "Archive"
+msgstr "Archiveren"
+
+msgid "Intact"
+msgstr "Intact"
+
+msgid "Tampered"
+msgstr "Gemanipuleerd"
 

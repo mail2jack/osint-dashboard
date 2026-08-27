@@ -1063,6 +1063,25 @@ msgstr ""
 msgid "Transactions"
 msgstr "Actions"
 
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Verify"
+msgstr ""
+
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Back to pending"
+msgstr ""
+
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Reject"
+msgstr ""
+
+#: templates/cms/workflow/_workflow_events.html
+msgid "Reject this finding? It will be removed from this case."
+msgstr ""
+
 #: templates/cms/cases/view.html:505 templates/cms/subjects/view.html:2578
 #: templates/cms/subjects/view.html:2601
 msgid "Verified"
@@ -4582,4 +4601,68 @@ msgstr ""
 
 #~ msgid "🔄 Update"
 #~ msgstr "Date"
+
+# Findings register + report flag (ADR-0001 optie b)
+msgid "In report"
+msgstr ""
+
+msgid "Exclude"
+msgstr ""
+
+msgid "Included in official reports"
+msgstr ""
+
+msgid "Excluded from official reports"
+msgstr ""
+
+msgid "All cases"
+msgstr ""
+
+msgid "All subjects"
+msgstr ""
+
+msgid "All statuses"
+msgstr ""
+
+msgid "Report: all"
+msgstr ""
+
+msgid "Excluded from report"
+msgstr ""
+
+msgid "Search title/content..."
+msgstr ""
+
+msgid "Show archived"
+msgstr ""
+
+msgid "Delete selected"
+msgstr ""
+
+msgid "findings"
+msgstr ""
+
+msgid "No findings match"
+msgstr ""
+
+msgid "Adjust the filters or refresh investigations in the workflow."
+msgstr ""
+
+msgid "Running actions — auto-refreshing"
+msgstr ""
+
+msgid "Note / comment..."
+msgstr ""
+
+msgid "Restore"
+msgstr ""
+
+msgid "Archive"
+msgstr ""
+
+msgid "Intact"
+msgstr ""
+
+msgid "Tampered"
+msgstr ""
 
