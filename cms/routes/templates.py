@@ -14,7 +14,14 @@ from ..validation import (
     RenderPreviewSchema,
     GenerateReportSchema,
 )
-from ..models import db, Case, DocumentTemplate, Document, AuditLog
+from ..models import (
+    db,
+    Case,
+    DocumentTemplate,
+    Document,
+    AuditLog,
+    report_include_filter,
+)
 from ..auth import (
     roles_required,
     case_access_required,
@@ -283,7 +290,11 @@ def _build_report_context(case: Case) -> dict:
             )
 
         context["findings"] = []
-        for finding in case.findings.filter_by(is_deleted=False).all():
+        for finding in (
+            case.findings.filter_by(is_deleted=False)
+            .filter(report_include_filter())
+            .all()
+        ):
             context["findings"].append(
                 {
                     "title": finding.title,

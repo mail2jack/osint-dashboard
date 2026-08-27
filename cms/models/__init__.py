@@ -1697,6 +1697,11 @@ class Finding(db.Model):
     raw_data = db.Column(SafeJSON)
     archived_at = db.Column(db.DateTime, nullable=True, index=True)
 
+    # Report selection (ADR-0001): NULL/True = included in official reports,
+    # False = excluded. Generic across workflow PV, case report, PDF and
+    # template-generated reports.
+    include_in_report = db.Column(db.Boolean, nullable=True, default=None)
+
     # Verification lifecycle (ADR-0001 PR5): status is the source of truth
     # (candidate|verified|rejected|superseded); `verified` mirrors it for
     # compatibility. verified_by/verified_at record who and when.
@@ -1837,6 +1842,22 @@ class Finding(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+def report_include_filter():
+    """SQLAlchemy predicate: findings included in official reports.
+
+    Semantics (ADR-0001 optie (b)): NULL or True → included, False → excluded.
+    Backward compatible: pre-existing findings (NULL) stay included.
+    Used on all official report routes (workflow PV, case report HTML+PDF,
+    template-generated reports). Raw exports/search/analytics stay unfiltered.
+    """
+    from sqlalchemy import or_
+
+    return or_(
+        Finding.include_in_report.is_(None),
+        Finding.include_in_report == True,  # noqa: E712
+    )
 
 
 # =============================================================================
