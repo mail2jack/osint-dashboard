@@ -241,89 +241,19 @@
         <h2>{{ _('Findings (%(count)s)', count=findings|length) }}</h2>
         <div style="display:flex;gap:0.4rem;align-items:center;">
             <button data-click="openTimeline" class="btn-cms small bg-purple">{{ _('Timeline') }}</button>
+            <a href="{{ url_for('workflow.findings_index', case_id=case.id) }}" class="btn-cms small">🔎 {{ _('View all findings') }}</a>
             <a href="{{ url_for('cms.case_report', case_id=case.id) }}" class="btn-cms small teal">{{ _('📋 Report') }}</a>
             <a href="{{ url_for('cms.case_report_pdf', case_id=case.id) }}" class="btn-cms small danger">{{ _('📄 PDF') }}</a>
         </div>
     </div>
-    
     {% if findings %}
-    <div style="padding:0.5rem 0.75rem;display:flex;flex-wrap:wrap;gap:0.35rem;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);">
-        <span style="font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">{{ _('Filter') }}:</span>
-        <input type="text" id="filterTitle" placeholder="{{ _('Title') }}" data-input="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;width:120px;">
-        <input type="text" id="filterSubject" placeholder="{{ _('Subject') }}" data-input="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;width:100px;">
-        <select id="filterSource" data-change="filterFindings" style="padding:0.25rem 0.4rem;border:1px solid var(--border-color);border-radius:4px;font-size:0.8rem;">
-            <option value="">{{ _('Source') }}</option>
-            <option value="osint">{{ _('OSINT') }}</option>
-            <option value="manual">{{ _('Manual') }}</option>
-            <option value="document">{{ _('Document') }}</option>
-        </select>
-        <button data-click="clearFindingFilters" class="btn-cms gray small">{{ _('Clear') }}</button>
-        <span id="findingCount" style="margin-left:auto;font-size:0.8rem;color:var(--text-muted);"></span>
+    <div style="padding:0.5rem 0.75rem;border-bottom:1px solid var(--border-color);background:var(--bg-secondary);">
+        <span style="font-size:0.8rem;color:var(--text-muted);">{{ _('Manage every finding, verify, flag for reports and archive centrally.') }}</span>
     </div>
-    <table id="findingsTable" class="data-table">
-        <thead>
-            <tr><th>{{ _('Title') }}</th><th>{{ _('Subject') }}</th><th>{{ _('Source') }}</th><th>{{ _('Added By') }}</th><th>{{ _('Date') }}</th><th></th></tr>
-        </thead>
-        <tbody>
-            {% for finding in findings %}
-            <tr data-title="{{ finding.title|lower }}" data-subject="{{ finding.subject.name|lower if finding.subject else '' }}" data-source="{{ finding.source_type|lower }}" data-addedby="{{ finding.author.full_name|lower if finding.author else '' }}" data-date="{{ finding.created_at.strftime('%Y-%m-%d') if finding.created_at else '' }}">
-                <td>
-                    {% if finding.source_url %}
-                    <a href="#" data-click="openCaptureFromFinding" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.title|replace("'", "\\'") }}" style="color:#3b82f6;text-decoration:none;">
-                        {{ finding.title }}
-                        <span style="font-size:0.75rem;color:#8b5cf6;">📸</span>
-                    </a>
-                    {% else %}
-                    {{ finding.title }}
-                    {% endif %}
-                    {% if finding.source_url and finding.subject_id %}
-                    <br>
-                    <button data-click="extractSocialId" data-arg0="{{ finding.source_url }}" data-arg1="{{ finding.subject_id }}" data-arg2="{{ finding.id }}"
-                            class="btn-cms small purple" style="margin-top:4px;">
-                        {{ _('🔍 Extract ID') }}
-                    </button>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if finding.subject_id %}
-                    <a href="{{ url_for('cms.view_subject', subject_id=finding.subject_id) }}">
-                        {{ finding.subject.name if finding.subject else _('Unknown') }}
-                    </a>
-                    {% else %}
-                    <span style="color:#999;">-</span>
-                    {% endif %}
-                </td>
-                <td><span class="badge badge-primary">{{ finding.source_type or 'manual' }}</span>{% if finding.content_hash %} <span class="badge {% if finding.verify_integrity() %}badge-status-success{% else %}badge-status-danger{% endif %}" style="cursor:help;" title="{{ finding.content_hash }}">🔒</span>{% endif %}</td>
-                <td>{{ finding.author.full_name if finding.author else _('Unknown') }}</td>
-                <td>{{ finding.created_at.strftime('%Y-%m-%d %H:%M') if finding.created_at else '-' }}</td>
-                <td>
-                    {% if case.status not in ['closed', 'archived'] %}
-                    <form action="{{ url_for('cms.delete_finding', case_id=case.id, finding_id=finding.id) }}" method="POST" style="display:inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-icon danger" title="{{ _('Delete finding') }}" data-confirm="{{ _('Delete this finding?') }}">🗑️</button>
-                    </form>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
     {% else %}
     <div class="empty-state">
         <div class="icon">📭</div>
         <p>{{ _('No findings yet.') }}</p>
-    </div>
-    {% endif %}
-    
-    {% if findings_pagination and findings_pagination.pages > 1 %}
-    <div style="padding:0.6rem;display:flex;justify-content:center;gap:0.5rem;font-size:0.8rem;">
-        {% if findings_pagination.has_prev %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('← Previous') }}</a>
-        {% endif %}
-        <span style="padding:0.3rem 0.5rem;color:var(--text-muted);">{{ _('Page %(page)s of %(pages)s', page=findings_pagination.page, pages=findings_pagination.pages) }}</span>
-        {% if findings_pagination.has_next %}
-        <a href="{{ url_for('cms.view_case', case_id=case.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next →') }}</a>
-        {% endif %}
     </div>
     {% endif %}
 </div>
@@ -1411,62 +1341,6 @@ document.getElementById('createFromUsernameModal')?.addEventListener('click', fu
     if (e.target === this) closeCreateFromUsernameModal();
 });
 
-// Findings Filter Functions
-function filterFindings() {
-    const titleEl = document.getElementById('filterTitle');
-    const subjectEl = document.getElementById('filterSubject');
-    const sourceEl = document.getElementById('filterSource');
-    const addedByEl = document.getElementById('filterAddedBy');
-    const dateEl = document.getElementById('filterDate');
-    if (!titleEl || !subjectEl || !sourceEl || !addedByEl || !dateEl) return;
-    
-    const titleFilter = titleEl.value.toLowerCase();
-    const subjectFilter = subjectEl.value.toLowerCase();
-    const sourceFilter = sourceEl.value.toLowerCase();
-    const addedByFilter = addedByEl.value.toLowerCase();
-    const dateFilter = dateEl.value;
-    
-    const rows = document.querySelectorAll('#findingsTable tbody tr');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
-        const title = row.getAttribute('data-title') || '';
-        const subject = row.getAttribute('data-subject') || '';
-        const source = row.getAttribute('data-source') || '';
-        const addedBy = row.getAttribute('data-addedby') || '';
-        const date = row.getAttribute('data-date') || '';
-        
-        const matchesTitle = title.includes(titleFilter);
-        const matchesSubject = subject.includes(subjectFilter);
-        const matchesSource = sourceFilter === '' || source === sourceFilter;
-        const matchesAddedBy = addedBy.includes(addedByFilter);
-        const matchesDate = dateFilter === '' || date === dateFilter;
-        
-        if (matchesTitle && matchesSubject && matchesSource && matchesAddedBy && matchesDate) {
-            row.style.display = '';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    
-    document.getElementById('findingCount').textContent = {{ _('Showing')|tojson }} + ' ' + visibleCount + ' ' + {{ _('of')|tojson }} + ' ' + rows.length;
-}
-
-function clearFindingFilters() {
-    const els = ['filterTitle','filterSubject','filterSource','filterAddedBy','filterDate'].map(id => document.getElementById(id));
-    if (els.some(el => !el)) return;
-    els.forEach(el => el.value = '');
-    filterFindings();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const rows = document.querySelectorAll('#findingsTable tbody tr');
-    if (rows.length > 0) {
-        document.getElementById('findingCount').textContent = {{ _('Showing')|tojson }} + ' ' + rows.length + ' ' + {{ _('of')|tojson }} + ' ' + rows.length;
-    }
-});
-
 // Timeline Functions
 function openTimeline() {
     document.getElementById('timelineModal').classList.add('show');
@@ -1690,10 +1564,6 @@ function openAddScreenshotModal(url = '') {
     };
 }
 
-function openCaptureFromFinding(btn, url, title) {
-    openAddScreenshotModal(url);
-}
-
 function closeAddScreenshotModal() {
     document.getElementById('addScreenshotModal').classList.remove('show');
 }
@@ -1791,56 +1661,6 @@ function viewScreenshot(btn, id, title, url) {
     document.getElementById('viewScreenshotLink').href = url;
     document.getElementById('viewScreenshotImage').src = `/cms/cases/{{ case.id }}/screenshots/${id}/view`;
     document.getElementById('viewScreenshotModal').classList.add('show');
-}
-
-function extractSocialId(btn, url, subjectId, findingId) {
-    if (!confirm({{ _('Extract social media ID from this URL?')|tojson }} + '\n\n' + url + '\n\n' + {{ _('The ID will be saved to the linked subject.')|tojson }})) {
-        return;
-    }
-    
-    btn.disabled = true;
-    btn.textContent = {{ _('Extracting...')|tojson }};
-    
-    var payload = { url: url, subject_id: subjectId };
-    if (findingId) payload.finding_id = findingId;
-    apiFetch('/cms/extract-social-id', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.error) {
-            showToast({{ _('Error')|tojson }} + ': ' + data.error, 'error');
-        } else if (data.extracted && Object.keys(data.extracted).length > 0) {
-            let message = {{ _('Social media data extracted!')|tojson }} + '. ';
-            for (const [key, value] of Object.entries(data.extracted)) {
-                if (key.endsWith('id') || ['facebook', 'vk', 'instagram', 'twitter', 'tiktok', 'linkedin', 'reddit', 'username', 'profile_platform'].includes(key)) {
-                    message += key + ': ' + (typeof value === 'object' ? JSON.stringify(value) : value) + '. ';
-                }
-            }
-            if (data.platform && !data.extracted.profile_platform) message += '. ' + {{ _('Platform:')|tojson }} + ' ' + data.platform;
-            if (data.username && !data.extracted.username) message += '. ' + {{ _('Username:')|tojson }} + ' ' + data.username;
-            message += '. ' + {{ _('Saved to subject. Refreshing...')|tojson }};
-            showToast(message, 'success');
-            location.reload();
-        } else {
-            let msg = {{ _('No social media IDs found on this page.')|tojson }};
-            if (data.platform || data.username) {
-                msg += '. ' + {{ _('Detected from URL:')|tojson }} + ' ';
-                if (data.platform) msg += {{ _('Platform:')|tojson }} + ' ' + data.platform + ' ';
-                if (data.username) msg += {{ _('Username:')|tojson }} + ' ' + data.username;
-            }
-            showToast(msg, 'info');
-        }
-    })
-    .catch(err => {
-        showToast({{ _('Failed to extract')|tojson }} + ': ' + err.message, 'error');
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.textContent = {{ _('🔍 Extract ID')|tojson }};
-    });
 }
 
 function closeViewScreenshotModal() {

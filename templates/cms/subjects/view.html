@@ -1031,53 +1031,18 @@
 <!-- Findings Section -->
 <div class="card" id="findingsSection">
     <div class="card-header">
-        <h2>{{ _('📋 Findings') }}</h2>
+        <h2>{{ _('📋 Findings') }} <span class="badge badge-info">{{ findings|length }}</span></h2>
     </div>
-    <div id="findingsList">
+    <div id="findingsList" style="padding:1.25rem;text-align:center;">
         {% if findings and findings|length > 0 %}
-            {% for finding in findings %}
-            <div class="finding-item" style="border:1px solid var(--border-color);border-radius:8px;padding:0.75rem;margin-bottom:0.5rem;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                    <div>
-                        <strong>{{ finding.title }}</strong>
-                        <span class="badge badge-info" style="margin-left:0.5rem;">{{ finding.source_type }}</span>
-                        {% if finding.confidence_level %}
-                        <span class="badge {% if finding.confidence_level == 'high' or finding.confidence_level == 'verified' %}badge-status-success{% elif finding.confidence_level == 'medium' %}badge-status-warning{% else %}badge-status-default{% endif %}" style="margin-left:0.25rem;">{{ finding.confidence_level }}</span>
-                        {% endif %}
-                    </div>
-                    <div style="display:flex;align-items:center;gap:0.5rem;">
-                        <span style="color:var(--text-muted);font-size:0.75rem;">{{ finding.created_at.strftime('%d-%m-%Y %H:%M') if finding.created_at else '' }}</span>
-                        {% if finding.case_id %}
-                        <form action="{{ url_for('cms.delete_finding', case_id=finding.case_id, finding_id=finding.id) }}" method="POST" style="display:inline;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn-icon danger" title="{{ _('Delete finding') }}" data-confirm="{{ _('Delete this finding?') }}">🗑️</button>
-                        </form>
-                        {% endif %}
-                    </div>
-                </div>
-                <div style="margin-top:0.5rem;color:var(--text-primary);font-size:0.875rem;white-space:pre-wrap;">{{ finding.content }}</div>
-                {% if finding.source_url %}
-                <div style="margin-top:0.25rem;"><a href="{{ finding.source_url }}" target="_blank" style="font-size:0.8rem;color:var(--link-color);">🔗 {{ finding.source_url }}</a></div>
-                {% endif %}
-            </div>
-            {% endfor %}
-            {% if findings_pagination and findings_pagination.pages > 1 %}
-            <div class="mt-1 flex-gap justify-center">
-                {% if findings_pagination.has_prev %}
-                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.prev_num) }}" class="btn-cms small">{{ _('Previous') }}</a>
-                {% endif %}
-                <span class="p-05-1">{{ _('Page') }} {{ findings_pagination.page }} {{ _('of') }} {{ findings_pagination.pages }}</span>
-                {% if findings_pagination.has_next %}
-                <a href="{{ url_for('cms.view_subject', subject_id=subject.id, findings_page=findings_pagination.next_num) }}" class="btn-cms small">{{ _('Next') }}</a>
-                {% endif %}
-            </div>
-            {% endif %}
+        <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 0.75rem;">{{ _('Findings for this subject are managed centrally in the register.') }}</p>
         {% else %}
-        <div class="empty-state">
+        <div class="empty-state" style="margin-bottom:0.75rem;">
             <div class="icon">📭</div>
             <p>{{ _('No findings yet. Use 🌍 Check Interpol or 🔍 OSINT Search to save results.') }}</p>
         </div>
         {% endif %}
+        <a href="{{ url_for('workflow.findings_index', subject_id=subject.id) }}" class="btn-cms small bg-purple">🔎 {{ _('View findings') }}</a>
     </div>
 </div>
 
