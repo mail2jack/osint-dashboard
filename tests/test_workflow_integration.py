@@ -54,6 +54,7 @@ class TestModelsExist:
         assert hasattr(Finding, "raw_data")
         assert hasattr(Finding, "archived_at")
         assert hasattr(Finding, "detail")
+        assert hasattr(Finding, "include_in_report")
 
 
 class TestServiceRatesSeed:
