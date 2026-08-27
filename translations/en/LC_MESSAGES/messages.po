@@ -4681,3 +4681,9 @@ msgstr ""
 msgid "No findings yet. Use 🌍 Check Interpol or 🔍 OSINT Search to save results."
 msgstr ""
 
+msgid "All findings register"
+msgstr ""
+
+msgid "Could not update finding"
+msgstr ""
+

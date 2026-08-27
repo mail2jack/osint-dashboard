@@ -1016,7 +1016,7 @@ msgstr "Afwijzen"
 
 #: templates/cms/workflow/_workflow_events.html
 msgid "Reject this finding? It will be removed from this case."
-msgstr "Dit bevind afwijzen? Het wordt verwijderd van deze zaak."
+msgstr "Deze bevinding afwijzen? Hij wordt verwijderd van deze zaak."
 
 #: templates/cms/cases/view.html:505 templates/cms/subjects/view.html:2578
 #: templates/cms/subjects/view.html:2601
@@ -4471,4 +4471,10 @@ msgstr "Beheer elke bevinding centraal: verifieer, vlag voor rapporten en archiv
 
 msgid "No findings yet. Use 🌍 Check Interpol or 🔍 OSINT Search to save results."
 msgstr "Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan."
+
+msgid "All findings register"
+msgstr "Alle bevindingenregister"
+
+msgid "Could not update finding"
+msgstr "Kon bevinding niet bijwerken"
 
