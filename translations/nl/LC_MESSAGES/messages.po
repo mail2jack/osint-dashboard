@@ -999,6 +999,25 @@ msgstr "Totaalbedrag"
 msgid "Transactions"
 msgstr "Acties"
 
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Verify"
+msgstr "Verifiëren"
+
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Back to pending"
+msgstr "Terug naar in afwachting"
+
+#: templates/cms/workflow/_workflow_polling.html
+#: templates/cms/workflow/_finding_item.html
+msgid "Reject"
+msgstr "Afwijzen"
+
+#: templates/cms/workflow/_workflow_events.html
+msgid "Reject this finding? It will be removed from this case."
+msgstr "Deze bevinding afwijzen? Hij wordt verwijderd van deze zaak."
+
 #: templates/cms/cases/view.html:505 templates/cms/subjects/view.html:2578
 #: templates/cms/subjects/view.html:2601
 msgid "Verified"
@@ -4373,4 +4392,89 @@ msgstr "Controleren op updates"
 
 #~ msgid "🔄 Update"
 #~ msgstr "Update"
+
+# Findings register + report flag (ADR-0001 optie b)
+msgid "In report"
+msgstr "In rapport"
+
+msgid "Exclude"
+msgstr "Uitsluiten"
+
+msgid "Included in official reports"
+msgstr "Opgenomen in officiële rapporten"
+
+msgid "Excluded from official reports"
+msgstr "Uitgesloten van officiële rapporten"
+
+msgid "All cases"
+msgstr "Alle zaken"
+
+msgid "All subjects"
+msgstr "Alle subjecten"
+
+msgid "All statuses"
+msgstr "Alle statussen"
+
+msgid "Report: all"
+msgstr "Rapport: alle"
+
+msgid "Excluded from report"
+msgstr "Uitgesloten van rapport"
+
+msgid "Search title/content..."
+msgstr "Zoek titel/inhoud..."
+
+msgid "Show archived"
+msgstr "Toon gearchiveerd"
+
+msgid "Delete selected"
+msgstr "Selectie verwijderen"
+
+msgid "findings"
+msgstr "bevindingen"
+
+msgid "No findings match"
+msgstr "Geen bevindingen gevonden"
+
+msgid "Adjust the filters or refresh investigations in the workflow."
+msgstr "Pas de filters aan of vernieuw onderzoeken in de workflow."
+
+msgid "Running actions — auto-refreshing"
+msgstr "Acties lopen — automatisch vernieuwen"
+
+msgid "Note / comment..."
+msgstr "Notitie / opmerking..."
+
+msgid "Restore"
+msgstr "Herstellen"
+
+msgid "Archive"
+msgstr "Archiveren"
+
+msgid "Intact"
+msgstr "Intact"
+
+msgid "Tampered"
+msgstr "Gemanipuleerd"
+
+msgid "View findings"
+msgstr "Bevindingen bekijken"
+
+msgid "View all findings"
+msgstr "Alle bevindingen bekijken"
+
+msgid "Findings for this subject are managed centrally in the register."
+msgstr "Bevindingen voor dit subject worden centraal beheerd in het register."
+
+msgid "Manage every finding, verify, flag for reports and archive centrally."
+msgstr "Beheer elke bevinding centraal: verifieer, vlag voor rapporten en archiveer."
+
+msgid "No findings yet. Use 🌍 Check Interpol or 🔍 OSINT Search to save results."
+msgstr "Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan."
+
+msgid "All findings register"
+msgstr "Alle bevindingenregister"
+
+msgid "Could not update finding"
+msgstr "Kon bevinding niet bijwerken"
 

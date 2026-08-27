@@ -267,9 +267,8 @@ class TestReadModel:
         assert "probe dork" in html
         assert "google_dork" in html
 
-        # Finding + integrity
-        assert "Found asset" in html
-        assert "intact" in html
+        # Finding -> register deep link (findings list moved to register)
+        assert f"/cms/workflow/findings?subject_id={subject.id}" in html
 
 
 class TestFindingsIntegrity:
@@ -310,11 +309,14 @@ class TestFindingsIntegrity:
         tampered.content = "Modified after the fact"
         db.session.commit()
 
-        resp = auth_client.get(f"/cms/subjects/{subject.id}/profile")
+        # Integrity indicators moved to the central register (Fase D).
+        resp = auth_client.get(f"/cms/workflow/findings?subject_id={subject.id}")
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
-        assert "intact" in html
-        assert "tampered" in html
+        assert "Intact finding" in html
+        assert "Tampered finding" in html
+        assert "Intact" in html
+        assert "Tampered" in html
 
 
 class TestAccessControl:

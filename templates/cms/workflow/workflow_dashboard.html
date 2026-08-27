@@ -26,7 +26,9 @@ input:-webkit-autofill:focus {
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
   <div>
     <h1 style="margin:0;"><span class="super-badge" style="vertical-align:middle;margin-right:0.5rem;">Workflow</span> Investigations</h1>
-    <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">&nbsp;</p>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;">
+      <a href="{{ url_for('workflow.findings_index') }}">📋 {{ _('All findings register') }}</a>
+    </p>
   </div>
   <a href="{{ url_for('workflow.case_new') }}" class="btn-cms primary">+ New investigation</a>
 </div>

@@ -503,7 +503,7 @@ class TestFindingAudit:
 class TestCaseIsolation:
     def test_investigator_sees_only_accessible_findings(self, app):
         """Investigator with access to case A but not B on a shared subject
-        must NOT see findings from case B in the profile."""
+        must NOT see findings from case B in the register."""
         investigator = _make_user(role="investigator")
         admin = User.query.filter_by(role="admin").first()
         _enable_flag(admin.tenant_id)
@@ -525,7 +525,7 @@ class TestCaseIsolation:
         db.session.commit()
 
         resp = _login_as(app.test_client(), investigator).get(
-            f"/cms/subjects/{subject.id}/profile"
+            f"/cms/workflow/findings?subject_id={subject.id}"
         )
         assert resp.status_code == 200
         # Finding from case A should be visible
@@ -539,7 +539,8 @@ class TestCaseIsolation:
 
 class TestFindingActionLabel:
     def test_action_label_visible_when_linked(self, auth_client):
-        """A finding with a linked ResearchAction must show action_label."""
+        """Legacy profile no longer renders linked action_labels after Fase D;
+        findings are managed centrally in the register."""
         admin = User.query.filter_by(role="admin").first()
         _enable_flag(admin.tenant_id)
         case = _make_case(admin)
@@ -568,6 +569,6 @@ class TestFindingActionLabel:
         assert resp.status_code == 200
         html = resp.get_data(as_text=True)
 
-        assert "person dork search" in html
-        # Action label links back to the workflow case detail with anchor
-        assert f"#findings-{action.id}" in html
+        # Profile now deep-links to the register instead of listing findings.
+        assert f"/cms/workflow/findings?subject_id={subject.id}" in html
+        assert f"#findings-{action.id}" not in html

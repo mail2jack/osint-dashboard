@@ -16,6 +16,7 @@ from ..models import (
     Reminder,
     Subject,
     db,
+    report_include_filter,
 )
 from . import cms_bp
 
@@ -327,7 +328,9 @@ def case_report(case_id: str) -> str:
     to_date = request.args.get("to")
     subject_filter = request.args.get("subject_id")
 
-    findings_q = Finding.query.filter_by(case_id=case_id, is_deleted=False)
+    findings_q = Finding.query.filter_by(case_id=case_id, is_deleted=False).filter(
+        report_include_filter()
+    )
     comments_q = Comment.query.filter_by(case_id=case_id, is_deleted=False)
 
     if from_date:
@@ -447,7 +450,9 @@ def case_report_pdf(case_id: str) -> flask.Response:
 
     case = db.session.get(Case, case_id) or abort(404)
 
-    findings_q = Finding.query.filter_by(case_id=case_id, is_deleted=False)
+    findings_q = Finding.query.filter_by(case_id=case_id, is_deleted=False).filter(
+        report_include_filter()
+    )
     comments_q = Comment.query.filter_by(case_id=case_id, is_deleted=False)
 
     findings = (

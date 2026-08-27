@@ -604,7 +604,7 @@ def profile_relation_candidates(subject_id: str) -> flask.Response:
     Returns subjects from the same tenant, optionally filtered by ``q``.
     Subjects in the same case(s) as the current subject are ranked first.
     """
-    from ..models import case_subjects, Case
+    from ..models import case_subjects
 
     subject = _get_subject(subject_id)
     q_param = request.args.get("q", "").strip()

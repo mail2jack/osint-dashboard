@@ -1,0 +1,487 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Workflow') }} — {{ _('Findings') }}{% endblock %}
+{% block content %}
+<style>
+.findings-filter-bar { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem; }
+.findings-filter-bar select, .findings-filter-bar input[type=text] {
+  border:1px solid var(--border-color); border-radius:6px; padding:0.35rem 0.5rem;
+  font-size:0.8rem; background:var(--bg-card); color:var(--text-primary);
+}
+.findings-pager { display:flex; gap:0.75rem; align-items:center; justify-content:center; margin:1rem 0 0.5rem; font-size:0.85rem; }
+#registerStatus { font-size:0.8rem; color:var(--text-muted); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.finding-item {
+  padding: 0.75rem 3rem 0.75rem 0.75rem; border: 1px solid var(--border-color);
+  border-radius: 8px; margin-bottom: 0.5rem;
+  background: var(--bg-card); position: relative;
+}
+.finding-item.new { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+.finding-item .meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
+.finding-item .meta a { color: var(--link-color); }
+.finding-item .finding-content { margin-top: 0.5rem; color: var(--text-primary); font-size: 0.875rem; white-space: pre-wrap; }
+.finding-item .finding-check-wrap { position: absolute; top: 0.75rem; right: 2rem; opacity: 0.3; }
+.finding-item:hover .finding-check-wrap { opacity: 1; }
+.finding-item .finding-check-wrap input { cursor: pointer; }
+.finding-item .screenshot {
+  margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary);
+  border-radius: 6px; font-size: 0.78rem; border: 1px dashed var(--border-color);
+}
+.finding-item .screenshot .ss-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.finding-item .screenshot .ss-label { font-weight: 600; color: var(--text-secondary); }
+.finding-group {
+  border: 1px solid var(--border-color); border-radius: 8px;
+  margin-bottom: 0.5rem; overflow: hidden;
+}
+.finding-group-header {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 0.75rem; cursor: pointer;
+  background: var(--bg-secondary); user-select: none;
+  font-size: 0.85rem; transition: background 0.15s;
+}
+.finding-group-header:hover { background: var(--border-color); }
+.finding-group-header .toggle-icon { font-size: 0.7rem; color: var(--text-muted); transition: transform 0.2s; }
+.finding-group.open .finding-group-header .toggle-icon { transform: rotate(90deg); }
+.finding-group-header .fg-icon { font-size: 1.1rem; }
+.finding-group-header .fg-label { font-weight: 600; flex: 1; }
+.finding-group-header .fg-status { font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 4px; }
+.finding-group-header .fg-status.fg-done { background: #f0fdf4; color: #10b981; }
+.finding-group-header .fg-status.fg-failed { background: #fef2f2; color: #ef4444; }
+.finding-group-header .fg-status.fg-running { background: #fffbeb; color: #f59e0b; }
+.finding-group-header .fg-count {
+  font-size: 0.75rem; background: var(--accent-primary); color: #fff;
+  min-width: 1.4rem; height: 1.4rem; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.finding-group-header .fg-time { font-size: 0.7rem; color: var(--text-muted); }
+.finding-group-body { display: block !important; padding: 0; }
+.finding-delete {
+  position: absolute; top: 0.4rem; right: 0.5rem;
+  background: none; border: none; font-size: 1.2rem; cursor: pointer;
+  color: var(--text-muted,#999); padding: 0.15rem 0.4rem; line-height: 1;
+  border-radius: 4px; transition: background 0.15s, color 0.15s;
+}
+.finding-delete:hover { background: #fee2e2; color: #ef4444; }
+/* ── RDW card ── */
+.rdw-card {
+  margin-top: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+.rdw-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2a5298 100%);
+  color: #fff; gap: 1rem;
+}
+.rdw-make { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.02em; }
+.rdw-sub { font-size: 0.75rem; opacity: 0.8; margin-top: 0.1rem; }
+.rdw-plate {
+  font-family: 'Courier New', monospace; font-size: 1.3rem; font-weight: 800;
+  letter-spacing: 0.15em; background: rgba(255,255,255,0.15);
+  padding: 0.25rem 0.7rem; border-radius: 6px; white-space: nowrap;
+}
+.rdw-body { padding: 0.75rem; }
+.rdw-section { margin-bottom: 0.6rem; }
+.rdw-section:last-child { margin-bottom: 0; }
+.rdw-section-title {
+  font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem;
+  display: flex; align-items: center; gap: 0.3rem;
+}
+.rdw-section-icon { font-size: 0.85rem; }
+.rdw-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1px; background: var(--border-color);
+  border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;
+}
+.rdw-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.35rem 0.6rem; background: var(--bg-card); font-size: 0.78rem; gap: 0.5rem;
+}
+.rdw-row:nth-child(even) { background: var(--bg-secondary); }
+.rdw-label { color: var(--text-muted); flex-shrink: 0; }
+.rdw-value { font-weight: 600; color: var(--text-primary); text-align: right; }
+.rdw-unit { font-weight: 400; color: var(--text-muted); font-size: 0.72rem; }
+.rdw-raw-toggle {
+  display: block; width: 100%; margin-top: 0.6rem;
+  background: none; border: 1px dashed var(--border-color);
+  border-radius: 6px; padding: 0.35rem; cursor: pointer;
+  font-size: 0.75rem; color: var(--text-muted); text-align: center;
+  transition: background 0.15s;
+}
+.rdw-raw-toggle:hover { background: var(--bg-secondary); }
+.rdw-raw-table {
+  display: none; margin-top: 0.4rem; font-size: 0.72rem;
+  border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;
+}
+.rdw-raw-open { display: block !important; }
+.rdw-raw-row { display: flex; border-bottom: 1px solid var(--border-color); }
+.rdw-raw-row:last-child { border-bottom: none; }
+.rdw-raw-label {
+  flex: 0 0 45%; padding: 0.2rem 0.45rem;
+  background: var(--bg-secondary); font-weight: 600; word-break: break-word;
+}
+.rdw-raw-value { flex: 1; padding: 0.2rem 0.45rem; word-break: break-word; }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
+  <div>
+    <h1 style="margin:0;"><span style="display:inline-block;background:#7c3aed;color:#fff;padding:0.2rem 0.6rem;border-radius:4px;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;vertical-align:middle;margin-right:0.5rem;">Workflow</span>
+      {{ _('Findings') }}
+      <span id="registerCount" style="font-size:0.85rem;color:var(--text-muted);font-weight:400;">({{ finding_count }})</span>
+    </h1>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin:0.25rem 0 0;" id="registerStatus">{% if has_running %}⏳ {{ _('Running actions — auto-refreshing') }}{% endif %}</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <button type="button" id="registerRefreshBtn" class="btn-cms small">🔄 {{ _('Refresh') }}</button>
+    <a href="{{ url_for('workflow.dashboard') }}" class="btn-cms small">{{ _('Investigations') }} →</a>
+  </div>
+</div>
+
+<form method="GET" action="{{ url_for('workflow.findings_index') }}" class="findings-filter-bar">
+  <select name="case_id">
+    <option value="" {% if not f_case_id %}selected{% endif %}>{{ _('All cases') }}</option>
+    {% for c in cases %}
+    <option value="{{ c.id }}" {% if f_case_id == c.id %}selected{% endif %}>{{ c.case_number }}{% if c.title %} — {{ c.title }}{% endif %}</option>
+    {% endfor %}
+  </select>
+  <select name="subject_id">
+    <option value="" {% if not f_subject_id %}selected{% endif %}>{{ _('All subjects') }}</option>
+    {% for s in subject_options %}
+    <option value="{{ s.id }}" {% if f_subject_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="status">
+    <option value="" {% if not f_status %}selected{% endif %}>{{ _('All statuses') }}</option>
+    <option value="candidate" {% if f_status == 'candidate' %}selected{% endif %}>{{ _('Candidate') }}</option>
+    <option value="verified" {% if f_status == 'verified' %}selected{% endif %}>{{ _('Verified') }}</option>
+    <option value="rejected" {% if f_status == 'rejected' %}selected{% endif %}>{{ _('Rejected') }}</option>
+    <option value="superseded" {% if f_status == 'superseded' %}selected{% endif %}>{{ _('Superseded') }}</option>
+  </select>
+  <select name="report">
+    <option value="" {% if not f_report %}selected{% endif %}>{{ _('Report: all') }}</option>
+    <option value="in" {% if f_report == 'in' %}selected{% endif %}>{{ _('In report') }}</option>
+    <option value="out" {% if f_report == 'out' %}selected{% endif %}>{{ _('Excluded from report') }}</option>
+  </select>
+  <input type="text" name="q" value="{{ f_q }}" placeholder="{{ _('Search title/content...') }}" style="min-width:200px;">
+  <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;">
+    <input type="checkbox" name="show_archived" value="1" {% if show_archived %}checked{% endif %}> {{ _('Show archived') }}
+  </label>
+  <button type="submit" class="btn-cms small">{{ _('Filter') }}</button>
+  <a href="{{ url_for('workflow.findings_index') }}" class="btn-cms small" style="background:none;border:1px solid var(--border-color);color:var(--text-muted);">✕</a>
+</form>
+
+{% if finding_count > per_page %}
+<div class="findings-pager">
+  {% if page > 1 %}
+  <a href="{{ url_for('workflow.findings_index', page=page-1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, show_archived='1' if show_archived else '') }}" class="btn-cms small">← {{ _('Previous') }}</a>
+  {% endif %}
+  <span>{{ _('Page') }} {{ page }} / {{ (finding_count / per_page) | round(0, 'ceil') | int }}</span>
+  {% if page * per_page < finding_count %}
+  <a href="{{ url_for('workflow.findings_index', page=page+1, case_id=f_case_id, subject_id=f_subject_id, status=f_status, report=f_report, q=f_q, show_archived='1' if show_archived else '') }}" class="btn-cms small">{{ _('Next') }} →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div id="findingsBatchActions" style="display:none;margin-bottom:0.5rem;font-size:0.78rem;align-items:center;gap:0.5rem;">
+  <input type="checkbox" id="selectAllFindings" title="{{ _('Select all') }}">
+  <button type="button" id="deleteSelectedFindings" style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;">{{ _('Delete selected') }}</button>
+</div>
+
+<div id="registerFindings">
+  {% if findings %}
+  {% set ns = namespace(groups={}, order=[]) %}
+  {% for f in findings %}
+    {% if f.case_id not in ns.groups %}
+      {% set _x = ns.groups.update({f.case_id: []}) %}
+      {% set _x = ns.order.append(f.case_id) %}
+    {% endif %}
+    {% set _x = ns.groups[f.case_id].append(f) %}
+  {% endfor %}
+  {% for cid in ns.order %}
+  {% set c = case_map.get(cid) %}
+  <div class="finding-group">
+    <div class="finding-group-body">
+      {% if c %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0.6rem;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);border-radius:8px 8px 0 0;font-size:0.8rem;font-weight:600;">
+        <a href="{{ url_for('workflow.case_detail', case_id=c.id) }}" style="color:var(--link-color);text-decoration:none;">📁 {{ c.case_number }}{% if c.title %} — {{ c.title }}{% endif %}</a>
+        <span style="color:var(--text-muted);font-weight:400;">{{ ns.groups[cid] | length }} {{ _('findings') }}</span>
+      </div>
+      {% endif %}
+      <div style="display:flex;flex-direction:column;gap:0.35rem;padding:0.45rem;">
+        {% set finding_show_context = True %}
+        {% for f in ns.groups[cid] %}
+        {% include "cms/workflow/_finding_item.html" %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div id="findings-empty" style="text-align:center;padding:3rem;color:var(--text-muted);">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem;">🔍</div>
+    <h2>{{ _('No findings match') }}</h2>
+    <p style="font-size:0.85rem;">{{ _('Adjust the filters or refresh investigations in the workflow.') }}</p>
+  </div>
+  {% endif %}
+</div>
+
+<script nonce="{{ csp_nonce }}">
+document.body.dataset.page = '{{ page }}';
+document.body.dataset.perPage = '{{ per_page }}';
+const CASE_ID = '';
+const POLL_INTERVAL = 2000;
+let pollTimer = null;
+
+var _lastFindingsHash = '';
+var _forceFindingsUpdate = false;
+var _suppressFindingsRebuild = 0;
+
+function showToast(message, type) {
+  var bar = document.getElementById('registerStatus');
+  if (bar) { bar.textContent = (type === 'error' ? '❌ ' : '✅ ') + message; }
+}
+
+var _escMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+var _escRe = /[&<>"']/g;
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(_escRe, function(c) { return _escMap[c]; });
+}
+
+function linkify(text) {
+  if (!text) return '';
+  text = esc(text);
+  return text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+}
+
+function registerQueryString() {
+  var p = new URLSearchParams(window.location.search);
+  p.set('page', document.body.dataset.page || '1');
+  p.set('per_page', document.body.dataset.perPage || '50');
+  return p.toString();
+}
+
+function rdwCardHtml(data) {
+  function v(key) { var val = data[key]; return (val === null || val === undefined || val === '' || val === 'Niet geregistreerd') ? null : String(val); }
+  function fmtDate(s) { if (!s || s.length < 8) return s; return s.substring(6,8) + '-' + s.substring(4,6) + '-' + s.substring(0,4); }
+  function row(label, val, unit) {
+    if (val === null) return '';
+    return '<div class="rdw-row"><span class="rdw-label">' + esc(label) + '</span><span class="rdw-value">' + esc(val) + (unit ? ' <span class="rdw-unit">' + esc(unit) + '</span>' : '') + '</span></div>';
+  }
+  function section(icon, title, content) {
+    if (!content) return '';
+    return '<div class="rdw-section"><div class="rdw-section-title"><span class="rdw-section-icon">' + icon + '</span> ' + esc(title) + '</div><div class="rdw-grid">' + content + '</div></div>';
+  }
+  var plate = v('kenteken') || '';
+  var make = (v('merk') || '') + (v('handelsbenaming') ? ' ' + v('handelsbenaming') : '');
+  var soort = v('voertuigsoort') || '';
+  var inr = v('inrichting') || '';
+  var dating = row('First registration', fmtDate(v('datum_eerste_toelating')))
+    + row('Registration date', fmtDate(v('datum_tenaamstelling')))
+    + row('APK expiry date', fmtDate(v('vervaldatum_apk')));
+  var tech = row('Power', v('vermogen_massario'), 'kW')
+    + row('Fuel', v('brandstof_omschrijving'))
+    + row('Emission code', v('emissiecode'))
+    + row('Emission class', v('milieuklasse_eg_goedkeuring'))
+    + row('Max. speed', v('maximale_constructiesnelheid'), 'km/h')
+    + row('European category', v('europese_voertuigcategorie'))
+    + row('Type', soort)
+    + row('Configuration', inr);
+  var dims = row('Length', v('lengte'), 'mm')
+    + row('Width', v('breedte'), 'mm')
+    + row('Wheelbase', v('wielbasis'), 'mm')
+    + row('Curb weight', v('massa_ledig_voertuig'), 'kg')
+    + row('Kerb weight', v('massa_rijklaar'), 'kg')
+    + row('Max. permitted', v('maximale_massa_toegestaan'), 'kg')
+    + row('Max. design mass', v('maximale_massa_constructie'), 'kg')
+    + row('Payload', v('laadvermogen'), 'kg')
+    + row('Trailer braked', v('maximum_massa_aanhangwagen_geremd'), 'kg')
+    + row('Trailer unbraked', v('maximum_massa_aanhangwagen_ongeremd'), 'kg')
+    + row('Technical max. mass', v('technische_max_massa_voertuig'), 'kg');
+  var kleur = row('Color', v('eerste_kleur'))
+    + row('Second color', v('tweede_kleur'));
+  var cap = row('Seats', v('aantal_zitplaatsen'))
+    + row('Doors', v('aantal_deuren'))
+    + row('Wheels', v('aantal_wielen'))
+    + row('Standing places', v('aantal_staplaatsen'));
+  var overig = row('List price', v('_prijs_eur') || (v('catalogusprijs') ? '€ ' + v('catalogusprijs') : null))
+    + row('Export', v('export_indicator'))
+    + row('Recall', v('openstaande_terugroepactie_indicator'))
+    + row('Energy label', v('zuinigheidslabel'))
+    + row('Gas installation', v('type_gasinstallatie'))
+    + row('Gas installation type', v('soort_gasinstallatie'))
+    + row('Chassis number location', v('plaats_chassisnummer'));
+  var sub = soort;
+  if (inr) sub += ' · ' + inr;
+  var rawRows = '';
+  Object.keys(data).sort().forEach(function(k) {
+    var val = data[k];
+    if (val === null || val === '' || val === undefined) return;
+    var label = k.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    rawRows += '<div class="rdw-raw-row"><span class="rdw-raw-label">' + esc(label) + '</span><span class="rdw-raw-value">' + esc(String(val)) + '</span></div>';
+  });
+  return '<div class="rdw-card">' +
+    '<div class="rdw-header"><div class="rdw-header-left"><div class="rdw-make">' + esc(make) + '</div><div class="rdw-sub">' + esc(sub) + '</div></div><div class="rdw-plate">' + esc(plate) + '</div></div>' +
+    '<div class="rdw-body">' +
+      section('📅', 'Dates', dating) +
+      section('⚙️', 'Technical', tech) +
+      section('📐', 'Dimensions & Weight', dims) +
+      section('🎨', 'Color', kleur) +
+      section('👥', 'Capacity', cap) +
+      section('💰', 'Other', overig) +
+      '<button type="button" class="rdw-raw-toggle">📊 Show all raw RDW data</button>' +
+      '<div class="rdw-raw-table">' + rawRows + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function findingHtml(f) {
+  var dateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  var statusLabel = f.status || (f.verified ? 'verified' : 'candidate');
+  var statusClass = statusLabel === 'verified' ? 'badge-status-success' : statusLabel === 'rejected' ? 'badge-status-danger' : statusLabel === 'superseded' ? 'badge-status-warning' : 'badge-status-default';
+  var confClass = f.confidence_level === 'high' || f.confidence_level === 'verified' ? 'badge-status-success' : f.confidence_level === 'medium' ? 'badge-status-warning' : 'badge-status-default';
+  var verifiedInfo = '';
+  if (statusLabel === 'verified' && f.verifier_name) {
+    verifiedInfo = '<span style="font-size:0.72rem;color:var(--text-muted);margin-left:0.4rem;">by ' + esc(f.verifier_name) + '</span>';
+  }
+  var ctx = '<div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.35rem;padding-bottom:0.35rem;border-bottom:1px dashed var(--border-color);">';
+  if (f.case_id) {
+    ctx += '<a href="/cms/workflow/case/' + esc(f.case_id) + '" style="font-size:0.75rem;color:var(--link-color);text-decoration:none;">📁 ' + esc(f.case_number || '') + (f.case_title ? ' — ' + esc(f.case_title) : '') + '</a>';
+  }
+  if (f.subject_name) ctx += '<span class="badge badge-info" style="font-size:0.7rem;">👤 ' + esc(f.subject_name) + '</span>';
+  ctx += '</div>';
+
+  var ssHtml = '';
+  if (f.screenshots && f.screenshots.length) {
+    ssHtml = '<div class="screenshot" style="margin-top:0.4rem;">';
+    f.screenshots.forEach(function(ss) {
+      if (ss.url) ssHtml += '<a href="' + esc(ss.url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;margin-right:0.3rem;">🖼️ View screenshot</a>';
+      if (ss.source_url && ss.source_url !== ss.url) ssHtml += '<a href="' + esc(ss.source_url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);color:var(--accent-primary);text-decoration:none;cursor:pointer;margin-right:0.3rem;">🌐 Open website</a>';
+    });
+    ssHtml += '</div>';
+  }
+
+  var reportBtn = (f.include_in_report === false
+    ? '<button type="button" data-action="report-flag" data-finding-id="' + esc(f.id) + '" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _("Excluded from official reports") }}">\uD83D\uDEAB {{ _("Exclude") }}</button>'
+    : '<button type="button" data-action="report-flag" data-finding-id="' + esc(f.id) + '" data-report-flag="true" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);" title="{{ _("Included in official reports") }}">\uD83D\uDCC4 {{ _("In report") }}</button>');
+
+  return '<div class="finding-item" data-finding-id="' + esc(f.id) + '" data-case-id="' + esc(f.case_id || '') + '">' +
+    '<div class="finding-check-wrap"><input type="checkbox" class="finding-check" data-finding-id="' + esc(f.id) + '"></div>' +
+    ctx +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+      '<div>' +
+        '<strong>' + esc(f.title) + '</strong>' +
+        '<span class="badge badge-info" style="margin-left:0.5rem;">' + esc(f.source_type || 'manual') + '</span>' +
+        '<span class="badge ' + statusClass + '" style="margin-left:0.25rem;">' + esc(statusLabel) + '</span>' +
+        (f.confidence_level ? '<span class="badge ' + confClass + '" style="margin-left:0.25rem;">' + esc(f.confidence_level) + '</span>' : '') +
+        (f.content_hash ? '<span class="badge ' + (f.integrity_verified ? 'badge-status-success' : 'badge-status-danger') + '" style="margin-left:0.25rem;cursor:help;" title="' + esc(f.content_hash) + '">🔒 ' + (f.integrity_verified ? '{{ _("Intact") }}' : '{{ _("Tampered") }}') + '</span>' : '') +
+      '</div>' +
+      '<span style="color:var(--text-muted);font-size:0.75rem;">' + dateStr + verifiedInfo + '</span>' +
+    '</div>' +
+    (f.detail ? '<div class="finding-content">' + linkify(f.detail) + '</div>' : '') +
+    (f.source_url ? '<div style="margin-top:0.25rem;"><a href="' + esc(f.source_url) + '" target="_blank" rel="noopener" style="font-size:0.8rem;color:var(--link-color);">🔗 ' + esc(f.source_url) + '</a></div>' : '') +
+    (f.raw_data && f.source_type === 'rdw' ? rdwCardHtml(f.raw_data) : '') +
+    ssHtml +
+    '<div style="margin-top:0.4rem;">' +
+      '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="{{ _("Note / comment...") }}" style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">' +
+      (f.verified
+        ? '<span style="border:1px solid #10b981;border-radius:4px;padding:0.15rem 0.5rem;font-size:0.78rem;color:#10b981;background:rgba(16,185,129,0.08);">✅ {{ _("Verified") }}</span>' +
+          '<button type="button" data-action="demote-finding" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;">\u21A9 {{ _("Back to pending") }}</button>'
+        : '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="false" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;">\u23F3 {{ _("Verify") }}</button>' +
+          '<button type="button" data-action="reject-finding" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#ef4444;">\u2718 {{ _("Reject") }}</button>') +
+      '<button type="button" data-action="add-screenshot-btn" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + {{ _("Screenshot") }}</button>' +
+      reportBtn +
+      (f.archived_at
+        ? '<form method="POST" action="/cms/workflow/api/findings/' + esc(f.id) + '/restore" style="display:inline;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">{{ _("Restore") }}</button></form>'
+        : '<form method="POST" action="/cms/workflow/api/findings/' + esc(f.id) + '/archive" style="display:inline;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">{{ _("Archive") }}</button></form>') +
+    '</div>' +
+    '<div class="ss-upload-form" data-finding-id="' + esc(f.id) + '" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">' +
+      '<div style="display:flex;flex-direction:column;gap:0.3rem;">' +
+        '<input type="file" class="ss-file-input" accept="image/*" style="font-size:0.78rem;">' +
+        '<input type="text" class="ss-source-input" placeholder="Source URL (optional, website the screenshot is from)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
+        '<input type="text" class="ss-notes-input" placeholder="Note (optional)" style="border:1px solid var(--border-color);border-radius:4px;padding:0.3rem;font-size:0.78rem;">' +
+        '<div style="display:flex;gap:0.3rem;">' +
+          '<button type="button" data-action="save-screenshot" data-finding-id="' + esc(f.id) + '" style="background:var(--accent-primary);color:#fff;border:none;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">{{ _("Save") }}</button>' +
+          '<button type="button" data-action="cancel-screenshot" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.78rem;">{{ _("Cancel") }}</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<button type="button" class="finding-delete" data-action="delete-finding" data-finding-id="' + esc(f.id) + '" title="{{ _("Delete") }}">&times;</button>' +
+  '</div>';
+}
+
+function updateFindings(finds, hasRunning) {
+  var container = document.getElementById('registerFindings');
+  if (!container) return;
+  var cnt = document.getElementById('registerCount');
+  var statusEl = document.getElementById('registerStatus');
+
+  var statusSig = finds.map(function(f) { return f.id + ':' + (f.status || '') + ':' + (f.verified ? '1' : '0') + ':' + (f.include_in_report === false ? '0' : '1'); }).join(',');
+  var hash = finds.length + ':' + statusSig;
+  var force = _forceFindingsUpdate;
+  _forceFindingsUpdate = false;
+  if (Date.now() < _suppressFindingsRebuild) return;
+  if (hash === _lastFindingsHash && !hasRunning && !force) return;
+  _lastFindingsHash = hash;
+
+  // Preserve checked + comment drafts across rebuild
+  var checkedIds = [];
+  container.querySelectorAll('.finding-check:checked').forEach(function(cb) { checkedIds.push(cb.getAttribute('data-finding-id')); });
+  var commentValues = {};
+  container.querySelectorAll('[data-action="comment-input"]').forEach(function(ta) {
+    var fid = ta.getAttribute('data-finding-id');
+    if (ta.value) commentValues[fid] = ta.value;
+  });
+
+  if (!finds.length) {
+    container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:3rem;color:var(--text-muted);"><div style="font-size:2.5rem;margin-bottom:0.5rem;">🔍</div><h2>{{ _("No findings match") }}</h2></div>';
+    return;
+  }
+  container.innerHTML = '<div style="display:flex;flex-direction:column;gap:0.5rem;">' + finds.map(function(f) { return findingHtml(f); }).join('') + '</div>';
+
+  checkedIds.forEach(function(fid) {
+    var cb = container.querySelector('.finding-check[data-finding-id="' + fid + '"]');
+    if (cb) cb.checked = true;
+  });
+  Object.keys(commentValues).forEach(function(fid) {
+    var ta = container.querySelector('[data-action="comment-input"][data-finding-id="' + fid + '"]');
+    if (ta && ta.value !== commentValues[fid]) ta.value = commentValues[fid];
+  });
+  var bar = document.getElementById('findingsBatchActions');
+  if (bar) bar.style.display = container.querySelectorAll('.finding-check:checked').length > 0 ? 'inline-flex' : 'none';
+}
+
+function pollStatus() {
+  fetch('/cms/workflow/api/findings?' + registerQueryString())
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var findings = data.findings || [];
+      if (typeof data.finding_count === 'number') {
+        var cnt = document.getElementById('registerCount');
+        if (cnt) cnt.textContent = '(' + data.finding_count + ')';
+      }
+      var statusEl = document.getElementById('registerStatus');
+      if (statusEl) statusEl.textContent = data.has_running ? '⏳ {{ _("Running actions — auto-refreshing") }}' : '';
+      updateFindings(findings, !!data.has_running);
+      if (data.has_running) startPolling(); else stopPolling();
+    })
+    .catch(function() {});
+}
+
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(pollStatus, POLL_INTERVAL);
+}
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+{% include "cms/workflow/_workflow_events.html" %}
+</script>
+{% endblock %}

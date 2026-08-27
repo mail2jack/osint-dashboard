@@ -275,7 +275,7 @@ function findingHtml(f) {
     verifiedInfo = '<span style="font-size:0.72rem;color:var(--text-muted);margin-left:0.4rem;">by ' + esc(f.verifier_name) + (f.verified_at ? ' · ' + new Date(f.verified_at).toLocaleString('en-GB') : '') + '</span>';
   }
 
-  return '<div class="finding-item" data-finding-id="' + esc(f.id) + '">' +
+  return '<div class="finding-item" data-finding-id="' + esc(f.id) + '" data-case-id="' + esc(f.case_id || '') + '">' +
     '<div class="finding-check-wrap"><input type="checkbox" class="finding-check" data-finding-id="' + esc(f.id) + '"></div>' +
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
       '<div>' +
@@ -295,9 +295,15 @@ function findingHtml(f) {
       '<textarea data-action="comment-input" data-finding-id="' + esc(f.id) + '" placeholder="Note / comment..." style="width:100%;border:1px solid var(--border-color);border-radius:6px;padding:0.4rem;font-size:0.78rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;min-height:1.8rem;" rows="1">' + esc(f.comment || '') + '</textarea>' +
     '</div>' +
     '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">' +
-      '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="' + (f.verified ? 'true' : 'false') + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:' + (f.verified ? '#10b981' : '#f59e0b') + ';">' + (f.verified ? '✅ Verified' : '⏳ Pending verification') + '</button>' +
-      (f.verified ? '<button type="button" data-action="reject-finding" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#ef4444;">✕ Reject</button>' : '') +
-      '<button type="button" data-action="add-screenshot-btn" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + Screenshot</button>' +
+      (f.verified
+        ? '<span style="border:1px solid #10b981;border-radius:4px;padding:0.15rem 0.5rem;font-size:0.78rem;color:#10b981;background:rgba(16,185,129,0.08);">✅ {{ _("Verified") }}</span>' +
+          '<button type="button" data-action="demote-finding" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;">\u21A9 {{ _("Back to pending") }}</button>'
+        : '<button type="button" data-action="verify-finding" data-finding-id="' + esc(f.id) + '" data-verified="false" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;">\u23F3 {{ _("Verify") }}</button>' +
+          '<button type="button" data-action="reject-finding" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#ef4444;">\u2718 {{ _("Reject") }}</button>') +
+      '<button type="button" data-action="add-screenshot-btn" data-finding-id="' + esc(f.id) + '" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">📷 + {{ _("Screenshot") }}</button>' +
+      (f.include_in_report === false
+        ? '<button type="button" data-action="report-flag" data-finding-id="' + esc(f.id) + '" data-report-flag="false" style="background:none;border:1px solid #f59e0b;border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:#f59e0b;" title="{{ _("Excluded from official reports") }}">\uD83D\uDEAB {{ _("Exclude") }}</button>'
+        : '<button type="button" data-action="report-flag" data-finding-id="' + esc(f.id) + '" data-report-flag="true" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);" title="{{ _("Included in official reports") }}">\uD83D\uDCC4 {{ _("In report") }}</button>') +
     '</div>' +
     '<div class="ss-upload-form" data-finding-id="' + esc(f.id) + '" style="display:none;margin-top:0.4rem;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;">' +
       '<div style="display:flex;flex-direction:column;gap:0.3rem;">' +
@@ -316,6 +322,7 @@ function findingHtml(f) {
 
 var _lastFindingsHash = '';
 var _forceFindingsUpdate = false;
+var _suppressFindingsRebuild = 0;
 function updateFindings(findings, actions) {
   const container = document.getElementById('findingsContainer');
   const countEl = document.getElementById('findingsCount');
@@ -330,6 +337,7 @@ function updateFindings(findings, actions) {
   var hasRunning = actions.some(function(a) { return a.status === 'running' || a.status === 'pending'; });
   var force = _forceFindingsUpdate;
   _forceFindingsUpdate = false;
+  if (Date.now() < _suppressFindingsRebuild) return;
   if (hash === _lastFindingsHash && !hasRunning && !force) return;
   _lastFindingsHash = hash;
 

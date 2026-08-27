@@ -77,7 +77,7 @@
             {% for case in results.cases %}
             <div class="result-item">
                 <div class="result-info">
-                    <a href="{{ url_for('cms.view_case', case_id=case.id) }}" class="result-title">{{ case.title }}</a>
+                    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" class="result-title">{{ case.title }}</a>
                     <span class="tenant-tag">{{ case.tenant_name }}</span>
                     <div class="result-meta">
                         {{ case.case_number }} | {{ case.client_name or _('No client') }} |
@@ -133,7 +133,7 @@
             {% for finding in results.findings %}
             <div class="result-item">
                 <div class="result-info">
-                    <a href="{{ url_for('cms.view_case', case_id=finding.case_id) }}#finding-{{ finding.id }}" class="result-title">{{ finding.title }}</a>
+                    <a href="{{ url_for('workflow.case_detail', case_id=finding.case_id) }}" class="result-title">{{ finding.title }}</a>
                     <span class="tenant-tag">{{ finding.tenant_name }}</span>
                     <div class="result-meta">
                         Case: {{ finding.case_number }} | {{ finding.finding_type or 'General' }} | {{ finding.source_type or 'manual' }}
@@ -151,7 +151,7 @@
             {% for fin in results.financials %}
             <div class="result-item">
                 <div class="result-info">
-                    <a href="{{ url_for('cms.view_case', case_id=fin.case_id) }}" class="result-title">{{ fin.currency }} {{ "%.2f"|format(fin.amount) }}</a>
+                    <a href="{{ url_for('workflow.case_detail', case_id=fin.case_id) }}" class="result-title">{{ fin.currency }} {{ "%.2f"|format(fin.amount) }}</a>
                     <span class="tenant-tag">{{ fin.tenant_name }}</span>
                     <div class="result-meta">
                         Case: {{ fin.case_number }} | {{ fin.transaction_type or 'Transaction' }} | {{ fin.transaction_date }}
@@ -178,7 +178,7 @@
                             <a href="{{ url_for('cms.view_subject', subject_id=item.subject_id) }}">{{ item._subject_name }}</a> |
                             By {{ item.author_name }} | {{ item.created_at }} |
                             {% elif item.case_id %}
-                            <a href="{{ url_for('cms.view_case', case_id=item.case_id) }}">Case: {{ item.case_number }}</a> |
+                            <a href="{{ url_for('workflow.case_detail', case_id=item.case_id) }}">Case: {{ item.case_number }}</a> |
                             By {{ item.author_name }} | {{ item.created_at }} |
                             {% endif %}
                             <span class="badge {% if item._source == 'subject_note' %}badge-note{% else %}badge-comment{% endif %}">{{ item.comment_type }}</span>
