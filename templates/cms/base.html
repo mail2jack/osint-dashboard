@@ -179,6 +179,7 @@
             <a href="{{ url_for('cms.search') }}">{{ _('Search') }}</a>
                 {% if current_user.has_role('investigator', 'senior_investigator', 'admin') %}
                 <a href="{{ url_for('workflow.dashboard') }}">🔬 {{ _('Investigations') }}</a>
+                <a href="{{ url_for('workflow.findings_index') }}">📋 {{ _('Findings') }}</a>
                 {% endif %}
                 {% if current_user.is_admin %}
                 <a href="{{ url_for('cms.settings') }}">⚙️ {{ _('Settings') }}</a>

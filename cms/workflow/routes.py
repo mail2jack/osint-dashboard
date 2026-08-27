@@ -18,7 +18,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from cms.auth import ensure_case_access, ensure_tenant_access
-from cms.models import AuditLog, UserRole, db
+from cms.models import AuditLog, UserRole, db, report_include_filter
 from cms.routes.dashboard import _get_cached_health
 from cms.routes.utils import find_similar_clients, normalize_phone, normalize_postcode
 from cms.services.invoice_service import auto_invoice_case_created
@@ -312,6 +312,292 @@ def dashboard():
         cases=cases,
         action_counts=action_counts,
         action_types=ACTION_REGISTRY,
+    )
+
+
+def _findings_accessible_case_ids():
+    """Case IDs the current user may read + the matching Case objects.
+
+    Reuses the canonical bulk case-isolation rule (admins/super bypass,
+    others via direct assignment / case_assignments / involvement).
+    """
+    from cms.auth import get_accessible_case_ids
+
+    accessible_ids = set(get_accessible_case_ids(current_user))
+    if not accessible_ids:
+        return [], []
+    cases = (
+        WorkflowCase.query.filter(
+            WorkflowCase.id.in_(accessible_ids),
+            WorkflowCase.archived_at.is_(None),
+        )
+        .order_by(WorkflowCase.created_at.desc())
+        .all()
+    )
+    return [c.id for c in cases], cases
+
+
+def _findings_base_query(case_ids=None):
+    q = WorkflowFinding.query.filter(WorkflowFinding.is_deleted == False)  # noqa: E712
+    if case_ids:
+        q = q.filter(WorkflowFinding.case_id.in_(case_ids))
+    return q
+
+
+def _finding_json_with_context(f, case=None, subject=None):
+    raw = f.raw_data
+    if raw is not None and not isinstance(raw, dict):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = None
+    return {
+        "id": f.id,
+        "case_id": f.case_id,
+        "subject_id": f.subject_id,
+        "title": f.title,
+        "detail": f.detail,
+        "source_url": f.source_url,
+        "source_type": f.source_type,
+        "icon": f.icon,
+        "verified": f.verified,
+        "status": f.status,
+        "verified_by": f.verified_by,
+        "verified_at": f.verified_at.isoformat() if f.verified_at else None,
+        "verifier_name": f.verifier.full_name if f.verifier else None,
+        "content_hash": f.content_hash,
+        "integrity_verified": f.verify_integrity() if f.content_hash else None,
+        "confidence_level": f.confidence_level,
+        "archived_at": f.archived_at.isoformat() if f.archived_at else None,
+        "comment": f.comment,
+        "include_in_report": f.include_in_report,
+        "raw_data": raw,
+        "created_at": f.created_at.isoformat() if f.created_at else None,
+        "case_number": case.case_number if case else None,
+        "case_title": case.title if case else None,
+        "subject_name": subject.name if subject else None,
+        "screenshots": [
+            {
+                "url": ss.url,
+                "source_url": ss.source_url,
+                "captured_at": ss.captured_at.isoformat() if ss.captured_at else None,
+                "notes": ss.notes,
+            }
+            for ss in (f.finding_screenshots or [])
+        ],
+    }
+
+
+@workflow_bp.route("/findings")
+@login_required
+@_investigator_required
+def findings_index():
+    """Central findings register across all accessible investigations."""
+    case_ids, all_cases = _findings_accessible_case_ids()
+
+    f_case_id = request.args.get("case_id", "").strip()
+    f_subject_id = request.args.get("subject_id", "").strip()
+    f_status = request.args.get("status", "").strip()
+    f_report = request.args.get("report", "").strip()  # in|out|all
+    f_q = request.args.get("q", "").strip()
+    show_archived = request.args.get("show_archived") == "1"
+    page = request.args.get("page", 1, type=int)
+    per_page = 50
+
+    cases = [c for c in all_cases if c.id in case_ids]
+    cid = f_case_id if f_case_id in case_ids else None
+    scope_ids = [cid] if cid else case_ids
+
+    q = _findings_base_query(scope_ids)
+    if not show_archived:
+        q = q.filter(WorkflowFinding.archived_at.is_(None))
+    if f_status:
+        q = q.filter(WorkflowFinding.status == f_status)
+    if f_report == "in":
+        q = q.filter(
+            sa.or_(
+                WorkflowFinding.include_in_report.is_(None),
+                WorkflowFinding.include_in_report == True,
+            )  # noqa: E712
+        )
+    elif f_report == "out":
+        q = q.filter(WorkflowFinding.include_in_report == False)  # noqa: E712
+    if f_q:
+        like = f"%{f_q.lower()}%"
+        q = q.filter(
+            sa.or_(
+                db.func.lower(WorkflowFinding.title).like(like),
+                db.func.lower(WorkflowFinding.content).like(like),
+                db.func.lower(WorkflowFinding.detail).like(like),
+            )
+        )
+    if f_subject_id:
+        q = q.filter(WorkflowFinding.subject_id == f_subject_id)
+
+    # Subject dropdown: subjects that carry findings within the current scope
+    # (case filter + status/report/search), ignoring pagination so the facet
+    # reflects the full result set.
+    from cms.models import Subject
+
+    subject_ids = [
+        r[0]
+        for r in q.with_entities(WorkflowFinding.subject_id)
+        .filter(WorkflowFinding.subject_id.isnot(None))
+        .distinct()
+        .all()
+    ]
+    subject_options = []
+    subjects_by_name = {}
+    if subject_ids:
+        subj_rows = (
+            Subject.query.filter(
+                Subject.id.in_(subject_ids),
+                Subject.is_deleted.is_(False),
+            )
+            .order_by(Subject.name)
+            .all()
+        )
+        subjects_by_name = {s.id: s for s in subj_rows}
+        subject_options = sorted(subj_rows, key=lambda s: (s.name or "").lower())
+
+    finding_count = q.count()
+    findings = (
+        q.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
+        .order_by(WorkflowFinding.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    case_map = {c.id: c for c in cases}
+    for f in findings:
+        f._ctx_case = case_map.get(f.case_id)
+        f._ctx_subject = subjects_by_name.get(f.subject_id) if f.subject_id else None
+
+    run_rows = (
+        db.session.query(WorkflowResearchAction.case_id)
+        .filter(WorkflowResearchAction.case_id.in_(scope_ids))
+        .filter(WorkflowResearchAction.status.in_(["running", "pending"]))
+        .first()
+    )
+    has_running = run_rows is not None
+
+    return render_template(
+        "cms/workflow/workflow_findings.html",
+        findings=findings,
+        cases=cases,
+        subject_options=subject_options,
+        subjects_by_name=subjects_by_name,
+        f_case_id=f_case_id,
+        f_subject_id=f_subject_id,
+        f_status=f_status,
+        f_report=f_report,
+        f_q=f_q,
+        show_archived=show_archived,
+        finding_count=finding_count,
+        page=page,
+        per_page=per_page,
+        case_map=case_map,
+        has_running=has_running,
+        action_types=ACTION_REGISTRY,
+    )
+
+
+@workflow_bp.route("/api/findings")
+@login_required
+@_investigator_required
+def findings_api():
+    """Lightweight findings data for the register's conditional polling."""
+    case_ids, _ = _findings_accessible_case_ids()
+
+    f_case_id = request.args.get("case_id", "").strip()
+    f_subject_id = request.args.get("subject_id", "").strip()
+    f_status = request.args.get("status", "").strip()
+    f_report = request.args.get("report", "").strip()
+    f_q = request.args.get("q", "").strip()
+    show_archived = request.args.get("show_archived") == "1"
+
+    cid = f_case_id if f_case_id in case_ids else None
+    scope_ids = [cid] if cid else case_ids
+
+    q = _findings_base_query(scope_ids)
+    if not show_archived:
+        q = q.filter(WorkflowFinding.archived_at.is_(None))
+    if f_status:
+        q = q.filter(WorkflowFinding.status == f_status)
+    if f_report == "in":
+        q = q.filter(
+            sa.or_(
+                WorkflowFinding.include_in_report.is_(None),
+                WorkflowFinding.include_in_report == True,
+            )  # noqa: E712
+        )
+    elif f_report == "out":
+        q = q.filter(WorkflowFinding.include_in_report == False)  # noqa: E712
+    if f_subject_id:
+        q = q.filter(WorkflowFinding.subject_id == f_subject_id)
+    if f_q:
+        like = f"%{f_q.lower()}%"
+        q = q.filter(
+            sa.or_(
+                db.func.lower(WorkflowFinding.title).like(like),
+                db.func.lower(WorkflowFinding.content).like(like),
+                db.func.lower(WorkflowFinding.detail).like(like),
+            )
+        )
+    page = max(1, request.args.get("page", 1, type=int))
+    per_page = max(1, min(request.args.get("per_page", 50, type=int), 200))
+    findings = (
+        q.options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
+        .order_by(WorkflowFinding.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    case_map = {}
+    if findings:
+        from cms.models import Case as _Case
+
+        row_cases = _Case.query.filter(
+            _Case.id.in_({f.case_id for f in findings})
+        ).all()
+        case_map = {c.id: c for c in row_cases}
+    subject_map = {}
+    for f in findings:
+        if f.subject_id:
+            subject_map.setdefault(f.subject_id, None)
+    if subject_map:
+        from cms.models import Subject as _Subject
+
+        subj_rows = _Subject.query.filter(_Subject.id.in_(list(subject_map))).all()
+        subject_map = {s.id: s for s in subj_rows}
+
+    # Running-actions lookup so the client knows when to poll / show activity.
+    run_rows = (
+        db.session.query(
+            WorkflowResearchAction.case_id, WorkflowResearchAction.action_type
+        )
+        .filter(WorkflowResearchAction.case_id.in_(scope_ids))
+        .filter(WorkflowResearchAction.status.in_(["running", "pending"]))
+        .all()
+    )
+    has_running = len(run_rows) > 0
+
+    return jsonify(
+        {
+            "findings": [
+                _finding_json_with_context(
+                    f,
+                    case_map.get(f.case_id),
+                    subject_map.get(f.subject_id) if f.subject_id else None,
+                )
+                for f in findings
+            ],
+            "actions": [{"case_id": c, "action_type": t} for c, t in run_rows],
+            "has_running": has_running,
+            "finding_count": q.count(),
+            "page": page,
+            "per_page": per_page,
+        }
     )
 
 
@@ -1308,6 +1594,7 @@ def pv_view(case_id):
     subjects = list(case.subjects)
     findings = (
         case.findings.filter_by(is_deleted=False, archived_at=None)
+        .filter(report_include_filter())
         .options(sa.orm.joinedload(WorkflowFinding.finding_screenshots))
         .order_by(WorkflowFinding.created_at)
         .all()
@@ -1374,6 +1661,7 @@ def pv_regenerate(case_id):
 
     findings = (
         case.findings.filter_by(is_deleted=False, archived_at=None)
+        .filter(report_include_filter())
         .order_by(WorkflowFinding.created_at)
         .all()
     )
@@ -1514,6 +1802,9 @@ def batch_delete_findings(case_id):
     return jsonify({"ok": True, "deleted": deleted})
 
 
+_verify_cooldown = {}  # {finding_id: timestamp} — prevent rapid toggle-back
+
+
 @workflow_bp.route("/api/case/<case_id>/findings/<finding_id>/verify", methods=["POST"])
 @login_required
 @_investigator_required
@@ -1526,10 +1817,44 @@ def verify_finding(case_id, finding_id):
         ensure_case_access(case)
     body = request.get_json(silent=True) or {}
     import logging as _log
-    _log.warning("VERIFY_DEBUG body=%s finding_id=%s user=%s", body, finding_id, current_user.id)
+
+    _log.warning(
+        "VERIFY_DEBUG body=%s finding_id=%s user=%s", body, finding_id, current_user.id
+    )
     status = body.get("status")
     if status not in (None, "verified", "rejected", "candidate", "superseded"):
         return jsonify({"error": "Unknown status"}), 400
+
+    import time as _time
+
+    now = _time.time()
+
+    if status:
+        target_status = status
+    else:
+        new_val = body.get("verified", not finding.verified)
+        target_status = "verified" if new_val else "candidate"
+
+    # Cooldown only guards the legacy boolean toggle path (verify button that
+    # was previously re-used as a revert toggle). Explicit status transitions
+    # are always allowed.
+    last_change = _verify_cooldown.get(finding_id, 0)
+    if not status and target_status == "candidate" and now - last_change < 5:
+        _log.warning(
+            "VERIFY_DEBUG cooldown block finding_id=%s target=%s elapsed=%.1f",
+            finding_id,
+            target_status,
+            now - last_change,
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "verified": finding.verified,
+                "status": finding.status,
+                "cooldown": True,
+            }
+        )
+
     if status:
         if status == "verified":
             finding.promote_to_verified(current_user)
@@ -1538,12 +1863,11 @@ def verify_finding(case_id, finding_id):
         else:
             finding.demote_to_candidate()
     else:
-        # Legacy boolean toggle.
-        new_val = body.get("verified", not finding.verified)
         if new_val:
             finding.promote_to_verified(current_user)
         else:
             finding.demote_to_candidate()
+    _verify_cooldown[finding_id] = now
     AuditLog.log(
         user_id=current_user.id,
         action="verify",
@@ -1555,7 +1879,13 @@ def verify_finding(case_id, finding_id):
     )
     db.session.commit()
     import logging as _log
-    _log.warning("VERIFY_DEBUG result finding_id=%s verified=%s status=%s", finding.id, finding.verified, finding.status)
+
+    _log.warning(
+        "VERIFY_DEBUG result finding_id=%s verified=%s status=%s",
+        finding.id,
+        finding.verified,
+        finding.status,
+    )
     return jsonify(
         {
             "ok": True,
@@ -1590,6 +1920,45 @@ def save_comment(case_id, finding_id):
     )
     db.session.commit()
     return jsonify({"ok": True, "comment": new_comment})
+
+
+@workflow_bp.route(
+    "/api/case/<case_id>/findings/<finding_id>/report-flag", methods=["POST"]
+)
+@login_required
+@_investigator_required
+def set_report_flag(case_id, finding_id):
+    """Toggle generic include-in-report selection (ADR-0001 optie (b)).
+
+    ``include_in_report`` semantics: NULL/True = included in official reports,
+    False = excluded. Backward compatible — existing findings are unchanged.
+    """
+    finding = db.session.get(WorkflowFinding, finding_id)
+    if not finding or finding.case_id != case_id:
+        return jsonify({"error": "Not found"}), 404
+    case = db.session.get(WorkflowCase, case_id)
+    if case:
+        ensure_case_access(case)
+    elif (
+        not current_user.is_super_admin and finding.tenant_id != current_user.tenant_id
+    ):
+        return jsonify({"error": "Forbidden"}), 403
+    body = request.get_json(silent=True) or {}
+    include = body.get("include_in_report")
+    if not isinstance(include, bool):
+        return jsonify({"error": "include_in_report must be a boolean"}), 400
+    finding.include_in_report = include
+    AuditLog.log(
+        user_id=current_user.id,
+        action="update",
+        entity_type="finding",
+        entity_id=finding.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Workflow set include_in_report={include} on finding: {finding.title}",
+    )
+    db.session.commit()
+    return jsonify({"ok": True, "include_in_report": finding.include_in_report})
 
 
 @workflow_bp.route("/api/case/<case_id>/actions/<action_id>/cancel", methods=["POST"])
