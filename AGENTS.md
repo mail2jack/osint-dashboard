@@ -16,6 +16,7 @@ This file is an index. Detailed documentation is split into focused files below.
 | Session summaries / changelog | [AGENTS_CHANGELOG.md](./AGENTS_CHANGELOG.md) |
 
 ## Key Principles
+- **RLS warning**: Productie PostgreSQL heeft Row Level Security. Directe `psql`-queries zonder `SET app.bypass_rls='true'` returnen lege resultaten — dit is géén data-verlies. Zie `AGENTS_OPERATIONS.md` voor details.
 - **Debug mode**: `debug=True` in `app.py` is for development only. Set `debug=False` before production push.
 - **API keys in Settings**: Prefer DB `Setting` table over `.env` for API keys. Only keep `DATABASE_URL`, `CMS_ENCRYPTION_KEY`, `FLASK_SECRET_KEY` in `.env`.
 - **Session safety**: Always `db.session.rollback()` after catching exceptions that may originate from a DB query.

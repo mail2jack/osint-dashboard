@@ -50,6 +50,18 @@
 - Creates missing default settings from a hardcoded list (~40 settings: API keys, feature flags, appearance, etc.).
 - **Since June 18**: Also patches existing settings that are missing `options` (for select-type settings), `value_type`, or `display_order` fields by copying from the defaults list. This fixes settings that were created by older code versions before these columns were added.
 
+### ⚠️ RLS (Row Level Security) — BELANGRIJK
+De productie-PostgreSQL draait met **Row Level Security** op 26 tabellen. Zonder sessie-context returnen `SELECT`-queries **lege resultaten** — dit ziet eruit als data-verlies maar is het niet.
+
+**Altijd dit doen bij directe psql-queries op productie:**
+```sql
+SET app.bypass_rls = 'true';
+-- of voor volledige tenant-context:
+SET app.current_tenant = '3a169c92-04a2-48f9-be1b-1fcf930c0f0f';
+```
+
+Zonder deze SET返回 `SELECT count(*) FROM cases` → 0 terwijl er 100 cases zijn. Gebruik `pg_stat_user_tables` om de echte rijtallen te controleren voordat je conclusies trekt over data-verlies.
+
 ### PostgreSQL vs SQLite notes
 - PostgreSQL enforces `VARCHAR(n)`; SQLite ignores it. ALL encrypted columns MUST be `String(500)` minimum.
 - Never mutate `created_at` on ORM objects directly (crashes SQLite).
