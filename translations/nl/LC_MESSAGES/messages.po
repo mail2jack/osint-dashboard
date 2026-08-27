@@ -4457,3 +4457,18 @@ msgstr "Intact"
 msgid "Tampered"
 msgstr "Gemanipuleerd"
 
+msgid "View findings"
+msgstr "Bevindingen bekijken"
+
+msgid "View all findings"
+msgstr "Alle bevindingen bekijken"
+
+msgid "Findings for this subject are managed centrally in the register."
+msgstr "Bevindingen voor dit subject worden centraal beheerd in het register."
+
+msgid "Manage every finding, verify, flag for reports and archive centrally."
+msgstr "Beheer elke bevinding centraal: verifieer, vlag voor rapporten en archiveer."
+
+msgid "No findings yet. Use 🌍 Check Interpol or 🔍 OSINT Search to save results."
+msgstr "Nog geen bevindingen. Gebruik 🌍 Check Interpol of 🔍 OSINT Search om resultaten op te slaan."
+

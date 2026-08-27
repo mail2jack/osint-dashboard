@@ -4666,3 +4666,18 @@ msgstr ""
 msgid "Tampered"
 msgstr ""
 
+msgid "View findings"
+msgstr ""
+
+msgid "View all findings"
+msgstr ""
+
+msgid "Findings for this subject are managed centrally in the register."
+msgstr ""
+
+msgid "Manage every finding, verify, flag for reports and archive centrally."
+msgstr ""
+
+msgid "No findings yet. Use 🌍 Check Interpol or 🔍 OSINT Search to save results."
+msgstr ""
+
