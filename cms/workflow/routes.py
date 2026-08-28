@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import uuid
 from datetime import UTC, datetime
@@ -44,6 +45,8 @@ from .research import (
     paid_channels_enabled,
     start_action_async,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _investigator_required(f):
@@ -1802,7 +1805,11 @@ def batch_delete_findings(case_id):
     return jsonify({"ok": True, "deleted": deleted})
 
 
-_verify_cooldown = {}  # {finding_id: timestamp} — prevent rapid toggle-back
+# Per-worker (in-process) cooldown to prevent a rapid toggle-back of the
+# legacy boolean verify button. NOTE: this dict is NOT shared across gunicorn
+# workers, so it only guards the common single-worker rapid-toggle case. If a
+# stricter cross-worker guarantee is ever needed it must move to the DB/Redis.
+_verify_cooldown = {}  # {finding_id: timestamp}
 
 
 @workflow_bp.route("/api/case/<case_id>/findings/<finding_id>/verify", methods=["POST"])
@@ -1816,10 +1823,8 @@ def verify_finding(case_id, finding_id):
     if case:
         ensure_case_access(case)
     body = request.get_json(silent=True) or {}
-    import logging as _log
-
-    _log.warning(
-        "VERIFY_DEBUG body=%s finding_id=%s user=%s", body, finding_id, current_user.id
+    logger.debug(
+        "verify_finding body=%s finding_id=%s user=%s", body, finding_id, current_user.id
     )
     status = body.get("status")
     if status not in (None, "verified", "rejected", "candidate", "superseded"):
@@ -1840,8 +1845,8 @@ def verify_finding(case_id, finding_id):
     # are always allowed.
     last_change = _verify_cooldown.get(finding_id, 0)
     if not status and target_status == "candidate" and now - last_change < 5:
-        _log.warning(
-            "VERIFY_DEBUG cooldown block finding_id=%s target=%s elapsed=%.1f",
+        logger.debug(
+            "verify_finding cooldown block finding_id=%s target=%s elapsed=%.1f",
             finding_id,
             target_status,
             now - last_change,
@@ -1878,10 +1883,8 @@ def verify_finding(case_id, finding_id):
         description=f"Workflow set finding status to {finding.status}: {finding.title}",
     )
     db.session.commit()
-    import logging as _log
-
-    _log.warning(
-        "VERIFY_DEBUG result finding_id=%s verified=%s status=%s",
+    logger.debug(
+        "verify_finding result finding_id=%s verified=%s status=%s",
         finding.id,
         finding.verified,
         finding.status,

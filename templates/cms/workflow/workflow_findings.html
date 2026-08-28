@@ -443,7 +443,33 @@ function updateFindings(finds, hasRunning) {
     container.innerHTML = '<div id="findings-empty" style="text-align:center;padding:3rem;color:var(--text-muted);"><div style="font-size:2.5rem;margin-bottom:0.5rem;">🔍</div><h2>{{ _("No findings match") }}</h2></div>';
     return;
   }
-  container.innerHTML = '<div style="display:flex;flex-direction:column;gap:0.5rem;">' + finds.map(function(f) { return findingHtml(f); }).join('') + '</div>';
+
+  // Rebuild the same per-case grouping the server-side Jinja render uses, so a
+  // polling rebuild does not flatten the case-group headers away.
+  var groups = [];
+  var byCase = {};
+  finds.forEach(function(f) {
+    var cid = f.case_id || '';
+    if (!byCase[cid]) { byCase[cid] = []; groups.push(cid); }
+    byCase[cid].push(f);
+  });
+  var html = '';
+  groups.forEach(function(cid) {
+    var g = byCase[cid];
+    var first = g[0] || {};
+    html += '<div class="finding-group"><div class="finding-group-body">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0.6rem;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);border-radius:8px 8px 0 0;font-size:0.8rem;font-weight:600;">';
+    if (cid) {
+      html += '<a href="/cms/workflow/case/' + esc(cid) + '" style="color:var(--link-color);text-decoration:none;">📁 ' + esc(first.case_number || '') + (first.case_title ? ' — ' + esc(first.case_title) : '') + '</a>';
+    } else {
+      html += '<span style="color:var(--text-muted);">—</span>';
+    }
+    html += '<span style="color:var(--text-muted);font-weight:400;">' + g.length + ' {{ _("findings") }}</span>';
+    html += '</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:0.35rem;padding:0.45rem;">' + g.map(function(f) { return findingHtml(f); }).join('') + '</div>';
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
 
   checkedIds.forEach(function(fid) {
     var cb = container.querySelector('.finding-check[data-finding-id="' + fid + '"]');
