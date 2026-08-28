@@ -1446,8 +1446,10 @@ class Contact(db.Model):
         db.String(36), db.ForeignKey("clients.id"), nullable=True, index=True
     )
 
-    contact_type = db.Column(db.String(10), nullable=False)  # 'email' or 'phone'
+    contact_type = db.Column(db.String(10), nullable=False)  # 'email' | 'phone' | 'social'
     value = db.Column(db.String(500))  # Encrypted
+    # Platform for social contacts (facebook, twitter/x, instagram, ...)
+    platform = db.Column(db.String(50))
     is_primary = db.Column(db.Boolean, default=False)
 
     # Provenance (ADR-0001 PR3)
@@ -1502,6 +1504,7 @@ class Contact(db.Model):
             "client_id": self.client_id,
             "contact_type": self.contact_type,
             "value": self.value,
+            "platform": self.platform,
             "is_primary": self.is_primary,
             "source": self.source,
             "status": self.status,
