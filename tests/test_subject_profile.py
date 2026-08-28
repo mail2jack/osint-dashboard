@@ -394,3 +394,97 @@ class TestViewerRedaction:
         assert "123456789" not in html
         assert "j***@example.com" in html
         assert "12345****" in html
+
+
+class TestSocialContacts:
+    def test_create_social_contact_requires_platform(self, auth_client):
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Social Platform Required")
+        subject = case.subjects[0]
+
+        resp = auth_client.post(
+            f"/cms/api/profile/subjects/{subject.id}/contacts",
+            json={"contact_type": "social", "value": "some.user"},
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]
+
+    def test_create_social_contact_persists_platform(self, auth_client):
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Social Create")
+        subject = case.subjects[0]
+
+        resp = auth_client.post(
+            f"/cms/api/profile/subjects/{subject.id}/contacts",
+            json={
+                "contact_type": "social",
+                "platform": "Twitter / X",
+                "value": "twitter.handle",
+                "is_primary": True,
+            },
+        )
+        assert resp.status_code == 201
+        item = resp.get_json()["item"]
+        assert item["contact_type"] == "social"
+        assert item["platform"] == "Twitter / X"
+        assert item["value"] == "twitter.handle"
+
+        db.session.expire_all()
+        contact = Contact.query.get(item["id"])
+        assert contact.platform == "Twitter / X"
+
+    def test_update_social_contact_platform(self, auth_client):
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Social Update")
+        subject = case.subjects[0]
+
+        created = auth_client.post(
+            f"/cms/api/profile/subjects/{subject.id}/contacts",
+            json={"contact_type": "social", "platform": "Facebook", "value": "fb.user"},
+        )
+        assert created.status_code == 201
+        cid = created.get_json()["item"]["id"]
+
+        resp = auth_client.put(
+            f"/cms/api/profile/subjects/{subject.id}/contacts/{cid}",
+            json={"contact_type": "social", "platform": "Instagram", "value": "ig.user"},
+        )
+        assert resp.status_code == 200
+        item = resp.get_json()["item"]
+        assert item["platform"] == "Instagram"
+        assert item["value"] == "ig.user"
+
+    def test_non_social_contact_platform_stays_none(self, auth_client):
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Non Social Platform")
+        subject = case.subjects[0]
+
+        resp = auth_client.post(
+            f"/cms/api/profile/subjects/{subject.id}/contacts",
+            json={"contact_type": "email", "platform": "Facebook", "value": "a@b.c"},
+        )
+        assert resp.status_code == 201
+        item = resp.get_json()["item"]
+        assert item["contact_type"] == "email"
+        assert item["platform"] is None
+
+    def test_viewer_sees_platform_label(self, app, auth_client):
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Social Profile Render")
+        subject = case.subjects[0]
+
+        auth_client.post(
+            f"/cms/api/profile/subjects/{subject.id}/contacts",
+            json={"contact_type": "social", "platform": "LinkedIn", "value": "li.person"},
+        )
+
+        resp = auth_client.get(f"/cms/subjects/{subject.id}/profile")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "LinkedIn" in html
+        assert "li.person" in html

@@ -382,6 +382,76 @@ class TestContactCrud:
         assert resp.status_code == 200
         assert Contact.query.get(item["id"]) is None
 
+    def test_create_social_requires_platform(self, auth_client):
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Contact Social Platform")
+        subject = case.subjects[0]
+
+        resp = auth_client.post(
+            _api(subject.id, "/contacts"),
+            json={"contact_type": "social", "value": "no.platform"},
+        )
+        assert resp.status_code == 400
+
+    def test_social_contact_roundtrip_and_platform_persisted(self, auth_client):
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Contact Social Roundtrip")
+        subject = case.subjects[0]
+
+        created = auth_client.post(
+            _api(subject.id, "/contacts"),
+            json={
+                "contact_type": "social",
+                "platform": "Twitter / X",
+                "value": "handle_x",
+                "is_primary": True,
+            },
+        )
+        assert created.status_code == 201, created.get_data(as_text=True)
+        item = created.get_json()["item"]
+        assert item["platform"] == "Twitter / X"
+
+        db.session.expire_all()
+        contact = Contact.query.get(item["id"])
+        assert contact.contact_type == "social"
+        assert contact.platform == "Twitter / X"
+        assert encryptor.decrypt(contact.value) == "handle_x"
+
+        updated = auth_client.put(
+            _api(subject.id, f"/contacts/{item['id']}"),
+            json={
+                "contact_type": "social",
+                "platform": "Instagram",
+                "value": "ig_handle",
+            },
+        )
+        assert updated.status_code == 200
+        db.session.expire_all()
+        contact = Contact.query.get(item["id"])
+        assert contact.platform == "Instagram"
+        assert encryptor.decrypt(contact.value) == "ig_handle"
+
+    def test_non_social_contact_platform_discarded(self, auth_client):
+        admin = _admin()
+        _enable_flag(admin.tenant_id)
+        case = _case_with_subject(auth_client, title="Contact NonSocial Platform")
+        subject = case.subjects[0]
+
+        resp = auth_client.post(
+            _api(subject.id, "/contacts"),
+            json={
+                "contact_type": "email",
+                "platform": "Facebook",
+                "value": "someone@example.com",
+            },
+        )
+        assert resp.status_code == 201
+        item = resp.get_json()["item"]
+        contact = Contact.query.get(item["id"])
+        assert contact.platform is None
+
 
 class TestSocialCrud:
     def test_create_update_delete(self, auth_client):

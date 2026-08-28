@@ -43,7 +43,7 @@ class TestPostgreSQLIntegration:
         # Keep this assertion aligned with the current Alembic head.  The
         # following migration adds subject-search indexes after FORCE RLS and
         # the cascade-FK safety migration, then include_in_report flag (ADR-0001).
-        assert revision == "a2b3c4d5e6f7"
+        assert revision == "aa1b2c3d4e5f6"
 
         protected = db.session.execute(
             text(
