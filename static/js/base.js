@@ -826,11 +826,20 @@ function rollbackUpdate() {
   function markDirty() { _formDirty = true; }
   function clearDirty() { _formDirty = false; }
 
+  // Only warn for data-entry forms. GET forms (search, filters) navigate with
+  // their field values in the URL and have no unsaved server-side changes, so
+  // typing/searching in them must not trigger the "Leave site?" prompt.
+  function formNeedsUnsavedWarning(el) {
+    var form = el ? el.closest('form') : null;
+    if (!form) return false;
+    return (form.method || 'get').toLowerCase() !== 'get';
+  }
+
   document.addEventListener('input', function(e) {
-    if (e.target.closest('form')) markDirty();
+    if (formNeedsUnsavedWarning(e.target)) markDirty();
   });
   document.addEventListener('change', function(e) {
-    if (e.target.closest('form')) markDirty();
+    if (formNeedsUnsavedWarning(e.target)) markDirty();
   });
   document.addEventListener('submit', function() { clearDirty(); });
 
