@@ -14,6 +14,7 @@ providing:
 
 import os
 from collections.abc import Callable
+from contextlib import contextmanager
 from datetime import timedelta
 
 from flask import Flask
@@ -30,14 +31,16 @@ csrf = CSRFProtect()
 ALEMBIC_LOCK_ID = 762710001
 
 
-def _run_schema_upgrade_serialized(fn: Callable[[], None], app: Flask) -> None:
-    """Run a boot-time schema migration under a cross-process lock.
+@contextmanager
+def _boot_lock(app: Flask):
+    """Serialize a boot-time section across gunicorn workers.
 
     gunicorn forks N workers that all call create_cms_module() concurrently.
-    Without a lock, concurrent `alembic upgrade` runs deadlock on DDL and
-    leave alembic_version in an inconsistent state. PostgreSQL workers
-    serialize on a session-scoped advisory lock; other databases use an
-    exclusive file lock so a lost lock holder cannot block workers forever.
+    Without a lock, concurrent schema migration (Alembic) or seed/insert work
+    (default tenant, admin user, default settings) races on UNIQUE constraints
+    and DEADLOCKs on DDL. PostgreSQL workers serialize on a session-scoped
+    advisory lock; other databases use an exclusive file lock so a lost lock
+    holder cannot block workers forever.
     """
     from sqlalchemy import text
 
@@ -48,7 +51,7 @@ def _run_schema_upgrade_serialized(fn: Callable[[], None], app: Flask) -> None:
                 text("SELECT pg_advisory_lock(:lock_id)"),
                 {"lock_id": ALEMBIC_LOCK_ID},
             )
-            fn()
+            yield
         finally:
             conn.execute(
                 text("SELECT pg_advisory_unlock(:lock_id)"),
@@ -63,9 +66,19 @@ def _run_schema_upgrade_serialized(fn: Callable[[], None], app: Flask) -> None:
         with open(lock_path, "w") as lock_file:
             fcntl.flock(lock_file, fcntl.LOCK_EX)
             try:
-                fn()
+                yield
             finally:
                 fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+
+def _run_schema_upgrade_serialized(fn: Callable[[], None], app: Flask) -> None:
+    """Run a boot-time schema migration under a cross-process lock.
+
+    Thin wrapper over :func:`_boot_lock` kept for backward compatibility with
+    any external callers that relied on the previous helper signature.
+    """
+    with _boot_lock(app):
+        fn()
 
 
 def create_cms_module(app: Flask):
@@ -203,249 +216,254 @@ def create_cms_module(app: Flask):
 
         _run_schema_upgrade_serialized(_upgrade, app)
 
-        # All schema migrations are now managed by Alembic.
-        # See migrations/versions/ for the current schema revision.
+        # All data seeding below runs under the same cross-process lock so that
+        # concurrent gunicorn workers cannot race on UNIQUE constraints
+        # (default tenant, admin user, default settings) on a fresh database.
+        with _boot_lock(app):
 
-        # Startup data migrations run outside a request, so establish a trusted
-        # context before querying tenant-protected tables on PostgreSQL.
-        if db.engine.dialect.name == "postgresql":
-            from sqlalchemy import text
-            from .tenant_context import set_tenant_context
+            # All schema migrations are now managed by Alembic.
+            # See migrations/versions/ for the current schema revision.
 
-            startup_tenant = db.session.execute(
-                text("SELECT id FROM tenants ORDER BY id LIMIT 1")
-            ).scalar()
-            set_tenant_context(db, startup_tenant, bypass_rls=True)
+            # Startup data migrations run outside a request, so establish a trusted
+            # context before querying tenant-protected tables on PostgreSQL.
+            if db.engine.dialect.name == "postgresql":
+                from sqlalchemy import text
+                from .tenant_context import set_tenant_context
 
-        # Data migration: Subject.notes free-text → Comment model
-        try:
-            from .models import Subject, Comment
-            from datetime import datetime, timezone
+                startup_tenant = db.session.execute(
+                    text("SELECT id FROM tenants ORDER BY id LIMIT 1")
+                ).scalar()
+                set_tenant_context(db, startup_tenant, bypass_rls=True)
 
-            subjects_with_notes = Subject.query.filter(
-                Subject.notes.isnot(None), Subject.notes != ""
-            ).all()
-            migrated_count = 0
-            for s in subjects_with_notes:
-                existing = Comment.query.filter_by(
-                    subject_id=s.id, content=s.notes, comment_type="note"
-                ).first()
-                if not existing:
-                    comment = Comment(
-                        subject_id=s.id,
-                        content=s.notes,
-                        comment_type="note",
-                        author_id=User.query.filter_by(role="admin").first().id,
-                        created_at=s.created_at or datetime.now(timezone.utc),
-                        updated_at=s.updated_at or datetime.now(timezone.utc),
-                    )
-                    db.session.add(comment)
-                    migrated_count += 1
-            if migrated_count:
-                db.session.commit()
-                app.logger.info(
-                    f"Migration: migrated {migrated_count} Subject.notes → Comment"
-                )
-        except Exception as e:
-            app.logger.warning(f"Subject.notes migration note: {e}")
-            db.session.rollback()
-
-        # Initialize default settings
-        from .models import Setting, AuditLog, init_default_settings
-
-        init_default_settings()
-
-        # Apply session timeout from settings, fallback to 8h (28800s)
-        timeout_seconds = 28800
-        try:
-            timeout_minutes = Setting.get("session_timeout_minutes", "480")
-            if timeout_minutes is not None:
-                timeout_seconds = int(timeout_minutes) * 60
-        except Exception as e:
-            app.logger.debug(f"Session timeout fallback: {e}")
-        app.permanent_session_lifetime = timedelta(seconds=timeout_seconds)
-        app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(seconds=timeout_seconds)
-
-        # Seed default service rates for auto-invoicing
-        try:
-            from .services.invoice_service import seed_service_rates
-
-            seed_service_rates()
-        except Exception as e:
-            app.logger.debug(f"Service rate seed note: {e}")
-            db.session.rollback()
-
-        # Purge old audit logs on startup
-        try:
-            retention = int(Setting.get("audit_log_retention_days", "365"))
-            if retention > 0:
-                deleted = AuditLog.purge_old(retention)
-                if deleted:
-                    app.logger.info(
-                        f"Startup: purged {deleted} audit log entries older than {retention} days"
-                    )
-        except Exception as e:
-            app.logger.debug(f"Audit log purge note: {e}")
-            db.session.rollback()
-
-        # Purge expired password reset tokens on startup
-        try:
-            from datetime import datetime, timezone
-
-            now = datetime.now(timezone.utc)
-            expired = User.query.filter(
-                User.password_reset_expires.isnot(None),
-                User.password_reset_expires < now,
-            ).update(
-                {"password_reset_token": None, "password_reset_expires": None},
-                synchronize_session="fetch",
-            )
-            db.session.commit()
-            if expired:
-                app.logger.info(
-                    f"Startup: cleared {expired} expired password reset tokens"
-                )
-        except Exception as e:
-            app.logger.debug(f"Password reset token cleanup note: {e}")
-            db.session.rollback()
-
-        # Clean up old background tasks on startup
-        try:
-            from .background import cleanup_old_tasks
-
-            cleanup_old_tasks(max_age_hours=48)
-        except Exception as e:
-            app.logger.debug(f"Background task cleanup note: {e}")
-            db.session.rollback()
-
-        # Purge old phone lookups on startup
-        try:
-            from .models import PhoneLookup
-
-            retention = int(Setting.get("phone_lookup_retention_days", "90"))
-            if retention > 0:
-                deleted = PhoneLookup.purge_old(retention)
-                if deleted:
-                    app.logger.info(
-                        f"Startup: purged {deleted} phone lookup entries older than {retention} days"
-                    )
-        except Exception as e:
-            app.logger.debug(f"Phone lookup purge note: {e}")
-            db.session.rollback()
-
-        # Purge old login logs on startup
-        try:
-            from .models import LoginLog
-
-            cutoff = datetime.now(timezone.utc) - timedelta(days=365)
-            deleted = LoginLog.query.filter(LoginLog.created_at < cutoff).delete()
-            if deleted:
-                db.session.commit()
-                app.logger.info(
-                    f"Startup: purged {deleted} login log entries older than 365 days"
-                )
-        except Exception as e:
-            app.logger.debug(f"Login log purge note: {e}")
-            db.session.rollback()
-
-        # Migrate API keys from .env to Setting table (if not already set)
-        try:
-            _env_settings = {
-                "overheid_api_key": "OVERHEID_API_KEY",
-                "brave_api_key": "BRAVE_API_KEY",
-                "twochat_api_key": "TWOCHAT_API_KEY",
-                "hibp_api_key": "HIBP_API_KEY",
-                "twochat_whatsapp_number": "TWOCHAT_WHATSAPP_NUMBER",
-            }
-            for setting_name, env_var in _env_settings.items():
-                existing = Setting.get(setting_name, "")
-                if not existing:
-                    val = os.environ.get(env_var, "")
-                    if val:
-                        Setting.set(setting_name, val)
-                        app.logger.info(
-                            "Migrated %s from .env to Setting table", setting_name
+            # Data migration: Subject.notes free-text → Comment model
+            try:
+                from .models import Subject, Comment
+                from datetime import datetime, timezone
+    
+                subjects_with_notes = Subject.query.filter(
+                    Subject.notes.isnot(None), Subject.notes != ""
+                ).all()
+                migrated_count = 0
+                for s in subjects_with_notes:
+                    existing = Comment.query.filter_by(
+                        subject_id=s.id, content=s.notes, comment_type="note"
+                    ).first()
+                    if not existing:
+                        comment = Comment(
+                            subject_id=s.id,
+                            content=s.notes,
+                            comment_type="note",
+                            author_id=User.query.filter_by(role="admin").first().id,
+                            created_at=s.created_at or datetime.now(timezone.utc),
+                            updated_at=s.updated_at or datetime.now(timezone.utc),
                         )
-            db.session.commit()
-        except Exception as e:
-            app.logger.debug("API key migration note: %s", e)
-            db.session.rollback()
-
-        # Seed first tenant if none exists
-        from .models import Tenant
-
-        first_tenant = Tenant.query.first()
-        if not first_tenant:
-            import uuid as _uuid
-
-            first_tenant = Tenant(
-                id=str(_uuid.uuid4()),
-                name="Default Organization",
-                slug="default",
-                is_active=True,
-                tier="enterprise",
-            )
-            db.session.add(first_tenant)
-            db.session.commit()
-            app.logger.info(
-                "Seeded default tenant: %s (%s)", first_tenant.name, first_tenant.id
-            )
-        elif first_tenant.tier == "free":
-            first_tenant.tier = "enterprise"
-            db.session.commit()
-            app.logger.info("Upgraded default tenant tier: free → enterprise")
-
-        # Create default admin user if none exists
-        if not User.query.filter_by(role="admin").first():
-            # Default password matches INSTALL.md / MANUAL.md / setup wizard.
-            # The setup wizard forces a password change on first login.
-            default_password = "changeme123"
-            admin = User(
-                username="admin",
-                email="admin@localhost",
-                full_name="System Administrator",
-                role="admin",
-                tenant_id=first_tenant.id,
-                is_super_admin=True,
-            )
-            admin.set_password(default_password)
-            db.session.add(admin)
-            db.session.commit()
-            first_tenant.owner_id = admin.id
-            db.session.commit()
-            app.logger.warning(
-                "Default admin user created with password 'changeme123'. "
-                "The setup wizard will force a password change on first login."
-            )
-        else:
-            # Ensure existing admin of the default tenant is super admin + linked
-            for admin_user in User.query.filter_by(
-                role="admin", tenant_id=first_tenant.id
-            ).all():
-                if not admin_user.is_super_admin:
-                    admin_user.is_super_admin = True
-                if not admin_user.tenant_id:
-                    admin_user.tenant_id = first_tenant.id
-                db.session.commit()
-                if not first_tenant.owner_id:
-                    first_tenant.owner_id = admin_user.id
+                        db.session.add(comment)
+                        migrated_count += 1
+                if migrated_count:
                     db.session.commit()
-
-        # Seed existing non-admin users without tenant_id → default tenant
-        orphan_users = User.query.filter(
-            User.tenant_id.is_(None), User.role != "admin"
-        ).all()
-        if orphan_users:
-            linked = 0
-            for u in orphan_users:
-                u.tenant_id = first_tenant.id
-                linked += 1
-            if linked:
+                    app.logger.info(
+                        f"Migration: migrated {migrated_count} Subject.notes → Comment"
+                    )
+            except Exception as e:
+                app.logger.warning(f"Subject.notes migration note: {e}")
+                db.session.rollback()
+    
+            # Initialize default settings
+            from .models import Setting, AuditLog, init_default_settings
+    
+            init_default_settings()
+    
+            # Apply session timeout from settings, fallback to 8h (28800s)
+            timeout_seconds = 28800
+            try:
+                timeout_minutes = Setting.get("session_timeout_minutes", "480")
+                if timeout_minutes is not None:
+                    timeout_seconds = int(timeout_minutes) * 60
+            except Exception as e:
+                app.logger.debug(f"Session timeout fallback: {e}")
+            app.permanent_session_lifetime = timedelta(seconds=timeout_seconds)
+            app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(seconds=timeout_seconds)
+    
+            # Seed default service rates for auto-invoicing
+            try:
+                from .services.invoice_service import seed_service_rates
+    
+                seed_service_rates()
+            except Exception as e:
+                app.logger.debug(f"Service rate seed note: {e}")
+                db.session.rollback()
+    
+            # Purge old audit logs on startup
+            try:
+                retention = int(Setting.get("audit_log_retention_days", "365"))
+                if retention > 0:
+                    deleted = AuditLog.purge_old(retention)
+                    if deleted:
+                        app.logger.info(
+                            f"Startup: purged {deleted} audit log entries older than {retention} days"
+                        )
+            except Exception as e:
+                app.logger.debug(f"Audit log purge note: {e}")
+                db.session.rollback()
+    
+            # Purge expired password reset tokens on startup
+            try:
+                from datetime import datetime, timezone
+    
+                now = datetime.now(timezone.utc)
+                expired = User.query.filter(
+                    User.password_reset_expires.isnot(None),
+                    User.password_reset_expires < now,
+                ).update(
+                    {"password_reset_token": None, "password_reset_expires": None},
+                    synchronize_session="fetch",
+                )
+                db.session.commit()
+                if expired:
+                    app.logger.info(
+                        f"Startup: cleared {expired} expired password reset tokens"
+                    )
+            except Exception as e:
+                app.logger.debug(f"Password reset token cleanup note: {e}")
+                db.session.rollback()
+    
+            # Clean up old background tasks on startup
+            try:
+                from .background import cleanup_old_tasks
+    
+                cleanup_old_tasks(max_age_hours=48)
+            except Exception as e:
+                app.logger.debug(f"Background task cleanup note: {e}")
+                db.session.rollback()
+    
+            # Purge old phone lookups on startup
+            try:
+                from .models import PhoneLookup
+    
+                retention = int(Setting.get("phone_lookup_retention_days", "90"))
+                if retention > 0:
+                    deleted = PhoneLookup.purge_old(retention)
+                    if deleted:
+                        app.logger.info(
+                            f"Startup: purged {deleted} phone lookup entries older than {retention} days"
+                        )
+            except Exception as e:
+                app.logger.debug(f"Phone lookup purge note: {e}")
+                db.session.rollback()
+    
+            # Purge old login logs on startup
+            try:
+                from .models import LoginLog
+    
+                cutoff = datetime.now(timezone.utc) - timedelta(days=365)
+                deleted = LoginLog.query.filter(LoginLog.created_at < cutoff).delete()
+                if deleted:
+                    db.session.commit()
+                    app.logger.info(
+                        f"Startup: purged {deleted} login log entries older than 365 days"
+                    )
+            except Exception as e:
+                app.logger.debug(f"Login log purge note: {e}")
+                db.session.rollback()
+    
+            # Migrate API keys from .env to Setting table (if not already set)
+            try:
+                _env_settings = {
+                    "overheid_api_key": "OVERHEID_API_KEY",
+                    "brave_api_key": "BRAVE_API_KEY",
+                    "twochat_api_key": "TWOCHAT_API_KEY",
+                    "hibp_api_key": "HIBP_API_KEY",
+                    "twochat_whatsapp_number": "TWOCHAT_WHATSAPP_NUMBER",
+                }
+                for setting_name, env_var in _env_settings.items():
+                    existing = Setting.get(setting_name, "")
+                    if not existing:
+                        val = os.environ.get(env_var, "")
+                        if val:
+                            Setting.set(setting_name, val)
+                            app.logger.info(
+                                "Migrated %s from .env to Setting table", setting_name
+                            )
+                db.session.commit()
+            except Exception as e:
+                app.logger.debug("API key migration note: %s", e)
+                db.session.rollback()
+    
+            # Seed first tenant if none exists
+            from .models import Tenant
+    
+            first_tenant = Tenant.query.first()
+            if not first_tenant:
+                import uuid as _uuid
+    
+                first_tenant = Tenant(
+                    id=str(_uuid.uuid4()),
+                    name="Default Organization",
+                    slug="default",
+                    is_active=True,
+                    tier="enterprise",
+                )
+                db.session.add(first_tenant)
                 db.session.commit()
                 app.logger.info(
-                    "Seed: linked %d existing non-admin users to default tenant",
-                    linked,
+                    "Seeded default tenant: %s (%s)", first_tenant.name, first_tenant.id
                 )
+            elif first_tenant.tier == "free":
+                first_tenant.tier = "enterprise"
+                db.session.commit()
+                app.logger.info("Upgraded default tenant tier: free → enterprise")
+    
+            # Create default admin user if none exists
+            if not User.query.filter_by(role="admin").first():
+                # Default password matches INSTALL.md / MANUAL.md / setup wizard.
+                # The setup wizard forces a password change on first login.
+                default_password = "changeme123"
+                admin = User(
+                    username="admin",
+                    email="admin@localhost",
+                    full_name="System Administrator",
+                    role="admin",
+                    tenant_id=first_tenant.id,
+                    is_super_admin=True,
+                )
+                admin.set_password(default_password)
+                db.session.add(admin)
+                db.session.commit()
+                first_tenant.owner_id = admin.id
+                db.session.commit()
+                app.logger.warning(
+                    "Default admin user created with password 'changeme123'. "
+                    "The setup wizard will force a password change on first login."
+                )
+            else:
+                # Ensure existing admin of the default tenant is super admin + linked
+                for admin_user in User.query.filter_by(
+                    role="admin", tenant_id=first_tenant.id
+                ).all():
+                    if not admin_user.is_super_admin:
+                        admin_user.is_super_admin = True
+                    if not admin_user.tenant_id:
+                        admin_user.tenant_id = first_tenant.id
+                    db.session.commit()
+                    if not first_tenant.owner_id:
+                        first_tenant.owner_id = admin_user.id
+                        db.session.commit()
+    
+            # Seed existing non-admin users without tenant_id → default tenant
+            orphan_users = User.query.filter(
+                User.tenant_id.is_(None), User.role != "admin"
+            ).all()
+            if orphan_users:
+                linked = 0
+                for u in orphan_users:
+                    u.tenant_id = first_tenant.id
+                    linked += 1
+                if linked:
+                    db.session.commit()
+                    app.logger.info(
+                        "Seed: linked %d existing non-admin users to default tenant",
+                        linked,
+                    )
 
     init_telemetry(app)
     return app

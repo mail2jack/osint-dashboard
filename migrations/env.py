@@ -24,7 +24,26 @@ import os
 
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+    # Resolve relative SQLite paths to absolute to match app.py's own config,
+    # so Alembic and the Flask engine always point at the same file.
+    if database_url.startswith("sqlite:///") and not database_url.startswith(
+        "sqlite:////"
+    ):
+        rel_path = database_url[len("sqlite:///") :]
+        abs_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", rel_path)
+        )
+        config.set_main_option("sqlalchemy.url", f"sqlite:///{abs_path}")
+    else:
+        config.set_main_option("sqlalchemy.url", database_url)
+else:
+    # No DATABASE_URL set: match app.py's dev-only SQLite fallback instead of
+    # leaving the `driver://user:pass@localhost/dbname` placeholder from
+    # alembic.ini (which cannot be loaded as a dialect).
+    from pathlib import Path
+
+    cms_db_path = Path(__file__).resolve().parent.parent / "cms.db"
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{cms_db_path}")
 
 # Import all models to register them with SQLAlchemy metadata
 # This must happen before target_metadata is assigned.
