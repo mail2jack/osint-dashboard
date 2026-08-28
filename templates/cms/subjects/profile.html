@@ -368,7 +368,7 @@
       <tbody>
         {% for c in profile.contacts %}
         <tr>
-          <td>{{ '✉️ Email' if c.contact_type == 'email' else '📞 Phone' }}</td>
+          <td>{% if c.contact_type == 'email' %}✉️ Email{% elif c.contact_type == 'social' %}🔗 {{ c.platform }}{% else %}📞 Phone{% endif %}</td>
           <td>{{ c.value|redact_for_viewer }}</td>
           <td>{{ '⭐' if c.is_primary else '' }}</td>
           <td>{{ prov(c) }}</td>
@@ -394,11 +394,13 @@
       <input type="hidden" name="item_id">
       <div class="form-grid">
         <div class="form-group"><label>Type</label>
-          <select name="contact_type">
+          <select name="contact_type" onchange="toggleContactPlatform(this)">
             <option value="email">Email</option>
             <option value="phone">Phone</option>
+            <option value="social">Social media</option>
           </select>
         </div>
+        <div class="form-group" data-contact-platform-row style="display:none;"><label>Platform</label><input type="text" name="platform" list="social-platforms"></div>
         <div class="form-group"><label>Value</label><input type="text" name="value" required></div>
         <div class="form-group"><label>Primary</label><input type="checkbox" name="is_primary" style="width:auto;"></div>
         <div class="form-group"><label>Source</label><input type="text" name="source" placeholder="{{ _('Where did you find this?') }}"></div>
@@ -417,6 +419,24 @@
         <button type="button" class="btn-cms small" data-toggle-form="contact-form">{{ _('Cancel') }}</button>
       </div>
     </form>
+    <datalist id="social-platforms">
+      <option value="Facebook"></option>
+      <option value="Twitter / X"></option>
+      <option value="Instagram"></option>
+      <option value="LinkedIn"></option>
+      <option value="TikTok"></option>
+      <option value="YouTube"></option>
+      <option value="Snapchat"></option>
+      <option value="WhatsApp"></option>
+      <option value="Telegram"></option>
+      <option value="Reddit"></option>
+      <option value="Pinterest"></option>
+      <option value="Twitch"></option>
+      <option value="GitHub"></option>
+      <option value="Threads"></option>
+      <option value="Tumblr"></option>
+      <option value="Signal"></option>
+    </datalist>
   </div>
   {% endif %}
 </div>
@@ -1253,6 +1273,7 @@ document.addEventListener('DOMContentLoaded', function () {
         else if (el.name && el.name !== 'item_id') { el.value = ''; }
       });
       if (form.querySelector('[name=item_id]')) { form.querySelector('[name=item_id]').value = ''; }
+      var typeSel = form.querySelector('[name=contact_type]'); if (typeSel) { toggleContactPlatform(typeSel); }
       var t = titleFor(name); if (t) { t.textContent = {{ ('Add ' )|tojson }} + t.textContent.replace(/^(Edit |Add )/, ''); }
       toggleForm(name, true);
     });
@@ -1273,6 +1294,7 @@ document.addEventListener('DOMContentLoaded', function () {
         else { el.value = data[key] != null ? data[key] : ''; }
       });
       if (form.querySelector('[name=item_id]')) { form.querySelector('[name=item_id]').value = data.id != null ? data.id : ''; }
+      var typeSel = form.querySelector('[name=contact_type]'); if (typeSel) { toggleContactPlatform(typeSel); }
       var t = titleFor(name); if (t) { t.textContent = {{ ('Edit ')|tojson }} + t.textContent.replace(/^(Edit |Add )/, ''); }
       toggleForm(name, true);
     });
@@ -1290,6 +1312,13 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(function (e) { alert(e.message); });
     });
   });
+
+  function toggleContactPlatform(el) {
+    var form = el.closest('form[data-item-form]') || el.form;
+    if (!form) { return; }
+    var row = form.querySelector('[data-contact-platform-row]');
+    if (row) { row.style.display = el.value === 'social' ? '' : 'none'; }
+  }
 
   function serializeForm(form) {
     var body = {};
