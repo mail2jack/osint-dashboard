@@ -381,10 +381,16 @@ def save_contacts(subject, contacts_data, replace_existing=False):
 
     for c_data in contacts_data:
         if c_data.get("value"):
+            contact_type = c_data.get("contact_type", "email")
+            if contact_type not in ("email", "phone", "social"):
+                contact_type = "email"
+            if contact_type == "social" and not c_data.get("platform"):
+                raise ValueError("contact_type 'social' requires a platform")
             contact = Contact(
                 subject_id=subject.id,
-                contact_type=c_data.get("contact_type", "email"),
+                contact_type=contact_type,
                 value=c_data.get("value"),
+                platform=c_data.get("platform") if contact_type == "social" else None,
                 is_primary=c_data.get("is_primary", False),
             )
             contact.encrypt_fields()
@@ -1165,15 +1171,23 @@ class SubjectService:
 
     def save_contact(self, subject, data, *, actor_id, contact_id=None):
         """Create or update a ``Contact``; primary mirrors to legacy fields."""
-        contact_type = (data.get("contact_type") or "").strip()
-        if contact_type not in ("email", "phone"):
-            raise ValueError("contact_type must be email or phone")
+        contact_type = (data.get("contact_type") or "").strip().lower()
+        if contact_type not in ("email", "phone", "social"):
+            raise ValueError("contact_type must be email, phone or social")
+        if contact_type == "social" and not (data.get("platform") or "").strip():
+            raise ValueError("contact_type 'social' requires a platform")
 
         if contact_id:
             contact = db.session.get(Contact, contact_id)
             if not contact or str(contact.subject_id) != str(subject.id):
                 raise ValueError("Contact not found")
             contact.contact_type = contact_type
+            if "platform" in data:
+                contact.platform = (
+                    (data.get("platform") or "").strip()
+                    if contact_type == "social"
+                    else None
+                )
             if data.get("value") is not None:
                 self._apply_encrypted(contact, "value", data.get("value"))
             if "is_primary" in data:
@@ -1190,6 +1204,7 @@ class SubjectService:
                 subject_id=subject.id,
                 tenant_id=subject.tenant_id,
                 contact_type=contact_type,
+                platform=(data.get("platform") or "").strip() if contact_type == "social" else None,
                 is_primary=bool(data.get("is_primary")),
                 source=data.get("source"),
                 status=data.get("status") or "candidate",

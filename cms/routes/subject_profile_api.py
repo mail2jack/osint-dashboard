@@ -105,6 +105,7 @@ class ProfileAddressSchema(BaseModel):
 class ProfileContactSchema(BaseModel):
     contact_type: str = ""
     value: str | None = None
+    platform: str | None = None
     is_primary: Any = None
     source: str | None = None
     status: str | None = None
