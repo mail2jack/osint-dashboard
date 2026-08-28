@@ -156,14 +156,15 @@
                     <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Type') }}</label>
-                            <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <select class="contact-type" data-change="toggleContactPlatform" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                                 <option value="email">{{ _('Email') }}</option>
                                 <option value="phone">{{ _('Phone') }}</option>
+                                <option value="social">{{ _('Social Media') }}</option>
                             </select>
                         </div>
                         <div>
                             <label style="font-size:0.75rem;">{{ _('Value') }}</label>
-                            <input type="text" class="contact-value" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                            <input type="text" class="contact-value" placeholder="{{ _('email@example.com, +31612345678 or @accountname') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         </div>
                         <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                             <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
@@ -171,10 +172,34 @@
                             </label>
                         </div>
                     </div>
+                    <div class="contact-platform-row" style="display:none;grid-template-columns:1fr;gap:0.5rem;margin-top:0.5rem;">
+                        <div>
+                            <label style="font-size:0.75rem;">{{ _('Platform') }}</label>
+                            <input type="text" class="contact-platform" list="social-platforms" placeholder="{{ _('facebook, twitter/x, instagram, ...') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                        </div>
+                    </div>
                 </div>
             </div>
             <button type="button" data-click="addContact" style="font-size:0.8rem;padding:0.4rem 0.8rem;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:6px;cursor:pointer;color:#374151;">{{ _('+ Add another contact') }}</button>
             <input type="hidden" name="contacts_data" id="contacts-data" value="">
+            <datalist id="social-platforms">
+                <option value="Facebook"></option>
+                <option value="Twitter / X"></option>
+                <option value="Instagram"></option>
+                <option value="LinkedIn"></option>
+                <option value="TikTok"></option>
+                <option value="YouTube"></option>
+                <option value="Snapchat"></option>
+                <option value="WhatsApp"></option>
+                <option value="Telegram"></option>
+                <option value="Reddit"></option>
+                <option value="Pinterest"></option>
+                <option value="Twitch"></option>
+                <option value="GitHub"></option>
+                <option value="Threads"></option>
+                <option value="Tumblr"></option>
+                <option value="Signal"></option>
+            </datalist>
         </div>
         <div id="vehicle-restricted-fields">
         <div class="form-group">
@@ -880,13 +905,21 @@ function serializeContacts() {
     entries.forEach(entry => {
         const value = entry.querySelector('.contact-value').value.trim();
         if (!value) return;
+        const type = entry.querySelector('.contact-type').value;
         contacts.push({
-            contact_type: entry.querySelector('.contact-type').value,
+            contact_type: type,
             value: value,
+            platform: type === 'social' ? (entry.querySelector('.contact-platform').value.trim() || null) : null,
             is_primary: entry.querySelector('.contact-primary').checked
         });
     });
     document.getElementById('contacts-data').value = JSON.stringify(contacts);
+}
+
+function toggleContactPlatform(el) {
+    const entry = el.closest('.contact-entry');
+    const row = entry.querySelector('.contact-platform-row');
+    if (row) row.style.display = el.value === 'social' ? 'grid' : 'none';
 }
 
 function addContact() {
