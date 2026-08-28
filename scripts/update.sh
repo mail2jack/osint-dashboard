@@ -49,6 +49,10 @@ if [ ! -d "$LOG_DIR" ]; then
     mkdir -p "$LOG_DIR"
     chown osint:osint "$LOG_DIR"
 fi
+# Ignore SIGPIPE from the tee process-substitution below: writing to a pipe
+# whose reader has gone away could otherwise kill the whole deploy with exit
+# code 141 (SIGPIPE) mid-run. See issue with `exec > >(tee ...)` + `set -e`.
+trap '' PIPE
 exec > >(tee -a "$LOG_FILE") 2>&1
 echo "==== update.sh start $(date -u +%Y-%m-%dT%H:%M:%SZ) ===="
 
