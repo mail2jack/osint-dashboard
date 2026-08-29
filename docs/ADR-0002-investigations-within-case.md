@@ -89,7 +89,19 @@ is **not reused**. This keeps existing action/chaining semantics untouched.
 - Impact: numbering must be issued **atomically** (see PR 2 hard requirements;
   `MAX()+1` is unsafe under concurrency and is explicitly forbidden).
 
-### D4. Case-number change policy — decision point to confirm
+### D4. Case-number change policy — immutability applies to administrators too
+
+An issued `case_number` can **not** be changed in substance, **including by
+administrators**. A correction of a wrongly issued/typed case number is not
+done by overwriting `case_number`; instead it is recorded as an **auditable
+alias / correction note** linking old and new number, while the stored
+`case_number` stays the immutable identifier quoted in all derived
+references.
+
+Reason: the investigation reference is **derived** as
+`<case_number>-<sequence_no>`. If the case number were changed, the reference
+of every existing investigation would silently change as well — which violates
+the rule that issued numbers are immutable and never reused (D3).
 
 Current behavior is inconsistent and unvalidated:
 
@@ -103,10 +115,11 @@ Current behavior is inconsistent and unvalidated:
   immutability are not policed; there are **no tests** asserting
   `generate_case_number()` format/uniqueness.
 
-**Recommendation (to confirm):** after issuance, `case_number` changes are
-restricted to administrators and **audit-logged**; the number remains unique
-and never reused. Because the investigation human number is *derived*, this
-policy directly protects the stable identity of `2026-00042-01`.
+**Consequence (applies to DB + UI):** `case_number` becomes read-only after
+issuance; the workflow `case_edit` path (`cms/workflow/routes.py:1046`) may
+no longer overwrite it. Any correction needs an audit-logged alias/correction
+note (PR 2/3), never a write to `case_number`. This keeps the derived
+investigation identity `2026-00042-01` stable.
 
 ### D5. Reporting policy — decision point to confirm
 
@@ -153,7 +166,7 @@ policy directly protects the stable identity of `2026-00042-01`.
 
 | # | Point | Recommended default |
 |---|-------|---------------------|
-| D4 | Case-number changes after issuance | Administrator-only + audit-logged; never reused |
+| D4 | Case-number changes after issuance | **Settled — not a decision point:** immutable for everyone, admin included; corrections via auditable alias/correction note (never overwrite `case_number`) |
 | D5 | Reporting scope | Case-wide unchanged; investigation-specific later |
 | D6 | Manual findings binding | Keep case-wide option (a); no forced `investigation_id` |
 
