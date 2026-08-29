@@ -1,0 +1,35 @@
+{% extends "cms/base.html" %}
+{% block title %}{{ _('Workflow') }} — {{ _('Investigations') }} — {{ case.case_number }}{% endblock %}
+{% block content %}
+<style>
+.workflow-step {
+  border: 2px solid var(--border-color); border-radius: 10px;
+  margin-bottom: 1.5rem; overflow: hidden;
+}
+.workflow-step-header {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem; background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600; font-size: 1rem;
+}
+.workflow-step-header .step-nr {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-primary); color: #fff; font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.workflow-step-body { padding: 1rem; }
+</style>
+<nav style="margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted);">
+    <a href="{{ url_for('cms.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Dashboard') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.dashboard') }}" style="color:var(--text-secondary);text-decoration:none;">{{ _('Investigations') }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <a href="{{ url_for('workflow.case_detail', case_id=case.id) }}" style="color:var(--text-secondary);text-decoration:none;">{{ case.case_number }}</a>
+    <span style="margin:0 0.35rem;">›</span>
+    <span style="color:var(--text-primary);">{{ _('Investigations') }}</span>
+</nav>
+<div class="workflow-step">
+  {% include "cms/workflow/_investigations_section.html" %}
+</div>
+{% endblock %}

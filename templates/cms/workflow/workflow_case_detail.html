@@ -549,8 +549,12 @@ input:-webkit-autofill:focus {
 </div>
 
 <div class="workflow-step">
+  {% include "cms/workflow/_investigations_section.html" %}
+</div>
+
+<div class="workflow-step">
   <div class="workflow-step-header">
-    <span class="step-nr">4</span>
+    <span class="step-nr">5</span>
     Findings
     <span id="findingsCount" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ findings|length }} findings</span>
     <span id="findingsToggleAll" style="font-size:0.78rem;margin-left:0.5rem;">
@@ -653,7 +657,7 @@ input:-webkit-autofill:focus {
 
 <div class="workflow-step">
   <div class="workflow-step-header">
-    <span class="step-nr">5</span>
+    <span class="step-nr">6</span>
     Report
     <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">Generate after completing investigation</span>
   </div>

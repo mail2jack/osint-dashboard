@@ -1,0 +1,77 @@
+<div class="workflow-step-header">
+  <span class="step-nr">{{ step_number|default(4) }}</span>
+  {{ _('Investigations') }}
+  <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ investigations|length }} {{ _('investigations') }}</span>
+  {% if can_write %}
+  <a href="#" onclick="var f=document.getElementById('addInvestigationForm');f.style.display=(f.style.display==='none'||f.style.display==='')?'block':'none';return false;" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ add</a>
+  {% endif %}
+  <a href="?show_archived={{ '0' if show_archived else '1' }}" class="btn-cms small" style="font-size:0.72rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">{{ '🔴 Show active' if show_archived else '📂 Show archived' }}</a>
+</div>
+<div class="workflow-step-body">
+  {% if investigations %}
+    {% for inv in investigations %}
+    <div class="finding-item" data-investigation-id="{{ inv.id }}" style="padding:0.7rem 0.9rem;border-bottom:1px solid var(--border-color);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+        <div>
+          <strong>{{ inv.human_number }}</strong>
+          <span class="badge badge-info" style="font-size:0.7rem;">{{ inv.status }}</span>
+          {% if inv.archived_at %}
+          <span class="badge badge-secondary" style="font-size:0.7rem;">{{ _('Archived') }}</span>
+          {% endif %}
+        </div>
+        <div style="text-align:right;font-size:0.75rem;color:var(--text-muted);">
+          <div>{{ created_by_names.get(inv.created_by, '—') }}</div>
+          <div>{{ inv.created_at.strftime('%d-%m-%Y %H:%M') if inv.created_at else '—' }}</div>
+        </div>
+      </div>
+      <div style="margin-top:0.35rem;"><strong>{{ inv.title }}</strong></div>
+      {% if inv.instructions %}
+      <div style="margin-top:0.2rem;font-size:0.85rem;color:var(--text-secondary);white-space:pre-wrap;">{{ inv.instructions }}</div>
+      {% endif %}
+      {% if can_write %}
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;">
+        {% if inv.archived_at %}
+        <form method="POST" action="{{ url_for('workflow.restore_investigation', investigation_id=inv.id) }}" style="display:inline;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">{{ _('Restore') }}</button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ url_for('workflow.archive_investigation', investigation_id=inv.id) }}" style="display:inline;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" onclick="return confirm('{{ _('Archive this investigation?') }}');" style="background:none;border:1px solid var(--border-color);border-radius:4px;padding:0.15rem 0.5rem;cursor:pointer;font-size:0.78rem;color:var(--text-secondary);">{{ _('Archive') }}</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p style="color:var(--text-muted);">{{ _('No investigations yet.') }}</p>
+  {% endif %}
+
+  {% if can_write %}
+  <div id="addInvestigationForm" style="display:none;margin-top:0.75rem;padding:0.75rem;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);">
+    <form method="POST" action="{{ url_for('workflow.create_investigation', case_id=case.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="display:grid;gap:0.5rem;">
+        <div>
+          <label for="inv-title">{{ _('Title') }} *</label>
+          <input type="text" id="inv-title" name="title" required style="width:100%;">
+        </div>
+        <div>
+          <label for="inv-instructions">{{ _('Instructions') }}</label>
+          <textarea id="inv-instructions" name="instructions" rows="2" style="width:100%;"></textarea>
+        </div>
+        <div>
+          <label for="inv-notes">{{ _('Notes') }}</label>
+          <textarea id="inv-notes" name="notes" rows="2" style="width:100%;"></textarea>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button type="submit" class="btn-cms primary small">{{ _('Create investigation') }}</button>
+          <span style="font-size:0.8rem;color:var(--text-muted);">{{ _('Number is assigned automatically.') }}</span>
+        </div>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
