@@ -1017,12 +1017,20 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.subject-block').forEach(function(block) {
     if (block.dataset.subjectId) {
       block.classList.remove('open');
-      var sel = block.querySelector('select[data-action="update-fields"]');
-      if (sel && sel.value) updateFields(sel);
+      var fields = block.querySelector('.subject-fields');
+      var typeRow = block.querySelector('.subject-type-row');
+      if (fields) fields.style.display = 'none';
+      if (typeRow) typeRow.style.display = 'none';
     } else {
       block.classList.add('open');
     }
   });
+
+  {% if request.args.get('add') %}
+  addSubject();
+  var firstNew = document.querySelector('#subjects-section .subject-block:not([data-subject-id])');
+  if (firstNew) firstNew.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  {% endif %}
 
 });
 </script>
