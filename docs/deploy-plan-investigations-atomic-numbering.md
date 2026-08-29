@@ -114,13 +114,17 @@ SET app.bypass_rls = 'true';
 -- Normalisatie naar veilige CTE: ALLEEN canonieke rijen krijgen jaar/suffix;
 -- afwijkende waarden leveren NULL op en worden nooit ge-cast (P1).
 WITH canon AS (
-  SELECT tenant_id,
-         CASE WHEN case_number ~ '^[0-9]{4}-[0-9]+$'
-              THEN split_part(case_number, '-', 1)::int END   AS jaar,
-         CASE WHEN case_number ~ '^[0-9]{4}-[0-9]+$'
-              THEN split_part(case_number, '-', 2)::numeric END AS suffix
-  FROM cases
-  WHERE case_number IS NOT NULL
+  SELECT * FROM (
+    SELECT tenant_id,
+           CASE WHEN case_number ~ '^[0-9]{4}-[0-9]+$'
+                THEN split_part(case_number, '-', 1)::int END   AS jaar,
+           CASE WHEN case_number ~ '^[0-9]{4}-[0-9]+$'
+                THEN split_part(case_number, '-', 2)::numeric END AS suffix
+    FROM cases
+    WHERE case_number IS NOT NULL
+  ) genormaliseerd
+  -- afwijkende nummers hebben jaar IS NULL en horen niet in (A) als NULL-groep
+  WHERE jaar IS NOT NULL
 )
 -- (A) canonieke nummers per tenant/jaar: aantal + hoogste suffix
 SELECT tenant_id,
@@ -139,7 +143,7 @@ WHERE case_number IS NOT NULL
 ORDER BY tenant_id, case_number;
 ```
 
-Toelichting: de `CASE WHEN`-gatard — dus per rij — voorkomt dat `split_part(...)::int`/`::numeric` ooit op een afwijkende waarde draait; `::numeric` i.p.v. `::bigint` voorkomt ook overflow op extreem lange numerieke suffixes.
+Toelichting: de `CASE WHEN`-guard — dus per rij — voorkomt dat `split_part(...)::int`/`::numeric` ooit op een afwijkende waarde draait; het expliciete `WHERE jaar IS NOT NULL` filtert niet-canonieke rijen uit de CTE, zodat ze niet als een extra NULL-groep in `(A)` verschijnen; `::numeric` i.p.v. `::bigint` voorkomt ook overflow op extreem lange numerieke suffixes.
 
 Interpretatie:
 - `(A)` geeft per `(tenant_id, jaar)` de waarde die `next_seq` moet worden na deploy (`= max_canoniek`).
@@ -149,13 +153,16 @@ Interpretatie:
 
 Binnen het venster, vóór migratie:
 
-1. Maak de backup en bepaal het **concrete, nieuwe** archiefbestand:
+1. Maak de backup en leg daarna het **concreet aangemaakte** archiefbestand vast op basis van bestandsselectie (niet uit de kloktijd afgeleid), en valideer dat het bestaat vóórdat er iets geverifieerd wordt:
    ```bash
    sudo -u osint /opt/osint-dashboard/scripts/backup.sh /opt/osint-dashboard/backups
-   sudo -u osint ls -1t /opt/osint-dashboard/backups/iveras_backup_*.tar.gz.gpg | head -1
-   ARCHIVE="/opt/osint-dashboard/backups/iveras_backup_$(date -u +%Y%m%d_%H%M%S).tar.gz.gpg"
+   ARCHIVE="$(sudo -u osint find /opt/osint-dashboard/backups -maxdepth 1 -type f \
+     -name 'iveras_backup_*.tar.gz.gpg' -printf '%T@ %p\n' \
+     | sort -n | tail -1 | cut -d' ' -f2-)"
+   test -n "$ARCHIVE" && test -f "$ARCHIVE"
+   echo "$ARCHIVE"
    ```
-2. **Verifieer alleen na bevestiging dat het aparte DR-account (via `DR_VERIFY_DATABASE_URL` of `PGSERVICE`/`PGHOST`) én de DR-key/config (`DR_BACKUP_KEY_FILE`, standaard `backup-key.gpg` naast het archief) beschikbaar zijn.** `verify_backup.sh` neemt een concreet archiefbestand (géén `--list`):
+2. **Verifieer alleen na bevestiging dat het aparte DR-account (via `DR_VERIFY_DATABASE_URL` of `PGSERVICE`/`PGHOST`) én de DR-key/config (`DR_BACKUP_KEY_FILE`, standaard `backup-key.gpg` naast het archief) beschikbaar zijn.** `verify_backup.sh` neemt het concreet gekozen, bestaande archiefbestand (géén `--list`):
    ```bash
    sudo -u osint /opt/osint-dashboard/scripts/verify_backup.sh "$ARCHIVE"
    ```
@@ -227,13 +234,16 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
    ```sql
    SET app.bypass_rls = 'true';
    WITH canon AS (
-     SELECT tenant_id,
-            CASE WHEN case_number ~ '^[0-9]{4}-[0-9]+$'
-                 THEN split_part(case_number, '-', 1)::int END   AS jaar,
-            CASE WHEN case_number ~ '^[0-9]{4}-[0-9]+$'
-                 THEN split_part(case_number, '-', 2)::numeric END AS suffix
-     FROM cases
-     WHERE case_number IS NOT NULL
+     SELECT * FROM (
+       SELECT tenant_id,
+              CASE WHEN case_number ~ '^[0-9]{4}-[0-9]+$'
+                   THEN split_part(case_number, '-', 1)::int END   AS jaar,
+              CASE WHEN case_number ~ '^[0-9]{4}-[0-9]+$'
+                   THEN split_part(case_number, '-', 2)::numeric END AS suffix
+       FROM cases
+       WHERE case_number IS NOT NULL
+     ) genormaliseerd
+     WHERE jaar IS NOT NULL
    )
    SELECT c.tenant_id, c.year, c.next_seq,
           coalesce(max(canon.suffix), 0)                          AS max_canoniek,
