@@ -182,8 +182,46 @@ def upgrade() -> None:
             )
 
 
+def _cross_tenant_invoice_duplicates(bind) -> list[tuple[str, int]]:
+    """Invoice numbers that now legally appear in more than one tenant.
+
+    Once such numbers exist the downgrade (which recreates the *global*
+    unique index) is impossible without data work — so the downgrade must
+    stop BEFORE any DDL instead of failing halfway or corrupting data.
+    """
+    rows = bind.execute(
+        sa.text(
+            "SELECT invoice_number, count(DISTINCT tenant_id) AS tenant_count "
+            "FROM invoices "
+            "WHERE invoice_number IS NOT NULL "
+            "GROUP BY invoice_number "
+            "HAVING count(DISTINCT tenant_id) > 1 "
+            "ORDER BY invoice_number"
+        )
+    ).fetchall()
+    return [(row[0], row[1]) for row in rows]
+
+
 def downgrade() -> None:
     bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        # The guard reads across ALL tenants; FORCE RLS would otherwise hide
+        # the very duplicates we must detect.
+        bind.execute(sa.text("SELECT set_config('app.bypass_rls', 'true', true)"))
+
+    duplicates = _cross_tenant_invoice_duplicates(bind)
+    if duplicates:
+        shown = ", ".join(f"{num} ({count} tenants)" for num, count in duplicates[:5])
+        more = "" if len(duplicates) <= 5 else f" (en {len(duplicates) - 5} meer)"
+        raise RuntimeError(
+            "Downgrade van a6b7c8d9e0f1 is not safe: deze invoice_number komt "
+            "in meerdere tenants voor, namelijk "
+            f"{shown}{more}. Het opnieuw aanmaken van de globale unieke index "
+            "ix_invoices_invoice_number zou falen. Veilig rollbackpad: "
+            "fix-forward, of herstel vanaf de pre-deploy backup — voer GEEN "
+            "impliciete alembic downgrade uit."
+        )
+
     if bind.dialect.name == "postgresql":
         op.drop_constraint("uq_tenant_invoice_number", "invoices", type_="unique")
         op.create_index(

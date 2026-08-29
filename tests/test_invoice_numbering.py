@@ -8,8 +8,9 @@ Covers the SQLite-backed behaviour (PostgreSQL additions live in
 - the composite ``(tenant_id, invoice_number)`` constraint rejects same-tenant
   duplicates while allowing equal numbers across tenants;
 - counters are isolated per tenant, gaps are allowed and numbers never reuse;
-- a forced invoice failure on case-create rolls the whole creation back (no
-  orphan case, misleading 500-with-case, or double case on retry).
+- a forced invoice failure on case-create is handled explicitly (clear error,
+  no 500, no partial case/client/subject/AuditLog/invoice/counter) and a retry
+  creates exactly one case and one invoice.
 """
 
 import threading
@@ -236,7 +237,9 @@ class TestInvoiceThroughCaseCreate:
         assert invoices[0].invoice_number == f"FAC-{_YEAR}-00001"
         assert invoices[0].status == InvoiceStatus.DRAFT.value
 
-    def test_invoice_failure_rolls_back_case_create(self, auth_client, db_session, monkeypatch):
+    def test_invoice_failure_is_handled_and_leaves_no_durable_state(
+        self, auth_client, db_session, monkeypatch
+    ):
         db_session.commit()
         from cms.models import Case
         from cms.services import invoice_service
@@ -245,12 +248,22 @@ class TestInvoiceThroughCaseCreate:
             raise IntegrityError("stmt", {}, Exception("simulated collision"))
 
         monkeypatch.setattr(invoice_service, "allocate_invoice_number", _boom)
-        # TESTING propagates the exception instead of returning a 500 page;
-        # either way the transaction never commits. SQLite shares one
-        # connection per thread, so uncommitted rows stay visible across
-        # sessions — roll back the shared transaction to read durable state.
-        with pytest.raises(IntegrityError):
-            auth_client.post("/cms/workflow/case/new", data=_CASE_NEW_DATA)
+
+        # The route must catch the invoice failure and answer with a clear,
+        # user-facing error redirect — never an unhandled 500.
+        resp = auth_client.post("/cms/workflow/case/new", data=_CASE_NEW_DATA)
+        assert resp.status_code == 302, resp.status_code
+        assert resp.status_code != 500
+        assert resp.headers["Location"].endswith("/cms/workflow/case/new")
+        with auth_client.session_transaction() as sess:
+            flashes = sess.get("_flashes", [])
+        assert flashes, "expected a user-facing error flash"
+        assert all(category == "danger" for category, _ in flashes)
+        assert any(
+            "not created" in str(msg).lower() and "invoicing" in str(msg).lower()
+            for _, msg in flashes
+        )
+
         db_session.rollback()
         # No orphan case, no invoice, no counter leak — retry is safe.
         assert Case.query.filter_by(title=_CASE_NEW_DATA["title"]).count() == 0
@@ -272,8 +285,8 @@ class TestInvoiceThroughCaseCreate:
 
         monkeypatch.setattr(invoice_service, "allocate_invoice_number", _flaky)
 
-        with pytest.raises(IntegrityError):
-            auth_client.post("/cms/workflow/case/new", data=_CASE_NEW_DATA)
+        first = auth_client.post("/cms/workflow/case/new", data=_CASE_NEW_DATA)
+        assert first.status_code == 302 and first.status_code != 500
         db_session.rollback()
         assert Case.query.filter_by(title=_CASE_NEW_DATA["title"]).count() == 0
 

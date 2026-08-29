@@ -1067,3 +1067,81 @@ class TestInvoiceRLSAndNumbering:
         with pytest.raises(IntegrityError, match="invoice_number_counters"):
             db.session.flush()
         db.session.rollback()
+
+    def test_downgrade_blocked_on_cross_tenant_duplicates(self, app):
+        """P1: once two tenants legitimately share an invoice_number (the new,
+        intended behaviour) the downgrade that rebuilds the *global* unique
+        index must stop BEFORE any DDL with a clear controlled error. The
+        guard must see through FORCE RLS and leave the schema at the head."""
+        from alembic import command
+        from alembic.config import Config
+
+        from cms.models import Client, Invoice, InvoiceStatus, Tenant
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = Tenant(
+            name="PG Downgrade Tenant B",
+            slug=f"pg-down-b-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.flush()
+        tenant_b_id = tenant_b.id
+
+        set_tenant_context(db, None, bypass_rls=True)
+        client_a = Client(tenant_id=tenant_a, name="PG downgrade client A")
+        client_b = Client(tenant_id=tenant_b_id, name="PG downgrade client B")
+        db.session.add_all([client_a, client_b])
+        db.session.flush()
+        db.session.add_all(
+            [
+                Invoice(
+                    tenant_id=tenant_a,
+                    invoice_number="FAC-2026-00001",
+                    client_id=client_a.id,
+                    issue_date=date.today(),
+                    due_date=date.today(),
+                    status=InvoiceStatus.DRAFT.value,
+                ),
+                Invoice(
+                    tenant_id=tenant_b_id,
+                    invoice_number="FAC-2026-00001",
+                    client_id=client_b.id,
+                    issue_date=date.today(),
+                    due_date=date.today(),
+                    status=InvoiceStatus.DRAFT.value,
+                ),
+            ]
+        )
+        db.session.commit()
+
+        cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+        with pytest.raises(Exception) as exc_info:
+            command.downgrade(cfg, "dd1e2f3a4b5c7")
+        # Walk the cause chain: the guard's RuntimeError must surface with its
+        # message intact (alembic must not hide it behind another exception).
+        blobs: list[str] = []
+        exc: BaseException | None = exc_info.value
+        while exc is not None:
+            blobs.append(str(exc))
+            exc = exc.__cause__
+        combined = " ".join(text_blob for text_blob in blobs if text_blob).lower()
+        assert "downgrade" in combined and "not safe" in combined
+
+        # Aborted before any DDL: still at the head, counter table present.
+        revision = db.session.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar()
+        assert revision == "a6b7c8d9e0f1"
+        counter_table = db.session.execute(
+            text(
+                "SELECT count(*) FROM pg_class "
+                "WHERE relname = 'invoice_number_counters'"
+            )
+        ).scalar()
+        assert counter_table == 1
+
+        set_tenant_context(db, admin.tenant_id)

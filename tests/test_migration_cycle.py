@@ -36,6 +36,23 @@ def _run_alembic(db_file: Path, *args: str) -> None:
     )
 
 
+def _run_alembic_expect_fail(db_file: Path, *args: str) -> str:
+    """Run alembic expecting it to abort; returns combined stderr+stdout."""
+    env = dict(os.environ)
+    env["DATABASE_URL"] = f"sqlite:///{db_file}"
+    result = subprocess.run(
+        [sys.executable, "-m", "alembic", *args],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0, (
+        f"alembic {' '.join(args)} unexpectedly succeeded:\n{result.stdout}"
+    )
+    return f"{result.stdout}\n{result.stderr}"
+
+
 def _seed_legacy_relations(db_file: Path) -> None:
     _run_alembic(db_file, "upgrade", PREV_REVISION)
     conn = sqlite3.connect(db_file)
@@ -521,3 +538,53 @@ class TestMigrationCycle:
         )
         conn.close()
         assert counters == {2026: 12, 2025: 3}
+
+    def test_invoice_downgrade_blocked_on_cross_tenant_duplicates(self, tmp_path):
+        """P1: once two tenants legitimately share an invoice_number (the new,
+        intended behaviour) the downgrade must stop BEFORE any DDL with a clear
+        controlled error — the global unique index cannot be rebuilt safely and
+        an implicit downgrade must never be attempted."""
+        db_file = tmp_path / "invdup.db"
+        _run_alembic(db_file, "upgrade", "head")
+
+        conn = sqlite3.connect(db_file)
+        conn.execute(
+            "INSERT INTO tenants (id, name, slug, is_active, tier, join_code) "
+            "VALUES ('t1', 'T', 't', 1, 'enterprise', 'seed')"
+        )
+        conn.execute(
+            "INSERT INTO tenants (id, name, slug, is_active, tier, join_code) "
+            "VALUES ('t2', 'T2', 't2', 1, 'enterprise', 'seed2')"
+        )
+        conn.executemany(
+            "INSERT INTO invoices "
+            "(id, tenant_id, invoice_number, client_id, issue_date, due_date, status) "
+            "VALUES (?, ?, ?, 'cl1', '2026-01-01', '2026-02-01', 'draft')",
+            [
+                ("ia", "t1", "FAC-2026-00001"),
+                ("ib", "t2", "FAC-2026-00001"),
+                ("ic", "t1", "FAC-2026-00002"),
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        output = _run_alembic_expect_fail(
+            db_file, "downgrade", INVOICE_PREV_REVISION
+        )
+        assert "downgrade" in output.lower() and "not safe" in output.lower()
+
+        # Nothing changed: still at the new head, counter table present and the
+        # composite unique constraint still in place (no partial downgrade).
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        invoice_unique = _unique_index_columns(conn, "invoices")
+        conn.close()
+        assert revision == HEAD_REVISION
+        assert "invoice_number_counters" in tables
+        assert ("tenant_id", "invoice_number") in invoice_unique
+        assert ("invoice_number",) not in invoice_unique
