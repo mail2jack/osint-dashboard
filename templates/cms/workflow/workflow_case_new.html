@@ -58,7 +58,8 @@ input:-webkit-autofill:focus {
     <div class="form-grid">
       <div class="form-group">
         <label>Case number</label>
-        <input type="text" name="case_number" value="{{ generated_case_number }}">
+        <input type="text" name="case_number" value="{{ generated_case_number }}" readonly>
+        <small style="color:var(--text-secondary);">Automatisch toegekend en niet meer wijzigbaar na uitgifte.</small>
       </div>
       <div class="form-group">
         <label>Title *</label>

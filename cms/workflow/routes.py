@@ -804,12 +804,13 @@ def case_new():
         if not subjects:
             subjects.append(_make_subject("subject"))
 
-        raw_number = request.form.get("case_number", "").strip()
-        if not raw_number:
-            raw_number = WorkflowCase.generate_case_number(current_user.tenant_id)
+        # Case numbers are allocated atomically and are immutable after
+        # issuance (ADR-0002 D2/D4) — manual input can never override the
+        # sequential allocation, so the submitted field is ignored.
+        case_number = WorkflowCase.generate_case_number(current_user.tenant_id)
         case = WorkflowCase(
             id=case_id,
-            case_number=raw_number,
+            case_number=case_number,
             title=request.form.get("title", "Nieuw onderzoek"),
             status="open",
             priority=request.form.get("priority", "medium"),
@@ -841,7 +842,7 @@ def case_new():
 
     return render_template(
         "cms/workflow/workflow_case_new.html",
-        generated_case_number=WorkflowCase.generate_case_number(current_user.tenant_id),
+        generated_case_number=WorkflowCase.peek_case_number(current_user.tenant_id),
     )
 
 
@@ -1042,8 +1043,9 @@ def case_edit(case_id):
         client.financial_notes = request.form.get("client_notes", "")
         client.encrypt_naw()
 
-    # update case
-    case.case_number = request.form.get("case_number", case.case_number)
+    # Case numbers are immutable after issuance (ADR-0002 D4) — an issued
+    # case number may never be modified, not even via the edit route.
+    # Corrections belong to an auditable alias/correction note (out of scope).
     case.title = request.form.get("title", case.title)
     case.status = request.form.get("status", case.status)
     case.priority = request.form.get("priority", case.priority)

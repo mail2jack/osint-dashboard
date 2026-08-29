@@ -270,7 +270,7 @@ def create_case() -> flask.Response:
             )
 
         case = Case(
-            case_number=Case.generate_case_number(),
+            case_number=Case.generate_case_number(current_user.tenant_id),
             client_id=data["client_id"],
             title=data["title"],
             description=data.get("description"),
