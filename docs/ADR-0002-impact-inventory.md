@@ -11,7 +11,7 @@ No functional change is made by this PR.
 | `generate_case_number()` uses a `MAX()+1`-style scan (`case_number.like(f"{year}-%")`, integer parse + increment). This is exactly the pattern **forbidden** for PR 2. | `cms/models/__init__.py:716` |
 | Uniqueness today is DB-enforced per tenant. | `uq_tenant_case_number` — `cms/models/__init__.py:630` |
 | `case_number_prefix` general setting is stored but **unused** — candidate for the issuance config, to be decided in PR 2. | model ~`cms/models/__init__.py:3026` |
-| Workflow create lets the user **override the generated number** via `raw_number`; template pre-fills it. This conflicts with "immutable human number" (D3/D4). | `cms/workflow/routes.py:807-812`; `templates/cms/workflow/case_new.html:~61` |
+| Workflow create lets the user **override the generated number** via `raw_number`; template pre-fills it. This conflicts with "immutable human number" (D3/D4). | `cms/workflow/routes.py:807-812`; `templates/cms/workflow/workflow_case_new.html:~61` |
 | Workflow edit writes the submitted `case_number` directly, no validation/audit. Legacy CRUD edit does not allow a number change. | `cms/workflow/routes.py:1046`; `cms/routes/cases_crud.py` |
 | **No tests** assert `generate_case_number()` format/uniqueness — PR 2 must add them (SQLite + PostgreSQL). | `tests/` |
 

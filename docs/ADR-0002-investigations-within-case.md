@@ -63,6 +63,12 @@ container **inside** a `Case`:
 - No own `number` column: the human number is **computed** from
   `case_number` + `sequence_no` (single source of truth; prevents drift).
 
+**Hard tenant invariant** `investigation.tenant_id == investigation.case.tenant_id`:
+`investigations.tenant_id` and `investigations.case_id` may never point to
+different tenants. FORCE RLS alone does **not** guarantee this data invariant
+(e.g. on a bug in a worker or a bypass/`app.bypass_rls` path), so the
+invariant must be enforced explicitly (see D8).
+
 `ResearchAction` is **not renamed** and keeps its UUID identity; `parent_case_id`
 is **not reused**. This keeps existing action/chaining semantics untouched.
 
@@ -161,6 +167,12 @@ investigation identity `2026-00042-01` stable.
   `tests/test_postgres_integration.py:48-57`).
 - Every insert/query must set the explicit tenant context — the counter/UPSERT
   in PR 2 must run **inside the tenant boundary**, never global.
+- **Hard invariant** `investigation.tenant_id == investigation.case.tenant_id`
+  (D1): PR 2 must enforce it with an **explicitly chosen database approach**
+  — e.g. a composite foreign key with a matching unique parent key
+  `(id, tenant_id)` on `cases`, or a database trigger — **plus** service-side
+  validation. Add tests for the **normal path and for a bypass/`app.bypass_rls`
+  path** to prove the invariant holds even when RLS is bypassed.
 
 ### Open decision points (summarized for explicit sign-off)
 
@@ -186,15 +198,23 @@ investigation identity `2026-00042-01` stable.
 ## Phasing (each PR with CI + explicit approval)
 
 1. **PR 1 (this):** ADR + impact inventory. No functional change.
-2. **PR 2 — datamodel + atomic number issuance:**
+2. **PR 2 — datamodel + atomic number issuance (case numbers AND
+   investigation sequences):**
    - New `investigations` table (columns per D1), migration up/down.
    - Unique constraint `(tenant_id, case_id, sequence_no)` (D2).
-   - **Atomic** sequence issuance — never `MAX()+1`; counter/UPSERT (e.g.
+   - A separate safe counter/allocator for **case numbers per tenant AND
+     year** — the current `Case.generate_case_number()`
+     (`cms/models/__init__.py:716`) still uses a `MAX()+1` scan and can
+     still race concurrent creates into a unique-constraint error, so PR 2
+     must replace it with an **atomic** allocation.
+   - A separate counter for **`Investigation.sequence_no` per case**.
+   - **Never `MAX()+1`** for either stream; counter/UPSERT (e.g.
      `INSERT … ON CONFLICT` / transactional counter) tested on **PostgreSQL
      AND SQLite**.
-   - Concurrency test (parallel issuance), RLS test (tenant isolation +
-     FORCE RLS), migration + rollback tests, `test_postgres_integration.py`
-     head literal updated in lockstep.
+   - **Concurrency tests for both number streams** (parallel case creation;
+     parallel investigations within one case), RLS test (tenant isolation +
+     FORCE RLS), migration + rollback tests,
+     `test_postgres_integration.py` head literal updated in lockstep.
 3. **PR 3 — investigation screen within a case:** list/create/archive an
    investigation inside the case detail; no other changes.
 4. **PR 4 — ResearchActions link to investigation:** nullable
@@ -202,8 +222,10 @@ investigation identity `2026-00042-01` stable.
    investigation picker (reuse `_workflow_picker.html` pattern).
 5. **PR 5 — findings/reporting:** per decisions D5/D6 (investigation-scoped
    filters/reports, findings policy).
-6. **PR 6 — historical backfill + rollout:** feature-flag rollout,
-   backfill/renumbering only after explicit stakeholder sign-off.
+6. **PR 6 — historical backfill + rollout:** feature-flag rollout;
+   only **new** `Investigation` records/relations are added — **never** alter
+   existing `Case` or `ResearchAction` identities, numbers, or references
+   (D3/D4: no renumbering of existing case or investigation numbers).
 
 ## Related investigation inventory
 
