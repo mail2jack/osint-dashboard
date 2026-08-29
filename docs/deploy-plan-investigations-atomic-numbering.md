@@ -1,6 +1,6 @@
 # Deployplan — ADR-0002 Onderzoeken + zaaknummering (PR #80 + PR #82)
 
-**Status:** concept — dit plan is pure documentatie en voert zelf **niets** uit op de VPS.
+**Status:** uitgevoerd voor de PR-#82-uitrol van 2026-08-29 (zie §14); dit plan blijft pure documentatie en voert zelf **niets** uit op de VPS. Bevindingen voor volgende runs staan gemarkeerd met `BEVINDING 2026-08-29`.
 **Aanleiding:** PR #80 introduceert het `investigations`-model plus atomic nummeruitgifte voor zaaknummers (`case_number`) per tenant+jaar en voor onderzoek-sequentienummers per case — nooit meer `MAX()+1`-scans. PR #82 bouwt daarop het Onderzoeken-scherm in het zaakdetail (create/archive/restore) en maakt `investigations.case_id`/`tenant_id` immuut op DB-niveau. Beide zijn gemerged op `master`: PR #80 als merge-commit `8b6eb5e178c422871fdf5e0a2d204835dbb06228`, PR #82 als merge-commit `21d1da528893d8fd1fcdbba42b07ce5bca01e556` (bevat PR #80). Dat zijn de **laatst bekende includerende commits**, geen vaste deploytargets (zie stap 4 en 9).
 
 > **Uitsluitingen (harde randvoorwaarden):**
@@ -85,6 +85,8 @@ Doel: tussen baseline en (post-deploy-)checks mag **niemand** zaken aanmaken of 
 sudo systemctl stop osint-dashboard      # UI/API + in-process async-actie-werkers uit
 ```
 Asynchrone actie-uitvoering draait als in-process threads van `osint-dashboard`; `stop` blokkeert dus zaakcreatie én werkers samen. `license-server` (eigen `license.db`) en `spiderfoot` (eigen scanner-DB, niet de app-PostgreSQL) schrijven niet op de app-DB en mogen blijven draaien — de rollout-controle checkt deze diensten wel op `active`.
+
+> **BEVINDING 2026-08-29:** een volledig gestopte app vóór `--confirm DEPLOY-MASTER` doet de interne preflight van `production_rollout.sh` afbreken — doctor checkt `curl localhost:5000/health?quick=1` en faalt dan (rollout stopt vóór enige mutatie, rc=1, rollbackrapport geschreven). De feitelijke schrijfstilstand zit **in** `update.sh` (stop → pull/deps/build → `alembic upgrade` → start). Werkwijze tijdens de uitrol: baseline + venster mét gestopte app; vlak vóór `--confirm` `osint-dashboard` herstarten; de effectieve write-freeze = stop-rond-migratie binnen de deploy + de `pg_stat_activity`-controle uit stap b.
 
 **Stap b — bevestigen dat er geen actieve write-transacties meer bestaan:**
 ```sql
@@ -171,6 +173,7 @@ Binnen het venster, vóór migratie:
    ```bash
    sudo -u osint /opt/osint-dashboard/scripts/verify_backup.sh "$ARCHIVE"
    ```
+   > **BEVINDING 2026-08-29:** zolang `DR_VERIFY_DATABASE_URL`/`PGSERVICE`/`PGHOST` niet geconfigureerd zijn faalt `verify_backup.sh` **alleen** op de `database_restore`-gate (alle andere checks passen). Toegestane, toen expliciet afgesproken vervangende verificatie: lokale scratch-restore in een wegwerp-DB op dezelfde host — decrypt met `gpg -q --batch --yes --pinentry-mode loopback --passphrase-file <naastliggende backup-key.gpg> -d "$ARCHIVE"`, `createdb osint_verify_<ts>`, `gunzip database.sql.gz | psql -d osint_verify_<ts>`, controle `alembic_version` = verwachte vóór-stand + counts + FORCE RLS, dan `dropdb`. De dump restoret triggers/policies mee; superuser (postgres) omzeilt FORCE RLS tijdens het herstel.
 3. Archieven alleen **op-sommen** met `restore.sh --list` (read-only; draait nooit een restore):
    ```bash
    sudo -u osint /opt/osint-dashboard/scripts/restore.sh --list
@@ -210,6 +213,9 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
    sudo /opt/osint-dashboard/scripts/production_rollout.sh --confirm DEPLOY-MASTER
    ```
    De rollout draait: backup → pull `master` (== `TARGET_SHA`, freeze) → deps → frontend-build → `alembic upgrade head` (→ `dd1e2f3a4b5c7`) → restart → health → license-server → privacy-purge → rolloutrapport + mail.
+
+   > **BEVINDING 2026-08-29:** vóór dit commando moet `osint-dashboard` **up** staan (interne preflight/doctor — zie stap 5a; de eerste run brak daarop af vóór enige mutatie, tweede run na herstart was rc=0). De merge-freeze/vensterlogica blijft ongewijzigd geldig: géén merges naar `master`, `TARGET_SHA` ongewijzigd.
+
 7. Daarna pas de post-deploychecks (stap 10).
 
 ## 10. Post-deploychecks (verplicht, in volgorde; binnen het nog actieve venster)
@@ -225,6 +231,13 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
    sudo -u osint git -C /opt/osint-dashboard rev-parse HEAD
    ```
 3. **Healthchecks groen**: `$PROD_BASE_URL/api/v1/health` = `{"status":"ok"}`; `systemctl is-active osint-dashboard license-server`; `curl -fsS http://127.0.0.1:5000/health`.
+4b. **Route-existence Onderzoeken** (PR #82; routes leven onder `/cms/workflow`, **niét** onder `/api/v1`; ongeauthet is `302`→login resp. `400` het bewijs dat de route leeft, `404` betekent afwezig):
+   ```bash
+   CID="$(su - postgres -c "psql -At -d osint_db -c 'SELECT id FROM cases LIMIT 1'")"
+   curl -s -o /dev/null -w '%{http_code}\n' "$PROD_BASE_URL/cms/workflow/case/$CID/investigations"                                # 302
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST --max-time 20 "$PROD_BASE_URL/cms/workflow/api/investigations/00000000-0000-0000-0000-000000000001/archive"   # 400
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST --max-time 20 "$PROD_BASE_URL/cms/workflow/api/case/$CID/investigations"                                       # 400
+   ```
 4. **RLS / FORCE RLS actief** op de drie nieuwe tabellen:
    ```sql
    SET app.bypass_rls = 'true';
@@ -268,15 +281,15 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
    SELECT count(*) FROM investigations;
    ```
    Beide query's vóór en ná een preview-oproep → identieke waarden (geen rij gecreëerd, geen `next_seq` gewijzigd, geen `investigations`-rij).
-7b. **PR #82 immutability-triggers aanwezig** (vastleggen uit `pg_trigger`; op èchte rijen pas in 8 testen):
+7b. **PR #82 immutability-triggers aanwezig** (DB heet `osint_db`; vastleggen uit `pg_trigger`; op èchte rijen pas in 8 testen):
    ```sql
    SET app.bypass_rls = 'true';
-   SELECT tgname
-   FROM pg_trigger
-   WHERE tgrelid = 'investigations'::regclass AND NOT tgisinternal
-   ORDER BY tgname;
+   SELECT r.relname, t.tgname, t.tgenabled::text
+   FROM pg_trigger t JOIN pg_class r ON r.oid = t.tgrelid
+   WHERE NOT t.tgisinternal AND t.tgname LIKE 'trg_%'
+   ORDER BY r.relname, t.tgname;
    ```
-   Verwachting: zowel de `rules_*/sequence_no`-blokkade uit `bb1c2d3e4f5a7` als `trg_investigations_identity_immutable` (case_id/tenant_id, uit `dd1e2f3a4b5c7`) aanwezig.
+   Verwachting: `investigations :: trg_investigations_identity_immutable` (case_id/tenant_id, uit `dd1e2f3a4b5c7`) naast `investigations :: trg_investigations_sequence_no_immutable` en `cases :: trg_cases_case_number_immutable` (uit `bb1c2d3e4f5a7`); `tgenabled` = `O` (origin) voor alle drie.
 8. **Functional (alleen in de aangewezen testtenant, en alleen na expliciet akkoord)**:
    - noteren `next_seq` voor `(testtenant, huidig jaar)`;
    - nieuwe zaak aanmaken via `/cms/workflow/case_new` → nummer = opvolgend (`next_seq + 1`), uniek onder `uq_tenant_case_number`;
@@ -361,3 +374,17 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
 - Geen testzaak in productie zónder expliciet akkoord.
 - Geen rollback/downgrade/restore zónder expliciete beslissing.
 - Geen `master`-mutatie tijdens het onderhoudsvenster (merge-freeze).
+
+## 14. Uitgevoerde uitrol — 2026-08-29 (PR #82; PR #80 was al live)
+
+Uitgevoerd met expliciet akkoord (`--confirm DEPLOY-MASTER`). Bewijsmateriaal op de VPS onder `/opt/osint-dashboard/reports/` en `backups/`:
+
+- **SHA's**: `PREV_SHA`/`.deployed_sha` vóór = `00d71aaec82c9d149fdc210bb41cb7238d63d03b`; `TARGET_SHA` (origin/master tijdens merge-freeze) = `1b7b1d7ab2f6e8405dbb0c221f0ddcb046be0b7e`, bewezen ancestorschap van PR #80 (`8b6eb5e`) én PR #82 (`21d1da5`).
+- **Alembic**: vóór `bb1c2d3e4f5a7` → ná `dd1e2f3a4b5c7` (head).
+- **Baseline** `(A)/(B)`: één canonieke tenant `3a169c92-04a2-48f9-be1b-1fcf930c0f0f` (Default Organization): 2023=25/96, 2024=25/100, 2025=22/99, 2026=31/100; `(B)` = geen afwijkende formaten. Artefact: `reports/rollout/baseline-pr82-20260829T174119Z.txt`.
+- **Backup + DR**: `backups/iveras_backup_20260829_174126.tar.gz.gpg`; `verify_backup.sh` faalde alleen op `database_restore` (DR-account niet geconfigureerd) → opgevangen via de in §7 toegestane lokale scratch-restore: `createdb osint_verify_20260829T174341Z` → `gunzip database.sql.gz | psql` → `alembic_version` = `bb1c2d3e4f5a7`, counts cases=103 / subjects=354 / investigations=0 / investigation_seq_counters=0 / case_number_counters=4, FORCE RLS `true` → `dropdb`. Restore-pad bevestigd.
+- **Deploy**: eerste run rc=1 (geaborteerd door de doctor-check "server gestopt", zie stap 5a); na herstart van `osint-dashboard` rc=0; `update.sh VOLTOOID (1b7b1d7)`; rapport `reports/rollout/rollout-20260829T174632Z.json`.
+- **Post-deploychecks (10.1–10.5 + 7b) groen**: HEAD/`.deployed_sha` = `1b7b1d7`; triggers `trg_investigations_identity_immutable` + `trg_investigations_sequence_no_immutable` (investigations) en `trg_cases_case_number_immutable` (cases), allemaal `O`; FORCE RLS `true` op `investigations`, `case_number_counters`, `investigation_seq_counters`; `case_number_counters.next_seq` = 96/100/99/100 (onveranderd t.o.v. de baseline); cases 25/25/22/31 = baseline; extern health ok; Onderzoeken-routes levend (screen `302`, create/archive/restore `400`, niét `404`); geen drift zónder nieuwe zaken in het venster.
+- **Nog open — stap 10.8** (functionele checks): uitsluitend mét expliciet akkoord en **in de aangewezen testtenant** (beschikbare actieve tenants: Neonova Nederland `00d72d7c-869c-43dd-886e-71282abb5351`, Acme Corp Rotterdam `1d428db5-e5fc-41a9-9ed3-2c12f14b4978`): create/archive/restore incl. dubbele overgang → `409` zonder extra AuditLog; immutability-backstop per **losse sessie** (één falende `UPDATE`, SQLSTATE `23514` controleren, `ROLLBACK`, opnieuw verbinden/herladen + rijcontrole; `1a) case_id` naar tweede geldige testzaak in dezelfde testtenant, `1b) tenant_id` naar andere tenant, `1c) sequence_no`) — daarna formeel venstereinde (10.9) + rapportage (10.10).
+- **Structuur-observaties voor volgende runs**: app-PostgreSQL heet `osint_db` (niét `osint`); `case_number_counters` = `(tenant_id, year, next_seq, updated_at)`; `cases` heeft géén jaar-kolom (jaar = prefix uit `case_number`, exact zoals de §6-CTE); `tenants` kent `slug`/`name` (géén `code`); trigger-enum casten als `tgenabled::text`.
+- **Open vervolgactie (na de rollout)**: `DR_VERIFY_DATABASE_URL`/`PGSERVICE`/`PGHOST` structureel invullen zodat `verify_backup.sh` blijvend groen is zonder scratch-restore.
