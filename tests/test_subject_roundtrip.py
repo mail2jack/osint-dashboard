@@ -116,6 +116,77 @@ class TestWorkflowCreateRoundtrip:
         assert s.address == "Hoofdstraat 42, 1012AB Amsterdam"
         assert s.email is not None
 
+    def test_person_social_contact_platform_roundtrip(self, auth_client):
+        contacts = [
+            {
+                "contact_type": "social",
+                "value": "twitter.handle",
+                "platform": "Twitter / X",
+                "is_primary": True,
+            }
+        ]
+        case = _create_case(
+            auth_client,
+            "RT Social Platform",
+            {
+                "type": "person",
+                "subject_0_contacts_data": json.dumps(contacts),
+            },
+        )
+        s = case.subjects[0]
+        social = [c for c in s.contacts if c.contact_type == "social"]
+        assert len(social) == 1
+        assert social[0].platform == "Twitter / X"
+
+    def test_person_social_contact_edit_requires_platform(self, auth_client):
+        case = _create_case(
+            auth_client,
+            "RT Social Edit NoPlatform",
+            {
+                "type": "person",
+                "name": "Doe",
+                "subject_0_contacts_data": json.dumps(
+                    [
+                        {
+                            "contact_type": "social",
+                            "value": "twitter.handle",
+                            "platform": "Twitter / X",
+                            "is_primary": True,
+                        }
+                    ]
+                ),
+            },
+        )
+        subject = case.subjects[0]
+        resp = auth_client.post(
+            f"/cms/workflow/case/{case.id}/edit",
+            data={
+                "case_number": case.case_number,
+                "title": case.title,
+                "status": "open",
+                "priority": "medium",
+                "description": "",
+                "existing_subject_ids": json.dumps([subject.id]),
+                "removed_subject_ids": "[]",
+                "subj_{}_type".format(subject.id): "person",
+                "subj_{}_name".format(subject.id): "Doe",
+                "subj_{}_contacts_data".format(subject.id): json.dumps(
+                    [
+                        {"contact_type": "social", "value": "twitter.handle"}
+                    ]
+                ),
+            },
+        )
+        assert resp.status_code == 302
+        db.session.expire_all()
+        soc = [
+            c
+            for c in db.session.get(Subject, subject.id).contacts
+            if c.contact_type == "social"
+        ]
+        assert len(soc) == 1
+        assert soc[0].platform == "Twitter / X"
+
 
 class TestWorkflowEditRoundtrip:
     def _edit(self, auth_client, case, subject, fields):
