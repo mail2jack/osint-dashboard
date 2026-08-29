@@ -1,28 +1,30 @@
-# Deployplan — ADR-0002 Onderzoeken + atomic zaaknummering (PR #80)
+# Deployplan — ADR-0002 Onderzoeken + zaaknummering (PR #80 + PR #82)
 
 **Status:** concept — dit plan is pure documentatie en voert zelf **niets** uit op de VPS.
-**Aanleiding:** PR #80 introduceert het `investigations`-model plus atomic nummeruitgifte voor zaaknummers (`case_number`) per tenant+jaar en voor onderzoek-sequentienummers per case — nooit meer `MAX()+1`-scans. PR #80 is gemerged op `master` als merge-commit `8b6eb5e178c422871fdf5e0a2d204835dbb06228`; dat is de **laatste bekende includerende commit**, geen vast deploytarget (zie stap 4 en 9).
+**Aanleiding:** PR #80 introduceert het `investigations`-model plus atomic nummeruitgifte voor zaaknummers (`case_number`) per tenant+jaar en voor onderzoek-sequentienummers per case — nooit meer `MAX()+1`-scans. PR #82 bouwt daarop het Onderzoeken-scherm in het zaakdetail (create/archive/restore) en maakt `investigations.case_id`/`tenant_id` immuut op DB-niveau. Beide zijn gemerged op `master`: PR #80 als merge-commit `8b6eb5e178c422871fdf5e0a2d204835dbb06228`, PR #82 als merge-commit `21d1da528893d8fd1fcdbba42b07ce5bca01e556` (bevat PR #80). Dat zijn de **laatst bekende includerende commits**, geen vaste deploytargets (zie stap 4 en 9).
 
 > **Uitsluitingen (harde randvoorwaarden):**
-> - **Geen PR #3.** Het PR3-onderzoeksscherm, de `ResearchAction`-link, backfill en de "Investigation"-rename-sweep maken géén deel uit van deze rollout en mogen hier niet in worden meegenomen.
+> - **Geen ResearchAction-link, backfill of "Investigation"-rename-sweep.** Het Onderzoeken-scherm zelf (PR #82) is wél onderdeel van deze rollout; de eventuele varianten/uitbreidingen (ResearchAction-koppeling, historische backfill, model-renames) vallen erbuiten.
 > - **Geen VPS-actie** (preflight, read-only queries, dry-run of deploy) vóór expliciet akkoord op dit plan.
 > - **Geen testzaak in productie** zonder mijn expliciete akkoord. Alle functionele verificaties die data schrijven gebeuren uitsluitend in een aangewezen testtenant en pas na dat akkoord.
 > - **Placeholders zijn niet uitvoerbaar**: de operator vervangt vóór elke uitvoering verplicht `PROD_BASE_URL` en legt `TARGET_SHA` vast (zie stap 4). Zonder die invulling is er geen enkele run.
 
 ## 1. Doel
 
-Eén gecontroleerde bron voor de VPS-operator om PR #80 uit te rollen: preflight, schrijfstilstand, nulmeting (case_number-inventarisatie), backup, droogloop, deploy-go en post-deploychecks, plus een expliciet rollbackbeleid. Uitvoering gebeurt nooit vanuit dit document deels zelf; de deploy-run is een losse, expliciet geautoriseerde stap met `--confirm`.
+Eén gecontroleerde bron voor de VPS-operator om **PR #80 + PR #82** uit te rollen: preflight, schrijfstilstand, nulmeting (case_number-inventarisatie), backup, droogloop, deploy-go en post-deploychecks, plus een expliciet rollbackbeleid. Uitvoering gebeurt nooit vanuit dit document deels zelf; de deploy-run is een losse, expliciet geautoriseerde stap met `--confirm`.
 
 ## 2. Scope — wat verandert op productie
 
-- **Migratie `bb1c2d3e4f5a7`** (head na deze rollout; revises `aa1b2c3d4e5f6`, getest op SQLite én PostgreSQL):
+- **Migratie `bb1c2d3e4f5a7`** (PR #80; revises `aa1b2c3d4e5f6`, getest op SQLite én PostgreSQL; in deze rollout sluit hij een combinéerde uitrol af als de PR #80-uitrol nog niet live is — head ná de rollout is altijd `dd1e2f3a4b5c7`):
   1. Nieuwe tabel `investigations` (per case & tenant; composite FK `(case_id, tenant_id)` → `uq_cases_id_tenant`; unique `(tenant_id, case_id, sequence_no)`; CHECK `sequence_no > 0`).
   2. Nieuwe tellertabellen `case_number_counters` (tenant+jaar) en `investigation_seq_counters` (tenant+case) voor atomic issuance; FK `case_number_counters.tenant_id → tenants.id`; CHECK `next_seq > 0` op beide.
   3. **Immutability-triggers**: `cases.case_number` en `investigations.sequence_no` zijn na uitgifte onveranderbaar op DB-niveau (PG: `SQLSTATE 23514`; SQLite: `RAISE(ABORT)`). Zelfs ORM/script/RLS-bypass-paden kunnen ze niet muteren.
   4. **FORCE RLS** + `tenant_isolation`-policy op `investigations`, `case_number_counters`, `investigation_seq_counters` (zelfde patroon als de rest van de RLS-set).
   5. **Seed** `case_number_counters` uit bestaande canonieke zaaknummers (`^[0-9]{4}-[0-9]+$`): `next_seq = hoogst gezaaid nummer`. Bestaande records worden **nooit** gewijzigd of hernummerd; afwijkende formaten worden genegeerd.
 - **Routegedrag**: workflow `case_new` allocceert atomic en negeert handmatig invoerveld `raw_number`; de GET-preview gebruikt `peek_case_number` (read-only, nooit allocatie). `case_edit` schrijft `case_number` niet meer.
-- **Post-deploy lege tabel**: `investigations` en `investigation_seq_counters` bevatten na migratie 0 rijen (geen backfill in deze rollout).
+- **PR #82 — migratie `dd1e2f3a4b5c7`** (revises `bb1c2d3e4f5a7`): DB-triggers (PG én SQLite) die UPDATEs op `investigations.case_id`/`tenant_id` na uitgifte blokkeren (PG `SQLSTATE 23514`; SQLite `RAISE(ABORT)`). De `sequence_no`-immutability uit `bb1c2d3e4f5a7` blijft behouden.
+- **PR #82 — routes**: het Onderzoeken-scherm op zaakdetail (create/archive/restore); create gebruikt uitsluitend de centrale nummeruitgifte (`sequence_service`), nooit handmatig `sequence_no`; archive/restore zetten naast `archived_at` ook `status` (`archived`/`open`); dubbele state-overgang → `409` (JSON) zonder extra AuditLog; viewer krijgt alleen-lezen bij case-toegang.
+- **Post-deploy lege tabel**: `investigations` en `investigation_seq_counters` bevatten na de migratie 0 rijen (geen backfill in deze rollout); eventuele rijen ontstaan pas door de functionele tests in de aangewezen testtenant (stap 10.8).
 
 ## 3. Risicobeoordeling
 
@@ -45,7 +47,7 @@ Alle commando's op de VPS als root. Leg de uitvoer **samen met het rolloutrappor
    PREV_SHA="$(sudo -u osint git -C /opt/osint-dashboard rev-parse HEAD)"
    echo "$PREV_SHA"; cat /opt/osint-dashboard/.deployed_sha
    ```
-2. **`TARGET_SHA` vastleggen (geen vaste SHA!)**: exact `8b6eb5e` is als target verouderd zodra PR #81 of een andere merge op `master` komt. Capture daarom vlak vóór het onderhoudsvenster de actuele `origin/master` en bewijs dat deze PR #80 bevat:
+2. **`TARGET_SHA` vastleggen (geen vaste SHA!)**: exact `8b6eb5e` of exact `21d1da5` is als target verouderd zodra een andere merge op `master` komt. Capture daarom vlak vóór het onderhoudsvenster de actuele `origin/master` en bewijs dat deze **zowel PR #80 als PR #82** bevat:
    ```bash
    sudo -u osint git -C /opt/osint-dashboard fetch --prune origin
    TARGET_SHA="$(sudo -u osint git -C /opt/osint-dashboard rev-parse origin/master)"
@@ -53,14 +55,17 @@ Alle commando's op de VPS als root. Leg de uitvoer **samen met het rolloutrappor
    sudo -u osint git -C /opt/osint-dashboard merge-base --is-ancestor \
        8b6eb5e178c422871fdf5e0a2d204835dbb06228 "$TARGET_SHA" \
      && echo "OK: TARGET_SHA bevat PR #80: $TARGET_SHA"
+   sudo -u osint git -C /opt/osint-dashboard merge-base --is-ancestor \
+       21d1da528893d8fd1fcdbba42b07ce5bca01e556 "$TARGET_SHA" \
+     && echo "OK: TARGET_SHA bevat PR #82: $TARGET_SHA"
    ```
-   Vereisten: `TARGET_SHA` bevat PR #80; capturing-, droogloop- en deploy-momenten draaien op de **zelfde** `TARGET_SHA`; daadwerkelijk wegschrijven gebeurt alleen onder merge-freeze.
+   Vereisten: `TARGET_SHA` bevat PR #80 én PR #82; capturing-, droogloop- en deploy-momenten draaien op de **zelfde** `TARGET_SHA`; daadwerkelijk wegschrijven gebeurt alleen onder merge-freeze.
 3. **Alembic-head vóór migratie** (met `DATABASE_URL` uit `.env`):
    ```bash
    sudo -u osint sh -c 'set -a; . /opt/osint-dashboard/.env; set +a; \
      cd /opt/osint-dashboard && venv/bin/alembic current'
    ```
-   Verwachting: `aa1b2c3d4e5f6` vóór, `bb1c2d3e4f5a7` ná deploy. **Dit is een preflightwaarde: vlak vóór de echte deploy opnieuw verifiëren.**
+   Verwachting: `bb1c2d3e4f5a7` vóór (als de PR #80-uitrol al live is), `dd1e2f3a4b5c7` ná deploy. **Melden de preflight een andere vóór-stand (bijv. `aa1b2c3d4e5f6` omdat PR #80 nog niet live is), dan stopt de operator hier: het betreft een combinéerde rollout van PR #80 + PR #82 en de operator stemt eerst de scope af.** De vóór-waarde wordt vlak vóór de echte deploy opnieuw geverifieerd; ná-waarde is altijd `dd1e2f3a4b5c7`.
 4. **Services & healthchecks**:
    ```bash
    systemctl is-active osint-dashboard license-server spiderfoot
@@ -204,12 +209,12 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
    ```bash
    sudo /opt/osint-dashboard/scripts/production_rollout.sh --confirm DEPLOY-MASTER
    ```
-   De rollout draait: backup → pull `master` (== `TARGET_SHA`, freeze) → deps → frontend-build → `alembic upgrade head` (→ `bb1c2d3e4f5a7`) → restart → health → license-server → privacy-purge → rolloutrapport + mail.
+   De rollout draait: backup → pull `master` (== `TARGET_SHA`, freeze) → deps → frontend-build → `alembic upgrade head` (→ `dd1e2f3a4b5c7`) → restart → health → license-server → privacy-purge → rolloutrapport + mail.
 7. Daarna pas de post-deploychecks (stap 10).
 
 ## 10. Post-deploychecks (verplicht, in volgorde; binnen het nog actieve venster)
 
-1. **Alembic-head** = `bb1c2d3e4f5a7`:
+1. **Alembic-head** = `dd1e2f3a4b5c7`:
    ```bash
    sudo -u osint sh -c 'set -a; . /opt/osint-dashboard/.env; set +a; \
      cd /opt/osint-dashboard && venv/bin/alembic current'
@@ -263,6 +268,15 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
    SELECT count(*) FROM investigations;
    ```
    Beide query's vóór en ná een preview-oproep → identieke waarden (geen rij gecreëerd, geen `next_seq` gewijzigd, geen `investigations`-rij).
+7b. **PR #82 immutability-triggers aanwezig** (vastleggen uit `pg_trigger`; op èchte rijen pas in 8 testen):
+   ```sql
+   SET app.bypass_rls = 'true';
+   SELECT tgname
+   FROM pg_trigger
+   WHERE tgrelid = 'investigations'::regclass AND NOT tgisinternal
+   ORDER BY tgname;
+   ```
+   Verwachting: zowel de `rules_*/sequence_no`-blokkade uit `bb1c2d3e4f5a7` als `trg_investigations_identity_immutable` (case_id/tenant_id, uit `dd1e2f3a4b5c7`) aanwezig.
 8. **Functional (alleen in de aangewezen testtenant, en alleen na expliciet akkoord)**:
    - noteren `next_seq` voor `(testtenant, huidig jaar)`;
    - nieuwe zaak aanmaken via `/cms/workflow/case_new` → nummer = opvolgend (`next_seq + 1`), uniek onder `uq_tenant_case_number`;
@@ -273,7 +287,21 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
      -- verwachting: SQLSTATE 23514 'case_number is immutable after issuance (ADR-0002 D4)'
      ```
      Rij blijft ongewijzigd (OOK zonder `WHERE`-restrictie verwacht de trigger dit te blokkeren).
-   - geen resttoestand achterlaten: testzaak archiveren/verwijderen volgens lokaal protocol.
+   - **PR #82 — onderzoeken-scherm**:
+     - op het zaakdetail (nieuwe zaak van hierboven) opent de Onderzoeken-sectie en toont geen rijen;
+     - create via `/cms/workflow/case/<id>/investigations` → `human_number` = `<case_number>-<seq:02d>`, uniek per case; create wijzigt `sequence_no`/`case_id`/`tenant_id` niet;
+     - archive → `status`=`archived` + `archived_at` gezet; dubbel archive → `409` én **geen extra** AuditLog-rij; restore → `status`=`open` + `archived_at`=NULL; dubbel restore → `409` én geen extra AuditLog-rij;
+     - immutability-backstop op een zojuist gecreëerde `investigations`-rij (alleen blokkade verifiëren, daarna rollback — geen blijvende wijziging):
+       ```sql
+       SET app.bypass_rls = 'true';
+       UPDATE investigations SET case_id   = 'ffffffff-0000-0000-0000-000000000000' WHERE id = :inv;
+       -- verwachting: SQLSTATE 23514 (case_id / tenant_id, uit dd1e2f3a4b5c7)
+       UPDATE investigations SET tenant_id = 'ffffffff-0000-0000-0000-000000000000' WHERE id = :inv;
+       UPDATE investigations SET sequence_no = 999 WHERE id = :inv;
+       -- verwachting: SQLSTATE 23514 (sequence_no, uit bb1c2d3e4f5a7)
+       ```
+   - viewer-alleen-lezen: een viewer met case-toegang ziet de sectie, kan niets aanmaken/archiveren;
+   - geen resttoestand achterlaten: testzaak + testonderzoeken archiveren/verwijderen volgens lokaal protocol.
 9. **Formeel einde venster** (stap 5c): service indien nodig starten, health + `alembic current` groen, operator+tijdstip noteren, pas dan gebruikers informeren.
 10. **Rolloutrapport** (`rollout-<timestamp>.json` + `checks.tsv`) en deze documentatie samen met baseline + backups bewaren.
 
@@ -281,20 +309,20 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
 
 - **Geen automatische rollback en geen automatische restore.** Download-downgrade of DB-restore alleen na een **expliciete beslissing** van operator + verantwoordelijke; nooit uit een script.
 - **Voorkeur fix-forward.** De nieuwe tabellen zijn additief; oudere code kan een lege `investigations`-tabel en de tellers ongezien tolereren. Als iets misgaat: eerst corrigeren, niet terugdraaien.
-- **`alembic downgrade` uitsluitend bij expliciete instructie** (en nooit automatisch), en alleen wanneer dataherstel dit werkelijk vereist. De downgrade verwijdert eerst de immutability-triggers, daarna de drie tabellen en `uq_cases_id_tenant` — bestaande zaaknummers blijven onveranderd staan.
+- **`alembic downgrade` uitsluitend bij expliciete instructie** (en nooit automatisch), en alleen wanneer dataherstel dit werkelijk vereist. De downgrade van `dd1e2f3a4b5c7` verwijdert eerst de PR-#82 identity-triggers (case_id/tenant_id); de downgrade van `bb1c2d3e4f5a7` verwijdert daarna de `sequence_no`-/`case_number`-triggers en de drie tabellen + `uq_cases_id_tenant` — bestaande zaaknummers blijven onveranderd staan.
 - **Rollback-pad (alleen toegestaan)**: het bestaande `RUNBOOK.md`-proces met een **expliciete SHA** en de pre-deploy backup:
   - terug naar `PREV_SHA` via `git checkout <PREV_SHA>` (freeze verhoogd naar alle branches; géén losse experimentele checkouts),
   - `scripts/restore.sh --backup <archieflabel uit stap 7>` (met `restore.sh --list` eerst het archief bevestigen),
-  - downgrade van `bb1c2d3e4f5a7` alleen op expliciete instructie, en nooit zonder overleg.
+  - downgrade van `dd1e2f3a4b5c7` (en zo nodig `bb1c2d3e4f5a7`) alleen op expliciete instructie, en nooit zonder overleg.
 - **Incidentbewijs & deployrapport bewaren**: bij een incident het venster gesloten houden (maintenance); rolloutrapport, deploylog, baseline `(A)/(B)`, backup-archieflabel, `TARGET_SHA`/`PREV_SHA` en alle check-uitvoer bewaren; eerst met de verantwoordelijke delen vóór enige actie.
 
 ## 12. Beslispunten / goedkeuringen
 
 - [ ] akkoord op dit rolloutplan (verantwoordelijke)
 - [ ] `PROD_BASE_URL` ingevuld door de operator (geen placeholder)
-- [ ] `TARGET_SHA` vastgelegd + bevat PR #80 via `merge-base --is-ancestor`
-- [ ] groene CI op `TARGET_SHA` (incl. de (deels) nog lopende docs-PR #81 zelf)
-- [ ] preflight (stap 4) geslaagd; `PREV_SHA`/`TARGET_SHA`/head/vrije rollbackbeslissing vastgelegd
+- [ ] `TARGET_SHA` vastgelegd + bevat PR #80 (`8b6eb5e`) én PR #82 (`21d1da5`) via `merge-base --is-ancestor`
+- [ ] groene CI op `TARGET_SHA`
+- [ ] preflight (stap 4) geslaagd, **inclusief bevestigde alembic-vóórstand** (`bb1c2d3e4f5a7` óf combinéerde rollout-afspraak); `PREV_SHA`/`TARGET_SHA`/head/vrije rollbackbeslissing vastgelegd
 - [ ] onderhoudsvenster geopend; `osint-dashboard` gestopt; geen actieve write-transacties (stap 5)
 - [ ] baseline-inventarisatie (stap 6) binnen het venster opgeslagen
 - [ ] verse, geverifieerde backup (stap 7) + label in rapport; DR-account en DR-key beschikbaar bevestigd
@@ -303,13 +331,13 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
 - [ ] expliciete `--confirm DEPLOY-MASTER`-go (operator + verantwoordelijke)
 - [ ] post-deploychecks (stap 10) allemaal groen; `.deployed_sha`/HEAD == `TARGET_SHA`
 - [ ] formeel einde venster genoteerd; gebruikers geïnformeerd (stap 10.9)
-- [ ] (alleen mét akkoord) functionele test in aangewezen testtenant + geen resttoestand
+- [ ] (alleen mét akkoord) functionele test in aangewezen testtenant **inclusief het Onderzoeken-scherm (create/archive/restore, dubbele overgang → 409, immutability-backstop)** + geen resttoestand
 
 ## 13. Expliciete uitsluitingen (herhaling)
 
 - Geen deploy, preflight-uitvoering, read-only query of droogloop zónder akkoord op dit plan.
 - Geen uitvoering met oningevulde `PROD_BASE_URL` of zonder vastgelegde `TARGET_SHA`.
-- Geen PR3-materiaal in deze rollout; geen codewijziging in deze PR.
+- Geen PR3-materiaal **buiten het Onderzoeken-scherm** in deze rollout (geen ResearchAction-link, backfill of rename-sweep); geen codewijziging in deze docs-PR.
 - Geen testzaak in productie zónder expliciet akkoord.
 - Geen rollback/downgrade/restore zónder expliciete beslissing.
 - Geen `master`-mutatie tijdens het onderhoudsvenster (merge-freeze).
