@@ -628,6 +628,10 @@ class Case(db.Model):
     __tablename__ = "cases"
     __table_args__ = (
         db.UniqueConstraint("tenant_id", "case_number", name="uq_tenant_case_number"),
+        # Parent-key for the composite FK from investigations / counters:
+        # enforces investigation.tenant_id == case.tenant_id at DB level
+        # (ADR-0002 D8), even under an RLS bypass.
+        db.UniqueConstraint("id", "tenant_id", name="uq_cases_id_tenant"),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -698,6 +702,12 @@ class Case(db.Model):
     findings = db.relationship(
         "Finding", backref="case", lazy="dynamic", cascade="all, delete-orphan"
     )
+    investigations = db.relationship(
+        "Investigation",
+        back_populates="case",
+        lazy="dynamic",
+        foreign_keys="Investigation.case_id",
+    )
     financial_records = db.relationship(
         "FinancialRecord", backref="case", lazy="dynamic"
     )
@@ -713,24 +723,26 @@ class Case(db.Model):
     )
 
     @staticmethod
-    def generate_case_number(tenant_id: str | None = None) -> str:
-        """Generate unique case number: YYYY-XXXXX format, sequential per tenant."""
-        year = datetime.now().year
-        q = Case.query.filter(Case.case_number.like(f"{year}-%"))
-        if tenant_id:
-            q = q.filter(Case.tenant_id == tenant_id)
-        last_case = q.order_by(Case.created_at.desc()).first()
+    def generate_case_number(tenant_id: str) -> str:
+        """Atomically allocate the next case number for a tenant + year.
 
-        if last_case:
-            try:
-                last_num = int(last_case.case_number.split("-")[1])
-                next_num = last_num + 1
-            except Exception:
-                next_num = 1
-        else:
-            next_num = 1
+        Uses a per-(tenant_id, year) counter table with a database UPSERT —
+        never ``MAX()+1`` — so parallel creates get unique, sequential
+        numbers (ADR-0002 D2/D3, PR2).
+        """
+        from cms.services.sequence_service import allocate_case_number
 
-        return f"{year}-{next_num:05d}"
+        return allocate_case_number(tenant_id)
+
+    @staticmethod
+    def peek_case_number(tenant_id: str) -> str:
+        """Read-only preview of the next case number (informational display).
+
+        Never allocates or mutates the counter — only used for form previews.
+        """
+        from cms.services.sequence_service import preview_case_number
+
+        return preview_case_number(tenant_id)
 
     def transition_status(self, new_status: str, user_id: str) -> bool:
         valid_transitions = {
@@ -2039,6 +2051,139 @@ class ActionFinding(db.Model):
     finding_id = db.Column(
         db.String(36), db.ForeignKey("findings.id"), primary_key=True
     )
+
+
+class InvestigationStatus(PyEnum):
+    """Investigation lifecycle statuses (ADR-0002)."""
+
+    OPEN = "open"
+    ARCHIVED = "archived"
+
+
+class Investigation(db.Model):
+    """
+    An "Onderzoek" container inside a Case (ADR-0002).
+
+    Each investigation gets a per-case ``sequence_no``; together with the
+    immutable case number it forms the human reference
+    ``<case_number>-<sequence_no:02d>`` (e.g. ``2026-00042-01``).
+    ``sequence_no`` is issued atomically from ``investigation_seq_counters``
+    and is never changed or reused.
+    """
+
+    __tablename__ = "investigations"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "tenant_id",
+            "case_id",
+            "sequence_no",
+            name="uq_investigation_seq_per_case",
+        ),
+        # Hard tenant invariant (ADR-0002 D8): the referenced case must belong
+        # to the same tenant — enforced by the DB even under an RLS bypass.
+        db.ForeignKeyConstraint(
+            ["case_id", "tenant_id"],
+            ["cases.id", "cases.tenant_id"],
+            name="fk_investigations_case_tenant",
+        ),
+        db.Index("ix_investigations_case_id", "case_id"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    case_id = db.Column(db.String(36), nullable=False)
+    sequence_no = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(300), nullable=False)
+    instructions = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    status = db.Column(
+        db.String(20), nullable=False, default=InvestigationStatus.OPEN.value
+    )
+    archived_at = db.Column(db.DateTime, nullable=True, index=True)
+    created_by = db.Column(
+        db.String(36), db.ForeignKey("users.id"), nullable=True, index=True
+    )
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    case = db.relationship(
+        "Case",
+        back_populates="investigations",
+        foreign_keys=[case_id],
+        primaryjoin="Investigation.case_id == Case.id",
+        lazy="selectin",
+    )
+
+    @property
+    def human_number(self) -> str:
+        """Read-only human reference: ``<case_number>-<sequence_no:02d>`` (ADR-0002 D2)."""
+        return f"{self.case.case_number}-{self.sequence_no:02d}"
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "tenant_id": self.tenant_id,
+            "sequence_no": self.sequence_no,
+            "human_number": self.human_number,
+            "title": self.title,
+            "instructions": self.instructions,
+            "notes": self.notes,
+            "status": self.status,
+            "archived_at": self.archived_at.isoformat() if self.archived_at else None,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class CaseNumberCounter(db.Model):
+    """Atomic counter for case numbers, keyed per (tenant_id, year) (ADR-0002 D2).
+
+    ``next_seq`` holds the next number to hand out. Allocation uses a database
+    UPSERT (never ``MAX()+1``) so parallel creates get unique, sequential
+    numbers. Gaps are allowed; numbers are never reused or changed.
+    """
+
+    __tablename__ = "case_number_counters"
+    __table_args__ = (db.PrimaryKeyConstraint("tenant_id", "year"),)
+
+    tenant_id = db.Column(db.String(36), primary_key=True)
+    year = db.Column(db.Integer, primary_key=True)
+    next_seq = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class InvestigationSeqCounter(db.Model):
+    """Atomic counter for investigation sequence numbers, keyed per
+    (tenant_id, case_id) (ADR-0002 D2/D8).
+
+    The composite FK guarantees the counter row can only exist for a case that
+    belongs to the same tenant — the hard invariant
+    ``investigation.tenant_id == investigation.case.tenant_id`` holds even
+    under an RLS bypass.
+    """
+
+    __tablename__ = "investigation_seq_counters"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("tenant_id", "case_id"),
+        db.ForeignKeyConstraint(
+            ["case_id", "tenant_id"],
+            ["cases.id", "cases.tenant_id"],
+            name="fk_investigation_seq_counter_case_tenant",
+        ),
+    )
+
+    tenant_id = db.Column(db.String(36), primary_key=True)
+    case_id = db.Column(db.String(36), primary_key=True)
+    next_seq = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class FindingScreenshot(db.Model):
@@ -4334,6 +4479,9 @@ _TENANT_MODELS = [
     ServiceRate,
     SubjectIdentifier,
     SubjectFact,
+    Investigation,
+    CaseNumberCounter,
+    InvestigationSeqCounter,
 ]
 
 
