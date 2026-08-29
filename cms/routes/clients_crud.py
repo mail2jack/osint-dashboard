@@ -203,6 +203,8 @@ def create_client() -> flask.Response:
 
         client = Client(name=name)
         client.is_company = bool(data.get("is_company"))
+        db.session.add(client)
+        db.session.flush()  # Assign client.id before creating related contacts/addresses
 
         # Set encrypted fields
         encrypted_fields = [
@@ -232,6 +234,7 @@ def create_client() -> flask.Response:
                             client_id=client.id,
                             contact_type=c_data.get("contact_type", "email"),
                             value=c_data.get("value"),
+                            platform=c_data.get("platform"),
                             is_primary=c_data.get("is_primary", False),
                         )
                         contact.encrypt_fields()
@@ -380,6 +383,7 @@ def edit_client(client_id: str) -> flask.Response:
                             client_id=client.id,
                             contact_type=c_data.get("contact_type", "email"),
                             value=c_data.get("value"),
+                            platform=c_data.get("platform"),
                             is_primary=c_data.get("is_primary", False),
                         )
                         contact.encrypt_fields()
