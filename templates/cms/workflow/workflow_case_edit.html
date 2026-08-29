@@ -761,6 +761,15 @@ document.addEventListener('DOMContentLoaded', function() {
       clientBody.style.display = 'none';
       if (clientChevron) clientChevron.style.transform = '';
     }
+    document.querySelectorAll('#subjects-section .subject-block').forEach(function(b) {
+      if (b.classList.contains('open')) {
+        b.classList.remove('open');
+        var f = b.querySelector('.subject-fields');
+        var t = b.querySelector('.subject-type-row');
+        if (f) f.style.display = 'none';
+        if (t) t.style.display = 'none';
+      }
+    });
     var container = document.getElementById('subjects-container');
     var idx = _newIdx++;
     var div = document.createElement('div');
