@@ -200,3 +200,60 @@ class TestWorkflowCaseEditRdwRoundtrip:
         rdw = subj.rdw_data or {}
         assert rdw["handelsbenaming"] == ""
         assert rdw["vermogen"] == ""
+
+
+class TestWorkflowCaseDetailPickerData:
+    """The RDW action picker must see vehicles via license_plate / rdw_data.
+
+    Regression for the "No license plates available" bug: the picker built
+    RDW items exclusively from ``identification_number`` (only populated on
+    legacy/vessel subjects), while workflow vehicle subjects store the plate
+    in ``license_plate`` (encrypted at rest) and ``rdw_data.kenteken``.
+    """
+
+    def test_vehicle_subject_exposes_plate_for_rdw_picker(self, auth_client):
+        case = _make_case(owner=None)
+        subj = _vehicle_subject()
+        case.subjects.append(subj)
+        db.session.commit()
+
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200, resp.status_code
+        html = resp.get_data(as_text=True)
+
+        marker = "const SUBJECTS = "
+        assert marker in html
+        start = html.index(marker) + len(marker)
+        end = html.index(";", start)
+        entries = json.loads(html[start:end])
+
+        vehicle = [e for e in entries if e.get("subject_type") == "vehicle"]
+        assert vehicle, "expected a vehicle entry in the SUBJECTS config"
+        entry = vehicle[0]
+        assert entry["license_plate"] == "AB-123-K"
+        assert (entry["rdw_data"] or {}).get("kenteken") == "AB-123-K"
+
+    def test_vehicle_without_plate_yields_no_rdw_kenteken(self, auth_client):
+        case = _make_case(owner=None)
+        subj = _vehicle_subject()
+        subj.license_plate = None
+        subj.rdw_data = {}
+        db.session.add(subj)
+        db.session.commit()
+        case.subjects.append(subj)
+        db.session.commit()
+
+        resp = auth_client.get(f"/cms/workflow/case/{case.id}")
+        assert resp.status_code == 200, resp.status_code
+        html = resp.get_data(as_text=True)
+
+        marker = "const SUBJECTS = "
+        start = html.index(marker) + len(marker)
+        end = html.index(";", start)
+        entries = json.loads(html[start:end])
+
+        vehicle = [e for e in entries if e.get("subject_type") == "vehicle"]
+        assert vehicle
+        entry = vehicle[0]
+        assert not (entry["license_plate"] or "").strip()
+        assert not (entry["rdw_data"] or {}).get("kenteken")

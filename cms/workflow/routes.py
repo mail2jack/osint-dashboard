@@ -938,6 +938,7 @@ def case_detail(case_id):
                     "registration_number": s.registration_number,
                     "legal_form": s.legal_form,
                     "license_plate": s.license_plate,
+                    "rdw_data": s.rdw_data or {},
                     "vin": s.vin,
                     "brand": s.brand,
                     "vehicle_type": s.vehicle_type,
