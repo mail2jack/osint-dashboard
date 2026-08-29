@@ -309,7 +309,7 @@ input:-webkit-autofill:focus {
     <span class="step-nr">2</span>
     Subject{% if subjects_data|length != 1 %}s{% endif %}
     {% if subjects_data %}<span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;margin-left:auto;">{{ subjects_data|length }} subject{% if subjects_data|length > 1 %}s{% endif %} ✓</span>{% endif %}
-    <a href="{{ url_for('workflow.case_edit', case_id=case.id) }}" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ add</a>
+    <a href="{{ url_for('workflow.case_edit', case_id=case.id, add='1') }}" style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;">+ add</a>
   </div>
   <div class="workflow-step-body">
     {% if subjects_data %}
