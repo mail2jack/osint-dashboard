@@ -16,13 +16,17 @@ from flask import (
     send_from_directory,
     url_for,
 )
+from flask_babel import gettext as _
 from flask_login import current_user, login_required
 
 from cms.auth import ensure_case_access, ensure_tenant_access
-from cms.models import AuditLog, UserRole, db, report_include_filter
+from cms.models import AuditLog, Investigation, User, UserRole, db, report_include_filter
 from cms.routes.dashboard import _get_cached_health
 from cms.routes.utils import find_similar_clients, normalize_phone, normalize_postcode
 from cms.services.invoice_service import auto_invoice_case_created
+from cms.services.sequence_service import (
+    create_investigation as sequence_create_investigation,
+)
 from cms.services.subject_service import subject_service
 from cms.workflow.actions.registry import action_category
 
@@ -48,6 +52,38 @@ from .research import (
 
 logger = logging.getLogger(__name__)
 
+_INVESTIGATOR_ROLES = (
+    UserRole.INVESTIGATOR.value,
+    UserRole.SENIOR_INVESTIGATOR.value,
+    UserRole.ADMIN.value,
+    UserRole.OWNER.value,
+)
+
+
+def _current_user_is_investigator() -> bool:
+    """Writer check for the investigations section (role-based, matches scope)."""
+    return current_user.is_authenticated and current_user.role in _INVESTIGATOR_ROLES
+
+
+def _load_case_investigations(case_id: str, show_archived: bool):
+    """Load investigations for a case (archived filtered unless shown) + creator names."""
+    investigations = (
+        Investigation.query.filter_by(case_id=case_id)
+        .filter(
+            Investigation.archived_at.is_(None)
+            if not show_archived
+            else sa.true()
+        )
+        .order_by(Investigation.created_at.desc(), Investigation.sequence_no.desc())
+        .all()
+    )
+    creator_ids = {inv.created_by for inv in investigations if inv.created_by}
+    created_by_names = {}
+    if creator_ids:
+        for u in User.query.filter(User.id.in_(creator_ids)).all():
+            created_by_names[u.id] = u.username or u.full_name or u.id
+    return investigations, created_by_names
+
 
 def _investigator_required(f):
     from functools import wraps
@@ -56,12 +92,7 @@ def _investigator_required(f):
     def wrapper(*args, **kwargs):
         if not current_user.is_authenticated:
             return jsonify({"error": "Forbidden"}), 403
-        if current_user.role not in (
-            UserRole.INVESTIGATOR.value,
-            UserRole.SENIOR_INVESTIGATOR.value,
-            UserRole.ADMIN.value,
-            UserRole.OWNER.value,
-        ):
+        if current_user.role not in _INVESTIGATOR_ROLES:
             return jsonify({"error": "Forbidden"}), 403
         return f(*args, **kwargs)
 
@@ -888,6 +919,8 @@ def case_detail(case_id):
     for link in links:
         finding_actions.setdefault(link.finding_id, []).append(link.action_id)
 
+    investigations, created_by_names = _load_case_investigations(case_id, show_archived)
+
     client = db.session.get(WorkflowClient, case.client_id) if case.client_id else None
     with db.session.no_autoflush:
         if client:
@@ -973,6 +1006,10 @@ def case_detail(case_id):
             actions=actions,
             findings=findings,
             finding_actions=finding_actions,
+            investigations=investigations,
+            created_by_names=created_by_names,
+            can_write=_current_user_is_investigator(),
+            step_number=4,
             action_types=ACTION_REGISTRY,
             action_credits=action_credits,
             subject_presets=SUBJECT_TYPE_PRESETS,
@@ -981,6 +1018,83 @@ def case_detail(case_id):
             dorks_library=dorks_library,
             paid_enabled=paid_channels_enabled(),
         )
+
+
+@workflow_bp.route("/case/<case_id>/investigations")
+@login_required
+def investigations_index(case_id):
+    """Read-only investigations for a case. Gated by case access only, so
+    viewers with case access can read too (writes stay investigator-gated)."""
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        abort(404)
+    ensure_case_access(case)
+    show_archived = request.args.get("show_archived") == "1"
+    investigations, created_by_names = _load_case_investigations(case.id, show_archived)
+    return render_template(
+        "cms/workflow/workflow_case_investigations.html",
+        case=case,
+        investigations=investigations,
+        created_by_names=created_by_names,
+        show_archived=show_archived,
+        can_write=_current_user_is_investigator(),
+        step_number=4,
+    )
+
+
+@workflow_bp.route("/api/case/<case_id>/investigations", methods=["POST"])
+@login_required
+@_investigator_required
+def create_investigation(case_id):
+    case = db.session.get(WorkflowCase, case_id)
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    ensure_case_access(case)
+
+    payload = request.get_json(silent=True) if request.is_json else request.form
+    payload = payload or {}
+    title = (payload.get("title") or "").strip()
+    instructions = (payload.get("instructions") or "").strip() or None
+    notes = (payload.get("notes") or "").strip() or None
+
+    if not title:
+        if request.is_json:
+            return jsonify({"error": "Title is required"}), 400
+        flash(_("Title is required."), "danger")
+        return redirect(url_for("workflow.case_detail", case_id=case_id))
+
+    try:
+        investigation = sequence_create_investigation(
+            tenant_id=case.tenant_id,
+            case_id=case_id,
+            title=title,
+            instructions=instructions,
+            notes=notes,
+            created_by=current_user.id,
+        )
+        db.session.flush()
+    except ValueError as exc:
+        db.session.rollback()
+        if request.is_json:
+            return jsonify({"error": str(exc)}), 400
+        flash(str(exc), "danger")
+        return redirect(url_for("workflow.case_detail", case_id=case_id))
+
+    AuditLog.log(
+        user_id=current_user.id,
+        action="create",
+        entity_type="investigation",
+        entity_id=investigation.id,
+        ip_address=request.remote_addr,
+        case_id=case_id,
+        description=f"Workflow created investigation: {investigation.human_number}",
+    )
+    db.session.commit()
+
+    if request.is_json:
+        return jsonify({"ok": True, "investigation": investigation.to_dict()})
+    flash(_("Investigation created."), "info")
+    return redirect(url_for("workflow.case_detail", case_id=case_id))
 
 
 @workflow_bp.route("/case/<case_id>/edit", methods=["GET", "POST"])
@@ -2257,4 +2371,76 @@ def restore_finding(finding_id):
     flash("Finding restored.", "info")
     return redirect(
         request.referrer or url_for("workflow.case_detail", case_id=finding.case_id)
+    )
+
+
+def _get_writable_investigation(investigation_id):
+    """Fetch an investigation and enforce case access; ``None`` when missing."""
+    investigation = db.session.get(Investigation, investigation_id)
+    if not investigation:
+        return None
+    case = (
+        db.session.get(WorkflowCase, investigation.case_id)
+        if investigation.case_id
+        else None
+    )
+    if not case:
+        return None
+    ensure_case_access(case)
+    return investigation
+
+
+@workflow_bp.route("/api/investigations/<investigation_id>/archive", methods=["POST"])
+@login_required
+@_investigator_required
+def archive_investigation(investigation_id):
+    """Archive an investigation. Never mutates number, case_id or tenant_id."""
+    investigation = _get_writable_investigation(investigation_id)
+    if not investigation:
+        return jsonify({"error": "Not found"}), 404
+
+    investigation.archived_at = datetime.now(UTC)
+    AuditLog.log(
+        user_id=current_user.id,
+        action="archive",
+        entity_type="investigation",
+        entity_id=investigation.id,
+        ip_address=request.remote_addr,
+        case_id=investigation.case_id,
+        description=f"Workflow archived investigation: {investigation.human_number}",
+    )
+    db.session.commit()
+    if request.is_json:
+        return jsonify({"ok": True})
+    flash(_("Investigation archived."), "info")
+    return redirect(
+        request.referrer or url_for("workflow.case_detail", case_id=investigation.case_id)
+    )
+
+
+@workflow_bp.route("/api/investigations/<investigation_id>/restore", methods=["POST"])
+@login_required
+@_investigator_required
+def restore_investigation(investigation_id):
+    """Restore an archived investigation."""
+    investigation = _get_writable_investigation(investigation_id)
+    if not investigation:
+        return jsonify({"error": "Not found"}), 404
+
+    investigation.archived_at = None
+    AuditLog.log(
+        user_id=current_user.id,
+        action="restore",
+        entity_type="investigation",
+        entity_id=investigation.id,
+        ip_address=request.remote_addr,
+        case_id=investigation.case_id,
+        description=f"Workflow restored investigation: {investigation.human_number}",
+    )
+    db.session.commit()
+    if request.is_json:
+        return jsonify({"ok": True})
+    flash(_("Investigation restored."), "info")
+    return redirect(
+        request.referrer or url_for("workflow.case_detail", case_id=investigation.case_id)
     )
