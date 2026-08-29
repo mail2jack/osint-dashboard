@@ -334,11 +334,12 @@ def run_action(action_id):
         action.status = "completed"
         action.completed_at = datetime.now()
         action.result_summary = f"{len(created)} findings"
-        db.session.commit()
-
+        # P1: auto-invoice in the same transaction as the action completion —
+        # an invoice failure rolls both back (surfaced as action "error").
         from cms.services.invoice_service import auto_invoice_action_completed
 
         auto_invoice_action_completed(action)
+        db.session.commit()
 
     except Exception as e:
         logger.exception("Research action failed: %s", action_id)

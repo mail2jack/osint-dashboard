@@ -16,11 +16,21 @@ class InvoiceStatus(PyEnum):
 class Invoice(db.Model):
     __tablename__ = "invoices"
 
+    __table_args__ = (
+        # P1: invoice numbers are unique per tenant, not globally. The number
+        # is issued atomically per (tenant_id, year) — never ``MAX()+1`` — so
+        # two tenants may legitimately share the same sequential number, while
+        # within one tenant the (tenant_id, invoice_number) pair stays unique.
+        db.UniqueConstraint(
+            "tenant_id", "invoice_number", name="uq_tenant_invoice_number"
+        ),
+    )
+
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = db.Column(
         db.String(36), db.ForeignKey("tenants.id"), nullable=False, index=True
     )
-    invoice_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    invoice_number = db.Column(db.String(50), nullable=False)
     client_id = db.Column(
         db.String(36), db.ForeignKey("clients.id"), nullable=False, index=True
     )
@@ -70,21 +80,6 @@ class Invoice(db.Model):
         cascade="all, delete-orphan",
     )
     creator = db.relationship("User", foreign_keys=[created_by])
-
-    @staticmethod
-    def generate_invoice_number() -> str:
-        year = datetime.now().year
-        prefix = f"FAC-{year}-"
-        last = (
-            Invoice.query.filter(Invoice.invoice_number.like(f"{prefix}%"))
-            .order_by(Invoice.created_at.desc())
-            .first()
-        )
-        if last:
-            seq = int(last.invoice_number.split("-")[-1]) + 1
-        else:
-            seq = 1
-        return f"{prefix}{seq:05d}"
 
     def recalculate(self) -> None:
         self.subtotal = 0

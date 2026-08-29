@@ -21,6 +21,7 @@ from ..models import (
     ResearchAction,
     InvoiceStatus,
 )
+from .sequence_service import allocate_invoice_number
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,11 @@ DEFAULT_FOOTER = "Alle rechten voorbehouden. Iveras OSINT Dashboard."
 # ---------------------------------------------------------------------------
 # Auto-invoicing
 # ---------------------------------------------------------------------------
+#
+# P1: auto-invoicing never commits itself. Callers must run it *inside* the
+# same transaction as the triggering mutation (e.g. the case-create commit);
+# if invoice creation throws, the whole transaction rolls back so no case
+# exists without its invoice (option (a) of the P1 contract).
 
 
 def _get_rate(service_type: str) -> ServiceRate | None:
@@ -63,7 +69,7 @@ def _ensure_draft_invoice(client_id: str, tenant_id: str) -> Invoice | None:
         vat_amount=0,
         total=0,
     )
-    invoice.invoice_number = Invoice.generate_invoice_number()
+    invoice.invoice_number = allocate_invoice_number(tenant_id)
     db.session.add(invoice)
     db.session.flush()
     return invoice
@@ -88,7 +94,6 @@ def _add_invoice_line(
     db.session.add(item)
     db.session.flush()
     invoice.recalculate()
-    db.session.commit()
 
 
 def seed_service_rates() -> None:

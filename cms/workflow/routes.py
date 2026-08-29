@@ -8,6 +8,7 @@ import bleach
 import sqlalchemy as sa
 from flask import (
     abort,
+    current_app,
     flash,
     jsonify,
     redirect,
@@ -873,9 +874,44 @@ def case_new():
             ip_address=request.remote_addr,
             description=f"Workflow created case: {case.case_number}",
         )
-        db.session.commit()
-
-        auto_invoice_case_created(case)
+        # P1: the auto-invoice runs in the SAME transaction as the case —
+        # case + invoice commit together, so an invoice failure rolls the
+        # whole creation back instead of leaving an orphan case behind. That
+        # failure must never surface as an unhandled 500 with the case already
+        # committed: roll back explicitly, log the technical cause server-side
+        # and tell the user the case was NOT created (a retry is safe).
+        try:
+            auto_invoice_case_created(case)
+            db.session.commit()
+        except sa.exc.SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception(
+                "Case creation rolled back: auto-invoice/commit failed "
+                "(case_number=%s, tenant_id=%s)",
+                case_number,
+                current_user.tenant_id,
+            )
+            if request.is_json or request.accept_mimetypes.accept_json:
+                return (
+                    jsonify(
+                        {
+                            "error": "case_creation_failed",
+                            "message": _(
+                                "The investigation was not created due to an "
+                                "invoicing error. Please try again later."
+                            ),
+                        }
+                    ),
+                    500,
+                )
+            flash(
+                _(
+                    "The investigation was not created due to an invoicing "
+                    "error. Please try again later."
+                ),
+                "danger",
+            )
+            return redirect(url_for("workflow.case_new"))
 
         return redirect(url_for("workflow.case_detail", case_id=case_id))
 
@@ -1866,12 +1902,45 @@ def pv_edit(case_id):
             ip_address=request.remote_addr,
             description=f"Workflow updated PV body for case: {case.case_number}",
         )
-        db.session.commit()
+        # P1: auto-invoice commits together with the PV-save transaction, so a
+        # invoice failure rolls back both instead of silently losing the line.
+        # Handle it like case-create: explicit rollback, server-side log and a
+        # clear error to the user instead of an unhandled 500.
+        try:
+            if was_empty and case.pv_body:
+                from cms.services.invoice_service import auto_invoice_pv_created
 
-        if was_empty and case.pv_body:
-            from cms.services.invoice_service import auto_invoice_pv_created
-
-            auto_invoice_pv_created(case)
+                auto_invoice_pv_created(case)
+            db.session.commit()
+        except sa.exc.SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception(
+                "PV save rolled back: auto-invoice/commit failed "
+                "(case_number=%s, tenant_id=%s)",
+                case.case_number,
+                current_user.tenant_id,
+            )
+            if request.is_json or request.accept_mimetypes.accept_json:
+                return (
+                    jsonify(
+                        {
+                            "error": "pv_save_failed",
+                            "message": _(
+                                "The official report was not saved due to an "
+                                "invoicing error. Please try again later."
+                            ),
+                        }
+                    ),
+                    500,
+                )
+            flash(
+                _(
+                    "The official report was not saved due to an invoicing "
+                    "error. Please try again later."
+                ),
+                "danger",
+            )
+            return redirect(url_for("workflow.pv_view", case_id=case_id))
 
         return redirect(url_for("workflow.pv_view", case_id=case_id))
 

@@ -12,6 +12,7 @@ from flask_login import login_required, current_user
 
 from . import cms_bp
 from ..models import db, Invoice, InvoiceItem, Payment, Client, Case, AuditLog
+from ..services.sequence_service import allocate_invoice_number
 from ..auth import (
     admin_required,
     senior_required,
@@ -188,7 +189,8 @@ def invoice_create():
         return redirect(url_for("cms.invoice_create"))
 
     invoice = Invoice(
-        invoice_number=Invoice.generate_invoice_number(),
+        invoice_number=allocate_invoice_number(current_user.tenant_id),
+        tenant_id=current_user.tenant_id,
         client_id=schema.client_id,
         case_id=schema.case_id or None,
         issue_date=issue_date,

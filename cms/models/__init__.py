@@ -2201,6 +2201,35 @@ class InvestigationSeqCounter(db.Model):
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class InvoiceNumberCounter(db.Model):
+    """Atomic counter for invoice numbers, keyed per (tenant_id, year) (P1).
+
+    Same pattern as ``CaseNumberCounter``/``InvestigationSeqCounter``:
+    ``next_seq`` stores the *highest number already issued* for the tenant and
+    year; the next allocation increments it (and returns +1) via a database
+    UPSERT (never ``MAX()+1``). Gaps are allowed; numbers are never reused or
+    changed. The per-tenant stream guarantees ``FAC-<year>-NNNNN`` numbers
+    are unique per tenant while different tenants may share the same
+    sequential number.
+    """
+
+    __tablename__ = "invoice_number_counters"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("tenant_id", "year"),
+        # A counter may only exist for a real tenant, also under an RLS bypass.
+        db.CheckConstraint(
+            "next_seq > 0", name="ck_invoice_number_counter_next_seq_positive"
+        ),
+    )
+
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), primary_key=True
+    )
+    year = db.Column(db.Integer, primary_key=True)
+    next_seq = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class FindingScreenshot(db.Model):
     __tablename__ = "finding_screenshots"
 

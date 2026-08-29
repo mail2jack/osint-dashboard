@@ -1,10 +1,12 @@
 """Atomic, tenant-scoped number allocation and investigation creation (ADR-0002 PR2).
 
-Two number streams are allocated with database UPSERTs — never ``MAX()+1``:
+Three number streams are allocated with database UPSERTs — never ``MAX()+1``:
 
 - case numbers, keyed per ``(tenant_id, year)`` in ``case_number_counters``;
 - investigation sequence numbers, keyed per ``(tenant_id, case_id)`` in
-  ``investigation_seq_counters``.
+  ``investigation_seq_counters``;
+- invoice numbers, keyed per ``(tenant_id, year)`` in
+  ``invoice_number_counters`` (P1: unique per tenant, not globally).
 
 Both counters live under the tenant's RLS context (FORCE RLS on PostgreSQL);
 callers must have the correct tenant context (normal web/worker flow) or an
@@ -21,6 +23,7 @@ from cms.models import (
     Investigation,
     InvestigationSeqCounter,
     InvestigationStatus,
+    InvoiceNumberCounter,
     db,
 )
 
@@ -81,6 +84,39 @@ def preview_case_number(tenant_id: str, session=None) -> str:
     row = session.query(CaseNumberCounter).filter_by(tenant_id=tenant_id, year=year).first()
     seq = row.next_seq + 1 if row else 1
     return f"{year}-{seq:05d}"
+
+
+def allocate_invoice_number(tenant_id: str, session=None) -> str:
+    """Allocate the next invoice number for a tenant + year (``FAC-YYYY-NNNNN``).
+
+    Atomic per ``(tenant_id, year)`` — never ``MAX()+1`` (P1). Two tenants may
+    legitimately receive the same sequential number; within one tenant numbers
+    stay unique and sequential (enforced by ``uq_tenant_invoice_number``).
+    """
+    session = session if session is not None else db.session
+    if not tenant_id:
+        raise ValueError("tenant_id is required to allocate an invoice number")
+    year = _utc_now().year
+    seq = _atomic_next(
+        session,
+        InvoiceNumberCounter,
+        ("tenant_id", "year"),
+        {"tenant_id": tenant_id, "year": year},
+    )
+    return f"FAC-{year}-{seq:05d}"
+
+
+def preview_invoice_number(tenant_id: str, session=None) -> str:
+    """Read-only preview of the next invoice number — never allocates."""
+    session = session if session is not None else db.session
+    year = _utc_now().year
+    row = (
+        session.query(InvoiceNumberCounter)
+        .filter_by(tenant_id=tenant_id, year=year)
+        .first()
+    )
+    seq = row.next_seq + 1 if row else 1
+    return f"FAC-{year}-{seq:05d}"
 
 
 def allocate_investigation_sequence_no(tenant_id: str, case_id: str, session=None) -> int:
