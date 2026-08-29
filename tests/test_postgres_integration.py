@@ -7,7 +7,19 @@ import uuid
 import pytest
 from sqlalchemy import text
 
-from cms.models import AuditLog, Case, Client, LoginLog, Notification, Tenant, User, db
+from cms.models import (
+    AuditLog,
+    Case,
+    CaseNumberCounter,
+    Client,
+    Investigation,
+    InvestigationSeqCounter,
+    LoginLog,
+    Notification,
+    Tenant,
+    User,
+    db,
+)
 from cms.tenant_context import set_tenant_context
 
 
@@ -40,10 +52,10 @@ class TestPostgreSQLIntegration:
         revision = db.session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        # Keep this assertion aligned with the current Alembic head.  The
-        # following migration adds subject-search indexes after FORCE RLS and
-        # the cascade-FK safety migration, then include_in_report flag (ADR-0001).
-        assert revision == "aa1b2c3d4e5f6"
+        # Keep this assertion aligned with the current Alembic head.
+        # bb1c2d3e4f5a7 (ADR-0002 PR2) adds the investigations model and the
+        # two atomic number counters, all tenant- and FORCE-RLS-protected.
+        assert revision == "bb1c2d3e4f5a7"
 
         protected = db.session.execute(
             text(
@@ -52,14 +64,16 @@ class TestPostgreSQLIntegration:
                 FROM pg_class
                 WHERE relname IN (
                     'cases', 'clients', 'notifications',
-                    'subject_identifiers', 'subject_facts'
+                    'subject_identifiers', 'subject_facts',
+                    'investigations', 'case_number_counters',
+                    'investigation_seq_counters'
                 )
                   AND relrowsecurity
                   AND relforcerowsecurity
                 """
             )
         ).scalar()
-        assert protected == 5
+        assert protected == 8
 
     def test_rls_hides_other_tenant_cases(self, app):
         admin = User.query.filter_by(username="admin").one()
@@ -587,3 +601,198 @@ class TestPostgreSQLIntegration:
         db.session.expire_all()
         assert Client.query.filter_by(name="PG switch client A").count() == 0
         assert Client.query.filter_by(name="PG switch client B").count() == 0
+
+
+class TestInvestigationRLSAndNumbering:
+    """ADR-0002 PR2 on real PostgreSQL: FORCE RLS on the new tables, atomic
+    number streams, and the DB-level tenant invariant (belt-and-suspenders
+    with the service-layer checks covered in the SQLite suite)."""
+
+    def _seed_case(self, admin, tenant_id: str) -> Case:
+        return _seed_case(tenant_id, admin.id)
+
+    def test_allocators_work_under_rls_and_isolate_tenants(self, app):
+        admin = User.query.filter_by(username="admin").one()
+        tenant_b = Tenant(
+            name="PG Inv Tenant B",
+            slug=f"pg-inv-b-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.flush()
+        tenant_b_id = tenant_b.id
+
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
+        case_a = self._seed_case(admin, admin.tenant_id)
+        case_b = self._seed_case(admin, tenant_b_id)
+        db.session.commit()
+
+        from cms.services.sequence_service import (
+            allocate_case_number,
+            allocate_investigation_sequence_no,
+            create_investigation,
+        )
+
+        # Tenant A context: allocate its case number + first investigations.
+        set_tenant_context(db, admin.tenant_id)
+        assert allocate_case_number(admin.tenant_id).endswith("-00001")
+        assert allocate_investigation_sequence_no(admin.tenant_id, case_a.id) == 1
+        create_investigation(
+            tenant_id=admin.tenant_id, case_id=case_a.id, title="PG eerste"
+        )
+        seq_a2 = allocate_investigation_sequence_no(admin.tenant_id, case_a.id)
+        db.session.commit()
+
+        # Tenant B context: its counters are fresh and its rows are visible,
+        # while tenant A's counters/investigations are invisible under RLS.
+        set_tenant_context(db, tenant_b_id)
+        assert allocate_investigation_sequence_no(tenant_b_id, case_b.id) == 1
+        create_investigation(
+            tenant_id=tenant_b_id, case_id=case_b.id, title="PG tweede"
+        )
+        seq_b2 = allocate_investigation_sequence_no(tenant_b_id, case_b.id)
+        assert allocate_case_number(tenant_b_id).endswith("-00001")
+        db.session.commit()
+        # Re-establish the RLS context: commit() returns the connection to the
+        # pool, and the next checkout may carry a different tenant's GUC.
+        set_tenant_context(db, tenant_b_id)
+        db.session.expire_all()
+        assert CaseNumberCounter.query.filter_by(tenant_id=admin.tenant_id).count() == 0
+        assert Investigation.query.filter_by(tenant_id=admin.tenant_id).count() == 0
+        assert Investigation.query.filter_by(case_id=case_b.id).count() == 1
+        assert seq_a2 == 3
+        assert seq_b2 == 3
+
+        # Back in tenant A: only its own rows/counters are visible.
+        set_tenant_context(db, admin.tenant_id)
+        db.session.expire_all()
+        assert Investigation.query.filter_by(case_id=case_a.id).count() == 1
+        assert CaseNumberCounter.query.filter_by(tenant_id=admin.tenant_id).count() == 1
+        assert InvestigationSeqCounter.query.filter_by(
+            tenant_id=admin.tenant_id
+        ).count() == 1
+
+    def test_composite_fk_rejects_tenant_mismatch_even_with_bypass(self, app):
+        """The hard tenant invariant must hold at the DB level too: writing
+        an investigation whose (tenant_id, case_id) does not match the case's
+        tenant fails the composite foreign key even under RLS bypass."""
+        from sqlalchemy.exc import IntegrityError
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_b = Tenant(
+            name="PG Inv FK Tenant B",
+            slug=f"pg-inv-fk-b-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.flush()
+        tenant_b_id = tenant_b.id
+
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
+        case_a = self._seed_case(admin, admin.tenant_id)
+        db.session.commit()
+
+        set_tenant_context(db, tenant_b_id, bypass_rls=True)
+        bad = Investigation(
+            tenant_id=tenant_b_id,
+            case_id=case_a.id,
+            sequence_no=1,
+            title="PG verkeerde tenant",
+        )
+        db.session.add(bad)
+        with pytest.raises(IntegrityError, match="fk_investigations_case_tenant"):
+            db.session.flush()
+        db.session.rollback()
+
+        # Same for the sequence counter table.
+        bad_counter = InvestigationSeqCounter(
+            tenant_id=tenant_b_id, case_id=case_a.id, next_seq=1
+        )
+        db.session.add(bad_counter)
+        with pytest.raises(
+            IntegrityError, match="fk_investigation_seq_counter_case_tenant"
+        ):
+            db.session.flush()
+        db.session.rollback()
+
+    def test_parallel_allocation_on_postgres(self, app):
+        """Concurrent allocations against real PostgreSQL must hand out
+        unique and strictly sequential numbers for both streams."""
+        import threading
+
+        from sqlalchemy import create_engine, text
+        from sqlalchemy.orm import sessionmaker
+
+        from cms.services.sequence_service import (
+            allocate_case_number,
+            allocate_investigation_sequence_no,
+        )
+
+        admin = User.query.filter_by(username="admin").one()
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
+        case = self._seed_case(admin, admin.tenant_id)
+        case_id = case.id
+        tenant_id = admin.tenant_id
+        db.session.commit()
+
+        worker_count = 6
+        barrier = threading.Barrier(worker_count)
+        errors: list[BaseException] = []
+        case_nums: list[list[str]] = [[] for _ in range(worker_count)]
+        seqs: list[list[int]] = [[] for _ in range(worker_count)]
+        # Workers use their own engine/pool: raw sessions inert on ``db.engine``
+        # would grow the main pool with several physical connections whose RLS
+        # GUCs differ, and later ORM lazy reloads could land on one of them.
+        worker_engine = create_engine(
+            db.engine.url, pool_size=worker_count, max_overflow=0
+        )
+        session_factory = sessionmaker(bind=worker_engine)
+
+        def worker(index: int):
+            session = session_factory()
+            try:
+                # Each worker gets its own Session + connection. The RLS GUC
+                # must be transaction-local (true) so it never leaks onto the
+                # pooled connection for later tests (FORCE RLS is enforced on
+                # the counters anyway). It spans the whole worker transaction
+                # and is cleared by the final commit().
+                session.execute(
+                    text("SELECT set_config('app.tenant_id', :t, true)"),
+                    {"t": tenant_id},
+                )
+                session.execute(
+                    text("SELECT set_config('app.bypass_rls', 'false', true)")
+                )
+                barrier.wait(timeout=30)
+                case_nums[index].append(
+                    allocate_case_number(tenant_id, session=session)
+                )
+                seqs[index].append(
+                    allocate_investigation_sequence_no(
+                        tenant_id, case_id, session=session
+                    )
+                )
+                session.commit()
+            except BaseException as exc:  # pragma: no cover
+                errors.append(exc)
+            finally:
+                session.close()
+
+        threads = [
+            threading.Thread(target=worker, args=(i,)) for i in range(worker_count)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=60)
+
+        assert not errors, errors
+        nums = sorted(int(n[0].split("-")[1]) for n in case_nums if n)
+        assert nums == list(range(1, worker_count + 1))
+        seqs_flat = sorted(s[0] for s in seqs if s)
+        assert seqs_flat == list(range(1, worker_count + 1))
+        worker_engine.dispose()

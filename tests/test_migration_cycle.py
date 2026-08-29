@@ -13,6 +13,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PREV_REVISION = "e0f1a2b3c4d5"
 PREV_RESEARCH_FLOW = "f4e5d6c7b8a9"
+PR2_PREV_REVISION = "aa1b2c3d4e5f6"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:
@@ -56,6 +57,20 @@ def _seed_legacy_relations(db_file: Path) -> None:
     )
     conn.commit()
     conn.close()
+
+
+def _unique_index_columns(conn: sqlite3.Connection, table: str) -> set[tuple[str, ...]]:
+    """Column tuples of all UNIQUE indexes on a table (SQLite stores named
+    and auto-generated unique constraints as indexes)."""
+    found: set[tuple[str, ...]] = set()
+    for row in conn.execute(f"PRAGMA index_list('{table}')"):
+        if not row[2]:
+            continue
+        cols = tuple(
+            r[2] for r in conn.execute(f'PRAGMA index_info("{row[1]}")')
+        )
+        found.add(cols)
+    return found
 
 
 class TestMigrationCycle:
@@ -197,3 +212,95 @@ class TestMigrationCycle:
             ("b", "a"),
             ("c", "a"),
         ]
+
+    def test_investigations_numbering_roundtrip(self, tmp_path):
+        """ADR-0002 PR2: investigations + atomic counter tables survive a full
+        upgrade/downgrade cycle, and the counters are seeded from existing
+        ``YYYY-NNNNN`` case numbers so the first allocation never collides."""
+        db_file = tmp_path / "inv.db"
+        _run_alembic(db_file, "upgrade", PR2_PREV_REVISION)
+
+        conn = sqlite3.connect(db_file)
+        conn.execute(
+            "INSERT INTO tenants (id, name, slug, is_active, tier, join_code) "
+            "VALUES ('t1', 'T', 't', 1, 'enterprise', 'seed')"
+        )
+        conn.executemany(
+            "INSERT INTO cases "
+            "(id, tenant_id, case_number, client_id, title, status, start_date) "
+            "VALUES (?, 't1', ?, 'cli1', 'x', 'open', datetime('now'))",
+            [
+                ("c7", "2026-00007"),
+                ("c12", "2026-00012"),
+                ("cx", "X-1"),
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        _run_alembic(db_file, "upgrade", "head")
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        indexes = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")
+        }
+        counters = dict(
+            conn.execute(
+                "SELECT year, next_seq FROM case_number_counters WHERE tenant_id='t1'"
+            ).fetchall()
+        )
+        cases_unique = _unique_index_columns(conn, "cases")
+        inv_unique = _unique_index_columns(conn, "investigations")
+        conn.close()
+        assert revision == "bb1c2d3e4f5a7"
+        assert {
+            "investigations",
+            "case_number_counters",
+            "investigation_seq_counters",
+        } <= tables
+        assert "ix_investigations_case_id" in indexes
+        assert ("id", "tenant_id") in cases_unique
+        assert ("tenant_id", "case_id", "sequence_no") in inv_unique
+        # next_seq stores the highest issued number, so the first allocation
+        # after the upgrade returns 13 (2026-00012 was the highest existing).
+        assert counters == {2026: 12}
+
+        _run_alembic(db_file, "downgrade", PR2_PREV_REVISION)
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        indexes = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")
+        }
+        cases_unique = _unique_index_columns(conn, "cases")
+        numbers = [
+            r[0]
+            for r in conn.execute("SELECT case_number FROM cases ORDER BY case_number").fetchall()
+        ]
+        conn.close()
+        assert revision == PR2_PREV_REVISION
+        assert tables.isdisjoint(
+            {"investigations", "case_number_counters", "investigation_seq_counters"}
+        )
+        assert "ix_investigations_case_id" not in indexes
+        assert ("id", "tenant_id") not in cases_unique
+        assert numbers == ["2026-00007", "2026-00012", "X-1"]
+
+        _run_alembic(db_file, "upgrade", "head")
+        conn = sqlite3.connect(db_file)
+        counters = dict(
+            conn.execute(
+                "SELECT year, next_seq FROM case_number_counters WHERE tenant_id='t1'"
+            ).fetchall()
+        )
+        conn.close()
+        assert counters == {2026: 12}
