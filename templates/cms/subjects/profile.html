@@ -1319,6 +1319,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var row = form.querySelector('[data-contact-platform-row]');
     if (row) { row.style.display = el.value === 'social' ? '' : 'none'; }
   }
+  window.toggleContactPlatform = toggleContactPlatform;
 
   function serializeForm(form) {
     var body = {};
