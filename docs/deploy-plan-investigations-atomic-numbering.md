@@ -291,15 +291,35 @@ Opdelen in expliciete acties; geen automatische vervolgactie:
      - op het zaakdetail (nieuwe zaak van hierboven) opent de Onderzoeken-sectie en toont geen rijen;
      - create via `/cms/workflow/case/<id>/investigations` → `human_number` = `<case_number>-<seq:02d>`, uniek per case; create wijzigt `sequence_no`/`case_id`/`tenant_id` niet;
      - archive → `status`=`archived` + `archived_at` gezet; dubbel archive → `409` én **geen extra** AuditLog-rij; restore → `status`=`open` + `archived_at`=NULL; dubbel restore → `409` én geen extra AuditLog-rij;
-     - immutability-backstop op een zojuist gecreëerde `investigations`-rij (alleen blokkade verifiëren, daarna rollback — geen blijvende wijziging):
-       ```sql
-       SET app.bypass_rls = 'true';
-       UPDATE investigations SET case_id   = 'ffffffff-0000-0000-0000-000000000000' WHERE id = :inv;
-       -- verwachting: SQLSTATE 23514 (case_id / tenant_id, uit dd1e2f3a4b5c7)
-       UPDATE investigations SET tenant_id = 'ffffffff-0000-0000-0000-000000000000' WHERE id = :inv;
-       UPDATE investigations SET sequence_no = 999 WHERE id = :inv;
-       -- verwachting: SQLSTATE 23514 (sequence_no, uit bb1c2d3e4f5a7)
-       ```
+- immutability-backstop op een zojuist gecreëerde `investigations`-rij. **Elke verwachte falende `UPDATE` draait in een eigen psql-sessie/transactie**: na de eerste verwachte triggerfout is de transactie in PostgreSQL `aborted` en zou een volgende opdracht `25P02` geven — nooit case_id/tenant_id/sequence_no achter elkaar in één sessie zetten, en elke sessie na de falende `UPDATE` expliciet afsluiten met `ROLLBACK`:
+        - per poging: nieuwe sessie openen (`SET app.bypass_rls = 'true';` + `BEGIN;`), **één** falende `UPDATE`, gerapporteerd **SQLSTATE = `23514`** controleren (bij voorkeur `\errverbose` voor de ERRCONSTRAINT/triggernaam), dan `ROLLBACK;` (geen verdere statements in die sessie);
+        - na iedere poging **opnieuw verbinden/herladen** en per `SELECT` verifiëren dat de rij nog de oorspronkelijke `case_id`, `tenant_id` en `sequence_no` heeft;
+        - `1a) case_id` — verplaatsing naar een **tweede, geldige testzaak in dezelfde testtenant** (bewijst dat de identity-trigger de verplaatsing blokkeert, niet dat een ongeldige FK faalt):
+          ```sql
+          SET app.bypass_rls = 'true';
+          BEGIN;
+          UPDATE investigations SET case_id = :tweede_testzaak_id (zelfde testtenant)
+            WHERE id = :inv;
+          -- verwachting: SQLSTATE 23514 'investigation.case_id is immutable ...'
+          ROLLBACK;
+          ```
+        - `1b) tenant_id` — hertoewijzing naar een andere tenant-id (deze UPDATE sneuvelt óók op de composite FK, maar de BEFORE-trigger vuurt eerst; SQLSTATE moet dus van de trigger komen):
+          ```sql
+          SET app.bypass_rls = 'true';
+          BEGIN;
+          UPDATE investigations SET tenant_id = :andere_tenant_id WHERE id = :inv;
+          -- verwachting: SQLSTATE 23514 'investigation.tenant_id is immutable ...'
+          ROLLBACK;
+          ```
+        - `1c) sequence_no` — (bescherming uit `bb1c2d3e4f5a7`):
+          ```sql
+          SET app.bypass_rls = 'true';
+          BEGIN;
+          UPDATE investigations SET sequence_no = 999 WHERE id = :inv;
+          -- verwachting: SQLSTATE 23514 'investigation.sequence_no is immutable ...'
+          ROLLBACK;
+          ```
+          Afwijkend SQLSTATE (bijv. `25P02`, `23503` op `1a`) → de trigger werkt niet zoals bedoeld; stoppen en eerst onderzoeken.
    - viewer-alleen-lezen: een viewer met case-toegang ziet de sectie, kan niets aanmaken/archiveren;
    - geen resttoestand achterlaten: testzaak + testonderzoeken archiveren/verwijderen volgens lokaal protocol.
 9. **Formeel einde venster** (stap 5c): service indien nodig starten, health + `alembic current` groen, operator+tijdstip noteren, pas dan gebruikers informeren.
