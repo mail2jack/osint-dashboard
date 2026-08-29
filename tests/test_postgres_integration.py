@@ -53,9 +53,8 @@ class TestPostgreSQLIntegration:
             text("SELECT version_num FROM alembic_version")
         ).scalar()
         # Keep this assertion aligned with the current Alembic head.
-        # dd1e2f3a4b5c7 (ADR-0002 PR3 P1) adds investigation identity
-        # triggers (case_id/tenant_id immutable) on top of bb1c2d3e4f5a7.
-        assert revision == "dd1e2f3a4b5c7"
+        # a6b7c8d9e0f1 (P1) adds the per-tenant invoice number counter.
+        assert revision == "a6b7c8d9e0f1"
 
         protected = db.session.execute(
             text(
@@ -66,14 +65,15 @@ class TestPostgreSQLIntegration:
                     'cases', 'clients', 'notifications',
                     'subject_identifiers', 'subject_facts',
                     'investigations', 'case_number_counters',
-                    'investigation_seq_counters'
+                    'investigation_seq_counters',
+                    'invoice_number_counters'
                 )
                   AND relrowsecurity
                   AND relforcerowsecurity
                 """
             )
         ).scalar()
-        assert protected == 8
+        assert protected == 9
 
     def test_rls_hides_other_tenant_cases(self, app):
         admin = User.query.filter_by(username="admin").one()
@@ -941,5 +941,129 @@ class TestInvestigationRLSAndNumbering:
             CaseNumberCounter(tenant_id=str(uuid.uuid4()), year=2026, next_seq=1)
         )
         with pytest.raises(IntegrityError, match="case_number_counters"):
+            db.session.flush()
+        db.session.rollback()
+
+
+class TestInvoiceRLSAndNumbering:
+    """P1: per-tenant invoice numbering on real PostgreSQL — FORCE RLS on the
+    counter table, atomic per-tenant streams, and the composite unique
+    constraint (two tenants may share a number, one tenant may not)."""
+
+    def test_allocators_isolate_tenants_under_rls(self, app):
+        from cms.models import Invoice, InvoiceNumberCounter, InvoiceStatus
+        from cms.services.sequence_service import allocate_invoice_number
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = Tenant(
+            name="PG Inv Tenant A",
+            slug=f"pg-invnum-a-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.flush()
+        tenant_b_id = tenant_b.id
+
+        # Tenant A context: allocate + persist its first invoices.
+        set_tenant_context(db, tenant_a)
+        client = Client(tenant_id=tenant_a, name="PG invnum client A")
+        db.session.add(client)
+        db.session.flush()
+        for n in range(2):
+            inv = Invoice(
+                tenant_id=tenant_a,
+                invoice_number=allocate_invoice_number(tenant_a),
+                client_id=client.id,
+                issue_date=date.today(),
+                due_date=date.today(),
+                status=InvoiceStatus.DRAFT.value,
+            )
+            db.session.add(inv)
+        db.session.commit()
+        assert allocate_invoice_number(tenant_a) == f"FAC-{datetime.now(UTC).year}-00003"
+
+        # Tenant B context: its stream starts afresh at 00001 and tenant A's
+        # counters/invoices are invisible under RLS.
+        set_tenant_context(db, tenant_b_id)
+        assert allocate_invoice_number(tenant_b_id) == f"FAC-{datetime.now(UTC).year}-00001"
+        assert InvoiceNumberCounter.query.filter_by(tenant_id=tenant_a).count() == 0
+        assert Invoice.query.filter_by(tenant_id=tenant_a).count() == 0
+        db.session.commit()
+
+        # Back in tenant A: only its own counter/invoices are visible.
+        set_tenant_context(db, tenant_a)
+        db.session.expire_all()
+        assert InvoiceNumberCounter.query.filter_by(tenant_id=tenant_a).count() == 1
+        assert InvoiceNumberCounter.query.filter_by(tenant_id=tenant_b_id).count() == 0
+        assert Invoice.query.filter_by(tenant_id=tenant_a).count() == 2
+
+    def test_composite_unique_isolates_tenants_not_shared(self, app):
+        from sqlalchemy.exc import IntegrityError
+
+        from cms.models import Invoice, InvoiceStatus
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_a = admin.tenant_id
+        tenant_b = Tenant(
+            name="PG Inv Tenant B",
+            slug=f"pg-invnum-b-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.flush()
+        tenant_b_id = tenant_b.id
+
+        set_tenant_context(db, None, bypass_rls=True)
+        client_a = Client(tenant_id=tenant_a, name="PG invnum dup client A")
+        client_b = Client(tenant_id=tenant_b_id, name="PG invnum dup client B")
+        db.session.add_all([client_a, client_b])
+        db.session.flush()
+
+        # Same sequential number in two different tenants: allowed.
+        first = Invoice(
+            tenant_id=tenant_a,
+            invoice_number="FAC-2026-00001",
+            client_id=client_a.id,
+            issue_date=date.today(),
+            due_date=date.today(),
+            status=InvoiceStatus.DRAFT.value,
+        )
+        second = Invoice(
+            tenant_id=tenant_b_id,
+            invoice_number="FAC-2026-00001",
+            client_id=client_b.id,
+            issue_date=date.today(),
+            due_date=date.today(),
+            status=InvoiceStatus.DRAFT.value,
+        )
+        db.session.add_all([first, second])
+        db.session.commit()
+
+        # Same number again within tenant A: rejected by the composite unique.
+        duplicate = Invoice(
+            tenant_id=tenant_a,
+            invoice_number="FAC-2026-00001",
+            client_id=client_a.id,
+            issue_date=date.today(),
+            due_date=date.today(),
+            status=InvoiceStatus.DRAFT.value,
+        )
+        db.session.add(duplicate)
+        with pytest.raises(IntegrityError, match="uq_tenant_invoice_number"):
+            db.session.flush()
+        db.session.rollback()
+
+        # The counter may only reference a real tenant, also under bypass.
+        from cms.models import InvoiceNumberCounter
+
+        db.session.add(
+            InvoiceNumberCounter(tenant_id=str(uuid.uuid4()), year=2026, next_seq=1)
+        )
+        with pytest.raises(IntegrityError, match="invoice_number_counters"):
             db.session.flush()
         db.session.rollback()
