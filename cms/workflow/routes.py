@@ -873,9 +873,11 @@ def case_new():
             ip_address=request.remote_addr,
             description=f"Workflow created case: {case.case_number}",
         )
-        db.session.commit()
-
+        # P1: the auto-invoice runs in the SAME transaction as the case —
+        # case + invoice commit together, so an invoice failure rolls the
+        # whole creation back instead of leaving an orphan case behind.
         auto_invoice_case_created(case)
+        db.session.commit()
 
         return redirect(url_for("workflow.case_detail", case_id=case_id))
 
@@ -1866,12 +1868,13 @@ def pv_edit(case_id):
             ip_address=request.remote_addr,
             description=f"Workflow updated PV body for case: {case.case_number}",
         )
-        db.session.commit()
-
+        # P1: auto-invoice commits together with the PV-save transaction, so a
+        # invoice failure rolls back both instead of silently losing the line.
         if was_empty and case.pv_body:
             from cms.services.invoice_service import auto_invoice_pv_created
 
             auto_invoice_pv_created(case)
+        db.session.commit()
 
         return redirect(url_for("workflow.pv_view", case_id=case_id))
 
