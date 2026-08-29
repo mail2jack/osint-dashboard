@@ -90,7 +90,9 @@ echo "=== 1/7 Backup aanmaken ==="
 if [ -f "$BACKUP_SCRIPT" ]; then
     if sudo -u osint bash "$BACKUP_SCRIPT" "$DIR/backups"; then
         echo "OK: backup gedaan"
-        LATEST_BACKUP=$(find "$DIR/backups" -maxdepth 1 -name "iveras_backup_*.tar.gz.gpg" -type f 2>/dev/null | sort -r | head -1)
+        # `sort | head` under `set -o pipefail` exit 141 on SIGPIPE when head
+        # stops early; this value is best-effort (notification only), so swallow.
+        LATEST_BACKUP=$(find "$DIR/backups" -maxdepth 1 -name "iveras_backup_*.tar.gz.gpg" -type f 2>/dev/null | sort -r | head -1 || true)
     else
         fail "backup mislukt — release gestopt (geen half-afgemaakte deploy)"
     fi
