@@ -217,8 +217,11 @@ function buildPickerItems(actionType) {
       }
     } else if (actionType === 'kvk' && s.name) {
       items.push({ subject_id: s.id, subject: s.name, label: 'Company name', value: s.name, display: s.name });
-    } else if (actionType === 'rdw' && s.identification_number) {
-      items.push({ subject_id: s.id, subject: s.name, label: 'License plate', value: s.identification_number, display: s.identification_number });
+    } else if (actionType === 'rdw') {
+      var plate = (s.license_plate || '').trim() || (s.rdw_data && s.rdw_data.kenteken ? String(s.rdw_data.kenteken).trim() : '');
+      if (plate) {
+        items.push({ subject_id: s.id, subject: s.name, label: 'License plate', value: plate, display: plate });
+      }
     } else if (actionType === 'facebook' && s.name) {
       items.push({ subject_id: s.id, subject: s.name, label: 'Name', value: s.name, display: s.name });
     } else if (actionType === 'tiktok' && s.name) {
