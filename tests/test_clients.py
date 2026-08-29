@@ -1,3 +1,6 @@
+import json
+
+
 class TestClientList:
     URL = "/cms/clients"
 
@@ -45,6 +48,33 @@ class TestClientCreate:
         assert resp.status_code == 201
         data = resp.get_json()
         assert data["client"]["contact_person"] == "Jan Janssen"
+
+
+def test_create_with_social_contact_platform(auth_client, db_session):
+    resp = auth_client.post(
+        "/cms/clients/create",
+        json={
+            "name": "Social Corp",
+            "contacts_data": json.dumps(
+                [
+                    {
+                        "contact_type": "social",
+                        "value": "social.handle",
+                        "platform": "LinkedIn",
+                        "is_primary": True,
+                    }
+                ]
+            ),
+        },
+    )
+    assert resp.status_code == 201
+    from cms.models import Client, Contact
+
+    client = Client.query.filter_by(name="Social Corp").first()
+    contacts = Contact.query.filter_by(client_id=client.id).all()
+    assert len(contacts) == 1
+    assert contacts[0].contact_type == "social"
+    assert contacts[0].platform == "LinkedIn"
 
 
 class TestClientView:
@@ -107,6 +137,32 @@ class TestClientEdit:
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["client"]["name"] == "Full Update"
+
+    def test_edit_replaces_contacts_with_social_platform(self, auth_client, db_session):
+        client_id = self._create_client(auth_client)
+        resp = auth_client.post(
+            f"/cms/clients/{client_id}/edit",
+            json={
+                "name": "Social Update",
+                "contacts_data": json.dumps(
+                    [
+                        {
+                            "contact_type": "social",
+                            "value": "ig.handle",
+                            "platform": "Instagram",
+                            "is_primary": True,
+                        }
+                    ]
+                ),
+            },
+        )
+        assert resp.status_code == 200
+        from cms.models import Contact
+
+        contacts = Contact.query.filter_by(client_id=client_id).all()
+        assert len(contacts) == 1
+        assert contacts[0].contact_type == "social"
+        assert contacts[0].platform == "Instagram"
 
 
 class TestClientDelete:
