@@ -52,6 +52,26 @@ def _raw_session_factory():
     return sessionmaker(bind=db.engine)
 
 
+def _fk_enforced_engine():
+    """A SQLite engine with ``PRAGMA foreign_keys=ON`` per connection.
+
+    The app deliberately keeps FK enforcement off on SQLite (service-layer
+    checks are authoritative), so this engine exists to prove the schema-level
+    foreign key is present and really refuses a row for an unknown parent.
+    """
+    from sqlalchemy import create_engine, event
+
+    engine = create_engine(db.engine.url)
+
+    @event.listens_for(engine, "connect")
+    def _enable_fk(dbapi_conn, _record):
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA foreign_keys=ON")
+        cur.close()
+
+    return engine
+
+
 def _make_tenant() -> Tenant:
     tenant = Tenant(
         name=f"Inv Tenant {uuid.uuid4().hex[:8]}",
@@ -306,6 +326,88 @@ class TestTenantInvariant:
                 tenant_id=other_tenant.id, case_id=case_a.id, title="X"
             )
         assert Investigation.query.count() == 0
+
+
+class TestDatabaseLevelImmutability:
+    """ADR-0002 D2/D4 enforced in the database, not only in the routes:
+
+    ``cases.case_number`` and ``investigations.sequence_no`` cannot be changed
+    after INSERT — direct ORM writes fail with an IntegrityError from the
+    trigger even when the app layer would never touch them.
+    """
+
+    def test_orm_update_of_case_number_fails(self, db_session):
+        case = _make_case()
+        db_session.commit()
+        original = case.case_number
+        case.case_number = f"{_YEAR}-00099"
+        with pytest.raises(IntegrityError):
+            db_session.commit()
+        db_session.rollback()
+        assert db_session.get(Case, case.id).case_number == original
+
+    def test_orm_update_of_sequence_no_fails(self, db_session):
+        case = _make_case()
+        db_session.commit()
+        created = create_investigation(
+            tenant_id=case.tenant_id, case_id=case.id, title="Onwijzigbaar"
+        )
+        db_session.commit()
+        inv_id = created.id
+        created.sequence_no = 99
+        with pytest.raises(IntegrityError):
+            db_session.commit()
+        db_session.rollback()
+        assert db_session.get(Investigation, inv_id).sequence_no == 1
+
+    def test_normal_create_and_unrelated_updates_still_work(self, db_session):
+        case = _make_case()
+        db_session.commit()
+        number = allocate_case_number(case.tenant_id)
+        created = create_investigation(
+            tenant_id=case.tenant_id, case_id=case.id, title="Normaal"
+        )
+        db_session.commit()
+        assert number == f"{_YEAR}-00001"
+        assert created.sequence_no == 1
+        # Non-protected columns stay editable under the triggers.
+        case.title = "Gewijzigde titel"
+        created.notes = "aantekening"
+        db_session.commit()
+        db_session.refresh(case)
+        db_session.refresh(created)
+        assert case.title == "Gewijzigde titel"
+        assert created.notes == "aantekening"
+
+
+class TestCounterTenantReference:
+    """The case-number counter may only exist for a real tenant (FK), and the
+    allocator keeps working for existing tenants."""
+
+    def test_counter_for_unknown_tenant_refused_by_db(self, db_session):
+        engine = _fk_enforced_engine()
+        session = sessionmaker(bind=engine)()
+        try:
+            bad = CaseNumberCounter(
+                tenant_id=str(uuid.uuid4()), year=_YEAR, next_seq=1
+            )
+            session.add(bad)
+            with pytest.raises(IntegrityError, match="case_number_counters"):
+                session.flush()
+        finally:
+            session.close()
+            engine.dispose()
+
+    def test_allocator_works_for_existing_tenant(self, db_session):
+        tenant = _make_tenant()
+        db_session.commit()
+        number = allocate_case_number(tenant.id)
+        db_session.commit()
+        assert number == f"{_YEAR}-00001"
+        counter = CaseNumberCounter.query.filter_by(
+            tenant_id=tenant.id, year=_YEAR
+        ).one()
+        assert counter.next_seq == 1
 
 
 class TestCaseAccessContract:

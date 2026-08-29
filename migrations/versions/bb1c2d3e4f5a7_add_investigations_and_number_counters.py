@@ -120,6 +120,134 @@ _COMPOSITE_CASE_FK = (
 )
 
 
+def _create_immutable_column_triggers() -> None:
+    """Block UPDATEs to evidence/reference numbers at the database level.
+
+    ``cases.case_number`` and ``investigations.sequence_no`` are immutable
+    after issuance (ADR-0002 D2/D4). Enforced in the database so direct ORM
+    writes, scripts and RLS-bypass paths cannot change them either — route-level
+    guards alone are not enough for reference numbers.
+
+    PostgreSQL raises with the ``check_violation`` SQLSTATE (23514) so callers
+    see an ``IntegrityError``, matching the ``ABORT`` semantics of the SQLite
+    trigger. Creating a fresh value is unaffected: the triggers only fire on
+    UPDATE of the protected columns.
+    """
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        bind.execute(
+            sa.text(
+                """
+                CREATE OR REPLACE FUNCTION fn_cases_case_number_immutable()
+                RETURNS trigger AS $$
+                BEGIN
+                    IF NEW.case_number IS DISTINCT FROM OLD.case_number THEN
+                        RAISE EXCEPTION
+                            'case_number is immutable after issuance (ADR-0002 D4)'
+                            USING ERRCODE = '23514';
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+                """
+            )
+        )
+        bind.execute(
+            sa.text(
+                """
+                DROP TRIGGER IF EXISTS trg_cases_case_number_immutable ON cases;
+                CREATE TRIGGER trg_cases_case_number_immutable
+                BEFORE UPDATE ON cases
+                FOR EACH ROW
+                EXECUTE FUNCTION fn_cases_case_number_immutable();
+                """
+            )
+        )
+        bind.execute(
+            sa.text(
+                """
+                CREATE OR REPLACE FUNCTION fn_investigations_sequence_no_immutable()
+                RETURNS trigger AS $$
+                BEGIN
+                    IF NEW.sequence_no IS DISTINCT FROM OLD.sequence_no THEN
+                        RAISE EXCEPTION
+                            'investigation.sequence_no is immutable after issuance (ADR-0002 D2)'
+                            USING ERRCODE = '23514';
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+                """
+            )
+        )
+        bind.execute(
+            sa.text(
+                """
+                DROP TRIGGER IF EXISTS trg_investigations_sequence_no_immutable
+                    ON investigations;
+                CREATE TRIGGER trg_investigations_sequence_no_immutable
+                BEFORE UPDATE ON investigations
+                FOR EACH ROW
+                EXECUTE FUNCTION fn_investigations_sequence_no_immutable();
+                """
+            )
+        )
+    else:
+        bind.execute(
+            sa.text(
+                """
+                CREATE TRIGGER trg_cases_case_number_immutable
+                BEFORE UPDATE OF case_number ON cases
+                FOR EACH ROW
+                WHEN NEW.case_number IS NOT OLD.case_number
+                BEGIN
+                    SELECT RAISE(ABORT,
+                        'case_number is immutable after issuance (ADR-0002 D4)');
+                END;
+                """
+            )
+        )
+        bind.execute(
+            sa.text(
+                """
+                CREATE TRIGGER trg_investigations_sequence_no_immutable
+                BEFORE UPDATE OF sequence_no ON investigations
+                FOR EACH ROW
+                WHEN NEW.sequence_no IS NOT OLD.sequence_no
+                BEGIN
+                    SELECT RAISE(ABORT,
+                        'investigation.sequence_no is immutable after issuance (ADR-0002 D2)');
+                END;
+                """
+            )
+        )
+
+
+def _drop_immutable_column_triggers() -> None:
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        bind.execute(
+            sa.text("DROP TRIGGER IF EXISTS trg_cases_case_number_immutable ON cases")
+        )
+        bind.execute(
+            sa.text("DROP FUNCTION IF EXISTS fn_cases_case_number_immutable()")
+        )
+        bind.execute(
+            sa.text(
+                "DROP TRIGGER IF EXISTS trg_investigations_sequence_no_immutable "
+                "ON investigations"
+            )
+        )
+        bind.execute(
+            sa.text("DROP FUNCTION IF EXISTS fn_investigations_sequence_no_immutable()")
+        )
+    else:
+        bind.execute(sa.text("DROP TRIGGER IF EXISTS trg_cases_case_number_immutable"))
+        bind.execute(
+            sa.text("DROP TRIGGER IF EXISTS trg_investigations_sequence_no_immutable")
+        )
+
+
 def upgrade() -> None:
     # Parent-key for the composite FKs below (ADR-0002 D8): must exist before
     # the child tables reference cases(id, tenant_id).
@@ -171,11 +299,19 @@ def upgrade() -> None:
             name="fk_investigations_case_tenant",
         ),
         sa.Index("ix_investigations_case_id", "case_id"),
+        sa.CheckConstraint(
+            "sequence_no > 0", name="ck_investigation_sequence_no_positive"
+        ),
     )
 
     op.create_table(
         "case_number_counters",
-        sa.Column("tenant_id", sa.String(36), primary_key=True),
+        sa.Column(
+            "tenant_id",
+            sa.String(36),
+            sa.ForeignKey("tenants.id"),
+            primary_key=True,
+        ),
         sa.Column("year", sa.Integer(), primary_key=True),
         sa.Column(
             "next_seq",
@@ -184,6 +320,9 @@ def upgrade() -> None:
             server_default="1",
         ),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.CheckConstraint(
+            "next_seq > 0", name="ck_case_number_counter_next_seq_positive"
+        ),
     )
 
     op.create_table(
@@ -202,13 +341,18 @@ def upgrade() -> None:
             ["cases.id", "cases.tenant_id"],
             name="fk_investigation_seq_counter_case_tenant",
         ),
+        sa.CheckConstraint(
+            "next_seq > 0", name="ck_investigation_seq_counter_next_seq_positive"
+        ),
     )
 
     _enable_rls_and_context()
     _seed_case_number_counters()
+    _create_immutable_column_triggers()
 
 
 def downgrade() -> None:
+    _drop_immutable_column_triggers()
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
         for table in RLS_TABLES:

@@ -796,3 +796,57 @@ class TestInvestigationRLSAndNumbering:
         seqs_flat = sorted(s[0] for s in seqs if s)
         assert seqs_flat == list(range(1, worker_count + 1))
         worker_engine.dispose()
+
+    def test_case_number_immutable_under_rls_bypass(self, app):
+        """Reference numbers are immutable at the DB level — an ORM write
+        fails even under a full RLS bypass (ADR-0002 D4)."""
+        from sqlalchemy.exc import IntegrityError
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_id = admin.tenant_id
+        set_tenant_context(db, tenant_id, bypass_rls=True)
+        case = self._seed_case(admin, tenant_id)
+        case_id = case.id
+        original = case.case_number
+        db.session.commit()
+
+        case = db.session.get(Case, case_id)
+        case.case_number = original[:-1] + "9"
+        with pytest.raises(IntegrityError, match="immutable"):
+            db.session.commit()
+        db.session.rollback()
+        assert db.session.get(Case, case_id).case_number == original
+
+    def test_investigation_sequence_no_immutable_under_rls_bypass(self, app):
+        from sqlalchemy.exc import IntegrityError
+
+        from cms.services.sequence_service import create_investigation
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_id = admin.tenant_id
+        set_tenant_context(db, tenant_id, bypass_rls=True)
+        case = self._seed_case(admin, tenant_id)
+        created = create_investigation(
+            tenant_id=tenant_id, case_id=case.id, title="PG onwijzigbaar"
+        )
+        db.session.commit()
+        inv_id = created.id
+        inv = db.session.get(Investigation, inv_id)
+        inv.sequence_no = 99
+        with pytest.raises(IntegrityError, match="immutable"):
+            db.session.commit()
+        db.session.rollback()
+        assert db.session.get(Investigation, inv_id).sequence_no == 1
+
+    def test_case_number_counter_requires_existing_tenant(self, app):
+        """The counter may only reference a real tenant, also under bypass."""
+        from sqlalchemy.exc import IntegrityError
+
+        admin = User.query.filter_by(username="admin").one()
+        set_tenant_context(db, admin.tenant_id, bypass_rls=True)
+        db.session.add(
+            CaseNumberCounter(tenant_id=str(uuid.uuid4()), year=2026, next_seq=1)
+        )
+        with pytest.raises(IntegrityError, match="case_number_counters"):
+            db.session.flush()
+        db.session.rollback()

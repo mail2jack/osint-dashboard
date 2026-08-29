@@ -2087,6 +2087,9 @@ class Investigation(db.Model):
             name="fk_investigations_case_tenant",
         ),
         db.Index("ix_investigations_case_id", "case_id"),
+        # Sequence numbers are positive and, once issued, immutable (a DB
+        # trigger — see migration bb1c2d3e4f5a7 — blocks any UPDATE).
+        db.CheckConstraint("sequence_no > 0", name="ck_investigation_sequence_no_positive"),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -2146,15 +2149,22 @@ class Investigation(db.Model):
 class CaseNumberCounter(db.Model):
     """Atomic counter for case numbers, keyed per (tenant_id, year) (ADR-0002 D2).
 
-    ``next_seq`` holds the next number to hand out. Allocation uses a database
-    UPSERT (never ``MAX()+1``) so parallel creates get unique, sequential
+    ``next_seq`` stores the *highest number already issued* for the tenant and
+    year; the next allocation increments it (and returns +1) via a database
+    UPSERT (never ``MAX()+1``), so parallel creates get unique, sequential
     numbers. Gaps are allowed; numbers are never reused or changed.
     """
 
     __tablename__ = "case_number_counters"
-    __table_args__ = (db.PrimaryKeyConstraint("tenant_id", "year"),)
+    __table_args__ = (
+        db.PrimaryKeyConstraint("tenant_id", "year"),
+        # A counter may only exist for a real tenant, also under an RLS bypass.
+        db.CheckConstraint("next_seq > 0", name="ck_case_number_counter_next_seq_positive"),
+    )
 
-    tenant_id = db.Column(db.String(36), primary_key=True)
+    tenant_id = db.Column(
+        db.String(36), db.ForeignKey("tenants.id"), primary_key=True
+    )
     year = db.Column(db.Integer, primary_key=True)
     next_seq = db.Column(db.Integer, nullable=False, default=1, server_default="1")
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -2164,8 +2174,10 @@ class InvestigationSeqCounter(db.Model):
     """Atomic counter for investigation sequence numbers, keyed per
     (tenant_id, case_id) (ADR-0002 D2/D8).
 
-    The composite FK guarantees the counter row can only exist for a case that
-    belongs to the same tenant — the hard invariant
+    Mirrors ``CaseNumberCounter``: ``next_seq`` stores the highest number
+    already issued for the case; the next allocation increments it (returns
+    +1). The composite FK guarantees the counter row can only exist for a case
+    that belongs to the same tenant — the hard invariant
     ``investigation.tenant_id == investigation.case.tenant_id`` holds even
     under an RLS bypass.
     """
@@ -2177,6 +2189,9 @@ class InvestigationSeqCounter(db.Model):
             ["case_id", "tenant_id"],
             ["cases.id", "cases.tenant_id"],
             name="fk_investigation_seq_counter_case_tenant",
+        ),
+        db.CheckConstraint(
+            "next_seq > 0", name="ck_investigation_seq_counter_next_seq_positive"
         ),
     )
 
