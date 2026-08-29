@@ -133,6 +133,10 @@ min after deploy; a stale client connection held open via the nginx proxy).
 
 ## Follow-ups (out of scope here)
 
+- Full `/health` (without `?quick=1`) runs sequential external HTTP checks
+  (rdw/kadaster/hibp, `timeout=5` each) → ~8s latency. By design; doctor
+  correctly uses `/health?quick=1` (0.1s). Worth a future annotation on the
+  health endpoint so probes don't accidentally hit the slow path.
 - `access.log` has been 0 bytes since May 27 despite
   `--access-logfile …/access.log`; investigate + logrotate.
 - Issue #88 test-flakiness under xdist parallel (nondeterministic failures in
