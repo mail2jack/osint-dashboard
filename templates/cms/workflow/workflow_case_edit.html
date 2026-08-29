@@ -261,19 +261,26 @@ input:-webkit-autofill:focus {
                   <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Type') }}</label>
-                      <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                      <select class="contact-type" data-change="wfToggleContactPlatform" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         <option value="email" {% if c.contact_type == 'email' %}selected{% endif %}>{{ _('Email') }}</option>
                         <option value="phone" {% if c.contact_type == 'phone' %}selected{% endif %}>{{ _('Phone') }}</option>
+                        <option value="social" {% if c.contact_type == 'social' %}selected{% endif %}>{{ _('Social Media') }}</option>
                       </select>
                     </div>
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Value') }}</label>
-                      <input type="text" class="contact-value" value="{{ c.value }}" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                      <input type="text" class="contact-value" value="{{ c.value }}" placeholder="{{ _('email@example.com, +31612345678 or @accountname') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                       <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
                         <input type="checkbox" class="contact-primary" {% if c.is_primary %}checked{% endif %}> {{ _('Primary') }}
                       </label>
+                    </div>
+                  </div>
+                  <div class="contact-platform-row" style="display:{% if c.contact_type == 'social' %}grid{% else %}none{% endif %};grid-template-columns:1fr;gap:0.5rem;margin-top:0.5rem;">
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Platform') }}</label>
+                      <input type="text" class="contact-platform" list="social-platforms" value="{{ c.platform or '' }}" placeholder="{{ _('facebook, twitter/x, instagram, ...') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                   </div>
                 </div>
@@ -283,19 +290,26 @@ input:-webkit-autofill:focus {
                   <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Type') }}</label>
-                      <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                      <select class="contact-type" data-change="wfToggleContactPlatform" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                         <option value="email">{{ _('Email') }}</option>
                         <option value="phone">{{ _('Phone') }}</option>
+                        <option value="social">{{ _('Social Media') }}</option>
                       </select>
                     </div>
                     <div>
                       <label style="font-size:0.75rem;">{{ _('Value') }}</label>
-                      <input type="text" class="contact-value" value="" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+                      <input type="text" class="contact-value" value="" placeholder="{{ _('email@example.com, +31612345678 or @accountname') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                     <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                       <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
                         <input type="checkbox" class="contact-primary" checked> {{ _('Primary') }}
                       </label>
+                    </div>
+                  </div>
+                  <div class="contact-platform-row" style="display:none;grid-template-columns:1fr;gap:0.5rem;margin-top:0.5rem;">
+                    <div>
+                      <label style="font-size:0.75rem;">{{ _('Platform') }}</label>
+                      <input type="text" class="contact-platform" list="social-platforms" placeholder="{{ _('facebook, twitter/x, instagram, ...') }}" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
                     </div>
                   </div>
                 </div>
@@ -621,6 +635,24 @@ input:-webkit-autofill:focus {
     <button type="submit" class="btn-cms primary" id="wfSaveBtn">Save changes →</button>
   </div>
 </form>
+<datalist id="social-platforms">
+  <option value="Facebook"></option>
+  <option value="Twitter / X"></option>
+  <option value="Instagram"></option>
+  <option value="LinkedIn"></option>
+  <option value="TikTok"></option>
+  <option value="YouTube"></option>
+  <option value="Snapchat"></option>
+  <option value="WhatsApp"></option>
+  <option value="Telegram"></option>
+  <option value="Reddit"></option>
+  <option value="Pinterest"></option>
+  <option value="Twitch"></option>
+  <option value="GitHub"></option>
+  <option value="Threads"></option>
+  <option value="Tumblr"></option>
+  <option value="Signal"></option>
+</datalist>
 <script nonce="{{ csp_nonce }}">
 function wfSerializeAllAddresses() {
   document.querySelectorAll('.addresses-container').forEach(function(container) {
@@ -643,6 +675,13 @@ function wfSerializeAllAddresses() {
   });
 }
 
+function wfToggleContactPlatform(el) {
+  var entry = el.closest('.contact-entry');
+  if (!entry) return;
+  var row = entry.querySelector('.contact-platform-row');
+  if (row) row.style.display = el.value === 'social' ? 'grid' : 'none';
+}
+
 function wfSerializeAllContacts() {
   document.querySelectorAll('.contacts-container').forEach(function(container) {
     var idx = container.getAttribute('data-sid') || container.getAttribute('data-newidx');
@@ -654,7 +693,8 @@ function wfSerializeAllContacts() {
       val = val.trim();
       var type = (entry.querySelector('.contact-type') || {}).value || 'email';
       if (!val) return;
-      contactsArr.push({ contact_type: type, value: val, is_primary: !!(entry.querySelector('.contact-primary') || {}).checked });
+      var platformEl = entry.querySelector('.contact-platform');
+      contactsArr.push({ contact_type: type, value: val, platform: type === 'social' ? ((platformEl && platformEl.value.trim()) || null) : null, is_primary: !!(entry.querySelector('.contact-primary') || {}).checked });
       if (type === 'email' && !emailVal) emailVal = val;
       if (type === 'phone' && !phoneVal) phoneVal = val;
     });
@@ -779,9 +819,12 @@ document.addEventListener('DOMContentLoaded', function() {
             '<div class="contacts-container" data-newidx="' + i + '">' +
               '<div class="contact-entry" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:1rem;margin-bottom:0.5rem;">' +
                 '<div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">' +
-                  '<div><label style="font-size:0.75rem;">Type</label><select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="email">Email</option><option value="phone">Phone</option></select></div>' +
-                  '<div><label style="font-size:0.75rem;">Value</label><input type="text" class="contact-value" placeholder="email@example.com or +31612345678" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
+                  '<div><label style="font-size:0.75rem;">Type</label><select class="contact-type" data-change="wfToggleContactPlatform" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"><option value="email">Email</option><option value="phone">Phone</option><option value="social">Social Media</option></select></div>' +
+                  '<div><label style="font-size:0.75rem;">Value</label><input type="text" class="contact-value" placeholder="email@example.com, +31612345678 or @accountname" style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
                   '<div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;"><label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;"><input type="checkbox" class="contact-primary" checked> Primary</label></div>' +
+                '</div>' +
+                '<div class="contact-platform-row" style="display:none;grid-template-columns:1fr;gap:0.5rem;margin-top:0.5rem;">' +
+                  '<div><label style="font-size:0.75rem;">Platform</label><input type="text" class="contact-platform" list="social-platforms" placeholder="facebook, twitter/x, instagram, ..." style="width:100%;padding:0.5rem;border:1px solid #ddd;border-radius:6px;"></div>' +
                 '</div>' +
               '</div>' +
             '</div>' +

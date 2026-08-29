@@ -103,20 +103,27 @@
                             <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                                 <div>
                                     <label style="font-size:0.75rem;">{{ _('Type') }}</label>
-                                    <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+                                    <select class="contact-type" data-change="toggleContactPlatform" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
                                         <option value="email" {% if c.contact_type == 'email' %}selected{% endif %}>{{ _('Email') }}</option>
                                         <option value="phone" {% if c.contact_type == 'phone' %}selected{% endif %}>{{ _('Phone') }}</option>
+                                        <option value="social" {% if c.contact_type == 'social' %}selected{% endif %}>{{ _('Social Media') }}</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label style="font-size:0.75rem;">{{ _('Value') }}</label>
-                                    <input type="text" class="contact-value" value="{{ c.value }}" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                    <input type="text" class="contact-value" value="{{ c.value }}" placeholder="{{ _('email@example.com, +31612345678 or @accountname') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                                 </div>
                                 <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                                     <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
                                         <input type="checkbox" class="contact-primary" {% if c.is_primary %}checked{% endif %}> {{ _('Primary') }}
                                     </label>
                                     <button type="button" data-click="removeContactEntry" class="btn-cms danger small" style="padding:0.25rem 0.5rem;">✕</button>
+                                </div>
+                            </div>
+                            <div class="contact-platform-row" style="display:{% if c.contact_type == 'social' %}grid{% else %}none{% endif %};grid-template-columns:1fr;gap:0.5rem;margin-top:0.5rem;">
+                                <div>
+                                    <label style="font-size:0.75rem;">{{ _('Platform') }}</label>
+                                    <input type="text" class="contact-platform" list="social-platforms" value="{{ c.platform or '' }}" placeholder="{{ _('facebook, twitter/x, instagram, ...') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
                                 </div>
                             </div>
                         </div>
@@ -126,14 +133,15 @@
                         <div style="display:grid;grid-template-columns:1fr 1.5fr auto;gap:0.5rem;align-items:end;">
                             <div>
                                 <label style="font-size:0.75rem;">{{ _('Type') }}</label>
-                                <select class="contact-type" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+                                <select class="contact-type" data-change="toggleContactPlatform" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
                                     <option value="email">{{ _('Email') }}</option>
                                     <option value="phone">{{ _('Phone') }}</option>
+                                    <option value="social">{{ _('Social Media') }}</option>
                                 </select>
                             </div>
                             <div>
                                 <label style="font-size:0.75rem;">{{ _('Value') }}</label>
-                                <input type="text" class="contact-value" placeholder="{{ _('email@example.com or +31612345678') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
+                                <input type="text" class="contact-value" placeholder="{{ _('email@example.com, +31612345678 or @accountname') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;">
                             </div>
                             <div style="display:flex;align-items:center;gap:0.35rem;padding-bottom:0.25rem;">
                                 <label style="font-size:0.75rem;display:flex;align-items:center;gap:0.25rem;cursor:pointer;">
@@ -141,9 +149,33 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="contact-platform-row" style="display:none;grid-template-columns:1fr;gap:0.5rem;margin-top:0.5rem;">
+                            <div>
+                                <label style="font-size:0.75rem;">{{ _('Platform') }}</label>
+                                <input type="text" class="contact-platform" list="social-platforms" placeholder="{{ _('facebook, twitter/x, instagram, ...') }}" style="width:100%;padding:0.5rem;border:1px solid var(--border-input);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <button type="button" data-click="addContact" class="btn-cms small" style="border-style:dashed;">+ {{ _('Add another contact') }}</button>
+                <datalist id="social-platforms">
+                    <option value="Facebook"></option>
+                    <option value="Twitter / X"></option>
+                    <option value="Instagram"></option>
+                    <option value="LinkedIn"></option>
+                    <option value="TikTok"></option>
+                    <option value="YouTube"></option>
+                    <option value="Snapchat"></option>
+                    <option value="WhatsApp"></option>
+                    <option value="Telegram"></option>
+                    <option value="Reddit"></option>
+                    <option value="Pinterest"></option>
+                    <option value="Twitch"></option>
+                    <option value="GitHub"></option>
+                    <option value="Threads"></option>
+                    <option value="Tumblr"></option>
+                    <option value="Signal"></option>
+                </datalist>
             </div>
             
             <h3 style="margin-top:1.5rem;color:var(--text-primary);">{{ _('Address(es)') }}</h3>
@@ -280,13 +312,22 @@
         entries.forEach(entry => {
             const value = entry.querySelector('.contact-value').value.trim();
             if (!value) return;
+            const type = entry.querySelector('.contact-type').value;
+            const platformEl = entry.querySelector('.contact-platform');
             contacts.push({
-                contact_type: entry.querySelector('.contact-type').value,
+                contact_type: type,
                 value: value,
+                platform: type === 'social' ? ((platformEl && platformEl.value.trim()) || null) : null,
                 is_primary: entry.querySelector('.contact-primary').checked
             });
         });
         document.getElementById('contacts-data').value = JSON.stringify(contacts);
+    }
+
+    function toggleContactPlatform(el) {
+        const entry = el.closest('.contact-entry');
+        const row = entry.querySelector('.contact-platform-row');
+        if (row) row.style.display = el.value === 'social' ? 'grid' : 'none';
     }
 
     function addContact() {
