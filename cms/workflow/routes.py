@@ -20,7 +20,15 @@ from flask_babel import gettext as _
 from flask_login import current_user, login_required
 
 from cms.auth import ensure_case_access, ensure_tenant_access
-from cms.models import AuditLog, Investigation, User, UserRole, db, report_include_filter
+from cms.models import (
+    AuditLog,
+    Investigation,
+    InvestigationStatus,
+    User,
+    UserRole,
+    db,
+    report_include_filter,
+)
 from cms.routes.dashboard import _get_cached_health
 from cms.routes.utils import find_similar_clients, normalize_phone, normalize_postcode
 from cms.services.invoice_service import auto_invoice_case_created
@@ -2399,7 +2407,20 @@ def archive_investigation(investigation_id):
     if not investigation:
         return jsonify({"error": "Not found"}), 404
 
+    if (
+        investigation.archived_at is not None
+        or investigation.status == InvestigationStatus.ARCHIVED.value
+    ):
+        if request.is_json:
+            return jsonify({"error": "Investigation is already archived"}), 409
+        flash(_("Investigation is already archived."), "warning")
+        return redirect(
+            request.referrer
+            or url_for("workflow.case_detail", case_id=investigation.case_id)
+        )
+
     investigation.archived_at = datetime.now(UTC)
+    investigation.status = InvestigationStatus.ARCHIVED.value
     AuditLog.log(
         user_id=current_user.id,
         action="archive",
@@ -2427,7 +2448,19 @@ def restore_investigation(investigation_id):
     if not investigation:
         return jsonify({"error": "Not found"}), 404
 
+    if investigation.archived_at is None and (
+        investigation.status != InvestigationStatus.ARCHIVED.value
+    ):
+        if request.is_json:
+            return jsonify({"error": "Investigation is not archived"}), 409
+        flash(_("Investigation is not archived."), "warning")
+        return redirect(
+            request.referrer
+            or url_for("workflow.case_detail", case_id=investigation.case_id)
+        )
+
     investigation.archived_at = None
+    investigation.status = InvestigationStatus.OPEN.value
     AuditLog.log(
         user_id=current_user.id,
         action="restore",

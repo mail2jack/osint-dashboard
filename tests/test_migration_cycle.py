@@ -10,10 +10,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PREV_REVISION = "e0f1a2b3c4d5"
 PREV_RESEARCH_FLOW = "f4e5d6c7b8a9"
 PR2_PREV_REVISION = "aa1b2c3d4e5f6"
+PR3_PREV_REVISION = "bb1c2d3e4f5a7"
+HEAD_REVISION = "dd1e2f3a4b5c7"
 
 
 def _run_alembic(db_file: Path, *args: str) -> None:
@@ -257,7 +261,7 @@ class TestMigrationCycle:
         cases_unique = _unique_index_columns(conn, "cases")
         inv_unique = _unique_index_columns(conn, "investigations")
         conn.close()
-        assert revision == "bb1c2d3e4f5a7"
+        assert revision == HEAD_REVISION
         assert {
             "investigations",
             "case_number_counters",
@@ -304,3 +308,125 @@ class TestMigrationCycle:
         )
         conn.close()
         assert counters == {2026: 12}
+
+    def test_investigations_identity_immutability_roundtrip(self, tmp_path):
+        """ADR-0002 PR3 P1: investigation identity triggers (case_id/tenant_id
+        immutable) survive a full upgrade/downgrade cycle, while the earlier
+        sequence_no trigger from bb1c2d3e4f5a7 is preserved."""
+        db_file = tmp_path / "identity.db"
+        _run_alembic(db_file, "upgrade", "head")
+
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        triggers = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='trigger' AND tbl_name='investigations'"
+            ).fetchall()
+        }
+        conn.close()
+        assert revision == HEAD_REVISION
+        assert "trg_investigations_case_id_immutable" in triggers
+        assert "trg_investigations_tenant_id_immutable" in triggers
+        assert "trg_investigations_sequence_no_immutable" in triggers
+
+        # Downgrade to the PR2 head: only the new identity triggers go, the
+        # sequence_no protection from bb1c2d3e4f5a7 must remain.
+        _run_alembic(db_file, "downgrade", PR3_PREV_REVISION)
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        triggers = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='trigger' AND tbl_name='investigations'"
+            ).fetchall()
+        }
+        conn.close()
+        assert revision == PR3_PREV_REVISION
+        assert "trg_investigations_case_id_immutable" not in triggers
+        assert "trg_investigations_tenant_id_immutable" not in triggers
+        assert "trg_investigations_sequence_no_immutable" in triggers
+
+        # Re-upgrade: identity triggers come back, sequence_no trigger intact.
+        _run_alembic(db_file, "upgrade", "head")
+        conn = sqlite3.connect(db_file)
+        revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        triggers = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='trigger' AND tbl_name='investigations'"
+            ).fetchall()
+        }
+        conn.close()
+        assert revision == HEAD_REVISION
+        assert "trg_investigations_case_id_immutable" in triggers
+        assert "trg_investigations_tenant_id_immutable" in triggers
+        assert "trg_investigations_sequence_no_immutable" in triggers
+
+    def test_investigations_identity_triggers_block_orm_updates(self, tmp_path):
+        """ADR-0002 PR3 P1: the SQLite identity triggers abort direct ORM
+        updates of case_id/tenant_id, while normal field updates still work."""
+        db_file = tmp_path / "identity-block.db"
+        _run_alembic(db_file, "upgrade", "head")
+
+        conn = sqlite3.connect(db_file)
+        conn.execute(
+            "INSERT INTO tenants (id, name, slug, is_active, tier, join_code) "
+            "VALUES ('t1', 'T', 't', 1, 'enterprise', 'seed')"
+        )
+        conn.execute(
+            "INSERT INTO tenants (id, name, slug, is_active, tier, join_code) "
+            "VALUES ('t2', 'T2', 't2', 1, 'enterprise', 'seed2')"
+        )
+        conn.execute(
+            "INSERT INTO users (id, tenant_id, username, email, hashed_password, role, full_name, is_active, totp_enabled, failed_login_attempts) "
+            "VALUES ('u1', 't1', 'a', 'a@a.a', 'x', 'investigator', 'A', 1, 0, 0)"
+        )
+        conn.execute(
+            "INSERT INTO cases (id, tenant_id, case_number, client_id, title, status, start_date) "
+            "VALUES ('c1', 't1', '2026-00001', 'cli1', 'x', 'open', datetime('now'))"
+        )
+        conn.execute(
+            "INSERT INTO cases (id, tenant_id, case_number, client_id, title, status, start_date) "
+            "VALUES ('c2', 't1', '2026-00002', 'cli1', 'x', 'open', datetime('now'))"
+        )
+        conn.execute(
+            "INSERT INTO cases (id, tenant_id, case_number, client_id, title, status, start_date) "
+            "VALUES ('c3', 't2', '2026-00003', 'cli1', 'x', 'open', datetime('now'))"
+        )
+        conn.execute(
+            "INSERT INTO investigations (id, tenant_id, case_id, sequence_no, title, status, created_at, updated_at) "
+            "VALUES ('i1', 't1', 'c1', 1, 'x', 'open', datetime('now'), datetime('now'))"
+        )
+        conn.commit()
+
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE investigations SET case_id='c2' WHERE id='i1'"
+            )
+        conn.execute("ROLLBACK")
+
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE investigations SET tenant_id='t2' WHERE id='i1'"
+            )
+        conn.execute("ROLLBACK")
+
+        # Normal field updates and archive state transitions still work.
+        conn.execute(
+            "UPDATE investigations SET title='renamed', instructions='instr', "
+            "notes='note' WHERE id='i1'"
+        )
+        conn.execute(
+            "UPDATE investigations SET status='archived', archived_at=datetime('now') "
+            "WHERE id='i1'"
+        )
+        row = conn.execute(
+            "SELECT title, instructions, notes, status, case_id, tenant_id, sequence_no "
+            "FROM investigations WHERE id='i1'"
+        ).fetchone()
+        conn.close()
+        assert row == ("renamed", "instr", "note", "archived", "c1", "t1", 1)

@@ -368,6 +368,100 @@ class TestArchiveRestore:
         resp = auth_client.post(f"/cms/workflow/api/investigations/{uuid.uuid4()}/archive")
         assert resp.status_code == 404
 
+    def test_archive_restore_status_transitions(self, app, auth_client):
+        """P1: archive sets status 'archived'; restore returns it to 'open'."""
+        _, case_id = _make_client_and_case()
+        _create_inv(auth_client, case_id, {"title": "Status"})
+        gov = Investigation.query.filter_by(case_id=case_id).one()
+        assert gov.status == "open"
+        assert gov.archived_at is None
+
+        resp = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/archive", json={}
+        )
+        assert resp.status_code == 200
+        db.session.refresh(gov)
+        assert gov.status == "archived"
+        assert gov.archived_at is not None
+
+        resp = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/restore", json={}
+        )
+        assert resp.status_code == 200
+        db.session.refresh(gov)
+        assert gov.status == "open"
+        assert gov.archived_at is None
+
+    def test_double_archive_409_without_extra_auditlog(self, app, auth_client):
+        """P1: archiving an already archived investigation returns 409 and
+        appends no further AuditLog entry."""
+        _, case_id = _make_client_and_case()
+        _create_inv(auth_client, case_id, {"title": "Dubbel archiv"})
+        gov = Investigation.query.filter_by(case_id=case_id).one()
+
+        first = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/archive", json={}
+        )
+        assert first.status_code == 200
+        second = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/archive", json={}
+        )
+        assert second.status_code == 409
+
+        archive_logs = AuditLog.query.filter_by(
+            entity_type="investigation", action="archive", entity_id=gov.id
+        ).count()
+        assert archive_logs == 1
+
+    def test_double_restore_409_without_extra_auditlog(self, app, auth_client):
+        """P1: restoring an active investigation returns 409 and appends no
+        further AuditLog entry."""
+        _, case_id = _make_client_and_case()
+        _create_inv(auth_client, case_id, {"title": "Dubbel restore"})
+        gov = Investigation.query.filter_by(case_id=case_id).one()
+
+        archive = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/archive", json={}
+        )
+        assert archive.status_code == 200
+        restore = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/restore", json={}
+        )
+        assert restore.status_code == 200
+        double = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/restore", json={}
+        )
+        assert double.status_code == 409
+
+        restore_logs = AuditLog.query.filter_by(
+            entity_type="investigation", action="restore", entity_id=gov.id
+        ).count()
+        assert restore_logs == 1
+
+    def test_double_archive_from_html_no_extra_auditlog(self, app, auth_client):
+        """P1: HTML-form double archive redirects (flash) with no extra AuditLog."""
+        _, case_id = _make_client_and_case()
+        _create_inv(auth_client, case_id, {"title": "Formulier dubbel"})
+        gov = Investigation.query.filter_by(case_id=case_id).one()
+
+        first = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/archive",
+            data={"csrf_token": "x"},
+        )
+        assert first.status_code == 302
+        second = auth_client.post(
+            f"/cms/workflow/api/investigations/{gov.id}/archive",
+            data={"csrf_token": "x"},
+        )
+        assert second.status_code == 302
+
+        db.session.refresh(gov)
+        assert gov.status == "archived"
+        archive_logs = AuditLog.query.filter_by(
+            entity_type="investigation", action="archive", entity_id=gov.id
+        ).count()
+        assert archive_logs == 1
+
 
 class TestAuditLog:
     def test_audit_entries_for_create_archive_restore(self, app, auth_client):

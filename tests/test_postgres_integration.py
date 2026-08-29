@@ -1,7 +1,7 @@
 """Mandatory PostgreSQL integration coverage for tenant isolation."""
 
 import os
-from datetime import date
+from datetime import UTC, date, datetime
 import uuid
 
 import pytest
@@ -53,9 +53,9 @@ class TestPostgreSQLIntegration:
             text("SELECT version_num FROM alembic_version")
         ).scalar()
         # Keep this assertion aligned with the current Alembic head.
-        # bb1c2d3e4f5a7 (ADR-0002 PR2) adds the investigations model and the
-        # two atomic number counters, all tenant- and FORCE-RLS-protected.
-        assert revision == "bb1c2d3e4f5a7"
+        # dd1e2f3a4b5c7 (ADR-0002 PR3 P1) adds investigation identity
+        # triggers (case_id/tenant_id immutable) on top of bb1c2d3e4f5a7.
+        assert revision == "dd1e2f3a4b5c7"
 
         protected = db.session.execute(
             text(
@@ -837,6 +837,99 @@ class TestInvestigationRLSAndNumbering:
             db.session.commit()
         db.session.rollback()
         assert db.session.get(Investigation, inv_id).sequence_no == 1
+
+    def test_investigation_case_id_immutable_under_rls_bypass(self, app):
+        """P1: repointing an investigation to another case is rejected by the
+        DB-level identity trigger, even under a full RLS bypass."""
+        from sqlalchemy.exc import IntegrityError
+
+        from cms.services.sequence_service import create_investigation
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_id = admin.tenant_id
+        set_tenant_context(db, tenant_id, bypass_rls=True)
+        case_a = self._seed_case(admin, tenant_id)
+        case_b = self._seed_case(admin, tenant_id)
+        created = create_investigation(
+            tenant_id=tenant_id, case_id=case_a.id, title="PG verplaatsen"
+        )
+        db.session.commit()
+        inv_id = created.id
+
+        inv = db.session.get(Investigation, inv_id)
+        inv.case_id = case_b.id
+        with pytest.raises(IntegrityError, match="case_id"):
+            db.session.commit()
+        db.session.rollback()
+        kept = db.session.get(Investigation, inv_id)
+        assert kept.case_id == case_a.id
+        assert kept.tenant_id == tenant_id
+        assert kept.sequence_no == 1
+
+    def test_investigation_tenant_id_immutable_under_rls_bypass(self, app):
+        """P1: reassigning an investigation to another tenant is rejected by
+        the DB-level identity trigger, even under a full RLS bypass."""
+        from sqlalchemy.exc import IntegrityError
+
+        from cms.services.sequence_service import create_investigation
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_id = admin.tenant_id
+        tenant_b = Tenant(
+            name="PG Inv Tenant C",
+            slug=f"pg-inv-c-{uuid.uuid4().hex[:8]}",
+            is_active=True,
+            tier="enterprise",
+            join_code=uuid.uuid4().hex[:12],
+        )
+        db.session.add(tenant_b)
+        db.session.flush()
+        tenant_b_id = tenant_b.id
+
+        set_tenant_context(db, tenant_id, bypass_rls=True)
+        case = self._seed_case(admin, tenant_id)
+        created = create_investigation(
+            tenant_id=tenant_id, case_id=case.id, title="PG overzetten"
+        )
+        db.session.commit()
+        inv_id = created.id
+
+        inv = db.session.get(Investigation, inv_id)
+        inv.tenant_id = tenant_b_id
+        with pytest.raises(IntegrityError, match="tenant_id"):
+            db.session.commit()
+        db.session.rollback()
+        kept = db.session.get(Investigation, inv_id)
+        assert kept.tenant_id == tenant_id
+        assert kept.case_id == case.id
+        assert kept.sequence_no == 1
+
+    def test_archive_restore_status_transitions_on_postgres(self, app):
+        """P1: archive/restore shift the DB-level status column on PG too."""
+        from cms.services.sequence_service import create_investigation
+
+        admin = User.query.filter_by(username="admin").one()
+        tenant_id = admin.tenant_id
+        set_tenant_context(db, tenant_id, bypass_rls=True)
+        case = self._seed_case(admin, tenant_id)
+        created = create_investigation(
+            tenant_id=tenant_id, case_id=case.id, title="PG status"
+        )
+        db.session.commit()
+        inv = db.session.get(Investigation, created.id)
+
+        inv.archived_at = datetime.now(UTC)
+        inv.status = "archived"
+        db.session.commit()
+        db.session.expire_all()
+        assert db.session.get(Investigation, created.id).status == "archived"
+
+        inv = db.session.get(Investigation, created.id)
+        inv.archived_at = None
+        inv.status = "open"
+        db.session.commit()
+        db.session.expire_all()
+        assert db.session.get(Investigation, created.id).status == "open"
 
     def test_case_number_counter_requires_existing_tenant(self, app):
         """The counter may only reference a real tenant, also under bypass."""
