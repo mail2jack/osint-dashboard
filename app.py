@@ -208,13 +208,13 @@ if _redis_url:
         _redis_url = None
 
 if not _redis_url:
-    from cachelib.file import FileSystemCache
+    from cms.session_cache import BoundedFileSystemCache
 
     _session_dir = os.path.join(os.path.dirname(__file__), "flask_session")
     app.config.setdefault("SESSION_TYPE", "cachelib")
     app.config.setdefault("SESSION_PERMANENT", True)
     app.config.setdefault("SESSION_SERIALIZATION_FORMAT", "json")
-    app.config["SESSION_CACHELIB"] = FileSystemCache(
+    app.config["SESSION_CACHELIB"] = BoundedFileSystemCache(
         cache_dir=_session_dir, threshold=5000, default_timeout=28800
     )
 

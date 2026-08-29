@@ -21,6 +21,7 @@ import argparse
 import os
 import pwd
 import shutil
+import stat
 import subprocess
 import sys
 from datetime import datetime
@@ -260,6 +261,50 @@ def check_git_perms(dry: bool) -> bool:
     except Exception as e:
         log(FAIL + f" {e}")
         return False
+
+
+def check_flask_session_contents(dry: bool) -> bool:
+    log("Checking flask_session/ file ownership...", end=" ")
+    sess_dir = APP_DIR / "flask_session"
+    if not sess_dir.exists():
+        log(SKIP + " (flask_session/ not present)")
+        return True
+    try:
+        service_uid = pwd.getpwnam(OSINT_USER).pw_uid
+    except KeyError:
+        log(SKIP + " (osint user not found)")
+        return True
+    offenders = []
+    for p in sess_dir.iterdir():
+        if not p.is_file():
+            continue
+        try:
+            st = p.stat()
+        except OSError:
+            offenders.append((p.name, "stat-error"))
+            continue
+        mode = stat.S_IMODE(st.st_mode)
+        if st.st_uid != service_uid or mode != 0o600:
+            offenders.append((p.name, f"uid={st.st_uid} mode={mode:04o}"))
+    if not offenders:
+        log(OK)
+        return True
+    for name, why in offenders[:20]:
+        log(f"  {WARN} {name}: {why}")
+    if len(offenders) > 20:
+        log(f"  {WARN} ... and {len(offenders) - 20} more")
+    if dry:
+        log(DRY + " (remove foreign/unreadable session store entries)")
+        return False
+    removed = 0
+    for name, _ in offenders:
+        try:
+            (sess_dir / name).unlink()
+            removed += 1
+        except OSError as e:
+            log(f"  {FAIL} could not remove {name}: {e}")
+    log(f"{FIXED} (removed {removed} foreign/unreadable session file(s))")
+    return removed > 0
 
 
 def check_flask_session(dry: bool) -> bool:
@@ -664,6 +709,7 @@ def main():
         ("~/.spiderfoot directory", check_spiderfoot_dir),
         (".git ownership", check_git_perms),
         ("flask_session/ writable", check_flask_session),
+        ("flask_session/ file ownership", check_flask_session_contents),
         ("Python dependencies", check_pip_deps),
         (".env CMS_ENCRYPTION_KEY", check_env_encryption_key),
         (".env CMS_ENCRYPTION_KEYS", check_env_encryption_keys),
