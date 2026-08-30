@@ -107,7 +107,9 @@ wordt geëxposeerd via HTTP 503 (nginx kan dan eigen 503-server pagina's tonen).
 sudo -u osint bash /opt/osint-dashboard/scripts/backup.sh /opt/osint-dashboard/backups
 
 # Verificatie (isolated PostgreSQL restore, counts, encryption, uploads, license DB/key):
-/opt/osint-dashboard/scripts/verify_backup.sh
+# Bronst van de DR-verbindingsomgeving uit /etc/default/osint-dr (dr_setup.sh);
+# een kale aanroep is daardoor voldoende, zonder handmatig sourcen.
+/opt/osint-dashboard/scripts/verify_backup.sh /opt/osint-dashboard/backups
 
 # Rapporten staan in reports/dr/; dit wijzigt nooit productie.
 # RPO/RTO-doelen en systemd timer: DISASTER_RECOVERY.md

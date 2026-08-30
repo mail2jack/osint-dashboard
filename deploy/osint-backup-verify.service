@@ -9,7 +9,8 @@ Type=oneshot
 User=osint
 Group=osint
 WorkingDirectory=/opt/osint-dashboard
-EnvironmentFile=-/etc/default/osint-backup-verify
+# DR verification connection env — created by scripts/dr_setup.sh
+EnvironmentFile=-/etc/default/osint-dr
 ExecStart=/opt/osint-dashboard/scripts/verify_backup.sh /opt/osint-dashboard/backups
 NoNewPrivileges=true
 PrivateTmp=true

@@ -136,6 +136,16 @@ def test_verifier_does_not_restore_to_production():
     assert "restore.sh" not in source
 
 
+def test_verifier_auto_sources_dr_env_default():
+    """A bare verify_backup.sh invocation must stay green by sourcing the DR env."""
+    source = (ROOT / "scripts/verify_backup.sh").read_text(encoding="utf-8")
+    assert "/etc/default/osint-dr" in source
+    assert ". /etc/default/osint-dr" in source
+    assert "PGSERVICE:-" in source
+    assert "DR_VERIFY_DATABASE_URL:-" in source
+    assert '[ -f /etc/default/osint-dr ]' in source
+
+
 def test_periodic_units_are_present_and_failure_alert_is_wired():
     service = (ROOT / "deploy/osint-backup-verify.service").read_text(encoding="utf-8")
     timer = (ROOT / "deploy/osint-backup-verify.timer").read_text(encoding="utf-8")
