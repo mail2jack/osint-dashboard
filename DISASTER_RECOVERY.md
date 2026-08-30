@@ -6,17 +6,21 @@ and never modifies production uploads or license-server files.
 
 ## Verification
 
-Configure an administrative PostgreSQL URL that can create and drop a temporary
-database, but is not used by the application:
+The verification connection is provisioned by `scripts/dr_setup.sh` (`--confirm
+SETUP-DR`), which creates the PostgreSQL roles `iveras_dr` (CREATEDB, for the
+isolated verify database) and `iveras_snapshot` (read-only, for production
+snapshots), plus the env file `/etc/default/osint-dr`, the libpq service file
+`~/.pg_service_dr.conf` and the password file `~/.pgpass-iveras-dr`
+(`PGSERVICE=iveras-dr`, `PGSERVICEFILE`/`PGPASSFILE`). The DR role has no
+`INSERT`/`SELECT`-ish rights on application tables; it only creates and drops
+temporary databases. Credentials are read from env/libpq service config and
+never passed as command-line arguments.
 
-```bash
-DR_VERIFY_DATABASE_URL=postgresql://dr_verify:<password>@127.0.0.1:5432/postgres
-```
-
-Alternatively configure `PGSERVICE` and `PGPASSFILE`; credentials are read from
-the environment/libpq service configuration and never passed as command-line
-arguments. The URL should be stored in `/etc/default/osint-backup-verify` with
-mode `600`.
+`verify_backup.sh` **auto-sources `/etc/default/osint-dr`** when no explicit
+`DR_VERIFY_DATABASE_URL`/`PGSERVICE`/`PGHOST` is present, so a bare invocation
+stays fully green. The old `DR_VERIFY_DATABASE_URL` URL variant (e.g.
+`postgresql://dr_verify:<password>@127.0.0.1:5432/postgres`) is still
+supported for environments that do not use `dr_setup.sh`.
 The verifier writes reports to `reports/dr/` (override with `DR_REPORT_DIR`).
 Reports contain only timestamp, backup ID, commit SHA, check statuses, and row
 counts. They never contain passwords, encryption keys, SQL, or decrypted data.
@@ -27,7 +31,7 @@ Run manually:
 sudo -u osint /opt/osint-dashboard/scripts/verify_backup.sh /opt/osint-dashboard/backups
 ```
 
-Install the periodic verifier:
+Install the periodic verifier (sources `/etc/default/osint-dr`):
 
 ```bash
 sudo cp deploy/osint-backup-verify.service deploy/osint-backup-verify.timer deploy/osint-backup-verify-alert.service /etc/systemd/system/
@@ -37,7 +41,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now osint-backup-verify.timer
 ```
 
-Set `BACKUP_VERIFY_ALERT_EMAIL` in `/etc/default/osint-backup-verify` when local
+Set `BACKUP_VERIFY_ALERT_EMAIL` in `/etc/default/osint-dr` when local
 mail delivery is configured. Failures always reach the system journal through
 the `OnFailure` unit, even without email.
 

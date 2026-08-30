@@ -21,6 +21,17 @@ if [ ! -x "$PYTHON" ]; then
     PYTHON=python3
 fi
 
+# Structural DR config: libpq connection settings for the isolated restore
+# (PGSERVICE/PGSERVICEFILE/PGPASSFILE) are created by dr_setup.sh in
+# /etc/default/osint-dr. Source it when no explicit connection env is set so a
+# bare invocation stays green instead of failing only on database_restore.
+if [ -z "${DR_VERIFY_DATABASE_URL:-}" ] && [ -z "${PGSERVICE:-}" ] && [ -z "${PGHOST:-}" ] && [ -f /etc/default/osint-dr ]; then
+    set -a
+    # shellcheck disable=SC1091
+    . /etc/default/osint-dr
+    set +a
+fi
+
 record() {
     local name="$1"
     local status="$2"
