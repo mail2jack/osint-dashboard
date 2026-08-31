@@ -30,6 +30,160 @@ def test_health_full_readiness(client, monkeypatch):
     assert data["migrations"] == "ok"
 
 
+def test_health_summary_cache_miss_does_not_run_full_health(auth_client, monkeypatch):
+    from cms.models import Setting
+
+    Setting.set("health_snapshot", "", category="system")
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("full health must not run in the request worker")
+
+    monkeypatch.setattr(
+        "cms.health_utils.check_external_services", fail_if_called
+    )
+    response = auth_client.get("/cms/api/health-summary")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["stale"] is True
+    assert data["checked_at"] is None
+    assert data["timings_ms"] == {}
+
+
+def test_health_summary_returns_snapshot_metadata(auth_client):
+    import json
+    from cms.models import Setting
+
+    Setting.set("health_snapshot", json.dumps({
+        "services": {"database": "ok", "spiderfoot": "ok"},
+        "timings_ms": {"database": 1.2, "spiderfoot": 4.5},
+        "checked_at": "2026-08-31T12:00:00+00:00",
+        "duration_ms": 8.0,
+    }), category="system")
+
+    response = auth_client.get("/cms/api/health-summary")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["services"]["database"] == "ok"
+    assert data["timings_ms"] == {"database": 1.2, "spiderfoot": 4.5}
+    assert data["duration_ms"] == 8.0
+    assert data["stale"] is True
+    assert data["age_seconds"] is not None
+
+
+def test_health_summary_invalid_snapshot_is_unavailable_not_500(auth_client):
+    import json
+    from cms.models import Setting
+
+    Setting.set(
+        "health_snapshot",
+        json.dumps({"services": None, "timings_ms": {}}),
+        category="system",
+    )
+
+    response = auth_client.get("/cms/api/health-summary")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["state"] == "stale"
+    assert data["stale"] is True
+    assert data["refresh_status"] == "unavailable"
+    assert data["services"]["database"] == "unavailable"
+
+
+def test_quick_health_does_not_call_external_http_checks(app, monkeypatch):
+    from cms import health_utils
+
+    calls = []
+    monkeypatch.setattr(
+        health_utils,
+        "jittered_get",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        "cms.spiderfoot_service.check_spiderfoot_health",
+        lambda: (True, "connected"),
+    )
+
+    with app.app_context():
+        timings = {}
+        result = health_utils.check_external_services(quick=True, timings=timings)
+
+    assert result["database"] == "ok"
+    assert result["spiderfoot"] == "ok"
+    assert calls == []
+    assert set(timings) == {"database", "spiderfoot"}
+
+
+def test_health_refresh_is_a_single_bounded_systemd_producer():
+    from pathlib import Path
+
+    script = Path("scripts/health_refresh.py").read_text(encoding="utf-8")
+    unit = Path("deploy/osint-health-refresh.service").read_text(encoding="utf-8")
+    timer = Path("deploy/osint-health-refresh.timer").read_text(encoding="utf-8")
+    installer = Path("scripts/install_health_refresh.sh").read_text(encoding="utf-8")
+
+    assert "LOCK_NB" in script
+    assert "TimeoutStartSec=90" in unit
+    assert "Type=oneshot" in unit
+    assert "OnUnitActiveSec=300s" in timer
+    assert "enable --now osint-health-refresh.timer" in installer
+    assert "systemctl start osint-health-refresh.service" in installer
+    assert "threading.Thread" not in script
+
+
+def test_health_refresh_main_writes_snapshot_with_cli_context(app, monkeypatch, tmp_path):
+    import json
+    import scripts.health_refresh as health_refresh
+    from cms.models import Setting
+
+    context_calls = []
+    monkeypatch.setattr(
+        health_refresh, "LOCK_PATH", str(tmp_path / "health-refresh.lock")
+    )
+    monkeypatch.setattr(
+        health_refresh,
+        "_set_cli_tenant_context",
+        lambda: context_calls.append(True),
+    )
+
+    def fake_health(*, timings):
+        timings["database"] = 1.5
+        return {"database": "ok", "spiderfoot": "ok"}
+
+    monkeypatch.setattr(health_refresh, "check_external_services", fake_health)
+
+    assert health_refresh.main() == 0
+    assert context_calls == [True]
+
+    with app.app_context():
+        snapshot = json.loads(Setting.get("health_snapshot"))
+
+    assert snapshot["services"] == {"database": "ok", "spiderfoot": "ok"}
+    assert snapshot["timings_ms"] == {"database": 1.5}
+    assert snapshot["refresh_status"] == "success"
+
+
+def test_health_refresh_main_fails_when_snapshot_persistence_fails(
+    app, monkeypatch, tmp_path
+):
+    import scripts.health_refresh as health_refresh
+
+    monkeypatch.setattr(
+        health_refresh, "LOCK_PATH", str(tmp_path / "health-refresh.lock")
+    )
+    monkeypatch.setattr(health_refresh, "_set_cli_tenant_context", lambda: None)
+    monkeypatch.setattr(
+        health_refresh,
+        "check_external_services",
+        lambda *, timings: {"database": "ok"},
+    )
+    monkeypatch.setattr(health_refresh.Setting, "set", lambda *args, **kwargs: False)
+
+    assert health_refresh.main() == 1
+
+
 def test_migrations_in_sync(app):
     from cms.health_utils import check_migrations
 

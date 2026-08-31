@@ -455,9 +455,13 @@ function updateHealthLight() {
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var light = document.getElementById('healthTrafficLight');
-            if (data.state === 'green') light.textContent = '🟢';
+            if (data.stale || data.refresh_status !== 'success') light.textContent = '⚪';
+            else if (data.state === 'green') light.textContent = '🟢';
             else if (data.state === 'orange') light.textContent = '🟠';
             else light.textContent = '🔴';
+            light.title = data.stale
+                ? 'Healthstatus is stale' + (data.age_seconds == null ? '' : ' (' + Math.round(data.age_seconds) + 's oud)')
+                : 'Healthstatus bijgewerkt ' + data.checked_at;
             light._healthData = data;
         })
         .catch(function() {
@@ -514,6 +518,10 @@ function toggleHealthModal() {
             + '<span style="color:var(--text-secondary);font-size:0.85rem;margin-left:auto;">' + label + '</span>'
             + '</div>';
     }
+    html += '<div style="margin-top:0.75rem;color:var(--text-secondary);font-size:0.8rem;">'
+        + (data.stale ? 'Status stale' : 'Bijgewerkt: ' + (data.checked_at || 'onbekend'))
+        + (data.age_seconds == null ? '' : ' · leeftijd ' + Math.round(data.age_seconds) + 's')
+        + '</div>';
     html += '</div>';
     body.innerHTML = html;
 }
@@ -628,5 +636,4 @@ document.addEventListener('input', function(e) {
 <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js" nonce="{{ csp_nonce }}"></script>
 </body>
 </html>
-
 

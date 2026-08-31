@@ -3,6 +3,7 @@ Invoice service — PDF generation, status flow, helpers, and auto-invoicing.
 """
 
 import logging
+import calendar
 from datetime import datetime, date
 
 import flask
@@ -56,14 +57,19 @@ def _ensure_draft_invoice(client_id: str, tenant_id: str) -> Invoice | None:
     ).first()
     if invoice:
         return invoice
+    next_month = today.month % 12 + 1
+    next_year = today.year + (today.month == 12)
+    due_date = date(
+        next_year,
+        next_month,
+        min(today.day, calendar.monthrange(next_year, next_month)[1]),
+    )
     invoice = Invoice(
         client_id=client_id,
         case_id=None,
         tenant_id=tenant_id,
         issue_date=today,
-        due_date=date(today.year, today.month + 1, today.day)
-        if today.month < 12
-        else date(today.year + 1, 1, today.day),
+        due_date=due_date,
         status=InvoiceStatus.DRAFT.value,
         subtotal=0,
         vat_amount=0,

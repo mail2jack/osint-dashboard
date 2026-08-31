@@ -1,32 +1,80 @@
 import logging
-import threading
-import time
+import json
+from datetime import datetime, timezone
 
 from flask import render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, Case, Client, Subject, Finding, CaseStatus
+from ..models import db, Case, Client, Subject, Finding, CaseStatus, Setting
 from ..auth import apply_tenant_filter
-from ..health_utils import check_external_services
 
 logger = logging.getLogger(__name__)
 
-_health_cache: dict[str, tuple[float, dict]] = {}
-_health_cache_lock = threading.Lock()
 _HEALTH_CACHE_TTL = 300
 
 
+def _unavailable_health() -> dict:
+    return {
+        "services": {"database": "unavailable", "spiderfoot": "unavailable"},
+        "timings_ms": {},
+        "checked_at": None,
+        "duration_ms": None,
+        "stale": True,
+        "age_seconds": None,
+        "refresh_status": "unavailable",
+        "refresh_error": None,
+    }
+
+
 def _get_cached_health() -> dict:
-    now = time.time()
-    with _health_cache_lock:
-        cached = _health_cache.get("health")
-        if cached and (now - cached[0]) < _HEALTH_CACHE_TTL:
-            return cached[1]
-    fresh = check_external_services()
-    with _health_cache_lock:
-        _health_cache["health"] = (time.time(), fresh)
-    return fresh
+    try:
+        raw = Setting.get("health_snapshot", "")
+    except Exception:
+        return _unavailable_health()
+    try:
+        snapshot = json.loads(raw) if raw else None
+    except (TypeError, ValueError):
+        snapshot = None
+    if not isinstance(snapshot, dict):
+        return _unavailable_health()
+
+    services = snapshot.get("services")
+    timings = snapshot.get("timings_ms", {})
+    if not isinstance(services, dict) or not all(
+        isinstance(key, str) and isinstance(value, str)
+        for key, value in services.items()
+    ):
+        return _unavailable_health()
+    if not isinstance(timings, dict) or not all(
+        isinstance(key, str) and isinstance(value, (int, float))
+        for key, value in timings.items()
+    ):
+        return _unavailable_health()
+    checked_at_value = snapshot.get("checked_at")
+    if not isinstance(checked_at_value, str) or not checked_at_value:
+        return _unavailable_health()
+
+    checked_at = checked_at_value
+    age_seconds = None
+    if checked_at:
+        try:
+            checked = datetime.fromisoformat(str(checked_at))
+            age_seconds = max(
+                0, (datetime.now(timezone.utc) - checked).total_seconds()
+            )
+        except ValueError:
+            age_seconds = None
+    return {
+        "services": services,
+        "timings_ms": timings,
+        "checked_at": checked_at,
+        "duration_ms": snapshot.get("duration_ms"),
+        "refresh_status": snapshot.get("refresh_status", "success"),
+        "refresh_error": snapshot.get("refresh_error"),
+        "stale": age_seconds is None or age_seconds >= _HEALTH_CACHE_TTL,
+        "age_seconds": round(age_seconds, 3) if age_seconds is not None else None,
+    }
 
 
 @cms_bp.route("/")
@@ -104,7 +152,8 @@ def dashboard() -> str:
 @login_required
 def health_summary():
     """Return service health status as JSON for the traffic light in the header."""
-    health = _get_cached_health()
+    snapshot = _get_cached_health()
+    health = snapshot["services"]
     green = []
     orange = []
     red = []
@@ -118,11 +167,25 @@ def health_summary():
         else:
             red.append(name)
 
-    if len(red) == 0 and len(orange) == 0:
+    if snapshot["stale"]:
+        state = "stale"
+    elif len(red) == 0 and len(orange) == 0:
         state = "green"
     elif len(red) == len(health):
         state = "red"
     else:
         state = "orange"
 
-    return jsonify({"state": state, "services": health})
+    return jsonify(
+        {
+            "state": state,
+            "services": health,
+            "checked_at": snapshot["checked_at"],
+            "age_seconds": snapshot["age_seconds"],
+            "stale": snapshot["stale"],
+            "timings_ms": snapshot["timings_ms"],
+            "duration_ms": snapshot["duration_ms"],
+            "refresh_status": snapshot["refresh_status"],
+            "refresh_error": snapshot["refresh_error"],
+        }
+    )
