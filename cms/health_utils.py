@@ -1,6 +1,7 @@
 """Shared health check utilities for external OSINT services."""
 
 import logging
+import time
 
 from cms.services.http_utils import jittered_get, is_tor_enabled
 
@@ -38,7 +39,7 @@ def check_migrations() -> str:
         return f"error: {e}"
 
 
-def check_external_services(quick: bool = False) -> dict:
+def check_external_services(quick: bool = False, timings: dict | None = None) -> dict:
     """Check external OSINT service health.
 
     When *quick* is True, skips kadaster, rdw, and hibp checks.
@@ -48,16 +49,24 @@ def check_external_services(quick: bool = False) -> dict:
 
     result = {}
 
+    def measure(name, fn):
+        started = time.monotonic()
+        try:
+            return fn()
+        finally:
+            if timings is not None:
+                timings[name] = round((time.monotonic() - started) * 1000, 3)
+
     # Database
     try:
-        db.session.execute(db.text("SELECT 1"))
+        measure("database", lambda: db.session.execute(db.text("SELECT 1")))
         result["database"] = "ok"
     except Exception as e:
         result["database"] = f"error: {e}"
 
     # SpiderFoot
     try:
-        healthy, msg = check_spiderfoot_health()
+        healthy, msg = measure("spiderfoot", check_spiderfoot_health)
         result["spiderfoot"] = "ok" if healthy else msg
     except Exception as e:
         result["spiderfoot"] = f"unavailable: {e}"
@@ -82,7 +91,9 @@ def check_external_services(quick: bool = False) -> dict:
             ),
         ]:
             try:
-                r = jittered_get(svc_url, timeout=5)
+                r = measure(
+                    svc_name, lambda: jittered_get(svc_url, timeout=5)
+                )
                 result[svc_name] = (
                     "ok" if svc_check(r) else f"unexpected: {r.status_code}"
                 )
@@ -93,10 +104,13 @@ def check_external_services(quick: bool = False) -> dict:
         overheid_key = Setting.get("overheid_api_key", "")
         if overheid_key:
             try:
-                r = jittered_get(
-                    "https://api.overheid.io/v3/openkvk?query=test&size=1",
-                    headers={"ovio-api-key": overheid_key},
-                    timeout=5,
+                r = measure(
+                    "overheid",
+                    lambda: jittered_get(
+                        "https://api.overheid.io/v3/openkvk?query=test&size=1",
+                        headers={"ovio-api-key": overheid_key},
+                        timeout=5,
+                    ),
                 )
                 result["overheid"] = (
                     "ok"
@@ -122,9 +136,12 @@ def check_external_services(quick: bool = False) -> dict:
         # Tor — active connection test via check.torproject.org
         if is_tor_enabled():
             try:
-                r = jittered_get(
-                    _TORCHECK_URL,
-                    timeout=_TOR_CHECK_TIMEOUT,
+                r = measure(
+                    "tor",
+                    lambda: jittered_get(
+                        _TORCHECK_URL,
+                        timeout=_TOR_CHECK_TIMEOUT,
+                    ),
                 )
                 if "Congratulations" in r.text:
                     result["tor"] = "ok"

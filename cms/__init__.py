@@ -108,6 +108,9 @@ def create_cms_module(app: Flask):
     from .routes import register_modules
 
     register_modules()
+    from .routes.dashboard import init_health_monitor
+
+    init_health_monitor(app)
     from .auth import auth_bp, users_bp
 
     app.register_blueprint(cms_bp)
