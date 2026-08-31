@@ -13,4 +13,4 @@ TimeoutStartSec=90
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/tmp
+ReadWritePaths=/opt/osint-dashboard/flask_session /tmp

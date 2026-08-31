@@ -127,6 +127,7 @@ def test_health_refresh_is_a_single_bounded_systemd_producer():
     assert "LOCK_NB" in script
     assert "TimeoutStartSec=90" in unit
     assert "Type=oneshot" in unit
+    assert "ReadWritePaths=/opt/osint-dashboard/flask_session /tmp" in unit
     assert "OnUnitActiveSec=300s" in timer
     assert "enable --now osint-health-refresh.timer" in installer
     assert "systemctl start osint-health-refresh.service" in installer
