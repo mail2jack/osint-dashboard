@@ -5,9 +5,13 @@ import fcntl
 import json
 import logging
 import signal
+import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
+# Absolute systemd ExecStart paths do not put the repository root on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import _set_cli_tenant_context, app
 from cms.health_utils import check_external_services
 from cms.models import Setting, db
