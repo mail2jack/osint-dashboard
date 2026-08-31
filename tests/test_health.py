@@ -133,6 +133,14 @@ def test_health_refresh_is_a_single_bounded_systemd_producer():
     assert "threading.Thread" not in script
 
 
+def test_health_refresh_absolute_entrypoint_adds_repository_to_import_path():
+    from pathlib import Path
+
+    script = Path("scripts/health_refresh.py").read_text(encoding="utf-8")
+    assert "Path(__file__).resolve().parent.parent" in script
+    assert "sys.path.insert(0" in script
+
+
 def test_health_refresh_main_writes_snapshot_with_cli_context(app, monkeypatch, tmp_path):
     import json
     import scripts.health_refresh as health_refresh
