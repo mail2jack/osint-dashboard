@@ -33,7 +33,9 @@ database-schema's en session-store-backend vallen buiten scope.
 
 1. Draai de bestaande dry-run.
 2. Deploy via `production_rollout.sh --confirm DEPLOY-MASTER`.
-3. Controleer na restart dat de systemd-oneshot één refresh uitvoert zonder
+3. Installeer de health-producer expliciet met
+   `sudo /opt/osint-dashboard/scripts/install_health_refresh.sh`; controleer
+   daarna dat de systemd-oneshot één refresh uitvoert zonder
    traceback en dat een tweede gelijktijdige start door de lock veilig overslaat.
 4. Controleer dat een lege/stale cache een snelle `health-summary`-response
    geeft.

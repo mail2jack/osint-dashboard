@@ -72,6 +72,26 @@ def test_health_summary_returns_snapshot_metadata(auth_client):
     assert data["age_seconds"] is not None
 
 
+def test_health_summary_invalid_snapshot_is_unavailable_not_500(auth_client):
+    import json
+    from cms.models import Setting
+
+    Setting.set(
+        "health_snapshot",
+        json.dumps({"services": None, "timings_ms": {}}),
+        category="system",
+    )
+
+    response = auth_client.get("/cms/api/health-summary")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["state"] == "stale"
+    assert data["stale"] is True
+    assert data["refresh_status"] == "unavailable"
+    assert data["services"]["database"] == "unavailable"
+
+
 def test_quick_health_does_not_call_external_http_checks(app, monkeypatch):
     from cms import health_utils
 
@@ -102,11 +122,14 @@ def test_health_refresh_is_a_single_bounded_systemd_producer():
     script = Path("scripts/health_refresh.py").read_text(encoding="utf-8")
     unit = Path("deploy/osint-health-refresh.service").read_text(encoding="utf-8")
     timer = Path("deploy/osint-health-refresh.timer").read_text(encoding="utf-8")
+    installer = Path("scripts/install_health_refresh.sh").read_text(encoding="utf-8")
 
     assert "LOCK_NB" in script
     assert "TimeoutStartSec=90" in unit
     assert "Type=oneshot" in unit
     assert "OnUnitActiveSec=300s" in timer
+    assert "enable --now osint-health-refresh.timer" in installer
+    assert "systemctl start osint-health-refresh.service" in installer
     assert "threading.Thread" not in script
 
 

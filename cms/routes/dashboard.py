@@ -12,23 +12,50 @@ from ..auth import apply_tenant_filter
 logger = logging.getLogger(__name__)
 
 _HEALTH_CACHE_TTL = 300
+
+
+def _unavailable_health() -> dict:
+    return {
+        "services": {"database": "unavailable", "spiderfoot": "unavailable"},
+        "timings_ms": {},
+        "checked_at": None,
+        "duration_ms": None,
+        "stale": True,
+        "age_seconds": None,
+        "refresh_status": "unavailable",
+        "refresh_error": None,
+    }
+
+
 def _get_cached_health() -> dict:
-    raw = Setting.get("health_snapshot", "")
+    try:
+        raw = Setting.get("health_snapshot", "")
+    except Exception:
+        return _unavailable_health()
     try:
         snapshot = json.loads(raw) if raw else None
     except (TypeError, ValueError):
         snapshot = None
     if not isinstance(snapshot, dict):
-        return {
-            "services": {"database": "unknown", "spiderfoot": "unknown"},
-            "timings_ms": {},
-            "checked_at": None,
-            "duration_ms": None,
-        "stale": True,
-        "age_seconds": None,
-    }
+        return _unavailable_health()
 
-    checked_at = snapshot.get("checked_at")
+    services = snapshot.get("services")
+    timings = snapshot.get("timings_ms", {})
+    if not isinstance(services, dict) or not all(
+        isinstance(key, str) and isinstance(value, str)
+        for key, value in services.items()
+    ):
+        return _unavailable_health()
+    if not isinstance(timings, dict) or not all(
+        isinstance(key, str) and isinstance(value, (int, float))
+        for key, value in timings.items()
+    ):
+        return _unavailable_health()
+    checked_at_value = snapshot.get("checked_at")
+    if not isinstance(checked_at_value, str) or not checked_at_value:
+        return _unavailable_health()
+
+    checked_at = checked_at_value
     age_seconds = None
     if checked_at:
         try:
@@ -39,7 +66,12 @@ def _get_cached_health() -> dict:
         except ValueError:
             age_seconds = None
     return {
-        **snapshot,
+        "services": services,
+        "timings_ms": timings,
+        "checked_at": checked_at,
+        "duration_ms": snapshot.get("duration_ms"),
+        "refresh_status": snapshot.get("refresh_status", "success"),
+        "refresh_error": snapshot.get("refresh_error"),
         "stale": age_seconds is None or age_seconds >= _HEALTH_CACHE_TTL,
         "age_seconds": round(age_seconds, 3) if age_seconds is not None else None,
     }
@@ -135,7 +167,9 @@ def health_summary():
         else:
             red.append(name)
 
-    if len(red) == 0 and len(orange) == 0:
+    if snapshot["stale"]:
+        state = "stale"
+    elif len(red) == 0 and len(orange) == 0:
         state = "green"
     elif len(red) == len(health):
         state = "red"
@@ -151,5 +185,7 @@ def health_summary():
             "stale": snapshot["stale"],
             "timings_ms": snapshot["timings_ms"],
             "duration_ms": snapshot["duration_ms"],
+            "refresh_status": snapshot["refresh_status"],
+            "refresh_error": snapshot["refresh_error"],
         }
     )
