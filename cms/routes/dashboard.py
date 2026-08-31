@@ -1,81 +1,32 @@
 import logging
-import os
-import threading
-import time
+import json
 from datetime import datetime, timezone
 
 from flask import render_template, request, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 
 from . import cms_bp
-from ..models import db, Case, Client, Subject, Finding, CaseStatus
+from ..models import db, Case, Client, Subject, Finding, CaseStatus, Setting
 from ..auth import apply_tenant_filter
-from ..health_utils import check_external_services
 
 logger = logging.getLogger(__name__)
 
-_health_cache: dict[str, object] = {}
-_health_cache_lock = threading.Lock()
 _HEALTH_CACHE_TTL = 300
-_HEALTH_REFRESH_INTERVAL = 300
-_health_monitor_started = False
-
-
-def _refresh_health(app) -> None:
-    timings: dict[str, float] = {}
-    started = time.monotonic()
-    try:
-        with app.app_context():
-            fresh = check_external_services(timings=timings)
-        snapshot = {
-            "services": fresh,
-            "timings_ms": timings,
-            "checked_at": datetime.now(timezone.utc).isoformat(),
-            "duration_ms": round((time.monotonic() - started) * 1000, 3),
-        }
-        with _health_cache_lock:
-            _health_cache["health"] = snapshot
-    except Exception:
-        logger.exception("Background health refresh failed")
-
-
-def _health_monitor(app) -> None:
-    while True:
-        _refresh_health(app)
-        time.sleep(_HEALTH_REFRESH_INTERVAL)
-
-
-def init_health_monitor(app) -> None:
-    """Refresh full health outside the Gunicorn request worker."""
-    global _health_monitor_started
-    if (
-        _health_monitor_started
-        or app.testing
-        or os.environ.get("FLASK_ENV", "development") != "production"
-    ):
-        return
-    _health_monitor_started = True
-    thread = threading.Thread(
-        target=_health_monitor,
-        args=(app,),
-        daemon=True,
-        name="health-refresh",
-    )
-    thread.start()
-
-
 def _get_cached_health() -> dict:
-    with _health_cache_lock:
-        snapshot = _health_cache.get("health")
+    raw = Setting.get("health_snapshot", "")
+    try:
+        snapshot = json.loads(raw) if raw else None
+    except (TypeError, ValueError):
+        snapshot = None
     if not isinstance(snapshot, dict):
         return {
             "services": {"database": "unknown", "spiderfoot": "unknown"},
             "timings_ms": {},
             "checked_at": None,
             "duration_ms": None,
-            "stale": True,
-            "age_seconds": None,
-        }
+        "stale": True,
+        "age_seconds": None,
+    }
 
     checked_at = snapshot.get("checked_at")
     age_seconds = None

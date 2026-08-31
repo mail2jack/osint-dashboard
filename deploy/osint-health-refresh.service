@@ -1,0 +1,16 @@
+[Unit]
+Description=Refresh cached OSINT health status
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=osint
+Group=osint
+WorkingDirectory=/opt/osint-dashboard
+ExecStart=/opt/osint-dashboard/venv/bin/python3 /opt/osint-dashboard/scripts/health_refresh.py
+TimeoutStartSec=90
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/tmp

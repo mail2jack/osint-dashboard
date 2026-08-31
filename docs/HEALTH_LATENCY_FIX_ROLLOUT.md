@@ -8,12 +8,14 @@ database-schema's en session-store-backend vallen buiten scope.
 
 ## Gedrag na de fix
 
-- Een full healthcheck draait in een afzonderlijke achtergrondthread, maximaal
-  één refresh tegelijk.
+- Een full healthcheck draait via precies één systemd-gestuurde oneshot-
+  producer; `flock` voorkomt overlap.
 - `health-summary` leest uitsluitend de laatste snapshot.
 - De response bevat `checked_at`, `age_seconds`, `stale` en `timings_ms`.
 - Bij een lege cache geeft de UI een expliciet stale/unknown-resultaat terug en
   blokkeert de webrequest niet.
+- De producer heeft `TimeoutStartSec=90` en faalt gecontroleerd zonder de
+  Gunicorn-worker te blokkeren.
 - Externe subchecks worden begrensd door hun bestaande timeouts en hun
   monotonic duur wordt als milliseconden opgeslagen, zonder secrets of query's.
 
@@ -31,7 +33,8 @@ database-schema's en session-store-backend vallen buiten scope.
 
 1. Draai de bestaande dry-run.
 2. Deploy via `production_rollout.sh --confirm DEPLOY-MASTER`.
-3. Controleer na restart dat de achtergrond-refresh start zonder traceback.
+3. Controleer na restart dat de systemd-oneshot één refresh uitvoert zonder
+   traceback en dat een tweede gelijktijdige start door de lock veilig overslaat.
 4. Controleer dat een lege/stale cache een snelle `health-summary`-response
    geeft.
 5. Controleer dat `/health?quick=1` en `/api/v1/health` niet achter een full

@@ -31,14 +31,16 @@ def test_health_full_readiness(client, monkeypatch):
 
 
 def test_health_summary_cache_miss_does_not_run_full_health(auth_client, monkeypatch):
-    import cms.routes.dashboard as dashboard
+    from cms.models import Setting
 
-    dashboard._health_cache.clear()
+    Setting.set("health_snapshot", "", category="system")
 
     def fail_if_called(*args, **kwargs):
         raise AssertionError("full health must not run in the request worker")
 
-    monkeypatch.setattr(dashboard, "check_external_services", fail_if_called)
+    monkeypatch.setattr(
+        "cms.health_utils.check_external_services", fail_if_called
+    )
     response = auth_client.get("/cms/api/health-summary")
 
     assert response.status_code == 200
@@ -49,14 +51,15 @@ def test_health_summary_cache_miss_does_not_run_full_health(auth_client, monkeyp
 
 
 def test_health_summary_returns_snapshot_metadata(auth_client):
-    import cms.routes.dashboard as dashboard
+    import json
+    from cms.models import Setting
 
-    dashboard._health_cache["health"] = {
+    Setting.set("health_snapshot", json.dumps({
         "services": {"database": "ok", "spiderfoot": "ok"},
         "timings_ms": {"database": 1.2, "spiderfoot": 4.5},
         "checked_at": "2026-08-31T12:00:00+00:00",
         "duration_ms": 8.0,
-    }
+    }), category="system")
 
     response = auth_client.get("/cms/api/health-summary")
 
@@ -64,6 +67,7 @@ def test_health_summary_returns_snapshot_metadata(auth_client):
     data = response.get_json()
     assert data["services"]["database"] == "ok"
     assert data["timings_ms"] == {"database": 1.2, "spiderfoot": 4.5}
+    assert data["duration_ms"] == 8.0
     assert data["stale"] is True
     assert data["age_seconds"] is not None
 
@@ -90,6 +94,20 @@ def test_quick_health_does_not_call_external_http_checks(app, monkeypatch):
     assert result["spiderfoot"] == "ok"
     assert calls == []
     assert set(timings) == {"database", "spiderfoot"}
+
+
+def test_health_refresh_is_a_single_bounded_systemd_producer():
+    from pathlib import Path
+
+    script = Path("scripts/health_refresh.py").read_text(encoding="utf-8")
+    unit = Path("deploy/osint-health-refresh.service").read_text(encoding="utf-8")
+    timer = Path("deploy/osint-health-refresh.timer").read_text(encoding="utf-8")
+
+    assert "LOCK_NB" in script
+    assert "TimeoutStartSec=90" in unit
+    assert "Type=oneshot" in unit
+    assert "OnUnitActiveSec=300s" in timer
+    assert "threading.Thread" not in script
 
 
 def test_migrations_in_sync(app):
