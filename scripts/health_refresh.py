@@ -8,7 +8,7 @@ import signal
 import time
 from datetime import datetime, timezone
 
-from app import app
+from app import _set_cli_tenant_context, app
 from cms.health_utils import check_external_services
 from cms.models import Setting, db
 
@@ -49,8 +49,6 @@ def main() -> int:
         signal.setitimer(signal.ITIMER_REAL, REFRESH_TIMEOUT_SECONDS)
         try:
             with app.app_context():
-                from cms import _set_cli_tenant_context
-
                 _set_cli_tenant_context()
                 services = check_external_services(timings=timings)
                 snapshot = {

@@ -133,6 +133,38 @@ def test_health_refresh_is_a_single_bounded_systemd_producer():
     assert "threading.Thread" not in script
 
 
+def test_health_refresh_main_writes_snapshot_with_cli_context(app, monkeypatch, tmp_path):
+    import json
+    import scripts.health_refresh as health_refresh
+    from cms.models import Setting
+
+    context_calls = []
+    monkeypatch.setattr(
+        health_refresh, "LOCK_PATH", str(tmp_path / "health-refresh.lock")
+    )
+    monkeypatch.setattr(
+        health_refresh,
+        "_set_cli_tenant_context",
+        lambda: context_calls.append(True),
+    )
+
+    def fake_health(*, timings):
+        timings["database"] = 1.5
+        return {"database": "ok", "spiderfoot": "ok"}
+
+    monkeypatch.setattr(health_refresh, "check_external_services", fake_health)
+
+    assert health_refresh.main() == 0
+    assert context_calls == [True]
+
+    with app.app_context():
+        snapshot = json.loads(Setting.get("health_snapshot"))
+
+    assert snapshot["services"] == {"database": "ok", "spiderfoot": "ok"}
+    assert snapshot["timings_ms"] == {"database": 1.5}
+    assert snapshot["refresh_status"] == "success"
+
+
 def test_migrations_in_sync(app):
     from cms.health_utils import check_migrations
 
