@@ -26,13 +26,14 @@ def _timeout_handler(signum, frame):
 
 
 def _store_snapshot(snapshot: dict) -> None:
-    Setting.set(
+    stored = Setting.set(
         "health_snapshot",
         json.dumps(snapshot, separators=(",", ":")),
         category="system",
         description="Last full health snapshot and monotonic timings",
     )
-    db.session.commit()
+    if not stored:
+        raise RuntimeError("health snapshot could not be persisted")
 
 
 def main() -> int:
@@ -63,29 +64,35 @@ def main() -> int:
             return 0
         except RefreshTimeout as exc:
             logger.error("Full health refresh timed out after %ss", REFRESH_TIMEOUT_SECONDS)
-            with app.app_context():
-                db.session.rollback()
-                _store_snapshot({
-                    "services": {},
-                    "timings_ms": timings,
-                    "checked_at": datetime.now(timezone.utc).isoformat(),
-                    "duration_ms": round((time.monotonic() - started) * 1000, 3),
-                    "refresh_status": "timeout",
-                    "refresh_error": type(exc).__name__,
-                })
+            try:
+                with app.app_context():
+                    db.session.rollback()
+                    _store_snapshot({
+                        "services": {},
+                        "timings_ms": timings,
+                        "checked_at": datetime.now(timezone.utc).isoformat(),
+                        "duration_ms": round((time.monotonic() - started) * 1000, 3),
+                        "refresh_status": "timeout",
+                        "refresh_error": type(exc).__name__,
+                    })
+            except Exception:
+                logger.exception("Could not store health refresh timeout")
             return 1
         except Exception:
             logger.exception("Full health refresh failed")
-            with app.app_context():
-                db.session.rollback()
-                _store_snapshot({
-                    "services": {},
-                    "timings_ms": timings,
-                    "checked_at": datetime.now(timezone.utc).isoformat(),
-                    "duration_ms": round((time.monotonic() - started) * 1000, 3),
-                    "refresh_status": "failed",
-                    "refresh_error": "unexpected_error",
-                })
+            try:
+                with app.app_context():
+                    db.session.rollback()
+                    _store_snapshot({
+                        "services": {},
+                        "timings_ms": timings,
+                        "checked_at": datetime.now(timezone.utc).isoformat(),
+                        "duration_ms": round((time.monotonic() - started) * 1000, 3),
+                        "refresh_status": "failed",
+                        "refresh_error": "unexpected_error",
+                    })
+            except Exception:
+                logger.exception("Could not store health refresh failure")
             return 1
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)

@@ -165,6 +165,25 @@ def test_health_refresh_main_writes_snapshot_with_cli_context(app, monkeypatch, 
     assert snapshot["refresh_status"] == "success"
 
 
+def test_health_refresh_main_fails_when_snapshot_persistence_fails(
+    app, monkeypatch, tmp_path
+):
+    import scripts.health_refresh as health_refresh
+
+    monkeypatch.setattr(
+        health_refresh, "LOCK_PATH", str(tmp_path / "health-refresh.lock")
+    )
+    monkeypatch.setattr(health_refresh, "_set_cli_tenant_context", lambda: None)
+    monkeypatch.setattr(
+        health_refresh,
+        "check_external_services",
+        lambda *, timings: {"database": "ok"},
+    )
+    monkeypatch.setattr(health_refresh.Setting, "set", lambda *args, **kwargs: False)
+
+    assert health_refresh.main() == 1
+
+
 def test_migrations_in_sync(app):
     from cms.health_utils import check_migrations
 
