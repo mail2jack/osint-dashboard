@@ -5,6 +5,7 @@ App-level system routes: health, version, config, docs, error handlers.
 Registered directly on the Flask app (not the CMS blueprint).
 """
 
+import json
 import logging
 import signal
 
@@ -103,13 +104,30 @@ def register_system_routes(app: Flask) -> None:
 
     @app.route("/health")
     def health_check() -> flask.Response:
-        from cms.models import Setting
+        from cms.models import Setting, db
         from cms.health_utils import check_external_services
 
         status = {"status": "ok"}
         http_status = 200
 
-        svc = check_external_services(quick=request.args.get("quick") == "1")
+        quick = request.args.get("quick") == "1"
+        if quick:
+            # The dashboard polls this endpoint frequently; never run network
+            # checks or write settings from the request worker.
+            try:
+                snapshot = json.loads(Setting.get("health_snapshot", ""))
+                svc = snapshot.get("services", {})
+                if not isinstance(svc, dict):
+                    svc = {}
+            except (TypeError, ValueError):
+                svc = {}
+            try:
+                db.session.execute(db.text("SELECT 1"))
+                svc["database"] = "ok"
+            except Exception as exc:
+                svc["database"] = f"error: {exc}"
+        else:
+            svc = check_external_services()
         relabel = {"ok": "connected"}
         database_label = relabel.get(
             svc.get("database", ""), svc.get("database", "unknown")
@@ -169,7 +187,7 @@ def register_system_routes(app: Flask) -> None:
             status["status"] = "degraded"
             http_status = 503
 
-        if request.args.get("quick") != "1":
+        if not quick:
             try:
                 from cms.models import db
                 from sqlalchemy import text
