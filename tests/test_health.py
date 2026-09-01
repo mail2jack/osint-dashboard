@@ -116,6 +116,30 @@ def test_quick_health_does_not_call_external_http_checks(app, monkeypatch):
     assert set(timings) == {"database", "spiderfoot"}
 
 
+def test_health_quick_reads_snapshot_without_live_checks(client, monkeypatch):
+    import json
+    from cms.models import Setting
+
+    Setting.set(
+        "health_snapshot",
+        json.dumps({
+            "services": {"database": "ok", "spiderfoot": "ok"},
+        }),
+        category="system",
+    )
+    monkeypatch.setattr(
+        "cms.health_utils.check_external_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("quick health must not run live checks")
+        ),
+    )
+
+    response = client.get("/health?quick=1")
+
+    assert response.status_code == 200
+    assert response.get_json()["spiderfoot"] == "ok"
+
+
 def test_health_refresh_is_a_single_bounded_systemd_producer():
     from pathlib import Path
 
