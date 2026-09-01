@@ -104,7 +104,7 @@ def register_system_routes(app: Flask) -> None:
 
     @app.route("/health")
     def health_check() -> flask.Response:
-        from cms.models import Setting
+        from cms.models import Setting, db
         from cms.health_utils import check_external_services
 
         status = {"status": "ok"}
@@ -121,6 +121,11 @@ def register_system_routes(app: Flask) -> None:
                     svc = {}
             except (TypeError, ValueError):
                 svc = {}
+            try:
+                db.session.execute(db.text("SELECT 1"))
+                svc["database"] = "ok"
+            except Exception as exc:
+                svc["database"] = f"error: {exc}"
         else:
             svc = check_external_services()
         relabel = {"ok": "connected"}
