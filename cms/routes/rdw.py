@@ -136,7 +136,6 @@ def check_rdw_vehicle() -> flask.Response:
 
 
 @cms_bp.route("/subjects/<subject_id>/update-from-rdw", methods=["POST"])
-@csrf.exempt
 @api_key_required
 @login_required
 @roles_required("admin", "owner", "senior_investigator")

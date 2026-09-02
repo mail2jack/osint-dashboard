@@ -352,7 +352,6 @@ def check_policie_api_status() -> flask.Response:
 
 
 @cms_bp.route("/api/findings/from-interpol", methods=["POST"])
-@csrf.exempt
 @api_key_required
 @tool_enabled("interpol")
 @login_required
