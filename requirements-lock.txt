@@ -144,7 +144,7 @@ pexpect==4.9.0
 phonenumbers==8.13.55
 pillow==12.3.0
 platformdirs==4.9.4
-playwright==1.58.0
+playwright==1.62.0
 pluggy==1.6.0
 portend==3.2.1
 prompt_toolkit==3.0.52
