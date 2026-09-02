@@ -22,7 +22,12 @@ trap 'rm -rf "$TMP_VENV"' EXIT
 python3 -m venv "$TMP_VENV"
 "$TMP_VENV/bin/pip" install --upgrade pip setuptools wheel
 "$TMP_VENV/bin/pip" install -r "$APP_DIR/requirements-lock.txt"
-sudo -u osint HOME=/home/osint "$TMP_VENV/bin/python3" -m playwright install chromium
+browser_path=$(sudo -u osint HOME=/home/osint "$TMP_VENV/bin/python3" -c \
+    "from playwright.sync_api import sync_playwright; p=sync_playwright().start(); print(p.chromium.executable_path); p.stop()")
+if [[ ! -x "$browser_path" ]]; then
+    echo "Required Playwright browser is unavailable: $browser_path" >&2
+    exit 1
+fi
 "$TMP_VENV/bin/python3" -c "import app; print('application import: ok')"
 "$TMP_VENV/bin/pip" check
 
