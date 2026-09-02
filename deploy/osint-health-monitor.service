@@ -13,3 +13,6 @@ RestartSec=10s
 NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=/opt/osint-dashboard/reports /tmp
+
+[Install]
+WantedBy=multi-user.target
