@@ -566,7 +566,7 @@ User=osint
 Group=osint
 WorkingDirectory=/opt/osint-dashboard
 Environment="PATH=/opt/osint-dashboard/venv/bin"
-ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 4 --threads 2 --bind 0.0.0.0:5000 --timeout 120 --keep-alive 60 --max-requests 1000 --access-logfile /var/log/osint-dashboard/access.log --error-logfile /var/log/osint-dashboard/error.log "app:app"
+ExecStart=/opt/osint-dashboard/venv/bin/gunicorn --workers 2 --worker-class sync --threads 1 --bind 0.0.0.0:5000 --timeout 120 --access-logfile /var/log/osint-dashboard/access.log --error-logfile /var/log/osint-dashboard/error.log "app:app"
 Restart=always
 RestartSec=10s
 

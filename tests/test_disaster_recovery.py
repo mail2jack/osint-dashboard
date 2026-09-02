@@ -171,6 +171,16 @@ def test_light_health_monitor_uses_incremental_journal_cursor():
     assert "enable --now osint-health-monitor.service" in installer
 
 
+def test_managed_runtime_limits_match_production_canary():
+    installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+    journald = (ROOT / "deploy/60-osint-journald-limits.conf").read_text(
+        encoding="utf-8"
+    )
+    assert "--workers 2 --worker-class sync --threads 1" in installer
+    assert "SystemMaxUse=1G" in journald
+    assert "MaxRetentionSec=14day" in journald
+
+
 def test_drill_requires_human_safety_controls():
     source = (ROOT / "scripts/dr_drill.sh").read_text(encoding="utf-8")
     assert "--confirm" in source
