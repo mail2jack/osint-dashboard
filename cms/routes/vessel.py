@@ -80,7 +80,6 @@ def vessel_lookup() -> flask.Response:
 
 
 @cms_bp.route("/api/vessel/update-subject", methods=["POST"])
-@csrf.exempt
 @api_key_required
 @tool_enabled("vessel")
 @login_required
@@ -135,7 +134,6 @@ def update_subject_from_vessel() -> flask.Response:
 
 
 @cms_bp.route("/api/findings/from-vessel", methods=["POST"])
-@csrf.exempt
 @api_key_required
 @tool_enabled("vessel")
 @login_required
