@@ -163,9 +163,11 @@ def test_light_health_monitor_uses_incremental_journal_cursor():
     installer = (ROOT / "scripts/install_health_monitor.sh").read_text(encoding="utf-8")
     assert "--after-cursor" in source
     assert "--since" not in source
+    assert "-n 1 --show-cursor" in source
     assert "journal.cursor" in source
     assert "health-light.csv" in source
     assert "Restart=always" in service
+    assert "WantedBy=multi-user.target" in service
     assert "enable --now osint-health-monitor.service" in installer
 
 

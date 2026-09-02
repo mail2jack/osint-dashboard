@@ -18,7 +18,7 @@ active_file="$STATE/active_enter"
 event_file="$STATE/events"
 
 if [[ ! -s "$cursor_file" ]]; then
-    journalctl -u "$SERVICE" -n 0 --show-cursor --no-pager 2>/dev/null \
+    journalctl -u "$SERVICE" -n 1 --show-cursor --no-pager 2>/dev/null \
         | awk -F'-- cursor: ' '/-- cursor:/ {print $2}' > "$cursor_file" || true
 fi
 
