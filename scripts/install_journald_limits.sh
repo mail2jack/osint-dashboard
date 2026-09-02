@@ -7,6 +7,7 @@ if [[ "$(id -u)" -ne 0 ]]; then
     exit 1
 fi
 
+mkdir -p /etc/systemd/journald.conf.d
 install -o root -g root -m 0644 "$APP_DIR/deploy/60-osint-journald-limits.conf" \
     /etc/systemd/journald.conf.d/60-osint-journald-limits.conf
 systemctl restart systemd-journald.service
