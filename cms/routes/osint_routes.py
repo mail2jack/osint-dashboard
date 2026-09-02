@@ -916,7 +916,6 @@ def username_search() -> FlaskResponse:
 
 
 @app_routes_bp.route("/api/username/rapidapi", methods=["POST"])
-@csrf.exempt
 @api_key_required
 @tool_enabled("username")
 @rate_limit(limit=DEFAULT_RATE_LIMIT, key_prefix="username_rapidapi")
