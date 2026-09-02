@@ -131,6 +131,14 @@ min after deploy; a stale client connection held open via the nginx proxy).
    occurrences to close the P2 loop; observability follow-up (empty
    `access.log`) tracked separately.
 
+> **Window-scope note:** the P2 session-store/health loop closes on a
+> **short working day** window, *not* 24 hours. This is distinct from the
+> **Gunicorn 2-worker canary**, which has its own explicit **24 h
+> uninterrupted** observation window (see
+> `docs/PLAN-GUNICORN-CONCURRENCY-TUNING.md`, phase 1). Do not conflate the
+> two: the P2 loop may be formally green on the short-working-day window
+> before the canary's 24 h window has completed.
+
 ## Follow-ups (out of scope here)
 
 - Full `/health` (without `?quick=1`) runs sequential external HTTP checks
