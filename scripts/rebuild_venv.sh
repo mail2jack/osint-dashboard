@@ -15,6 +15,8 @@ if [[ "$(id -u)" -ne 0 ]]; then
     exit 1
 fi
 
+cd "$APP_DIR"
+
 exec 9>"$LOCK"
 flock -n 9 || { echo "Another venv rebuild is running." >&2; exit 1; }
 trap 'rm -rf "$TMP_VENV"' EXIT
