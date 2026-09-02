@@ -181,6 +181,12 @@ def test_managed_runtime_limits_match_production_canary():
     assert "MaxRetentionSec=14day" in journald
 
 
+def test_managed_gunicorn_does_not_configure_shadow_access_log():
+    installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+    assert "--workers 2 --worker-class sync --threads 1" in installer
+    assert "--access-logfile /var/log/osint-dashboard/access.log" not in installer
+
+
 def test_drill_requires_human_safety_controls():
     source = (ROOT / "scripts/dr_drill.sh").read_text(encoding="utf-8")
     assert "--confirm" in source
