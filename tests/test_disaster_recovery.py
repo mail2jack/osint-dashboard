@@ -157,6 +157,18 @@ def test_periodic_units_are_present_and_failure_alert_is_wired():
     assert "backup_verification_alert.sh" in alert
 
 
+def test_light_health_monitor_uses_incremental_journal_cursor():
+    source = (ROOT / "scripts/monitor_health_light.sh").read_text(encoding="utf-8")
+    service = (ROOT / "deploy/osint-health-monitor.service").read_text(encoding="utf-8")
+    installer = (ROOT / "scripts/install_health_monitor.sh").read_text(encoding="utf-8")
+    assert "--after-cursor" in source
+    assert "--since" not in source
+    assert "journal.cursor" in source
+    assert "health-light.csv" in source
+    assert "Restart=always" in service
+    assert "enable --now osint-health-monitor.service" in installer
+
+
 def test_drill_requires_human_safety_controls():
     source = (ROOT / "scripts/dr_drill.sh").read_text(encoding="utf-8")
     assert "--confirm" in source
