@@ -187,6 +187,17 @@ def test_managed_gunicorn_does_not_configure_shadow_access_log():
     assert "--access-logfile /var/log/osint-dashboard/access.log" not in installer
 
 
+def test_managed_runtime_binds_gunicorn_to_localhost_and_rebuild_is_atomic():
+    installer = (ROOT / "install.sh").read_text(encoding="utf-8")
+    starter = (ROOT / "start.sh").read_text(encoding="utf-8")
+    rebuild = (ROOT / "scripts/rebuild_venv.sh").read_text(encoding="utf-8")
+    assert "--bind 127.0.0.1:5000" in installer
+    assert '--bind "127.0.0.1:$port"' in starter
+    assert "requirements-lock.txt" in rebuild
+    assert "venv.previous" in rebuild
+    assert "rollback" in rebuild
+
+
 def test_drill_requires_human_safety_controls():
     source = (ROOT / "scripts/dr_drill.sh").read_text(encoding="utf-8")
     assert "--confirm" in source

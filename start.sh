@@ -338,7 +338,7 @@ start_iveras() {
     if [ -f "$APP_DIR/venv/bin/python3" ]; then
         PYTHON_BIN="$APP_DIR/venv/bin/python3"
     fi
-    PORT="$port" nohup "$PYTHON_BIN" -m gunicorn app:app --bind "0.0.0.0:$port" --workers 4 --timeout 120 > "$APP_LOG" 2>&1 &
+    PORT="$port" nohup "$PYTHON_BIN" -m gunicorn app:app --bind "127.0.0.1:$port" --workers 4 --timeout 120 > "$APP_LOG" 2>&1 &
     echo $! > "$APP_PID_FILE"
     save_app_port "$port"
     
