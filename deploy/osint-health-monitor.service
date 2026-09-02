@@ -1,0 +1,15 @@
+[Unit]
+Description=Lightweight OSINT health and session-store monitor
+After=osint-dashboard.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/osint-dashboard
+ExecStart=/opt/osint-dashboard/scripts/monitor_health_light.sh
+Restart=always
+RestartSec=10s
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/osint-dashboard/reports /tmp
