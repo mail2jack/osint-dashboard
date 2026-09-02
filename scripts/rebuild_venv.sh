@@ -56,8 +56,15 @@ trap rollback ERR
 
 if [[ "$was_active" == true ]]; then
     systemctl start osint-dashboard
-    sleep 3
-    curl -fsS --max-time 10 http://127.0.0.1:5000/api/v1/health >/dev/null
+    for attempt in {1..10}; do
+        if curl -fsS --max-time 10 http://127.0.0.1:5000/api/v1/health >/dev/null; then
+            break
+        fi
+        if [[ "$attempt" == 10 ]]; then
+            exit 1
+        fi
+        sleep 3
+    done
 fi
 
 rm -rf "$OLD_VENV"
