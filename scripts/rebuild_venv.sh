@@ -44,6 +44,15 @@ mv "$TMP_VENV" "$VENV"
 switched=true
 chown -R osint:osint "$VENV"
 
+# Console scripts created by pip bake the STAGING path into their shebang
+# (e.g. #!.../.venv.rebuild.$STAMP/bin/python3). After the swap above that
+# path no longer exists, so repoint every entry-point shebang at the real
+# venv location before the service is (re)started.
+if [[ -d "$VENV/bin" ]]; then
+    find "$VENV/bin" -maxdepth 1 -type f -print0 |
+        xargs -0 sed -i "s#$TMP_VENV#$VENV#g"
+fi
+
 rollback() {
     [[ "$switched" == true ]] || return 0
     rm -rf "$VENV"
