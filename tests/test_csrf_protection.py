@@ -6,13 +6,14 @@ also mutating data and being reachable from the session-authenticated browser
 frontend (the ``@api_key_required`` decorator is bypassed for session-authed
 users, so an exemption left those endpoints open to cross-site requests).
 
-These tests assert that the four state-mutating routes no longer accept
+These tests assert that the five state-mutating routes no longer accept
 requests without a valid CSRF token:
 
 - ``/cms/api/vessel/update-subject``
 - ``/cms/api/findings/from-vessel``
 - ``/cms/subjects/<id>/update-from-rdw``
 - ``/cms/api/findings/from-interpol``
+- ``/api/username/rapidapi``
 
 Under the default test fixture CSRF is disabled (``WTF_CSRF_ENABLED=False``),
 so these tests re-enable it locally to exercise the enforcement path.
@@ -33,6 +34,7 @@ STATE_MUTATING_ROUTES = [
     "/cms/api/findings/from-vessel",
     "/cms/subjects/00000000-0000-0000-0000-000000000000/update-from-rdw",
     "/cms/api/findings/from-interpol",
+    "/api/username/rapidapi",
 ]
 
 
@@ -89,10 +91,10 @@ def test_state_mutating_routes_reject_without_csrf(csrf_client, path):
 def test_state_mutating_routes_accept_with_valid_csrf(csrf_client, app, path):
     """With a valid X-CSRFToken header, CSRF does not reject the request.
 
-    The request then proceeds to schema validation (``"Validation failed"`` if
-    the payload is invalid) instead of being cut off by CSRF
-    (``"Bad request"``). This proves the endpoint is CSRF-enforced but not
-    broken for legitimate token-bearing requests.
+    The request proceeds past CSRF into the route handler (schema validation,
+    an early ``"Username required"`` guard, etc.) instead of being cut off by
+    CSRF (``{"error": "Bad request"}``). The CSRF rejection body is the one
+    signal common to every endpoint, so its absence proves CSRF passed.
     """
     token = _csrf_token(app, csrf_client)
     resp = csrf_client.post(
@@ -102,4 +104,3 @@ def test_state_mutating_routes_accept_with_valid_csrf(csrf_client, app, path):
     )
     body = resp.get_data(as_text=True)
     assert "Bad request" not in body, (resp.status_code, body)
-    assert resp.status_code != 400 or "Validation failed" in body, (resp.status_code, body)
