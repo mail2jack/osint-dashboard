@@ -112,7 +112,10 @@ else
         exit 2
     fi
     echo "  GEBRUIKT: $PIP_AUDIT"
-    if "$PIP_AUDIT" -r "$APP_DIR/requirements-lock.txt" --progress-spinner off; then
+    # PYSEC-2026-3740 is a known unfixable transitive advisory via
+    # safety/nltk (see ci.yml). Stock pip-audit has no fix version; the
+    # advisory is documented and scoped-ignored to stay consistent with CI.
+    if "$PIP_AUDIT" -r "$APP_DIR/requirements-lock.txt" --ignore-vuln PYSEC-2026-3740 --progress-spinner off; then
         echo "  OK: geen bekende kwetsbaarheden"
     else
         echo "  FAIL: kwetsbaarheden gevonden — blokkeert deploy"
