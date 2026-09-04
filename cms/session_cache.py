@@ -17,7 +17,7 @@ modes are untouched.
 """
 
 from time import sleep
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from cachelib.file import FileSystemCache
 
@@ -26,9 +26,20 @@ from cachelib.file import FileSystemCache
 #: 10.0s; any legitimate concurrent-access blip resolves in ~1ms.
 SESSION_CACHE_MAX_WAIT = 0.05
 
+#: Brief pause before a single ``get()`` retry on a transient miss caused by
+#: a concurrent ``os.replace()`` between two sync workers.
+_GET_RETRY_DELAY = 0.01
+
 
 class BoundedFileSystemCache(FileSystemCache):
-    """``FileSystemCache`` whose access retries are bounded, not 10s."""
+    """``FileSystemCache`` whose access retries are bounded, not 10s.
+
+    Under 2+ sync workers a concurrent ``os.replace()`` in ``set()`` can
+    cause ``open()`` in ``get()`` to raise ``FileNotFoundError`` or
+    ``PermissionError``.  ``_run_safely`` now retries on both, and
+    ``get()`` performs a single automatic retry on a transient miss so
+    Flask-Session does not treat it as a brand-new session.
+    """
 
     max_wait_time = SESSION_CACHE_MAX_WAIT
 
@@ -43,7 +54,7 @@ class BoundedFileSystemCache(FileSystemCache):
         while total_sleep_time < max_sleep_time:
             try:
                 output = fn(*args, **kwargs)
-            except PermissionError:
+            except (PermissionError, FileNotFoundError):
                 sleep(wait_step)
                 total_sleep_time += wait_step
                 wait_step *= 2
@@ -51,3 +62,14 @@ class BoundedFileSystemCache(FileSystemCache):
                 break
 
         return output
+
+    def get(self, key: str) -> Optional[Any]:
+        result = super().get(key)
+        if result is not None:
+            return result
+        # Transient miss: a concurrent os.replace() may have deleted the
+        # file between our _get_filename() and open().  A single brief
+        # retry lets the new file (written by the other worker's set())
+        # appear.
+        sleep(_GET_RETRY_DELAY)
+        return super().get(key)
