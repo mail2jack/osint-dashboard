@@ -126,3 +126,92 @@ def test_doctor_check_flags_foreign_session_entries(tmp_path, monkeypatch):
 def test_bounded_cache_is_subclass_of_stock(tmp_path):
     assert issubclass(BoundedFileSystemCache, FileSystemCache)
     assert BoundedFileSystemCache.max_wait_time < 1.0
+
+
+def test_run_safely_retries_file_not_found_error(tmp_path, monkeypatch):
+    """FileNotFoundError on a session file must degrade to a fast miss, not stall."""
+    cache = BoundedFileSystemCache(
+        cache_dir=str(tmp_path), threshold=5000, default_timeout=28800
+    )
+    cache.set("k", "v")
+
+    real_open = open
+    target = cache._get_filename("k")
+
+    def exploding_open(path, mode="rb", *args, **kwargs):
+        if Path(path) == Path(target):
+            raise FileNotFoundError("simulated missing session file")
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.open", exploding_open)
+
+    start = time.monotonic()
+    assert cache.get("k") is None
+    elapsed = time.monotonic() - start
+
+    assert elapsed < 0.75, f"session read blocked {elapsed:.2f}s (expected <0.75s)"
+
+
+def test_get_retries_once_on_transient_miss(tmp_path, monkeypatch):
+    """A transient FileNotFoundError on the first open must succeed on retry."""
+    import builtins
+
+    cache = BoundedFileSystemCache(
+        cache_dir=str(tmp_path), threshold=5000, default_timeout=300
+    )
+    cache.set("k", "v")
+
+    real_open = builtins.open
+    target = cache._get_filename("k")
+    call_count = 0
+
+    def transient_open(path, mode="rb", *args, **kwargs):
+        nonlocal call_count
+        if Path(path) == Path(target):
+            call_count += 1
+            if call_count == 1:
+                raise FileNotFoundError("transient miss on first open")
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.open", transient_open)
+
+    start = time.monotonic()
+    result = cache.get("k")
+    elapsed = time.monotonic() - start
+
+    assert result == "v", f"expected 'v' after retry, got {result!r}"
+    assert call_count >= 1, "FileNotFoundError should have been raised at least once"
+    assert elapsed < 1.0, f"retry took {elapsed:.2f}s (expected <1.0s)"
+
+
+def test_get_does_not_retry_on_genuine_miss(tmp_path):
+    """get() on a key that was never set must return None quickly without hanging."""
+    cache = BoundedFileSystemCache(
+        cache_dir=str(tmp_path), threshold=5000, default_timeout=300
+    )
+
+    start = time.monotonic()
+    result = cache.get("nonexistent_key")
+    elapsed = time.monotonic() - start
+
+    assert result is None
+    assert elapsed < 0.5, f"genuine miss took {elapsed:.2f}s (expected <0.5s)"
+
+
+def test_run_safely_returns_none_after_both_errors_exhaust(tmp_path, monkeypatch):
+    """_run_safely must return None after exhausting retries on FileNotFoundError."""
+    cache = BoundedFileSystemCache(
+        cache_dir=str(tmp_path), threshold=5000, default_timeout=300
+    )
+
+    def always_fail(path, mode="rb", *args, **kwargs):
+        raise FileNotFoundError("persistent missing file")
+
+    monkeypatch.setattr("builtins.open", always_fail)
+
+    start = time.monotonic()
+    result = cache._run_safely(open, "does_not_exist.txt")
+    elapsed = time.monotonic() - start
+
+    assert result is None
+    assert elapsed < 0.75, f"_run_safely blocked {elapsed:.2f}s (expected <0.75s)"
