@@ -192,7 +192,8 @@ Onderzoeksdata wordt niet als payload uit productie uitgelezen. Management moet 
 **Impact:** firewallmisconfiguratie of container/network policy kan auth/TLS/reverse-proxylaag omzeilen.  
 **Likelihood:** low-medium; impact high.  
 **Aanbeveling:** bind Gunicorn op `127.0.0.1:5000` tenzij aantoonbaar nodig; voeg een gecontroleerde host-exposure check toe aan deployment.  
-**Owner:** platform.
+**Owner:** platform.  
+**Remediatie (2026-09-06):** opgelost. Basis-unit `/etc/systemd/system/osint-dashboard.service` en de 2-worker override binden beide `--bind 127.0.0.1:5000`. Live geverifieerd: `ss -ltnp` toont alleen `127.0.0.1:5000` voor gunicorn (geen `0.0.0.0`), UFW staat alleen 22/80/443 toe, gezondheid OK via `localhost:5000` en nginx:443 (zero-downtime, alleen `daemon-reload`). De controlled host-exposure check maakt deel uit van de checklist hieronder.
 
 ### F-08 Medium: backups concentreren secrets en live/signed license-material
 **Evidence:** `scripts/backup.sh:159-245` neemt `.env`, sessies, SpiderFoot password en mogelijk license DB, license env en private signing key op; encryptie gebruikt een lokaal key-file.  
@@ -248,7 +249,7 @@ Residueel blijven: correctness van ieder tenantfilter/bypasspad, admin/super-adm
 
 ## Specialist checklist en beslissingen
 
-- [ ] Bevestig alle publiek bereikbare poorten vanaf een externe meetlocatie.
+- [ ] Bevestig alle publiek bereikbare poorten vanaf een externe meetlocatie. (2026-09-06: gedeeltelijk — UFW actief met alleen 22/80/443 en gunicorn-luistersocket loopback-only geverifieerd; de externe meetlocatie-check is nog open.)
 - [ ] Review nginx headers, TLS ciphers, host allowlist, rate limiting en admin-route exposure.
 - [ ] Controleer effectieve Fail2Ban-jails, bans en logbron.
 - [ ] Controleer PostgreSQL role attributes, `BYPASSRLS`, grants, SSL-certificaatvalidatie en backup-DB-isolatie.
@@ -260,7 +261,7 @@ Residueel blijven: correctness van ieder tenantfilter/bypasspad, admin/super-adm
 - [ ] Beoordeel backup key custody, license private-key custody, dual control en restoretoegang.
 - [ ] Beslis of telemetry standaard aan mag blijven en welke velden noodzakelijk zijn.
 - [ ] Beslis of license server en dashboard een gedeelde beschikbaarheids-/incidentprocedure krijgen.
-- [ ] Beslis of Gunicorn één worker bewust is of naar meerdere workers/queue moet, met load- en locktest.
+- [x] Beslis of Gunicorn één worker bewust is of naar meerdere workers/queue moet, met load- en locktest. (Besluit 2026-09-06: blijven op 2 sync workers, 1 thread — 2-worker canary geslaagd; zie `PLAN-GUNICORN-CONCURRENCY-TUNING.md` §0.)
 - [ ] Beslis welke security scans blocking moeten zijn en wie uitzonderingen expireert.
 
 ## Appendix A: relevante bestanden en commando's
