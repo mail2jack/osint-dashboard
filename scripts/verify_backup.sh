@@ -96,6 +96,18 @@ BACKUP_ID="${BACKUP_ID%.gpg}"
 BACKUP_ID="${BACKUP_ID%.tar.gz}"
 record archive pass "selected backup"
 
+# Freshness floor: the verifier must not certify a stale archive. Default to
+# rejecting archives older than 24h; override with DR_MAX_ARCHIVE_AGE (seconds).
+MAX_ARCHIVE_AGE="${DR_MAX_ARCHIVE_AGE:-86400}"
+if [[ "$MAX_ARCHIVE_AGE" =~ ^[0-9]+$ ]] && [ -f "$ARCHIVE" ]; then
+    ARCHIVE_AGE="$(( $(date +%s) - $(stat -c %Y "$ARCHIVE") ))"
+    if [ "$ARCHIVE_AGE" -gt "$MAX_ARCHIVE_AGE" ]; then
+        record freshness fail "archive is $ARCHIVE_AGE s old (max $MAX_ARCHIVE_AGE s)"
+        exit 2
+    fi
+    record freshness pass "archive is $ARCHIVE_AGE s old (max $MAX_ARCHIVE_AGE s)"
+fi
+
 if [[ "$ARCHIVE" == *.gpg ]]; then
     KEY_FILE="${DR_BACKUP_KEY_FILE:-$(dirname "$ARCHIVE")/backup-key.gpg}"
     if [ ! -f "$KEY_FILE" ]; then

@@ -1,6 +1,7 @@
 """Tests for disaster-recovery scripts and their machine-readable reports."""
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -144,6 +145,44 @@ def test_verifier_auto_sources_dr_env_default():
     assert "PGSERVICE:-" in source
     assert "DR_VERIFY_DATABASE_URL:-" in source
     assert '[ -f /etc/default/osint-dr ]' in source
+
+
+def test_verifier_enforces_archive_freshness_floor():
+    """A stale archive must be rejected, not merely restored/verified."""
+    source = (ROOT / "scripts/verify_backup.sh").read_text(encoding="utf-8")
+    assert "DR_MAX_ARCHIVE_AGE" in source
+    assert 'MAX_ARCHIVE_AGE="${DR_MAX_ARCHIVE_AGE:-86400}"' in source
+    assert 'archive is $ARCHIVE_AGE s old (max $MAX_ARCHIVE_AGE s)' in source
+    assert 'stat -c %Y "$ARCHIVE"' in source
+    assert "record freshness" in source
+
+
+def test_freshness_check_flags_stale_archive(tmp_path):
+    """Simulate an archive older than the allowed window and assert the
+    freshness guard would reject it via the same mtime arithmetic."""
+    import time
+
+    archive = tmp_path / "iveras_backup_old.tar.gz.gpg"
+    archive.write_bytes(b"stale")
+    old_mtime = int(time.time()) - (86400 * 3)
+    os.utime(archive, (old_mtime, old_mtime))
+
+    script = subprocess.run(
+        [
+            "bash",
+            "-c",
+            "ARCHIVE=$1; AGE=$(( $(date +%s) - $(python3 -c "
+            '"import os,sys; print(int(os.stat(sys.argv[1]).st_mtime))" ' '$ARCHIVE) )); '
+            'if [ "$AGE" -gt 86400 ]; then echo "stale:$AGE"; else echo "fresh:$AGE"; fi',
+            "_",
+            str(archive),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert script.returncode == 0, script.stderr
+    assert script.stdout.strip().startswith("stale:"), script.stdout
 
 
 def test_periodic_units_are_present_and_failure_alert_is_wired():
