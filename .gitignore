@@ -41,3 +41,15 @@ license-server/.env
 .deployed_sha
 dr-evidence-2026-08-15/
 .cms_fp_key
+
+# Runtime reports & operational evidence (canary, health, DR, rollout)
+reports/
+
+# One-off repair manifests (timestamped runtime artifacts)
+repair_manifests/
+
+# Venv rebuild coordination lockfile
+.venv-rebuild.lock
+
+# Editor/backup files
+*.bak-*
