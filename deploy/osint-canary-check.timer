@@ -1,0 +1,13 @@
+[Unit]
+Description=Post-canary check (one-shot, shortly after canary-close)
+
+[Timer]
+# Fires 3 minutes after osint-canary-close.timer (16:46:00Z) so the FINAL
+# report is guaranteed written before we verify it (logs osint-canary-check).
+# Re-arm: bump alongside close.timer, then re-run install_canary_close.sh.
+# Machine clock is Etc/UTC; omit the timezone token (see close.timer).
+OnCalendar=2026-09-05 16:49:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

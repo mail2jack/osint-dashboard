@@ -1,0 +1,16 @@
+[Unit]
+Description=Post-canary check: confirm FINAL report exists and log summary
+After=osint-canary-close.service
+Wants=osint-canary-close.timer
+
+[Service]
+Type=oneshot
+User=osint
+Group=osint
+WorkingDirectory=/opt/osint-dashboard
+ExecStart=/opt/osint-dashboard/venv/bin/python3 /opt/osint-dashboard/scripts/canary_check.py
+TimeoutStartSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/osint-dashboard/reports /tmp

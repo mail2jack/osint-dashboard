@@ -1,0 +1,16 @@
+[Unit]
+Description=Finalize Gunicorn concurrency canary window and emit report
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=osint
+Group=osint
+WorkingDirectory=/opt/osint-dashboard
+ExecStart=/opt/osint-dashboard/venv/bin/python3 /opt/osint-dashboard/scripts/canary_close.py
+TimeoutStartSec=90
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/osint-dashboard/reports /tmp

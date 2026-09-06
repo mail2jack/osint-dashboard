@@ -1,0 +1,17 @@
+[Unit]
+Description=Finalize Gunicorn concurrency canary window (one-shot)
+
+[Timer]
+# Re-canary window open 2026-09-04 16:43:30Z (gunicorn restart during deploy)
+# -> close 2026-09-05 16:43:30Z. The 16:46:00Z trigger is shortly after close
+# so the final 5-min health-light sample is recorded and cadence is provably
+# gap-free through the end of the window.
+# Re-arm GOTCHA: this one-shot OnCalendar will NOT reschedule after it has
+# fired. Bump the date HERE, then re-run scripts/install_canary_close.sh
+# (uses `systemctl restart`, which -- unlike enable --now -- recalculates
+# NextElapse). Machine clock is Etc/UTC; omit the timezone token.
+OnCalendar=2026-09-05 16:46:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target
