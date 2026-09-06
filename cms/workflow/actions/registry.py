@@ -216,6 +216,13 @@ def run_action(action_id):
         action.started_at = datetime.now()
         db.session.commit()
 
+        # After the commit above SQLAlchemy returns the pooled connection; a
+        # later query may rebind to a *different* backend connection, on which
+        # the session-scoped RLS GUC (app.tenant_id) is empty. Re-assert the
+        # action's tenant so the handler and the finding inserts below stay
+        # inside the RLS policy (else: InsufficientPrivilege on findings).
+        set_tenant_context(db, tenant_id)
+
         entry = ACTION_REGISTRY.get(action.action_type)
         if not entry:
             action.status = "error"
@@ -272,6 +279,11 @@ def run_action(action_id):
             return
 
         created = []
+        # A handler (or a mid-run status commit) may have returned the pooled
+        # connection and rebound the session to a fresh backend connection;
+        # re-assert the RLS tenant context on whatever connection the finding
+        # inserts below will flush on.
+        set_tenant_context(db, tenant_id)
         for fd in findings_data:
             detail_text = fd.get("detail", "")
             subject_id = fd.get("subject_id")
