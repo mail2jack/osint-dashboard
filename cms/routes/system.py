@@ -58,11 +58,18 @@ def _all_session_ids() -> list[str]:
     """Return all active session IDs from the current backend."""
     backend = _get_session_backend()
     if backend == "redis":
+        # redis-py returns bytes keys (decode_responses=False); filesystem
+        # sids are str. Normalize both so callers get str session IDs.
+        def _sid(kk):
+            if isinstance(kk, bytes):
+                return kk.decode("utf-8", "ignore")
+            return kk
+
         client = _get_redis_client()
         if client:
             try:
                 keys = client.keys("session:*")
-                return [k.split(":", 1)[1] for k in keys]
+                return [_sid(k).split(":", 1)[1] for k in keys]
             except Exception:
                 logger.exception("Failed to list Redis sessions")
                 return []
