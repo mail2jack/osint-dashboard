@@ -1,6 +1,6 @@
 # Plan: Session-backend migreren van filesystem naar Redis (ADR-0004 optie C)
 
-**Status:** analyse gereed + besluiten vastgesteld (2026-09-06); code-fase bezig  
+**Status:** analyse gereed + besluiten vastgesteld (2026-09-06); Fase A (code) in PR #117, Fase B (Redis-install VPS) gereed; Fase C/D open  
 **Doel:** filesystem-sessie-races definitief elimineren en schaalbaarheid naar
 meer workers ondersteunen, zonder bestaande functionaliteit te breken  
 **Systeem:** Iveras OSINT Dashboard (VPS `joost.iveras.com`, Ubuntu)
@@ -123,11 +123,17 @@ sessies omzetten (= extra scope); in-vivo migratie kan in een latere fase als
 ## 5. Migratiefases
 
 1. **Fase A (code — deze PR)**: RQ-decouple, flushall-fix, tests.
-2. **Fase B (VPS-install)**: Redis installeren + config (127.0.0.1,
-   requirepass, AOF everysec, maxmemory 256mb/volatile-ttl), systemd-unit
-   (Restart=on-failure), geen `REDIS_URL` nog.
+2. **Fase B (VPS-install) — GEREED 2026-09-06**: Redis 8.0.5 (apt) live op de
+   VPS met: `bind 127.0.0.1 -::1`, `protected-mode yes`, `requirepass`
+   (root-only `/etc/redis/redis-pass`, mode 600; compleet `REDIS_URL` in
+   root-only `/etc/redis/redis-url`), `appendonly yes` + `appendfsync everysec`,
+   `maxmemory 256mb`, `maxmemory-policy volatile-ttl`; override
+   `Restart=on-failure` + `RestartSec=2s`; `vm.overcommit_memory=1`.
+   **Verificatie:** `ping` met auth = PONG, zonder auth = NOAUTH, luistert
+   alleen op loopback, AOF-actief. **`REDIS_URL` staat NIET in `.env`**;
+   osint-dashboard draait onveranderd op filesystem-sessies (health 200).
 3. **Fase C (verificatie)**: app herstarten zonder REDIS_URL (geen gedragswijziging);
-   health-monitor-probe testen.
+   health-monitor-probe testen. *(rest nog)*
 4. **Fase D (switch, onderhoudsvenster)**: `REDIS_URL` in `.env`,
    app herstart, sessie-login E2E, admin-sessie-UI check, OSINT-cache-check.
 5. **Rollback** indien nodig: `REDIS_URL` unsetten, app herstart →
