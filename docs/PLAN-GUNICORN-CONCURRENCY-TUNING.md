@@ -2,8 +2,34 @@
 
 **Doel:** onafhankelijke beoordeling door ChatGPT, security specialist en
 performance reviewer  
-**Status:** voorstel; geen productie-wijzigingen uitgevoerd  
+**Status:** afgerond — besluit: productie blijft op **2 sync workers**  
 **Systeem:** Iveras OSINT Dashboard
+
+## 0. Conclusie (besluit 2026-09-06)
+
+De twee-worker canary (24 uur, venster 2026-09-04T16:43:30Z → 2026-09-05T16:43:30Z,
+commit `8d571d4`) is volledig doorlopen en gesloten met **STATUS=PASS**
+(report `canary-close-gunicorn-20260906T141655Z.txt`):
+
+- 288/288 health-samples, geen CSV-gap;
+- `NRestarts=0` binnen het venster;
+- 0 OSErrors binnen het venster (journald geteld); één uitsluitende
+  teardown-burst van de oude worker vlak vóór window-open werd per
+  journald-crosscheck geïdentificeerd en als `oserr_excluded_bursts`
+  separaat gerapporteerd (border-artefact, geen eigen fout van de 2-worker
+  configuratie);
+- geen backlogbeperking zichtbaar.
+
+**Besluit:** productie blijft op `--workers 2 --worker-class sync --threads 1`.
+2 workers hebben de volledige meetperiode zonder failures, restarts of gaps
+gedragen. Opschalen naar 4 workers (fase 2) staat open bij aantoonbare winst:
+p95-verslechtering, sample-ratio-daling of een burst in de metingen — dit bewijs
+is er op 2026-09-06 niet.
+
+De configuratie is als canoniek vastgelegd in  
+`deploy/osint-dashboard-gunicorn2.override.conf` (live drop-in op de VPS) en de
+twee-worker-rollout is operationeel (go-live commit `8d571d4`, deploy naar VPS
+2026-09-06 14:49:30Z). De health-monitor (elke 5 min) blijft het vangnet.
 
 ## 1. Beslispunt
 
@@ -32,9 +58,11 @@ Er is geen gevonden ADR of commit die de afwijking naar één worker formeel
 onderbouwt. Eén worker is tijdens de session-store-wedge als oorzaakversterker
 vastgesteld: één geblokkeerde request hield de hele webrequest-capaciteit op.
 
-**Beslissing gevraagd:** moet productie gecontroleerd van één naar twee of vier
-workers, en moeten daarnaast timeout-, keep-alive- en recyclingwaarden worden
-aangepast?
+**Beslissing gevraagd (oorspronkelijk):** moet productie gecontroleerd van één
+naar twee of vier workers, en moeten daarnaast timeout-, keep-alive- en
+recyclingwaarden worden aangepast?  
+**Genomen beslissing (2026-09-06):** bij **2 sync workers** blijven, timeout 120s
+behouden; fase 2 (4 workers) alleen op basis van dit plan bij aantoonbare winst.
 
 ## 2. Huidige uitgangssituatie
 
@@ -370,7 +398,7 @@ toegestane afwijking vast.
 4. Leg baseline A/B/C vast voor latency, resources, DB en logs.
 5. Verifieer dat de health-refresh timer en snapshotproducer correct werken.
 
-### Fase 1: twee-worker canary
+### Fase 1: twee-worker canary — VOLTOOID (2026-09-04 → 2026-09-05)
 
 1. Open onderhoudsvenster en merge-freeze.
 2. Draai preflight/dry-run.
@@ -380,6 +408,9 @@ toegestane afwijking vast.
 6. Observeer minimaal **24 uur ononderbroken**.
 7. Een VPS-herstart, collectoruitval of CSV-gat maakt de uitkomst
    inconclusief; start vanaf herstel een nieuw volledig 24-uursvenster.
+
+**Uitkomst (2026-09-06):** PASS — zie de conclusie in §0. Geen rolback nodig;
+productie blijft op deze configuratie.
 
 **Canary-close/check-timers (runbook).** Het venster wordt formeel afgesloten
 door een eenmalige systemd OnCalendar-timer (deploy/osint-canary-close.timer,
@@ -475,3 +506,6 @@ daemon-reload, service restart en dezelfde post-checks. Geen Alembic-downgrade.
 - Installeer of activeer de DR-verifier-timer niet als onderdeel van dit plan.
 - Start na elke productievariant een nieuw volledig monitoringvenster; een gat
   maakt de uitkomst inconclusief.
+
+**Actie (2026-09-06):** dit advies is uitgevoerd en de canary is gehald met het
+besluit om op 2 workers te blijven — zie de conclusie in §0.
