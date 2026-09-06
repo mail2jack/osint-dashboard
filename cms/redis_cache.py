@@ -102,6 +102,23 @@ def set(tool: str, query: str, data: dict, timeout: int = _default_timeout):
         logger.debug("FS cache set error: %s", e)
 
 
+def _purge_osint_keys(redis_) -> None:
+    """Delete only the ``osint:*`` keyspace via scan/unlink.
+
+    Never ``flushall()``: Flask-Session (and RQ) may share the same Redis
+    instance/database, and a full flush would silently drop every live
+    session.  ``invalidate()`` must be scoped to the OSINT cache keys only.
+    """
+    batch = []
+    for key in redis_.scan_iter(match="osint:*", count=500):
+        batch.append(key)
+        if len(batch) >= 100:
+            redis_.unlink(*batch)
+            batch.clear()
+    if batch:
+        redis_.unlink(*batch)
+
+
 def invalidate(tool: str = None, query: str = None):
     redis_ = _get_redis()
     if redis_ and tool and query:
@@ -112,7 +129,7 @@ def invalidate(tool: str = None, query: str = None):
             _reset_redis()
     if redis_:
         try:
-            redis_.flushall()
+            _purge_osint_keys(redis_)
             return
         except Exception:
             _reset_redis()

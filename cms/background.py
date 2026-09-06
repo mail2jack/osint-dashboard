@@ -11,14 +11,27 @@ logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="bg")
 _app = None
 
-# RQ integration — optional, used when REDIS_URL is set
-_REDIS_URL = os.environ.get("REDIS_URL", "")
-_use_rq = bool(_REDIS_URL)
+# RQ integration — optional, explicitly enabled via RQ_URL (not REDIS_URL, so
+# enabling Redis sessions never silences background tasks into a dead queue)
+
+
+def _rq_enabled() -> bool:
+    """Explicit opt-in: only RQ_URL enables the Redis queue.
+
+    REDIS_URL is owned by the session backend; tying RQ to it would send every
+    background task into an RQ queue while Redis sessions are enabled, with no
+    rq worker running.  Keep the two switches independent.
+    """
+    return bool(os.environ.get("RQ_URL", ""))
+
+#: Snapshot of the opt-in at import time (matches prior module-level behavior).
+_use_rq = _rq_enabled()
+_RQ_URL = os.environ.get("RQ_URL", "")
 
 if _use_rq:
     logger.info("RQ available — background tasks will use Redis queue")
 else:
-    logger.debug("REDIS_URL not set — background tasks use ThreadPoolExecutor")
+    logger.debug("RQ_URL not set — background tasks use ThreadPoolExecutor")
 
 TaskID = str
 
@@ -48,7 +61,7 @@ def _enqueue_rq(task_id: str, func: Callable, *args, **kwargs) -> bool:
         import redis as redis_lib
         from rq import Queue
 
-        conn = redis_lib.from_url(_REDIS_URL, socket_connect_timeout=3)
+        conn = redis_lib.from_url(_RQ_URL, socket_connect_timeout=3)
         queue = Queue("default", connection=conn)
         queue.enqueue(
             "cms.tasks.run_background_task",
