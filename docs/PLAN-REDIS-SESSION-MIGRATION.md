@@ -1,6 +1,6 @@
 # Plan: Session-backend migreren van filesystem naar Redis (ADR-0004 optie C)
 
-**Status:** analyse gereed + besluiten vastgesteld (2026-09-06); Fase A (code) in PR #117, Fase B (Redis-install VPS) gereed; Fase C/D open  
+**Status:** analyse gereed + besluiten vastgesteld (2026-09-06); Fase A (code) in PR #117, Fase B (Redis-install VPS) gereed, Fase C (verificatie + monitor-probe) gereed; Fase D (switch) open — geblokkeerd op merge+deploy van PR #117.  
 **Doel:** filesystem-sessie-races definitief elimineren en schaalbaarheid naar
 meer workers ondersteunen, zonder bestaande functionaliteit te breken  
 **Systeem:** Iveras OSINT Dashboard (VPS `joost.iveras.com`, Ubuntu)
@@ -132,8 +132,13 @@ sessies omzetten (= extra scope); in-vivo migratie kan in een latere fase als
    **Verificatie:** `ping` met auth = PONG, zonder auth = NOAUTH, luistert
    alleen op loopback, AOF-actief. **`REDIS_URL` staat NIET in `.env`**;
    osint-dashboard draait onveranderd op filesystem-sessies (health 200).
-3. **Fase C (verificatie)**: app herstarten zonder REDIS_URL (geen gedragswijziging);
-   health-monitor-probe testen. *(rest nog)*
+3. **Fase C (verificatie)**: app herstart zonder REDIS_URL (geen gedragswijziging);
+    health-monitor-probe live. **GEREED** — probe (auth via
+    `REDISCLI_AUTH`, detectie op `PONG`-output want redis-cli v8 geeft bij
+    WRONGPASS exit 0, FAIL-transitie → `user.alert` + DR-mailroute via venv-python
+    wegens ontbrekend exec-bit) draait op de VPS; eerste ticks
+    `... ,redis=ok` (2026-09-06T17:10/17:15Z); CSV geroteerd met 8-koloms header.
+    Probe zelf (niet de switch) is nu actief. *(Fase C voltooid op 2026-09-06)*
 4. **Fase D (switch, onderhoudsvenster)**: `REDIS_URL` in `.env`,
    app herstart, sessie-login E2E, admin-sessie-UI check, OSINT-cache-check.
 5. **Rollback** indien nodig: `REDIS_URL` unsetten, app herstart →
